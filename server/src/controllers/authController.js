@@ -5,8 +5,10 @@ const jwt = require('jsonwebtoken');
 
 // ─── Helper: generate JWT token ───────────────────────────────
 const generateToken = (user) => {
-  const secret = process.env.JWT_SECRET || 'frutella_super_secret_key_change_in_production';
-  console.log('JWT Secret:', secret); // temporary debug log
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('FATAL: JWT_SECRET environment variable is not set!');
+  }
   return jwt.sign(
     { id: user.id, email: user.email },
     secret,
@@ -16,16 +18,9 @@ const generateToken = (user) => {
 
 // ─── REGISTER ─────────────────────────────────────────────────
 // POST /api/auth/register
-const register = async (req, res) => {
+const register = async (req, res, next) => {
   try {
     const { name, email, password, phone } = req.body;
-
-    // 1. Check all fields are provided
-    if (!name || !email || !password) {
-      return res.status(400).json({ 
-        message: 'Name, email and password are required' 
-      });
-    }
 
     // 2. Check if email already exists
     const existing = await pool.query(
@@ -67,24 +62,15 @@ const register = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Register error:', error.message);
-    res.status(500).json({ message: 'Server error during registration' });
+    next(error);
   }
 };
 
 // ─── LOGIN ────────────────────────────────────────────────────
 // POST /api/auth/login
-const login = async (req, res) => {
-    console.log('🔑 Login hit, body:', req.body);
+const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-
-    // 1. Check fields
-    if (!email || !password) {
-      return res.status(400).json({ 
-        message: 'Email and password are required' 
-      });
-    }
 
     // 2. Find user by email
     const result = await pool.query(
@@ -128,14 +114,13 @@ const login = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Login error full:', error);
-    res.status(500).json({ message: 'Server error during login' });
+    next(error);
   }
 };
 
 // ─── GET ME (protected) ───────────────────────────────────────
 // GET /api/auth/me
-const getMe = async (req, res) => {
+const getMe = async (req, res, next) => {
   try {
     // req.user comes from our auth middleware
     const result = await pool.query(
@@ -150,8 +135,7 @@ const getMe = async (req, res) => {
     res.json({ user: result.rows[0] });
 
   } catch (error) {
-    console.error('GetMe error:', error.message);
-    res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 };
 
