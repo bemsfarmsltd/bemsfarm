@@ -20,8 +20,32 @@ router.post('/', protect, async (req, res) => {
       [orderId, req.user.id, total, payment_method, payment_ref || null, address || '']
     )
 
-    // Insert order items
+    // Insert order items and deduct stock safely
     for (const item of items) {
+      // 1. Lock the product row
+      const productRes = await client.query(
+        `SELECT name, stock FROM products WHERE id = $1 FOR UPDATE`,
+        [item.product_id]
+      )
+
+      if (productRes.rows.length === 0) {
+        throw new Error(`Product not found`)
+      }
+
+      const product = productRes.rows[0]
+
+      // 2. Check stock
+      if (product.stock < item.quantity) {
+        throw new Error(`Insufficient stock for ${product.name}. Only ${product.stock} left.`)
+      }
+
+      // 3. Deduct stock
+      await client.query(
+        `UPDATE products SET stock = stock - $1 WHERE id = $2`,
+        [item.quantity, item.product_id]
+      )
+
+      // 4. Insert order item
       await client.query(
         `INSERT INTO order_items (order_id, product_id, quantity, price)
          VALUES ($1, $2, $3, $4)`,
@@ -34,6 +58,12 @@ router.post('/', protect, async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK')
     console.error('Order creation error:', err.message)
+    
+    // Check if it's an inventory error we explicitly threw
+    if (err.message.includes('Insufficient stock') || err.message === 'Product not found') {
+      return res.status(400).json({ message: err.message })
+    }
+    
     res.status(500).json({ message: 'Error creating order' })
   } finally {
     client.release()
