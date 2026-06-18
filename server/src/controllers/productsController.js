@@ -1,5 +1,5 @@
-require('dotenv').config();
-const pool = require('../db/pool');
+require("dotenv").config();
+const pool = require("../db/pool");
 
 // ─── GET ALL PRODUCTS ──────────────────────────────────────────
 // GET /api/products
@@ -10,7 +10,7 @@ const getProducts = async (req, res) => {
     const { category, search } = req.query;
 
     let query = `
-      SELECT p.*, c.name as category_name, c.slug as category_slug
+      SELECT p.*, c.name as category_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       WHERE 1=1
@@ -35,12 +35,11 @@ const getProducts = async (req, res) => {
 
     res.json({
       products: result.rows,
-      count: result.rows.length
+      count: result.rows.length,
     });
-
   } catch (error) {
-    console.error('getProducts error:', error.message);
-    res.status(500).json({ message: 'Server error fetching products' });
+    console.error("getProducts error:", error.message);
+    res.status(500).json({ message: "Server error fetching products" });
   }
 };
 
@@ -51,15 +50,15 @@ const getProductById = async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      `SELECT p.*, c.name as category_name, c.slug as category_slug
+      `SELECT p.*, c.name as category_name
        FROM products p
        LEFT JOIN categories c ON p.category_id = c.id
        WHERE p.id = $1`,
-      [id]
+      [id],
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Product not found' });
+      return res.status(404).json({ message: "Product not found" });
     }
 
     // Get related products from same category
@@ -67,17 +66,16 @@ const getProductById = async (req, res) => {
       `SELECT * FROM products 
        WHERE category_id = $1 AND id != $2 
        LIMIT 4`,
-      [result.rows[0].category_id, id]
+      [result.rows[0].category_id, id],
     );
 
     res.json({
       product: result.rows[0],
-      related: related.rows
+      related: related.rows,
     });
-
   } catch (error) {
-    console.error('getProductById error:', error.message);
-    res.status(500).json({ message: 'Server error fetching product' });
+    console.error("getProductById error:", error.message);
+    res.status(500).json({ message: "Server error fetching product" });
   }
 };
 
@@ -90,14 +88,13 @@ const getFeaturedProducts = async (req, res) => {
        FROM products p
        LEFT JOIN categories c ON p.category_id = c.id
        WHERE p.is_featured = true
-       ORDER BY p.id ASC`
+       ORDER BY p.id ASC`,
     );
 
     res.json({ products: result.rows });
-
   } catch (error) {
-    console.error('getFeaturedProducts error:', error.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error("getFeaturedProducts error:", error.message);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
