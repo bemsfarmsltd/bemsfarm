@@ -5,12 +5,53 @@ import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import logo from "../../assets/bemsfarms_logo.png";
 
+/*
+  RESPONSIVE STRATEGY — pure CSS, no JS breakpoint guessing.
+  A single `isMobile` boolean (the old approach) cannot serve every device
+  in the target list (320px folded Z Fold up to 1728px MacBook Pro 16"),
+  so we use CSS media queries via a <style> tag injected once. This means
+  layout changes happen instantly on resize/rotate/fold with zero re-render
+  cost and zero hydration mismatch risk.
+
+  Breakpoints chosen from real device widths:
+    <= 480px   : smallest phones (SE, Galaxy S8+, folded Z Fold)
+    481-767px  : standard phones (most iPhones, Pixel, S20 Ultra)
+    768-1023px : tablets (iPad Mini/Air, Surface Duo unfolded, Galaxy Tab S4)
+    >= 1024px  : laptops/desktops (iPad Pro landscape, MacBook, Surface Pro)
+*/
+
+const NAVBAR_CSS = `
+.bf-navbar-links { display: none; }
+.bf-navbar-burger { display: flex; }
+.bf-navbar-user-name { display: none; }
+.bf-navbar-logo { height: 32px; }
+.bf-navbar-inner { padding: 0 14px; gap: 10px; height: 56px; }
+
+@media (min-width: 640px) {
+  .bf-navbar-logo { height: 36px; }
+  .bf-navbar-inner { padding: 0 20px; height: 60px; }
+}
+
+@media (min-width: 768px) {
+  .bf-navbar-links { display: flex; }
+  .bf-navbar-burger { display: none; }
+  .bf-navbar-user-name { display: block; }
+  .bf-navbar-logo { height: 40px; }
+  .bf-navbar-inner { padding: 0 32px; gap: 24px; height: 68px; }
+}
+
+@media (min-width: 1024px) {
+  .bf-navbar-inner { padding: 0 40px; gap: 32px; height: 72px; }
+}
+`;
+
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
   const { cartItems } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -33,9 +74,15 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // Close mobile nav on route change
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
   const handleLogout = () => {
     logout();
     setMenuOpen(false);
+    setMobileNavOpen(false);
     navigate("/login");
   };
 
@@ -72,19 +119,19 @@ export default function Navbar() {
         transition: "box-shadow 0.3s, border-color 0.3s",
       }}
     >
+      <style>{NAVBAR_CSS}</style>
+
       <div
+        className="bf-navbar-inner"
         style={{
           maxWidth: "1280px",
           margin: "0 auto",
-          padding: "0 24px",
-          height: "64px",
           display: "flex",
           alignItems: "center",
-          gap: "32px",
+          minWidth: 0,
         }}
       >
         {/* ── LOGO ─────────────────────────────────────── */}
-        {/* Logo image has a cream bg — always show on white so it looks correct */}
         <Link
           to={user ? "/home" : "/"}
           style={{
@@ -92,30 +139,27 @@ export default function Navbar() {
             flexShrink: 0,
             display: "flex",
             alignItems: "center",
+            minWidth: 0,
           }}
         >
           <img
             src={logo}
             alt="BemsFarms"
+            className="bf-navbar-logo"
             style={{
-              height: "40px",
               width: "auto",
               objectFit: "contain",
               display: "block",
-              borderRadius: "6px",
+              maxWidth: "140px",
             }}
           />
         </Link>
 
-        {/* ── DESKTOP NAV LINKS ────────────────────────── */}
+        {/* ── DESKTOP NAV LINKS (>=768px only) ──────────── */}
         {user && (
           <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "2px",
-              flex: 1,
-            }}
+            className="bf-navbar-links"
+            style={{ alignItems: "center", gap: "2px", flex: 1, minWidth: 0 }}
           >
             {NAV_LINKS.map(({ label, path }) => (
               <Link key={path} to={path} style={{ textDecoration: "none" }}>
@@ -130,6 +174,7 @@ export default function Navbar() {
                     fontFamily: "Nunito, sans-serif",
                     transition: "all 0.15s",
                     cursor: "pointer",
+                    whiteSpace: "nowrap",
                   }}
                   onMouseEnter={(e) => {
                     if (!isActive(path))
@@ -146,22 +191,19 @@ export default function Navbar() {
             ))}
           </div>
         )}
-
-        {/* spacer when not logged in */}
-        {!user && <div style={{ flex: 1 }} />}
+        {!user && <div style={{ flex: 1, minWidth: "8px" }} />}
 
         {/* ── RIGHT SIDE ───────────────────────────────── */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "4px",
             flexShrink: 0,
           }}
         >
           {user ? (
             <>
-              {/* Cart */}
               <button
                 onClick={() => navigate("/cart")}
                 style={{
@@ -169,22 +211,22 @@ export default function Navbar() {
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  padding: "8px",
+                  padding: "7px",
                   borderRadius: "10px",
                   lineHeight: 1,
                 }}
               >
-                <span style={{ fontSize: "20px" }}>🛒</span>
+                <span style={{ fontSize: "19px" }}>🛒</span>
                 {cartCount > 0 && (
                   <span
                     style={{
                       position: "absolute",
-                      top: "2px",
-                      right: "2px",
+                      top: "0",
+                      right: "0",
                       backgroundColor: "#F59E0B",
                       color: "white",
-                      width: "17px",
-                      height: "17px",
+                      width: "16px",
+                      height: "16px",
                       borderRadius: "50%",
                       fontSize: "9px",
                       fontWeight: 800,
@@ -198,40 +240,32 @@ export default function Navbar() {
                 )}
               </button>
 
-              {/* Avatar dropdown */}
+              {/* Avatar dropdown — visible at all sizes */}
               <div style={{ position: "relative" }} ref={dropdownRef}>
                 <button
                   onClick={() => setMenuOpen((o) => !o)}
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "8px",
-                    padding: "6px 12px 6px 6px",
+                    gap: "6px",
+                    padding: "4px 8px 4px 4px",
                     border: "1px solid #E5E7EB",
                     borderRadius: "50px",
                     background: "white",
                     cursor: "pointer",
-                    transition: "border-color 0.15s",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.borderColor = "#1B4332")
-                  }
-                  onMouseLeave={(e) => {
-                    if (!menuOpen)
-                      e.currentTarget.style.borderColor = "#E5E7EB";
                   }}
                 >
                   <div
                     style={{
-                      width: "28px",
-                      height: "28px",
+                      width: "26px",
+                      height: "26px",
                       borderRadius: "50%",
                       background: "linear-gradient(135deg, #1B4332, #40916C)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       color: "white",
-                      fontSize: "12px",
+                      fontSize: "11px",
                       fontWeight: 700,
                       flexShrink: 0,
                     }}
@@ -239,6 +273,7 @@ export default function Navbar() {
                     {user?.name?.[0]?.toUpperCase() || "U"}
                   </div>
                   <span
+                    className="bf-navbar-user-name"
                     style={{
                       fontSize: "13px",
                       fontWeight: 600,
@@ -251,15 +286,7 @@ export default function Navbar() {
                   >
                     {user?.name?.split(" ")[0]}
                   </span>
-                  <span
-                    style={{
-                      fontSize: "9px",
-                      color: "#9CA3AF",
-                      marginLeft: "2px",
-                    }}
-                  >
-                    ▼
-                  </span>
+                  <span style={{ fontSize: "9px", color: "#9CA3AF" }}>▼</span>
                 </button>
 
                 <AnimatePresence>
@@ -277,14 +304,14 @@ export default function Navbar() {
                         border: "1px solid #E5E7EB",
                         borderRadius: "14px",
                         padding: "6px",
-                        minWidth: "210px",
+                        width: "min(210px, 90vw)",
                         boxShadow: "0 16px 40px rgba(0,0,0,0.10)",
                         zIndex: 300,
                       }}
                     >
                       <div
                         style={{
-                          padding: "10px 12px 10px",
+                          padding: "10px 12px",
                           marginBottom: "2px",
                           borderBottom: "1px solid #F3F4F6",
                         }}
@@ -309,7 +336,6 @@ export default function Navbar() {
                           {user?.email}
                         </p>
                       </div>
-
                       {DROPDOWN_ITEMS.map((item) => (
                         <div
                           key={item.path}
@@ -327,7 +353,6 @@ export default function Navbar() {
                             fontSize: "13px",
                             fontWeight: 500,
                             color: "#374151",
-                            transition: "background 0.12s",
                           }}
                           onMouseEnter={(e) =>
                             (e.currentTarget.style.backgroundColor = "#F0FFF4")
@@ -341,7 +366,6 @@ export default function Navbar() {
                           <span>{item.label}</span>
                         </div>
                       ))}
-
                       <div
                         style={{
                           height: "1px",
@@ -361,7 +385,6 @@ export default function Navbar() {
                           fontSize: "13px",
                           fontWeight: 600,
                           color: "#DC2626",
-                          transition: "background 0.12s",
                         }}
                         onMouseEnter={(e) =>
                           (e.currentTarget.style.backgroundColor = "#FEF2F2")
@@ -378,31 +401,40 @@ export default function Navbar() {
                   )}
                 </AnimatePresence>
               </div>
+
+              {/* Hamburger — mobile/tablet only (<768px) */}
+              <button
+                className="bf-navbar-burger"
+                onClick={() => setMobileNavOpen((o) => !o)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "7px",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "20px",
+                }}
+                aria-label="Toggle navigation"
+              >
+                {mobileNavOpen ? "✕" : "☰"}
+              </button>
             </>
           ) : (
-            /* Not logged in */
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ display: "flex", gap: "6px" }}>
               <button
                 onClick={() => navigate("/login")}
                 style={{
-                  padding: "9px 20px",
+                  padding: "8px 14px",
                   border: "1px solid #D1D5DB",
                   borderRadius: "10px",
                   color: "#374151",
                   background: "white",
                   fontWeight: 600,
-                  fontSize: "14px",
+                  fontSize: "13px",
                   cursor: "pointer",
                   fontFamily: "Nunito, sans-serif",
-                  transition: "all 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#1B4332";
-                  e.currentTarget.style.color = "#1B4332";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#D1D5DB";
-                  e.currentTarget.style.color = "#374151";
+                  whiteSpace: "nowrap",
                 }}
               >
                 Sign In
@@ -410,22 +442,17 @@ export default function Navbar() {
               <button
                 onClick={() => navigate("/register")}
                 style={{
-                  padding: "9px 20px",
+                  padding: "8px 14px",
                   border: "none",
                   borderRadius: "10px",
                   color: "white",
                   background: "#1B4332",
                   fontWeight: 700,
-                  fontSize: "14px",
+                  fontSize: "13px",
                   cursor: "pointer",
                   fontFamily: "Nunito, sans-serif",
+                  whiteSpace: "nowrap",
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "#2D6A4F")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "#1B4332")
-                }
               >
                 Get Started
               </button>
@@ -433,6 +460,48 @@ export default function Navbar() {
           )}
         </div>
       </div>
+
+      {/* ── MOBILE NAV DRAWER (<768px, logged in only) ──── */}
+      <AnimatePresence>
+        {user && mobileNavOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            style={{ overflow: "hidden", borderTop: "1px solid #F3F4F6" }}
+            className="bf-navbar-burger-panel"
+          >
+            <div
+              style={{
+                padding: "10px 14px 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px",
+              }}
+            >
+              {NAV_LINKS.map(({ label, path }) => (
+                <Link key={path} to={path} style={{ textDecoration: "none" }}>
+                  <div
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: "10px",
+                      fontSize: "15px",
+                      fontWeight: isActive(path) ? 700 : 500,
+                      color: isActive(path) ? "#1B4332" : "#374151",
+                      backgroundColor: isActive(path)
+                        ? "#F0FFF4"
+                        : "transparent",
+                      fontFamily: "Nunito, sans-serif",
+                    }}
+                  >
+                    {label}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 }

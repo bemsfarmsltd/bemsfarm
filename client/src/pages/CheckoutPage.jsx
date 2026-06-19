@@ -122,6 +122,26 @@ export default function CheckoutPage() {
     return res.data.orderId || res.data.id;
   };
 
+  const handlePaymentSuccess = async (response) => {
+    try {
+      const orderId = await createOrder(response.reference);
+      clearCart();
+      setTimeout(() => {
+        setLoading(false);
+        navigate("/order-confirmed", {
+          state: { orderId, reference: response.reference },
+        });
+      }, 400);
+    } catch (orderErr) {
+      console.error("❌ Order creation after payment failed:", orderErr);
+      setLoading(false);
+      setError(
+        `Payment was received (ref: ${response.reference}) but order creation failed. ` +
+          `Please contact support with this reference number.`,
+      );
+    }
+  };
+
   // ── PAYSTACK PAYMENT ────────────────────────────────────────
   const handlePaystack = (e) => {
     e.preventDefault();
@@ -154,26 +174,11 @@ export default function CheckoutPage() {
         // This callback runs INSIDE Paystack's iframe context.
         // NEVER navigate() inside onSuccess directly — Paystack's iframe
         // may still be running. Use a short timeout + clearCart first.
-        callback: async (response) => {
+        callback: function (response) {
           console.log("✅ Paystack success:", response.reference);
-          try {
-            const orderId = await createOrder(response.reference);
-            clearCart();
-            // Small delay so Paystack can clean up its iframe
-            setTimeout(() => {
-              setLoading(false);
-              navigate("/order-confirmed", {
-                state: { orderId, reference: response.reference },
-              });
-            }, 400);
-          } catch (orderErr) {
-            console.error("❌ Order creation after payment failed:", orderErr);
-            setLoading(false);
-            setError(
-              `Payment was received (ref: ${response.reference}) but order creation failed. ` +
-                `Please contact support with this reference number.`,
-            );
-          }
+          // Call the async logic separately — callback itself stays a plain
+          // function so Paystack's SDK validator accepts it.
+          handlePaymentSuccess(response);
         },
 
         // ── CLOSED WITHOUT PAYING ────────────────────────────────
