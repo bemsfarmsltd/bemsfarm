@@ -149,14 +149,12 @@ router.post("/recommendations", async (req, res) => {
     console.log("📖 Using rules for:", dietary_need);
 
     try {
-      // Fetch all products
       const productsResult = await pool.query(
         `SELECT id, name, price, unit, stock FROM products
          WHERE COALESCE(stock, 100) > 0 ORDER BY name ASC LIMIT 50`,
       );
       const allProducts = productsResult.rows;
 
-      // ✅ INTELLIGENT MATCHING: Prioritize by category and priority level
       const matched = [];
       const priorities = rules.priorities || {};
 
@@ -188,7 +186,6 @@ router.post("/recommendations", async (req, res) => {
         }
       }
 
-      // Sort by priority
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       matched.sort(
         (a, b) => priorityOrder[a.priority] - priorityOrder[b.priority],
@@ -218,7 +215,6 @@ router.post("/recommendations", async (req, res) => {
 });
 
 // ── PHASE 1: CO-PURCHASE RECOMMENDATIONS ─────────────────────
-// "People who bought this also bought..."
 router.post("/co-purchase", async (req, res) => {
   try {
     const { product_id } = req.body;
@@ -232,7 +228,6 @@ router.post("/co-purchase", async (req, res) => {
       product_id,
     );
 
-    // Find orders that contain this product, then find what else was bought
     const result = await pool.query(
       `
       SELECT
@@ -276,7 +271,6 @@ router.post("/co-purchase", async (req, res) => {
 });
 
 // ── PHASE 2: SMART SHOPPING ASSISTANT ────────────────────────
-// "I want ingredients for jollof rice" → adds all needed items
 router.post("/recipe-helper", async (req, res) => {
   try {
     const { recipe_name } = req.body;
@@ -345,7 +339,6 @@ router.post("/recipe-helper", async (req, res) => {
 
     const recipe = recipes[recipe_name.toLowerCase()] || recipes["jollof rice"];
 
-    // Fetch products that match ingredients
     const productsResult = await pool.query(
       `SELECT id, name, price, unit, stock FROM products
        WHERE COALESCE(stock, 100) > 0
@@ -381,7 +374,79 @@ router.post("/recipe-helper", async (req, res) => {
   }
 });
 
-// ── SMART CHAT (Enhanced Phase 2) ────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// SMART CHAT — now genuinely AI-powered via Gemini
+//
+// BEFORE: getSmartChatResponse() only matched 4 keyword buckets and
+// fell through to a RANDOM tip for everything else — including
+// reasonable questions like "where is your company located", which
+// is why that question returned an unrelated ingredients prompt.
+//
+// AFTER: keyword buckets still handle the well-defined cases instantly
+// (recipes, health, delivery) since those benefit from exact, curated
+// answers. Anything else now goes to Gemini with a system prompt that
+// grounds it in BemsFarms context, so open-ended questions get a real,
+// relevant answer instead of a random canned tip.
+//
+// Falls back to the old rule-based tips ONLY if Gemini errors or the
+// API key is missing — chat never breaks even if Gemini is down.
+// ═══════════════════════════════════════════════════════════════
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+const BEMSFARMS_SYSTEM_PROMPT = `You are the BemsFarms shopping assistant — a friendly, concise AI for a Nigerian farm-fresh grocery e-commerce platform.
+
+Facts about BemsFarms:
+- We are an online-only marketplace (no physical retail storefront) connecting customers directly with Nigerian farmers.
+- We deliver same-day within Lagos (2-4 hours) and within 1-3 days nationwide across Nigeria.
+- Free delivery on orders over ₦15,000.
+- We sell fresh produce, grains, tubers, spices, and pantry staples sourced from local farms.
+- We offer AI-powered features: smart product search, personalized dietary recommendations, recipe-based shopping lists, and dynamic fair pricing.
+
+Tone: warm, brief, helpful — like a knowledgeable friend, not a corporate bot. Use at most 1-2 short sentences plus one relevant emoji. If asked something you genuinely don't know (e.g. a specific policy not listed here), say so honestly and suggest contacting support, rather than inventing details.`;
+
+async function callGemini(userMessage) {
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY not configured");
+  }
+
+  const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      system_instruction: {
+        parts: [{ text: BEMSFARMS_SYSTEM_PROMPT }],
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: userMessage }],
+        },
+      ],
+      generationConfig: {
+        maxOutputTokens: 150,
+        temperature: 0.7,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errBody = await response.text();
+    throw new Error(`Gemini API error ${response.status}: ${errBody}`);
+  }
+
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!text) {
+    throw new Error("Gemini returned no text in response");
+  }
+
+  return text.trim();
+}
+
 router.post("/chat", async (req, res) => {
   try {
     const { messages } = req.body;
@@ -391,9 +456,26 @@ router.post("/chat", async (req, res) => {
     }
 
     const lastMessage = messages[messages.length - 1]?.content || "";
-    const reply = getSmartChatResponse(lastMessage);
 
-    res.json({ reply, source: "smart-chat" });
+    // Curated buckets first — these have exact, reliable answers we
+    // want every time, not subject to AI variability.
+    const ruleBasedReply = getRuleBasedReply(lastMessage);
+    if (ruleBasedReply) {
+      return res.json({ reply: ruleBasedReply, source: "rule-based" });
+    }
+
+    // Anything else → try real AI for a genuinely relevant answer.
+    try {
+      const aiReply = await callGemini(lastMessage);
+      return res.json({ reply: aiReply, source: "gemini" });
+    } catch (geminiErr) {
+      console.error(
+        "⚠️ Gemini call failed, using fallback:",
+        geminiErr.message,
+      );
+      const fallback = getFallbackTip();
+      return res.json({ reply: fallback, source: "fallback" });
+    }
   } catch (err) {
     console.error("❌ Chat error:", err.message);
     res.status(500).json({ message: "Error: " + err.message });
@@ -474,10 +556,11 @@ function getSuggestedQuantity(keyword, family_size) {
   return quantities[keyword] || "As needed";
 }
 
-function getSmartChatResponse(message) {
+// Returns a string if the message matches a curated bucket, or null
+// if nothing matched (caller should fall through to Gemini).
+function getRuleBasedReply(message) {
   const m = message.toLowerCase();
 
-  // Detect recipe requests
   if (m.includes("recipe") || m.includes("cook") || m.includes("make")) {
     if (m.includes("jollof"))
       return '🍚 Want to make jollof rice? You\'ll need: Rice, Tomatoes, Onion, Pepper, and Groundnut Oil. I can add all these to your cart! Say "add jollof rice ingredients"';
@@ -490,12 +573,10 @@ function getSmartChatResponse(message) {
     return "👨‍🍳 I can help you find ingredients for recipes! Popular ones: Jollof Rice, Beans & Rice, Pepper Soup, Ugu Soup. Which one?";
   }
 
-  // Detect what-to-buy questions
   if (m.includes("what should i buy") || m.includes("what do i need")) {
     return "🤔 Tell me more! Are you:\n• Cooking a specific meal?\n• Managing a health condition (diabetes, weight loss, etc)?\n• Feeding a family?\nThis helps me recommend exactly what you need!";
   }
 
-  // Detect health questions
   if (
     m.includes("diabetes") ||
     m.includes("weight") ||
@@ -505,12 +586,15 @@ function getSmartChatResponse(message) {
     return "💡 Great! Go to our **AI Recommendations** page and select your health goal. I'll give you a personalized product list with exact quantities for your family size and budget.";
   }
 
-  // Delivery & general
   if (m.match(/deliver|shipping|fast|how long/)) {
     return "🚚 **Same-day in Lagos** (2-4 hours) | **1-3 days nationwide** | Free delivery over ₦15,000";
   }
 
-  // Default
+  // No match — caller falls through to Gemini for an open-ended answer
+  return null;
+}
+
+function getFallbackTip() {
   const tips = [
     "💡 Tip: Use code FRESH20 for 20% off",
     "🛒 Need help finding ingredients? Tell me what you're cooking!",

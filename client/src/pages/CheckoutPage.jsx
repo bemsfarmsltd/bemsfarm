@@ -106,6 +106,7 @@ export default function CheckoutPage() {
   };
 
   // ── CREATE ORDER IN DB ───────────────────────────────────────
+
   const createOrder = async (ref) => {
     const payload = {
       items: cartItems.map((i) => ({
@@ -121,7 +122,7 @@ export default function CheckoutPage() {
     const res = await api.post("/orders", payload);
     return res.data.orderId || res.data.id;
   };
-
+  console.log(JSON.stringify(cartItems));
   const handlePaymentSuccess = async (response) => {
     try {
       const orderId = await createOrder(response.reference);

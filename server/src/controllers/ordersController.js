@@ -18,6 +18,7 @@ const createOrder = async (req, res) => {
     }
 
     // ✅ PRE-CHECK STOCK (fail fast like Doc 1)
+
     for (const item of items) {
       const stockCheck = await client.query(
         "SELECT stock, name FROM products WHERE id = $1",
@@ -59,16 +60,24 @@ const createOrder = async (req, res) => {
     console.log("✅ Order inserted:", orderResult.rows[0]);
 
     // ✅ INSERT ITEMS + DECREASE STOCK
+    console.log("📦 Order items received:");
+    console.log(JSON.stringify(items, null, 2));
     for (const item of items) {
+      const productId = Number(item.product_id);
+      const quantity = Number(item.quantity);
+
+      if (!Number.isInteger(productId)) {
+        throw new Error(`Invalid product_id: ${JSON.stringify(item)}`);
+      }
+
+      if (!Number.isInteger(quantity)) {
+        throw new Error(`Invalid quantity: ${JSON.stringify(item)}`);
+      }
+
       await client.query(
         `INSERT INTO order_items (order_id, product_id, quantity, price)
-         VALUES ($1, $2, $3, $4)`,
-        [
-          orderId,
-          parseInt(item.product_id),
-          parseInt(item.quantity),
-          parseFloat(item.price),
-        ],
+     VALUES ($1, $2, $3, $4)`,
+        [orderId, productId, quantity, Number(item.price)],
       );
 
       const updateResult = await client.query(
@@ -185,11 +194,9 @@ const cancelOrder = async (req, res) => {
 
     const o = order.rows[0];
     if (!["pending", "order_placed", "confirmed"].includes(o.status))
-      return res
-        .status(400)
-        .json({
-          message: "This order cannot be cancelled — already processing",
-        });
+      return res.status(400).json({
+        message: "This order cannot be cancelled — already processing",
+      });
 
     await client.query("BEGIN");
 

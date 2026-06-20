@@ -98,6 +98,8 @@ export default function Navbar() {
     { icon: "📦", label: "My Orders", path: "/orders" },
     { icon: "↩️", label: "Returns", path: "/returns" },
     { icon: "🔍", label: "Smart Search", path: "/semantic-search" },
+    { icon: "🥗", label: "AI Recommendations", path: "/recommendations" },
+    { icon: "🍲", label: "Recipe Helper", path: "/recipe-helper" },
     ...(user?.role === "admin"
       ? [
           { icon: "⚙️", label: "Admin Panel", path: "/admin" },
