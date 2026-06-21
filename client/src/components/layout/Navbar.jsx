@@ -89,7 +89,7 @@ export default function Navbar() {
   const NAV_LINKS = [
     { label: "Home", path: "/home" },
     { label: "Shop", path: "/products" },
-    { label: "Deals", path: "/deals" },
+    { label: "AI Recommendations", path: "/recommendations" },
     { label: "About", path: "/about" },
   ];
 
@@ -98,7 +98,6 @@ export default function Navbar() {
     { icon: "📦", label: "My Orders", path: "/orders" },
     { icon: "↩️", label: "Returns", path: "/returns" },
     { icon: "🔍", label: "Smart Search", path: "/semantic-search" },
-    { icon: "🥗", label: "AI Recommendations", path: "/recommendations" },
     { icon: "🍲", label: "Recipe Helper", path: "/recipe-helper" },
     ...(user?.role === "admin"
       ? [

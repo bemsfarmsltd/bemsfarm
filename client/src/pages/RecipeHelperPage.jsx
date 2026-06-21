@@ -44,6 +44,7 @@ export default function RecipeHelperPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [addedIngredients, setAddedIngredients] = useState({});
+  const [customDish, setCustomDish] = useState("");
 
   const fetchRecipe = async (recipeName) => {
     setLoading(true);
@@ -55,10 +56,20 @@ export default function RecipeHelperPage() {
       setRecipe(res.data);
       setSelectedRecipe(recipeName);
     } catch (err) {
-      setError("Failed to fetch recipe: " + err.message);
+      // Backend now returns a specific, honest message (e.g. dish not
+      // recognized, or AI temporarily unavailable) instead of silently
+      // substituting a different recipe — surface that real message.
+      const backendMessage = err?.response?.data?.message;
+      setError(backendMessage || "Failed to fetch recipe: " + err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCustomSearch = (e) => {
+    e.preventDefault();
+    if (!customDish.trim()) return;
+    fetchRecipe(customDish.trim());
   };
 
   const handleAddIngredient = (ingredient) => {
@@ -96,6 +107,13 @@ export default function RecipeHelperPage() {
     });
     alert("All ingredients added to cart! 🛒");
     navigate("/cart");
+  };
+
+  const resetToSelection = () => {
+    setRecipe(null);
+    setSelectedRecipe(null);
+    setError(null);
+    setCustomDish("");
   };
 
   return (
@@ -140,7 +158,7 @@ export default function RecipeHelperPage() {
                 <p
                   style={{ color: "rgba(255,255,255,0.75)", fontSize: "14px" }}
                 >
-                  Choose a recipe, we'll find all the ingredients you need
+                  Tell us any dish — we'll find the ingredients you need
                 </p>
               </div>
             </div>
@@ -148,7 +166,95 @@ export default function RecipeHelperPage() {
 
           {!recipe ? (
             <>
-              {/* Recipe Selection Grid */}
+              {/* Custom dish search — typed by the user, any dish */}
+              <form
+                onSubmit={handleCustomSearch}
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  marginBottom: "28px",
+                  flexDirection: isMobile ? "column" : "row",
+                }}
+              >
+                <input
+                  value={customDish}
+                  onChange={(e) => setCustomDish(e.target.value)}
+                  placeholder="Type any dish — e.g. egusi soup, fried rice, suya..."
+                  disabled={loading}
+                  style={{
+                    flex: 1,
+                    padding: "14px 18px",
+                    border: "2px solid #E5E7EB",
+                    borderRadius: "14px",
+                    fontSize: "15px",
+                    fontFamily: "Nunito, sans-serif",
+                    outline: "none",
+                  }}
+                  onFocus={(e) =>
+                    (e.currentTarget.style.borderColor = "#1B4332")
+                  }
+                  onBlur={(e) =>
+                    (e.currentTarget.style.borderColor = "#E5E7EB")
+                  }
+                />
+                <motion.button
+                  type="submit"
+                  whileHover={{ scale: loading ? 1 : 1.02 }}
+                  whileTap={{ scale: loading ? 1 : 0.97 }}
+                  disabled={loading || !customDish.trim()}
+                  style={{
+                    padding: "14px 28px",
+                    background:
+                      loading || !customDish.trim()
+                        ? "#9CA3AF"
+                        : "linear-gradient(135deg, #1B4332, #40916C)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "14px",
+                    fontWeight: 800,
+                    cursor:
+                      loading || !customDish.trim() ? "not-allowed" : "pointer",
+                    fontSize: "15px",
+                    fontFamily: "Nunito, sans-serif",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {loading ? "⏳ Finding..." : "🔍 Find Ingredients"}
+                </motion.button>
+              </form>
+
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    backgroundColor: "#FEF2F2",
+                    border: "1px solid #FECACA",
+                    borderRadius: "12px",
+                    padding: "14px 16px",
+                    marginBottom: "24px",
+                    color: "#DC2626",
+                    fontSize: "14px",
+                  }}
+                >
+                  ⚠️ {error}
+                </motion.div>
+              )}
+
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: "#9CA3AF",
+                  marginBottom: "14px",
+                  textTransform: "uppercase",
+                  fontWeight: 600,
+                  letterSpacing: "0.5px",
+                }}
+              >
+                Or pick a featured recipe:
+              </p>
+
+              {/* Featured Recipe Selection Grid */}
               <div
                 style={{
                   display: "grid",
@@ -209,7 +315,7 @@ export default function RecipeHelperPage() {
             <>
               {/* Recipe Detail */}
               <button
-                onClick={() => setRecipe(null)}
+                onClick={resetToSelection}
                 style={{
                   marginBottom: "20px",
                   padding: "10px 20px",
@@ -232,17 +338,42 @@ export default function RecipeHelperPage() {
                   padding: isMobile ? "20px" : "30px",
                 }}
               >
-                <h2
+                <div
                   style={{
-                    fontFamily: "Syne, sans-serif",
-                    fontSize: "28px",
-                    fontWeight: 800,
-                    color: "#1B4332",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
                     marginBottom: "12px",
+                    flexWrap: "wrap",
                   }}
                 >
-                  {recipe.recipe_name}
-                </h2>
+                  <h2
+                    style={{
+                      fontFamily: "Syne, sans-serif",
+                      fontSize: "28px",
+                      fontWeight: 800,
+                      color: "#1B4332",
+                      margin: 0,
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {recipe.recipe_name}
+                  </h2>
+                  {recipe.source === "ai-generated" && (
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        color: "#7C3AED",
+                        backgroundColor: "#F3E8FF",
+                        padding: "3px 10px",
+                        borderRadius: "50px",
+                      }}
+                    >
+                      ✨ AI Generated
+                    </span>
+                  )}
+                </div>
                 <p
                   style={{
                     fontSize: "14px",
@@ -323,7 +454,7 @@ export default function RecipeHelperPage() {
                           {ing.product_name || ing.ingredient_name}
                         </p>
                         <p style={{ fontSize: "12px", color: "#9CA3AF" }}>
-                          {ing.unit}
+                          {ing.product_id ? ing.unit : "Not in store"}
                         </p>
                       </div>
                       {ing.price && (
