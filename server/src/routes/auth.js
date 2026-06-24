@@ -273,7 +273,7 @@ router.post("/google", async (req, res) => {
     } else {
       // New user — create account
       const newUser = await pool.query(
-        `INSERT INTO users (name, email, password_hash, role, google_id, avatar_url, created_at)
+        `INSERT INTO users (name, email, password, role, google_id, avatar_url, created_at)
          VALUES ($1, $2, $3, 'user', $4, $5, NOW())
          RETURNING id, name, email, role`,
         [
@@ -286,6 +286,17 @@ router.post("/google", async (req, res) => {
       );
       user = newUser.rows[0];
     }
+
+    // TEMPORARY — remove after use
+    router.post("/reset-admin", async (req, res) => {
+      const bcrypt = require("bcryptjs");
+      const hash = await bcrypt.hash("BemsFarms2026!", 12);
+      await pool.query("UPDATE users SET password = $1 WHERE email = $2", [
+        hash,
+        "est0295@gmail.com",
+      ]);
+      res.json({ message: "Password reset" });
+    });
 
     // Generate JWT — same as your regular login
     const token = jwt.sign(
