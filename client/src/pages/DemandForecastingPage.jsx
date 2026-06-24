@@ -6,59 +6,39 @@ import api from "../services/api";
 
 export default function DemandForecastingPage() {
   const { isMobile } = useResponsive();
-
-  // State management
   const [forecast, setForecast] = useState(null);
   const [alerts, setAlerts] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch data when page loads
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        console.log("📈 Fetching demand forecast...");
         const forecastRes = await api.get("/advanced-ai/demand-forecast");
-        console.log("✅ Forecast:", forecastRes.data);
-
-        console.log("🚨 Fetching inventory alerts...");
         const alertsRes = await api.get("/advanced-ai/inventory-alerts");
-        console.log("✅ Alerts:", alertsRes.data);
-
         setForecast(forecastRes.data);
         setAlerts(alertsRes.data);
       } catch (err) {
-        console.error("❌ Error:", err);
         setError("Failed to load forecast data: " + err.message);
       } finally {
         setLoading(false);
       }
     };
-
     loadData();
   }, []);
 
-  // Helper functions to get trend icon and color
-  const getTrendIcon = (trend) => {
-    if (trend === "INCREASING") return "📈";
-    if (trend === "DECREASING") return "📉";
-    return "➡️";
-  };
+  const getTrendIcon = (t) =>
+    t === "INCREASING" ? "📈" : t === "DECREASING" ? "📉" : "➡️";
+  const getTrendColor = (t) =>
+    t === "INCREASING" ? "#059669" : t === "DECREASING" ? "#DC2626" : "#F59E0B";
+  const getTrendText = (t) =>
+    t === "INCREASING"
+      ? "Demand Increasing"
+      : t === "DECREASING"
+        ? "Demand Decreasing"
+        : "Stable Demand";
 
-  const getTrendColor = (trend) => {
-    if (trend === "INCREASING") return "#059669";
-    if (trend === "DECREASING") return "#DC2626";
-    return "#F59E0B";
-  };
-
-  const getTrendText = (trend) => {
-    if (trend === "INCREASING") return "Demand Increasing";
-    if (trend === "DECREASING") return "Demand Decreasing";
-    return "Stable Demand";
-  };
-
-  // MAIN RENDER
   return (
     <PageWrapper>
       <div
@@ -91,12 +71,7 @@ export default function DemandForecastingPage() {
             >
               📈 Demand Forecasting & Inventory
             </h1>
-            <p
-              style={{
-                color: "rgba(255,255,255,0.75)",
-                fontSize: "15px",
-              }}
-            >
+            <p style={{ color: "rgba(255,255,255,0.75)", fontSize: "15px" }}>
               Predict customer demand and optimize stock levels
             </p>
           </motion.div>
@@ -138,7 +113,7 @@ export default function DemandForecastingPage() {
             </motion.div>
           ) : (
             <>
-              {/* INVENTORY ALERTS SECTION */}
+              {/* INVENTORY ALERTS */}
               {alerts && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -156,7 +131,6 @@ export default function DemandForecastingPage() {
                   >
                     🚨 Inventory Alerts
                   </h2>
-
                   <div
                     style={{
                       display: "grid",
@@ -165,7 +139,6 @@ export default function DemandForecastingPage() {
                       marginBottom: "24px",
                     }}
                   >
-                    {/* CRITICAL ALERT */}
                     <motion.div
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -208,8 +181,6 @@ export default function DemandForecastingPage() {
                         Products below critical level
                       </p>
                     </motion.div>
-
-                    {/* WARNING ALERT */}
                     <motion.div
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -254,7 +225,6 @@ export default function DemandForecastingPage() {
                     </motion.div>
                   </div>
 
-                  {/* Critical Products List */}
                   {alerts.critical_alerts &&
                     alerts.critical_alerts.length > 0 && (
                       <motion.div
@@ -335,7 +305,7 @@ export default function DemandForecastingPage() {
                 </motion.div>
               )}
 
-              {/* DEMAND FORECAST SECTION */}
+              {/* DEMAND FORECAST */}
               {forecast && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -353,7 +323,6 @@ export default function DemandForecastingPage() {
                   >
                     📊 Next Month Forecast
                   </h2>
-
                   <p
                     style={{
                       fontSize: "13px",
@@ -364,7 +333,6 @@ export default function DemandForecastingPage() {
                     Based on 90 days of historical sales data and customer
                     trends
                   </p>
-
                   <div
                     style={{
                       display: "grid",
@@ -380,12 +348,6 @@ export default function DemandForecastingPage() {
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.1 }}
-                        style={{
-                          backgroundColor: "#F8FAFB",
-                          borderRadius: "16px",
-                          padding: "18px",
-                          border: "1px solid #E5E7EB",
-                        }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.boxShadow =
                             "0 8px 24px rgba(27, 67, 50, 0.1)";
@@ -396,11 +358,14 @@ export default function DemandForecastingPage() {
                           e.currentTarget.style.transform = "translateY(0)";
                         }}
                         style={{
+                          backgroundColor: "#F8FAFB",
+                          borderRadius: "16px",
+                          padding: "18px",
+                          border: "1px solid #E5E7EB",
                           transition: "all 0.3s",
                           cursor: "pointer",
                         }}
                       >
-                        {/* Header */}
                         <div
                           style={{
                             display: "flex",
@@ -421,17 +386,11 @@ export default function DemandForecastingPage() {
                           >
                             {product.product_name}
                           </h3>
-                          <span
-                            style={{
-                              fontSize: "20px",
-                              marginLeft: "8px",
-                            }}
-                          >
+                          <span style={{ fontSize: "20px", marginLeft: "8px" }}>
                             {getTrendIcon(product.trend)}
                           </span>
                         </div>
 
-                        {/* Demand Numbers */}
                         <div
                           style={{
                             backgroundColor: "white",
@@ -493,7 +452,6 @@ export default function DemandForecastingPage() {
                           </div>
                         </div>
 
-                        {/* Trend */}
                         <div
                           style={{
                             backgroundColor: "white",
@@ -515,7 +473,6 @@ export default function DemandForecastingPage() {
                           </p>
                         </div>
 
-                        {/* Confidence Bar */}
                         <div style={{ marginBottom: "10px" }}>
                           <p
                             style={{
@@ -546,7 +503,6 @@ export default function DemandForecastingPage() {
                           </div>
                         </div>
 
-                        {/* Recommendation */}
                         <div
                           style={{
                             backgroundColor:
@@ -611,10 +567,8 @@ export default function DemandForecastingPage() {
                   The system analyzes 90 days of historical sales data to
                   identify trends and patterns. It calculates average monthly
                   demand and detects whether demand is increasing, decreasing,
-                  or stable. This helps you stock the right quantities before
-                  demand peaks (like Christmas for festive foods) and reduce
-                  inventory when demand drops. Confidence scores reflect
-                  prediction accuracy based on available historical data.
+                  or stable. Confidence scores reflect prediction accuracy based
+                  on available historical data.
                 </p>
               </motion.div>
             </>
