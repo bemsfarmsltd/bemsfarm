@@ -1,11 +1,6 @@
 // client/src/components/AIChatbot.jsx
-// Upgraded from generic assistant → AI Kitchen Chef
-// Acts like a personal Nigerian chef/cook:
-//  - Answers any cooking question
-//  - Suggests recipes with BemsFarms ingredients
-//  - Gives nutritional advice
-//  - Recommends products based on health goals
-//  - Replaces the standalone RecommendationsPage chatbot behavior
+// CHANGE: wired to n8n webhook (primary) with Express /ai/chat fallback
+// Same routing pattern as ChefBemsPage.jsx
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +9,7 @@ import api from "../services/api";
 
 const CHEF_AVATAR =
   "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=48&q=80";
+const N8N_WEBHOOK = "https://bemsfarms.app.n8n.cloud/webhook/chef-bems";
 
 const QUICK_QUESTIONS = [
   {
@@ -54,7 +50,6 @@ const QUICK_QUESTIONS = [
   },
 ];
 
-// The chef system prompt — sent with every message
 const CHEF_SYSTEM_PROMPT = `You are Chef Bems, the friendly AI kitchen chef and food expert for BemsFarms — Nigeria's premier farm-fresh food marketplace.
 
 Your personality: Warm, encouraging, knowledgeable, and specifically expert in Nigerian cuisine. You speak like a friendly Nigerian chef who genuinely loves food.
@@ -67,25 +62,15 @@ Your expertise:
 - Health-based food recommendations (diabetes, pregnancy, weight loss, blood pressure, etc.)
 - Pairing BemsFarms products with recipes
 
-BemsFarms products you can recommend from:
-Grains: Ofada Rice, Brown Rice, Garri (Ijebu), White Rice, Millet, Sorghum, Dried Maize
-Oils: Palm Oil, Groundnut Oil, Coconut Oil
-Legumes: Black-eyed Beans, Brown Beans, Soya Beans, Groundnut
-Vegetables: Fresh Tomatoes, Fresh Pepper, Ugu Leaves, Okra, Onions (Red & White), Cabbage, Carrot, Scent Leaf, Bitter Leaf, Ewedu, Waterleaf, Garden Egg, Garden Egg (African Eggplant)
-Tubers: Yellow Yam (Puna), White Yam, Cassava, Sweet Potato, Cocoyam, Plantain
-Seasonings: Dried Crayfish, Dried Pepper (Atarodo), Curry Powder, Dried Thyme, Fresh Ginger, Turmeric, Uziza, Ogiri
-Fruits: Watermelon, Pineapple, Pawpaw (Papaya), Plantain, Mango, Orange, Banana, Avocado
-Leafy Greens: Ugu Leaves, Spinach (Tete), Oha Leaves, Waterleaf
+BemsFarms products: Ofada Rice, Brown Rice, Garri, White Rice, Palm Oil, Groundnut Oil, Coconut Oil, Black-eyed Beans, Brown Beans, Fresh Tomatoes, Fresh Pepper, Ugu Leaves, Okra, Onions, Carrot, Scent Leaf, Bitter Leaf, Yellow Yam, White Yam, Cassava, Sweet Potato, Cocoyam, Plantain, Dried Crayfish, Fresh Ginger, Turmeric, Watermelon, Pineapple, Pawpaw, Mango, Spinach, Oha Leaves, Waterleaf.
 
 Rules:
 1. Always be helpful and never refuse a food or cooking question
 2. When you mention ingredients, note if they're available on BemsFarms
 3. Give practical, step-by-step cooking advice
-4. Keep responses warm but concise — use short paragraphs or numbered steps
-5. Occasionally add a Nigerian cooking tip or proverb to make it feel authentic
-6. If someone asks about health conditions, give Nigerian-food-specific advice
-7. You can recommend they shop at BemsFarms but don't be pushy about it
-8. Never refuse to answer food questions — you are a chef, not a policy bot`;
+4. Keep responses warm but concise
+5. Occasionally add a Nigerian cooking tip to make it feel authentic
+6. If someone asks about health conditions, give Nigerian-food-specific advice`;
 
 export default function AIChatbot() {
   const [open, setOpen] = useState(false);
@@ -99,7 +84,6 @@ export default function AIChatbot() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [unread, setUnread] = useState(1);
-  const [tab, setTab] = useState("chat"); // "chat" | "recipes"
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const navigate = useNavigate();
@@ -123,6 +107,30 @@ export default function AIChatbot() {
     }
   }, [messages]);
 
+  // ── AI ROUTING ─────────────────────────────────────────────
+  // Primary: n8n webhook
+  // Fallback: Express /api/ai/chat
+  const callN8n = async (payload) => {
+    const res = await fetch(N8N_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) throw new Error(`n8n returned ${res.status}`);
+    return res.json();
+  };
+
+  const callExpress = async (conversationHistory) => {
+    const res = await api.post("/ai/chat", {
+      messages: conversationHistory,
+      systemPrompt: CHEF_SYSTEM_PROMPT,
+    });
+    return {
+      reply: res.data?.reply || res.data?.message || res.data?.content,
+    };
+  };
+
   const sendMessage = async (text) => {
     const content = (text || input).trim();
     if (!content || loading) return;
@@ -134,25 +142,34 @@ export default function AIChatbot() {
     setLoading(true);
 
     try {
-      // Build conversation history for the API
       const conversationHistory = newMessages.map((m) => ({
         role: m.role,
         content: m.content,
       }));
 
-      const response = await api.post("/ai/chat", {
-        messages: conversationHistory,
-        systemPrompt: CHEF_SYSTEM_PROMPT,
-      });
+      const payload = {
+        message: content,
+        conversationHistory,
+        userPreferences: JSON.parse(
+          localStorage.getItem("bemsfarms_prefs") || "{}",
+        ),
+      };
+
+      let data;
+      try {
+        data = await callN8n(payload);
+        console.log("✅ AIChatbot: n8n response");
+      } catch (n8nErr) {
+        console.warn("⚠️ AIChatbot: n8n unavailable, using Express fallback");
+        data = await callExpress(conversationHistory);
+      }
 
       const reply =
-        response.data?.reply ||
-        response.data?.message ||
-        response.data?.content ||
+        data?.reply ||
+        data?.message ||
+        data?.content ||
         "I'm having a moment — please try again!";
-
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
-
       if (!open) setUnread((n) => n + 1);
     } catch (err) {
       setMessages((prev) => [
@@ -177,7 +194,6 @@ export default function AIChatbot() {
   };
 
   const formatMessage = (content) => {
-    // Convert **bold**, numbered lists, and line breaks to formatted elements
     return content.split("\n").map((line, i) => {
       const boldFormatted = line.replace(
         /\*\*(.*?)\*\*/g,
@@ -194,7 +210,7 @@ export default function AIChatbot() {
 
   return (
     <>
-      {/* ── FLOATING BUTTON ──────────────────────────── */}
+      {/* FLOATING BUTTON */}
       <motion.button
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.94 }}
@@ -245,7 +261,7 @@ export default function AIChatbot() {
         )}
       </motion.button>
 
-      {/* ── CHAT WINDOW ──────────────────────────────── */}
+      {/* CHAT WINDOW */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -454,7 +470,7 @@ export default function AIChatbot() {
               <div ref={bottomRef} />
             </div>
 
-            {/* Quick questions — show only at start */}
+            {/* Quick questions */}
             {messages.length <= 1 && (
               <div
                 style={{
@@ -488,7 +504,7 @@ export default function AIChatbot() {
               </div>
             )}
 
-            {/* Shop button after conversation starts */}
+            {/* Shop button */}
             {messages.length > 3 && (
               <div style={{ padding: "0 14px 8px" }}>
                 <button

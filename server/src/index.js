@@ -8,14 +8,22 @@ app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin: [
-      "https://www.bemsfarms.com",
-      "https://bemsfarm.vercel.app",
-      "https://localhost:65476",
-      "http://localhost:5173",
-      "http://localhost:3000",
-      process.env.FRONTEND_URL,
-    ].filter(Boolean),
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, Postman)
+      if (!origin) return callback(null, true);
+      const allowed = [
+        "https://www.bemsfarms.com",
+        "https://bemsfarms.com",
+        "https://bemsfarm.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        process.env.FRONTEND_URL,
+      ].filter(Boolean);
+      if (allowed.includes(origin)) return callback(null, true);
+      // Log blocked origins so you can see them in Render logs
+      console.warn(`🚫 CORS blocked origin: ${origin}`);
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

@@ -310,6 +310,7 @@ export default function RegisterPage() {
 
       {/* Right form */}
       <div
+        className="auth-form-panel"
         style={{
           flex: "1 1 50%",
           display: "flex",
@@ -321,7 +322,10 @@ export default function RegisterPage() {
           overflowY: "auto",
         }}
       >
-        <div style={{ maxWidth: 420, width: "100%", margin: "0 auto" }}>
+        <div
+          className="auth-form-inner"
+          style={{ maxWidth: 420, width: "100%", margin: "0 auto" }}
+        >
           <div style={{ marginBottom: 32 }}>
             <div
               style={{
@@ -376,7 +380,7 @@ export default function RegisterPage() {
               useOneTap={false}
               theme="outline"
               size="large"
-              width="380"
+              width="100%"
               text="signup_with_google"
               shape="rectangular"
             />
@@ -663,7 +667,11 @@ export default function RegisterPage() {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 768px) { .auth-image-panel { display: none !important; } }
+        @media (max-width: 768px) {
+          .auth-image-panel { display: none !important; }
+          .auth-form-panel { flex: unset !important; width: 100% !important; min-height: 100vh; padding: 24px 20px !important; }
+          .auth-form-inner { max-width: 100% !important; }
+        }
       `}</style>
     </div>
   );

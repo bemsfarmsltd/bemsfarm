@@ -102,15 +102,39 @@ router.post("/register", async (req, res) => {
 // LOGIN
 // ─────────────────────────────────────────────
 router.post("/login", async (req, res) => {
+  const clientIP = req.ip || req.connection?.remoteAddress || "unknown";
+  const userAgent = req.headers["user-agent"] || "unknown";
+  const origin =
+    req.headers["origin"] || req.headers["referer"] || "mobile/unknown";
+
+  console.log(`\n🔐 LOGIN ATTEMPT`);
+  console.log(`   IP:         ${clientIP}`);
+  console.log(`   Origin:     ${origin}`);
+  console.log(`   User-Agent: ${userAgent.substring(0, 80)}`);
+  console.log(
+    `   Body keys:  ${Object.keys(req.body || {}).join(", ") || "EMPTY — possible Content-Type issue"}`,
+  );
+
   try {
     const { email, password } = req.body;
 
+    // ── Missing fields ────────────────────────────────────────
     if (!email || !password) {
+      console.log(
+        `   ❌ FAILED — missing fields (email: ${!!email}, password: ${!!password})`,
+      );
+      console.log(
+        `   → Likely cause: mobile app not sending Content-Type: application/json`,
+      );
       return res.status(400).json({
         message: "Email and password required",
+        hint: "Ensure Content-Type: application/json header is set",
       });
     }
 
+    console.log(`   Email: ${email.trim().toLowerCase()}`);
+
+    // ── User lookup ───────────────────────────────────────────
     const result = await pool.query(
       "SELECT * FROM users WHERE LOWER(email) = LOWER($1)",
       [email.trim()],
@@ -119,19 +143,25 @@ router.post("/login", async (req, res) => {
     const user = result.rows[0];
 
     if (!user) {
-      return res.status(401).json({
-        message: "Invalid credentials",
-      });
+      console.log(
+        `   ❌ FAILED — no user found for email: ${email.trim().toLowerCase()}`,
+      );
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    console.log(`   ✅ User found — id: ${user.id}, role: ${user.role}`);
+
+    // ── Password check ────────────────────────────────────────
     const valid = await bcrypt.compare(password, user.password);
 
     if (!valid) {
-      return res.status(401).json({
-        message: "Invalid credentials",
-      });
+      console.log(`   ❌ FAILED — wrong password for user id: ${user.id}`);
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    console.log(`   ✅ Password valid`);
+
+    // ── Generate tokens ───────────────────────────────────────
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user.id);
 
@@ -147,6 +177,10 @@ router.post("/login", async (req, res) => {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
+    console.log(
+      `   ✅ LOGIN SUCCESS — user: ${user.email}, role: ${user.role}\n`,
+    );
+
     res.json({
       token: accessToken,
       user: {
@@ -157,9 +191,9 @@ router.post("/login", async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({
-      message: "Login failed: " + err.message,
-    });
+    console.error(`   💥 LOGIN ERROR — ${err.message}`);
+    console.error(err.stack);
+    res.status(500).json({ message: "Login failed: " + err.message });
   }
 });
 

@@ -3,25 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "../assets/bemsfarms_logo.png";
 
-/*
-  ── SECRET DEVELOPER ACCESS ──────────────────────────────────────
-  The coming soon page shows publicly. To access the real app:
-  Click the BemsFarms logo exactly 5 times in a row within 3 seconds.
-  This navigates to /launch (the real landing page).
-
-  Only you and your team know this. The route /launch is not linked
-  from anywhere on the public site, so regular visitors won't find it.
-  You can also navigate directly to /launch in your browser.
-*/
-
-const COUNTDOWN = {
-  // Set your actual launch date here
-  target: new Date("2026-09-01T00:00:00"),
-};
+const COUNTDOWN = { target: new Date("2026-09-01T00:00:00") };
 
 function getTimeLeft(target) {
-  const now = new Date();
-  const diff = target - now;
+  const diff = target - new Date();
   if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
   return {
     days: Math.floor(diff / (1000 * 60 * 60 * 24)),
@@ -51,7 +36,7 @@ const TEASER_FEATURES = [
   {
     icon: "🚚",
     label: "Fast local delivery",
-    desc: "Fresh food to your door across Lagos & Abuja",
+    desc: "Fresh food to your door across Lagos & beyond",
   },
   {
     icon: "💳",
@@ -59,6 +44,31 @@ const TEASER_FEATURES = [
     desc: "Powered by Paystack — Nigeria's most trusted",
   },
 ];
+
+const CSS = `
+  .cs-countdown { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .cs-countdown-box { min-width: 64px; padding: 12px 14px; }
+  .cs-countdown-num { font-size: clamp(28px, 8vw, 48px); }
+  .cs-features { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+  .cs-email-form { flex-direction: column; border-radius: 16px !important; overflow: visible !important; }
+  .cs-email-input { border-radius: 12px !important; }
+  .cs-email-btn { border-radius: 12px !important; width: 100%; }
+  .cs-nav { padding: 16px 20px !important; }
+  .cs-content { padding: 32px 16px 40px !important; }
+  .cs-footer { padding: 16px 20px !important; flex-direction: column; text-align: center; gap: 8px; }
+
+  @media (min-width: 640px) {
+    .cs-countdown { gap: 20px; flex-wrap: nowrap; }
+    .cs-countdown-box { min-width: 80px; padding: 16px 20px; }
+    .cs-features { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; gap: 16px !important; }
+    .cs-email-form { flex-direction: row; border-radius: 16px !important; overflow: hidden !important; }
+    .cs-email-input { border-radius: 0 !important; }
+    .cs-email-btn { border-radius: 0 !important; width: auto; }
+    .cs-nav { padding: 20px 40px !important; }
+    .cs-content { padding: 40px 20px 60px !important; }
+    .cs-footer { padding: 20px 40px !important; flex-direction: row; text-align: left; }
+  }
+`;
 
 export default function ComingSoonPage() {
   const navigate = useNavigate();
@@ -69,13 +79,11 @@ export default function ComingSoonPage() {
   const [logoClicks, setLogoClicks] = useState(0);
   const clickTimerRef = useRef(null);
 
-  // Countdown timer
   useEffect(() => {
     const t = setInterval(() => setTime(getTimeLeft(COUNTDOWN.target)), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // Hero image rotation
   useEffect(() => {
     const t = setInterval(
       () => setHeroIdx((i) => (i + 1) % HERO_IMAGES.length),
@@ -84,26 +92,21 @@ export default function ComingSoonPage() {
     return () => clearInterval(t);
   }, []);
 
-  // Secret logo click handler — 5 clicks within 3 seconds → /launch
   const handleLogoClick = () => {
     const newCount = logoClicks + 1;
     setLogoClicks(newCount);
-
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-
     if (newCount >= 5) {
       setLogoClicks(0);
       navigate("/launch");
       return;
     }
-
     clickTimerRef.current = setTimeout(() => setLogoClicks(0), 3000);
   };
 
   const handleEmailSubmit = (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (!email.trim()) return;
-    // TODO: POST to /api/subscribe when ready
     setSubmitted(true);
   };
 
@@ -118,7 +121,9 @@ export default function ComingSoonPage() {
         fontFamily: "Nunito, sans-serif",
       }}
     >
-      {/* Background slideshow */}
+      <style>{CSS}</style>
+
+      {/* Background */}
       {HERO_IMAGES.map((img, i) => (
         <motion.div
           key={img}
@@ -135,8 +140,6 @@ export default function ComingSoonPage() {
           }}
         />
       ))}
-
-      {/* Dark + green gradient overlay */}
       <div
         style={{
           position: "fixed",
@@ -147,15 +150,11 @@ export default function ComingSoonPage() {
         }}
       />
 
-      {/* Animated particles / orbs */}
-      {[...Array(6)].map((_, i) => (
+      {/* Orbs */}
+      {[...Array(4)].map((_, i) => (
         <motion.div
           key={i}
-          animate={{
-            y: [0, -30, 0],
-            opacity: [0.04, 0.1, 0.04],
-            scale: [1, 1.2, 1],
-          }}
+          animate={{ y: [0, -30, 0], opacity: [0.04, 0.1, 0.04] }}
           transition={{
             duration: 6 + i * 1.5,
             repeat: Infinity,
@@ -163,12 +162,12 @@ export default function ComingSoonPage() {
           }}
           style={{
             position: "fixed",
-            width: `${120 + i * 60}px`,
-            height: `${120 + i * 60}px`,
+            width: `${100 + i * 50}px`,
+            height: `${100 + i * 50}px`,
             borderRadius: "50%",
             background:
               i % 2 === 0 ? "rgba(64,145,108,0.15)" : "rgba(245,159,11,0.1)",
-            left: `${10 + i * 15}%`,
+            left: `${10 + i * 20}%`,
             top: `${20 + (i % 3) * 25}%`,
             zIndex: 1,
             filter: "blur(40px)",
@@ -188,57 +187,44 @@ export default function ComingSoonPage() {
       >
         {/* Nav */}
         <nav
+          className="cs-nav"
           style={{
-            padding: "20px 40px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
           }}
         >
-          {/*
-            SECRET BUTTON: click logo 5 times in 3 seconds to access /launch
-            Appears as a normal logo to regular users
-          */}
           <motion.div
             onClick={handleLogoClick}
             whileTap={{ scale: 0.95 }}
             style={{ cursor: "pointer", userSelect: "none" }}
-            title="" // No tooltip that hints at the secret
           >
             <img
               src={logo}
               alt="BemsFarms"
-              style={{
-                height: "44px",
-                filter: "brightness(0) invert(1)",
-                transition: "filter 0.2s",
-              }}
+              style={{ height: "36px", filter: "brightness(0) invert(1)" }}
               onError={(e) => {
                 e.target.style.display = "none";
-                e.target.nextSibling.style.display = "flex";
+                e.target.nextSibling.style.display = "block";
               }}
             />
             <span
               style={{
                 display: "none",
                 fontFamily: "Syne, sans-serif",
-                fontSize: "22px",
+                fontSize: "20px",
                 fontWeight: 900,
                 color: "white",
-                alignItems: "center",
-                gap: "8px",
               }}
             >
               🌿 BemsFarms
             </span>
           </motion.div>
 
-          {/* Tiny click counter — only visible when actively clicking (purely visual feedback for devs) */}
           {logoClicks > 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
               style={{
                 position: "fixed",
                 top: "16px",
@@ -265,11 +251,11 @@ export default function ComingSoonPage() {
               backgroundColor: "rgba(245,159,11,0.15)",
               border: "1px solid rgba(245,159,11,0.4)",
               borderRadius: "50px",
-              padding: "6px 18px",
-              fontSize: "12px",
+              padding: "5px 14px",
+              fontSize: "11px",
               color: "#FCD34D",
               fontWeight: 700,
-              letterSpacing: "1.5px",
+              letterSpacing: "1px",
             }}
           >
             🚀 LAUNCHING SOON
@@ -278,13 +264,13 @@ export default function ComingSoonPage() {
 
         {/* Hero content */}
         <div
+          className="cs-content"
           style={{
             flex: 1,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            padding: "40px 20px",
             textAlign: "center",
           }}
         >
@@ -300,8 +286,8 @@ export default function ComingSoonPage() {
               backgroundColor: "rgba(64,145,108,0.2)",
               border: "1px solid rgba(64,145,108,0.5)",
               borderRadius: "50px",
-              padding: "8px 20px",
-              marginBottom: "28px",
+              padding: "7px 16px",
+              marginBottom: "24px",
             }}
           >
             <motion.div
@@ -312,14 +298,15 @@ export default function ComingSoonPage() {
                 height: "8px",
                 borderRadius: "50%",
                 backgroundColor: "#4CAF50",
+                flexShrink: 0,
               }}
             />
             <span
               style={{
-                fontSize: "13px",
+                fontSize: "12px",
                 fontWeight: 700,
                 color: "#A5D6A7",
-                letterSpacing: "1px",
+                letterSpacing: "0.5px",
               }}
             >
               🌱 Nigeria's freshest farm marketplace is on its way
@@ -333,24 +320,17 @@ export default function ComingSoonPage() {
             transition={{ delay: 0.2 }}
             style={{
               fontFamily: "Syne, sans-serif",
-              fontSize: "clamp(40px, 8vw, 80px)",
+              fontSize: "clamp(36px, 10vw, 80px)",
               fontWeight: 900,
               color: "white",
               lineHeight: 1.1,
-              marginBottom: "20px",
+              marginBottom: "16px",
               maxWidth: "800px",
             }}
           >
             Something Fresh
             <br />
-            <span
-              style={{
-                color: "#F59E0B",
-                textShadow: "0 0 60px rgba(245,159,11,0.4)",
-              }}
-            >
-              is Growing
-            </span>
+            <span style={{ color: "#F59E0B" }}>is Growing</span>
           </motion.h1>
 
           <motion.p
@@ -358,15 +338,15 @@ export default function ComingSoonPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             style={{
-              fontSize: "clamp(15px, 2.5vw, 18px)",
+              fontSize: "clamp(14px, 2.5vw, 18px)",
               color: "rgba(255,255,255,0.75)",
               lineHeight: 1.7,
-              marginBottom: "48px",
-              maxWidth: "520px",
+              marginBottom: "40px",
+              maxWidth: "480px",
             }}
           >
             Farm-fresh Nigerian food, AI-powered recommendations, and fast local
-            delivery — all in one place. Be the first to experience it.
+            delivery — all in one place.
           </motion.p>
 
           {/* Countdown */}
@@ -374,29 +354,24 @@ export default function ComingSoonPage() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.4 }}
-            style={{
-              display: "flex",
-              gap: "clamp(16px, 4vw, 40px)",
-              marginBottom: "48px",
-              alignItems: "center",
-            }}
+            className="cs-countdown"
+            style={{ marginBottom: "40px" }}
           >
             {[
               { value: time.days, label: "Days" },
               { value: time.hours, label: "Hours" },
               { value: time.minutes, label: "Minutes" },
               { value: time.seconds, label: "Seconds" },
-            ].map((unit, i) => (
+            ].map((unit) => (
               <div key={unit.label} style={{ textAlign: "center" }}>
                 <div
+                  className="cs-countdown-box"
                   style={{
                     backgroundColor: "rgba(255,255,255,0.08)",
                     border: "1px solid rgba(255,255,255,0.15)",
                     borderRadius: "16px",
-                    padding: "clamp(12px, 3vw, 20px) clamp(14px, 3.5vw, 28px)",
                     backdropFilter: "blur(12px)",
                     marginBottom: "8px",
-                    minWidth: "clamp(60px, 12vw, 90px)",
                   }}
                 >
                   <AnimatePresence mode="wait">
@@ -406,9 +381,9 @@ export default function ComingSoonPage() {
                       animate={{ y: 0, opacity: 1 }}
                       exit={{ y: 12, opacity: 0 }}
                       transition={{ duration: 0.2 }}
+                      className="cs-countdown-num"
                       style={{
                         fontFamily: "Syne, sans-serif",
-                        fontSize: "clamp(28px, 6vw, 48px)",
                         fontWeight: 900,
                         color: "white",
                         margin: 0,
@@ -421,7 +396,7 @@ export default function ComingSoonPage() {
                 </div>
                 <p
                   style={{
-                    fontSize: "11px",
+                    fontSize: "10px",
                     color: "rgba(255,255,255,0.5)",
                     fontWeight: 700,
                     letterSpacing: "1.5px",
@@ -439,26 +414,24 @@ export default function ComingSoonPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            style={{ width: "100%", maxWidth: "480px", marginBottom: "64px" }}
+            style={{ width: "100%", maxWidth: "480px", marginBottom: "48px" }}
           >
             {!submitted ? (
               <>
                 <p
                   style={{
                     color: "rgba(255,255,255,0.6)",
-                    fontSize: "14px",
-                    marginBottom: "14px",
+                    fontSize: "13px",
+                    marginBottom: "12px",
                   }}
                 >
                   Get early access + 10% off your first order
                 </p>
                 <form
                   onSubmit={handleEmailSubmit}
+                  className="cs-email-form"
                   style={{
                     display: "flex",
-                    gap: 0,
-                    borderRadius: "16px",
-                    overflow: "hidden",
                     boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
                   }}
                 >
@@ -468,26 +441,29 @@ export default function ComingSoonPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email address"
                     required
+                    className="cs-email-input"
                     style={{
                       flex: 1,
-                      padding: "16px 20px",
+                      padding: "15px 18px",
                       border: "none",
                       outline: "none",
-                      fontSize: "15px",
+                      fontSize: "14px",
                       backgroundColor: "white",
                       color: "#111827",
+                      minWidth: 0,
                     }}
                   />
                   <motion.button
                     whileTap={{ scale: 0.97 }}
                     type="submit"
+                    className="cs-email-btn"
                     style={{
-                      padding: "16px 28px",
+                      padding: "15px 24px",
                       backgroundColor: "#F59E0B",
                       border: "none",
                       color: "white",
                       fontWeight: 800,
-                      fontSize: "15px",
+                      fontSize: "14px",
                       cursor: "pointer",
                       whiteSpace: "nowrap",
                       fontFamily: "Nunito, sans-serif",
@@ -505,7 +481,7 @@ export default function ComingSoonPage() {
                   backgroundColor: "rgba(64,145,108,0.2)",
                   border: "1px solid rgba(64,145,108,0.5)",
                   borderRadius: "16px",
-                  padding: "20px 28px",
+                  padding: "20px 24px",
                   textAlign: "center",
                 }}
               >
@@ -533,9 +509,9 @@ export default function ComingSoonPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
+            className="cs-features"
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
               gap: "16px",
               maxWidth: "900px",
               width: "100%",
@@ -551,16 +527,16 @@ export default function ComingSoonPage() {
                   backgroundColor: "rgba(255,255,255,0.06)",
                   border: "1px solid rgba(255,255,255,0.1)",
                   borderRadius: "16px",
-                  padding: "20px",
+                  padding: "18px",
                   backdropFilter: "blur(8px)",
                   textAlign: "left",
                 }}
               >
                 <span
                   style={{
-                    fontSize: "28px",
+                    fontSize: "24px",
                     display: "block",
-                    marginBottom: "10px",
+                    marginBottom: "8px",
                   }}
                 >
                   {f.icon}
@@ -568,7 +544,7 @@ export default function ComingSoonPage() {
                 <p
                   style={{
                     fontFamily: "Syne, sans-serif",
-                    fontSize: "14px",
+                    fontSize: "13px",
                     fontWeight: 700,
                     color: "white",
                     marginBottom: "4px",
@@ -592,25 +568,31 @@ export default function ComingSoonPage() {
 
         {/* Footer */}
         <div
+          className="cs-footer"
           style={{
-            padding: "20px 40px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             flexWrap: "wrap",
-            gap: "12px",
+            gap: "8px",
           }}
         >
-          <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "13px" }}>
+          <p
+            style={{
+              color: "rgba(255,255,255,0.3)",
+              fontSize: "12px",
+              margin: 0,
+            }}
+          >
             © 2026 BemsFarms. Made with 🌿 in Nigeria
           </p>
-          <div style={{ display: "flex", gap: "20px" }}>
+          <div style={{ display: "flex", gap: "16px" }}>
             {["Instagram", "Twitter", "Facebook"].map((s) => (
               <span
                 key={s}
                 style={{
                   color: "rgba(255,255,255,0.3)",
-                  fontSize: "13px",
+                  fontSize: "12px",
                   cursor: "pointer",
                 }}
               >
