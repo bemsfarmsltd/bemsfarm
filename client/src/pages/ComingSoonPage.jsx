@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "../assets/bemsfarms_logo.png";
 
-const COUNTDOWN = { target: new Date("2026-09-01T00:00:00") };
+const COUNTDOWN = { target: new Date("2026-07-03T00:00:00") };
 
 function getTimeLeft(target) {
   const diff = target - new Date();
