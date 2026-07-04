@@ -1,6 +1,29 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
+const jwt  = require("jsonwebtoken");
+const {
+  buildContextString,
+  getOrCreateConversation,
+  saveMessages,
+  maybeSummarizeConversation,
+  trackActivity,
+} = require("../utils/aiContext");
+
+const JWT_SECRET = process.env.JWT_SECRET || "frutella_super_secret_key_change_in_production";
+
+// Resolve user ID from optional Bearer token — never throws, returns null if absent/invalid
+async function resolveUser(req) {
+  try {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith("Bearer ")) return null;
+    const decoded = jwt.verify(auth.split(" ")[1], JWT_SECRET);
+    const row = await pool.query("SELECT id, role FROM users WHERE id=$1 AND status!='suspended'", [decoded.id]);
+    return row.rows[0] || null;
+  } catch {
+    return null;
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // GEMINI CONFIG — shared by /recipe-helper and /chat routes below.
@@ -533,7 +556,7 @@ async function callGemini(userMessage) {
 
 router.post("/chat", async (req, res) => {
   try {
-    const { messages } = req.body;
+    const { messages, session_id } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ message: "messages array required" });
@@ -541,23 +564,62 @@ router.post("/chat", async (req, res) => {
 
     const lastMessage = messages[messages.length - 1]?.content || "";
 
-    // Curated buckets first — these have exact, reliable answers we
-    // want every time, not subject to AI variability.
+    // Resolve authenticated user (optional — chat works for guests too)
+    const user = await resolveUser(req);
+    let contextBlock = null;
+    let conversationId = null;
+
+    if (user) {
+      [contextBlock, conversationId] = await Promise.all([
+        buildContextString(user.id),
+        session_id ? getOrCreateConversation(user.id, session_id, "general") : Promise.resolve(null),
+      ]);
+      trackActivity(user.id, "ai_chat", { entityType: "chat", metadata: { bot: "general" } });
+    }
+
+    // Build system prompt, injecting user context if available
+    const personalizedSystem = contextBlock
+      ? `${contextBlock}\n\n${BEMSFARMS_SYSTEM_PROMPT}`
+      : BEMSFARMS_SYSTEM_PROMPT;
+
+    // Curated buckets first — exact, reliable answers not subject to AI variability
     const ruleBasedReply = getRuleBasedReply(lastMessage);
     if (ruleBasedReply) {
+      if (conversationId) {
+        await saveMessages(conversationId, [
+          { role: "user",      content: lastMessage,   source: "user" },
+          { role: "assistant", content: ruleBasedReply, source: "rule-based" },
+        ]);
+      }
       return res.json({ reply: ruleBasedReply, source: "rule-based" });
     }
 
-    // Anything else → try real AI for a genuinely relevant answer.
+    // Anything else → real AI with personalized context
     try {
-      const aiReply = await callGemini(lastMessage);
+      const aiReply = await callGeminiRaw(lastMessage, {
+        systemInstruction: personalizedSystem,
+        maxOutputTokens: 150,
+        temperature: 0.7,
+      });
+
+      if (conversationId) {
+        await saveMessages(conversationId, [
+          { role: "user",      content: lastMessage, source: "user" },
+          { role: "assistant", content: aiReply,     source: "gemini" },
+        ]);
+        maybeSummarizeConversation(conversationId, callGeminiRaw);
+      }
+
       return res.json({ reply: aiReply, source: "gemini" });
     } catch (geminiErr) {
-      console.error(
-        "⚠️ Gemini call failed, using fallback:",
-        geminiErr.message,
-      );
+      console.error("⚠️ Gemini call failed, using fallback:", geminiErr.message);
       const fallback = getFallbackTip();
+      if (conversationId) {
+        await saveMessages(conversationId, [
+          { role: "user",      content: lastMessage, source: "user" },
+          { role: "assistant", content: fallback,    source: "fallback" },
+        ]);
+      }
       return res.json({ reply: fallback, source: "fallback" });
     }
   } catch (err) {
@@ -596,21 +658,37 @@ Never claim to be human. You are an AI kitchen assistant. If asked something out
 
 router.post("/chef-chat", async (req, res) => {
   try {
-    const { message, history = [], cartItems = [] } = req.body;
+    const { message, history = [], cartItems = [], session_id } = req.body;
 
     if (!message || typeof message !== "string") {
       return res.status(400).json({ message: "message string required" });
     }
 
-    // Build cart context if user has items in cart
+    // Resolve authenticated user (optional)
+    const user = await resolveUser(req);
+    let contextBlock = null;
+    let conversationId = null;
+
+    if (user) {
+      [contextBlock, conversationId] = await Promise.all([
+        buildContextString(user.id),
+        session_id ? getOrCreateConversation(user.id, session_id, "chef") : Promise.resolve(null),
+      ]);
+      trackActivity(user.id, "ai_chat", { entityType: "chat", metadata: { bot: "chef" } });
+    }
+
+    // Inject user context into Chef Bems system prompt
+    const systemPrompt = contextBlock
+      ? `${contextBlock}\n\n${CHEF_BEMS_PROMPT}`
+      : CHEF_BEMS_PROMPT;
+
     const cartContext =
       cartItems.length > 0
         ? `\n\n[Context: The user currently has these items in their BemsFarms cart: ${cartItems.join(", ")}. You can reference these in your response if relevant.]`
         : "";
 
-    // Build full conversation for Gemini multi-turn context
     const conversationHistory = history
-      .slice(-10) // Keep last 10 messages to avoid token bloat
+      .slice(-10)
       .map((m) => `${m.role === "user" ? "User" : "Chef Bems"}: ${m.content}`)
       .join("\n");
 
@@ -620,22 +698,35 @@ router.post("/chef-chat", async (req, res) => {
 
     try {
       const reply = await callGeminiRaw(fullPrompt, {
-        systemInstruction: CHEF_BEMS_PROMPT,
+        systemInstruction: systemPrompt,
         maxOutputTokens: 500,
         temperature: 0.7,
       });
+
+      if (conversationId) {
+        await saveMessages(conversationId, [
+          { role: "user",      content: message, source: "user" },
+          { role: "assistant", content: reply,   source: "gemini" },
+        ]);
+        maybeSummarizeConversation(conversationId, callGeminiRaw);
+      }
 
       return res.json({ reply, source: "gemini" });
     } catch (geminiErr) {
       console.warn("⚠️ Chef Bems Gemini failed:", geminiErr.message);
 
-      // Graceful fallback — honest, still helpful
       const fallbacks = [
         "I'm having a brief moment away from the kitchen! For now: the key to great Nigerian cooking is always fresh ingredients, the right balance of palm oil, and patience. What dish were you asking about? 🍲",
         "Taking a quick break! While I'm away: garri, beans, and palm oil are the holy trinity of Nigerian pantry staples. Try to always have them stocked. Ask me again in a moment! 🌾",
         "Chef Bems is temporarily offline, but here's a tip: egusi soup tastes best when you fry the egusi in palm oil first before adding water. Back shortly! 👨‍🍳",
       ];
       const fallback = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+      if (conversationId) {
+        await saveMessages(conversationId, [
+          { role: "user",      content: message,  source: "user" },
+          { role: "assistant", content: fallback, source: "fallback" },
+        ]);
+      }
       return res.json({ reply: fallback, source: "fallback" });
     }
   } catch (err) {

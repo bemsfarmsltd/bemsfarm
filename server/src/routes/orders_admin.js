@@ -531,4 +531,40 @@ router.get("/form-data/drivers", async (req, res) => {
   }
 });
 
+// ── DELETE /api/admin/orders/:id  (superadmin only) ──────────────
+router.delete("/:id", requireRole("superadmin"), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const order = await client.query(
+      "SELECT id, status FROM orders WHERE id=$1",
+      [req.params.id]
+    );
+    if (!order.rows.length)
+      return res.status(404).json({ message: "Order not found" });
+
+    // Remove child rows before deleting the parent
+    await client.query("DELETE FROM order_items WHERE order_id=$1", [req.params.id]);
+    await client.query(
+      "DELETE FROM order_status_history WHERE order_id=$1",
+      [req.params.id]
+    ).catch(() => {}); // table may not exist in all environments
+    await client.query(
+      "DELETE FROM order_tracking_events WHERE order_id=$1",
+      [req.params.id]
+    ).catch(() => {});
+
+    await client.query("DELETE FROM orders WHERE id=$1", [req.params.id]);
+
+    await client.query("COMMIT");
+    res.json({ message: `Order ${req.params.id} deleted successfully` });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ message: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;

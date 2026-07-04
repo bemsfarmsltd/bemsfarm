@@ -103,6 +103,151 @@ router.get("/", async (req, res) => {
   }
 });
 
+// ── GET /api/admin/customers/report ──────────────────────────────
+// NOTE: must be declared BEFORE /:id to avoid the wildcard swallowing it.
+router.get(
+  "/report",
+  requireRole("superadmin", "manager", "accountant"),
+  async (req, res) => {
+    try {
+      const {
+        search   = "",
+        from,
+        to,
+        sort_by  = "total_spending",
+        page     = 1,
+        limit    = 20,
+      } = req.query;
+
+      const params = [];
+      const searchCond = search
+        ? (() => {
+            params.push(`%${search}%`);
+            return `AND (u.name ILIKE $${params.length} OR u.email ILIKE $${params.length} OR u.phone ILIKE $${params.length})`;
+          })()
+        : "";
+
+      const dateCond = (() => {
+        let c = "";
+        if (from) { params.push(from); c += ` AND u.created_at >= $${params.length}`; }
+        if (to)   { params.push(to);   c += ` AND u.created_at <= $${params.length}::date + INTERVAL '1 day'`; }
+        return c;
+      })();
+
+      const offset = (parseInt(page) - 1) * parseInt(limit);
+
+      const sortMap = {
+        total_spending:  "total_spending DESC",
+        total_orders:    "total_orders DESC",
+        latest_purchase: "last_purchase DESC NULLS LAST",
+        newest:          "u.created_at DESC",
+        oldest:          "u.created_at ASC",
+      };
+      const orderBy = sortMap[sort_by] || "total_spending DESC";
+
+      const [statsRow, customersRes, totalRow, segmentsRow, growthRow] =
+        await Promise.all([
+          // Overall stats
+          pool.query(`
+            SELECT
+              COUNT(DISTINCT u.id)                                                       AS total,
+              COUNT(DISTINCT CASE WHEN DATE_TRUNC('month', u.created_at) = DATE_TRUNC('month', NOW()) THEN u.id END) AS new_this_month,
+              COUNT(DISTINCT CASE WHEN o_active.last_order > NOW() - INTERVAL '30 days' THEN u.id END) AS active,
+              COALESCE(AVG(o.total), 0)                                                  AS avg_order_value
+            FROM users u
+            LEFT JOIN orders o ON o.user_id = u.id AND o.status NOT IN ('cancelled', 'pending')
+            LEFT JOIN (
+              SELECT user_id, MAX(created_at) AS last_order FROM orders
+              WHERE status NOT IN ('cancelled', 'pending')
+              GROUP BY user_id
+            ) o_active ON o_active.user_id = u.id
+            WHERE u.role = 'customer'
+          `),
+
+          // Customer list
+          pool.query(
+            `SELECT
+               u.id, u.name, u.email, u.phone, u.created_at,
+               COUNT(DISTINCT o.id)          AS total_orders,
+               COALESCE(SUM(o.total), 0)     AS total_spending,
+               COALESCE(AVG(o.total), 0)     AS avg_order_value,
+               MAX(o.created_at)             AS last_purchase
+             FROM users u
+             LEFT JOIN orders o ON o.user_id = u.id AND o.status NOT IN ('cancelled', 'pending')
+             WHERE u.role = 'customer' ${searchCond} ${dateCond}
+             GROUP BY u.id
+             ORDER BY ${orderBy}
+             LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+            [...params, parseInt(limit), offset],
+          ),
+
+          // Total count for pagination
+          pool.query(
+            `SELECT COUNT(*) FROM users u
+             WHERE u.role = 'customer' ${searchCond} ${dateCond}`,
+            params,
+          ),
+
+          // Segments
+          pool.query(`
+            SELECT
+              COUNT(CASE WHEN order_count > 1 THEN 1 END)                                            AS returning_customers,
+              COUNT(CASE WHEN order_count = 1 THEN 1 END)                                            AS one_time_customers,
+              COUNT(CASE WHEN last_purchase < NOW() - INTERVAL '60 days' OR last_purchase IS NULL THEN 1 END) AS at_risk
+            FROM (
+              SELECT
+                u.id,
+                COUNT(o.id)       AS order_count,
+                MAX(o.created_at) AS last_purchase
+              FROM users u
+              LEFT JOIN orders o ON o.user_id = u.id AND o.status NOT IN ('cancelled')
+              WHERE u.role = 'customer'
+              GROUP BY u.id
+            ) t
+          `),
+
+          // Growth
+          pool.query(`
+            SELECT
+              COUNT(CASE WHEN DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())                        THEN 1 END) AS this_month,
+              COUNT(CASE WHEN DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW() - INTERVAL '1 month')   THEN 1 END) AS last_month
+            FROM users WHERE role = 'customer'
+          `),
+        ]);
+
+      const s   = statsRow.rows[0];
+      const seg = segmentsRow.rows[0];
+      const g   = growthRow.rows[0];
+
+      res.json({
+        stats: {
+          total:           parseInt(s.total)           || 0,
+          new_this_month:  parseInt(s.new_this_month)  || 0,
+          active:          parseInt(s.active)           || 0,
+          avg_order_value: parseFloat(s.avg_order_value) || 0,
+        },
+        segments: {
+          returning: parseInt(seg.returning_customers) || 0,
+          one_time:  parseInt(seg.one_time_customers)  || 0,
+          vip:       Math.ceil((parseInt(s.total) || 0) * 0.1),
+          at_risk:   parseInt(seg.at_risk)             || 0,
+        },
+        growth: {
+          this_month: parseInt(g.this_month) || 0,
+          last_month: parseInt(g.last_month) || 0,
+        },
+        customers: customersRes.rows,
+        total:  parseInt(totalRow.rows[0].count) || 0,
+        page:   parseInt(page),
+        pages:  Math.ceil((parseInt(totalRow.rows[0].count) || 0) / parseInt(limit)),
+      });
+    } catch (err) {
+      console.error("GET /admin/customers/report:", err.message);
+      res.status(500).json({ message: err.message });
+    }
+  },
+);
+
 // ── GET /api/admin/customers/:id ──────────────────────────────────
 router.get("/:id", async (req, res) => {
   try {

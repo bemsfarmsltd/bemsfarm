@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const pool = require("../db/pool");
 const { protect } = require("../middleware/authMiddleware");
+const { upsertContext, trackActivity } = require("../utils/aiContext");
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "frutella_super_secret_key_change_in_production";
@@ -70,6 +71,16 @@ router.post("/register", async (req, res) => {
       sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
+
+    // Seed AI context record for new user (fire-and-forget)
+    upsertContext(user.id, {
+      full_name:    user.name,
+      email:        user.email,
+      role:         user.role,
+      registered_at: new Date().toISOString(),
+      last_login:   new Date().toISOString(),
+    });
+    trackActivity(user.id, "registered", { ip: req.ip });
 
     res.status(201).json({ token: accessToken, user });
   } catch (err) {
@@ -195,6 +206,16 @@ router.post("/login", async (req, res) => {
     console.log(
       `   ✅ LOGIN SUCCESS — user: ${user.email}, role: ${user.role}\n`,
     );
+
+    // Sync AI context (fire-and-forget — never blocks login response)
+    upsertContext(user.id, {
+      full_name:  user.name,
+      email:      user.email,
+      phone:      user.phone || null,
+      role:       user.role,
+      last_login: new Date().toISOString(),
+    });
+    trackActivity(user.id, "login", { ip: clientIP, metadata: { origin } });
 
     res.json({ token: accessToken, user: userPayload });
   } catch (err) {
