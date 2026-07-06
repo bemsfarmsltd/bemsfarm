@@ -79,7 +79,7 @@ router.get("/", async (req, res) => {
     }
     if (channel) {
       params.push(channel);
-      where.push(`o.channel = $${params.length}`);
+      where.push(`o.source = $${params.length}`);
     }
 
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
@@ -95,7 +95,7 @@ router.get("/", async (req, res) => {
     const rows = await pool.query(
       `
       SELECT
-        o.id, o.total, o.status, o.channel, o.payment_method,
+        o.id, o.total, o.status, o.source AS channel, o.payment_method,
         o.delivery_fee, o.discount_amount, o.created_at, o.notes,
         o.address, o.delivery_address,
         COALESCE(o.customer_name, c.name, 'Walk-in') AS customer_name,

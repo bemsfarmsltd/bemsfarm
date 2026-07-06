@@ -17,6 +17,7 @@ const {
   updateReturn,
 } = require("../controllers/returnsController");
 const pool = require("../db/pool");
+const { trackActivity } = require("../utils/aiContext");
 
 router.get("/stats", protect, adminOnly, getStats);
 router.get("/subscribers", protect, adminOnly, getSubscribers);
@@ -60,7 +61,13 @@ router.post("/products", protect, async (req, res) => {
       parseInt(stock) || 100,
     ],
   );
-  res.status(201).json({ product: r.rows[0] });
+  const product = r.rows[0];
+  trackActivity(req.user.id, "product_created", {
+    entityType: "product",
+    entityId: product.id,
+    metadata: { name: product.name, price: product.price, stock: product.stock }
+  });
+  res.status(201).json({ product });
 });
 router.put("/products/:id", protect, async (req, res) => {
   const { name, price, unit, description, is_featured, image_url, stock } =
@@ -78,13 +85,23 @@ router.put("/products/:id", protect, async (req, res) => {
       parseInt(req.params.id),
     ],
   );
-  res.json({ product: r.rows[0] });
+  const product = r.rows[0];
+  trackActivity(req.user.id, "product_updated", {
+    entityType: "product",
+    entityId: product.id,
+    metadata: { name: product.name, price: product.price, stock: product.stock }
+  });
+  res.json({ product });
 });
 router.delete("/products/:id", protect, async (req, res) => {
   const id = parseInt(req.params.id);
   await pool.query("DELETE FROM order_items WHERE product_id=$1", [id]);
   await pool.query("DELETE FROM cart_items WHERE product_id=$1", [id]);
   await pool.query("DELETE FROM products WHERE id=$1", [id]);
+  trackActivity(req.user.id, "product_deleted", {
+    entityType: "product",
+    entityId: id
+  });
   res.json({ message: "Deleted" });
 });
 
@@ -103,6 +120,11 @@ router.patch("/returns/:id", protect, async (req, res) => {
     status,
     req.params.id,
   ]);
+  trackActivity(req.user.id, "return_processed", {
+    entityType: "return",
+    entityId: req.params.id,
+    metadata: { status }
+  });
   res.json({ message: "Updated" });
 });
 

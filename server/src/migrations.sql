@@ -756,6 +756,18 @@ INSERT INTO currencies (code, name, symbol, exchange_rate, is_default, is_enable
   SELECT 'NGN','Nigerian Naira','₦',1,true,true
   WHERE NOT EXISTS (SELECT 1 FROM currencies WHERE code='NGN');
 
+-- ── 18. CATEGORIES & ORDERS REFRACTOR ─────────────────────────
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'Web App';
+
+UPDATE orders SET source = 'Web App' WHERE source = 'online' OR source IS NULL;
+UPDATE orders SET source = 'Physical Store (POS)' WHERE source = 'pos';
+
+DELETE FROM products WHERE name IN (
+  'Ofada Rice', 'Palm Oil', 'Black-eyed Beans', 'Garri (Ijebu)', 
+  'Fresh Tomatoes', 'Ugu Leaves', 'Groundnut Oil', 'Dried Crayfish', 
+  'White Yam', 'Fresh Pepper (Tatashe)'
+);
 
 -- ══════════════════════════════════════════════════════════════
 -- 17. VERIFY

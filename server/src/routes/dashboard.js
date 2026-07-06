@@ -167,6 +167,7 @@ router.get("/sales", async (req, res) => {
       recentOrders,
       byCategory,
       byPayment,
+      bySource,
     ] = await Promise.all([
       q1(`SELECT
             COALESCE(SUM(total),0) AS revenue,
@@ -239,6 +240,16 @@ router.get("/sales", async (req, res) => {
            AND status NOT IN ('cancelled')
          GROUP BY payment_method
          ORDER BY count DESC`),
+
+      q(`SELECT
+           COALESCE(source, 'Web App') AS source,
+           COUNT(*) AS count,
+           SUM(total) AS revenue
+         FROM orders
+         WHERE created_at >= DATE_TRUNC('month', NOW())
+           AND status NOT IN ('cancelled')
+         GROUP BY source
+         ORDER BY count DESC`),
     ]);
 
     res.json({
@@ -253,6 +264,7 @@ router.get("/sales", async (req, res) => {
         last_6_months: last6Months,
         by_category: byCategory,
         by_payment: byPayment,
+        by_source: bySource,
       },
       top_products: topProducts,
       recent_orders: recentOrders,

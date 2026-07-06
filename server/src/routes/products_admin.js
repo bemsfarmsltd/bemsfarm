@@ -8,6 +8,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { trackActivity } = require("../utils/aiContext");
 
 router.use(protect);
 
@@ -363,6 +364,12 @@ router.post(
 
       await client.query("COMMIT");
 
+      trackActivity(req.user.id, "product_created", {
+        entityType: "product",
+        entityId: product.id,
+        metadata: { name: product.name, price: product.unit_price, stock: product.stock }
+      });
+
       res
         .status(201)
         .json({ product, message: "Product created successfully" });
@@ -523,6 +530,13 @@ router.patch(
       });
 
       await client.query("COMMIT");
+
+      trackActivity(req.user.id, "product_updated", {
+        entityType: "product",
+        entityId: req.params.id,
+        metadata: { name: name || p.name, price: newUnitPrice, stock: newStock }
+      });
+
       res.json({ message: "Product updated" });
     } catch (err) {
       await client.query("ROLLBACK");
@@ -548,6 +562,12 @@ router.delete(
         "UPDATE catalogue SET availability_status='Discontinued' WHERE sku=(SELECT sku FROM products WHERE id=$1)",
         [req.params.id],
       );
+
+      trackActivity(req.user.id, "product_deleted", {
+        entityType: "product",
+        entityId: req.params.id
+      });
+
       res.json({ message: "Product archived" });
     } catch (err) {
       res.status(500).json({ message: err.message });

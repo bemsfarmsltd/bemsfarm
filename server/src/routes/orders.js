@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const { protect } = require("../middleware/authMiddleware");
+const { trackActivity } = require("../utils/aiContext");
 
 // ─────────────────────────────────────────────
 // CONFIG
@@ -70,6 +71,14 @@ router.post("/", protect, async (req, res) => {
     }
 
     await client.query("COMMIT");
+
+    // Log order creation for AI memory
+    trackActivity(req.user.id, "order_created", {
+      entityType: "order",
+      entityId: orderId,
+      metadata: { total: parseFloat(total) || 0, item_count: items.length },
+      ip: req.ip || req.connection?.remoteAddress
+    });
 
     return res.status(201).json({
       message: "Order created",

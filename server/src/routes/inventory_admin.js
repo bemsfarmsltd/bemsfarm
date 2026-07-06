@@ -147,7 +147,7 @@ router.get("/", async (req, res) => {
         COALESCE(p.cost_price, 0)          AS cost_price,
         p.status, p.expiry_date,
         cat.name AS category,
-        b.name   AS brand,
+        ''       AS brand,
         COALESCE(p.unit, '')               AS unit,
         CASE
           WHEN p.stock = 0                         THEN 'out_of_stock'
@@ -157,7 +157,6 @@ router.get("/", async (req, res) => {
         p.stock * COALESCE(p.unit_price, p.price, 0) AS stock_value
       FROM products p
       LEFT JOIN categories cat ON p.category_id = cat.id
-      LEFT JOIN brands b       ON p.brand_id     = b.id
       ${whereClause}
       ORDER BY p.stock ASC
       LIMIT $${params.length - 1} OFFSET $${params.length}
@@ -367,114 +366,6 @@ router.get("/movements", async (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════
-// STOCK IN  ──  POST /api/admin/inventory/stock-in
-// ════════════════════════════════════════════════════════════════════════════
-router.post(
-  "/stock-in",
-  requireRole("superadmin", "manager", "admin", "storekeeper"),
-  async (req, res) => {
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-
-      const {
-        product_id, warehouse_id, quantity, reference,
-        unit_cost, expiry_date, batch_no, supplier_id, notes,
-      } = req.body;
-
-      if (!product_id) return res.status(400).json({ message: "product_id required" });
-      if (!quantity || parseInt(quantity) <= 0) return res.status(400).json({ message: "quantity must be > 0" });
-
-      const result = await applyStockChange(client, {
-        productId: parseInt(product_id),
-        warehouseId: warehouse_id ? parseInt(warehouse_id) : null,
-        type: "stock_in",
-        delta: parseInt(quantity),
-        reference,
-        reason: "Stock received",
-        notes,
-        unitCost: unit_cost ? parseFloat(unit_cost) : null,
-        userId: req.user.id,
-      });
-
-      // Create batch record if expiry / batch_no provided
-      let batchId = null;
-      if (batch_no || expiry_date) {
-        const batchRef = batch_no || `BATCH-${Date.now()}`;
-        const b = await client.query(
-          `INSERT INTO batch_management
-             (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, supplier_id, notes, received_at, created_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW())
-           RETURNING id`,
-          [
-            parseInt(product_id),
-            warehouse_id ? parseInt(warehouse_id) : null,
-            batchRef,
-            parseInt(quantity),
-            unit_cost ? parseFloat(unit_cost) : null,
-            expiry_date || null,
-            supplier_id ? parseInt(supplier_id) : null,
-            notes || null,
-          ]
-        );
-        batchId = b.rows[0].id;
-      }
-
-      await client.query("COMMIT");
-      res.status(201).json({ message: "Stock received successfully", ...result, batch_id: batchId });
-    } catch (err) {
-      await client.query("ROLLBACK");
-      console.error("POST /admin/inventory/stock-in:", err.message);
-      res.status(500).json({ message: err.message });
-    } finally {
-      client.release();
-    }
-  }
-);
-
-// ════════════════════════════════════════════════════════════════════════════
-// STOCK OUT  ──  POST /api/admin/inventory/stock-out
-// ════════════════════════════════════════════════════════════════════════════
-router.post(
-  "/stock-out",
-  requireRole("superadmin", "manager", "admin", "storekeeper"),
-  async (req, res) => {
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-
-      const { product_id, warehouse_id, quantity, reason, reference, notes } = req.body;
-
-      if (!product_id) return res.status(400).json({ message: "product_id required" });
-      if (!quantity || parseInt(quantity) <= 0) return res.status(400).json({ message: "quantity must be > 0" });
-
-      const stock = await client.query("SELECT stock FROM products WHERE id=$1", [parseInt(product_id)]);
-      if (!stock.rows.length) return res.status(404).json({ message: "Product not found" });
-
-      const result = await applyStockChange(client, {
-        productId: parseInt(product_id),
-        warehouseId: warehouse_id ? parseInt(warehouse_id) : null,
-        type: "stock_out",
-        delta: -parseInt(quantity),
-        reference,
-        reason: reason || "Stock issued",
-        notes,
-        unitCost: null,
-        userId: req.user.id,
-      });
-
-      await client.query("COMMIT");
-      res.json({ message: "Stock issued successfully", ...result });
-    } catch (err) {
-      await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
-    } finally {
-      client.release();
-    }
-  }
-);
-
-// ════════════════════════════════════════════════════════════════════════════
 // STOCK ADJUSTMENT  ──  POST /api/admin/inventory/adjust
 // ════════════════════════════════════════════════════════════════════════════
 router.post(
@@ -485,7 +376,7 @@ router.post(
     try {
       await client.query("BEGIN");
 
-      const { product_id, warehouse_id, new_quantity, reason, notes, reference } = req.body;
+      const { product_id, warehouse_id, new_quantity, reason, notes } = req.body;
 
       if (!product_id) return res.status(400).json({ message: "product_id required" });
       if (new_quantity === undefined || new_quantity === null) return res.status(400).json({ message: "new_quantity required" });
@@ -513,7 +404,7 @@ router.post(
           Math.abs(delta),
           beforeQty,
           afterQty,
-          reference || null,
+          null,
           reason,
           notes || null,
           req.user.id,
@@ -543,7 +434,7 @@ router.post(
     try {
       await client.query("BEGIN");
 
-      const { product_id, from_warehouse_id, to_warehouse_id, quantity, notes, reference } = req.body;
+      const { product_id, from_warehouse_id, to_warehouse_id, quantity, notes } = req.body;
 
       if (!product_id)       return res.status(400).json({ message: "product_id required" });
       if (!from_warehouse_id) return res.status(400).json({ message: "from_warehouse_id required" });
@@ -551,7 +442,7 @@ router.post(
       if (!quantity || parseInt(quantity) <= 0) return res.status(400).json({ message: "quantity must be > 0" });
       if (from_warehouse_id === to_warehouse_id) return res.status(400).json({ message: "From and To warehouses must be different" });
 
-      const ref = reference || `TRF-${Date.now()}`;
+      const ref = `TRF-${Date.now()}`;
       const qty = parseInt(quantity);
 
       await client.query(

@@ -61,7 +61,7 @@ router.get("/sales", async (req, res) => {
     const trunc    = truncFn(group_by);
     const labelExpr = groupLabel(group_by).replace(/%col%/g, "o.created_at");
 
-    const [summary, timeline, topProducts, topCategories, byStatus, topCustomers] = await Promise.all([
+    const [summary, timeline, topProducts, topCategories, byStatus, topCustomers, bySource] = await Promise.all([
 
       // KPIs
       pool.query(`
@@ -148,6 +148,19 @@ router.get("/sales", async (req, res) => {
         GROUP BY u.id, u.name, u.email, u.phone
         ORDER BY total_spend DESC LIMIT 10
       `, [from, to]),
+
+      // By order source / channel
+      pool.query(`
+        SELECT
+          COALESCE(source, 'Web App') AS source,
+          COUNT(*) AS count,
+          COALESCE(SUM(total), 0) AS value
+        FROM orders
+        WHERE created_at::DATE BETWEEN $1 AND $2
+          AND status NOT IN ('cancelled','failed')
+        GROUP BY source
+        ORDER BY value DESC
+      `, [from, to]),
     ]);
 
     res.json({
@@ -158,6 +171,7 @@ router.get("/sales", async (req, res) => {
       by_category: topCategories.rows,
       by_status: byStatus.rows,
       top_customers: topCustomers.rows,
+      by_source: bySource.rows,
     });
   } catch (err) {
     console.error("GET /admin/reports/sales:", err.message);
