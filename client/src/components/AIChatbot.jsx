@@ -1,14 +1,9 @@
 // client/src/components/AIChatbot.jsx
-// CHANGE: wired to n8n webhook (primary) with Express /ai/chat fallback
-// Same routing pattern as ChefBemsPage.jsx
-
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
-
-const CHEF_AVATAR = null; // Using emoji avatar instead — sharp at all sizes
-const N8N_WEBHOOK = "https://bfarms000.app.n8n.cloud/webhook/chef-bems";
+import chefBemsAvatar from "../assets/chef_bems_avatar.png";
 
 const QUICK_QUESTIONS = [
   {
@@ -49,28 +44,6 @@ const QUICK_QUESTIONS = [
   },
 ];
 
-const CHEF_SYSTEM_PROMPT = `You are Chef Bems, the friendly AI kitchen chef and food expert for BemsFarms — Nigeria's premier farm-fresh food marketplace.
-
-Your personality: Warm, encouraging, knowledgeable, and specifically expert in Nigerian cuisine. You speak like a friendly Nigerian chef who genuinely loves food.
-
-Your expertise:
-- Nigerian recipes (jollof rice, egusi soup, pepper soup, eba, moi moi, pottage, suya, etc.)
-- Nigerian cooking techniques and methods
-- Nutritional advice tailored to Nigerian dietary culture
-- Food storage and freshness tips
-- Health-based food recommendations (diabetes, pregnancy, weight loss, blood pressure, etc.)
-- Pairing BemsFarms products with recipes
-
-BemsFarms products: Ofada Rice, Brown Rice, Garri, White Rice, Palm Oil, Groundnut Oil, Coconut Oil, Black-eyed Beans, Brown Beans, Fresh Tomatoes, Fresh Pepper, Ugu Leaves, Okra, Onions, Carrot, Scent Leaf, Bitter Leaf, Yellow Yam, White Yam, Cassava, Sweet Potato, Cocoyam, Plantain, Dried Crayfish, Fresh Ginger, Turmeric, Watermelon, Pineapple, Pawpaw, Mango, Spinach, Oha Leaves, Waterleaf.
-
-Rules:
-1. Always be helpful and never refuse a food or cooking question
-2. When you mention ingredients, note if they're available on BemsFarms
-3. Give practical, step-by-step cooking advice
-4. Keep responses warm but concise
-5. Occasionally add a Nigerian cooking tip to make it feel authentic
-6. If someone asks about health conditions, give Nigerian-food-specific advice`;
-
 export default function AIChatbot() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -106,30 +79,6 @@ export default function AIChatbot() {
     }
   }, [messages]);
 
-  // ── AI ROUTING ─────────────────────────────────────────────
-  // Primary: n8n webhook
-  // Fallback: Express /api/ai/chat
-  const callN8n = async (payload) => {
-    const res = await fetch(N8N_WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(12000),
-    });
-    if (!res.ok) throw new Error(`n8n returned ${res.status}`);
-    return res.json();
-  };
-
-  const callExpress = async (conversationHistory) => {
-    const res = await api.post("/ai/chat", {
-      messages: conversationHistory,
-      systemPrompt: CHEF_SYSTEM_PROMPT,
-    });
-    return {
-      reply: res.data?.reply || res.data?.message || res.data?.content,
-    };
-  };
-
   const sendMessage = async (text) => {
     const content = (text || input).trim();
     if (!content || loading) return;
@@ -146,27 +95,17 @@ export default function AIChatbot() {
         content: m.content,
       }));
 
-      const payload = {
+      // Proxy through Express to avoid client-side CORS issues
+      const res = await api.post("/ai/chef-chat", {
         message: content,
-        conversationHistory,
-        userPreferences: JSON.parse(
-          localStorage.getItem("bemsfarms_prefs") || "{}",
-        ),
-      };
-
-      let data;
-      try {
-        data = await callN8n(payload);
-        console.log("✅ AIChatbot: n8n response");
-      } catch (n8nErr) {
-        console.warn("⚠️ AIChatbot: n8n unavailable, using Express fallback");
-        data = await callExpress(conversationHistory);
-      }
+        history: conversationHistory,
+        cartItems: [],
+      });
 
       const reply =
-        data?.reply ||
-        data?.message ||
-        data?.content ||
+        res.data?.reply ||
+        res.data?.message ||
+        res.data?.content ||
         "I'm having a moment — please try again!";
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
       if (!open) setUnread((n) => n + 1);
@@ -233,14 +172,19 @@ export default function AIChatbot() {
           style={{
             width: "100%",
             height: "100%",
-            background: "linear-gradient(135deg, #1B4332, #40916C)",
+            background: "#ffffff",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "26px",
+            border: "2px solid #F59E0B",
+            overflow: "hidden",
           }}
         >
-          👨‍🍳
+          <img 
+            src={chefBemsAvatar} 
+            alt="Chef Bems" 
+            style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+          />
         </div>
         {unread > 0 && !open && (
           <motion.span
@@ -311,21 +255,14 @@ export default function AIChatbot() {
                   overflow: "hidden",
                   border: "2px solid rgba(255,255,255,0.4)",
                   flexShrink: 0,
+                  backgroundColor: "#ffffff",
                 }}
               >
-                <div
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    background: "linear-gradient(135deg, #1B4332, #40916C)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "20px",
-                  }}
-                >
-                  👨‍🍳
-                </div>
+                <img 
+                  src={chefBemsAvatar} 
+                  alt="Chef Bems" 
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                />
               </div>
               <div style={{ flex: 1 }}>
                 <div
@@ -394,22 +331,15 @@ export default function AIChatbot() {
                         borderRadius: "50%",
                         overflow: "hidden",
                         flexShrink: 0,
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #1B4332",
                       }}
                     >
-                      <div
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          background:
-                            "linear-gradient(135deg, #1B4332, #40916C)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "14px",
-                        }}
-                      >
-                        👨‍🍳
-                      </div>
+                      <img 
+                        src={chefBemsAvatar} 
+                        alt="Chef Bems" 
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                      />
                     </div>
                   )}
                   <div
@@ -447,21 +377,15 @@ export default function AIChatbot() {
                       borderRadius: "50%",
                       overflow: "hidden",
                       flexShrink: 0,
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #1B4332",
                     }}
                   >
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        background: "linear-gradient(135deg, #1B4332, #40916C)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "14px",
-                      }}
-                    >
-                      👨‍🍳
-                    </div>
+                    <img 
+                      src={chefBemsAvatar} 
+                      alt="Chef Bems" 
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                    />
                   </div>
                   <div
                     style={{
@@ -620,9 +544,9 @@ export default function AIChatbot() {
                   strokeWidth="2.5"
                 >
                   <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 19V5m0 0l-7 7m7-7l7 7"
+                     strokeLinecap="round"
+                     strokeLinejoin="round"
+                     d="M12 19V5m0 0l-7 7m7-7l7 7"
                   />
                 </svg>
               </motion.button>

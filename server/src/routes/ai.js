@@ -658,7 +658,7 @@ Never claim to be human. You are an AI kitchen assistant. If asked something out
 
 router.post("/chef-chat", async (req, res) => {
   try {
-    const { message, history = [], cartItems = [], session_id } = req.body;
+    const { message, history = [], cartItems = [], session_id, userPreferences = {} } = req.body;
 
     if (!message || typeof message !== "string") {
       return res.status(400).json({ message: "message string required" });
@@ -677,57 +677,99 @@ router.post("/chef-chat", async (req, res) => {
       trackActivity(user.id, "ai_chat", { entityType: "chat", metadata: { bot: "chef" } });
     }
 
-    // Inject user context into Chef Bems system prompt
-    const systemPrompt = contextBlock
-      ? `${contextBlock}\n\n${CHEF_BEMS_PROMPT}`
-      : CHEF_BEMS_PROMPT;
-
-    const cartContext =
-      cartItems.length > 0
-        ? `\n\n[Context: The user currently has these items in their BemsFarms cart: ${cartItems.join(", ")}. You can reference these in your response if relevant.]`
-        : "";
-
-    const conversationHistory = history
-      .slice(-10)
-      .map((m) => `${m.role === "user" ? "User" : "Chef Bems"}: ${m.content}`)
-      .join("\n");
-
-    const fullPrompt = conversationHistory
-      ? `Previous conversation:\n${conversationHistory}\n\nUser: ${message}${cartContext}`
-      : `${message}${cartContext}`;
-
+    // 1. Try calling the n8n webhook first (prevents client-side CORS issues)
+    const N8N_WEBHOOK = "https://bfarms000.app.n8n.cloud/webhook/chef-bems";
     try {
-      const reply = await callGeminiRaw(fullPrompt, {
-        systemInstruction: systemPrompt,
-        maxOutputTokens: 500,
-        temperature: 0.7,
+      console.log("➡️ Forwarding Chef Bems request to n8n webhook...");
+      const n8nRes = await fetch(N8N_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message,
+          conversationHistory: history,
+          cartItems,
+          userPreferences
+        }),
+        signal: AbortSignal.timeout(8000), // Timeout after 8 seconds
       });
 
-      if (conversationId) {
-        await saveMessages(conversationId, [
-          { role: "user",      content: message, source: "user" },
-          { role: "assistant", content: reply,   source: "gemini" },
-        ]);
-        maybeSummarizeConversation(conversationId, callGeminiRaw);
-      }
+      if (n8nRes.ok) {
+        const n8nData = await n8nRes.json();
+        const reply = n8nData.reply || n8nData.message || n8nData.content;
+        const relatedProducts = n8nData.relatedProducts || [];
 
-      return res.json({ reply, source: "gemini" });
-    } catch (geminiErr) {
-      console.warn("⚠️ Chef Bems Gemini failed:", geminiErr.message);
+        if (conversationId && reply) {
+          await saveMessages(conversationId, [
+            { role: "user",      content: message, source: "user" },
+            { role: "assistant", content: reply,   source: "n8n" },
+          ]);
+          maybeSummarizeConversation(conversationId, callGeminiRaw);
+        }
 
-      const fallbacks = [
-        "I'm having a brief moment away from the kitchen! For now: the key to great Nigerian cooking is always fresh ingredients, the right balance of palm oil, and patience. What dish were you asking about? 🍲",
-        "Taking a quick break! While I'm away: garri, beans, and palm oil are the holy trinity of Nigerian pantry staples. Try to always have them stocked. Ask me again in a moment! 🌾",
-        "Chef Bems is temporarily offline, but here's a tip: egusi soup tastes best when you fry the egusi in palm oil first before adding water. Back shortly! 👨‍🍳",
-      ];
-      const fallback = fallbacks[Math.floor(Math.random() * fallbacks.length)];
-      if (conversationId) {
-        await saveMessages(conversationId, [
-          { role: "user",      content: message,  source: "user" },
-          { role: "assistant", content: fallback, source: "fallback" },
-        ]);
+        return res.json({
+          reply,
+          relatedProducts,
+          source: "n8n"
+        });
+      } else {
+        throw new Error(`n8n webhook returned status ${n8nRes.status}`);
       }
-      return res.json({ reply: fallback, source: "fallback" });
+    } catch (n8nErr) {
+      console.warn("⚠️ n8n webhook failed or timed out. Falling back to local Gemini:", n8nErr.message);
+
+      // 2. Fallback to Gemini locally (existing code)
+      const systemPrompt = contextBlock
+        ? `${contextBlock}\n\n${CHEF_BEMS_PROMPT}`
+        : CHEF_BEMS_PROMPT;
+
+      const cartContext =
+        cartItems.length > 0
+          ? `\n\n[Context: The user currently has these items in their BemsFarms cart: ${cartItems.join(", ")}. You can reference these in your response if relevant.]`
+          : "";
+
+      const conversationHistory = history
+        .slice(-10)
+        .map((m) => `${m.role === "user" ? "User" : "Chef Bems"}: ${m.content}`)
+        .join("\n");
+
+      const fullPrompt = conversationHistory
+        ? `Previous conversation:\n${conversationHistory}\n\nUser: ${message}${cartContext}`
+        : `${message}${cartContext}`;
+
+      try {
+        const reply = await callGeminiRaw(fullPrompt, {
+          systemInstruction: systemPrompt,
+          maxOutputTokens: 500,
+          temperature: 0.7,
+        });
+
+        if (conversationId) {
+          await saveMessages(conversationId, [
+            { role: "user",      content: message, source: "user" },
+            { role: "assistant", content: reply,   source: "gemini" },
+          ]);
+          maybeSummarizeConversation(conversationId, callGeminiRaw);
+        }
+
+        return res.json({ reply, source: "gemini" });
+      } catch (geminiErr) {
+        console.warn("⚠️ Chef Bems Gemini failed:", geminiErr.message);
+
+        const fallbacks = [
+          "I'm having a brief moment away from the kitchen! For now: the key to great Nigerian cooking is always fresh ingredients, the right balance of palm oil, and patience. What dish were you asking about? 🍲",
+          "Taking a quick break! While I'm away: garri, beans, and palm oil are the holy trinity of Nigerian pantry staples. Try to always have them stocked. Ask me again in a moment! 🌾",
+          "Chef Bems is temporarily offline, but here's a tip: egusi soup tastes best when you fry the egusi in palm oil first before adding water. Back shortly! 👨‍🍳",
+        ];
+        const fallback = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+        
+        if (conversationId) {
+          await saveMessages(conversationId, [
+            { role: "user",      content: message,  source: "user" },
+            { role: "assistant", content: fallback, source: "fallback" },
+          ]);
+        }
+        return res.json({ reply: fallback, source: "fallback" });
+      }
     }
   } catch (err) {
     console.error("❌ Chef chat error:", err.message);
