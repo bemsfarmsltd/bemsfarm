@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "../assets/bemsfarms_logo.png";
+import api from "../services/api";
 
 const COUNTDOWN = { target: new Date("2026-07-03T00:00:00") };
 
@@ -72,12 +73,27 @@ const CSS = `
 
 export default function ComingSoonPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const refCode = searchParams.get("ref") || "";
+
   const [time, setTime] = useState(getTimeLeft(COUNTDOWN.target));
   const [heroIdx, setHeroIdx] = useState(0);
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [myReferralCode, setMyReferralCode] = useState("");
+  const [myReferralCount, setMyReferralCount] = useState(0);
   const [logoClicks, setLogoClicks] = useState(0);
   const clickTimerRef = useRef(null);
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = () => {
+    const url = `${window.location.origin}/?ref=${myReferralCode}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     const t = setInterval(() => setTime(getTimeLeft(COUNTDOWN.target)), 1000);
@@ -104,10 +120,31 @@ export default function ComingSoonPage() {
     clickTimerRef.current = setTimeout(() => setLogoClicks(0), 3000);
   };
 
-  const handleEmailSubmit = (e) => {
+  const handleEmailSubmit = async (e) => {
     e?.preventDefault();
-    if (!email.trim()) return;
-    setSubmitted(true);
+    if (!email.trim() || loading) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await api.post("/subscribe", {
+        email: email.trim(),
+        referred_by: refCode,
+      });
+
+      const { referral_code, referral_count } = res.data;
+      setMyReferralCode(referral_code || "");
+      setMyReferralCount(referral_count || 0);
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Subscription failed:", err);
+      setError(
+        err?.response?.data?.message || "Failed to subscribe. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const pad = (n) => String(n).padStart(2, "0");
@@ -441,6 +478,7 @@ export default function ComingSoonPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email address"
                     required
+                    disabled={loading}
                     className="cs-email-input"
                     style={{
                       flex: 1,
@@ -454,52 +492,125 @@ export default function ComingSoonPage() {
                     }}
                   />
                   <motion.button
-                    whileTap={{ scale: 0.97 }}
+                    whileTap={{ scale: loading ? 1 : 0.97 }}
                     type="submit"
+                    disabled={loading}
                     className="cs-email-btn"
                     style={{
                       padding: "15px 24px",
-                      backgroundColor: "#F59E0B",
+                      backgroundColor: loading ? "#9CA3AF" : "#F59E0B",
                       border: "none",
                       color: "white",
                       fontWeight: 800,
                       fontSize: "14px",
-                      cursor: "pointer",
+                      cursor: loading ? "not-allowed" : "pointer",
                       whiteSpace: "nowrap",
                       fontFamily: "Nunito, sans-serif",
                     }}
                   >
-                    Notify Me →
+                    {loading ? "Subscribing..." : "Notify Me →"}
                   </motion.button>
                 </form>
+                {error && (
+                  <p style={{ color: "#EF4444", fontSize: "12px", marginTop: "8px", textAlign: "center" }}>
+                    ⚠️ {error}
+                  </p>
+                )}
               </>
             ) : (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 style={{
-                  backgroundColor: "rgba(64,145,108,0.2)",
+                  backgroundColor: "rgba(64,145,108,0.25)",
                   border: "1px solid rgba(64,145,108,0.5)",
-                  borderRadius: "16px",
-                  padding: "20px 24px",
+                  borderRadius: "20px",
+                  padding: "24px",
                   textAlign: "center",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+                  backdropFilter: "blur(10px)"
                 }}
               >
-                <p style={{ fontSize: "20px", marginBottom: "6px" }}>🎉</p>
+                <p style={{ fontSize: "24px", margin: "0 0 8px 0" }}>🎉</p>
                 <p
                   style={{
                     color: "white",
-                    fontWeight: 700,
-                    fontSize: "15px",
-                    marginBottom: "4px",
+                    fontWeight: 800,
+                    fontSize: "18px",
+                    margin: "0 0 4px 0",
+                    fontFamily: "Syne, sans-serif"
                   }}
                 >
                   You're on the list!
                 </p>
-                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px" }}>
-                  We'll notify you the moment we launch. Your 10% discount code
-                  is on its way.
+                <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "13px", margin: "0 0 16px 0", lineHeight: 1.5 }}>
+                  We've sent a welcome email to <strong>{email}</strong>. Use discount code <strong style={{ color: "#F59E0B" }}>BEMS10</strong> on your first order!
                 </p>
+                
+                {/* Referral Link Box */}
+                <div style={{ backgroundColor: "rgba(0,0,0,0.2)", borderRadius: "12px", padding: "14px", margin: "16px 0", textAlign: "left" }}>
+                  <p style={{ color: "#A5D6A7", fontWeight: 700, fontSize: "12px", margin: "0 0 6px 0", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    📣 Invite friends to earn more:
+                  </p>
+                  <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "11px", margin: "0 0 10px 0" }}>
+                    Share your unique link. When 3 friends subscribe, unlock 20% off!
+                  </p>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <div style={{
+                      flex: 1,
+                      backgroundColor: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      fontSize: "12px",
+                      color: "white",
+                      fontFamily: "monospace",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap"
+                    }}>
+                      {`${window.location.origin}/?ref=${myReferralCode}`}
+                    </div>
+                    <button
+                      onClick={copyToClipboard}
+                      style={{
+                        padding: "8px 14px",
+                        backgroundColor: copied ? "#4CAF50" : "#F59E0B",
+                        border: "none",
+                        borderRadius: "8px",
+                        color: "white",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap"
+                      }}
+                    >
+                      {copied ? "Copied! ✓" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Dashboard Milestones */}
+                <div style={{ textAlign: "left", fontSize: "12px", color: "rgba(255,255,255,0.8)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontWeight: 700 }}>
+                    <span>Your Referrals:</span>
+                    <span style={{ color: "#F59E0B" }}>{myReferralCount} signed up</span>
+                  </div>
+                  
+                  {/* Milestones */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "10px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", opacity: myReferralCount >= 3 ? 1 : 0.6 }}>
+                      <span>🎟️</span>
+                      <span style={{ flex: 1 }}>Refer 3 friends (<strong>20% off</strong>)</span>
+                      <span style={{ fontWeight: 700 }}>{myReferralCount >= 3 ? "✅" : `${myReferralCount}/3`}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", opacity: myReferralCount >= 5 ? 1 : 0.6 }}>
+                      <span>👑</span>
+                      <span style={{ flex: 1 }}>Refer 5 friends (<strong>30% off</strong>)</span>
+                      <span style={{ fontWeight: 700 }}>{myReferralCount >= 5 ? "✅" : `${myReferralCount}/5`}</span>
+                    </div>
+                  </div>
+                </div>
               </motion.div>
             )}
           </motion.div>

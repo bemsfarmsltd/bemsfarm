@@ -162,8 +162,8 @@ async function handleZohoSale(event) {
     await client.query(
       `INSERT INTO orders
          (id, user_id, total, status, payment_method, payment_ref, address,
-          created_at, tracking_status, notes)
-       VALUES ($1, NULL, $2, 'delivered', 'physical_store', $3, 'Physical Store', NOW(), 'delivered', $4)
+          created_at, tracking_status, notes, source)
+       VALUES ($1, NULL, $2, 'delivered', 'physical_store', $3, 'Physical Store', NOW(), 'delivered', $4, 'Physical Store (POS)')
        ON CONFLICT DO NOTHING`,
       [
         orderId,

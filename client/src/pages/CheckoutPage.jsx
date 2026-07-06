@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
@@ -52,6 +52,27 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { cartItems, cartSubtotal, clearCart } = useCart();
+
+  const pageMountTime = useRef(Date.now());
+  const clickCount = useRef(0);
+  const keyPressCount = useRef(0);
+
+  useEffect(() => {
+    const handleDocumentClick = () => {
+      clickCount.current += 1;
+    };
+    const handleDocumentKeyDown = () => {
+      keyPressCount.current += 1;
+    };
+
+    document.addEventListener("click", handleDocumentClick);
+    document.addEventListener("keydown", handleDocumentKeyDown);
+
+    return () => {
+      document.removeEventListener("click", handleDocumentClick);
+      document.removeEventListener("keydown", handleDocumentKeyDown);
+    };
+  }, []);
 
   const [form, setForm] = useState({
     fullName: user?.name || "",
@@ -160,6 +181,11 @@ export default function CheckoutPage() {
       payment_method: payMethod,
       payment_ref: ref || null,
       address: `${form.address}, ${form.city}, ${form.state}`,
+      behavior_metrics: {
+        timeSpent: Math.round((Date.now() - pageMountTime.current) / 1000),
+        clicks: clickCount.current,
+        keyPresses: keyPressCount.current,
+      },
     };
     const res = await api.post("/orders", payload);
     return res.data.orderId || res.data.id;

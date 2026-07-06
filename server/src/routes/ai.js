@@ -856,4 +856,110 @@ function getFallbackTip() {
   return tips[Math.floor(Math.random() * tips.length)];
 }
 
+async function callGeminiVision(base64Data, mimeType) {
+  if (process.env.GEMINI_API_KEY === "MOCK") {
+    return {
+      reply: "👨‍🍳 (MOCK Vision Engine) I looked at your ingredient photo and detected some Fresh Tomatoes, Onion (Red), and Tatashe (Bell Pepper)! This is the perfect base for a classic Nigerian Tomato Stew. Would you like me to guide you on how to cook it?",
+      ingredients: ["Tomatoes", "Onion", "Pepper"]
+    };
+  }
+
+  const model = "gemini-2.5-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+
+  const prompt = `Identify all the food ingredients visible in this image. Respond with a JSON object in this exact format, with no other text or explanation:
+{
+  "reply": "A warm, chef-like response in Chef Bems persona identifying the ingredients, suggesting a brief recipe idea, and stating which ingredients we matched.",
+  "ingredients": ["ingredient_name", "ingredient_name", ...]
+}
+Keep ingredient names simple (e.g. "tomatoes", "pepper", "onion", "ugu", "beans", "rice").`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { text: prompt },
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Data
+            }
+          }
+        ]
+      }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        maxOutputTokens: 500,
+        temperature: 0.4
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Gemini Vision API status ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Gemini Vision returned no text");
+  
+  return JSON.parse(text.trim());
+}
+
+router.post("/visual-scan", async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) {
+      return res.status(400).json({ message: "Image data is required" });
+    }
+
+    const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      return res.status(400).json({ message: "Invalid base64 image format" });
+    }
+
+    const mimeType = matches[1];
+    const base64Data = matches[2];
+
+    console.log(`📸 Running ingredient visual scan (Mime: ${mimeType})...`);
+    const visionData = await callGeminiVision(base64Data, mimeType);
+    const detectedIngredients = visionData.ingredients || [];
+
+    // Query database to match products
+    const dbResult = await pool.query(
+      `SELECT id, name, price, unit, stock FROM products WHERE COALESCE(stock, 100) > 0`
+    );
+    const allProducts = dbResult.rows;
+
+    const relatedProducts = [];
+    for (const ingredient of detectedIngredients) {
+      const p = allProducts.find(
+        (product) =>
+          product.name.toLowerCase().includes(ingredient.toLowerCase()) ||
+          ingredient.toLowerCase().includes(product.name.toLowerCase())
+      );
+      if (p) {
+        relatedProducts.push({
+          id: p.id,
+          name: p.name,
+          price: Math.round((p.price || 2) * 1500),
+          unit: p.unit || "1 unit",
+          stock: p.stock
+        });
+      }
+    }
+
+    res.json({
+      reply: visionData.reply,
+      relatedProducts
+    });
+  } catch (err) {
+    console.error("❌ Visual scan error:", err.message);
+    res.status(500).json({ message: "Visual scan error: " + err.message });
+  }
+});
+
 module.exports = router;

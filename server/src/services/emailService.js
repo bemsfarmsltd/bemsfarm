@@ -198,10 +198,13 @@ async function sendOrderStatusEmail(order, user, newStatus) {
   });
 }
 
-async function sendSubscriptionWelcomeEmail(email) {
+async function sendSubscriptionWelcomeEmail(email, referralCode, discountCode = "BEMS10") {
+  const domain = process.env.FRONTEND_URL || "https://bemsfarms.com";
+  const referralLink = `${domain}/?ref=${referralCode}`;
+
   return sendMail({
     to: email,
-    subject: "🌿 You're subscribed to BemsFarms — Here's your 10% off",
+    subject: "🌿 You're subscribed to BemsFarms — Here's your welcome discount!",
     html: `<div style="${emailStyles}">
       ${header(`You're on the list! 🎉`)}
       <p style="color: #4B5563; line-height: 1.7;">
@@ -209,8 +212,17 @@ async function sendSubscriptionWelcomeEmail(email) {
       </p>
       <div style="background: linear-gradient(135deg, #F59E0B, #F97316); border-radius: 16px; padding: 24px; text-align: center; margin: 20px 0;">
         <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 0 0 6px;">Your welcome discount code:</p>
-        <p style="color: white; font-size: 32px; font-weight: 900; margin: 0; letter-spacing: 3px;">BEMS10</p>
-        <p style="color: rgba(255,255,255,0.75); font-size: 12px; margin: 8px 0 0;">10% off your first order</p>
+        <p style="color: white; font-size: 32px; font-weight: 900; margin: 0; letter-spacing: 3px;">${discountCode}</p>
+        <p style="color: rgba(255,255,255,0.75); font-size: 12px; margin: 8px 0 0;">Valid on your next purchase</p>
+      </div>
+      <div style="background: #F0FFF4; border-left: 4px solid #40916C; padding: 18px; border-radius: 12px; margin: 24px 0; text-align: left;">
+        <p style="margin: 0 0 8px; color: #1B4332; font-weight: 700; font-size: 15px;">📣 Share & Get Higher Discounts!</p>
+        <p style="margin: 0 0 12px; color: #4B5563; font-size: 13px; line-height: 1.5;">
+          Invite your friends! When 3 friends sign up using your unique link below, we will automatically email you an upgraded <strong>20% discount coupon</strong>!
+        </p>
+        <div style="background: white; border: 1px dashed #40916C; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 12px; color: #1B4332; word-break: break-all; text-align: center;">
+          ${referralLink}
+        </div>
       </div>
       ${footer}
     </div>`,
@@ -237,10 +249,34 @@ async function sendPasswordResetEmail(user, resetUrl) {
   });
 }
 
+async function sendReferralUpgradeEmail(email, count, newCode) {
+  return sendMail({
+    to: email,
+    subject: `🎉 Upgrade Alert: You've referred ${count} friends!`,
+    html: `<div style="${emailStyles}">
+      ${header(`Level Up! 🌟`)}
+      <p style="color: #4B5563; line-height: 1.7;">
+        Amazing job! You have successfully referred <strong>${count} friends</strong> to BemsFarms. 
+        As a thank you, we have upgraded your discount code!
+      </p>
+      <div style="background: linear-gradient(135deg, #1B4332, #40916C); border-radius: 16px; padding: 24px; text-align: center; margin: 20px 0;">
+        <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 0 0 6px;">Your upgraded discount code:</p>
+        <p style="color: white; font-size: 32px; font-weight: 900; margin: 0; letter-spacing: 3px;">${newCode}</p>
+        <p style="color: rgba(255,255,255,0.75); font-size: 12px; margin: 8px 0 0;">Valid on your next order</p>
+      </div>
+      <p style="color: #4B5563; line-height: 1.7;">
+        Keep sharing your link to unlock even higher tiers!
+      </p>
+      ${footer}
+    </div>`,
+  });
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendOrderConfirmationEmail,
   sendOrderStatusEmail,
   sendSubscriptionWelcomeEmail,
   sendPasswordResetEmail,
+  sendReferralUpgradeEmail,
 };

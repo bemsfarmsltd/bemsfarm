@@ -104,19 +104,17 @@ router.get("/", async (req, res) => {
         p.unit_price, p.cost_price, p.price,
         p.stock, p.low_stock_threshold,
         p.status, p.is_featured, p.available_for_sale,
-        p.expiry_date, p.created_at,
+        p.expiry_date, p.created_at, p.hsn_code, p.track_inventory,
         cat.name AS category,
-        b.name   AS brand,
         COALESCE(
           SUM(oi.subtotal),
           SUM(oi.quantity * oi.price), 0
         ) AS revenue
       FROM products p
       LEFT JOIN categories cat ON p.category_id = cat.id
-      LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN order_items oi ON oi.product_id = p.id
       ${whereClause}
-      GROUP BY p.id, cat.name, b.name
+      GROUP BY p.id, cat.name
       ORDER BY p.created_at DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `,
@@ -139,15 +137,12 @@ router.get("/", async (req, res) => {
 // Returns categories, brands, units for dropdowns
 router.get("/form-data", async (req, res) => {
   try {
-    const [categories, subCategories, brands, units] = await Promise.all([
+    const [categories, subCategories, units] = await Promise.all([
       pool.query(
         "SELECT id, name, icon FROM categories WHERE status='active' ORDER BY sort_order, name",
       ),
       pool.query(
         "SELECT id, name, category_id FROM sub_categories WHERE status='active' ORDER BY name",
-      ),
-      pool.query(
-        "SELECT id, name FROM brands WHERE status='active' ORDER BY name",
       ),
       pool.query(
         "SELECT id, name, abbreviation, type FROM units_of_measure ORDER BY type, name",
@@ -157,7 +152,6 @@ router.get("/form-data", async (req, res) => {
     res.json({
       categories: categories.rows,
       sub_categories: subCategories.rows,
-      brands: brands.rows,
       units: units.rows,
     });
   } catch (err) {
@@ -173,11 +167,9 @@ router.get("/:id", async (req, res) => {
       SELECT
         p.*,
         cat.name AS category_name,
-        b.name   AS brand_name,
         u.name   AS unit_name, u.abbreviation AS unit_abbr
       FROM products p
       LEFT JOIN categories cat ON p.category_id = cat.id
-      LEFT JOIN brands b ON p.brand_id = b.id
       LEFT JOIN units_of_measure u ON p.unit_of_measure_id = u.id
       WHERE p.id = $1
     `,
@@ -213,7 +205,6 @@ router.post(
         description,
         category_id,
         sub_category_id,
-        brand_id,
         unit_of_measure_id,
         unit,
         model_variant,
@@ -230,6 +221,7 @@ router.post(
         status = "active",
         store_id,
         barcode,
+        hsn_code,
         video_url,
         image_url,
         // Images
@@ -244,6 +236,20 @@ router.post(
         return res.status(400).json({ message: "Product name required" });
       if (!unit_price)
         return res.status(400).json({ message: "Unit price required" });
+      if (!image_url?.trim())
+        return res.status(400).json({ message: "Main Product Image URL is required" });
+
+      if (barcode && barcode.trim()) {
+        const barcodeCheck = await client.query(
+          "SELECT id, name FROM products WHERE barcode = $1 AND status != 'archived'",
+          [barcode.trim()]
+        );
+        if (barcodeCheck.rows.length) {
+          return res.status(400).json({
+            message: `Barcode "${barcode.trim()}" is already assigned to product "${barcodeCheck.rows[0].name}"`
+          });
+        }
+      }
 
       // Fetch category name for SKU + catalogue sync
       let categoryName = "";
@@ -279,16 +285,16 @@ router.post(
       const result = await client.query(
         `
       INSERT INTO products (
-        name, description, category_id, sub_category_id, brand_id,
+        name, description, category_id, sub_category_id,
         unit_of_measure_id, unit, model_variant, tags,
         sku, unit_price, price, cost_price, margin_pct, tax_rate,
         available_for_sale, stock, stock_quantity, low_stock_threshold,
         track_inventory, expiry_date, return_policy,
-        status, store_id, barcode, video_url, image_url,
+        status, store_id, barcode, hsn_code, video_url, image_url,
         is_featured, created_by, created_at, updated_at
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$11,$12,$13,$14,
-        $15,$16,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$10,$11,$12,$13,
+        $14,$15,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,
         false,$26,NOW(),NOW()
       )
       RETURNING *
@@ -298,7 +304,6 @@ router.post(
           description || null,
           category_id || null,
           sub_category_id || null,
-          brand_id || null,
           unit_of_measure_id || null,
           unit || null,
           model_variant || null,
@@ -317,6 +322,7 @@ router.post(
           status,
           store_id || null,
           barcode || null,
+          hsn_code || null,
           video_url || null,
           image_url || null,
           req.user.id,
@@ -392,7 +398,6 @@ router.patch(
         description,
         category_id,
         sub_category_id,
-        brand_id,
         unit_of_measure_id,
         unit,
         model_variant,
@@ -408,10 +413,27 @@ router.patch(
         return_policy,
         status,
         barcode,
+        hsn_code,
         video_url,
         image_url,
         is_featured,
       } = req.body;
+
+      if (image_url !== undefined && (!image_url || !image_url.trim())) {
+        return res.status(400).json({ message: "Main Product Image URL is required" });
+      }
+
+      if (barcode && barcode.trim()) {
+        const barcodeCheck = await client.query(
+          "SELECT id, name FROM products WHERE barcode = $1 AND id != $2 AND status != 'archived'",
+          [barcode.trim(), req.params.id]
+        );
+        if (barcodeCheck.rows.length) {
+          return res.status(400).json({
+            message: `Barcode "${barcode.trim()}" is already assigned to product "${barcodeCheck.rows[0].name}"`
+          });
+        }
+      }
 
       const newUnitPrice = unit_price ? parseFloat(unit_price) : p.unit_price;
       const newCostPrice = cost_price ? parseFloat(cost_price) : p.cost_price;
@@ -429,24 +451,24 @@ router.patch(
         description         = COALESCE($2, description),
         category_id         = COALESCE($3, category_id),
         sub_category_id     = COALESCE($4, sub_category_id),
-        brand_id            = COALESCE($5, brand_id),
-        unit_of_measure_id  = COALESCE($6, unit_of_measure_id),
-        unit                = COALESCE($7, unit),
-        model_variant       = COALESCE($8, model_variant),
-        unit_price          = $9,
-        price               = $9,
-        cost_price          = $10,
-        margin_pct          = $11,
-        tax_rate            = COALESCE($12, tax_rate),
-        available_for_sale  = COALESCE($13, available_for_sale),
-        stock               = $14,
-        stock_quantity      = $14,
-        low_stock_threshold = COALESCE($15, low_stock_threshold),
-        track_inventory     = COALESCE($16, track_inventory),
-        expiry_date         = COALESCE($17, expiry_date),
-        return_policy       = COALESCE($18, return_policy),
-        status              = COALESCE($19, status),
-        barcode             = COALESCE($20, barcode),
+        unit_of_measure_id  = COALESCE($5, unit_of_measure_id),
+        unit                = COALESCE($6, unit),
+        model_variant       = COALESCE($7, model_variant),
+        unit_price          = $8,
+        price               = $8,
+        cost_price          = $9,
+        margin_pct          = $10,
+        tax_rate            = COALESCE($11, tax_rate),
+        available_for_sale  = COALESCE($12, available_for_sale),
+        stock               = $13,
+        stock_quantity      = $13,
+        low_stock_threshold = COALESCE($14, low_stock_threshold),
+        track_inventory     = COALESCE($15, track_inventory),
+        expiry_date         = COALESCE($16, expiry_date),
+        return_policy       = COALESCE($17, return_policy),
+        status              = COALESCE($18, status),
+        barcode             = CASE WHEN $19 = '' THEN NULL ELSE COALESCE($19, barcode) END,
+        hsn_code            = CASE WHEN $20 = '' THEN NULL ELSE COALESCE($20, hsn_code) END,
         video_url           = COALESCE($21, video_url),
         image_url           = COALESCE($22, image_url),
         is_featured         = COALESCE($23, is_featured),
@@ -459,7 +481,6 @@ router.patch(
           description || null,
           category_id || null,
           sub_category_id || null,
-          brand_id || null,
           unit_of_measure_id || null,
           unit || null,
           model_variant || null,
@@ -474,7 +495,8 @@ router.patch(
           expiry_date || null,
           return_policy || null,
           status || null,
-          barcode || null,
+          barcode !== undefined ? barcode : null,
+          hsn_code !== undefined ? hsn_code : null,
           video_url || null,
           image_url || null,
           is_featured !== undefined ? is_featured : null,

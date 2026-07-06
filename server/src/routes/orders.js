@@ -24,7 +24,7 @@ router.post("/", protect, async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    const { items, total, payment_method, payment_ref, address } = req.body;
+    const { items, total, payment_method, payment_ref, address, source } = req.body;
 
     if (!items || !items.length) {
       return res.status(400).json({ message: "No items in order" });
@@ -35,8 +35,8 @@ router.post("/", protect, async (req, res) => {
     // Insert order
     await client.query(
       `INSERT INTO orders 
-       (id, user_id, total, status, payment_method, payment_ref, address, created_at)
-       VALUES ($1, $2, $3, 'pending', $4, $5, $6, NOW())`,
+       (id, user_id, total, status, payment_method, payment_ref, address, created_at, source)
+       VALUES ($1, $2, $3, 'pending', $4, $5, $6, NOW(), $7)`,
       [
         orderId,
         req.user.id,
@@ -44,6 +44,7 @@ router.post("/", protect, async (req, res) => {
         payment_method || "paystack",
         payment_ref || null,
         address || "",
+        source || "Web App",
       ],
     );
 

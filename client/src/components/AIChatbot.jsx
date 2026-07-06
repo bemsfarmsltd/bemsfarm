@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 const CHEF_AVATAR = null; // Using emoji avatar instead — sharp at all sizes
-const N8N_WEBHOOK = "https://bemsfarms.app.n8n.cloud/webhook/chef-bems";
+const N8N_WEBHOOK = "https://bfarms000.app.n8n.cloud/webhook/chef-bems";
 
 const QUICK_QUESTIONS = [
   {

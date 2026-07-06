@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -35,7 +36,14 @@ app.use(
   }),
 );
 
-app.use(express.json({ limit: "10mb" }));
+app.use(
+  express.json({
+    limit: "10mb",
+    verify: (req, res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
@@ -101,6 +109,7 @@ const settingsAdminRoutes   = require("./routes/settings_admin");
 const couponsAdminRoutes    = require("./routes/coupons_admin");
 const posAdminRoutes        = require("./routes/pos_admin");
 const chefBemsAdminRoutes   = require("./routes/chef_bems_admin");
+const paymentsAdminRoutes   = require("./routes/payments_admin");
 
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/orders", paymentLimiter, ordersRoutes);
@@ -126,6 +135,7 @@ app.use("/api/admin/settings",  settingsAdminRoutes);
 app.use("/api/admin/coupons",   couponsAdminRoutes);
 app.use("/api/admin/pos",       posAdminRoutes);
 app.use("/api/admin/chef-bems", chefBemsAdminRoutes);
+app.use("/api/admin/payments",  paymentsAdminRoutes);
 app.use("/api/cart",            cartRoutes);
 app.use("/api", miscRoutes);
 app.use("/api/advanced-ai", aiLimiter, advancedAiRoutes);

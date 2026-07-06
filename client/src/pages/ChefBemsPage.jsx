@@ -4,7 +4,7 @@ import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
 import api from "../services/api";
 
-const N8N_WEBHOOK = "https://bemsfarms.app.n8n.cloud/webhook/chef-bems";
+const N8N_WEBHOOK = "https://bfarms000.app.n8n.cloud/webhook/chef-bems";
 
 const QUICK_PROMPTS = [
   { icon: "🍲", text: "What can I cook with garri and tomatoes?" },
@@ -72,6 +72,63 @@ export default function ChefBemsPage() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || loading) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Data = reader.result;
+      
+      const userMsg = {
+        id: Date.now() + "-u",
+        role: "user",
+        content: "📷 [Uploaded ingredient photo for visual scanning]",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, userMsg]);
+      setLoading(true);
+      
+      try {
+        const payload = {
+          image: base64Data,
+          cartItems: cartItems
+            .map((i) => i.product?.name || i.name)
+            .filter(Boolean),
+        };
+        
+        const res = await api.post("/ai/visual-scan", payload);
+        const data = res.data;
+        
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + "-a",
+            role: "assistant",
+            content: data.reply || "I analyzed your ingredients! Here is what I suggest.",
+            timestamp: new Date(),
+            relatedProducts: data.relatedProducts || [],
+          },
+        ]);
+      } catch (err) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + "-e",
+            role: "assistant",
+            content: "⚠️ Visual scanner is taking a break. Make sure your GEMINI_API_KEY is configured properly.",
+            timestamp: new Date(),
+            isError: true,
+          },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -543,6 +600,35 @@ export default function ChefBemsPage() {
               padding: "7px 7px 7px 14px",
             }}
           >
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              style={{ display: "none" }}
+            />
+            <motion.button
+              whileHover={{ scale: !loading ? 1.05 : 1 }}
+              whileTap={{ scale: !loading ? 0.95 : 1 }}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading}
+              title="Upload ingredient photo"
+              style={{
+                width: "38px",
+                height: "38px",
+                borderRadius: "10px",
+                backgroundColor: "#E5E7EB",
+                border: "none",
+                cursor: !loading ? "pointer" : "not-allowed",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "16px",
+                flexShrink: 0,
+              }}
+            >
+              📷
+            </motion.button>
             <textarea
               ref={inputRef}
               value={input}

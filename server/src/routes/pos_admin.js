@@ -233,7 +233,7 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), asyn
          (reference, customer_id, customer_name, subtotal, discount_amount, tax_amount,
           total, payment_method, payment_status, status, source, pos_session_id,
           notes, created_by, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'paid','completed','pos',$9,$10,$11,NOW(),NOW())
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'paid','completed','Physical Store (POS)',$9,$10,$11,NOW(),NOW())
        RETURNING *`,
       [
         reference, customer_id || null, customer_name,
@@ -445,7 +445,7 @@ router.post("/transaction", requireRole("superadmin","manager","admin","cashier"
 router.get("/receipts", requireRole("superadmin","manager","admin","cashier","accountant"), async (req, res) => {
   try {
     const { search = "", from, to, payment_method, cashier_id, page = 1, limit = 20 } = req.query;
-    const params = []; const where = ["o.status = 'completed'", "o.source = 'pos'"];
+    const params = []; const where = ["o.status = 'completed'", "(o.source = 'pos' OR o.source = 'Physical Store (POS)')"];
 
     if (search) {
       params.push(`%${search}%`);

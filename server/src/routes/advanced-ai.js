@@ -45,6 +45,41 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
+async function getQueryEmbedding(query) {
+  if (GEMINI_API_KEY === "MOCK") {
+    const mockVector = [];
+    let seed = 0;
+    for (let i = 0; i < query.length; i++) {
+      seed += query.charCodeAt(i);
+    }
+    for (let i = 0; i < 768; i++) {
+      mockVector.push(Math.sin(seed + i) * 0.5);
+    }
+    return mockVector;
+  }
+
+  const model = "text-embedding-004";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${GEMINI_API_KEY}`;
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      content: {
+        parts: [{ text: query }]
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Gemini Embedding API status ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json();
+  return data?.embedding?.values;
+}
+
 async function getAiProductMatches(query, allProducts) {
   if (!GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY not configured");
@@ -154,11 +189,33 @@ router.post("/semantic-search", async (req, res) => {
       if (results.length) matchTier = "direct-match";
     }
 
-    // ── TIER 3: Gemini AI fallback (only when 1 & 2 found nothing) ──
+    // ── TIER 3: pgvector Database Similarity Search ──────────────────
+    if (!results.length) {
+      try {
+        console.log(`🤖 Running pgvector database search for: "${query}"`);
+        const queryVector = await getQueryEmbedding(query);
+        if (queryVector) {
+          const vectorStr = `[${queryVector.join(",")}]`;
+          // search matching products with threshold 0.3 (or adjust as needed) and limit 8
+          const vectorResults = await pool.query(
+            "SELECT * FROM match_products($1, 0.3, 8)",
+            [vectorStr]
+          );
+          if (vectorResults.rows.length) {
+            results = vectorResults.rows;
+            matchTier = "vector-similarity";
+          }
+        }
+      } catch (vectorErr) {
+        console.warn("⚠️ pgvector search failed:", vectorErr.message);
+      }
+    }
+
+    // ── TIER 4: Gemini AI fallback (as a final safety net) ───────────
     if (!results.length) {
       try {
         console.log(
-          `🤖 No keyword/direct match for "${query}" — trying Gemini fallback`,
+          `🤖 No keyword/vector matches for "${query}" — trying Gemini fallback`,
         );
         const aiMatches = await getAiProductMatches(query, allProducts);
         if (aiMatches.length) {
@@ -167,8 +224,6 @@ router.post("/semantic-search", async (req, res) => {
         }
       } catch (aiErr) {
         console.warn("⚠️ Gemini search fallback failed:", aiErr.message);
-        // Fall through to empty results — handled gracefully below,
-        // never crashes the request.
       }
     }
 
@@ -344,13 +399,33 @@ router.post("/dynamic-pricing", async (req, res) => {
 
 router.post("/fraud-check", async (req, res) => {
   try {
-    const { user_id, order_amount, payment_method } = req.body;
+    const { user_id, order_amount, payment_method, behavior_metrics } = req.body;
     const riskFactors = [];
     let riskScore = 0;
 
+    // Check behavioral interaction metrics (if provided by client)
+    if (behavior_metrics) {
+      const { timeSpent, clicks, keyPresses } = behavior_metrics;
+      
+      if (timeSpent !== undefined && timeSpent < 3) {
+        riskFactors.push(`Abnormal checkout speed (${timeSpent}s) - possible bot activity`);
+        riskScore += 45;
+      }
+      
+      if (clicks !== undefined && clicks < 2) {
+        riskFactors.push("Minimal screen interaction detected - possible script injection");
+        riskScore += 35;
+      }
+      
+      if (keyPresses !== undefined && keyPresses === 0 && order_amount > 20000) {
+        riskFactors.push("No manual keyboard input registered for checkout details");
+        riskScore += 20;
+      }
+    }
+
     const failed = await pool.query(
       `SELECT COUNT(*) as count FROM orders WHERE user_id=$1 AND status='cancelled' AND created_at > NOW() - INTERVAL '24 hours'`,
-      [parseInt(user_id)],
+      [parseInt(user_id || 0)],
     );
     if (parseInt(failed.rows[0]?.count || 0) > 3) {
       riskFactors.push("Multiple cancelled orders in the last 24 hours");
@@ -359,7 +434,7 @@ router.post("/fraud-check", async (req, res) => {
 
     const avgQ = await pool.query(
       `SELECT AVG(total) as avg_total FROM orders WHERE user_id=$1 AND status != 'cancelled'`,
-      [parseInt(user_id)],
+      [parseInt(user_id || 0)],
     );
     const avgTotal = parseFloat(avgQ.rows[0]?.avg_total || 0);
     if (avgTotal > 0 && order_amount > avgTotal * 5) {
@@ -369,7 +444,7 @@ router.post("/fraud-check", async (req, res) => {
 
     const rapid = await pool.query(
       `SELECT COUNT(*) as count FROM orders WHERE user_id=$1 AND created_at > NOW() - INTERVAL '5 minutes'`,
-      [parseInt(user_id)],
+      [parseInt(user_id || 0)],
     );
     if (parseInt(rapid.rows[0]?.count || 0) > 1) {
       riskFactors.push("Multiple orders placed within 5 minutes");
@@ -378,7 +453,7 @@ router.post("/fraud-check", async (req, res) => {
 
     const userQ = await pool.query(
       `SELECT EXTRACT(DAY FROM (NOW() - created_at)) as days_old FROM users WHERE id=$1`,
-      [parseInt(user_id)],
+      [parseInt(user_id || 0)],
     );
     const daysOld = parseInt(userQ.rows[0]?.days_old || 0);
     if (daysOld < 1 && order_amount > 50000) {
@@ -388,7 +463,7 @@ router.post("/fraud-check", async (req, res) => {
 
     const methods = await pool.query(
       `SELECT DISTINCT payment_method FROM orders WHERE user_id=$1`,
-      [parseInt(user_id)],
+      [parseInt(user_id || 0)],
     );
     const known = methods.rows.map((r) => r.payment_method);
     if (known.length > 0 && !known.includes(payment_method)) {
