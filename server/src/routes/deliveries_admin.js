@@ -50,7 +50,7 @@ router.get("/active", async (req, res) => {
       JOIN orders o ON d.order_id = o.id
       LEFT JOIN customers c ON o.customer_id = c.id
       LEFT JOIN drivers dr ON d.driver_id = dr.id
-      LEFT JOIN delivery_zones dz ON d.zone_id = dz.id
+      LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       WHERE ${where.join(" AND ")}
       ORDER BY d.assigned_at DESC
     `,
@@ -93,7 +93,7 @@ router.get("/auto-log", async (req, res) => {
       JOIN orders o ON d.order_id = o.id
       LEFT JOIN customers c ON o.customer_id = c.id
       LEFT JOIN drivers dr ON da.driver_id = dr.id
-      LEFT JOIN delivery_zones dz ON d.zone_id = dz.id
+      LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       LEFT JOIN (
         SELECT delivery_id,
           u.name AS overridden_by_name,
@@ -349,7 +349,7 @@ router.get("/drivers", async (req, res) => {
          WHERE d2.driver_id = dr.id AND d2.status NOT IN ('delivered','cancelled')
          LIMIT 1)                                                   AS current_order
       FROM drivers dr
-      LEFT JOIN delivery_zones dz ON dr.zone_id = dz.id
+      LEFT JOIN delivery_zones dz ON dr.primary_zone_id = dz.zone_id
       LEFT JOIN deliveries d ON d.driver_id = dr.id
       LEFT JOIN driver_feedback df ON df.driver_id = dr.id
       ${whereClause}
@@ -512,10 +512,10 @@ router.get("/zones", async (req, res) => {
         JSON_AGG(DISTINCT dr.name) FILTER (WHERE dr.id IS NOT NULL) AS driver_names,
         JSON_AGG(DISTINCT dr.id)   FILTER (WHERE dr.id IS NOT NULL) AS driver_ids
       FROM delivery_zones dz
-      LEFT JOIN deliveries d ON d.zone_id = dz.id
+      LEFT JOIN deliveries d ON d.zone_id = dz.zone_id
       LEFT JOIN orders o ON d.order_id = o.id
-      LEFT JOIN drivers dr ON dr.zone_id = dz.id AND dr.status NOT IN ('suspended','off_duty')
-      GROUP BY dz.id
+      LEFT JOIN drivers dr ON dr.primary_zone_id = dz.zone_id AND dr.status NOT IN ('suspended','off_duty')
+      GROUP BY dz.zone_id
       ORDER BY dz.is_active DESC, dz.zone_name ASC
     `);
 

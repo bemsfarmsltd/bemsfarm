@@ -563,7 +563,7 @@ router.get("/batches", async (req, res) => {
         b.*,
         p.name AS product_name, p.sku,
         w.name AS warehouse_name,
-        EXTRACT(DAY FROM (b.expiry_date - CURRENT_DATE)) AS days_until_expiry
+        (b.expiry_date - CURRENT_DATE) AS days_until_expiry
       FROM batch_management b
       LEFT JOIN products   p ON b.product_id   = p.id
       LEFT JOIN warehouses w ON b.warehouse_id  = w.id
