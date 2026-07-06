@@ -449,7 +449,7 @@ router.get("/receipts", requireRole("superadmin","manager","admin","cashier","ac
 
     if (search) {
       params.push(`%${search}%`);
-      where.push(`(o.reference ILIKE $${params.length} OR o.customer_name ILIKE $${params.length} OR u.name ILIKE $${params.length} OR pt.transaction_id ILIKE $${params.length})`);
+      where.push(`(o.id ILIKE $${params.length} OR o.customer_name ILIKE $${params.length} OR u.name ILIKE $${params.length} OR pt.transaction_id ILIKE $${params.length})`);
     }
     if (from)           { params.push(from);           where.push(`DATE(o.created_at) >= $${params.length}`); }
     if (to)             { params.push(to);             where.push(`DATE(o.created_at) <= $${params.length}`); }
@@ -461,7 +461,7 @@ router.get("/receipts", requireRole("superadmin","manager","admin","cashier","ac
 
     const [rows, countRow, stats] = await Promise.all([
       pool.query(
-        `SELECT o.id, o.reference AS receipt_number, o.customer_name, o.payment_method,
+        `SELECT o.id, o.id AS receipt_number, o.customer_name, o.payment_method,
                 o.subtotal, o.total, o.tax_amount, o.discount_amount, o.created_at AS paid_at,
                 u.name AS cashier_name, u.id AS cashier_id,
                 pt.transaction_id,

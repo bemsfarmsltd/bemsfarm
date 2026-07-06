@@ -43,7 +43,7 @@ router.get("/reconciliation", requireRole("superadmin", "manager", "admin", "acc
         p.id, p.payment_ref, p.order_id, p.amount, p.status, 
         p.payment_method, p.customer_email, p.pos_terminal_id, 
         p.paid_at, p.created_at,
-        o.reference AS order_reference, o.status AS order_status, o.total AS order_total
+        o.id AS order_reference, o.status AS order_status, o.total AS order_total
       FROM payments p
       LEFT JOIN orders o ON p.order_id = o.id
       ${whereClause}
