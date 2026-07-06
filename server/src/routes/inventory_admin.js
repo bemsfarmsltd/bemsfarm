@@ -224,7 +224,7 @@ router.get("/alerts", async (req, res) => {
       pool.query(`
         SELECT b.id, b.batch_no, b.quantity, b.expiry_date,
                p.name AS product_name, p.sku,
-               EXTRACT(DAY FROM (b.expiry_date - CURRENT_DATE)) AS days_left
+               (b.expiry_date - CURRENT_DATE) AS days_left
         FROM batch_management b
         JOIN products p ON b.product_id = p.id
         WHERE b.expiry_date <= CURRENT_DATE + INTERVAL '14 days'
@@ -727,6 +727,27 @@ router.patch(
         [status, req.user.id, req.params.id]
       );
       res.json({ message: `Lost item ${status}` });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+// ── PATCH /api/admin/inventory/products/:id/reorder ───────────────
+router.patch(
+  "/products/:id/reorder",
+  requireRole("superadmin", "manager", "admin"),
+  async (req, res) => {
+    try {
+      const { reorder_level } = req.body;
+      if (reorder_level === undefined || isNaN(parseInt(reorder_level))) {
+        return res.status(400).json({ message: "reorder_level integer is required" });
+      }
+      await pool.query(
+        "UPDATE products SET low_stock_threshold = $1, updated_at = NOW() WHERE id = $2",
+        [parseInt(reorder_level), req.params.id]
+      );
+      res.json({ message: "Reorder level updated successfully" });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
