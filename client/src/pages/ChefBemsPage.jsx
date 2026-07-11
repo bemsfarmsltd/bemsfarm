@@ -6,7 +6,7 @@ import api from "../services/api";
 import chefBemsImg from "../assets/chef_bems_cooking.jpg";
 import chefBemsAvatar from "../assets/chef_bems_avatar.png";
 
-const N8N_WEBHOOK = "https://bfarms000.app.n8n.cloud/webhook/chef-bems";
+
 
 const QUICK_PROMPTS = [
   { icon: "🍲", text: "What can I cook with garri and tomatoes?" },
@@ -106,22 +106,12 @@ export default function ChefBemsPage() {
     reader.readAsDataURL(file);
   };
 
-  const callN8n = async (payload) => {
-    const res = await fetch(N8N_WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(12000),
-    });
-    if (!res.ok) throw new Error(`n8n ${res.status}`);
-    return res.json();
-  };
-
-  const callExpress = async (payload) => {
+  const callChefChat = async (payload) => {
     const res = await api.post("/ai/chef-chat", {
       message: payload.message,
       history: payload.conversationHistory,
       cartItems: payload.cartItems,
+      userPreferences: payload.userPreferences,
     });
     return res.data;
   };
@@ -156,12 +146,7 @@ export default function ChefBemsPage() {
         ),
       };
 
-      let data;
-      try {
-        data = await callN8n(payload);
-      } catch {
-        data = await callExpress(payload);
-      }
+      const data = await callChefChat(payload);
 
       setMessages((prev) => [
         ...prev,
