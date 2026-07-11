@@ -128,6 +128,7 @@ const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const accountsController = require("../controllers/accountsController");
 
 router.use(protect);
 
@@ -294,85 +295,10 @@ router.get("/overview", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // BANK ACCOUNTS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/bank-accounts", async (req, res) => {
-  try {
-    const rows = await pool.query(`
-      SELECT
-        ba.*,
-        (SELECT COUNT(*) FROM transactions t WHERE t.bank_account_id = ba.id) AS transaction_count,
-        (SELECT COALESCE(SUM(amount),0) FROM transactions t WHERE t.bank_account_id=ba.id AND t.type='credit' AND DATE_TRUNC('month',t.date)=DATE_TRUNC('month',NOW())) AS month_credits,
-        (SELECT COALESCE(SUM(amount),0) FROM transactions t WHERE t.bank_account_id=ba.id AND t.type='debit'  AND DATE_TRUNC('month',t.date)=DATE_TRUNC('month',NOW())) AS month_debits
-      FROM bank_accounts ba
-      ORDER BY ba.is_primary DESC, ba.balance DESC
-    `);
-    res.json({ bank_accounts: rows.rows });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-router.post("/bank-accounts", requireRole("superadmin", "manager"), async (req, res) => {
-  try {
-    const { account_name, bank_name, account_number, account_type, currency, opening_balance, is_primary, notes } = req.body;
-    if (!account_name) return res.status(400).json({ message: "account_name required" });
-    if (!bank_name)    return res.status(400).json({ message: "bank_name required" });
-    if (!account_number) return res.status(400).json({ message: "account_number required" });
-
-    if (is_primary) {
-      await pool.query("UPDATE bank_accounts SET is_primary=false");
-    }
-
-    const result = await pool.query(
-      `INSERT INTO bank_accounts (account_name, bank_name, account_number, account_type, currency, balance, is_primary, notes, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW()) RETURNING *`,
-      [account_name, bank_name, account_number, account_type || "current", currency || "NGN", opening_balance ? parseFloat(opening_balance) : 0, is_primary || false, notes || null]
-    );
-    res.status(201).json({ bank_account: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-router.patch("/bank-accounts/:id", requireRole("superadmin", "manager"), async (req, res) => {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    const { account_name, bank_name, account_number, account_type, status, notes, is_primary } = req.body;
-
-    if (is_primary) await client.query("UPDATE bank_accounts SET is_primary=false");
-
-    const result = await client.query(
-      `UPDATE bank_accounts SET
-         account_name   = COALESCE($1, account_name),
-         bank_name      = COALESCE($2, bank_name),
-         account_number = COALESCE($3, account_number),
-         account_type   = COALESCE($4, account_type),
-         status         = COALESCE($5, status),
-         notes          = COALESCE($6, notes),
-         is_primary     = COALESCE($7, is_primary),
-         updated_at     = NOW()
-       WHERE id = $8 RETURNING *`,
-      [account_name||null, bank_name||null, account_number||null, account_type||null, status||null, notes||null, is_primary!=null?is_primary:null, req.params.id]
-    );
-    if (!result.rows.length) { await client.query("ROLLBACK"); return res.status(404).json({ message: "Account not found" }); }
-    await client.query("COMMIT");
-    res.json({ bank_account: result.rows[0] });
-  } catch (err) {
-    await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
-  } finally {
-    client.release();
-  }
-});
-
-router.delete("/bank-accounts/:id", requireRole("superadmin"), async (req, res) => {
-  try {
-    await pool.query("UPDATE bank_accounts SET status='inactive', updated_at=NOW() WHERE id=$1", [req.params.id]);
-    res.json({ message: "Bank account deactivated" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+router.get("/bank-accounts", accountsController.getBankAccounts);
+router.post("/bank-accounts", requireRole("superadmin", "manager"), accountsController.createBankAccount);
+router.patch("/bank-accounts/:id", requireRole("superadmin", "manager"), accountsController.updateBankAccount);
+router.delete("/bank-accounts/:id", requireRole("superadmin"), accountsController.deactivateBankAccount);
 
 // ════════════════════════════════════════════════════════════════════════════
 // INCOME
@@ -673,78 +599,8 @@ router.get("/transactions", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // MONEY TRANSFER  ──  GET + POST /api/admin/accounts/transfers
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/transfers", async (req, res) => {
-  try {
-    const { page = 1, limit = 20 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    const countRes = await pool.query("SELECT COUNT(*) FROM money_transfers");
-    const rows = await pool.query(`
-      SELECT
-        mt.*,
-        fa.bank_name AS from_bank, fa.account_name AS from_account,
-        ta.bank_name AS to_bank,   ta.account_name AS to_account,
-        u.name AS created_by_name
-      FROM money_transfers mt
-      LEFT JOIN bank_accounts fa ON mt.from_account_id = fa.id
-      LEFT JOIN bank_accounts ta ON mt.to_account_id   = ta.id
-      LEFT JOIN users u ON mt.created_by = u.id
-      ORDER BY mt.created_at DESC
-      LIMIT $1 OFFSET $2
-    `, [parseInt(limit), offset]);
-
-    res.json({
-      transfers: rows.rows,
-      total: parseInt(countRes.rows[0].count),
-      page: parseInt(page),
-      pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit)),
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-router.post("/transfers", requireRole("superadmin", "manager"), async (req, res) => {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-
-    const { from_account_id, to_account_id, amount, fee = 0, description, date } = req.body;
-    if (!from_account_id) return res.status(400).json({ message: "from_account_id required" });
-    if (!to_account_id)   return res.status(400).json({ message: "to_account_id required" });
-    if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ message: "amount must be > 0" });
-    if (from_account_id === to_account_id) return res.status(400).json({ message: "Source and destination must be different accounts" });
-
-    const fromAcc = await client.query("SELECT balance FROM bank_accounts WHERE id=$1 FOR UPDATE", [parseInt(from_account_id)]);
-    if (!fromAcc.rows.length) return res.status(404).json({ message: "Source account not found" });
-    const fromBal = parseFloat(fromAcc.rows[0].balance);
-    const total   = parseFloat(amount) + parseFloat(fee);
-    if (fromBal < total) return res.status(400).json({ message: `Insufficient balance. Available: ₦${fromBal.toLocaleString()}` });
-
-    const ref    = await nextRef(client, "TRF", "money_transfers");
-    const txDate = date || new Date().toISOString().slice(0, 10);
-
-    const result = await client.query(
-      `INSERT INTO money_transfers (reference, from_account_id, to_account_id, amount, fee, description, date, status, created_by, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'completed',$8,NOW()) RETURNING *`,
-      [ref, parseInt(from_account_id), parseInt(to_account_id), parseFloat(amount), parseFloat(fee), description||null, txDate, req.user.id]
-    );
-
-    // Debit source
-    await postTransaction(client, { bankAccountId: parseInt(from_account_id), type: "debit", sourceType: "transfer", sourceId: result.rows[0].id, amount: total, description: `Transfer out → ${description || ref}`, date: txDate, userId: req.user.id });
-
-    // Credit destination
-    await postTransaction(client, { bankAccountId: parseInt(to_account_id), type: "credit", sourceType: "transfer", sourceId: result.rows[0].id, amount: parseFloat(amount), description: `Transfer in ← ${description || ref}`, date: txDate, userId: req.user.id });
-
-    await client.query("COMMIT");
-    res.status(201).json({ transfer: result.rows[0], message: "Transfer completed" });
-  } catch (err) {
-    await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
-  } finally {
-    client.release();
-  }
-});
+router.get("/transfers", accountsController.getMoneyTransfers);
+router.post("/transfers", requireRole("superadmin", "manager"), accountsController.createMoneyTransfer);
 
 // ════════════════════════════════════════════════════════════════════════════
 // DRIVER COMMISSIONS  ──  GET /api/admin/accounts/commissions

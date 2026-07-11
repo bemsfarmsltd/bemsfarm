@@ -141,6 +141,9 @@ app.use("/api", miscRoutes);
 app.use("/api/advanced-ai", aiLimiter, advancedAiRoutes);
 app.use("/api/zoho", zohoRoutes);
 
+const errorHandler = require("./middleware/errorHandler");
+app.use(errorHandler);
+
 app.get("/api", (req, res) => res.json({ status: "OK", name: "Bems Farms API", version: "1.0", time: new Date() }));
 app.get("/health", (req, res) => res.json({ status: "OK", time: new Date() }));
 app.get("/test", (req, res) => res.json({ message: "server works" }));
