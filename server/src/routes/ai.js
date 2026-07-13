@@ -18,7 +18,7 @@ async function resolveUser(req) {
     const auth = req.headers.authorization;
     if (!auth?.startsWith("Bearer ")) return null;
     const decoded = jwt.verify(auth.split(" ")[1], JWT_SECRET);
-    const row = await pool.query("SELECT id, role FROM users WHERE id=$1 AND status!='suspended'", [decoded.id]);
+    const row = await pool.query("SELECT id, email, role FROM users WHERE id=$1 AND status!='suspended'", [decoded.id]);
     return row.rows[0] || null;
   } catch {
     return null;
@@ -688,7 +688,9 @@ router.post("/chef-chat", async (req, res) => {
           message,
           conversationHistory: history,
           cartItems,
-          userPreferences
+          userPreferences,
+          userId: user?.id || null,
+          email: user?.email || null
         }),
         signal: AbortSignal.timeout(8000), // Timeout after 8 seconds
       });
