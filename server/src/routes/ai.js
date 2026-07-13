@@ -697,7 +697,7 @@ router.post("/chef-chat", async (req, res) => {
 
       if (n8nRes.ok) {
         const n8nData = await n8nRes.json();
-        const reply = n8nData.reply || n8nData.message || n8nData.content;
+        const reply = n8nData.reply || n8nData.response || n8nData.message || n8nData.content;
         const relatedProducts = n8nData.relatedProducts || [];
 
         if (conversationId && reply) {
