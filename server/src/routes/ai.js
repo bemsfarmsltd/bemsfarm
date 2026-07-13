@@ -678,7 +678,7 @@ router.post("/chef-chat", async (req, res) => {
     }
 
     // 1. Try calling the n8n webhook first (prevents client-side CORS issues)
-    const N8N_WEBHOOK = "https://bfarms000.app.n8n.cloud/webhook/chef-bems";
+    const N8N_WEBHOOK = process.env.N8N_WEBHOOK || "https://bems003.app.n8n.cloud/webhook/chef-bems";
     try {
       console.log("➡️ Forwarding Chef Bems request to n8n webhook...");
       const n8nRes = await fetch(N8N_WEBHOOK, {
