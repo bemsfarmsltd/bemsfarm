@@ -1,0 +1,176 @@
+/* ── Fonts ─────────────────────────────────────────────────────────────────── */
+/* Syne: headings / logo   |   Nunito: body, UI, inputs */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Nunito:wght@400;500;600;700;800&display=swap');
+
+/* ── Tailwind ───────────────────────────────────────────────────────────────── */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS design tokens ─────────────────────────────────────────────────────── */
+:root {
+  /* Brand */
+  --green-primary:  #1B4332;
+  --green-mid:      #40916C;
+  --green-light:    #D8F3DC;
+  --orange-accent:  #F57C00;
+  --orange-light:   #FFF3E0;
+
+  /* Backgrounds */
+  --bg-page:        #f9fafb;
+  --bg-card:        #ffffff;
+
+  /* Text */
+  --text-primary:   #111827;
+  --text-muted:     #6b7280;
+  --text-light:     #9ca3af;
+
+  /* UI */
+  --border:         #e5e7eb;
+  --shadow-card:    0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+  --shadow-green:   0 8px 24px rgba(27,67,50,0.10);
+  --radius-card:    12px;
+  --radius-btn:     8px;
+
+  /* Layout */
+  --sidebar-w:      258px;
+  --topbar-h:       60px;
+}
+
+/* ── Extra design tokens ───────────────────────────────────────────────────── */
+:root {
+  /* Semantic background tiers */
+  --bg-hover:        #f9fafb;
+  --bg-subtle:       #f8fafc;
+  --bg-muted:        #f3f4f6;
+  --bg-green-faint:  #f0fdf4;
+  --bg-blue-faint:   #eff6ff;
+  --bg-red-faint:    #fef2f2;
+  --bg-yellow-faint: #fffbeb;
+  --bg-input:        #ffffff;
+  --bg-topbar:       #ffffff;
+  /* Extra text */
+  --text-secondary:  #374151;
+  /* Extra borders */
+  --border-strong:   #d1d5db;
+  --border-subtle:   #f1f5f9;
+  /* Shadows */
+  --shadow-dropdown: 0 8px 32px rgba(0,0,0,0.12);
+  --shadow-modal:    0 20px 60px rgba(0,0,0,0.15);
+}
+
+/* ── Dark theme overrides ──────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg-page:         #090D16;
+  --bg-card:         #101726;
+  --bg-hover:        #1D263B;
+  --bg-subtle:       #0C101B;
+  --bg-muted:        #162035;
+  --bg-green-faint:  #062D24;
+  --bg-blue-faint:   #0B1F3F;
+  --bg-red-faint:    #320D1A;
+  --bg-yellow-faint: #3B2006;
+  --bg-input:        #090D16;
+  --bg-topbar:       #101726;
+  --text-primary:    #F9FAFB;
+  --text-secondary:  #F3F4F6;
+  --text-muted:      #9CA3AF;
+  --text-light:      #6B7280;
+  --border:          #1E293B;
+  --border-strong:   #374151;
+  --border-subtle:   #0F172A;
+  --shadow-card:     0 4px 20px -2px rgba(0, 0, 0, 0.45), 0 2px 8px -1px rgba(0, 0, 0, 0.25);
+  --shadow-dropdown: 0 10px 40px -4px rgba(0, 0, 0, 0.65);
+  --shadow-modal:    0 24px 72px -6px rgba(0, 0, 0, 0.75);
+}
+
+/* ── Smooth theme transition (only fires during switch, not on hover) ──────── */
+.theme-transitioning,
+.theme-transitioning * {
+  transition: background-color 0.25s ease, color 0.25s ease,
+              border-color 0.25s ease, box-shadow 0.25s ease !important;
+}
+
+/* ── Dark scrollbar ────────────────────────────────────────────────────────── */
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #475569; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* ── Base resets ───────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  display: contents;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: #d1d5db; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* ── Focus ring ────────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--green-primary);
+  outline-offset: 2px;
+}
+
+/* ── Sidebar mobile — hidden by default on small screens ───────────────────── */
+@media (max-width: 767px) {
+  aside[style*="position: fixed"] {
+    transform: translateX(-100%);
+  }
+  main {
+    margin-left: 0 !important;
+  }
+}
+
+/* ── Login page right panel — only show on large screens ───────────────────── */
+@media (min-width: 1024px) {
+  .login-right-panel {
+    display: flex !important;
+  }
+}
+
+/* ── Premium Styling Utilities ────────────────────────────────────────────── */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid var(--border);
+}
+
+.text-gradient-green {
+  background: linear-gradient(135deg, #40916C 0%, #1B4332 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .text-gradient-green {
+  background: linear-gradient(135deg, #74C69D 0%, #52B788 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.glow-hover {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glow-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(64, 145, 108, 0.25);
+}
