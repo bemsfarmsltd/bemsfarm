@@ -1,6 +1,9 @@
 import { useState, useMemo, useEffect } from 'react'
 import ImportModal from '../../components/ImportModal'
 
+import api from '../../lib/api'
+import toast from 'react-hot-toast'
+
 function genCode(name, existingCodes=[]) {
   const slug = name.trim().toUpperCase().replace(/[^A-Z]/g,'').slice(0,3).padEnd(3,'X')
   let n=1, code
@@ -15,16 +18,6 @@ const IMPORT_FIELDS = [
   { key:'status',      label:'Status',      required:false },
 ]
 
-const MOCK = [
-  { id:1, name:'Meals',          code:'CAT-MEA-001', products:12, status:'active',   created:'2026-01-15', description:'Freshly prepared meals and boxes' },
-  { id:2, name:'Seafood',        code:'CAT-SEA-001', products:8,  status:'active',   created:'2026-01-15', description:'Fish, crabs, and shrimp' },
-  { id:3, name:'Meat',           code:'CAT-MEA-002', products:6,  status:'active',   created:'2026-01-15', description:'Beef, chicken, and turkey' },
-  { id:4, name:'Grains & Carbs', code:'CAT-GRA-001', products:15, status:'active',   created:'2026-01-15', description:'Rice, pasta, and tubers' },
-  { id:5, name:'Vegetables',     code:'CAT-VEG-001', products:9,  status:'active',   created:'2026-01-20', description:'Fresh organic farm produce' },
-  { id:6, name:'Dairy & Eggs',   code:'CAT-DAI-001', products:7,  status:'active',   created:'2026-01-20', description:'Milk, cheese, and farm eggs' },
-  { id:7, name:'Beverages',      code:'CAT-BEV-001', products:5,  status:'inactive', created:'2026-02-01', description:'Juices, water, and soft drinks' },
-  { id:8, name:'Fresh Farm',     code:'CAT-FRE-001', products:11, status:'active',   created:'2026-02-01', description:'Directly from our farm to table' },
-]
 const BLANK = { name:'', code:'', products:0, status:'active', description:'' }
 
 const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
@@ -36,12 +29,28 @@ const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',te
 const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
 
 export default function Categories() {
-  const [items, setItems]               = useState(MOCK)
+  const [items, setItems]               = useState([])
   const [search, setSearch]             = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [activeModal, setActiveModal]   = useState(null)
   const [editItem, setEditItem]         = useState(null)
   const [form, setForm]                 = useState(BLANK)
+  const [loading, setLoading]           = useState(true)
+
+  const fetchItems = async () => {
+    try {
+      const res = await api.get('/admin/config/categories')
+      setItems(res.data.categories)
+    } catch (err) {
+      toast.error('Failed to load categories')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchItems()
+  }, [])
 
   useEffect(() => {
     if (!editItem && form.name.trim()) {
@@ -66,18 +75,36 @@ export default function Categories() {
   function openDelete(r) { setEditItem(r); setActiveModal('delete') }
   function closeModal() { setActiveModal(null); setEditItem(null) }
 
-  function saveForm(e) {
+  async function saveForm(e) {
     e.preventDefault()
-    if (editItem) {
-      setItems(p => p.map(r => r.id===editItem.id ? { ...r,...form } : r))
-    } else {
-      const code = form.code || genCode(form.name, items.map(i=>i.code))
-      setItems(p => [...p, { id:Math.max(...p.map(r=>r.id))+1,...form,code,products:0,created:new Date().toISOString().slice(0,10) }])
+    const payload = { ...form, code: form.code || genCode(form.name, items.map(i=>i.code)) }
+    
+    try {
+      if (editItem) {
+        const res = await api.put(`/admin/config/categories/${editItem.id}`, payload)
+        setItems(p => p.map(r => r.id === editItem.id ? { ...res.data, products: r.products } : r))
+        toast.success('Category updated')
+      } else {
+        const res = await api.post('/admin/config/categories', payload)
+        setItems(p => [{ ...res.data, products: 0 }, ...p])
+        toast.success('Category created')
+      }
+      closeModal()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save category')
     }
-    closeModal()
   }
 
-  function confirmDelete() { setItems(p=>p.filter(r=>r.id!==editItem.id)); closeModal() }
+  async function confirmDelete() { 
+    try {
+      await api.delete(`/admin/config/categories/${editItem.id}`)
+      setItems(p => p.filter(r => r.id !== editItem.id))
+      toast.success('Category deleted')
+      closeModal()
+    } catch (err) {
+      toast.error('Failed to delete category')
+    }
+  }
 
   function handleImport(rows) {
     const existingCodes = items.map(i=>i.code)

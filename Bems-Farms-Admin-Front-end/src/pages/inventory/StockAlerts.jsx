@@ -8,7 +8,7 @@ const SEV_CFG = {
   low:          { label:'Low Stock',    bg:'#fef9c3', color:'#854d0e', icon:'ri-alert-fill',         border:'#f7b84b' },
 }
 
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid #e5e7eb', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'#fff', boxSizing:'border-box' }
+const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid #e5e7eb', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'#fff', color:'#111827', boxSizing:'border-box' }
 const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:13 }
 const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
 const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
@@ -34,7 +34,20 @@ export default function StockAlerts() {
     setLoading(true)
     try {
       const res = await api.get('/admin/inventory/alerts')
-      setAlerts(res.data.alerts || [])
+      
+      const outOfStock = (res.data.out_of_stock || []).map(item => ({
+        ...item,
+        stock_quantity: 0,
+        reorder_level: item.low_stock_threshold || 0
+      }))
+      
+      const lowStock = (res.data.low_stock || []).map(item => ({
+        ...item,
+        stock_quantity: item.stock || 0,
+        reorder_level: item.low_stock_threshold || 0
+      }))
+      
+      setAlerts([...outOfStock, ...lowStock])
     } catch (err) { toast.error(err.response?.data?.message || 'Failed to load alerts') }
     finally { setLoading(false) }
   }, [])

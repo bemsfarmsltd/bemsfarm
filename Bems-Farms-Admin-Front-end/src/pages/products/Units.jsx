@@ -1,19 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 
-const MOCK = [
-  { id:1,  name:'Kilogram',   short:'kg',    type:'weight',  step:0.5, status:'active',  products:18, created:'2026-01-10' },
-  { id:2,  name:'Gram',       short:'g',     type:'weight',  step:100, status:'active',  products:6,  created:'2026-01-10' },
-  { id:3,  name:'Litre',      short:'L',     type:'volume',  step:1,   status:'active',  products:7,  created:'2026-01-12' },
-  { id:4,  name:'Millilitre', short:'mL',    type:'volume',  step:250, status:'active',  products:4,  created:'2026-01-12' },
-  { id:5,  name:'Piece',      short:'pc',    type:'count',   step:1,   status:'active',  products:14, created:'2026-01-15' },
-  { id:6,  name:'Pack',       short:'pack',  type:'count',   step:1,   status:'active',  products:9,  created:'2026-01-15' },
-  { id:7,  name:'Bunch',      short:'bunch', type:'count',   step:1,   status:'active',  products:5,  created:'2026-01-20' },
-  { id:8,  name:'Crate',      short:'crate', type:'count',   step:1,   status:'active',  products:3,  created:'2026-01-20' },
-  { id:9,  name:'Bag',        short:'bag',   type:'count',   step:1,   status:'active',  products:8,  created:'2026-02-01' },
-  { id:10, name:'Dozen',      short:'doz',   type:'count',   step:1,   status:'active',  products:2,  created:'2026-02-05' },
-  { id:11, name:'Tray',       short:'tray',  type:'count',   step:1,   status:'active',  products:4,  created:'2026-02-10' },
-  { id:12, name:'Bottle',     short:'btl',   type:'count',   step:1,   status:'inactive',products:1,  created:'2026-02-15' },
-]
+import api from '../../lib/api'
+import toast from 'react-hot-toast'
 const BLANK = { name:'', short:'', type:'count', step:1, status:'active' }
 
 const TYPES = ['weight','volume','count']
@@ -29,13 +17,26 @@ const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px soli
 const TYPE_COLOR = { weight:'#0ab39c', volume:'#299cdb', count:'#a78bfa' }
 
 export default function Units() {
-  const [items, setItems]             = useState(MOCK)
+  const [items, setItems]             = useState([])
   const [search, setSearch]           = useState('')
   const [filterType, setFilterType]   = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [activeModal, setActiveModal] = useState(null)
   const [editItem, setEditItem]       = useState(null)
   const [form, setForm]               = useState(BLANK)
+
+  const fetchItems = async () => {
+    try {
+      const res = await api.get('/admin/config/units')
+      setItems(res.data.units)
+    } catch (err) {
+      toast.error('Failed to load units')
+    }
+  }
+
+  useEffect(() => {
+    fetchItems()
+  }, [])
 
   const filtered = useMemo(() => items.filter(r => {
     const m = r.name.toLowerCase().includes(search.toLowerCase()) || r.short.toLowerCase().includes(search.toLowerCase())
@@ -54,17 +55,34 @@ export default function Units() {
   function openDelete(r) { setEditItem(r); setActiveModal('delete') }
   function closeModal() { setActiveModal(null); setEditItem(null) }
 
-  function saveForm(e) {
+  async function saveForm(e) {
     e.preventDefault()
-    if (editItem) {
-      setItems(p=>p.map(r=>r.id===editItem.id?{...r,...form}:r))
-    } else {
-      setItems(p=>[...p,{ id:Math.max(...p.map(r=>r.id))+1,...form,products:0,created:new Date().toISOString().slice(0,10) }])
+    try {
+      if (editItem) {
+        const res = await api.put(`/admin/config/units/${editItem.id}`, form)
+        setItems(p=>p.map(r=>r.id===editItem.id?{...res.data, products: r.products}:r))
+        toast.success('Unit updated')
+      } else {
+        const res = await api.post('/admin/config/units', form)
+        setItems(p=>[{...res.data, products:0}, ...p])
+        toast.success('Unit created')
+      }
+      closeModal()
+    } catch (err) {
+      toast.error('Failed to save unit')
     }
-    closeModal()
   }
 
-  function confirmDelete() { setItems(p=>p.filter(r=>r.id!==editItem.id)); closeModal() }
+  async function confirmDelete() { 
+    try {
+      await api.delete(`/admin/config/units/${editItem.id}`)
+      setItems(p=>p.filter(r=>r.id!==editItem.id))
+      toast.success('Unit deleted')
+      closeModal()
+    } catch (err) {
+      toast.error('Failed to delete')
+    }
+  }
 
   const B = '#e5e7eb', S = '#6b7280'
 

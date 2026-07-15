@@ -128,8 +128,8 @@ router.get("/", async (req, res) => {
       where.push(`p.category_id = $${params.length}`);
     }
     if (stock_status === "out")   where.push("p.stock = 0");
-    if (stock_status === "low")   where.push("p.stock > 0 AND p.stock <= p.low_stock_threshold");
-    if (stock_status === "ok")    where.push("p.stock > p.low_stock_threshold");
+    if (stock_status === "low")   where.push("p.stock > 0 AND p.stock <= COALESCE(p.low_stock_threshold, 0)");
+    if (stock_status === "ok")    where.push("p.stock > COALESCE(p.low_stock_threshold, 0)");
 
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
 
@@ -150,8 +150,8 @@ router.get("/", async (req, res) => {
         ''       AS brand,
         COALESCE(p.unit, '')               AS unit,
         CASE
-          WHEN p.stock = 0                         THEN 'out_of_stock'
-          WHEN p.stock <= p.low_stock_threshold    THEN 'low'
+          WHEN p.stock = 0                                       THEN 'out_of_stock'
+          WHEN p.stock <= COALESCE(p.low_stock_threshold, 0)     THEN 'low'
           ELSE 'in_stock'
         END AS stock_status,
         p.stock * COALESCE(p.unit_price, p.price, 0) AS stock_value
@@ -167,7 +167,7 @@ router.get("/", async (req, res) => {
       SELECT
         COUNT(*)                                               AS total_skus,
         COUNT(*) FILTER (WHERE stock = 0)                     AS out_of_stock,
-        COUNT(*) FILTER (WHERE stock > 0 AND stock <= low_stock_threshold) AS low_stock,
+        COUNT(*) FILTER (WHERE stock > 0 AND stock <= COALESCE(low_stock_threshold, 0)) AS low_stock,
         COALESCE(SUM(stock * COALESCE(unit_price, price, 0)), 0) AS total_value
       FROM products
       WHERE status != 'archived'
@@ -197,7 +197,7 @@ router.get("/alerts", async (req, res) => {
                cat.name AS category, p.image_url
         FROM products p
         LEFT JOIN categories cat ON p.category_id = cat.id
-        WHERE p.stock > 0 AND p.stock <= p.low_stock_threshold
+        WHERE p.stock > 0 AND p.stock <= COALESCE(p.low_stock_threshold, 0)
           AND p.status = 'active'
         ORDER BY (p.stock::float / NULLIF(p.low_stock_threshold,0)) ASC
       `),

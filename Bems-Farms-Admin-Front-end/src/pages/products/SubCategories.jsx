@@ -1,14 +1,11 @@
 import { useState, useMemo, useEffect } from 'react'
 import ImportModal from '../../components/ImportModal'
 
-const CATEGORIES = [
-  { id:1, name:'Meals' }, { id:2, name:'Seafood' }, { id:3, name:'Meat' },
-  { id:4, name:'Grains & Carbs' }, { id:5, name:'Vegetables' },
-  { id:6, name:'Dairy & Eggs' }, { id:7, name:'Beverages' }, { id:8, name:'Fresh Farm' },
-]
+import api from '../../lib/api'
+import toast from 'react-hot-toast'
 
 function genSubCode(name, categoryName, existingCodes=[]) {
-  const catSlug = categoryName.replace(/[^A-Za-z]/g,'').toUpperCase().slice(0,3).padEnd(3,'X')
+  const catSlug = (categoryName || '').replace(/[^A-Za-z]/g,'').toUpperCase().slice(0,3).padEnd(3,'X')
   const nameSlug = name.trim().toUpperCase().replace(/[^A-Z]/g,'').slice(0,3).padEnd(3,'X')
   let n=1, code
   do { code=`${catSlug}-${nameSlug}-${String(n).padStart(3,'0')}`; n++ }
@@ -22,21 +19,7 @@ const IMPORT_FIELDS = [
   { key:'status', label:'Status',          required:false },
 ]
 
-const MOCK = [
-  { id:1,  name:'Grilled Fish',    parent:'Meals',         code:'MEA-GRI-001', status:'active',   created:'2026-01-15', showPOS:true  },
-  { id:2,  name:'Rice Dishes',     parent:'Meals',         code:'MEA-RIC-001', status:'active',   created:'2026-01-15', showPOS:true  },
-  { id:3,  name:'Fresh Catfish',   parent:'Seafood',       code:'SEA-CAT-001', status:'active',   created:'2026-01-16', showPOS:true  },
-  { id:4,  name:'Smoked Fish',     parent:'Seafood',       code:'SEA-SMO-001', status:'active',   created:'2026-01-16', showPOS:false },
-  { id:5,  name:'Chicken',         parent:'Meat',          code:'MEA-CHI-001', status:'active',   created:'2026-01-17', showPOS:true  },
-  { id:6,  name:'Beef',            parent:'Meat',          code:'MEA-BEE-001', status:'active',   created:'2026-01-17', showPOS:true  },
-  { id:7,  name:'Long Grain Rice', parent:'Grains & Carbs',code:'GRA-LON-001', status:'active',   created:'2026-01-18', showPOS:true  },
-  { id:8,  name:'Cassava Products',parent:'Grains & Carbs',code:'GRA-CAS-001', status:'active',   created:'2026-01-18', showPOS:false },
-  { id:9,  name:'Leafy Greens',    parent:'Vegetables',    code:'VEG-LEA-001', status:'active',   created:'2026-01-20', showPOS:true  },
-  { id:10, name:'Root Vegetables', parent:'Vegetables',    code:'VEG-ROO-001', status:'inactive', created:'2026-01-20', showPOS:false },
-  { id:11, name:'Fresh Milk',      parent:'Dairy & Eggs',  code:'DAI-FRE-001', status:'active',   created:'2026-01-22', showPOS:true  },
-  { id:12, name:'Farm Eggs',       parent:'Dairy & Eggs',  code:'DAI-FAR-001', status:'active',   created:'2026-01-22', showPOS:true  },
-]
-const BLANK = { name:'', parent:'', code:'', status:'active', showPOS:true }
+const BLANK = { name:'', category_id:'', code:'', status:'active', showPOS:true }
 
 const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
 const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:5 }
@@ -47,7 +30,8 @@ const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',te
 const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
 
 export default function SubCategories() {
-  const [items, setItems]               = useState(MOCK)
+  const [items, setItems]               = useState([])
+  const [categories, setCategories]     = useState([])
   const [search, setSearch]             = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterCat, setFilterCat]       = useState('all')
@@ -55,17 +39,35 @@ export default function SubCategories() {
   const [editItem, setEditItem]         = useState(null)
   const [form, setForm]                 = useState(BLANK)
 
-  useEffect(() => {
-    if (!editItem && form.name.trim() && form.parent) {
-      setForm(f => ({ ...f, code: genSubCode(f.name, f.parent, items.map(i=>i.code)) }))
+  const fetchData = async () => {
+    try {
+      const [subRes, catRes] = await Promise.all([
+        api.get('/admin/config/subcategories'),
+        api.get('/admin/config/categories')
+      ])
+      setItems(subRes.data.subcategories)
+      setCategories(catRes.data.categories)
+    } catch (err) {
+      toast.error('Failed to load data')
     }
-  }, [form.name, form.parent]) // eslint-disable-line
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  useEffect(() => {
+    if (!editItem && form.name.trim() && form.category_id) {
+      const cat = categories.find(c => c.id === parseInt(form.category_id))
+      setForm(f => ({ ...f, code: genSubCode(f.name, cat?.name || '', items.map(i=>i.code)) }))
+    }
+  }, [form.name, form.category_id]) // eslint-disable-line
 
   const filtered = useMemo(() => items.filter(r => {
     const m = r.name.toLowerCase().includes(search.toLowerCase()) ||
               r.code.toLowerCase().includes(search.toLowerCase()) ||
-              r.parent.toLowerCase().includes(search.toLowerCase())
-    return m && (filterStatus==='all'||r.status===filterStatus) && (filterCat==='all'||r.parent===filterCat)
+              (r.category_name || '').toLowerCase().includes(search.toLowerCase())
+    return m && (filterStatus==='all'||r.status===filterStatus) && (filterCat==='all'||String(r.category_id)===String(filterCat))
   }), [items, search, filterStatus, filterCat])
 
   const stats = useMemo(() => ({
@@ -80,18 +82,37 @@ export default function SubCategories() {
   function openDelete(r) { setEditItem(r); setActiveModal('delete') }
   function closeModal() { setActiveModal(null); setEditItem(null) }
 
-  function saveForm(e) {
+  async function saveForm(e) {
     e.preventDefault()
-    if (editItem) {
-      setItems(p=>p.map(r=>r.id===editItem.id?{...r,...form}:r))
-    } else {
-      const code = form.code||genSubCode(form.name,form.parent,items.map(i=>i.code))
-      setItems(p=>[...p,{ id:Math.max(...p.map(r=>r.id))+1,...form,code,created:new Date().toISOString().slice(0,10) }])
+    const cat = categories.find(c => c.id === parseInt(form.category_id))
+    const payload = { ...form, code: form.code || genSubCode(form.name, cat?.name || '', items.map(i=>i.code)) }
+
+    try {
+      if (editItem) {
+        const res = await api.put(`/admin/config/subcategories/${editItem.id}`, payload)
+        setItems(p => p.map(r => r.id === editItem.id ? { ...res.data, category_name: cat?.name } : r))
+        toast.success('Sub-Category updated')
+      } else {
+        const res = await api.post('/admin/config/subcategories', payload)
+        setItems(p => [{ ...res.data, category_name: cat?.name }, ...p])
+        toast.success('Sub-Category created')
+      }
+      closeModal()
+    } catch (err) {
+      toast.error('Failed to save subcategory')
     }
-    closeModal()
   }
 
-  function confirmDelete() { setItems(p=>p.filter(r=>r.id!==editItem.id)); closeModal() }
+  async function confirmDelete() { 
+    try {
+      await api.delete(`/admin/config/subcategories/${editItem.id}`)
+      setItems(p => p.filter(r => r.id !== editItem.id))
+      toast.success('Sub-Category deleted')
+      closeModal()
+    } catch (err) {
+      toast.error('Failed to delete')
+    }
+  }
 
   function handleImport(rows) {
     const existingCodes = items.map(i=>i.code)
@@ -148,7 +169,7 @@ export default function SubCategories() {
           </div>
           <select style={{ ...inp,width:'auto' }} value={filterCat} onChange={e=>setFilterCat(e.target.value)}>
             <option value="all">All Categories</option>
-            {CATEGORIES.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+            {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <select style={{ ...inp,width:'auto' }} value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
             <option value="all">All Status</option>
@@ -173,7 +194,7 @@ export default function SubCategories() {
               {filtered.map(r=>(
                 <tr key={r.id}>
                   <td style={{ ...TD,fontWeight:600 }}>{r.name}</td>
-                  <td style={TD}><span style={{ background:'#f3f4f6',color:'#374151',borderRadius:20,padding:'2px 10px',fontSize:11,fontWeight:500 }}>{r.parent}</span></td>
+                  <td style={TD}><span style={{ background:'#f3f4f6',color:'#374151',borderRadius:20,padding:'2px 10px',fontSize:11,fontWeight:500 }}>{r.category_name || '—'}</span></td>
                   <td style={TD}><code style={{ fontSize:11,background:'#f3f4f6',padding:'2px 6px',borderRadius:4,color:'#374151' }}>{r.code}</code></td>
                   <td style={TD}>
                     {r.showPOS
@@ -223,9 +244,9 @@ export default function SubCategories() {
                 </div>
                 <div style={{ marginBottom:14 }}>
                   <label style={LBL}>Parent Category <span style={{ color:'#f06548' }}>*</span></label>
-                  <select style={inp} required value={form.parent} onChange={e=>setForm(f=>({...f,parent:e.target.value}))}>
+                  <select style={inp} required value={form.category_id} onChange={e=>setForm(f=>({...f,category_id:e.target.value}))}>
                     <option value="">— Select Category —</option>
-                    {CATEGORIES.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+                    {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div style={{ marginBottom:14 }}>
