@@ -692,7 +692,7 @@ router.post("/chef-chat", async (req, res) => {
           userId: user?.id || null,
           email: user?.email || null
         }),
-        signal: AbortSignal.timeout(8000), // Timeout after 8 seconds
+        signal: AbortSignal.timeout(120000), // Timeout after 2 minutes
       });
 
       if (n8nRes.ok) {
