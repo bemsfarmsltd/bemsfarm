@@ -97,7 +97,7 @@ router.get("/", async (req, res) => {
       SELECT
         o.id, o.total, o.status, o.source AS channel, o.payment_method,
         o.delivery_fee, o.discount_amount, o.created_at, o.notes,
-        o.address, o.delivery_address,
+        o.address, o.delivery_city,
         COALESCE(o.customer_name, c.name, 'Walk-in') AS customer_name,
         COALESCE(o.customer_phone, c.phone, '')       AS customer_phone,
         c.email AS customer_email,

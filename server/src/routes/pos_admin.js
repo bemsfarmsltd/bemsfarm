@@ -468,15 +468,15 @@ router.get("/receipts", requireRole("superadmin","manager","admin","cashier","ac
                 COUNT(oi.id) AS items_count
          FROM orders o
          LEFT JOIN users u ON u.id = o.created_by
-         LEFT JOIN pos_transactions pt ON pt.used_for_order_id = o.id
-         LEFT JOIN order_items oi ON oi.order_id = o.id
+         LEFT JOIN pos_transactions pt ON pt.used_for_order_id::text = o.id::text
+         LEFT JOIN order_items oi ON oi.order_id::text = o.id::text
          ${clause}
          GROUP BY o.id, u.name, u.id, pt.transaction_id
          ORDER BY o.created_at DESC
          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, parseInt(limit), offset]
       ),
-      pool.query(`SELECT COUNT(*) FROM orders o LEFT JOIN users u ON u.id = o.created_by LEFT JOIN pos_transactions pt ON pt.used_for_order_id = o.id ${clause}`, params),
+      pool.query(`SELECT COUNT(*) FROM orders o LEFT JOIN users u ON u.id = o.created_by LEFT JOIN pos_transactions pt ON pt.used_for_order_id::text = o.id::text ${clause}`, params),
       pool.query(
         `SELECT
            COUNT(*) AS total_count,
