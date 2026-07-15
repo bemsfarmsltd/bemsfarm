@@ -110,32 +110,38 @@ const couponsAdminRoutes    = require("./routes/coupons_admin");
 const posAdminRoutes        = require("./routes/pos_admin");
 const chefBemsAdminRoutes   = require("./routes/chef_bems_admin");
 const paymentsAdminRoutes   = require("./routes/payments_admin");
+const configAdminRoutes     = require("./routes/config_admin");
 
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/orders", paymentLimiter, ordersRoutes);
 app.use("/api/products", productsRoutes);
 app.use("/api/categories", categoriesRoutes);
-app.use("/api/admin", adminRoutes);
 app.use("/api/ai", aiLimiter, aiRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+
+// Specific admin routes MUST come before the generic /api/admin route
 app.use("/api/admin/products", productsAdminRoutes);
 app.use("/api/admin/orders", ordersAdminRoutes);
 app.use("/api/admin/customers", customersAdminRoutes);
 app.use("/api/admin/deliveries", deliveriesAdminRoutes);
 app.use("/api/admin/delivery-zones", deliveriesAdminRoutes);
 app.use("/api/admin/inventory", inventoryAdminRoutes);
+app.use("/api/admin/config", configAdminRoutes);
 app.use("/api/admin/staff",     staffAdminRoutes);
 app.use("/api/admin/accounts",  accountsAdminRoutes);
 app.use("/api/admin/suppliers", suppliersAdminRoutes);
 app.use("/api/admin/purchases", purchasesAdminRoutes);
 app.use("/api/admin/reports",   reportsAdminRoutes);
-app.use("/api/ai/context",      aiContextRoutes);
 app.use("/api/admin/stores",    storesAdminRoutes);
 app.use("/api/admin/settings",  settingsAdminRoutes);
 app.use("/api/admin/coupons",   couponsAdminRoutes);
 app.use("/api/admin/pos",       posAdminRoutes);
 app.use("/api/admin/chef-bems", chefBemsAdminRoutes);
 app.use("/api/admin/payments",  paymentsAdminRoutes);
+
+// Legacy fallback admin route
+app.use("/api/admin", adminRoutes);
+app.use("/api/ai/context",      aiContextRoutes);
 app.use("/api/cart",            cartRoutes);
 app.use("/api", miscRoutes);
 app.use("/api/advanced-ai", aiLimiter, advancedAiRoutes);

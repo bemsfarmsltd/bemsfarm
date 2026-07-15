@@ -1,13 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 
-const MOCK_POLICIES = [
-  { id:1,  name:'Fresh Produce Guarantee', type:'freshness', days:3,   products:24, description:'All fresh produce guaranteed fresh for 3 days or we replace it.',         status:'active',   created:'2026-01-10' },
-  { id:2,  name:'Meat Quality Assurance',  type:'quality',   days:2,   products:12, description:'Meat products guaranteed for quality and freshness within 2 days.',       status:'active',   created:'2026-01-15' },
-  { id:3,  name:'Seafood Freshness',       type:'freshness', days:1,   products:9,  description:'All seafood guaranteed fresh day of delivery. Next-day replacement.',     status:'active',   created:'2026-01-15' },
-  { id:4,  name:'Dairy Shelf Life',        type:'shelf_life',days:7,   products:6,  description:'Dairy products guaranteed to last at least 7 days from delivery.',        status:'active',   created:'2026-01-20' },
-  { id:5,  name:'Packaged Goods',          type:'seal',      days:30,  products:15, description:'All sealed packaged goods covered for 30 days if seal is intact.',        status:'active',   created:'2026-02-01' },
-  { id:6,  name:'Premium Farm Bundle',     type:'quality',   days:5,   products:8,  description:'Bems Farms premium bundle — quality guaranteed for 5 days.',             status:'inactive', created:'2026-02-10' },
-]
+import api from '../../lib/api'
+import toast from 'react-hot-toast'
 
 const MOCK_CLAIMS = [
   { id:1,  order:'#ORD-2026-0412', customer:'Amaka O.',   product:'Catfish (Fresh)',    policy:'Seafood Freshness',       issue:'Fish had off smell on arrival',    status:'approved',  date:'2026-04-12', resolution:'Replaced with fresh batch' },
@@ -39,7 +33,7 @@ const TYPE_COLOR = { freshness:'#0ab39c', quality:'#405189', shelf_life:'#299cdb
 
 export default function Warranty() {
   const [tab, setTab]                   = useState('policies')
-  const [policies, setPolicies]         = useState(MOCK_POLICIES)
+  const [policies, setPolicies]         = useState([])
   const [claims, setClaims]             = useState(MOCK_CLAIMS)
   const [search, setSearch]             = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -47,6 +41,21 @@ export default function Warranty() {
   const [editItem, setEditItem]         = useState(null)
   const [viewItem, setViewItem]         = useState(null)
   const [form, setForm]                 = useState(BLANK_POLICY)
+
+  const fetchPolicies = async () => {
+    try {
+      const res = await api.get('/admin/config/warranties')
+      // map duration to days for frontend compatibility
+      const mapped = res.data.warranties.map(p => ({ ...p, days: p.duration }))
+      setPolicies(mapped)
+    } catch (err) {
+      toast.error('Failed to load policies')
+    }
+  }
+
+  useEffect(() => {
+    fetchPolicies()
+  }, [])
 
   const filteredPolicies = useMemo(() => policies.filter(r => {
     const m = r.name.toLowerCase().includes(search.toLowerCase())
@@ -73,17 +82,35 @@ export default function Warranty() {
   function openDelete(r) { setEditItem(r); setActiveModal('delete') }
   function closeModal() { setActiveModal(null); setEditItem(null); setViewItem(null) }
 
-  function saveForm(e) {
+  async function saveForm(e) {
     e.preventDefault()
-    if (editItem) {
-      setPolicies(p=>p.map(r=>r.id===editItem.id?{...r,...form}:r))
-    } else {
-      setPolicies(p=>[...p,{ id:Math.max(...p.map(r=>r.id))+1,...form,created:new Date().toISOString().slice(0,10) }])
+    const payload = { ...form, duration: form.days }
+    try {
+      if (editItem) {
+        const res = await api.put(`/admin/config/warranties/${editItem.id}`, payload)
+        setPolicies(p=>p.map(r=>r.id===editItem.id?{...res.data, days: res.data.duration, products: r.products}:r))
+        toast.success('Policy updated')
+      } else {
+        const res = await api.post('/admin/config/warranties', payload)
+        setPolicies(p=>[{...res.data, days: res.data.duration, products: 0}, ...p])
+        toast.success('Policy created')
+      }
+      closeModal()
+    } catch (err) {
+      toast.error('Failed to save policy')
     }
-    closeModal()
   }
 
-  function confirmDelete() { setPolicies(p=>p.filter(r=>r.id!==editItem.id)); closeModal() }
+  async function confirmDelete() { 
+    try {
+      await api.delete(`/admin/config/warranties/${editItem.id}`)
+      setPolicies(p=>p.filter(r=>r.id!==editItem.id))
+      toast.success('Policy deleted')
+      closeModal()
+    } catch (err) {
+      toast.error('Failed to delete policy')
+    }
+  }
 
   function approveClaim(id) { setClaims(p=>p.map(c=>c.id===id?{...c,status:'approved',resolution:'Approved by admin'}:c)) }
   function rejectClaim(id)  { setClaims(p=>p.map(c=>c.id===id?{...c,status:'rejected',resolution:'Rejected by admin'}:c)) }

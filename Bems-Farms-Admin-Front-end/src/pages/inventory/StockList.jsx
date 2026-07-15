@@ -15,7 +15,7 @@ const UNITS = ['kg','g','litre','ml','pack','piece','bunch','bag','crate','tuber
 const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
 const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
 const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid #f3f4f6', fontSize:13, color:'#111827' }
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid #e5e7eb', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'#fff', boxSizing:'border-box' }
+const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid #e5e7eb', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'#fff', color:'#111827', boxSizing:'border-box' }
 
 export default function StockList() {
   const [products,    setProducts]  = useState([])
@@ -27,20 +27,20 @@ export default function StockList() {
   const [warehouses,  setWarehouses]= useState([])
   const [filterCat,   setFilterCat] = useState('')
   const [filterWH,    setFilterWH]  = useState('')
-  const [lowStock,    setLowStock]  = useState(false)
+  const [stockStatus, setStockStatus] = useState('')
   const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
       const params = { page, limit:20, search }
       if (filterCat)        params.category_id  = filterCat
       if (filterWH)         params.warehouse_id = filterWH
-      if (lowStock)         params.low_stock    = true
+      if (stockStatus)      params.stock_status = stockStatus
       const res = await api.get('/admin/inventory', { params })
       setProducts(res.data.products || [])
       setMeta({ total: res.data.total || 0, pages: res.data.pages || 1 })
     } catch (err) { toast.error(err.response?.data?.message || 'Failed to load products') }
     finally { setLoading(false) }
-  }, [page, search, filterCat, filterWH, lowStock])
+  }, [page, search, filterCat, filterWH, stockStatus])
 
   const fetchMeta = useCallback(async () => {
     try {
@@ -57,24 +57,24 @@ export default function StockList() {
   useEffect(() => { fetchProducts() }, [fetchProducts])
 
   // Debounce search: reset page to 1 on search change
-  useEffect(() => { setPage(1) }, [search, filterCat, filterWH, lowStock])
+  useEffect(() => { setPage(1) }, [search, filterCat, filterWH, stockStatus])
 
   const totals = {
     all: meta.total,
-    low: products.filter(p => p.stock_quantity < p.reorder_level).length,
-    out: products.filter(p => p.stock_quantity === 0).length,
+    low: products.filter(p => p.stock > 0 && p.stock <= (p.low_stock_threshold || 0)).length,
+    out: products.filter(p => p.stock === 0).length,
   }
 
   function stockColor(p) {
-    if (p.stock_quantity === 0) return '#f06548'
-    if (p.stock_quantity < p.reorder_level) return '#f7b84b'
+    if (p.stock === 0) return '#f06548'
+    if (p.stock <= (p.low_stock_threshold || 0)) return '#f7b84b'
     return '#0ab39c'
   }
 
   function getStatusCfg(p) {
-    if (p.stock_quantity === 0) return STATUS_CFG.out_of_stock
-    if (p.stock_quantity < p.reorder_level) return STATUS_CFG.low_stock
-    return STATUS_CFG[p.status] || STATUS_CFG.in_stock
+    if (p.stock === 0) return STATUS_CFG.out_of_stock
+    if (p.stock <= (p.low_stock_threshold || 0)) return STATUS_CFG.low_stock
+    return STATUS_CFG[p.stock_status] || STATUS_CFG.in_stock
   }
 
   return (
@@ -122,10 +122,12 @@ export default function StockList() {
             <option value="">All Warehouses</option>
             {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
-          <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#374151', cursor:'pointer', userSelect:'none' }}>
-            <input type="checkbox" checked={lowStock} onChange={e => setLowStock(e.target.checked)} style={{ width:14, height:14 }}/>
-            Low Stock Only
-          </label>
+          <select style={{ ...inp, width:'auto', minWidth:140 }} value={stockStatus} onChange={e => setStockStatus(e.target.value)}>
+            <option value="">All Stock Status</option>
+            <option value="ok">In Stock</option>
+            <option value="low">Low Stock</option>
+            <option value="out">Out of Stock</option>
+          </select>
         </div>
 
         <div style={{ overflowX:'auto' }}>
@@ -148,7 +150,7 @@ export default function StockList() {
                 </td></tr>
               ) : products.map(p => {
                 const sc = getStatusCfg(p)
-                const isLow = p.stock_quantity < p.reorder_level
+                const isLow = p.stock > 0 && p.stock <= (p.low_stock_threshold || 0)
                 return (
                   <tr key={p.id}
                     onMouseEnter={e => e.currentTarget.style.background='#fafafa'}
@@ -167,15 +169,15 @@ export default function StockList() {
                     <td style={TD}><span style={{ background:'#f9fafb', color:'#374151', border:'1px solid #e5e7eb', borderRadius:50, padding:'3px 10px', fontSize:11, fontWeight:600 }}>{p.category_name || '—'}</span></td>
                     <td style={TD}>{p.warehouse_name || '—'}</td>
                     <td style={TD}>
-                      <span style={{ fontWeight:700, color:stockColor(p) }}>{p.stock_quantity}</span>
-                      {isLow && p.stock_quantity > 0 && (
+                      <span style={{ fontWeight:700, color:stockColor(p) }}>{p.stock}</span>
+                      {isLow && p.stock > 0 && (
                         <span style={{ marginLeft:6, fontSize:10, background:'#fef9c3', color:'#854d0e', borderRadius:4, padding:'1px 5px', fontWeight:700 }}>LOW</span>
                       )}
-                      {p.stock_quantity === 0 && (
+                      {p.stock === 0 && (
                         <span style={{ marginLeft:6, fontSize:10, background:'#fee2e2', color:'#991b1b', borderRadius:4, padding:'1px 5px', fontWeight:700 }}>OUT</span>
                       )}
                     </td>
-                    <td style={{ ...TD, color:'#6b7280' }}>{p.reorder_level}</td>
+                    <td style={{ ...TD, color:'#6b7280' }}>{p.low_stock_threshold || 0}</td>
                     <td style={TD}>₦{Number(p.unit_price || 0).toLocaleString()}</td>
                     <td style={TD}><span style={{ background:sc.bg, color:sc.color, borderRadius:50, padding:'3px 10px', fontSize:11, fontWeight:700 }}>{sc.label}</span></td>
                   </tr>

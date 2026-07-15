@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import api from '../../lib/api'
+import toast from 'react-hot-toast'
 
 const STATUS_CFG = {
   draft:     { label:'Draft',     color:'#6b7280', bg:'#f3f4f6', icon:'ri-draft-line'          },
@@ -46,18 +48,7 @@ const PRODUCTS_CATALOG = [
 
 const p = (id, qty) => { const prod=PRODUCTS_CATALOG.find(x=>x.id===id); return { ...prod, qty, total:prod.price*qty } }
 
-const INVOICES_INIT = [
-  { id:'INV-2026-0142', orderId:'ORD-2026-0142', date:'2026-06-27', dueDate:'2026-07-04', issuedDate:'2026-06-27', status:'paid', channel:'online', customer:CUSTOMERS[0], items:[p(1,5),p(11,3),p(3,2)], deliveryFee:800, discount:0, notes:'', paidDate:'2026-06-27', paymentRef:'PST-9938422', paymentMethod:'Paystack', source:'auto' },
-  { id:'INV-2026-0141', orderId:'ORD-2026-0141', date:'2026-06-27', dueDate:'2026-07-04', issuedDate:'2026-06-27', status:'paid', channel:'chef_bems', customer:CUSTOMERS[1], items:[p(1,8),p(2,4),p(6,3),p(5,5)], deliveryFee:1200, discount:0, notes:'Jollof rice party for 25 people — Nancy AI order', paidDate:'2026-06-27', paymentRef:'PST-9937100', paymentMethod:'Paystack', source:'auto' },
-  { id:'INV-2026-0140', orderId:'ORD-2026-0140', date:'2026-06-27', dueDate:'2026-07-04', issuedDate:'2026-06-27', status:'paid', channel:'mobile_app', customer:CUSTOMERS[2], items:[p(4,4),p(7,2),p(10,2)], deliveryFee:600, discount:0, notes:'', paidDate:'2026-06-27', paymentRef:'PST-9936700', paymentMethod:'Paystack', source:'auto' },
-  { id:'INV-2026-0139', orderId:'ORD-2026-0139', date:'2026-06-26', dueDate:'2026-07-03', issuedDate:'2026-06-26', status:'paid', channel:'online', customer:CUSTOMERS[3], items:[p(8,1),p(9,1),p(12,6)], deliveryFee:1500, discount:0, notes:'', paidDate:'2026-06-26', paymentRef:'PST-9935001', paymentMethod:'Paystack', source:'auto' },
-  { id:'INV-2026-0135', orderId:'ORD-2026-0135', date:'2026-06-25', dueDate:'2026-07-02', issuedDate:'2026-06-25', status:'paid', channel:'chef_bems', customer:CUSTOMERS[7], items:[p(8,2),p(9,2),p(4,6)], deliveryFee:1000, discount:0, notes:'Soup base ingredients — Nancy AI order', paidDate:'2026-06-25', paymentRef:'PST-9920081', paymentMethod:'Paystack', source:'auto' },
-  { id:'INV-2026-0131', orderId:'ORD-2026-0131', date:'2026-06-24', dueDate:'2026-07-01', issuedDate:'2026-06-24', status:'paid', channel:'chef_bems', customer:CUSTOMERS[6], items:[p(1,10),p(2,5),p(3,3),p(11,4)], deliveryFee:1500, discount:2000, notes:'Egusi soup for 30 people — Nancy AI order. 5% loyalty discount applied.', paidDate:'2026-06-24', paymentRef:'PST-9910022', paymentMethod:'Paystack', source:'auto' },
-  { id:'INV-2026-0128', orderId:null, date:'2026-06-23', dueDate:'2026-06-30', issuedDate:'2026-06-23', status:'overdue', channel:'manual', customer:CUSTOMERS[9], items:[p(1,20),p(2,10),p(3,5),p(11,8),p(10,5)], deliveryFee:3000, discount:5000, notes:'Corporate bulk order for Mega Catering Ltd. Net 7 payment terms.', paidDate:null, paymentRef:null, paymentMethod:'Bank Transfer', source:'manual' },
-  { id:'INV-2026-0125', orderId:null, date:'2026-06-20', dueDate:'2026-06-27', issuedDate:'2026-06-20', status:'sent', channel:'manual', customer:CUSTOMERS[4], items:[p(1,3),p(2,2),p(6,4)], deliveryFee:800, discount:0, notes:'Manual invoice for recurring customer.', paidDate:null, paymentRef:null, paymentMethod:'Bank Transfer', source:'manual' },
-  { id:'INV-2026-0120', orderId:null, date:'2026-06-18', dueDate:'2026-06-25', issuedDate:'2026-06-18', status:'draft', channel:'manual', customer:CUSTOMERS[8], items:[p(7,4),p(6,3),p(4,5)], deliveryFee:600, discount:0, notes:'Draft — pending customer confirmation.', paidDate:null, paymentRef:null, paymentMethod:'Cash', source:'manual' },
-  { id:'INV-2026-0115', orderId:null, date:'2026-06-15', dueDate:'2026-06-22', issuedDate:'2026-06-15', status:'cancelled', channel:'manual', customer:CUSTOMERS[5], items:[p(1,5),p(3,2)], deliveryFee:700, discount:0, notes:'Customer cancelled order before delivery.', paidDate:null, paymentRef:null, paymentMethod:'Paystack', source:'manual' },
-]
+const INVOICES_INIT = []
 
 const fmt       = (n) => `₦${Number(n).toLocaleString()}`
 const calcSub   = (items) => items.reduce((s,i)=>s+i.total,0)
@@ -88,13 +79,25 @@ function Modal({ title, onClose, children, maxWidth=600 }) {
 }
 
 export default function Invoices() {
-  const [invoices,setInvoices]           = useState(INVOICES_INIT)
+  const [invoices,setInvoices]           = useState([])
   const [search,setSearch]               = useState('')
   const [filterStatus,setFilterStatus]   = useState('all')
   const [activeModal,setActiveModal]     = useState(null)
   const [selected,setSelected]           = useState(null)
   const [form,setForm]                   = useState(BLANK_FORM)
   const [markPaidRef,setMarkPaidRef]     = useState('')
+  const [loading, setLoading]            = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/orders/invoices', { params: { search, status: filterStatus } })
+      setInvoices(res.data.invoices)
+    } catch { toast.error('Failed to load invoices') }
+    finally { setLoading(false) }
+  }, [search, filterStatus])
+
+  useEffect(() => { load() }, [load])
 
   const openModal  = (type,inv) => { setSelected(inv); setActiveModal(type); setMarkPaidRef('') }
   const closeModal = () => { setActiveModal(null); setSelected(null) }
@@ -104,20 +107,11 @@ export default function Invoices() {
     paid:              invoices.filter(i=>i.status==='paid').length,
     outstanding:       invoices.filter(i=>['sent','draft'].includes(i.status)).length,
     overdue:           invoices.filter(i=>i.status==='overdue').length,
-    revenue:           invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+calcTotal(i.items,i.deliveryFee,i.discount),0),
-    outstanding_value: invoices.filter(i=>['sent','overdue'].includes(i.status)).reduce((s,i)=>s+calcTotal(i.items,i.deliveryFee,i.discount),0),
+    revenue:           invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+Number(i.amount||0),0),
+    outstanding_value: invoices.filter(i=>['sent','overdue'].includes(i.status)).reduce((s,i)=>s+Number(i.amount||0),0),
   }),[invoices])
 
-  const filtered = useMemo(()=>{
-    const q=search.toLowerCase()
-    return invoices
-      .filter(i=>{
-        const okStatus=filterStatus==='all'||i.status===filterStatus
-        const okSearch=!q||i.id.toLowerCase().includes(q)||i.customer.name.toLowerCase().includes(q)||(i.orderId||'').toLowerCase().includes(q)
-        return okStatus&&okSearch
-      })
-      .sort((a,b)=>new Date(b.date)-new Date(a.date))
-  },[invoices,search,filterStatus])
+  const filtered = useMemo(() => invoices.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)), [invoices])
 
   const setField = (f,v) => setForm(p=>({...p,[f]:v}))
 
@@ -138,22 +132,22 @@ export default function Invoices() {
 
   const formTotal = calcTotal(form.items,form.deliveryFee,form.discount)
 
-  const createInvoice = (asDraft) => {
-    const customer=form.customer
-      ? CUSTOMERS.find(c=>c.name===form.customer)||CUSTOMERS[0]
-      : { name:form.customName,phone:form.customPhone,email:form.customEmail,address:form.customAddress }
-    const now=new Date(), id=`INV-2026-${String(invoices.length+200).padStart(4,'0')}`, today=now.toISOString().slice(0,10)
-    setInvoices(prev=>[{ id,orderId:null,date:today,dueDate:form.dueDate||new Date(now.getTime()+7*86400000).toISOString().slice(0,10),issuedDate:today,status:asDraft?'draft':'sent',channel:'manual',customer,items:form.items.filter(i=>i.name&&i.qty&&i.price),deliveryFee:Number(form.deliveryFee||0),discount:Number(form.discount||0),notes:form.notes,paidDate:null,paymentRef:null,paymentMethod:form.paymentMethod,source:'manual' },...prev])
-    setForm(BLANK_FORM); closeModal()
+  const createInvoice = async (asDraft) => {
+    toast.error("Not implemented: manual invoice creation via UI");
+    setForm(BLANK_FORM); closeModal();
   }
 
-  const markAsPaid = ()=>{
-    setInvoices(prev=>prev.map(i=>i.id!==selected.id?i:{ ...i,status:'paid',paidDate:new Date().toISOString().slice(0,10),paymentRef:markPaidRef||'Manual' }))
-    closeModal()
+  const updateStatus = async (status, notes) => {
+    try {
+      await api.patch(`/admin/orders/invoices/${selected.id}/status`, { status, notes })
+      toast.success("Status updated")
+      closeModal(); load()
+    } catch { toast.error("Failed to update status") }
   }
 
-  const sendInvoice   = ()=>{ setInvoices(prev=>prev.map(i=>i.id!==selected.id?i:{...i,status:'sent'})); closeModal() }
-  const cancelInvoice = ()=>{ setInvoices(prev=>prev.map(i=>i.id!==selected.id?i:{...i,status:'cancelled'})); closeModal() }
+  const markAsPaid = ()=>updateStatus('paid', markPaidRef||'Manual')
+  const sendInvoice   = ()=>updateStatus('sent')
+  const cancelInvoice = ()=>updateStatus('cancelled')
 
   const STATUS_TABS = [{ key:'all',label:'All Invoices' },...Object.entries(STATUS_CFG).map(([k,v])=>({ key:k,label:v.label }))]
 
@@ -234,35 +228,37 @@ export default function Invoices() {
                 </td></tr>
               )}
               {filtered.map(inv=>{
-                const cfg=STATUS_CFG[inv.status], chCfg=CHANNEL_CFG[inv.channel]
-                const total=calcTotal(inv.items,inv.deliveryFee,inv.discount)
-                const overdue=inv.status!=='paid'&&inv.status!=='cancelled'&&new Date(inv.dueDate)<new Date()
+                const cfg=STATUS_CFG[inv.status] || STATUS_CFG.draft, chCfg=CHANNEL_CFG[inv.channel] || CHANNEL_CFG.online
+                const total=Number(inv.amount||0)
+                const dueDateString = inv.due_date ? new Date(inv.due_date).toISOString().slice(0,10) : ''
+                const issuedDateString = inv.date_issued ? new Date(inv.date_issued).toISOString().slice(0,10) : new Date(inv.created_at||Date.now()).toISOString().slice(0,10)
+                const overdue=inv.status!=='paid'&&inv.status!=='cancelled'&&inv.due_date&&new Date(inv.due_date)<new Date()
                 return (
                   <tr key={inv.id}>
                     <td style={TD}>
-                      <div style={{ fontWeight:700,color:'#1B4332',cursor:'pointer' }} onClick={()=>openModal('view',inv)}>{inv.id}</div>
-                      {inv.orderId&&<div style={{ fontSize:11,color:'#6b7280',marginTop:2 }}><i className="ri-link me-1"/>{inv.orderId}</div>}
-                      {inv.source==='manual'&&<span style={{ display:'inline-block',background:'#fef3c7',color:'#92400e',borderRadius:50,padding:'1px 6px',fontSize:9,fontWeight:700,marginTop:2 }}>Manual</span>}
+                      <div style={{ fontWeight:700,color:'#1B4332',cursor:'pointer' }} onClick={()=>openModal('view',inv)}>{inv.invoice_ref || inv.id}</div>
+                      {inv.order_id&&<div style={{ fontSize:11,color:'#6b7280',marginTop:2 }}><i className="ri-link me-1"/>{inv.order_id}</div>}
+                      {inv.type==='manual'&&<span style={{ display:'inline-block',background:'#fef3c7',color:'#92400e',borderRadius:50,padding:'1px 6px',fontSize:9,fontWeight:700,marginTop:2 }}>Manual</span>}
                     </td>
                     <td style={TD}>
-                      <div style={{ fontWeight:600 }}>{inv.customer.name}</div>
-                      <div style={{ fontSize:11,color:'#6b7280' }}>{inv.customer.phone}</div>
+                      <div style={{ fontWeight:600 }}>{inv.customer_name || 'Walk-in'}</div>
+                      <div style={{ fontSize:11,color:'#6b7280' }}>{inv.customer_phone || ''}</div>
                     </td>
                     <td style={TD}>
                       <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:`${chCfg.color}18`,color:chCfg.color,borderRadius:50,padding:'3px 8px',fontSize:11,fontWeight:600 }}>
                         <i className={chCfg.icon}/>{chCfg.label}
                       </span>
                     </td>
-                    <td style={{ ...TD,fontSize:13 }}>{inv.issuedDate}</td>
+                    <td style={{ ...TD,fontSize:13 }}>{issuedDateString}</td>
                     <td style={TD}>
-                      <div style={{ fontSize:13,color:overdue?'#ef4444':'inherit',fontWeight:overdue?600:400 }}>{inv.dueDate}</div>
+                      <div style={{ fontSize:13,color:overdue?'#ef4444':'inherit',fontWeight:overdue?600:400 }}>{dueDateString}</div>
                       {overdue&&<div style={{ fontSize:10,color:'#ef4444',fontWeight:700 }}>OVERDUE</div>}
                     </td>
                     <td style={TD}>
                       <div style={{ fontWeight:700 }}>{fmt(total)}</div>
-                      {inv.discount>0&&<div style={{ fontSize:11,color:'#16a34a' }}>-{fmt(inv.discount)} disc.</div>}
+                      {inv.discount_amount>0&&<div style={{ fontSize:11,color:'#16a34a' }}>-{fmt(inv.discount_amount)} disc.</div>}
                     </td>
-                    <td style={{ ...TD,fontSize:12 }}>{inv.paymentMethod}</td>
+                    <td style={{ ...TD,fontSize:12 }}>{inv.payment_method}</td>
                     <td style={TD}>
                       <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:cfg.bg,color:cfg.color,borderRadius:50,padding:'3px 8px',fontSize:11,fontWeight:600 }}>
                         <i className={cfg.icon}/>{cfg.label}
