@@ -775,3 +775,8 @@ DELETE FROM products WHERE name IN (
 
 -- SELECT table_name FROM information_schema.tables
 -- WHERE table_schema = 'public' ORDER BY table_name;
+
+-- Fix customer_carts constraints: Drop not null on customer_id, point FK to users table instead of customers
+ALTER TABLE customer_carts DROP CONSTRAINT IF EXISTS customer_carts_customer_id_fkey;
+ALTER TABLE customer_carts ALTER COLUMN customer_id DROP NOT NULL;
+ALTER TABLE customer_carts ADD CONSTRAINT customer_carts_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE CASCADE;
