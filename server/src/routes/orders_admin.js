@@ -287,9 +287,31 @@ router.patch(
           "admin",
           req.user.id,
         );
+        const emailService = require("../services/emailService");
       }
 
       await client.query("COMMIT");
+      
+      // Send email notification to customer
+      try {
+        const emailResult = await pool.query(
+          `SELECT o.id, o.total, u.name, u.email FROM orders o
+           JOIN users u ON u.id = o.user_id WHERE o.id = $1`,
+          [req.params.id]
+        );
+        if (emailResult.rows.length) {
+          const orderInfo = emailResult.rows[0];
+          await emailService.sendOrderStatusEmail(
+            { id: orderInfo.id, total: orderInfo.total },
+            { name: orderInfo.name, email: orderInfo.email },
+            ev ? ev.type : status
+          );
+          console.log("Email sent to:", orderInfo.email);
+        }
+      } catch (emailErr) {
+        console.error("Email failed:", emailErr.message);
+      }
+
       res.json({ message: "Status updated", status });
     } catch (err) {
       await client.query("ROLLBACK");
@@ -564,6 +586,118 @@ router.delete("/:id", requireRole("superadmin"), async (req, res) => {
     res.status(500).json({ message: err.message });
   } finally {
     client.release();
+  }
+});
+
+// ── GET /api/admin/orders/invoices ─────────────────────────────────────────
+router.get("/invoices", async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search = "", status = "" } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const params = [];
+    const where = [];
+
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(invoice_ref ILIKE $${params.length} OR order_id ILIKE $${params.length} OR customer_name ILIKE $${params.length})`);
+    }
+    if (status && status !== "all") {
+      params.push(status);
+      where.push(`status = $${params.length}`);
+    }
+
+    const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
+    const countRes = await pool.query(`SELECT COUNT(*) FROM invoices ${whereClause}`, params);
+    
+    params.push(parseInt(limit));
+    params.push(offset);
+
+    const rows = await pool.query(`
+      SELECT * FROM invoices 
+      ${whereClause} 
+      ORDER BY created_at DESC 
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `, params);
+
+    res.json({
+      invoices: rows.rows,
+      total: parseInt(countRes.rows[0].count),
+      page: parseInt(page),
+      pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit))
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── PATCH /api/admin/orders/invoices/:id/status ───────────────────────────
+router.patch("/invoices/:id/status", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+  try {
+    const { status, notes } = req.body;
+    await pool.query(
+      `UPDATE invoices SET status = $1, notes = COALESCE($2, notes), paid_at = CASE WHEN $1 = 'paid' THEN NOW() ELSE paid_at END WHERE id = $3 OR invoice_ref = $3::text`,
+      [status, notes || null, req.params.id]
+    );
+    res.json({ message: "Invoice updated", status });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── GET /api/admin/orders/returns ─────────────────────────────────────────
+router.get("/returns", async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search = "", status = "" } = req.query;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const params = [];
+    const where = [];
+
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(r.refund_ref ILIKE $${params.length} OR r.order_id ILIKE $${params.length} OR c.name ILIKE $${params.length})`);
+    }
+    if (status && status !== "all") {
+      params.push(status);
+      where.push(`r.status = $${params.length}`);
+    }
+
+    const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
+    const countRes = await pool.query(`SELECT COUNT(*) FROM returns r LEFT JOIN customers c ON r.customer_id = c.id ${whereClause}`, params);
+
+    params.push(parseInt(limit));
+    params.push(offset);
+
+    const rows = await pool.query(`
+      SELECT r.*, c.name as customer_name, c.email as customer_email, c.phone as customer_phone
+      FROM returns r
+      LEFT JOIN customers c ON r.customer_id = c.id
+      ${whereClause}
+      ORDER BY r.created_at DESC
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `, params);
+
+    res.json({
+      returns: rows.rows,
+      total: parseInt(countRes.rows[0].count),
+      page: parseInt(page),
+      pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit))
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── PATCH /api/admin/orders/returns/:id/status ───────────────────────────
+router.patch("/returns/:id/status", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+  try {
+    const { status, description } = req.body;
+    await pool.query(
+      `UPDATE returns SET status = $1, description = COALESCE($2, description) WHERE id = $3 OR refund_ref = $3::text`,
+      [status, description || null, req.params.id]
+    );
+    res.json({ message: "Return updated", status });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 

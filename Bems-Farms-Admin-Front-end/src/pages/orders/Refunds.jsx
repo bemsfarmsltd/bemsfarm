@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import api from '../../lib/api'
+import toast from 'react-hot-toast'
 
 const PRODUCTS = ['Basmati Rice (5kg)','Fresh Tomatoes','Palm Oil (25L)','Catfish (Smoked)','Fresh Pepper','Chicken (Whole)','Fresh Yam','Cassava Flour','Fresh Milk (1L)','Plantain (Bunch)','Fresh Eggs (Crate)','Goat Meat (1kg)']
 const CUSTOMERS = ['Mrs. Adaeze Okafor','Chioma Eze','Bayo Farms Ltd','Eko Catering Services','Mama Cee Restaurant','Sunshine Bakery','Mr. Emeka Nwosu','Funke Abiodun','Chidi Catering Ltd','Walk-in Customer']
@@ -23,37 +25,7 @@ const STATUS_CFG = {
   rejected:   { label:'Rejected',   color:'#991b1b', bg:'#fee2e2' },
 }
 
-const MOCK_RETURNS = [
-  { id:1, ref:'RTN-2026-001', date:'2026-06-12', ordRef:'ORD-2026-092', customer:'Mrs. Adaeze Okafor', phone:'0803 456 7890', product:'Fresh Tomatoes', qty:3, unit:'kg', unitPrice:800, totalValue:2400, reason:'Spoiled / Already expired', notes:'Tomatoes were soft and mouldy when opened at home. Purchased same day.', condition:'damaged', goodsAction:'write_off', resalableQty:0, writeOffQty:3, refundAmount:2400, refundMethod:'Cash', refundRef:'', status:'refunded', processedBy:'Ngozi Bello', processedOn:'2026-06-12', inspectionNotes:'Confirmed spoilage — all 3kg written off to Lost & Damaged.',
-    items:[
-      { product_name:'Fresh Tomatoes', ordered_quantity:3, returned_quantity:3, condition:'damaged', remarks:'All soft and mouldy' },
-    ]},
-  { id:2, ref:'RTN-2026-002', date:'2026-06-15', ordRef:'ORD-2026-105', customer:'Bayo Farms Ltd', phone:'0812 345 6789', product:'Palm Oil (25L)', qty:1, unit:'can', unitPrice:18000, totalValue:18000, reason:'Damaged on delivery', notes:'Can arrived dented, lid not properly sealed. Oil may be contaminated.', condition:'damaged', goodsAction:'write_off', resalableQty:0, writeOffQty:1, refundAmount:18000, refundMethod:'Bank Transfer', refundRef:'TRF-BF-0015', status:'refunded', processedBy:'Admin', processedOn:'2026-06-15', inspectionNotes:'Can seal broken — cannot resell. Written off. Refund transferred to Bayo Farms account.',
-    items:[
-      { product_name:'Palm Oil (25L)', ordered_quantity:1, returned_quantity:1, condition:'damaged', remarks:'Can dented, lid not sealed' },
-    ]},
-  { id:3, ref:'RTN-2026-003', date:'2026-06-18', ordRef:'ORD-2026-118', customer:'Eko Catering Services', phone:'0901 234 5678', product:'Chicken (Whole)', qty:5, unit:'kg', unitPrice:2800, totalValue:14000, reason:'Wrong item sent', notes:'Ordered boneless chicken breast, received whole chicken instead.', condition:'resalable', goodsAction:'back_to_stock', resalableQty:5, writeOffQty:0, refundAmount:14000, refundMethod:'Wallet Credit', refundRef:'WLT-ECS-003', status:'refunded', processedBy:'Emeka Adeola', processedOn:'2026-06-18', inspectionNotes:'Goods in perfect condition — unopened. Returned to Cold Room stock.',
-    items:[
-      { product_name:'Chicken (Whole)', ordered_quantity:5, returned_quantity:5, condition:'reusable', remarks:'Unopened, perfect condition' },
-    ]},
-  { id:4, ref:'RTN-2026-004', date:'2026-06-20', ordRef:'ORD-2026-125', customer:'Mama Cee Restaurant', phone:'0705 678 9012', product:'Fresh Pepper', qty:4, unit:'kg', unitPrice:700, totalValue:2800, reason:'Quality below standard', notes:"Pepper was shrivelled and dry, not fresh as expected for today's order.", condition:'partial', goodsAction:'split', resalableQty:1, writeOffQty:3, refundAmount:2800, refundMethod:'Cash', refundRef:'', status:'approved', processedBy:'Tunde Okafor', processedOn:'2026-06-20', inspectionNotes:'1kg still firm and sellable — returned to stock. 3kg shrivelled — written off.',
-    items:[
-      { product_name:'Fresh Pepper', ordered_quantity:4, returned_quantity:4, condition:'partial_goods', remarks:'1kg firm, 3kg shrivelled' },
-    ]},
-  { id:5, ref:'RTN-2026-005', date:'2026-06-22', ordRef:'ORD-2026-133', customer:'Chioma Eze', phone:'0818 901 2345', product:'Fresh Milk (1L)', qty:3, unit:'bottle', unitPrice:900, totalValue:2700, reason:'Packaging damaged', notes:'Two bottles had cracked caps. One bottle was leaking.', condition:'pending_check', goodsAction:'', resalableQty:0, writeOffQty:0, refundAmount:2700, refundMethod:'Cash', refundRef:'', status:'inspecting', processedBy:'Ngozi Bello', processedOn:'', inspectionNotes:'',
-    items:[
-      { product_name:'Fresh Milk (1L)', ordered_quantity:3, returned_quantity:2, condition:'damaged',  remarks:'Cracked caps' },
-      { product_name:'Fresh Milk (1L)', ordered_quantity:3, returned_quantity:1, condition:'reusable', remarks:'Sealed, no damage' },
-    ]},
-  { id:6, ref:'RTN-2026-006', date:'2026-06-24', ordRef:'ORD-2026-138', customer:'Sunshine Bakery', phone:'0703 456 7890', product:'Cassava Flour', qty:5, unit:'pack', unitPrice:1100, totalValue:5500, reason:'Incorrect quantity', notes:'Ordered 10 packs, only received 5. Requesting refund for the 5 missing packs.', condition:'pending_check', goodsAction:'', resalableQty:0, writeOffQty:0, refundAmount:5500, refundMethod:'Bank Transfer', refundRef:'', status:'pending', processedBy:'', processedOn:'', inspectionNotes:'',
-    items:[
-      { product_name:'Cassava Flour', ordered_quantity:10, returned_quantity:5, condition:'reusable', remarks:'Missing packs — not received' },
-    ]},
-  { id:7, ref:'RTN-2026-007', date:'2026-06-25', ordRef:'ORD-2026-141', customer:'Mr. Emeka Nwosu', phone:'0806 789 0123', product:'Basmati Rice (5kg)', qty:2, unit:'bag', unitPrice:4500, totalValue:9000, reason:'Customer changed mind', notes:'Purchased by mistake. Has not been opened.', condition:'resalable', goodsAction:'back_to_stock', resalableQty:2, writeOffQty:0, refundAmount:0, refundMethod:'', refundRef:'', status:'rejected', processedBy:'Admin', processedOn:'2026-06-25', inspectionNotes:'Return rejected — "change of mind" is outside Bems Farms return policy (7-day return only covers quality issues and wrong items).',
-    items:[
-      { product_name:'Basmati Rice (5kg)', ordered_quantity:2, returned_quantity:2, condition:'reusable', remarks:'Unopened bags' },
-    ]},
-]
+const MOCK_RETURNS = []
 
 function nextRef(list) {
   const max=list.reduce((m,r)=>Math.max(m,Number(r.ref.split('-')[2])),0)
@@ -87,28 +59,35 @@ function Badge({ cfg }) {
 }
 
 export default function Refunds() {
-  const [records,setRecords]           = useState(MOCK_RETURNS)
+  const [records,setRecords]           = useState([])
   const [search,setSearch]             = useState('')
   const [filterStatus,setFilterStatus] = useState('all')
   const [activeModal,setActiveModal]   = useState(null)
   const [selected,setSelected]         = useState(null)
   const [processTab,setProcessTab]     = useState('inspect')
+  const [loading, setLoading]          = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/orders/returns', { params: { search, status: filterStatus } })
+      setRecords(res.data.returns)
+    } catch { toast.error('Failed to load returns') }
+    finally { setLoading(false) }
+  }, [search, filterStatus])
+
+  useEffect(() => { load() }, [load])
 
   const [logForm,setLogForm] = useState({ ref:'',date:'',ordRef:'',customer:CUSTOMERS[0],phone:'',product:PRODUCTS[0],qty:1,unit:'kg',unitPrice:0,reason:RETURN_REASONS[0],notes:'' })
-
   const [procForm,setProcForm] = useState({ condition:'resalable',goodsAction:'back_to_stock',resalableQty:0,writeOffQty:0,inspectionNotes:'',processedBy:STAFF[0],refundAmount:0,refundMethod:REFUND_METHODS[0],refundRef:'' })
 
-  const filtered = useMemo(()=>records.filter(r=>{
-    const q=search.toLowerCase()
-    const m=r.ref.toLowerCase().includes(q)||r.customer.toLowerCase().includes(q)||r.product.toLowerCase().includes(q)||r.ordRef.toLowerCase().includes(q)
-    return m&&(filterStatus==='all'||r.status===filterStatus)
-  }),[records,search,filterStatus])
+  const filtered = useMemo(()=>records.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),[records])
 
   const stats = useMemo(()=>({
     total:    records.length,
     pending:  records.filter(r=>r.status==='pending'||r.status==='inspecting').length,
     approved: records.filter(r=>r.status==='approved').length,
-    refunded: records.filter(r=>r.status==='refunded').reduce((s,r)=>s+r.refundAmount,0),
+    refunded: records.filter(r=>r.status==='refunded').reduce((s,r)=>s+Number(r.amount||0),0),
   }),[records])
 
   function openLog() {
@@ -126,26 +105,28 @@ export default function Refunds() {
   function openDelete(r) { setSelected(r); setActiveModal('delete') }
   function closeModal() { setActiveModal(null); setSelected(null) }
 
+  const updateStatus = async (status, description) => {
+    try {
+      await api.patch(`/admin/orders/returns/${selected.id}/status`, { status, description })
+      toast.success("Return status updated")
+      closeModal(); load()
+    } catch { toast.error("Failed to update status") }
+  }
+
   function saveLog(e) {
     e.preventDefault()
-    setRecords(prev=>[...prev,{ id:Math.max(...prev.map(r=>r.id))+1, ...logForm, totalValue:Number(logForm.qty)*Number(logForm.unitPrice), condition:'pending_check', goodsAction:'', resalableQty:0, writeOffQty:0, refundAmount:Number(logForm.qty)*Number(logForm.unitPrice), refundMethod:'', refundRef:'', status:'pending', processedBy:'', processedOn:'', inspectionNotes:'' }])
+    toast.error("Manual logging of return via UI not implemented")
     closeModal()
   }
 
-  function saveInspection() {
-    const today=new Date().toISOString().slice(0,10)
-    setRecords(prev=>prev.map(r=>r.id!==selected.id?r:{ ...r, condition:procForm.condition, goodsAction:procForm.goodsAction, resalableQty:Number(procForm.resalableQty), writeOffQty:Number(procForm.writeOffQty), inspectionNotes:procForm.inspectionNotes, processedBy:procForm.processedBy, processedOn:today, status:'inspecting' }))
-    setProcessTab('refund')
-    setSelected(prev=>({ ...prev, status:'inspecting', condition:procForm.condition, processedBy:procForm.processedBy }))
-  }
-
+  function saveInspection() { updateStatus('inspecting', procForm.inspectionNotes) }
   function saveRefundDecision(decision) {
-    const today=new Date().toISOString().slice(0,10)
-    setRecords(prev=>prev.map(r=>r.id!==selected.id?r:{ ...r, condition:procForm.condition, goodsAction:procForm.goodsAction, resalableQty:Number(procForm.resalableQty), writeOffQty:Number(procForm.writeOffQty), inspectionNotes:procForm.inspectionNotes, processedBy:procForm.processedBy, processedOn:today, refundAmount:decision==='reject'?0:Number(procForm.refundAmount), refundMethod:procForm.refundMethod, refundRef:procForm.refundRef, status:decision==='reject'?'rejected':decision==='approve'?'approved':'refunded' }))
-    closeModal()
+    if(decision === 'approve') updateStatus('approved', procForm.inspectionNotes)
+    else if(decision === 'reject') updateStatus('rejected', procForm.inspectionNotes)
+    else updateStatus('refunded', procForm.inspectionNotes)
   }
-
-  function confirmDelete() { setRecords(prev=>prev.filter(r=>r.id!==selected.id)); closeModal() }
+  function deleteRecord() { toast.error("Deletion not implemented") }
+  function confirmDelete() { toast.error("Deletion not implemented") }
 
   function handleConditionChange(val) {
     const qty=selected?.qty||0
@@ -215,29 +196,29 @@ export default function Refunds() {
                 </td></tr>
               )}
               {filtered.map(r=>{
-                const sc=STATUS_CFG[r.status], cc=CONDITION_CFG[r.condition]||CONDITION_CFG.pending_check
+                const sc=STATUS_CFG[r.status]||STATUS_CFG.pending, cc=CONDITION_CFG.pending_check
+                const dateStr = r.created_at ? new Date(r.created_at).toISOString().slice(0,10) : ''
+                const refundAmount = Number(r.amount||0)
                 return (
                   <tr key={r.id}>
                     <td style={TD}>
-                      <span style={{ fontWeight:700,color:'#1B4332',cursor:'pointer' }} onClick={()=>openView(r)}>{r.ref}</span>
+                      <span style={{ fontWeight:700,color:'#1B4332',cursor:'pointer' }} onClick={()=>openView(r)}>{r.refund_ref || r.id}</span>
                     </td>
-                    <td style={{ ...TD,fontSize:13 }}>{r.date}</td>
+                    <td style={{ ...TD,fontSize:13 }}>{dateStr}</td>
                     <td style={TD}>
-                      <div style={{ fontWeight:600 }}>{r.customer}</div>
-                      <div style={{ fontSize:11,color:'#6b7280' }}>{r.phone}</div>
+                      <div style={{ fontWeight:600 }}>{r.customer_name || 'Unknown'}</div>
+                      <div style={{ fontSize:11,color:'#6b7280' }}>{r.customer_phone || ''}</div>
                     </td>
-                    <td style={{ ...TD,fontSize:12,color:'#6b7280' }}>{r.ordRef}</td>
-                    <td style={TD}>{r.product}</td>
-                    <td style={{ ...TD,fontWeight:600 }}>{r.qty} {r.unit}</td>
-                    <td style={{ ...TD,maxWidth:160,whiteSpace:'normal',fontSize:12 }}>{r.reason}</td>
+                    <td style={{ ...TD,fontSize:12,color:'#6b7280' }}>{r.order_id}</td>
+                    <td style={TD}>—</td>
+                    <td style={{ ...TD,fontWeight:600 }}>—</td>
+                    <td style={{ ...TD,maxWidth:160,whiteSpace:'normal',fontSize:12 }}>{r.reason || r.description}</td>
                     <td style={TD}><Badge cfg={cc}/></td>
-                    <td style={{ ...TD,fontWeight:700,color:r.refundAmount>0?'#f06548':'#9ca3af' }}>
-                      {r.refundAmount>0?`₦${r.refundAmount.toLocaleString()}`:'—'}
+                    <td style={{ ...TD,fontWeight:700,color:refundAmount>0?'#f06548':'#9ca3af' }}>
+                      {refundAmount>0?`₦${refundAmount.toLocaleString()}`:'—'}
                     </td>
                     <td style={TD}>
-                      {r.refundMethod
-                        ? <span style={{ background:'#f9fafb',color:'#374151',border:'1px solid #e5e7eb',borderRadius:6,padding:'3px 8px',fontSize:12 }}>{r.refundMethod}</span>
-                        : <span style={{ color:'#9ca3af' }}>—</span>}
+                      <span style={{ color:'#9ca3af' }}>—</span>
                     </td>
                     <td style={TD}><Badge cfg={sc}/></td>
                     <td style={TD}>
