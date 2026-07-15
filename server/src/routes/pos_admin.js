@@ -485,7 +485,7 @@ router.get("/receipts", requireRole("superadmin","manager","admin","cashier","ac
            COALESCE(SUM(CASE WHEN o.payment_method != 'cash' THEN o.total ELSE 0 END), 0) AS card_transfer_total
          FROM orders o
          LEFT JOIN users u ON u.id = o.created_by
-         LEFT JOIN pos_transactions pt ON pt.used_for_order_id = o.id
+         LEFT JOIN pos_transactions pt ON pt.used_for_order_id::text = o.id::text
          ${clause}`,
         params
       ),
