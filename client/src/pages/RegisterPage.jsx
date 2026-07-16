@@ -47,6 +47,9 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
+    confirmEmail: "",
+    phone: "",
+    confirmPhone: "",
     password: "",
     confirm: "",
   });
@@ -71,6 +74,11 @@ export default function RegisterPage() {
     setError("");
     if (!form.name.trim()) return setError("Please enter your full name");
     if (!form.email.trim()) return setError("Please enter your email");
+    if (form.email.toLowerCase().trim() !== form.confirmEmail.toLowerCase().trim())
+      return setError("Email addresses do not match");
+    if (!form.phone.trim()) return setError("Please enter your phone number");
+    if (form.phone.trim() !== form.confirmPhone.trim())
+      return setError("Phone numbers do not match");
     if (form.password.length < 6)
       return setError("Password must be at least 6 characters");
     if (form.password !== form.confirm)
@@ -78,7 +86,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await register(form.name, form.email, form.password);
+      await register(form.name, form.email, form.password, form.phone);
       navigate("/onboarding"); // ── FIX: was navigate("/") → ComingSoonPage
     } catch (err) {
       setError(
@@ -469,6 +477,124 @@ export default function RegisterPage() {
                 onFocus={(e) => (e.target.style.borderColor = "#2E7D32")}
                 onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
               />
+            </div>
+
+            {/* Confirm Email */}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#374151",
+                  marginBottom: 6,
+                }}
+              >
+                Confirm Email Address
+              </label>
+              <input
+                type="email"
+                value={form.confirmEmail}
+                onChange={(e) => setForm({ ...form, confirmEmail: e.target.value })}
+                placeholder="Re-enter email address"
+                style={{
+                  width: "100%",
+                  padding: "13px 16px",
+                  border: `2px solid ${form.confirmEmail && form.confirmEmail.toLowerCase() !== form.email.toLowerCase() ? "#EF4444" : "#E5E7EB"}`,
+                  borderRadius: 12,
+                  fontSize: 15,
+                  outline: "none",
+                  boxSizing: "border-box",
+                  background: "#FAFAFA",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "#2E7D32")}
+                onBlur={(e) => {
+                  if (!form.confirmEmail || form.confirmEmail.toLowerCase() === form.email.toLowerCase())
+                    e.target.style.borderColor = "#E5E7EB";
+                }}
+              />
+              {form.confirmEmail && form.confirmEmail.toLowerCase() !== form.email.toLowerCase() && (
+                <p style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>
+                  Emails don't match
+                </p>
+              )}
+            </div>
+
+            {/* Phone Number */}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#374151",
+                  marginBottom: 6,
+                }}
+              >
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="e.g. +2348012345678"
+                style={{
+                  width: "100%",
+                  padding: "13px 16px",
+                  border: "2px solid #E5E7EB",
+                  borderRadius: 12,
+                  fontSize: 15,
+                  outline: "none",
+                  boxSizing: "border-box",
+                  background: "#FAFAFA",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "#2E7D32")}
+                onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+              />
+            </div>
+
+            {/* Confirm Phone Number */}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#374151",
+                  marginBottom: 6,
+                }}
+              >
+                Confirm Phone Number
+              </label>
+              <input
+                type="tel"
+                value={form.confirmPhone}
+                onChange={(e) => setForm({ ...form, confirmPhone: e.target.value })}
+                placeholder="Re-enter phone number"
+                style={{
+                  width: "100%",
+                  padding: "13px 16px",
+                  border: `2px solid ${form.confirmPhone && form.confirmPhone !== form.phone ? "#EF4444" : "#E5E7EB"}`,
+                  borderRadius: 12,
+                  fontSize: 15,
+                  outline: "none",
+                  boxSizing: "border-box",
+                  background: "#FAFAFA",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "#2E7D32")}
+                onBlur={(e) => {
+                  if (!form.confirmPhone || form.confirmPhone === form.phone)
+                    e.target.style.borderColor = "#E5E7EB";
+                }}
+              />
+              {form.confirmPhone && form.confirmPhone !== form.phone && (
+                <p style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>
+                  Phone numbers don't match
+                </p>
+              )}
             </div>
 
             {/* Password */}

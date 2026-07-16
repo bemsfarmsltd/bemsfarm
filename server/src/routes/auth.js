@@ -31,11 +31,13 @@ function generateRefreshToken(userId) {
 // ─────────────────────────────────────────────
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, phone } = req.body;
     if (!name?.trim())
       return res.status(400).json({ message: "Name is required" });
     if (!email?.includes("@"))
       return res.status(400).json({ message: "Valid email required" });
+    if (!phone?.trim())
+      return res.status(400).json({ message: "Phone number is required" });
     if (!password || password.length < 6)
       return res
         .status(400)
@@ -50,10 +52,10 @@ router.post("/register", async (req, res) => {
 
     const hashedPw = await bcrypt.hash(password, 12);
     const result = await pool.query(
-      `INSERT INTO users (name, email, password, role, created_at)
-       VALUES ($1, $2, $3, 'user', NOW())
-       RETURNING id, name, email, role`,
-      [name.trim(), email.toLowerCase().trim(), hashedPw],
+      `INSERT INTO users (name, email, password, phone, role, created_at)
+       VALUES ($1, $2, $3, $4, 'user', NOW())
+       RETURNING id, name, email, phone, role`,
+      [name.trim(), email.toLowerCase().trim(), hashedPw, phone.trim()],
     );
 
     const user = result.rows[0];
@@ -76,6 +78,7 @@ router.post("/register", async (req, res) => {
     upsertContext(user.id, {
       full_name:    user.name,
       email:        user.email,
+      phone:        user.phone,
       role:         user.role,
       registered_at: new Date().toISOString(),
       last_login:   new Date().toISOString(),

@@ -690,7 +690,8 @@ router.post("/chef-chat", async (req, res) => {
           cartItems,
           userPreferences,
           userId: user?.id || null,
-          email: user?.email || null
+          email: user?.email || null,
+          session_id: session_id || null,
         }),
         signal: AbortSignal.timeout(120000), // Timeout after 2 minutes
       });

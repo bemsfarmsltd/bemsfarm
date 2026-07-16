@@ -2,11 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
+import { useChefStore } from "../store/useChefStore";
 import api from "../services/api";
 import chefBemsImg from "../assets/chef_bems_cooking.jpg";
 import chefBemsAvatar from "../assets/chef_bems_avatar.png";
-
-
 
 const QUICK_PROMPTS = [
   { icon: "🍲", text: "What can I cook with garri and tomatoes?" },
@@ -14,13 +14,6 @@ const QUICK_PROMPTS = [
   { icon: "🥗", text: "Healthy Nigerian meal plan for the week" },
   { icon: "🔄", text: "Substitute for palm oil in egusi soup?" },
 ];
-
-const WELCOME_MESSAGE = {
-  id: "welcome",
-  role: "assistant",
-  content: `Welcome! I'm **Chef Bems** 👨‍🍳 — your personal Nigerian kitchen AI.\n\nI can help you with:\n• Recipes for any Nigerian dish\n• What to cook with ingredients you have\n• Healthy meal planning\n• Cooking tips and substitutions\n\nWhat would you like to cook today?`,
-  timestamp: new Date(),
-};
 
 // Helper to format bolding and line breaks in messages
 function formatMessage(text) {
@@ -33,7 +26,8 @@ function formatMessage(text) {
 
 export default function ChefBemsPage() {
   const { cartItems, addToCart } = useCart();
-  const [messages, setMessages] = useState([WELCOME_MESSAGE]);
+  const { user } = useAuth();
+  const { messages, sessionId, addMessage, setMessages, clearChat } = useChefStore();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [addedIds, setAddedIds] = useState({});
@@ -46,6 +40,44 @@ export default function ChefBemsPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Fetch and restore chat history on mount/user login
+  useEffect(() => {
+    const fetchChatHistory = async () => {
+      if (!user) return;
+      try {
+        setLoading(true);
+        // 1. Fetch the latest active chef conversation
+        const listRes = await api.get("/ai/context/conversations?bot_type=chef&limit=1");
+        const latestConv = listRes.data.conversations?.[0];
+        
+        if (latestConv) {
+          // 2. Fetch all messages for this conversation
+          const messagesRes = await api.get(`/ai/context/conversations/${latestConv.id}`);
+          const serverMsgs = messagesRes.data.messages || [];
+          
+          if (serverMsgs.length > 0) {
+            const formatted = serverMsgs.map((m) => ({
+              id: m.id || (Date.now() + "-" + Math.random()),
+              role: m.role,
+              content: m.content,
+              timestamp: m.created_at || new Date(),
+            }));
+            
+            // Set messages and keep the active session_id in the store
+            setMessages(formatted);
+            useChefStore.setState({ sessionId: latestConv.session_id });
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to restore chat history:", err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchChatHistory();
+  }, [user, setMessages]);
 
   // Handle Visual scan image upload
   const handleImageUpload = async (e) => {
@@ -64,7 +96,7 @@ export default function ChefBemsPage() {
         timestamp: new Date(),
       };
       
-      setMessages((prev) => [...prev, userMsg]);
+      addMessage(userMsg);
       setLoading(true);
       
       try {
@@ -78,27 +110,21 @@ export default function ChefBemsPage() {
         const res = await api.post("/ai/visual-scan", payload);
         const data = res.data;
         
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + "-a",
-            role: "assistant",
-            content: data.reply || "I analyzed your ingredients! Here is what I suggest.",
-            timestamp: new Date(),
-            relatedProducts: data.relatedProducts || [],
-          },
-        ]);
+        addMessage({
+          id: Date.now() + "-a",
+          role: "assistant",
+          content: data.reply || "I analyzed your ingredients! Here is what I suggest.",
+          timestamp: new Date(),
+          relatedProducts: data.relatedProducts || [],
+        });
       } catch (err) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + "-e",
-            role: "assistant",
-            content: "⚠️ Visual scanner is taking a break. Make sure your GEMINI_API_KEY is configured properly.",
-            timestamp: new Date(),
-            isError: true,
-          },
-        ]);
+        addMessage({
+          id: Date.now() + "-e",
+          role: "assistant",
+          content: "⚠️ Visual scanner is taking a break. Make sure your GEMINI_API_KEY is configured properly.",
+          timestamp: new Date(),
+          isError: true,
+        });
       } finally {
         setLoading(false);
       }
@@ -112,6 +138,7 @@ export default function ChefBemsPage() {
       history: payload.conversationHistory,
       cartItems: payload.cartItems,
       userPreferences: payload.userPreferences,
+      session_id: sessionId,
     });
     return res.data;
   };
@@ -127,7 +154,7 @@ export default function ChefBemsPage() {
       content: userText,
       timestamp: new Date(),
     };
-    setMessages((prev) => [...prev, userMsg]);
+    addMessage(userMsg);
     setLoading(true);
 
     try {
@@ -148,30 +175,30 @@ export default function ChefBemsPage() {
 
       const data = await callChefChat(payload);
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + "-a",
-          role: "assistant",
-          content: data.reply || "I didn't catch that — could you rephrase?",
-          timestamp: new Date(),
-          relatedProducts: data.relatedProducts || [],
-        },
-      ]);
+      addMessage({
+        id: Date.now() + "-a",
+        role: "assistant",
+        content: data.reply || "I didn't catch that — could you rephrase?",
+        timestamp: new Date(),
+        relatedProducts: data.relatedProducts || [],
+      });
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + "-e",
-          role: "assistant",
-          content: "⚠️ Chef Bems is taking a short break. Try again in a moment.",
-          timestamp: new Date(),
-          isError: true,
-        },
-      ]);
+      addMessage({
+        id: Date.now() + "-e",
+        role: "assistant",
+        content: "⚠️ Chef Bems is taking a short break. Try again in a moment.",
+        timestamp: new Date(),
+        isError: true,
+      });
     } finally {
       setLoading(false);
       inputRef.current?.focus();
+    }
+  };
+
+  const handleClearChat = () => {
+    if (window.confirm("Are you sure you want to clear your conversation history?")) {
+      clearChat();
     }
   };
 
@@ -441,21 +468,44 @@ export default function ChefBemsPage() {
       <div className="chef-page-wrapper">
         <div className="chef-chat-card">
           {/* Header */}
-          <div className="chef-chat-header">
-            <div className="chef-chat-avatar">
-              <img 
-                src={chefBemsAvatar} 
-                alt="Chef Bems Avatar" 
-                style={{ width: "100%", height: "100%", objectFit: "cover" }} 
-              />
-            </div>
-            <div>
-              <h1 style={{ fontSize: "16px", fontWeight: "bold", margin: 0, fontFamily: "Space Grotesk, sans-serif" }}>Chef Bems</h1>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
-                <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#10B981" }} />
-                <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.8)" }}>AI Kitchen Assistant · Online</span>
+          <div className="chef-chat-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+              <div className="chef-chat-avatar">
+                <img 
+                  src={chefBemsAvatar} 
+                  alt="Chef Bems Avatar" 
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                />
+              </div>
+              <div>
+                <h1 style={{ fontSize: "16px", fontWeight: "bold", margin: 0, fontFamily: "Space Grotesk, sans-serif" }}>Chef Bems</h1>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#10B981" }} />
+                  <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.8)" }}>AI Kitchen Assistant · Online</span>
+                </div>
               </div>
             </div>
+            <button
+              onClick={handleClearChat}
+              style={{
+                background: "rgba(255,255,255,0.15)",
+                color: "#ffffff",
+                border: "1px solid rgba(255,255,255,0.25)",
+                padding: "6px 12px",
+                borderRadius: "8px",
+                fontSize: "12px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                transition: "background 0.2s",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = "rgba(255,255,255,0.25)"}
+              onMouseLeave={(e) => e.target.style.backgroundColor = "rgba(255,255,255,0.15)"}
+            >
+              🔄 Clear Chat
+            </button>
           </div>
 
           {/* Messages view */}

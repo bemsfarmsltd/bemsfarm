@@ -447,15 +447,19 @@ export default function Navbar() {
     { label: "AI Chef", path: "/chef-chat" }, // Routes to ChefBemsPage
   ];
 
+  const ADMIN_PANEL_URL = import.meta.env.DEV
+    ? "http://localhost:5174"
+    : "https://bems-admin.vercel.app";
+
+  const isAdmin = ["superadmin", "admin", "manager", "staff"].includes(user?.role);
+
   const DROPDOWN_ITEMS = [
     { icon: "👤", label: "My Profile", path: "/profile" },
     { icon: "📦", label: "My Orders", path: "/orders" },
     { icon: "↩️", label: "Returns", path: "/returns" },
-    ...(user?.role === "admin"
+    ...(isAdmin
       ? [
-          { icon: "⚙️", label: "Admin Panel", path: "/admin" },
-          // NOTE: /admin/issues removed — issue resolution dashboard not yet built.
-          // Add back here when that page is created.
+          { icon: "⚙️", label: "Admin Panel", path: ADMIN_PANEL_URL },
           { icon: "🔐", label: "Fraud Monitor", path: "/fraud-detection" },
           { icon: "📈", label: "Forecasting", path: "/demand-forecasting" },
           { icon: "👨‍🍳", label: "AI Chef", path: "/chef-chat" },
@@ -699,7 +703,11 @@ export default function Navbar() {
                         <div
                           key={item.path}
                           onClick={() => {
-                            navigate(item.path);
+                            if (item.path.startsWith("http")) {
+                              window.location.href = item.path;
+                            } else {
+                              navigate(item.path);
+                            }
                             setMenuOpen(false);
                           }}
                           style={{
