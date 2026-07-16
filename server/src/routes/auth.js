@@ -562,6 +562,17 @@ router.get("/test-google-fetch", async (req, res) => {
     results.dnsOrder = { error: err.message };
   }
 
+  // Test 5: Fetch from oauth2.googleapis.com tokeninfo
+  try {
+    const response = await fetch("https://oauth2.googleapis.com/tokeninfo?id_token=mock");
+    results.tokenInfoFetch = {
+      status: response.status,
+      body: (await response.text()).substring(0, 150),
+    };
+  } catch (err) {
+    results.tokenInfoFetch = { error: err.message };
+  }
+
   res.json(results);
 });
 
