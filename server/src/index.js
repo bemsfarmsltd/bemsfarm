@@ -125,7 +125,6 @@ app.use("/api/admin/products", productsAdminRoutes);
 app.use("/api/admin/orders", ordersAdminRoutes);
 app.use("/api/admin/customers", customersAdminRoutes);
 app.use("/api/admin/deliveries", deliveriesAdminRoutes);
-app.use("/api/admin/delivery-zones", deliveriesAdminRoutes);
 app.use("/api/admin/inventory", inventoryAdminRoutes);
 app.use("/api/admin/config", configAdminRoutes);
 app.use("/api/admin/staff",     staffAdminRoutes);

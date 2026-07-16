@@ -22,7 +22,7 @@ export default function StockList() {
   const [loading,     setLoading]   = useState(false)
   const [page,        setPage]      = useState(1)
   const [search,      setSearch]    = useState('')
-  const [meta,        setMeta]      = useState({ total:0, pages:1 })
+  const [meta,        setMeta]      = useState({ total:0, pages:1, stats:{} })
   const [categories,  setCats]      = useState([])
   const [warehouses,  setWarehouses]= useState([])
   const [filterCat,   setFilterCat] = useState('')
@@ -37,7 +37,7 @@ export default function StockList() {
       if (stockStatus)      params.stock_status = stockStatus
       const res = await api.get('/admin/inventory', { params })
       setProducts(res.data.products || [])
-      setMeta({ total: res.data.total || 0, pages: res.data.pages || 1 })
+      setMeta({ total: res.data.total || 0, pages: res.data.pages || 1, stats: res.data.stats || {} })
     } catch (err) { toast.error(err.response?.data?.message || 'Failed to load products') }
     finally { setLoading(false) }
   }, [page, search, filterCat, filterWH, stockStatus])
@@ -60,9 +60,9 @@ export default function StockList() {
   useEffect(() => { setPage(1) }, [search, filterCat, filterWH, stockStatus])
 
   const totals = {
-    all: meta.total,
-    low: products.filter(p => p.stock > 0 && p.stock <= (p.low_stock_threshold || 0)).length,
-    out: products.filter(p => p.stock === 0).length,
+    all: Number(meta.stats?.total_skus || 0),
+    low: Number(meta.stats?.low_stock || 0),
+    out: Number(meta.stats?.out_of_stock || 0),
   }
 
   function stockColor(p) {
@@ -72,9 +72,9 @@ export default function StockList() {
   }
 
   function getStatusCfg(p) {
-    if (p.stock === 0) return STATUS_CFG.out_of_stock
-    if (p.stock <= (p.low_stock_threshold || 0)) return STATUS_CFG.low_stock
-    return STATUS_CFG[p.stock_status] || STATUS_CFG.in_stock
+    if (p.stock_status === 'out_of_stock') return STATUS_CFG.out_of_stock
+    if (p.stock_status === 'low') return STATUS_CFG.low_stock
+    return STATUS_CFG.in_stock
   }
 
   return (
@@ -90,8 +90,8 @@ export default function StockList() {
       {/* Stat cards */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
         {[
-          { label:'Total SKUs',   value:meta.total, icon:'ri-box-3-line',          color:'#405189' },
-          { label:'In Stock',     value:meta.total - totals.low - totals.out, icon:'ri-checkbox-circle-line', color:'#0ab39c' },
+          { label:'Total SKUs',   value:totals.all, icon:'ri-box-3-line',          color:'#405189' },
+          { label:'In Stock',     value:Math.max(0, totals.all - totals.low - totals.out), icon:'ri-checkbox-circle-line', color:'#0ab39c' },
           { label:'Low Stock',    value:totals.low, icon:'ri-alert-line',           color:'#f7b84b' },
           { label:'Out of Stock', value:totals.out, icon:'ri-close-circle-line',    color:'#f06548' },
         ].map(c => (

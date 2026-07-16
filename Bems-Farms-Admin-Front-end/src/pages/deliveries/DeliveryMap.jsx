@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import api from '../../lib/api'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -12,41 +13,6 @@ L.Icon.Default.mergeOptions({
 
 const STORE_POS = [6.4553, 3.3862]
 
-const DELIVERIES = [
-  {
-    id:'DEL-2026-0042', orderId:'ORD-2026-0138', status:'shipped',
-    driver:{ name:'Emeka Okafor', phone:'08045678901', bike:'LAG-567-CD', color:'#3b82f6' },
-    customer:{ name:'Kemi Balogun', phone:'08167891234', address:'18 Surulere, Lagos' },
-    driverPos:[6.4920,3.3600], customerPos:[6.5048,3.3543],
-    zone:'Surulere / Yaba', eta:'~18 min', total:16100, attempts:0,
-    items:'Fresh Tomatoes ×3kg, Red Bell Pepper ×2kg',
-  },
-  {
-    id:'DEL-2026-0041', orderId:'ORD-2026-0139', status:'assigned',
-    driver:{ name:'Tunde Adeyemi', phone:'08031234567', bike:'LAG-234-AB', color:'#06b6d4' },
-    customer:{ name:'Seun Adesanya', phone:'09012341234', address:'5 Ikeja GRA, Lagos' },
-    driverPos:[6.4553,3.3862], customerPos:[6.5944,3.3478],
-    zone:'Ikeja / GRA', eta:'—', total:14200, attempts:0,
-    items:'Ginger ×1kg, Garlic ×1kg, Sweet Corn ×6 cobs',
-  },
-  {
-    id:'DEL-2026-0040', orderId:'ORD-2026-0137', status:'delivery_attempted',
-    driver:{ name:'Bola Akinwale', phone:'08056789012', bike:'LAG-890-EF', color:'#f97316' },
-    customer:{ name:'Tobi Adekunle', phone:'07056781234', address:'3 Ojota Estate, Lagos' },
-    driverPos:[6.5730,3.3930], customerPos:[6.5810,3.3950],
-    zone:'Maryland / Gbagada', eta:'—', total:12400, attempts:1,
-    items:'Plantain ×4 hands, Ugwu ×3 bunches',
-  },
-  {
-    id:'DEL-2026-0039', orderId:'ORD-2026-0141', status:'assigned',
-    driver:{ name:'Femi Adeleye', phone:'08078901234', bike:'LAG-456-IJ', color:'#8b5cf6' },
-    customer:{ name:'Adaeze Nwosu', phone:'07098765432', address:'7 Lekki Phase 1, Lagos' },
-    driverPos:[6.4553,3.3862], customerPos:[6.4677,3.5215],
-    zone:'Lekki Phase 1', eta:'—', total:48100, attempts:0,
-    items:'Fresh Tomatoes ×8kg, Red Bell Pepper ×4kg +2 more',
-  },
-]
-
 const STATUS_CFG = {
   assigned:           { label:'Awaiting Pickup', color:'#06b6d4', bg:'#cffafe', pulse:false },
   shipped:            { label:'En Route',        color:'#3b82f6', bg:'#dbeafe', pulse:true  },
@@ -55,7 +21,7 @@ const STATUS_CFG = {
 const fmt = n => `₦${Number(n).toLocaleString()}`
 
 function driverIcon(driver, status) {
-  const cfg      = STATUS_CFG[status]
+  const cfg      = STATUS_CFG[status] || { label: status || 'Pending', color:'#9ca3af', bg:'#f3f4f6', pulse:false }
   const initials = driver.name.split(' ').map(n=>n[0]).join('')
   const pulse    = cfg.pulse ? `<span style="position:absolute;inset:-4px;border-radius:50%;border:2px solid ${driver.color};animation:pulse-ring 1.5s ease-out infinite;opacity:0.6;"></span>` : ''
   return L.divIcon({
@@ -89,15 +55,62 @@ export default function DeliveryMap() {
   const [flyTarget, setFlyTarget]   = useState(null)
   const [tick, setTick]             = useState(0)
 
+  const [dbDeliveries, setDbDeliveries] = useState([])
+  const [loading, setLoading] = useState(true)
+
   useEffect(() => {
-    const id = setInterval(() => setTick(t=>t+1), 8000)
+    const fetchActive = async () => {
+      try {
+        const res = await api.get('/admin/deliveries/active')
+        setDbDeliveries(res.data.deliveries || [])
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchActive()
+    const id = setInterval(() => { setTick(t=>t+1); fetchActive() }, 8000)
     return () => clearInterval(id)
   }, [])
 
-  const deliveries = DELIVERIES.map(d => {
-    if (d.status!=='shipped') return d
-    const jitter = tick*0.0003
-    return { ...d, driverPos:[d.driverPos[0]+jitter, d.driverPos[1]+jitter*0.5] }
+  const deliveries = dbDeliveries.map((d, i) => {
+    // Generate dummy positions for demo based on index
+    const angle = (i * Math.PI * 2) / Math.max(dbDeliveries.length, 1)
+    const dist = 0.02 + (i % 3) * 0.01
+    const basePos = [STORE_POS[0] + Math.cos(angle)*dist, STORE_POS[1] + Math.sin(angle)*dist]
+    
+    let st = d.status
+    if (st === 'out_for_delivery') st = 'shipped'
+
+    // Jitter for movement
+    const jitter = st === 'shipped' ? tick * 0.0003 : 0
+    const dPos = [basePos[0] + jitter, basePos[1] + jitter * 0.5]
+
+    const colors = ['#3b82f6', '#06b6d4', '#f97316', '#8b5cf6', '#ec4899']
+    
+    return {
+      id: d.id,
+      status: st,
+      orderId: d.delivery_ref || d.order_id,
+      driverPos: dPos,
+      customerPos: [basePos[0] + 0.01, basePos[1] + 0.01],
+      total: d.total_amount || 0,
+      eta: '45 mins',
+      attempts: 0,
+      items: d.items ? d.items.length + ' items' : 'Items',
+      driver: {
+        name: d.driver_name || 'Unassigned',
+        bike: d.vehicle_type || 'Bike',
+        phone: d.driver_phone || '--',
+        color: colors[i % colors.length]
+      },
+      customer: {
+        name: d.customer_name || 'Customer',
+        address: d.delivery_address || 'Address',
+        phone: '--'
+      }
+    }
   })
 
   const handleSelect = del => { setSelected(del); setFlyTarget(del.driverPos) }
@@ -161,7 +174,7 @@ export default function DeliveryMap() {
           </div>
 
           {deliveries.map(del => {
-            const cfg      = STATUS_CFG[del.status]
+            const cfg      = STATUS_CFG[del.status] || { label: del.status || 'Pending', color:'#9ca3af', bg:'#f3f4f6', pulse:false }
             const isActive = selected?.id===del.id
             return (
               <div key={del.id} onClick={() => handleSelect(del)} style={{ padding:'12px 14px', borderBottom:'1px solid #f9fafb', cursor:'pointer', background:isActive?del.driver.color+'12':'#fff', borderLeft:isActive?`3px solid ${del.driver.color}`:'3px solid transparent', transition:'all 0.15s' }}>
@@ -241,7 +254,7 @@ export default function DeliveryMap() {
             </Marker>
 
             {deliveries.map(del => {
-              const cfg = STATUS_CFG[del.status]
+              const cfg = STATUS_CFG[del.status] || { label: del.status || 'Pending', color:'#9ca3af', bg:'#f3f4f6', pulse:false }
               return (
                 <div key={del.id}>
                   <Polyline positions={[del.driverPos, del.customerPos]} pathOptions={{ color:del.driver.color, weight:2.5, dashArray:del.status==='shipped'?'':'6,6', opacity:0.7 }} />
@@ -322,7 +335,7 @@ export default function DeliveryMap() {
                 </div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontWeight:600, fontSize:13 }}>{selected.driver.name}</div>
-                  <div style={{ fontSize:10, color:'#6b7280' }}>{STATUS_CFG[selected.status].label}</div>
+                  <div style={{ fontSize:10, color:'#6b7280' }}>{(STATUS_CFG[selected.status] || {label: selected.status || 'Pending'}).label}</div>
                 </div>
                 <button onClick={() => { setSelected(null); setFlyTarget(null) }} style={{ width:24, height:24, borderRadius:'50%', border:'1px solid #e5e7eb', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#9ca3af' }}>
                   <i className="ri-close-line" style={{ fontSize:12 }} />
