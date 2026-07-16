@@ -40,7 +40,7 @@ export default function DeliveryZones() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await api.get('/admin/delivery-zones')
+      const res = await api.get('/admin/deliveries/zones')
       setZones(res.data.zones || [])
       setAllDrivers(res.data.drivers || [])
     } catch { toast.error('Failed to load zones') }
@@ -88,8 +88,8 @@ export default function DeliveryZones() {
     try {
       const coverageArr = form.coverage_areas.split(',').map(a=>a.trim()).filter(Boolean)
       const payload = { ...form, coverage_areas:coverageArr }
-      if (isEditing) { await api.patch(`/admin/delivery-zones/${selected.id}`, payload); toast.success('Zone updated') }
-      else           { await api.post('/admin/delivery-zones', payload); toast.success('Zone created') }
+      if (isEditing) { await api.patch(`/admin/deliveries/zones/${selected.id}`, payload); toast.success('Zone updated') }
+      else           { await api.post('/admin/deliveries/zones', payload); toast.success('Zone created') }
       closeModal(); load()
     } catch (err) { toast.error(err.response?.data?.message||'Failed to save zone') }
     finally { setSubmitting(false) }
@@ -97,7 +97,7 @@ export default function DeliveryZones() {
 
   const toggleActive = async zone => {
     try {
-      await api.patch(`/admin/delivery-zones/${zone.id}`, { is_active:!zone.is_active })
+      await api.patch(`/admin/deliveries/zones/${zone.id}`, { is_active:!zone.is_active })
       toast.success(zone.is_active?'Zone deactivated':'Zone activated')
       load()
     } catch { toast.error('Failed') }
@@ -105,7 +105,7 @@ export default function DeliveryZones() {
 
   const deleteZone = async () => {
     setSubmitting(true)
-    try { await api.delete(`/admin/delivery-zones/${selected.id}`); toast.success('Zone deleted'); closeModal(); load() }
+    try { await api.delete(`/admin/deliveries/zones/${selected.id}`); toast.success('Zone deleted'); closeModal(); load() }
     catch (err) { toast.error(err.response?.data?.message||'Failed to delete zone') }
     finally { setSubmitting(false) }
   }

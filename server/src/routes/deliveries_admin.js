@@ -22,7 +22,7 @@ router.get("/active", async (req, res) => {
     if (search) {
       params.push(`%${search}%`);
       where.push(
-        `(d.delivery_ref ILIKE $${params.length} OR o.id ILIKE $${params.length} OR COALESCE(o.customer_name,c.name,'') ILIKE $${params.length} OR dr.name ILIKE $${params.length})`,
+        `(d.delivery_ref ILIKE $${params.length} OR o.id::text ILIKE $${params.length} OR COALESCE(o.customer_name,c.name,'') ILIKE $${params.length} OR dr.name ILIKE $${params.length})`,
       );
     }
 

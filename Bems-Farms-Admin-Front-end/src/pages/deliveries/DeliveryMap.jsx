@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import api from '../../lib/api'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -11,41 +12,6 @@ L.Icon.Default.mergeOptions({
 })
 
 const STORE_POS = [6.4553, 3.3862]
-
-const DELIVERIES = [
-  {
-    id:'DEL-2026-0042', orderId:'ORD-2026-0138', status:'shipped',
-    driver:{ name:'Emeka Okafor', phone:'08045678901', bike:'LAG-567-CD', color:'#3b82f6' },
-    customer:{ name:'Kemi Balogun', phone:'08167891234', address:'18 Surulere, Lagos' },
-    driverPos:[6.4920,3.3600], customerPos:[6.5048,3.3543],
-    zone:'Surulere / Yaba', eta:'~18 min', total:16100, attempts:0,
-    items:'Fresh Tomatoes ×3kg, Red Bell Pepper ×2kg',
-  },
-  {
-    id:'DEL-2026-0041', orderId:'ORD-2026-0139', status:'assigned',
-    driver:{ name:'Tunde Adeyemi', phone:'08031234567', bike:'LAG-234-AB', color:'#06b6d4' },
-    customer:{ name:'Seun Adesanya', phone:'09012341234', address:'5 Ikeja GRA, Lagos' },
-    driverPos:[6.4553,3.3862], customerPos:[6.5944,3.3478],
-    zone:'Ikeja / GRA', eta:'—', total:14200, attempts:0,
-    items:'Ginger ×1kg, Garlic ×1kg, Sweet Corn ×6 cobs',
-  },
-  {
-    id:'DEL-2026-0040', orderId:'ORD-2026-0137', status:'delivery_attempted',
-    driver:{ name:'Bola Akinwale', phone:'08056789012', bike:'LAG-890-EF', color:'#f97316' },
-    customer:{ name:'Tobi Adekunle', phone:'07056781234', address:'3 Ojota Estate, Lagos' },
-    driverPos:[6.5730,3.3930], customerPos:[6.5810,3.3950],
-    zone:'Maryland / Gbagada', eta:'—', total:12400, attempts:1,
-    items:'Plantain ×4 hands, Ugwu ×3 bunches',
-  },
-  {
-    id:'DEL-2026-0039', orderId:'ORD-2026-0141', status:'assigned',
-    driver:{ name:'Femi Adeleye', phone:'08078901234', bike:'LAG-456-IJ', color:'#8b5cf6' },
-    customer:{ name:'Adaeze Nwosu', phone:'07098765432', address:'7 Lekki Phase 1, Lagos' },
-    driverPos:[6.4553,3.3862], customerPos:[6.4677,3.5215],
-    zone:'Lekki Phase 1', eta:'—', total:48100, attempts:0,
-    items:'Fresh Tomatoes ×8kg, Red Bell Pepper ×4kg +2 more',
-  },
-]
 
 const STATUS_CFG = {
   assigned:           { label:'Awaiting Pickup', color:'#06b6d4', bg:'#cffafe', pulse:false },
@@ -94,7 +60,7 @@ export default function DeliveryMap() {
     return () => clearInterval(id)
   }, [])
 
-  const deliveries = DELIVERIES.map(d => {
+  const deliveries = dbDeliveries.map(d => {
     if (d.status!=='shipped') return d
     const jitter = tick*0.0003
     return { ...d, driverPos:[d.driverPos[0]+jitter, d.driverPos[1]+jitter*0.5] }

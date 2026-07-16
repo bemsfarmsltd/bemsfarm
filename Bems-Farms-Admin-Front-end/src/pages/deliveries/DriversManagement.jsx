@@ -67,7 +67,7 @@ export default function DriversManagement() {
     try {
       const [driversRes, zonesRes] = await Promise.all([
         api.get('/admin/deliveries/drivers', { params:{ search, status: filterStatus==='all'?'':filterStatus } }),
-        api.get('/admin/delivery-zones'),
+        api.get('/admin/deliveries/zones'),
       ])
       setDrivers(driversRes.data.drivers || [])
       setStats(driversRes.data.stats || {})
