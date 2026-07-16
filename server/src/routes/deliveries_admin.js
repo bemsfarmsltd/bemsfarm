@@ -80,8 +80,8 @@ router.get("/auto-log", async (req, res) => {
   try {
     const rows = await pool.query(`
       SELECT
-        da.id, da.assignment_type, da.matching_rule,
-        da.confidence_score, da.created_at,
+        da.id, da.assignment_type, 
+        0 AS confidence_score, da.created_at,
         da.driver_response,
         o.id AS order_id, o.status AS order_status,
         COALESCE(o.customer_name, c.name) AS customer_name,
@@ -343,7 +343,7 @@ router.get("/drivers", async (req, res) => {
         dz.zone_name AS zone,
         COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'delivered') AS total_deliveries,
         COALESCE(AVG(df.rating), 0)                                AS rating,
-        COALESCE(SUM(df.earnings), 0)                              AS earnings,
+        COALESCE(dr.total_earnings, 0)                              AS earnings,
         (SELECT o.id FROM deliveries d2
          JOIN orders o ON d2.order_id = o.id
          WHERE d2.driver_id = dr.id AND d2.status NOT IN ('delivered','cancelled')
@@ -516,7 +516,7 @@ router.get("/zones", async (req, res) => {
       LEFT JOIN orders o ON d.order_id = o.id
       LEFT JOIN drivers dr ON dr.primary_zone_id = dz.zone_id AND dr.status NOT IN ('suspended','off_duty')
       GROUP BY dz.zone_id
-      ORDER BY dz.is_active DESC, dz.zone_name ASC
+      ORDER BY (dz.status = 'active') DESC, dz.zone_name ASC
     `);
 
     const drivers = await pool.query(`
@@ -554,7 +554,7 @@ router.post(
         `
       INSERT INTO delivery_zones
         (zone_name, delivery_fee, min_order_amount, estimated_eta,
-         coverage_areas, notes, is_active, created_at)
+         coverage_areas, notes, status, created_at)
       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
       RETURNING *
     `,
@@ -565,7 +565,7 @@ router.post(
           estimated_eta || null,
           coverage_areas ? JSON.stringify(coverage_areas) : null,
           notes || null,
-          is_active,
+          is_active ? 'active' : 'inactive',
         ],
       );
 
@@ -574,7 +574,7 @@ router.post(
       // Assign drivers to this zone
       if (driver_ids.length) {
         await pool.query(
-          `UPDATE drivers SET zone_id=$1 WHERE id = ANY($2::int[])`,
+          `UPDATE drivers SET primary_zone_id=$1 WHERE id = ANY($2::int[])`,
           [zone.id, driver_ids],
         );
       }
@@ -614,7 +614,7 @@ router.patch(
         estimated_eta      = COALESCE($4, estimated_eta),
         coverage_areas     = COALESCE($5, coverage_areas),
         notes              = COALESCE($6, notes),
-        is_active          = COALESCE($7, is_active),
+        status             = COALESCE($7, status),
         updated_at         = NOW()
       WHERE id = $8
     `,
@@ -625,19 +625,19 @@ router.patch(
           estimated_eta || null,
           coverage_areas ? JSON.stringify(coverage_areas) : null,
           notes || null,
-          is_active !== undefined ? is_active : null,
+          is_active !== undefined ? (is_active ? 'active' : 'inactive') : null,
           req.params.id,
         ],
       );
 
       // Reassign drivers if provided
       if (driver_ids !== undefined) {
-        await client.query("UPDATE drivers SET zone_id=NULL WHERE zone_id=$1", [
+        await client.query("UPDATE drivers SET primary_zone_id=NULL WHERE primary_zone_id=$1", [
           req.params.id,
         ]);
         if (driver_ids.length) {
           await client.query(
-            "UPDATE drivers SET zone_id=$1 WHERE id = ANY($2::int[])",
+            "UPDATE drivers SET primary_zone_id=$1 WHERE id = ANY($2::int[])",
             [req.params.id, driver_ids],
           );
         }
