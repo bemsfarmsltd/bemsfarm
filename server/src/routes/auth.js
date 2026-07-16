@@ -485,4 +485,61 @@ router.post("/reset-admin", async (req, res) => {
   }
 });
 
+// Temporary debugging route to test Google certs fetches on Render
+router.get("/test-google-fetch", async (req, res) => {
+  const results = {};
+  
+  // Test 1: Standard fetch
+  try {
+    const response = await fetch("https://www.googleapis.com/oauth2/v1/certs");
+    results.standardFetch = {
+      status: response.status,
+      body: (await response.text()).substring(0, 150),
+    };
+  } catch (err) {
+    results.standardFetch = { error: err.message };
+  }
+
+  // Test 2: Fetch with custom User-Agent
+  try {
+    const response = await fetch("https://www.googleapis.com/oauth2/v1/certs", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      }
+    });
+    results.userAgentFetch = {
+      status: response.status,
+      body: (await response.text()).substring(0, 150),
+    };
+  } catch (err) {
+    results.userAgentFetch = { error: err.message };
+  }
+
+  // Test 3: Fetch using DNS lookup family v4 explicitly
+  try {
+    const https = require("https");
+    const dns = require("dns");
+    
+    // Perform standard dns lookup to see what addresses we resolve
+    const lookupRes = await new Promise((resolve) => {
+      dns.lookup("www.googleapis.com", { all: true }, (err, addresses) => {
+        resolve(err ? { error: err.message } : addresses);
+      });
+    });
+    results.dnsLookupAddresses = lookupRes;
+  } catch (err) {
+    results.dnsLookupAddresses = { error: err.message };
+  }
+
+  // Test 4: Verify if dns.setDefaultResultOrder actually is set
+  try {
+    const dns = require("dns");
+    results.dnsOrder = dns.getDefaultResultOrder ? dns.getDefaultResultOrder() : "unknown";
+  } catch (err) {
+    results.dnsOrder = { error: err.message };
+  }
+
+  res.json(results);
+});
+
 module.exports = router;
