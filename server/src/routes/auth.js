@@ -412,33 +412,25 @@ router.post("/google", async (req, res) => {
     if (!credential)
       return res.status(400).json({ message: "Google credential required" });
 
-    // ── MANUAL VERIFICATION OF GOOGLE ID TOKEN ──
-    // Fetch certs with a browser User-Agent to bypass Render datacenter block
-    const certsResponse = await fetch("https://www.googleapis.com/oauth2/v1/certs", {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      }
-    });
-    if (!certsResponse.ok) {
-      throw new Error(`Failed to fetch Google certificates: ${certsResponse.statusText}`);
+    // ── GOOGLE TOKENINFO VERIFICATION ──
+    // Query Google's tokeninfo endpoint to verify token signature and claims.
+    // This host (oauth2.googleapis.com) is whitelisted for data center IP outbound traffic.
+    const tokenInfoRes = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+    );
+    if (!tokenInfoRes.ok) {
+      const errorMsg = await tokenInfoRes.text();
+      return res.status(400).json({ 
+        message: `Google token validation failed: ${tokenInfoRes.statusText}`,
+        details: errorMsg 
+      });
     }
-    const certs = await certsResponse.json();
+    const payload = await tokenInfoRes.json();
 
-    const decoded = jwt.decode(credential, { complete: true });
-    if (!decoded || !decoded.header || !decoded.header.kid) {
-      return res.status(400).json({ message: "Invalid Google credential structure" });
+    // Verify that the audience matches our configured Client ID
+    if (payload.aud !== process.env.GOOGLE_CLIENT_ID) {
+      return res.status(400).json({ message: "Google token audience mismatch" });
     }
-
-    const kid = decoded.header.kid;
-    const cert = certs[kid];
-    if (!cert) {
-      return res.status(400).json({ message: "Google signature key not found" });
-    }
-
-    const payload = jwt.verify(credential, cert, {
-      audience: process.env.GOOGLE_CLIENT_ID,
-      issuer: ["https://accounts.google.com", "accounts.google.com"],
-    });
 
     const { email, name, picture, sub: googleId } = payload;
 
