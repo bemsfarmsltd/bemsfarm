@@ -299,4 +299,21 @@ router.get("/admin/stats", requireRole("superadmin"), async (req, res) => {
   }
 });
 
+// RENAME CONVERSATION  ──  PATCH /api/ai/context/conversations/:id
+router.patch("/conversations/:id", async (req, res) => {
+  try {
+    const { title } = req.body;
+    if (!title?.trim()) return res.status(400).json({ message: "title required" });
+
+    const result = await pool.query(
+      "UPDATE admin_ai_conversations SET title=$1 WHERE id=$2 AND user_id=$3 RETURNING *",
+      [title.trim(), req.params.id, req.user.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ message: "Conversation not found" });
+    res.json({ conversation: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
