@@ -427,8 +427,10 @@ router.post("/google", async (req, res) => {
     }
     const payload = await tokenInfoRes.json();
 
-    // Verify that the audience matches our configured Client ID
-    if (payload.aud !== process.env.GOOGLE_CLIENT_ID) {
+    // Verify that the audience matches our configured Client ID or fallback
+    const expectedClientId = process.env.GOOGLE_CLIENT_ID || "399237493446-uqgrc94dbsmb7jnm8rl7rfv97q0bi898.apps.googleusercontent.com";
+    if (payload.aud !== expectedClientId) {
+      console.error(`Google token audience mismatch. Expected: ${expectedClientId}, Got: ${payload.aud}`);
       return res.status(400).json({ message: "Google token audience mismatch" });
     }
 
