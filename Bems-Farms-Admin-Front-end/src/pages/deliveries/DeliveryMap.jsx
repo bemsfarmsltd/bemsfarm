@@ -55,15 +55,62 @@ export default function DeliveryMap() {
   const [flyTarget, setFlyTarget]   = useState(null)
   const [tick, setTick]             = useState(0)
 
+  const [dbDeliveries, setDbDeliveries] = useState([])
+  const [loading, setLoading] = useState(true)
+
   useEffect(() => {
-    const id = setInterval(() => setTick(t=>t+1), 8000)
+    const fetchActive = async () => {
+      try {
+        const res = await api.get('/admin/deliveries/active')
+        setDbDeliveries(res.data.deliveries || [])
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchActive()
+    const id = setInterval(() => { setTick(t=>t+1); fetchActive() }, 8000)
     return () => clearInterval(id)
   }, [])
 
-  const deliveries = dbDeliveries.map(d => {
-    if (d.status!=='shipped') return d
-    const jitter = tick*0.0003
-    return { ...d, driverPos:[d.driverPos[0]+jitter, d.driverPos[1]+jitter*0.5] }
+  const deliveries = dbDeliveries.map((d, i) => {
+    // Generate dummy positions for demo based on index
+    const angle = (i * Math.PI * 2) / Math.max(dbDeliveries.length, 1)
+    const dist = 0.02 + (i % 3) * 0.01
+    const basePos = [STORE_POS[0] + Math.cos(angle)*dist, STORE_POS[1] + Math.sin(angle)*dist]
+    
+    let st = d.status
+    if (st === 'out_for_delivery') st = 'shipped'
+
+    // Jitter for movement
+    const jitter = st === 'shipped' ? tick * 0.0003 : 0
+    const dPos = [basePos[0] + jitter, basePos[1] + jitter * 0.5]
+
+    const colors = ['#3b82f6', '#06b6d4', '#f97316', '#8b5cf6', '#ec4899']
+    
+    return {
+      id: d.id,
+      status: st,
+      orderId: d.delivery_ref || d.order_id,
+      driverPos: dPos,
+      customerPos: [basePos[0] + 0.01, basePos[1] + 0.01],
+      total: d.total_amount || 0,
+      eta: '45 mins',
+      attempts: 0,
+      items: d.items ? d.items.length + ' items' : 'Items',
+      driver: {
+        name: d.driver_name || 'Unassigned',
+        bike: d.vehicle_type || 'Bike',
+        phone: d.driver_phone || '--',
+        color: colors[i % colors.length]
+      },
+      customer: {
+        name: d.customer_name || 'Customer',
+        address: d.delivery_address || 'Address',
+        phone: '--'
+      }
+    }
   })
 
   const handleSelect = del => { setSelected(del); setFlyTarget(del.driverPos) }
