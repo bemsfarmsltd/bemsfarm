@@ -412,12 +412,35 @@ router.post("/google", async (req, res) => {
     if (!credential)
       return res.status(400).json({ message: "Google credential required" });
 
-    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-    const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
+    // ── MANUAL VERIFICATION OF GOOGLE ID TOKEN ──
+    // Fetch certs with a browser User-Agent to bypass Render datacenter block
+    const certsResponse = await fetch("https://www.googleapis.com/oauth2/v1/certs", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      }
     });
-    const { email, name, picture, sub: googleId } = ticket.getPayload();
+    if (!certsResponse.ok) {
+      throw new Error(`Failed to fetch Google certificates: ${certsResponse.statusText}`);
+    }
+    const certs = await certsResponse.json();
+
+    const decoded = jwt.decode(credential, { complete: true });
+    if (!decoded || !decoded.header || !decoded.header.kid) {
+      return res.status(400).json({ message: "Invalid Google credential structure" });
+    }
+
+    const kid = decoded.header.kid;
+    const cert = certs[kid];
+    if (!cert) {
+      return res.status(400).json({ message: "Google signature key not found" });
+    }
+
+    const payload = jwt.verify(credential, cert, {
+      audience: process.env.GOOGLE_CLIENT_ID,
+      issuer: ["https://accounts.google.com", "accounts.google.com"],
+    });
+
+    const { email, name, picture, sub: googleId } = payload;
 
     if (!email)
       return res
