@@ -11,8 +11,8 @@ export default {
         accent:  { DEFAULT: '#F57C00', light: '#FF9800' },
       },
       fontFamily: {
-        sans:    ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Space Grotesk', 'sans-serif'],
+        sans:    ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        display: ['Fraunces', 'serif'],
       },
     },
   },
