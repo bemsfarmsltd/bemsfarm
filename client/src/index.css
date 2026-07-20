@@ -30,14 +30,14 @@
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   background-color: var(--white);
   color: var(--gray-900);
   overflow-x: hidden;
 }
 
-h1, h2, h3 {
-  font-family: 'Fraunces', serif;
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 ::-webkit-scrollbar { width: 6px; }

@@ -581,6 +581,12 @@ router.get("/customers", async (req, res) => {
 // ── CHEF BEMS AI TAB ─────────────────────────────────────────────
 router.get("/ai", async (req, res) => {
   try {
+    // Ensure admin_dietary_rules table exists
+    await pool.query(`CREATE TABLE IF NOT EXISTS admin_dietary_rules (
+      id SERIAL PRIMARY KEY, condition VARCHAR(255) UNIQUE NOT NULL, rule_text TEXT NOT NULL,
+      tags VARCHAR(255), priority INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
+    )`);
+
     const [
       convToday,
       pendingConvs,
@@ -590,13 +596,13 @@ router.get("/ai", async (req, res) => {
       convBreakdown,
     ] = await Promise.all([
       q1(`SELECT COUNT(*) AS count FROM ai_conversations
-          WHERE DATE(created_at) = CURRENT_DATE`),
+          WHERE DATE(started_at) = CURRENT_DATE`),
 
       q1(`SELECT COUNT(*) AS count FROM ai_conversations
-          WHERE is_resolved = false`),
+          WHERE status = 'pending'`),
 
-      q(`SELECT diet_name AS name, notes AS scope, 'active' AS status
-         FROM dietary_rules
+      q(`SELECT condition AS name, rule_text AS scope, 'active' AS status
+         FROM admin_dietary_rules
          LIMIT 10`),
 
       q(`SELECT
@@ -611,18 +617,18 @@ router.get("/ai", async (req, res) => {
       q(`SELECT
            ac.id,
            COALESCE(c.name, 'Anonymous') AS customer,
-           ac.customer_message AS query,
-           ac.ai_status AS status,
-           ac.created_at
+           COALESCE(ac.messages->0->>'content', 'No message') AS query,
+           ac.status,
+           ac.started_at AS created_at
          FROM ai_conversations ac
          LEFT JOIN customers c ON ac.customer_id = c.id
-         ORDER BY ac.created_at DESC
+         ORDER BY ac.started_at DESC
          LIMIT 10`),
 
-      q(`SELECT ai_status AS status, COUNT(*) AS count
+      q(`SELECT status, COUNT(*) AS count
          FROM ai_conversations
-         WHERE DATE(created_at) = CURRENT_DATE
-         GROUP BY ai_status`),
+         WHERE DATE(started_at) = CURRENT_DATE
+         GROUP BY status`),
     ]);
 
     const breakdownMap = {};

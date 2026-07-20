@@ -1,49 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { GoogleLogin } from "@react-oauth/google";
 
-/*
-  FIXES vs previous version:
-  1. navigate("/") → navigate("/onboarding") for new users
-     (onboarding flow: Register → /onboarding → /home)
-  2. useState() used as useEffect() for slide timer — fixed
-  3. Google OAuth button added
-*/
-
-const SLIDE_IMAGES = [
-  {
-    url: "https://images.unsplash.com/photo-1595855759920-86582396756a?w=900&q=90",
-    caption: "Join Nigerian families eating fresh",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=900&q=90",
-    caption: "AI-powered food recommendations for your health goals",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=900&q=90",
-    caption: "Fresh fruits and vegetables delivered today",
-  },
+const PREF_TAGS = [
+  { id: "grains", label: "Grains & Cereals 🌾" },
+  { id: "veg", label: "Vegetables 🥬" },
+  { id: "oils", label: "Oils & Fats 🛢️" },
+  { id: "tubers", label: "Tubers & Roots 🥔" },
+  { id: "spices", label: "Spices & Seasonings 🌶️" },
 ];
 
-function getPasswordStrength(pwd) {
-  if (!pwd) return { strength: 0, label: "", color: "transparent" };
-  let score = 0;
-  if (pwd.length >= 8) score++;
-  if (/[A-Z]/.test(pwd)) score++;
-  if (/[0-9]/.test(pwd)) score++;
-  if (/[^A-Za-z0-9]/.test(pwd)) score++;
-  const map = [
-    { strength: 1, label: "Weak", color: "#EF4444" },
-    { strength: 2, label: "Fair", color: "#F59E0B" },
-    { strength: 3, label: "Good", color: "#3B82F6" },
-    { strength: 4, label: "Strong", color: "#10B981" },
-  ];
-  return map[score - 1] || { strength: 0, label: "", color: "transparent" };
-}
-
 export default function RegisterPage() {
-  const [activeSlide, setActiveSlide] = useState(0);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -53,25 +21,29 @@ export default function RegisterPage() {
     password: "",
     confirm: "",
   });
-  const [showPwd, setShowPwd] = useState(false);
+  const [selectedTags, setSelectedTags] = useState(["grains", "veg"]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { register, loginWithGoogle } = useAuth();
+  
   const navigate = useNavigate();
 
-  // ── FIX: was useState() — should be useEffect with cleanup ──
-  useEffect(() => {
-    const id = setInterval(
-      () => setActiveSlide((s) => (s + 1) % SLIDE_IMAGES.length),
-      4500,
-    );
-    return () => clearInterval(id);
-  }, []);
+  const handleInputChange = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
 
-  const pwdStrength = getPasswordStrength(form.password);
+  const toggleTag = (id) => {
+    if (selectedTags.includes(id)) {
+      setSelectedTags((prev) => prev.filter((t) => t !== id));
+    } else {
+      setSelectedTags((prev) => [...prev, id]);
+    }
+  };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e?.preventDefault();
     setError("");
+    
     if (!form.name.trim()) return setError("Please enter your full name");
     if (!form.email.trim()) return setError("Please enter your email");
     if (form.email.toLowerCase().trim() !== form.confirmEmail.toLowerCase().trim())
@@ -87,11 +59,9 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(form.name, form.email, form.password, form.phone);
-      navigate("/onboarding"); // ── FIX: was navigate("/") → ComingSoonPage
+      navigate("/onboarding");
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Registration failed. Try again.",
-      );
+      setError(err.response?.data?.message || "Registration failed. Try again.");
     } finally {
       setLoading(false);
     }
@@ -102,703 +72,242 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await loginWithGoogle(credentialResponse.credential);
-      // Google sign-up skips onboarding and goes straight to home
-      // since we can't intercept mid-flow for preferences
       navigate("/home");
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Google sign-in failed. Try again.",
-      );
+      setError(err.response?.data?.message || "Google registration failed.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        fontFamily: "'Inter', sans-serif",
-      }}
-    >
-      {/* Left image panel */}
-      <div
-        style={{ flex: "1 1 50%", position: "relative", overflow: "hidden" }}
-        className="auth-image-panel"
-      >
-        {SLIDE_IMAGES.map((slide, i) => (
-          <img
-            key={i}
-            src={slide.url}
-            alt={slide.caption}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              opacity: activeSlide === i ? 1 : 0,
-              transition: "opacity 0.8s ease",
-            }}
+    <div className="min-h-screen bg-[#2E7D32] flex items-center justify-center p-4 md:p-8 font-sans">
+      
+      {/* Outer Card Container */}
+      <div className="max-w-5xl w-full h-auto md:h-[720px] bg-white rounded-[32px] overflow-hidden shadow-2xl flex flex-col md:flex-row">
+        
+        {/* Left Side: Video Pane */}
+        <div className="w-full md:w-1/2 relative overflow-hidden h-[240px] md:h-full shrink-0">
+          <video
+            src="https://res.cloudinary.com/dyzkjerez/video/upload/v1784540535/Create_a_vibrant_and_animated_u6qaef.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
           />
-        ))}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to bottom,rgba(10,46,10,0.25) 0%,rgba(10,46,10,0.85) 100%)",
-          }}
-        />
+          {/* Dark green gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/90 via-emerald-950/30 to-transparent" />
+          
+          {/* Text Overlay */}
+          <div className="absolute bottom-6 md:bottom-12 left-6 md:left-12 right-6 md:right-12 text-white z-10 text-left">
+            <h2 className="text-[28px] md:text-[38px] font-bold leading-tight font-serif mb-3">
+              Create your <br />
+              Free Account
+            </h2>
+            <p className="text-emerald-100/80 text-[13px] md:text-[15px] font-medium max-w-xs leading-relaxed">
+              Source premium, fresh Nigerian farm produce directly and support local growers!
+            </p>
+          </div>
+        </div>
 
-        <div
-          style={{
-            position: "absolute",
-            top: 36,
-            left: 36,
-            right: 36,
-            display: "flex",
-            justifyContent: "space-between",
-            zIndex: 2,
-          }}
-        >
-          <div
-            style={{
-              background: "rgba(255,255,255,0.13)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid rgba(255,255,255,0.22)",
-              borderRadius: 16,
-              padding: "10px 16px",
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-            }}
-          >
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                overflow: "hidden",
-              }}
-            >
-              <img
-                src="https://images.unsplash.com/photo-1592921870789-04563d55041c?w=32&q=80"
-                alt=""
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            </div>
-            <div>
-              <div style={{ color: "#fff", fontWeight: 700, fontSize: 12 }}>
-                100% Secure
+        {/* Right Side: Form Pane */}
+        <div className="flex-1 p-6 md:p-10 flex flex-col justify-between overflow-y-auto">
+          
+          {/* Header decoration */}
+          <div className="flex justify-end text-gray-400 text-xs font-semibold mb-4">
+            <span>English (USA) ▼</span>
+          </div>
+
+          <div className="w-full max-w-sm mx-auto my-auto text-left">
+            <h1 className="text-2xl font-extrabold text-gray-900 mb-1">Sign up</h1>
+            <p className="text-gray-500 text-[13px] mb-6 font-medium">
+              Already have an account?{" "}
+              <Link to="/login" className="text-emerald-700 hover:text-emerald-800 font-bold transition-colors">
+                Sign In
+              </Link>
+            </p>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3 text-xs font-semibold mb-4 flex items-center gap-2">
+                <span>⚠️</span> {error}
               </div>
-              <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 10 }}>
-                Paystack protected
-              </div>
-            </div>
-          </div>
-          <div
-            style={{
-              background: "rgba(105,240,174,0.2)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid rgba(105,240,174,0.4)",
-              borderRadius: 16,
-              padding: "10px 18px",
-              textAlign: "center",
-            }}
-          >
-            <div style={{ color: "#69F0AE", fontWeight: 900, fontSize: 20 }}>
-              Free
-            </div>
-            <div
-              style={{
-                color: "rgba(255,255,255,0.75)",
-                fontSize: 10,
-                fontWeight: 600,
-              }}
-            >
-              To Join
-            </div>
-          </div>
-        </div>
+            )}
 
-        <div
-          style={{
-            position: "absolute",
-            top: "40%",
-            right: 36,
-            background: "rgba(255,255,255,0.13)",
-            backdropFilter: "blur(16px)",
-            border: "1px solid rgba(255,255,255,0.22)",
-            borderRadius: 20,
-            padding: 16,
-            width: 140,
-            zIndex: 2,
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              height: 80,
-              borderRadius: 12,
-              overflow: "hidden",
-              marginBottom: 10,
-            }}
-          >
-            <img
-              src="https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=140&q=80"
-              alt="Rice"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          </div>
-          <div style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>
-            Ofada Rice
-          </div>
-          <div style={{ color: "#69F0AE", fontWeight: 800, fontSize: 15 }}>
-            ₦3,750
-          </div>
-          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 10 }}>
-            1kg bag · Farm fresh
-          </div>
-        </div>
-
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: "32px 36px 40px",
-            zIndex: 2,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 22,
-              fontWeight: 900,
-              color: "#fff",
-              marginBottom: 4,
-            }}
-          >
-            <span style={{ color: "#69F0AE" }}>BEMS</span>FARMS
-          </div>
-          <h2
-            style={{
-              color: "#fff",
-              fontSize: 20,
-              fontWeight: 700,
-              margin: "0 0 20px",
-              lineHeight: 1.3,
-            }}
-          >
-            {SLIDE_IMAGES[activeSlide].caption}
-          </h2>
-          <div style={{ display: "flex", gap: 8 }}>
-            {SLIDE_IMAGES.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveSlide(i)}
-                style={{
-                  width: activeSlide === i ? 28 : 8,
-                  height: 8,
-                  borderRadius: 4,
-                  padding: 0,
-                  background:
-                    activeSlide === i ? "#69F0AE" : "rgba(255,255,255,0.4)",
-                  border: "none",
-                  cursor: "pointer",
-                  transition: "all 0.3s",
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Right form */}
-      <div
-        className="auth-form-panel"
-        style={{
-          flex: "1 1 50%",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          padding: "clamp(32px, 6vw, 72px)",
-          background: "#fff",
-          minHeight: "100vh",
-          overflowY: "auto",
-        }}
-      >
-        <div
-          className="auth-form-inner"
-          style={{ maxWidth: 420, width: "100%", margin: "0 auto" }}
-        >
-          <div style={{ marginBottom: 32 }}>
-            <div
-              style={{
-                fontSize: 22,
-                fontWeight: 900,
-                color: "#0D1117",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              <span style={{ color: "#2E7D32" }}>BEMS</span>FARMS
-            </div>
-          </div>
-
-          <h1
-            style={{
-              fontSize: "clamp(1.5rem, 3.5vw, 2rem)",
-              fontWeight: 900,
-              color: "#0D1117",
-              margin: "0 0 6px",
-              letterSpacing: "-0.03em",
-            }}
-          >
-            Create Account
-          </h1>
-          <p style={{ color: "#6B7280", fontSize: 14, margin: "0 0 24px" }}>
-            Join Nigeria's freshest farm marketplace
-          </p>
-
-          {error && (
-            <div
-              style={{
-                background: "#FEF2F2",
-                border: "1px solid #FECACA",
-                borderRadius: 12,
-                padding: "12px 16px",
-                color: "#DC2626",
-                fontSize: 14,
-                marginBottom: 20,
-              }}
-            >
-              ⚠ {error}
-            </div>
-          )}
-
-          {/* Google OAuth */}
-          <div style={{ marginBottom: 16 }}>
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() =>
-                setError("Google sign-in was cancelled or failed.")
-              }
-              useOneTap={false}
-              theme="outline"
-              size="large"
-              width="100%"
-              text="signup_with_google"
-              shape="rectangular"
-            />
-          </div>
-
-          {/* Divider */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              margin: "0 0 20px",
-            }}
-          >
-            <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
-            <span style={{ color: "#9CA3AF", fontSize: 13, fontWeight: 500 }}>
-              OR
-            </span>
-            <div style={{ flex: 1, height: 1, background: "#E5E7EB" }} />
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {/* Name */}
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#374151",
-                  marginBottom: 6,
-                }}
-              >
-                Full Name
-              </label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Obisesan Esther"
-                style={{
-                  width: "100%",
-                  padding: "13px 16px",
-                  border: "2px solid #E5E7EB",
-                  borderRadius: 12,
-                  fontSize: 15,
-                  outline: "none",
-                  boxSizing: "border-box",
-                  background: "#FAFAFA",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#2E7D32")}
-                onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
-              />
-            </div>
-
-            {/* Email */}
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#374151",
-                  marginBottom: 6,
-                }}
-              >
-                Email Address
-              </label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="you@example.com"
-                style={{
-                  width: "100%",
-                  padding: "13px 16px",
-                  border: "2px solid #E5E7EB",
-                  borderRadius: 12,
-                  fontSize: 15,
-                  outline: "none",
-                  boxSizing: "border-box",
-                  background: "#FAFAFA",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#2E7D32")}
-                onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
-              />
-            </div>
-
-            {/* Confirm Email */}
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#374151",
-                  marginBottom: 6,
-                }}
-              >
-                Confirm Email Address
-              </label>
-              <input
-                type="email"
-                value={form.confirmEmail}
-                onChange={(e) => setForm({ ...form, confirmEmail: e.target.value })}
-                placeholder="Re-enter email address"
-                style={{
-                  width: "100%",
-                  padding: "13px 16px",
-                  border: `2px solid ${form.confirmEmail && form.confirmEmail.toLowerCase() !== form.email.toLowerCase() ? "#EF4444" : "#E5E7EB"}`,
-                  borderRadius: 12,
-                  fontSize: 15,
-                  outline: "none",
-                  boxSizing: "border-box",
-                  background: "#FAFAFA",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#2E7D32")}
-                onBlur={(e) => {
-                  if (!form.confirmEmail || form.confirmEmail.toLowerCase() === form.email.toLowerCase())
-                    e.target.style.borderColor = "#E5E7EB";
-                }}
-              />
-              {form.confirmEmail && form.confirmEmail.toLowerCase() !== form.email.toLowerCase() && (
-                <p style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>
-                  Emails don't match
-                </p>
-              )}
-            </div>
-
-            {/* Phone Number */}
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#374151",
-                  marginBottom: 6,
-                }}
-              >
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="e.g. +2348012345678"
-                style={{
-                  width: "100%",
-                  padding: "13px 16px",
-                  border: "2px solid #E5E7EB",
-                  borderRadius: 12,
-                  fontSize: 15,
-                  outline: "none",
-                  boxSizing: "border-box",
-                  background: "#FAFAFA",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#2E7D32")}
-                onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
-              />
-            </div>
-
-            {/* Confirm Phone Number */}
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#374151",
-                  marginBottom: 6,
-                }}
-              >
-                Confirm Phone Number
-              </label>
-              <input
-                type="tel"
-                value={form.confirmPhone}
-                onChange={(e) => setForm({ ...form, confirmPhone: e.target.value })}
-                placeholder="Re-enter phone number"
-                style={{
-                  width: "100%",
-                  padding: "13px 16px",
-                  border: `2px solid ${form.confirmPhone && form.confirmPhone !== form.phone ? "#EF4444" : "#E5E7EB"}`,
-                  borderRadius: 12,
-                  fontSize: 15,
-                  outline: "none",
-                  boxSizing: "border-box",
-                  background: "#FAFAFA",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#2E7D32")}
-                onBlur={(e) => {
-                  if (!form.confirmPhone || form.confirmPhone === form.phone)
-                    e.target.style.borderColor = "#E5E7EB";
-                }}
-              />
-              {form.confirmPhone && form.confirmPhone !== form.phone && (
-                <p style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>
-                  Phone numbers don't match
-                </p>
-              )}
-            </div>
-
-            {/* Password */}
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#374151",
-                  marginBottom: 6,
-                }}
-              >
-                Password
-              </label>
-              <div style={{ position: "relative" }}>
+            <form onSubmit={handleSubmit} className="space-y-3.5 max-h-[380px] overflow-y-auto pr-2 hide-scrollbar">
+              {/* Name */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                  Full Name
+                </label>
                 <input
-                  type={showPwd ? "text" : "password"}
-                  value={form.password}
-                  onChange={(e) =>
-                    setForm({ ...form, password: e.target.value })
-                  }
-                  placeholder="Min. 6 characters"
-                  style={{
-                    width: "100%",
-                    padding: "13px 44px 13px 16px",
-                    border: "2px solid #E5E7EB",
-                    borderRadius: 12,
-                    fontSize: 15,
-                    outline: "none",
-                    boxSizing: "border-box",
-                    background: "#FAFAFA",
-                    transition: "border-color 0.2s",
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = "#2E7D32")}
-                  onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  placeholder="John Doe"
+                  className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                  required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPwd(!showPwd)}
-                  style={{
-                    position: "absolute",
-                    right: 14,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: 16,
-                    color: "#9CA3AF",
-                  }}
-                >
-                  {showPwd ? "🙈" : "👁"}
-                </button>
               </div>
-              {form.password && (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
-                    {[1, 2, 3, 4].map((i) => (
-                      <div
-                        key={i}
-                        style={{
-                          flex: 1,
-                          height: 4,
-                          borderRadius: 2,
-                          background:
-                            i <= pwdStrength.strength
-                              ? pwdStrength.color
-                              : "#E5E7EB",
-                          transition: "background 0.3s",
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: pwdStrength.color,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {pwdStrength.label} password
-                  </span>
+
+              {/* Email Fields Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                    required
+                  />
                 </div>
-              )}
-            </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                    Confirm Email
+                  </label>
+                  <input
+                    type="email"
+                    value={form.confirmEmail}
+                    onChange={(e) => handleInputChange("confirmEmail", e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                    required
+                  />
+                </div>
+              </div>
 
-            {/* Confirm */}
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#374151",
-                  marginBottom: 6,
-                }}
+              {/* Phone Fields Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => handleInputChange("phone", e.target.value)}
+                    placeholder="+234..."
+                    className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                    Confirm Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={form.confirmPhone}
+                    onChange={(e) => handleInputChange("confirmPhone", e.target.value)}
+                    placeholder="+234..."
+                    className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Password Fields Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={form.password}
+                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    placeholder="••••••"
+                    className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    value={form.confirm}
+                    onChange={(e) => handleInputChange("confirm", e.target.value)}
+                    placeholder="••••••"
+                    className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Preferences selector tags (Mockup "Select Skills" style) */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">
+                  Select Preferences
+                </label>
+                <div className="flex flex-wrap gap-2 py-1">
+                  {PREF_TAGS.map((tag) => {
+                    const isSelected = selectedTags.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => toggleTag(tag.id)}
+                        className={`text-xs px-3.5 py-1.5 rounded-full border transition-all font-semibold flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-emerald-50 border-emerald-500 text-emerald-800"
+                            : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"
+                        }`}
+                      >
+                        {tag.label}
+                        {isSelected && <span className="text-[10px] text-emerald-600">✕</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Submit button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[#1B5E20] hover:bg-emerald-900 text-white font-bold py-3.5 rounded-2xl transition-all shadow-lg text-[14px] disabled:opacity-50 mt-4"
               >
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                value={form.confirm}
-                onChange={(e) => setForm({ ...form, confirm: e.target.value })}
-                placeholder="Re-enter password"
-                style={{
-                  width: "100%",
-                  padding: "13px 16px",
-                  border: `2px solid ${form.confirm && form.confirm !== form.password ? "#EF4444" : "#E5E7EB"}`,
-                  borderRadius: 12,
-                  fontSize: 15,
-                  outline: "none",
-                  boxSizing: "border-box",
-                  background: "#FAFAFA",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#2E7D32")}
-                onBlur={(e) => {
-                  if (!form.confirm || form.confirm === form.password)
-                    e.target.style.borderColor = "#E5E7EB";
-                }}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-              />
-              {form.confirm && form.confirm !== form.password && (
-                <p style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>
-                  Passwords don't match
-                </p>
-              )}
+                {loading ? "Creating Account..." : "Create an Account"}
+              </button>
+            </form>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 my-4">
+              <div className="flex-1 h-[1px] bg-gray-100" />
+              <span className="text-gray-400 text-[10px] font-bold tracking-widest">OR</span>
+              <div className="flex-1 h-[1px] bg-gray-100" />
             </div>
 
-            {/* Submit */}
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "15px",
-                background: loading
-                  ? "#9CA3AF"
-                  : "linear-gradient(135deg,#2E7D32,#388E3C)",
-                color: "#fff",
-                border: "none",
-                borderRadius: 12,
-                fontSize: 16,
-                fontWeight: 700,
-                cursor: loading ? "not-allowed" : "pointer",
-                boxShadow: loading ? "none" : "0 6px 20px rgba(46,125,50,0.35)",
-                transition: "all 0.2s",
-                marginTop: 4,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-              }}
-            >
-              {loading ? (
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: 18,
-                    height: 18,
-                    border: "2px solid rgba(255,255,255,0.4)",
-                    borderTopColor: "#fff",
-                    borderRadius: "50%",
-                    animation: "spin 0.7s linear infinite",
-                  }}
-                />
-              ) : (
-                "Create Account"
-              )}
-            </button>
+            {/* Google Signup */}
+            <div className="w-full flex justify-center scale-95">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setError("Google sign-in failed.")}
+                useOneTap={false}
+                theme="outline"
+                size="large"
+                width="100%"
+                text="signup_with_google"
+                shape="rectangular"
+              />
+            </div>
           </div>
 
-          <p
-            style={{
-              textAlign: "center",
-              color: "#6B7280",
-              fontSize: 14,
-              margin: "20px 0 0",
-            }}
-          >
-            Already have an account?{" "}
-            <Link
-              to="/login"
-              style={{
-                color: "#2E7D32",
-                fontWeight: 700,
-                textDecoration: "none",
-              }}
-            >
-              Login
-            </Link>
-          </p>
+          {/* Footer decoration */}
+          <div className="mt-4 text-center text-[10px] text-gray-400 font-medium">
+            <span>© 2026 BemsFarms. Secure registration.</span>
+          </div>
+
         </div>
+
       </div>
 
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 768px) {
-          .auth-image-panel { display: none !important; }
-          .auth-form-panel { flex: unset !important; width: 100% !important; min-height: 100vh; padding: 24px 20px !important; }
-          .auth-form-inner { max-width: 100% !important; }
-        }
-      `}</style>
     </div>
   );
 }

@@ -344,14 +344,14 @@ export default function ChefBemsPage() {
         .chef-sidebar {
           width: 260px;
           height: 100%;
-          background-color: #0A1C14;
+          background-color: #1B4332;
           display: flex;
           flex-direction: column;
           flex-shrink: 0;
           color: #ffffff;
           transition: transform 0.3s ease, margin-left 0.3s ease;
           z-index: 100;
-          border-right: 1px solid #122B1E;
+          border-right: 1px solid rgba(255, 255, 255, 0.08);
         }
         .chef-sidebar.collapsed {
           margin-left: -260px;
@@ -383,7 +383,7 @@ export default function ChefBemsPage() {
           gap: 10px;
           padding: 12px 16px;
           background-color: transparent;
-          border: 1px solid #1B4530;
+          border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 8px;
           color: #ffffff;
           font-size: 14px;
@@ -392,7 +392,7 @@ export default function ChefBemsPage() {
           transition: background-color 0.2s;
         }
         .btn-new-chat:hover {
-          background-color: #123323;
+          background-color: rgba(255, 255, 255, 0.08);
         }
 
         .sidebar-scroll-list {
@@ -409,7 +409,7 @@ export default function ChefBemsPage() {
           width: 6px;
         }
         .sidebar-scroll-list::-webkit-scrollbar-thumb {
-          background-color: #1B4530;
+          background-color: rgba(255, 255, 255, 0.15);
           border-radius: 4px;
         }
 
@@ -425,7 +425,7 @@ export default function ChefBemsPage() {
           color: #D1D5DB;
         }
         .conv-item:hover, .conv-item.active {
-          background-color: #102F20;
+          background-color: #2D6A4F;
           color: #ffffff;
         }
         .conv-item-left {
@@ -465,8 +465,8 @@ export default function ChefBemsPage() {
 
         .sidebar-footer {
           padding: 16px;
-          border-top: 1px solid #122B1E;
-          background-color: #081610;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          background-color: #153527;
         }
 
         /* Right Side Chat viewport */
@@ -500,8 +500,8 @@ export default function ChefBemsPage() {
           transition: background-color 0.2s;
         }
         .message-content-wrapper.assistant {
-          background-color: rgba(27, 67, 50, 0.03);
-          border: 1px solid rgba(27, 67, 50, 0.05);
+          background-color: rgba(46, 125, 50, 0.04);
+          border: 1px solid rgba(46, 125, 50, 0.08);
         }
         .message-content-wrapper.error {
           background-color: #FEF2F2;
@@ -522,7 +522,7 @@ export default function ChefBemsPage() {
           border: 1px solid rgba(0,0,0,0.05);
         }
         .msg-avatar.user {
-          background-color: #F59E0B;
+          background-color: #F57C00;
           color: #ffffff;
           font-weight: 700;
           font-size: 14px;
@@ -613,15 +613,15 @@ export default function ChefBemsPage() {
           transition: all 0.2s;
         }
         .btn-input-icon:hover {
-          color: #1B4530;
-          background-color: rgba(27, 67, 50, 0.05);
+          color: #2E7D32;
+          background-color: rgba(46, 125, 50, 0.08);
         }
         .btn-input-icon.send-active {
-          background-color: #1B4332;
+          background-color: #F57C00;
           color: #ffffff;
         }
         .btn-input-icon.send-active:hover {
-          background-color: #113022;
+          background-color: #E65100;
         }
         
         /* Interactive grid for prompts on empty chat */
@@ -658,8 +658,8 @@ export default function ChefBemsPage() {
           box-shadow: 0 4px 6px rgba(0,0,0,0.01);
         }
         .chatgpt-prompt-card:hover {
-          background-color: rgba(27, 67, 50, 0.02);
-          border-color: #1B4530;
+          background-color: rgba(46, 125, 50, 0.02);
+          border-color: #2E7D32;
           transform: translateY(-2px);
         }
 
@@ -1020,7 +1020,7 @@ export default function ChefBemsPage() {
                                   <button
                                     onClick={(e) => handleAddProduct(e, p)}
                                     style={{
-                                      background: addedIds[p.id] ? "#10B981" : "#1B4332",
+                                      background: addedIds[p.id] ? "#2E7D32" : "#F57C00",
                                       color: "#ffffff",
                                       border: "none",
                                       padding: "5px 10px",
@@ -1057,7 +1057,7 @@ export default function ChefBemsPage() {
                       key={i}
                       animate={{ y: [0, -5, 0] }}
                       transition={{ duration: 0.6, repeat: Infinity, delay }}
-                      style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#1B4332" }}
+                      style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#2E7D32" }}
                     />
                   ))}
                 </div>

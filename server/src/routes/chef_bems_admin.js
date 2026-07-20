@@ -45,16 +45,22 @@ router.delete("/conversations/:id", requireRole("superadmin"), async (req, res) 
 });
 
 // ─── DIETARY RULES ────────────────────────────────────────────────────────────
+const ENSURE_DIET = `CREATE TABLE IF NOT EXISTS admin_dietary_rules (
+  id SERIAL PRIMARY KEY, condition VARCHAR(255) UNIQUE NOT NULL, rule_text TEXT NOT NULL,
+  tags VARCHAR(255), priority INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
+)`;
+
 router.get("/dietary-rules", AI_ROLES, async (req, res) => {
   try {
+    await pool.query(ENSURE_DIET);
     const { search = "", page = 1, limit = 50 } = req.query;
     const params = []; const where = [];
     if (search) { params.push(`%${search}%`); where.push(`(condition ILIKE $${params.length} OR rule_text ILIKE $${params.length} OR tags ILIKE $${params.length})`); }
     const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
     const offset = (parseInt(page)-1)*parseInt(limit);
     const [rows, cnt] = await Promise.all([
-      pool.query(`SELECT * FROM dietary_rules ${clause} ORDER BY created_at DESC LIMIT $${params.length+1} OFFSET $${params.length+2}`, [...params, parseInt(limit), offset]),
-      pool.query(`SELECT COUNT(*) FROM dietary_rules ${clause}`, params),
+      pool.query(`SELECT * FROM admin_dietary_rules ${clause} ORDER BY created_at DESC LIMIT $${params.length+1} OFFSET $${params.length+2}`, [...params, parseInt(limit), offset]),
+      pool.query(`SELECT COUNT(*) FROM admin_dietary_rules ${clause}`, params),
     ]);
     res.json({ rules: rows.rows, total: parseInt(cnt.rows[0].count) });
   } catch (err) { res.status(500).json({ message: err.message }); }
@@ -62,13 +68,14 @@ router.get("/dietary-rules", AI_ROLES, async (req, res) => {
 
 router.post("/dietary-rules", requireRole("superadmin","manager"), async (req, res) => {
   try {
+    await pool.query(ENSURE_DIET);
     const { condition, rule_text, tags, priority } = req.body;
     if (!condition?.trim()) return res.status(400).json({ message: "Condition is required" });
     if (!rule_text?.trim()) return res.status(400).json({ message: "Rule text is required" });
-    const existing = await pool.query("SELECT id FROM dietary_rules WHERE LOWER(condition)=LOWER($1)", [condition.trim()]);
+    const existing = await pool.query("SELECT id FROM admin_dietary_rules WHERE LOWER(condition)=LOWER($1)", [condition.trim()]);
     if (existing.rows.length) return res.status(409).json({ message: "A rule for this condition already exists" });
     const result = await pool.query(
-      "INSERT INTO dietary_rules (condition, rule_text, tags, priority) VALUES ($1,$2,$3,$4) RETURNING *",
+      "INSERT INTO admin_dietary_rules (condition, rule_text, tags, priority) VALUES ($1,$2,$3,$4) RETURNING *",
       [condition.trim(), rule_text.trim(), tags||null, priority||0]
     );
     res.status(201).json({ rule: result.rows[0] });
@@ -77,10 +84,11 @@ router.post("/dietary-rules", requireRole("superadmin","manager"), async (req, r
 
 router.put("/dietary-rules/:id", requireRole("superadmin","manager"), async (req, res) => {
   try {
+    await pool.query(ENSURE_DIET);
     const { condition, rule_text, tags, priority } = req.body;
     if (!condition?.trim()) return res.status(400).json({ message: "Condition is required" });
     const result = await pool.query(
-      "UPDATE dietary_rules SET condition=$1, rule_text=$2, tags=$3, priority=$4, updated_at=NOW() WHERE id=$5 RETURNING *",
+      "UPDATE admin_dietary_rules SET condition=$1, rule_text=$2, tags=$3, priority=$4, updated_at=NOW() WHERE id=$5 RETURNING *",
       [condition.trim(), rule_text?.trim()||"", tags||null, priority||0, req.params.id]
     );
     if (!result.rows.length) return res.status(404).json({ message: "Rule not found" });
@@ -90,7 +98,8 @@ router.put("/dietary-rules/:id", requireRole("superadmin","manager"), async (req
 
 router.delete("/dietary-rules/:id", requireRole("superadmin"), async (req, res) => {
   try {
-    const result = await pool.query("DELETE FROM dietary_rules WHERE id=$1 RETURNING id", [req.params.id]);
+    await pool.query(ENSURE_DIET);
+    const result = await pool.query("DELETE FROM admin_dietary_rules WHERE id=$1 RETURNING id", [req.params.id]);
     if (!result.rows.length) return res.status(404).json({ message: "Rule not found" });
     res.json({ message: "Dietary rule deleted" });
   } catch (err) { res.status(500).json({ message: err.message }); }

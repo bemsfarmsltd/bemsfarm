@@ -88,27 +88,136 @@ router.post("/notify", async (req, res) => {
       cartId = newCart.rows[0].id;
     }
 
-    // ── Upsert each item ────────────────────────────────────────────────────
+    // ── Upsert each item (With Smart Resolve and Self-Healing Catalogue Fallback) ──
     const addedItems = [];
     for (const item of items) {
       const { product_id, quantity = 1, notes } = item;
       if (!product_id) continue;
 
-      // Fetch product details
-      const prod = await client.query(
-        `SELECT id, name, price, unit_price, image_url, status FROM products WHERE id=$1`,
-        [product_id]
-      );
-      if (!prod.rows.length || prod.rows[0].status === 'inactive') continue;
+      let product_id_int = parseInt(product_id);
+      let prod;
+      let isIdQuery = Number.isInteger(product_id_int) && String(product_id) === String(product_id_int);
 
-      const product  = prod.rows[0];
-      const price    = parseFloat(product.unit_price || product.price || 0);
+      if (isIdQuery) {
+        prod = await client.query(
+          `SELECT id, name, price, unit_price, image_url, status FROM products WHERE id=$1`,
+          [product_id_int]
+        );
+      } else {
+        const cleanName = String(product_id).trim();
+        prod = await client.query(
+          `SELECT id, name, price, unit_price, image_url, status 
+           FROM products 
+           WHERE LOWER(name) = LOWER($1) OR LOWER(name) LIKE LOWER($2)
+           ORDER BY CASE WHEN LOWER(name) = LOWER($1) THEN 1 ELSE 2 END
+           LIMIT 1`,
+          [cleanName, `%${cleanName}%`]
+        );
+
+        if (!prod.rows.length) {
+          const parts = cleanName.split(/\s+/).filter(p => p.length > 2);
+          if (parts.length > 0) {
+            const likePatterns = parts.map(p => `%${p}%`);
+            prod = await client.query(
+              `SELECT id, name, price, unit_price, image_url, status 
+               FROM products 
+               WHERE (${parts.map((_, idx) => `LOWER(name) LIKE LOWER($${idx + 1})`).join(" OR ")})
+               LIMIT 1`,
+              likePatterns
+            );
+          }
+        }
+      }
+
+      // SELF-HEALING FALLBACK: If not found in products table, check the catalogue table
+      if ((!prod || !prod.rows.length) && !isIdQuery) {
+        const cleanName = String(product_id).trim();
+        let catalogueRow = null;
+        
+        const catRes = await client.query(
+          `SELECT * FROM catalogue 
+           WHERE LOWER(product_name) = LOWER($1) OR LOWER(product_name) LIKE LOWER($2)
+           ORDER BY CASE WHEN LOWER(product_name) = LOWER($1) THEN 1 ELSE 2 END
+           LIMIT 1`,
+          [cleanName, `%${cleanName}%`]
+        );
+        
+        if (catRes.rows.length) {
+          catalogueRow = catRes.rows[0];
+        } else {
+          const parts = cleanName.split(/\s+/).filter(p => p.length > 2);
+          if (parts.length > 0) {
+            const likePatterns = parts.map(p => `%${p}%`);
+            const catRes2 = await client.query(
+              `SELECT * FROM catalogue 
+               WHERE (${parts.map((_, idx) => `LOWER(product_name) LIKE LOWER($${idx + 1})`).join(" OR ")})
+               LIMIT 1`,
+              likePatterns
+            );
+            if (catRes2.rows.length) {
+              catalogueRow = catRes2.rows[0];
+            }
+          }
+        }
+
+        if (catalogueRow) {
+          let categoryId = 1;
+          const catMap = {
+            "grains": 1, "cereals": 1,
+            "vegetables": 2, "vegetable": 2,
+            "oils": 3, "oil": 3,
+            "legumes": 4, "beans": 4,
+            "tubers": 5, "roots": 5, "yam": 5,
+            "spices": 6, "seasonings": 6, "seasoning": 6,
+            "leafy": 7, "greens": 7,
+            "fruits": 8, "fruit": 8
+          };
+          const catLower = String(catalogueRow.product_category || "").toLowerCase();
+          for (const [key, id] of Object.entries(catMap)) {
+            if (catLower.includes(key)) {
+              categoryId = id;
+              break;
+            }
+          }
+
+          const priceInNaira = parseFloat(catalogueRow.unit_price || 0);
+          const priceInUsd = priceInNaira / 1500;
+
+          const insertRes = await client.query(
+            `INSERT INTO products 
+               (name, price, unit_price, unit, description, sku, status, stock, category_id, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, 'active', $7, $8, NOW(), NOW())
+             RETURNING id, name, price, unit_price, image_url, status`,
+            [
+              catalogueRow.product_name,
+              priceInUsd,
+              priceInUsd,
+              catalogueRow.selling_unit || "1 kg",
+              `Farm fresh ingredient sourced by Chef Bems AI.`,
+              catalogueRow.sku,
+              catalogueRow.stock_qty || 100,
+              categoryId
+            ]
+          );
+
+          if (insertRes.rows.length) {
+            prod = insertRes;
+            console.log(`✨ Dynamically self-healed product "${catalogueRow.product_name}" from catalogue into products table.`);
+          }
+        }
+      }
+
+      if (!prod || !prod.rows.length || prod.rows[0].status === 'inactive') continue;
+
+      const product = prod.rows[0];
+      const resolved_product_id = product.id;
+      const price = parseFloat(product.unit_price || product.price || 0);
       const subtotal = price * quantity;
 
       // Upsert: if same product already in cart, increment quantity
       const existing = await client.query(
         `SELECT id, quantity FROM customer_cart_items WHERE cart_id=$1 AND product_id=$2`,
-        [cartId, product_id]
+        [cartId, resolved_product_id]
       );
 
       if (existing.rows.length) {
@@ -119,16 +228,16 @@ router.post("/notify", async (req, res) => {
            WHERE id=$3`,
           [newQty, price * newQty, existing.rows[0].id]
         );
-        addedItems.push({ product_id, name: product.name, quantity: newQty, price, subtotal: price * newQty });
+        addedItems.push({ product_id: resolved_product_id, name: product.name, quantity: newQty, price, subtotal: price * newQty });
       } else {
         await client.query(
           `INSERT INTO customer_cart_items
              (cart_id, product_id, product_name, quantity, unit_price, subtotal,
               notes, source, created_at, updated_at)
            VALUES ($1,$2,$3,$4,$5,$6,$7,'ai_chef',NOW(),NOW())`,
-          [cartId, product_id, product.name, quantity, price, subtotal, notes || null]
+          [cartId, resolved_product_id, product.name, quantity, price, subtotal, notes || null]
         );
-        addedItems.push({ product_id, name: product.name, quantity, price, subtotal });
+        addedItems.push({ product_id: resolved_product_id, name: product.name, quantity, price, subtotal });
       }
     }
 
@@ -158,6 +267,34 @@ router.post("/notify", async (req, res) => {
         [cartId]
       ),
     ]);
+
+    // ── Update ai_conversations for super admin monitoring ────────────────────
+    try {
+      const cartSnapshotJson = JSON.stringify(cartItems.rows);
+      const activeConv = await client.query(
+        `SELECT id FROM ai_conversations WHERE session_id = $1 LIMIT 1`,
+        [session_id]
+      );
+      if (activeConv.rows.length) {
+        await client.query(
+          `UPDATE ai_conversations
+           SET cart_snapshot = $1,
+               last_message_at = NOW()
+           WHERE session_id = $2`,
+          [cartSnapshotJson, session_id]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO ai_conversations 
+             (session_id, channel, customer_id, cart_snapshot, status, started_at, last_message_at)
+           VALUES ($1, 'web', $2, $3, 'pending', NOW(), NOW())`,
+          [session_id, customer_id || null, cartSnapshotJson]
+        );
+      }
+      console.log(`📡 Updated ai_conversations cart_snapshot notification for session: ${session_id}`);
+    } catch (convErr) {
+      console.warn("⚠️ Failed to update ai_conversations snapshot:", convErr.message);
+    }
 
     await client.query("COMMIT");
 

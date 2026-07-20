@@ -443,8 +443,8 @@ export default function Navbar() {
   const NAV_LINKS = [
     { label: "Home", path: "/home" },
     { label: "Shop", path: "/products" },
-    { label: "About", path: "/about" },
-    { label: "AI Chef", path: "/chef-chat" }, // Routes to ChefBemsPage
+    { label: "Chef Bems", path: "/chef-chat" },
+    { label: "My Orders", path: "/orders" },
   ];
 
   const ADMIN_PANEL_URL = import.meta.env.DEV
@@ -529,8 +529,8 @@ export default function Navbar() {
                     borderRadius: "8px",
                     fontSize: "14px",
                     fontWeight: isActive(path) ? 700 : 500,
-                    color: isActive(path) ? "#1B4332" : "#6B7280",
-                    backgroundColor: isActive(path) ? "#F0FFF4" : "transparent",
+                    color: isActive(path) ? "#2E7D32" : "#6B7280",
+                    backgroundColor: isActive(path) ? "rgba(46, 125, 50, 0.08)" : "transparent",
                     fontFamily: "Nunito, sans-serif",
                     transition: "all 0.15s",
                     cursor: "pointer",
@@ -586,7 +586,7 @@ export default function Navbar() {
                       position: "absolute",
                       top: "0",
                       right: "0",
-                      backgroundColor: "#F59E0B",
+                      backgroundColor: "#F57C00",
                       color: "white",
                       width: "16px",
                       height: "16px",
@@ -623,7 +623,7 @@ export default function Navbar() {
                       width: "26px",
                       height: "26px",
                       borderRadius: "50%",
-                      background: "linear-gradient(135deg, #1B4332, #40916C)",
+                      background: "linear-gradient(135deg, #2E7D32, #4CAF50)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
