@@ -4,9 +4,17 @@ const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 
-// All routes require superadmin or admin
+// All routes require authentication
 router.use(protect);
-router.use(requireRole(["superadmin", "admin", "manager"]));
+
+// Allow read-only (GET) operations for all authenticated staff.
+// Restrict modifying operations (POST, PUT, DELETE) to superadmin, admin, or manager.
+router.use((req, res, next) => {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    return next();
+  }
+  requireRole("superadmin", "admin", "manager")(req, res, next);
+});
 
 // ── CATEGORIES ────────────────────────────────────────────────────────
 router.get("/categories", async (req, res) => {
