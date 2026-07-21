@@ -98,7 +98,7 @@ export default function HomePage() {
                   Order Now
                 </a>
                 <button
-                  onClick={() => navigate("/chef-chat")}
+                  onClick={() => navigate("/products")}
                   className="bg-white hover:bg-gray-50 text-gray-800 border-2 border-gray-800/80 font-bold text-[14px] px-8 py-3.5 rounded-full transition-all duration-200"
                 >
                   Start exploring →
