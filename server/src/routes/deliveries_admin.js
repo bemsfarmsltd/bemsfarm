@@ -39,6 +39,7 @@ router.get("/active", async (req, res) => {
         dr.phone AS driver_phone, dr.vehicle_plate AS driver_plate,
         dr.vehicle_type,
         dz.zone_name AS zone,
+        dl.latitude AS driver_lat, dl.longitude AS driver_lng, dl.heading AS driver_heading,
         (SELECT JSON_AGG(JSON_BUILD_OBJECT(
             'name',  COALESCE(oi.product_name, p.name),
             'qty',   oi.quantity || ' ' || COALESCE(p.unit, '')
@@ -51,6 +52,13 @@ router.get("/active", async (req, res) => {
       LEFT JOIN customers c ON o.customer_id = c.id
       LEFT JOIN drivers dr ON d.driver_id = dr.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
+      LEFT JOIN LATERAL (
+        SELECT latitude, longitude, heading 
+        FROM driver_locations 
+        WHERE driver_id = dr.id 
+        ORDER BY recorded_at DESC 
+        LIMIT 1
+      ) dl ON true
       WHERE ${where.join(" AND ")}
       ORDER BY d.assigned_at DESC
     `,
@@ -720,6 +728,33 @@ router.get("/notifications", requireRole("superadmin", "manager"), async (req, r
        ORDER BY dn.created_at DESC LIMIT 50`,
     );
     res.json({ notifications: result.rows });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+// ── POST /api/admin/deliveries/drivers/:id/location ─────────────────
+router.post("/drivers/:id/location", async (req, res) => {
+  const { id } = req.params;
+  const { latitude, longitude, heading = 0, speed = 0, accuracy = 0 } = req.body;
+  try {
+    // Check if table driver_locations exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS driver_locations (
+        id SERIAL PRIMARY KEY,
+        driver_id BIGINT,
+        latitude NUMERIC,
+        longitude NUMERIC,
+        heading NUMERIC DEFAULT 0,
+        speed NUMERIC DEFAULT 0,
+        accuracy NUMERIC DEFAULT 0,
+        recorded_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await pool.query(
+      `INSERT INTO driver_locations (driver_id, latitude, longitude, heading, speed, accuracy, recorded_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+      [id, latitude, longitude, heading, speed, accuracy]
+    );
+    res.json({ success: true, message: "Driver location updated successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -11,7 +11,97 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
-const STORE_POS = [6.4553, 3.3862]
+const STORE_POS = [6.4553, 3.3862] // Bems Farms HQ (Lagos Island)
+
+const MOCK_DELIVERIES = [
+  {
+    id: 42,
+    delivery_ref: 'DEL-2026-0042',
+    order_id: 'ORD-2026-0138',
+    status: 'out_for_delivery',
+    customer_name: 'Kemi Balogun',
+    customer_phone: '08167891234',
+    delivery_address: '18 Surulere, Lagos',
+    order_total: 16100,
+    driver_name: 'Emeka Okafor',
+    driver_phone: '08045678901',
+    driver_plate: 'LAG-567-CD',
+    dispatched_at_str: '—',
+    eta_minutes: 18,
+    attempts: 0,
+    items: [
+      { name: 'Fresh Tomatoes', qty: '3 kg' },
+      { name: 'Red Bell Pepper', qty: '2 kg' }
+    ]
+  },
+  {
+    id: 41,
+    delivery_ref: 'DEL-2026-0041',
+    order_id: 'ORD-2026-0139',
+    status: 'assigned',
+    customer_name: 'Seun Adesanya',
+    customer_phone: '09012341234',
+    delivery_address: '5 Ikeja GRA, Lagos',
+    order_total: 14200,
+    driver_name: 'Tunde Adeyemi',
+    driver_phone: '09021234567',
+    driver_plate: 'LAG-234-AB',
+    dispatched_at_str: '17:20',
+    eta_minutes: null,
+    attempts: 0,
+    status_text: 'Driver notified. Awaiting pickup confirmation.',
+    items: [
+      { name: 'Ginger', qty: '1 kg' },
+      { name: 'Garlic', qty: '1 kg' },
+      { name: 'Sweet Corn', qty: '6 cobs' }
+    ]
+  },
+  {
+    id: 40,
+    delivery_ref: 'DEL-2026-0040',
+    order_id: 'ORD-2026-0137',
+    status: 'delivery_attempted',
+    customer_name: 'Tobi Adekunle',
+    customer_phone: '07056781234',
+    delivery_address: '3 Ojota Estate, Lagos',
+    order_total: 12400,
+    driver_name: 'Bola Akinwale',
+    driver_phone: '08056789012',
+    driver_plate: 'LAG-890-EF',
+    dispatched_at_str: '—',
+    eta_minutes: null,
+    attempts: 1,
+    warning_title: 'Admin Action Required',
+    warning_text: 'Driver tapped CUSTOMER UNAVAILABLE. Push + SMS sent. 15-min timer expired. Attempt 1 of 2.',
+    items: [
+      { name: 'Plantain', qty: '4 hands' },
+      { name: 'Ugwu', qty: '3 bunches' }
+    ]
+  },
+  {
+    id: 39,
+    delivery_ref: 'DEL-2026-0039',
+    order_id: 'ORD-2026-0141',
+    status: 'assigned',
+    customer_name: 'Adaeze Nwosu',
+    customer_phone: '07098765432',
+    delivery_address: '7 Lekki Phase 1, Lagos',
+    order_total: 48100,
+    driver_name: 'Femi Adeleye',
+    driver_phone: '08078901234',
+    driver_plate: 'LAG-456-IJ',
+    dispatched_at_str: '—',
+    eta_minutes: null,
+    attempts: 0,
+    status_text: 'Order packed. Driver assigned. Awaiting pickup.',
+    items: [
+      { name: 'Fresh Tomatoes', qty: '8 kg' },
+      { name: 'Red Bell Pepper', qty: '4 kg' },
+      { name: 'Spinach', qty: '2 bunches' },
+      { name: 'Onions', qty: '1 bag' }
+    ]
+  }
+]
 
 const STATUS_CFG = {
   assigned:           { label:'Awaiting Pickup', color:'#06b6d4', bg:'#cffafe', pulse:false },
@@ -21,19 +111,18 @@ const STATUS_CFG = {
 const fmt = n => `₦${Number(n).toLocaleString()}`
 
 function driverIcon(driver, status) {
-  const cfg      = STATUS_CFG[status] || { label: status || 'Pending', color:'#9ca3af', bg:'#f3f4f6', pulse:false }
-  const initials = driver.name.split(' ').map(n=>n[0]).join('')
-  const pulse    = cfg.pulse ? `<span style="position:absolute;inset:-4px;border-radius:50%;border:2px solid ${driver.color};animation:pulse-ring 1.5s ease-out infinite;opacity:0.6;"></span>` : ''
+  const cfg   = STATUS_CFG[status] || { label: status || 'Pending', color:'#9ca3af', bg:'#f3f4f6', pulse:false }
+  const pulse = cfg.pulse ? `<span style="position:absolute;inset:-6px;border-radius:50%;border:2.5px solid ${driver.color};animation:pulse-ring 1.5s ease-out infinite;opacity:0.8;background:rgba(59,130,246,0.15)"></span>` : ''
   return L.divIcon({
-    className:'', iconSize:[40,40], iconAnchor:[20,20], popupAnchor:[0,-22],
-    html:`<div style="position:relative;width:40px;height:40px;">${pulse}<div style="width:40px;height:40px;border-radius:50%;background:${driver.color};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.35);border:2px solid #fff;position:relative;z-index:1;">${initials}</div><div style="position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);background:${driver.color};color:#fff;font-size:9px;font-weight:600;padding:1px 5px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.2);">${driver.name.split(' ')[0]}</div></div>`,
+    className:'', iconSize:[36,36], iconAnchor:[18,18], popupAnchor:[0,-20],
+    html:`<div style="position:relative;width:36px;height:36px;">${pulse}<div style="width:36px;height:36px;border-radius:50%;background:${driver.color};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.35);border:2px solid #fff;position:relative;z-index:1;">${driver.initials}</div></div>`,
   })
 }
 
 function customerIcon(color) {
   return L.divIcon({
-    className:'', iconSize:[28,36], iconAnchor:[14,36], popupAnchor:[0,-38],
-    html:`<div style="position:relative;width:28px;height:36px;"><div style="width:28px;height:28px;border-radius:50%;background:#fff;border:3px solid ${color};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.25);"><i class="ri-home-4-fill" style="color:${color};font-size:13px;"></i></div><div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid ${color};margin:0 auto;margin-top:-2px;"></div></div>`,
+    className:'', iconSize:[30,30], iconAnchor:[15,15], popupAnchor:[0,-16],
+    html:`<div style="width:30px;height:30px;border-radius:50%;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid #fff;"><i class="ri-home-4-fill" style="font-size:14px;color:#fff;"></i></div>`
   })
 }
 
@@ -44,9 +133,16 @@ function storeIcon() {
   })
 }
 
+function userLocationIcon() {
+  return L.divIcon({
+    className:'', iconSize:[24,24], iconAnchor:[12,12],
+    html:`<div style="position:relative;width:24px;height:24px;"><span style="position:absolute;inset:-6px;border-radius:50%;border:2.5px solid #3b82f6;animation:pulse-ring 1.5s ease-out infinite;opacity:0.8;background:rgba(59,130,246,0.15)"></span><div style="width:12px;height:12px;border-radius:50%;background:#3b82f6;border:2.5px solid #fff;box-shadow:0 0 8px rgba(0,0,0,0.3);position:absolute;top:6px;left:6px;z-index:2;"></div></div>`
+  })
+}
+
 function FlyToDriver({ pos }) {
   const map = useMap()
-  useEffect(() => { if (pos) map.flyTo(pos, 15, { duration:1.2 }) }, [pos, map])
+  useEffect(() => { if (pos) map.flyTo(pos, 14, { duration:1.2 }) }, [pos, map])
   return null
 }
 
@@ -54,9 +150,23 @@ export default function DeliveryMap() {
   const [selected, setSelected]     = useState(null)
   const [flyTarget, setFlyTarget]   = useState(null)
   const [tick, setTick]             = useState(0)
+  const [userPos, setUserPos]       = useState(null)
 
   const [dbDeliveries, setDbDeliveries] = useState([])
   const [loading, setLoading] = useState(true)
+
+  // Track browser geolocation of the user
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          setUserPos([pos.coords.latitude, pos.coords.longitude])
+        },
+        err => console.warn('Geolocation user tracking disabled:', err),
+        { enableHighAccuracy: true }
+      )
+    }
+  }, [])
 
   useEffect(() => {
     const fetchActive = async () => {
@@ -74,42 +184,103 @@ export default function DeliveryMap() {
     return () => clearInterval(id)
   }, [])
 
-  const deliveries = dbDeliveries.map((d, i) => {
-    // Generate dummy positions for demo based on index
-    const angle = (i * Math.PI * 2) / Math.max(dbDeliveries.length, 1)
-    const dist = 0.02 + (i % 3) * 0.01
-    const basePos = [STORE_POS[0] + Math.cos(angle)*dist, STORE_POS[1] + Math.sin(angle)*dist]
-    
-    let st = d.status
-    if (st === 'out_for_delivery') st = 'shipped'
+  // Simulate updating location in the backend database
+  useEffect(() => {
+    if (dbDeliveries.length === 0) {
+      MOCK_DELIVERIES.forEach(async (d) => {
+        if (d.status === 'out_for_delivery') {
+          let customerPos = [6.5059, 3.3619] // Surulere
+          const pct = 0.2 + ((tick % 15) / 15) * 0.6
+          const dPos = [STORE_POS[0] + (customerPos[0] - STORE_POS[0]) * pct, STORE_POS[1] + (customerPos[1] - STORE_POS[1]) * pct]
+          try {
+            await api.post(`/admin/deliveries/drivers/${d.id}/location`, {
+              latitude: dPos[0],
+              longitude: dPos[1],
+              heading: 45,
+              speed: 35
+            })
+          } catch { /* ignore simulation failures */ }
+        }
+      })
+    }
+  }, [tick, dbDeliveries])
 
-    // Jitter for movement
-    const jitter = st === 'shipped' ? tick * 0.0003 : 0
-    const dPos = [basePos[0] + jitter, basePos[1] + jitter * 0.5]
-
-    const colors = ['#3b82f6', '#06b6d4', '#f97316', '#8b5cf6', '#ec4899']
-    
+  const deliveries = dbDeliveries.length > 0 ? dbDeliveries.map((d, i) => {
+    const customerPos = d.driver_lat ? [Number(d.driver_lat), Number(d.driver_lng)] : [STORE_POS[0] + 0.015, STORE_POS[1] + 0.015]
+    const driverPos = d.driver_lat ? [Number(d.driver_lat), Number(d.driver_lng)] : STORE_POS
+    const colors = ['#3b82f6', '#06b6d4', '#f97316', '#8b5cf6']
+    const color = colors[i % colors.length]
+    const initials = (d.driver_name || '?').split(' ').map(n=>n[0]).join('').slice(0,2)
     return {
       id: d.id,
-      status: st,
+      status: d.status === 'out_for_delivery' ? 'shipped' : d.status,
       orderId: d.delivery_ref || d.order_id,
-      driverPos: dPos,
-      customerPos: [basePos[0] + 0.01, basePos[1] + 0.01],
-      total: d.total_amount || 0,
-      eta: '45 mins',
-      attempts: 0,
+      driverPos,
+      customerPos,
+      total: d.order_total || 0,
+      eta: d.eta_minutes ? `~${d.eta_minutes} min` : '—',
+      attempts: d.attempts || 0,
       items: d.items ? d.items.length + ' items' : 'Items',
       driver: {
         name: d.driver_name || 'Unassigned',
-        bike: d.vehicle_type || 'Bike',
+        bike: d.vehicle_plate || 'Bike',
         phone: d.driver_phone || '--',
-        color: colors[i % colors.length]
+        color,
+        initials
       },
       customer: {
         name: d.customer_name || 'Customer',
         address: d.delivery_address || 'Address',
-        phone: '--'
+        phone: d.customer_phone || '--'
       }
+    }
+  }) : MOCK_DELIVERIES.map((d) => {
+    let customerPos = [STORE_POS[0] + 0.01, STORE_POS[1] + 0.01]
+    if (d.delivery_address.includes('Surulere')) customerPos = [6.5059, 3.3619]
+    else if (d.delivery_address.includes('Ikeja')) customerPos = [6.6018, 3.3515]
+    else if (d.delivery_address.includes('Ojota')) customerPos = [6.5780, 3.3740]
+    else if (d.delivery_address.includes('Lekki')) customerPos = [6.4281, 3.4219]
+
+    let driverPos = STORE_POS
+    if (d.status === 'out_for_delivery') {
+      const pct = 0.2 + ((tick % 15) / 15) * 0.6
+      driverPos = [STORE_POS[0] + (customerPos[0] - STORE_POS[0]) * pct, STORE_POS[1] + (customerPos[1] - STORE_POS[1]) * pct]
+    } else if (d.status === 'delivery_attempted') {
+      driverPos = [STORE_POS[0] + (customerPos[0] - STORE_POS[0]) * 0.95, STORE_POS[1] + (customerPos[1] - STORE_POS[1]) * 0.95]
+    }
+
+    const colorsMap = {
+      'Emeka Okafor': '#3b82f6',
+      'Tunde Adeyemi': '#06b6d4',
+      'Bola Akinwale': '#f97316',
+      'Femi Adeleye': '#8b5cf6'
+    }
+    const color = colorsMap[d.driver_name] || '#3b82f6'
+    const initials = d.driver_name.split(' ').map(n=>n[0]).join('').slice(0,2)
+
+    return {
+      id: d.id,
+      status: d.status === 'out_for_delivery' ? 'shipped' : d.status,
+      orderId: d.order_id,
+      driverPos,
+      customerPos,
+      total: d.order_total,
+      attempts: d.attempts,
+      items: `${d.items.length} items`,
+      driver: {
+        name: d.driver_name,
+        bike: d.driver_plate,
+        phone: d.driver_phone,
+        color,
+        initials
+      },
+      customer: {
+        name: d.customer_name,
+        address: d.delivery_address,
+        phone: d.customer_phone
+      },
+      status_text: d.status_text,
+      eta: d.eta_minutes ? `~${d.eta_minutes} min` : null
     }
   })
 
@@ -129,9 +300,9 @@ export default function DeliveryMap() {
         <div>
           <div style={{ fontFamily:'Syne, sans-serif', fontWeight:700, fontSize:18, color:'#111827' }}>Live Delivery Map</div>
           <div style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>
-            <a href="#" style={{ color:'#9ca3af', textDecoration:'none' }}>Deliveries</a>
+            <span style={{ color:'#9ca3af' }}>Deliveries</span>
             <i className="ri-arrow-right-s-line" style={{ margin:'0 4px', color:'#d1d5db' }} />
-            <span style={{ color:'#374151' }}>Live Map</span>
+            <span style={{ color:'#374151', fontWeight:600 }}>Live Map</span>
           </div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -142,91 +313,85 @@ export default function DeliveryMap() {
         </div>
       </div>
 
-      {/* Stat strip */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginBottom:12, flexShrink:0 }}>
-        {[
-          { label:'En Route',        count:deliveries.filter(d=>d.status==='shipped').length,            color:'#3b82f6', icon:'ri-truck-line'          },
-          { label:'Awaiting Pickup', count:deliveries.filter(d=>d.status==='assigned').length,           color:'#06b6d4', icon:'ri-user-location-line'  },
-          { label:'Attempted',       count:deliveries.filter(d=>d.status==='delivery_attempted').length, color:'#f97316', icon:'ri-route-line'           },
-          { label:'Total Active',    count:deliveries.length,                                             color:'#6366f1', icon:'ri-map-pin-line'         },
-        ].map(s => (
-          <div key={s.label} style={{ background:'#fff', borderRadius:10, border:'1px solid #e5e7eb', padding:'10px 12px', display:'flex', alignItems:'center', gap:10, borderLeft:`3px solid ${s.color}` }}>
-            <div style={{ width:32, height:32, borderRadius:8, background:s.color+'20', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <i className={s.icon} style={{ color:s.color, fontSize:14 }} />
-            </div>
-            <div>
-              <div style={{ fontSize:10, color:'#64748b' }}>{s.label}</div>
-              <div style={{ fontSize:18, fontWeight:800, color:'#111827', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{s.count}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* Map + Side Panel */}
-      <div style={{ flex:1, display:'grid', gridTemplateColumns:'300px 1fr', borderRadius:12, overflow:'hidden', border:'1px solid #e5e7eb', minHeight:0 }}>
+      <div style={{ flex:1, display:'grid', gridTemplateColumns:'320px 1fr', borderRadius:12, overflow:'hidden', border:'1px solid #e5e7eb', minHeight:0 }}>
 
         {/* Side panel */}
-        <div style={{ overflowY:'auto', background:'#fff', borderRight:'1px solid #e5e7eb' }}>
-          <div style={{ padding:'12px 14px', borderBottom:'1px solid #e5e7eb', display:'flex', alignItems:'center', gap:8 }}>
-            <i className="ri-list-check" style={{ color:'#9ca3af' }} />
-            <span style={{ fontWeight:600, fontSize:13 }}>Active Deliveries</span>
-            <span style={{ marginLeft:'auto', fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:50, background:'#1B4332', color:'#fff' }}>{deliveries.length}</span>
+        <div style={{ overflowY:'auto', background:'#fcfcfc', borderRight:'1px solid #e5e7eb' }}>
+          <div style={{ padding:'16px 14px', borderBottom:'1px solid #e5e7eb', display:'flex', alignItems:'center', gap:8, background:'#fff' }}>
+            <i className="ri-list-check" style={{ color:'#9ca3af', fontSize:16 }} />
+            <span style={{ fontWeight:700, fontSize:14, color:'#374151' }}>Active Deliveries</span>
+            <span style={{ marginLeft:'auto', fontSize:11, fontWeight:700, width:20, height:20, borderRadius:'50%', background:'var(--orange-accent)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              {deliveries.length}
+            </span>
           </div>
 
-          {deliveries.map(del => {
-            const cfg      = STATUS_CFG[del.status] || { label: del.status || 'Pending', color:'#9ca3af', bg:'#f3f4f6', pulse:false }
-            const isActive = selected?.id===del.id
-            return (
-              <div key={del.id} onClick={() => handleSelect(del)} style={{ padding:'12px 14px', borderBottom:'1px solid #f9fafb', cursor:'pointer', background:isActive?del.driver.color+'12':'#fff', borderLeft:isActive?`3px solid ${del.driver.color}`:'3px solid transparent', transition:'all 0.15s' }}>
-                {/* Top row */}
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-                  <div style={{ width:30, height:30, borderRadius:'50%', background:del.driver.color+'20', color:del.driver.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, flexShrink:0 }}>
-                    {del.driver.name.split(' ').map(n=>n[0]).join('')}
+          <div style={{ padding:'10px' }}>
+            {deliveries.map(del => {
+              const cfg      = STATUS_CFG[del.status] || { label: del.status || 'Pending', color:'#9ca3af', bg:'#f3f4f6', pulse:false }
+              const isActive = selected?.id===del.id
+              return (
+                <div key={del.id} onClick={() => handleSelect(del)} style={{ background:'#fff', border:`1px solid ${isActive?del.driver.color:'#e5e7eb'}`, borderRadius:10, padding:'14px', marginBottom:10, cursor:'pointer', boxShadow:isActive?'0 4px 12px rgba(0,0,0,0.06)':'0 1px 3px rgba(0,0,0,0.02)', borderLeft:`4.5px solid ${del.driver.color}`, transition:'all 0.2s' }}>
+                  {/* Top row */}
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                    <div style={{ width:28, height:28, borderRadius:'50%', background:del.driver.color+'20', color:del.driver.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>
+                      {del.driver.initials}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontSize:12, color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{del.driver.name}</div>
+                      <div style={{ fontSize:10, color:'#9ca3af' }}>{del.driver.bike}</div>
+                    </div>
+                    <span style={{ fontSize:9, fontWeight:700, padding:'2.5px 8px', borderRadius:50, background:cfg.bg, color:cfg.color, flexShrink:0 }}>{cfg.label}</span>
                   </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:600, fontSize:12, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{del.driver.name}</div>
-                    <div style={{ fontSize:10, color:'#9ca3af' }}>{del.driver.bike}</div>
+                  {/* Customer */}
+                  <div style={{ display:'flex', alignItems:'flex-start', gap:6, marginBottom:4 }}>
+                    <i className="ri-user-line" style={{ color:'#9ca3af', fontSize:12, marginTop:1, flexShrink:0 }} />
+                    <span style={{ fontSize:12, fontWeight:600, color:'#475569' }}>{del.customer.name}</span>
                   </div>
-                  <span style={{ fontSize:9, fontWeight:600, padding:'2px 7px', borderRadius:50, background:cfg.bg, color:cfg.color, flexShrink:0 }}>{cfg.label}</span>
+                  <div style={{ display:'flex', alignItems:'flex-start', gap:6, marginBottom:8 }}>
+                    <i className="ri-map-pin-line" style={{ color:'#9ca3af', fontSize:12, marginTop:1, flexShrink:0 }} />
+                    <span style={{ fontSize:11, color:'#6b7280', lineHeight:1.3 }}>{del.customer.address}</span>
+                  </div>
+                  {/* Footer info row */}
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', borderTop:'1px solid #f3f4f6', paddingTop:8 }}>
+                    <span style={{ fontWeight:700, fontSize:13, color:'#ef4444' }}>{fmt(del.total)}</span>
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      {del.status === 'delivery_attempted' && (
+                        <span style={{ fontSize:9, fontWeight:700, padding:'2px 8px', borderRadius:50, background:'#ffeedd', color:'#f97316' }}>
+                          Attempt 1/2
+                        </span>
+                      )}
+                      {del.eta && del.eta !== '—' && (
+                        <span style={{ fontSize:11, color:'#6b7280', display:'inline-flex', alignItems:'center', gap:3 }}>
+                          <i className="ri-time-line" /> {del.eta}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); handleSelect(del); }} style={{ width:'100%', marginTop:10, padding:'6px 12px', borderRadius:8, border:'none', background:'#eff6ff', color:'#2563eb', fontSize:11, fontFamily:'Nunito, sans-serif', fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                    <i className="ri-focus-target" /> Focus on Map
+                  </button>
                 </div>
-                {/* Customer */}
-                <div style={{ display:'flex', alignItems:'flex-start', gap:4, marginBottom:4 }}>
-                  <i className="ri-user-line" style={{ color:'#9ca3af', fontSize:11, marginTop:2, flexShrink:0 }} />
-                  <span style={{ fontSize:12 }}>{del.customer.name}</span>
-                </div>
-                <div style={{ display:'flex', alignItems:'flex-start', gap:4, marginBottom:8 }}>
-                  <i className="ri-map-pin-line" style={{ color:'#9ca3af', fontSize:11, marginTop:2, flexShrink:0 }} />
-                  <span style={{ fontSize:11, color:'#6b7280' }}>{del.customer.address}</span>
-                </div>
-                {/* Footer */}
-                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                  <span style={{ fontWeight:600, fontSize:12 }}>{fmt(del.total)}</span>
-                  {del.eta!=='—' && <span style={{ fontSize:11, color:'#6b7280', marginLeft:'auto' }}><i className="ri-time-line" style={{ marginRight:3 }} />{del.eta}</span>}
-                  {del.attempts>0 && <span style={{ fontSize:9, fontWeight:600, padding:'2px 7px', borderRadius:50, background:'#ffedd5', color:'#f97316', marginLeft:'auto' }}>Attempt {del.attempts}/2</span>}
-                </div>
-                <button style={{ width:'100%', marginTop:8, padding:'5px 10px', borderRadius:7, border:`1px solid ${del.driver.color}40`, background:del.driver.color+'15', color:del.driver.color, fontSize:11, fontFamily:'Nunito, sans-serif', fontWeight:600, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
-                  <i className="ri-focus-3-line" />Focus on Map
-                </button>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
 
           {/* Legend */}
           <div style={{ padding:'14px', borderTop:'1px solid #e5e7eb', background:'#f8fafc' }}>
             <div style={{ fontWeight:700, fontSize:11, color:'#9ca3af', marginBottom:10 }}>MAP LEGEND</div>
             <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
               {[
-                { color:'#1B4332', label:'Bems Farms Warehouse' },
-                { color:'#3b82f6', label:'Driver (En Route) — pulsing' },
+                { color:'#1B4332', label:'Bems Farms HQ' },
+                { color:'#3b82f6', label:'Driver (En Route)' },
                 { color:'#06b6d4', label:'Driver (Awaiting Pickup)' },
-                { color:'#f97316', label:'Driver (Delivery Attempted)' },
-                { color:'transparent', border:'2px solid #9ca3af', label:'Customer Delivery Point' },
-                { dashed:true, label:'Delivery Route' },
+                { color:'#f97316', label:'Driver (Attempted)' },
+                { color:'#8b5cf6', label:'Driver (Unassigned/Other)' },
+                { color:'dashed', label:'Delivery Path' },
               ].map((item,i) => (
                 <div key={i} style={{ display:'flex', alignItems:'center', gap:8, fontSize:11, color:'#374151' }}>
-                  {item.dashed
-                    ? <div style={{ width:20, height:2, borderTop:'2px dashed #9ca3af', flexShrink:0 }} />
-                    : <div style={{ width:12, height:12, borderRadius:'50%', background:item.color, border:item.border||'none', flexShrink:0 }} />
+                  {item.color === 'dashed'
+                    ? <div style={{ width:16, height:2, borderTop:'2px dashed #9ca3af', flexShrink:0 }} />
+                    : <div style={{ width:12, height:12, borderRadius:'50%', background:item.color, flexShrink:0, border:'1.5px solid #fff', boxShadow:'0 1px 3px rgba(0,0,0,0.15)' }} />
                   }
                   {item.label}
                 </div>
@@ -246,18 +411,29 @@ export default function DeliveryMap() {
             <Marker position={STORE_POS} icon={storeIcon()}>
               <Popup>
                 <div style={{ padding:'12px 14px', minWidth:200, fontFamily:'Nunito, sans-serif' }}>
-                  <div style={{ fontWeight:700, marginBottom:4, fontSize:13 }}>🏪 Bems Farms Warehouse</div>
-                  <div style={{ color:'#6b7280', fontSize:12 }}>Dispatch origin · All active deliveries depart here</div>
+                  <div style={{ fontWeight:700, marginBottom:4, fontSize:13 }}>🏪 Bems Farms Headquarters</div>
+                  <div style={{ color:'#6b7280', fontSize:12 }}>Dispatch Warehouse · Deliveries depart here</div>
                   <div style={{ marginTop:8, fontSize:12 }}><i className="ri-map-pin-line" style={{ marginRight:4 }} />Lagos Island, Lagos</div>
                 </div>
               </Popup>
             </Marker>
 
+            {/* User Position dot */}
+            {userPos && (
+              <Marker position={userPos} icon={userLocationIcon()}>
+                <Popup>
+                  <div style={{ fontFamily:'Nunito, sans-serif', padding:5 }}>
+                    <strong>Your Location (Admin)</strong>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+
             {deliveries.map(del => {
               const cfg = STATUS_CFG[del.status] || { label: del.status || 'Pending', color:'#9ca3af', bg:'#f3f4f6', pulse:false }
               return (
                 <div key={del.id}>
-                  <Polyline positions={[del.driverPos, del.customerPos]} pathOptions={{ color:del.driver.color, weight:2.5, dashArray:del.status==='shipped'?'':'6,6', opacity:0.7 }} />
+                  <Polyline positions={[STORE_POS, del.driverPos, del.customerPos]} pathOptions={{ color:del.driver.color, weight:2.5, dashArray:'6,6', opacity:0.8 }} />
 
                   {/* Driver marker */}
                   <Marker position={del.driverPos} icon={driverIcon(del.driver, del.status)}>
@@ -280,24 +456,15 @@ export default function DeliveryMap() {
                           </div>
                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                             <span style={{ fontWeight:700, fontSize:13 }}>{fmt(del.total)}</span>
-                            {del.eta!=='—' && <span style={{ fontSize:12, color:'#6b7280' }}><i className="ri-time-line" style={{ marginRight:3 }} />{del.eta}</span>}
+                            {del.eta && <span style={{ fontSize:12, color:'#6b7280' }}><i className="ri-time-line" style={{ marginRight:3 }} />{del.eta}</span>}
                             {del.attempts>0 && <span style={{ background:'#ffedd5', color:'#f97316', fontSize:9, padding:'2px 6px', borderRadius:4 }}>Attempt {del.attempts}/2</span>}
                           </div>
-                          <div style={{ color:'#6b7280', marginTop:8, fontSize:11 }}>
-                            <i className="ri-shopping-bag-line" style={{ marginRight:4 }} />{del.items}
-                          </div>
-                          {del.status==='shipped' && (
-                            <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:4, color:'#3b82f6', fontSize:12 }}>
-                              <i className="ri-navigation-line" />
-                              <span>GPS updating live from Driver App</span>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </Popup>
                   </Marker>
 
-                  {/* Customer/destination marker */}
+                  {/* Customer marker */}
                   <Marker position={del.customerPos} icon={customerIcon(del.driver.color)}>
                     <Popup>
                       <div style={{ padding:'12px 14px', minWidth:200, fontFamily:'Nunito, sans-serif' }}>
@@ -326,12 +493,12 @@ export default function DeliveryMap() {
             })}
           </MapContainer>
 
-          {/* Floating selected overlay */}
+          {/* selected driver floating detail card */}
           {selected && (
             <div style={{ position:'absolute', bottom:20, right:16, zIndex:1000, background:'#fff', borderRadius:10, boxShadow:'0 4px 20px rgba(0,0,0,0.15)', padding:'12px 16px', maxWidth:280, borderLeft:`4px solid ${selected.driver.color}` }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
                 <div style={{ width:30, height:30, borderRadius:'50%', background:selected.driver.color, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, flexShrink:0 }}>
-                  {selected.driver.name.split(' ').map(n=>n[0]).join('')}
+                  {selected.driver.initials}
                 </div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontWeight:600, fontSize:13 }}>{selected.driver.name}</div>
@@ -345,7 +512,7 @@ export default function DeliveryMap() {
                 <div><strong>Order:</strong> {selected.orderId}</div>
                 <div><strong>Customer:</strong> {selected.customer.name}</div>
                 <div style={{ color:'#6b7280' }}>{selected.customer.address}</div>
-                {selected.eta!=='—' && <div style={{ marginTop:4, color:'#3b82f6' }}><i className="ri-time-line" style={{ marginRight:4 }} />{selected.eta} remaining</div>}
+                {selected.eta && selected.eta!=='—' && <div style={{ marginTop:4, color:'#3b82f6' }}><i className="ri-time-line" style={{ marginRight:4 }} />{selected.eta} remaining</div>}
               </div>
               <a href={`tel:${selected.driver.phone}`} style={{ display:'block', marginTop:10, padding:'7px', borderRadius:8, border:'none', background:'#22c55e', color:'#fff', fontSize:11, fontWeight:700, textAlign:'center', textDecoration:'none' }}>
                 <i className="ri-phone-line" style={{ marginRight:5 }} />Call {selected.driver.name.split(' ')[0]}
