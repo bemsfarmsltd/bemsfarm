@@ -85,15 +85,28 @@ async function zohoGet(path) {
 // ── WEBHOOK SIGNATURE VERIFICATION ──────────────────────────────
 // Verifies the request actually came from Zoho, not an attacker.
 function verifyZohoSignature(rawBody, signature) {
-  if (!process.env.ZOHO_WEBHOOK_SECRET) return true; // Skip if not configured yet
-  const expected = crypto
-    .createHmac("sha256", process.env.ZOHO_WEBHOOK_SECRET)
-    .update(rawBody)
-    .digest("hex");
-  return crypto.timingSafeEqual(
-    Buffer.from(expected, "hex"),
-    Buffer.from(signature, "hex"),
-  );
+  if (!process.env.ZOHO_WEBHOOK_SECRET) {
+    console.error("ZOHO_WEBHOOK_SECRET is not configured in the environment variables");
+    return false;
+  }
+  if (!signature) return false;
+  try {
+    const expected = crypto
+      .createHmac("sha256", process.env.ZOHO_WEBHOOK_SECRET)
+      .update(rawBody)
+      .digest("hex");
+    
+    const expectedBuf = Buffer.from(expected, "hex");
+    const signatureBuf = Buffer.from(signature, "hex");
+    
+    if (expectedBuf.length !== signatureBuf.length) {
+      return false;
+    }
+    
+    return crypto.timingSafeEqual(expectedBuf, signatureBuf);
+  } catch (err) {
+    return false;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

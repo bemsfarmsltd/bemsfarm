@@ -1,8 +1,10 @@
 const jwt = require("jsonwebtoken");
 const pool = require("../db/pool");
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "frutella_super_secret_key_change_in_production";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("FATAL CONFIGURATION ERROR: JWT_SECRET environment variable is not defined!");
+}
 
 // ── protect ───────────────────────────────────────────────────────
 // Validates JWT and attaches req.user

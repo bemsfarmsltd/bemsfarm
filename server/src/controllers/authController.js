@@ -4,7 +4,14 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const emailService = require("../services/emailService");
 
-const JWT_SECRET = process.env.JWT_SECRET || "frutella_super_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("FATAL CONFIGURATION ERROR: JWT_SECRET environment variable is not defined!");
+}
+const REFRESH_SECRET = process.env.REFRESH_SECRET;
+if (!REFRESH_SECRET) {
+  throw new Error("FATAL CONFIGURATION ERROR: REFRESH_SECRET environment variable is not defined!");
+}
 const JWT_EXPIRES = "15m";
 const REFRESH_EXPIRES = "7d";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
@@ -18,7 +25,7 @@ function generateTokens(user) {
   );
   const refreshToken = jwt.sign(
     { id: user.id },
-    process.env.REFRESH_SECRET || JWT_SECRET + "_refresh",
+    REFRESH_SECRET,
     { expiresIn: REFRESH_EXPIRES },
   );
   return { accessToken, refreshToken };
@@ -215,7 +222,7 @@ const refreshToken = async (req, res) => {
 
     const decoded = jwt.verify(
       token,
-      process.env.REFRESH_SECRET || JWT_SECRET + "_refresh",
+      REFRESH_SECRET,
     );
     const result = await pool.query(
       "SELECT * FROM users WHERE id=$1 AND refresh_token=$2",

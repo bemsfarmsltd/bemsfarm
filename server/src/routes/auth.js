@@ -6,10 +6,14 @@ const pool = require("../db/pool");
 const { protect } = require("../middleware/authMiddleware");
 const { upsertContext, trackActivity } = require("../utils/aiContext");
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "frutella_super_secret_key_change_in_production";
-const REFRESH_SECRET =
-  process.env.REFRESH_SECRET || "frutella_refresh_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("FATAL CONFIGURATION ERROR: JWT_SECRET environment variable is not defined!");
+}
+const REFRESH_SECRET = process.env.REFRESH_SECRET;
+if (!REFRESH_SECRET) {
+  throw new Error("FATAL CONFIGURATION ERROR: REFRESH_SECRET environment variable is not defined!");
+}
 
 // ─────────────────────────────────────────────
 // TOKEN HELPERS

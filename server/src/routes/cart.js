@@ -14,7 +14,10 @@ const router   = express.Router();
 const pool     = require("../db/pool");
 const jwt      = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.JWT_SECRET || "frutella_super_secret_key_change_in_production";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error("FATAL CONFIGURATION ERROR: JWT_SECRET environment variable is not defined!");
+}
 
 // Optional auth — resolves user from Bearer token, returns null for guests
 async function resolveCustomer(req) {
