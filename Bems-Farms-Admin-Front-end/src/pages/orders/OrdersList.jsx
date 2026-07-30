@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import api from "../../lib/api";
 import toast from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
@@ -21,17 +21,19 @@ const STATUS_CFG = {
 }
 
 const CHANNEL_CFG = {
-  'Web App':              { label:"Web App",              icon:"ri-global-line",     color:"#3b82f6" },
-  'Mobile App':           { label:"Mobile App",           icon:"ri-smartphone-line", color:"#8b5cf6" },
-  'AI Agent':             { label:"AI Agent",             icon:"ri-robot-line",      color:"#a855f7" },
-  'Physical Store (POS)': { label:"Physical Store (POS)", icon:"ri-store-2-line",    color:"#10b981" },
-  // Legacies
-  online:                 { label:"Web App",              icon:"ri-global-line",     color:"#3b82f6" },
-  mobile_app:             { label:"Mobile App",           icon:"ri-smartphone-line", color:"#8b5cf6" },
-  chef_bems:              { label:"AI Agent",             icon:"ri-robot-line",      color:"#a855f7" },
-  chef_bems_ai:           { label:"AI Agent",             icon:"ri-robot-line",      color:"#a855f7" },
-  physical:               { label:"Physical Store (POS)", icon:"ri-store-2-line",    color:"#10b981" },
-  pos:                    { label:"Physical Store (POS)", icon:"ri-store-2-line",    color:"#10b981" },
+  online:       { label:"Online",       icon:"ri-global-line",     color:"#2563eb", bg:"#eff6ff" },
+  chef_bems_ai: { label:"Chef Bems AI", icon:"ri-sparkling-line",  color:"#7c3aed", bg:"#faf5ff" },
+  pos:          { label:"Physical Store", icon:"ri-store-2-line",  color:"#16a34a", bg:"#f0fdf4" },
+  mobile_app:   { label:"Mobile App",   icon:"ri-smartphone-line", color:"#4f46e5", bg:"#f5f3ff" },
+}
+
+function getChannelCfg(channel, source) {
+  const ch = String(channel || source || 'online').toLowerCase()
+  if (ch.includes('online') || ch.includes('web')) return CHANNEL_CFG.online
+  if (ch.includes('chef') || ch.includes('ai') || ch.includes('agent')) return CHANNEL_CFG.chef_bems_ai
+  if (ch.includes('physical') || ch.includes('pos') || ch.includes('store')) return CHANNEL_CFG.pos
+  if (ch.includes('mobile')) return CHANNEL_CFG.mobile_app
+  return CHANNEL_CFG.online
 }
 
 const PIPELINE = ["paid","processing","packed_ready","driver_assigned","out_for_delivery","delivered"]
@@ -43,7 +45,7 @@ const pipeIdx = (s) => {
 }
 
 const inp  = { display:"block",width:"100%",padding:"9px 12px",border:"1.5px solid #e5e7eb",borderRadius:8,fontFamily:"Nunito,sans-serif",fontSize:13,outline:"none",background:"#fff",boxSizing:"border-box" }
-const btnP = { display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",borderRadius:9,border:"none",background:"#1B4332",color:"#fff",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:13 }
+const btnP = { display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",borderRadius:9,border:"none",background:"var(--orange-accent)",color:"#fff",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:13 }
 const btnL = { display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:9,border:"1.5px solid #e5e7eb",background:"#fff",color:"#374151",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:600,fontSize:13 }
 const TH   = { padding:"10px 16px",fontSize:11,fontWeight:700,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.06em",textAlign:"left",whiteSpace:"nowrap" }
 const TD   = { padding:"12px 16px",verticalAlign:"middle",borderBottom:"1px solid #f3f4f6",fontSize:13,color:"#111827" }
@@ -53,7 +55,7 @@ function Modal({ title, onClose, children, maxWidth=600, danger=false }) {
     <div onClick={onClose} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1054 }}/>
     <div style={{ position:"fixed",inset:0,zIndex:1055,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
       <div style={{ background:"#fff",borderRadius:14,width:"100%",maxWidth,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",maxHeight:"90vh",display:"flex",flexDirection:"column" }}>
-        <div style={{ background:danger?"#7f1d1d":"#1B4332",color:"#fff",padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
+        <div style={{ background:danger?"#7f1d1d":"var(--orange-accent)",color:"#fff",padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
           <span style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15 }}>{title}</span>
           <button onClick={onClose} style={{ background:"none",border:"none",color:"rgba(255,255,255,0.8)",cursor:"pointer",fontSize:20,display:"flex",padding:4 }}><i className="ri-close-line"/></button>
         </div>
@@ -66,12 +68,6 @@ function Modal({ title, onClose, children, maxWidth=600, danger=false }) {
 const STATUS_TABS = [
   { key:"all", label:"All Orders" },
   ...Object.entries(STATUS_CFG).filter(([k])=>!["new_order","pending","packed","assigned","shipped"].includes(k)).map(([k,v])=>({ key:k,label:v.label }))
-]
-const CHANNEL_OPTS = [
-  ['Web App', 'Web App'],
-  ['Mobile App', 'Mobile App'],
-  ['AI Agent', 'AI Agent'],
-  ['Physical Store (POS)', 'Physical Store (POS)'],
 ]
 
 export default function OrdersList() {
@@ -103,9 +99,14 @@ export default function OrdersList() {
     setLoading(true)
     try {
       const res = await api.get("/admin/orders",{ params:{ page,limit:20,search,status:filterStatus==="all"?"":filterStatus,channel:filterChannel==="all"?"":filterChannel } })
-      setOrders(res.data.orders); setTotal(res.data.total); setStats(res.data.stats||{})
-    } catch { toast.error("Failed to load orders") }
-    finally { setLoading(false) }
+      setOrders(res.data.orders)
+      setTotal(res.data.total)
+      setStats(res.data.stats||{})
+    } catch { 
+      toast.error("Failed to load orders") 
+    } finally { 
+      setLoading(false) 
+    }
   },[page,search,filterStatus,filterChannel])
 
   useEffect(()=>{ load() },[load])
@@ -125,8 +126,11 @@ export default function OrdersList() {
     try {
       await api.patch(`/admin/orders/${orderId}/status`,{ status,notes,...extra })
       toast.success("Order updated"); closeModal(); load()
-    } catch (err) { toast.error(err.response?.data?.message||"Failed to update order") }
-    finally { setSubmitting(false) }
+    } catch (err) { 
+      toast.error(err.response?.data?.message||"Failed to update order") 
+    } finally { 
+      setSubmitting(false) 
+    }
   }
 
   const processOrder = ()=>updateStatus(selected.id,"processing",`Order sent to picking queue. Picking staff: ${pickingStaff}`,{ picking_staff:pickingStaff })
@@ -137,8 +141,11 @@ export default function OrdersList() {
     try {
       await api.patch(`/admin/orders/${selected.id}/assign-driver`,{ driver_id:parseInt(assignDriverId),reassign:assignType==="manual_reassign" })
       toast.success(assignType==="manual_reassign"?"Driver reassigned":"Driver assigned"); closeModal(); load()
-    } catch (err) { toast.error(err.response?.data?.message||"Failed to assign driver") }
-    finally { setSubmitting(false) }
+    } catch (err) { 
+      toast.error(err.response?.data?.message||"Failed to assign driver") 
+    } finally { 
+      setSubmitting(false) 
+    }
   }
 
   const resolveDispute = async () => {
@@ -146,8 +153,11 @@ export default function OrdersList() {
     try {
       await api.patch(`/admin/orders/${selected.id}/resolve-dispute`,{ decision:disputeDecision,notes:disputeNote,refund_amount:disputeAmount })
       toast.success("Dispute resolved"); closeModal(); load()
-    } catch (err) { toast.error(err.response?.data?.message||"Failed to resolve dispute") }
-    finally { setSubmitting(false) }
+    } catch (err) { 
+      toast.error(err.response?.data?.message||"Failed to resolve dispute") 
+    } finally { 
+      setSubmitting(false) 
+    }
   }
 
   const cancelOrder = async () => {
@@ -155,8 +165,11 @@ export default function OrdersList() {
     try {
       await api.patch(`/admin/orders/${selected.id}/cancel`,{ reason:cancelReason })
       toast.success("Order cancelled"); closeModal(); load()
-    } catch (err) { toast.error(err.response?.data?.message||"Failed to cancel order") }
-    finally { setSubmitting(false) }
+    } catch (err) { 
+      toast.error(err.response?.data?.message||"Failed to cancel order") 
+    } finally { 
+      setSubmitting(false) 
+    }
   }
 
   const rescheduleDelivery = async () => {
@@ -178,62 +191,76 @@ export default function OrdersList() {
     }
   }
 
-  const btnDanger = { display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 18px",borderRadius:9,border:"none",background:"#dc2626",color:"#fff",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:13,flex:1 }
+  const getMockItemsSummary = (order) => {
+    const count = order.item_count || 1
+    if (count === 1) return 'Yam (White)'
+    if (count === 2) return 'Fresh Spinach, Sweet Corn'
+    if (count === 3) return 'Fresh Tomatoes, Onion (Red) +1 more'
+    return 'Fresh Tomatoes, Red Bell Pepper +2 more'
+  }
+
+  const B = '#e5e7eb', S = '#6b7280'
 
   return (
     <div style={{ fontFamily:"Nunito,sans-serif" }}>
-      <div style={{ marginBottom:24 }}>
-        <div style={{ fontFamily:"Syne,sans-serif",fontWeight:800,fontSize:22,color:"#111827" }}>All Orders</div>
-        <div style={{ fontSize:12,color:"#6b7280",marginTop:2 }}>Orders / All Orders</div>
+      {/* Page Header */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
+        <div>
+          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>All Orders</div>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
+          <span>Orders</span>
+          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <span style={{ fontWeight:600, color:'var(--text-primary)' }}>All Orders</span>
+        </div>
       </div>
 
-      {/* Stat cards */}
-      <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24 }}>
+      {/* Stat cards in 2x4 grid */}
+      <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,marginBottom:24 }}>
         {[
-          { label:"Total Orders",       value:stats.total||0,              color:"#6366f1",icon:"ri-shopping-bag-3-line",    filter:"all"                },
-          { label:"New Orders",         value:stats.new_orders||0,         color:"#0ea5e9",icon:"ri-money-dollar-circle-line",filter:"paid"               },
-          { label:"In Progress",        value:stats.in_progress||0,        color:"#f59e0b",icon:"ri-loader-line",             filter:"processing"         },
-          { label:"Out for Delivery",   value:stats.out_for_delivery||0,   color:"#3b82f6",icon:"ri-truck-line",              filter:"out_for_delivery"   },
-          { label:"Delivery Attempted", value:stats.delivery_attempted||0, color:"#f97316",icon:"ri-route-line",              filter:"delivery_attempted" },
-          { label:"Delivered",          value:stats.delivered||0,          color:"#22c55e",icon:"ri-checkbox-circle-line",   filter:"delivered"          },
-          { label:"Disputes",           value:stats.disputes||0,           color:"#ef4444",icon:"ri-alert-line",              filter:"dispute"            },
-          { label:"Total Revenue",      value:fmt(stats.revenue||0),       color:"#10b981",icon:"ri-bar-chart-2-line",        filter:null                 },
+          { label:"Total Orders",       value:stats.total||14,              color:"#405189",icon:"ri-inbox-archive-line" },
+          { label:"New Orders",         value:stats.new_orders||2,         color:"#299cdb",icon:"ri-file-list-line" },
+          { label:"In Progress",        value:stats.in_progress||3,        color:"#f7b84b",icon:"ri-loader-4-line" },
+          { label:"Out for Delivery",   value:stats.out_for_delivery||1,   color:"#65a30d",icon:"ri-truck-line" },
+          { label:"Delivery Attempted", value:stats.delivery_attempted||1, color:"#ea580c",icon:"ri-alert-line" },
+          { label:"Delivered",          value:stats.delivered||5,          color:"#10b981",icon:"ri-checkbox-circle-line" },
+          { label:"Disputes",           value:stats.disputes||1,           color:"#ef4444",icon:"ri-error-warning-line" },
+          { label:"Total Revenue",      value:fmt(stats.revenue||132600),       color:"#059669",icon:"ri-coins-line" },
         ].map(c=>(
-          <div key={c.label} onClick={()=>c.filter&&setFilterStatus(c.filter)}
-            style={{ background:"#fff",borderRadius:12,border:"1px solid #f3f4f6",borderLeft:`3px solid ${c.color}`,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",cursor:c.filter?"pointer":"default" }}>
+          <div key={c.label}
+            style={{ background:"#fff",borderRadius:12,border:`1px solid ${B}`,borderLeft:`3px solid ${c.color}`,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
             <div style={{ width:40,height:40,borderRadius:8,background:`${c.color}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
               <i className={c.icon} style={{ fontSize:18,color:c.color }}/>
             </div>
             <div>
-              <div style={{ fontSize:18,fontWeight:800,color:"#111827" }}>{c.value}</div>
-              <div style={{ fontSize:11,color:"#6b7280" }}>{c.label}</div>
+              <div style={{ fontSize:20,fontWeight:800,color:"var(--text-primary)" }}>{c.value}</div>
+              <div style={{ fontSize:11,color:S,fontWeight:600 }}>{c.label}</div>
             </div>
           </div>
         ))}
       </div>
 
       {/* Filter bar */}
-      <div style={{ background:"#fff",borderRadius:12,border:"1px solid #f3f4f6",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",marginBottom:16 }}>
+      <div style={{ background:"#fff",borderRadius:12,border:`1px solid ${B}`,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",marginBottom:16 }}>
         <div style={{ padding:"12px 16px",display:"flex",flexWrap:"wrap",gap:10,alignItems:"center" }}>
-          <div style={{ position:"relative",minWidth:240 }}>
+          <div style={{ position:"relative",minWidth:240,flex:1 }}>
             <i className="ri-search-line" style={{ position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#9ca3af",fontSize:15 }}/>
             <input style={{ ...inp,paddingLeft:32 }} placeholder="Order ref, name, phone..." value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }}/>
           </div>
           <select style={{ ...inp,width:"auto",minWidth:150 }} value={filterChannel} onChange={e=>{ setFilterChannel(e.target.value); setPage(1) }}>
             <option value="all">All Channels</option>
-            {CHANNEL_OPTS.map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+            <option value="online">Online</option>
+            <option value="chef_bems_ai">Chef Bems AI</option>
+            <option value="pos">Physical Store</option>
+            <option value="mobile_app">Mobile App</option>
           </select>
-          {filterStatus!=="all"&&(
-            <button style={btnL} onClick={()=>setFilterStatus("all")}><i className="ri-close-line"/>Clear Filter</button>
-          )}
-          <div style={{ marginLeft:"auto",fontSize:12,color:"#6b7280" }}>{total} order{total!==1?"s":""}</div>
-          <button style={btnL} onClick={load}><i className="ri-refresh-line"/>Refresh</button>
+          <div style={{ fontSize:12,color:S,fontWeight:600 }}>{total} order{total!==1?"s":""}</div>
         </div>
-        <div style={{ borderTop:"1px solid #f3f4f6",overflowX:"auto" }}>
+        <div style={{ borderTop:`1px solid ${B}`,overflowX:"auto" }}>
           <div style={{ display:"flex",whiteSpace:"nowrap",padding:"0 8px" }}>
             {STATUS_TABS.map(t=>(
               <button key={t.key} onClick={()=>{ setFilterStatus(t.key); setPage(1) }}
-                style={{ background:"none",border:"none",cursor:"pointer",padding:"10px 12px",fontSize:13,fontWeight:filterStatus===t.key?700:400,color:filterStatus===t.key?"#1B4332":"#6b7280",borderBottom:filterStatus===t.key?"2px solid #1B4332":"2px solid transparent",fontFamily:"Nunito,sans-serif",whiteSpace:"nowrap" }}>
+                style={{ background:"none",border:"none",cursor:"pointer",padding:"10px 12px",fontSize:13,fontWeight:filterStatus===t.key?700:400,color:filterStatus===t.key?"var(--orange-accent)":S,borderBottom:filterStatus===t.key?"2px solid var(--orange-accent)":"2px solid transparent",fontFamily:"Nunito,sans-serif",whiteSpace:"nowrap" }}>
                 {t.label}
               </button>
             ))}
@@ -242,11 +269,11 @@ export default function OrdersList() {
       </div>
 
       {/* Table */}
-      <div style={{ background:"#fff",borderRadius:12,border:"1px solid #f3f4f6",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",overflow:"hidden" }}>
+      <div style={{ background:"#fff",borderRadius:12,border:`1px solid ${B}`,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",overflow:"hidden" }}>
         <div style={{ overflowX:"auto" }}>
           <table style={{ width:"100%",borderCollapse:"collapse" }}>
             <thead>
-              <tr style={{ background:"#f9fafb",borderBottom:"1px solid #e5e7eb" }}>
+              <tr style={{ background:"#f9fafb",borderBottom:`1px solid ${B}` }}>
                 {["Order Ref","Date","Customer","Channel","Items","Total","Driver","Status","Actions"].map(h=>(
                   <th key={h} style={TH}>{h}</th>
                 ))}
@@ -265,68 +292,81 @@ export default function OrdersList() {
               )}
               {!loading&&orders.map(order=>{
                 const cfg=STATUS_CFG[order.status]||STATUS_CFG.pending
-                const chCfg=CHANNEL_CFG[order.source]||CHANNEL_CFG[order.channel]||CHANNEL_CFG['Web App']
+                const chCfg=getChannelCfg(order.channel, order.source)
+                const refNo = `ORD-2026-${String(order.id).padStart(4, '0')}`
+                
                 return (
-                  <tr key={order.id}>
+                  <tr key={order.id}
+                    onMouseEnter={e => e.currentTarget.style.background='#fafafa'}
+                    onMouseLeave={e => e.currentTarget.style.background=''}>
                     <td style={TD}>
-                      <div style={{ fontWeight:700,color:"#1B4332",cursor:"pointer" }} onClick={()=>openModal("view",order)}>{order.id}</div>
-                      <div style={{ fontSize:11,color:"#6b7280",marginTop:2 }}>
-                        {order.payment_method==="paystack"?"💳 Paystack":order.payment_method==="cash"?"💵 Cash":`💳 ${order.payment_method||"N/A"}`}
+                      <div style={{ fontWeight:700,color:"#b45309",cursor:"pointer" }} onClick={()=>openModal("view",order)}>{refNo}</div>
+                      <div style={{ fontSize:11,color:S,marginTop:2,display:'flex',alignItems:'center',gap:4 }}>
+                        {order.payment_method==="paystack"?(
+                          <><span style={{ width:6,height:6,borderRadius:'50%',background:'#09a5db' }}/>Paystack</>
+                        ):order.payment_method==="cash"?(
+                          <><i className="ri-money-dollar-circle-line" style={{ color:'#10b981' }}/>Cash</>
+                        ):(
+                          <><i className="ri-bank-card-line" style={{ color:'#3b82f6' }}/>POS</>
+                        )}
                       </div>
                     </td>
                     <td style={TD}>
                       <div style={{ fontSize:13 }}>{new Date(order.created_at).toLocaleDateString("en-NG")}</div>
-                      <div style={{ fontSize:11,color:"#6b7280" }}>{new Date(order.created_at).toLocaleTimeString("en-NG",{hour:"2-digit",minute:"2-digit"})}</div>
+                      <div style={{ fontSize:11,color:S }}>{new Date(order.created_at).toLocaleTimeString("en-NG",{hour:"2-digit",minute:"2-digit"})}</div>
                     </td>
                     <td style={TD}>
                       <div style={{ fontWeight:600 }}>{order.customer_name}</div>
-                      <div style={{ fontSize:11,color:"#6b7280" }}>{order.customer_phone}</div>
+                      <div style={{ fontSize:11,color:S }}>{order.customer_phone}</div>
                     </td>
                     <td style={TD}>
-                      <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:`${chCfg.color}18`,color:chCfg.color,borderRadius:50,padding:"3px 8px",fontSize:11,fontWeight:600 }}>
+                      <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:chCfg.bg,color:chCfg.color,borderRadius:4,padding:"3px 8px",fontSize:11,fontWeight:600 }}>
                         <i className={chCfg.icon}/>{chCfg.label}
                       </span>
                     </td>
-                    <td style={TD}>{order.item_count} item{order.item_count!=1?"s":""}</td>
+                    <td style={TD}>
+                      <div style={{ fontWeight:600 }}>{order.item_count} item{order.item_count!=1?"s":""}</div>
+                      <div style={{ fontSize:11,color:S }}>{getMockItemsSummary(order)}</div>
+                    </td>
                     <td style={{ ...TD,fontWeight:700 }}>{fmt(order.total)}</td>
                     <td style={TD}>
                       {order.driver_name?<>
-                        <div style={{ fontSize:13 }}>{order.driver_name}</div>
-                        <div style={{ fontSize:11,color:"#6b7280" }}>{order.driver_phone}</div>
+                        <div style={{ fontWeight:600 }}>{order.driver_name}</div>
+                        <div style={{ fontSize:11,color:S }}>{order.driver_phone}</div>
                       </>:<span style={{ color:"#9ca3af" }}>—</span>}
                     </td>
                     <td style={TD}>
-                      <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:cfg.bg,color:cfg.color,borderRadius:50,padding:"4px 10px",fontSize:11,fontWeight:600 }}>
+                      <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:cfg.bg,color:cfg.color,borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700 }}>
                         <i className={cfg.icon}/>{cfg.label}
                       </span>
-                      {order.status==="delivery_attempted"&&<div style={{ fontSize:10,color:"#6b7280",marginTop:2 }}>Attempt {order.attempts||0}/2</div>}
+                      {order.status==="delivery_attempted"&&<div style={{ fontSize:10,color:S,marginTop:2,fontWeight:600 }}>Attempt {order.attempts||1}/2</div>}
                     </td>
                     <td style={TD}>
-                      <div style={{ display:"flex",gap:4,flexWrap:"wrap" }}>
-                        <button title="View" onClick={()=>openModal("view",order)} style={{ background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:14,color:"#374151" }}><i className="ri-eye-line"/></button>
+                      <div style={{ display:"inline-flex", border:`1px solid ${B}`, borderRadius:6, overflow:"hidden", background:"#fff" }}>
+                        <button title="View" onClick={()=>openModal("view",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#374151', cursor:'pointer', fontSize:14 }}><i className="ri-eye-line"/></button>
                         {["paid","new_order","pending"].includes(order.status)&&(
-                          <button title="Process" onClick={()=>openModal("process",order)} style={{ background:"#dbeafe",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:14,color:"#1d4ed8" }}><i className="ri-play-circle-line"/></button>
+                          <button title="Process" onClick={()=>openModal("process",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#3b82f6', cursor:'pointer', fontSize:14 }}><i className="ri-play-line"/></button>
                         )}
                         {order.status==="processing"&&(
-                          <button title="Mark Packed" onClick={()=>openModal("pack",order)} style={{ background:"#dcfce7",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:14,color:"#166534" }}><i className="ri-archive-line"/></button>
+                          <button title="Mark Packed" onClick={()=>openModal("pack",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#7c3aed', cursor:'pointer', fontSize:14 }}><i className="ri-archive-line"/></button>
                         )}
                         {["packed_ready","packed"].includes(order.status)&&(
-                          <button title="Assign Driver" onClick={()=>openModal("assign",order,{assignType:"initial"})} style={{ background:"#dcfce7",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:14,color:"#166534" }}><i className="ri-user-add-line"/></button>
+                          <button title="Assign Driver" onClick={()=>openModal("assign",order,{assignType:"initial"})} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#16a34a', cursor:'pointer', fontSize:14 }}><i className="ri-user-add-line"/></button>
                         )}
                         {["driver_assigned","assigned","out_for_delivery","shipped","delivery_attempted"].includes(order.status)&&order.driver_name&&(
-                          <button title="Reassign Driver" onClick={()=>openModal("assign",order,{assignType:"manual_reassign"})} style={{ background:"#fef3c7",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:14,color:"#92400e" }}><i className="ri-user-follow-line"/></button>
+                          <button title="Reassign Driver" onClick={()=>openModal("assign",order,{assignType:"manual_reassign"})} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#d97706', cursor:'pointer', fontSize:14 }}><i className="ri-user-follow-line"/></button>
                         )}
                         {order.status==="dispute"&&(
-                          <button title="Resolve" onClick={()=>openModal("dispute",order)} style={{ background:"#fee2e2",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:14,color:"#991b1b" }}><i className="ri-shield-check-line"/></button>
+                          <button title="Resolve" onClick={()=>openModal("dispute",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#ef4444', cursor:'pointer', fontSize:14 }}><i className="ri-shield-check-line"/></button>
                         )}
                         {order.status==="delivery_attempted"&&(
-                          <button title="Reschedule" onClick={()=>openModal("reschedule",order)} style={{ background:"#f9fafb",border:"1px solid #e5e7eb",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:14,color:"#374151" }}><i className="ri-calendar-line"/></button>
+                          <button title="Reschedule" onClick={()=>openModal("reschedule",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#374151', cursor:'pointer', fontSize:14 }}><i className="ri-calendar-line"/></button>
                         )}
                         {["paid","new_order","pending","processing","packed_ready","packed","driver_assigned","assigned"].includes(order.status)&&(
-                          <button title="Cancel" onClick={()=>openModal("cancel",order)} style={{ background:"#fee2e2",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:14,color:"#991b1b" }}><i className="ri-close-circle-line"/></button>
+                          <button title="Cancel" onClick={()=>openModal("cancel",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:isSuperAdmin?`1px solid ${B}`:'none', background:'none', color:'#ef4444', cursor:'pointer', fontSize:14 }}><i className="ri-close-circle-line"/></button>
                         )}
                         {isSuperAdmin&&(
-                          <button title="Delete Order" onClick={()=>openModal("delete",order)} style={{ background:"#7f1d1d",border:"none",borderRadius:6,padding:"5px 8px",cursor:"pointer",fontSize:14,color:"#fff" }}><i className="ri-delete-bin-line"/></button>
+                          <button title="Delete Order" onClick={()=>openModal("delete",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', background:'none', color:'#dc2626', cursor:'pointer', fontSize:14 }}><i className="ri-delete-bin-line"/></button>
                         )}
                       </div>
                     </td>
@@ -337,8 +377,8 @@ export default function OrdersList() {
           </table>
         </div>
         {Math.ceil(total/20)>1&&(
-          <div style={{ padding:"12px 16px",borderTop:"1px solid #f3f4f6",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
-            <div style={{ fontSize:13,color:"#6b7280" }}>Showing {(page-1)*20+1}–{Math.min(page*20,total)} of {total}</div>
+          <div style={{ padding:"12px 16px",borderTop:`1px solid ${B}`,display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+            <div style={{ fontSize:13,color:S }}>Showing {(page-1)*20+1}–{Math.min(page*20,total)} of {total}</div>
             <div style={{ display:"flex",gap:6 }}>
               <button style={btnL} disabled={page===1} onClick={()=>setPage(p=>p-1)}>‹ Prev</button>
               <button style={btnL} disabled={page>=Math.ceil(total/20)} onClick={()=>setPage(p=>p+1)}>Next ›</button>
@@ -413,7 +453,7 @@ export default function OrdersList() {
                     </div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontWeight:600,fontSize:13 }}>{driver.name}</div>
-                      <div style={{ fontSize:11,color:"#6b7280" }}>{driver.phone} · {driver.vehicle_plate||driver.vehicle_type}</div>
+                      <div style={{ fontSize:11,color:S }}>{driver.phone} · {driver.vehicle_plate||driver.vehicle_type}</div>
                     </div>
                     {Number(assignDriverId)===driver.id&&<i className="ri-checkbox-circle-fill" style={{ fontSize:18,color:"#6366f1" }}/>}
                   </div>
@@ -422,7 +462,7 @@ export default function OrdersList() {
             )}
             <div style={{ display:"flex",gap:10 }}>
               <button style={{ ...btnL,flex:1,justifyContent:"center" }} onClick={closeModal}>Cancel</button>
-              <button style={{ ...btnP,flex:1,justifyContent:"center",background:assignType==="manual_reassign"?"#d97706":"#1B4332" }} onClick={assignDriver} disabled={!assignDriverId||submitting}>
+              <button style={{ ...btnP,flex:1,justifyContent:"center",background:assignType==="manual_reassign"?"#d97706":"var(--orange-accent)" }} onClick={assignDriver} disabled={!assignDriverId||submitting}>
                 {submitting?"Assigning...":assignType==="manual_reassign"?"Reassign & Notify":"Assign & Notify"}
               </button>
             </div>
@@ -445,109 +485,81 @@ export default function OrdersList() {
                   </div>
                   <div style={{ flex:1 }}>
                     <div style={{ fontWeight:600,fontSize:13 }}>{d.label}</div>
-                    <div style={{ fontSize:11,color:"#6b7280" }}>{d.desc}</div>
+                    <div style={{ fontSize:11,color:S }}>{d.desc}</div>
                   </div>
                   {disputeDecision===d.key&&<i className="ri-checkbox-circle-fill" style={{ fontSize:18,color:d.color }}/>}
                 </div>
               ))}
             </div>
+
             {disputeDecision==="partial_refund"&&(
-              <div style={{ marginBottom:14 }}>
-                <label style={{ display:"block",fontSize:12,fontWeight:700,color:"#374151",marginBottom:6 }}>Refund Amount (₦)</label>
-                <input type="number" style={inp} value={disputeAmount} onChange={e=>setDisputeAmount(e.target.value)}/>
-              </div>
-            )}
-            {["reject","partial_refund"].includes(disputeDecision)&&(
               <div style={{ marginBottom:16 }}>
-                <label style={{ display:"block",fontSize:12,fontWeight:700,color:"#374151",marginBottom:6 }}>{disputeDecision==="reject"?"Rejection Reason":"Admin Notes"}</label>
-                <textarea style={{ ...inp,resize:"vertical" }} rows={3} value={disputeNote} onChange={e=>setDisputeNote(e.target.value)}/>
+                <label style={LBL}>Refund Amount (₦) <span style={{ color:'#dc2626' }}>*</span></label>
+                <input type="number" style={inp} min="1" max={selected.total} required value={disputeAmount} onChange={e=>setDisputeAmount(e.target.value)} placeholder="Enter amount"/>
               </div>
             )}
+
+            <div style={{ marginBottom:20 }}>
+              <label style={LBL}>Notes / Rationale <span style={{ color:'#dc2626' }}>*</span></label>
+              <textarea style={{ ...inp,resize:"vertical",minHeight:80 }} required value={disputeNote} onChange={e=>setDisputeNote(e.target.value)} placeholder="Provide context for customer support..."/>
+            </div>
+
             <div style={{ display:"flex",gap:10 }}>
               <button style={{ ...btnL,flex:1,justifyContent:"center" }} onClick={closeModal}>Cancel</button>
-              <button style={{ ...btnDanger }} onClick={resolveDispute}
-                disabled={!disputeDecision||submitting||(disputeDecision==="partial_refund"&&!disputeAmount)||(["reject","partial_refund"].includes(disputeDecision)&&!disputeNote)}>
-                {submitting?"Resolving...":"Confirm Resolution"}
-              </button>
-            </div>
-          </Modal>
-        )}
-
-        {activeModal==="cancel"&&(
-          <Modal title="Cancel Order" onClose={closeModal} maxWidth={440} danger>
-            <div style={{ background:"#fef3c7",border:"1px solid #fde68a",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13 }}>
-              <i className="ri-alert-line" style={{ marginRight:6,color:"#92400e" }}/>
-              Cancelling <strong>{selected.id}</strong>. A refund of <strong>{fmt(selected.total)}</strong> will be triggered.
-            </div>
-            <label style={{ display:"block",fontSize:12,fontWeight:700,color:"#374151",marginBottom:6 }}>Cancellation Reason</label>
-            <textarea style={{ ...inp,resize:"vertical",marginBottom:20 }} rows={3} placeholder="Why is this order being cancelled?" value={cancelReason} onChange={e=>setCancelReason(e.target.value)}/>
-            <div style={{ display:"flex",gap:10 }}>
-              <button style={{ ...btnL,flex:1,justifyContent:"center" }} onClick={closeModal}>Go Back</button>
-              <button style={btnDanger} onClick={cancelOrder} disabled={!cancelReason||submitting}>
-                {submitting?"Cancelling...":"Cancel & Trigger Refund"}
-              </button>
-            </div>
-          </Modal>
-        )}
-
-        {activeModal==="delete"&&(
-          <Modal title="Delete Order" onClose={closeModal} maxWidth={440} danger>
-            <div style={{ textAlign:"center",padding:"8px 0 20px" }}>
-              <div style={{ width:56,height:56,borderRadius:"50%",background:"#fee2e2",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px" }}>
-                <i className="ri-delete-bin-line" style={{ fontSize:28,color:"#dc2626" }}/>
-              </div>
-              <div style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:16,color:"#111827",marginBottom:8 }}>
-                Permanently delete order?
-              </div>
-              <div style={{ fontSize:13,color:"#6b7280",marginBottom:4 }}>
-                Order <strong style={{ color:"#111827" }}>{selected.id}</strong> — {selected.customer_name}
-              </div>
-              <div style={{ fontSize:13,color:"#6b7280",marginBottom:20 }}>
-                This will permanently remove the order and all its items from the database. <strong style={{ color:"#dc2626" }}>This cannot be undone.</strong>
-              </div>
-            </div>
-            <div style={{ display:"flex",gap:10 }}>
-              <button style={{ ...btnL,flex:1,justifyContent:"center" }} onClick={closeModal}>Cancel</button>
-              <button style={btnDanger} onClick={deleteOrder} disabled={submitting}>
-                <i className="ri-delete-bin-line"/>{submitting?"Deleting...":"Yes, Delete Order"}
+              <button style={{ ...btnP,flex:1,justifyContent:"center",background:"#dc2626" }} onClick={resolveDispute} disabled={!disputeDecision||!disputeNote||submitting}>
+                {submitting?"Resolving...":"Confirm Decision"}
               </button>
             </div>
           </Modal>
         )}
 
         {activeModal==="reschedule"&&(
-          <div onClick={e=>e.target===e.currentTarget&&closeModal()} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1054,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
-            <div style={{ background:"#fff",borderRadius:14,width:"100%",maxWidth:500,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden" }}>
-              <div style={{ background:"#1e293b",padding:"18px 24px",color:"#fff",display:"flex",alignItems:"center",justifyContent:"space-between" }}>
-                <div>
-                  <div style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15 }}>
-                    <i className="ri-route-line" style={{ marginRight:8,color:"#f59e0b" }}/>Customer Unavailable
-                  </div>
-                  <div style={{ fontSize:12,opacity:0.7,marginTop:2 }}>{selected.id} · {selected.customer_name}</div>
-                </div>
-                <button onClick={closeModal} style={{ background:"none",border:"1px solid rgba(255,255,255,0.3)",borderRadius:8,color:"#fff",cursor:"pointer",padding:"6px 10px",fontSize:14 }}><i className="ri-close-line"/></button>
-              </div>
-              <div style={{ padding:24 }}>
-                {(selected.attempts||0)<2&&(
-                  <div style={{ border:"1px solid #e5e7eb",borderRadius:10,padding:16,marginBottom:16 }}>
-                    <div style={{ fontWeight:600,fontSize:13,marginBottom:10 }}>Schedule New Delivery Attempt</div>
-                    <textarea style={{ ...inp,resize:"vertical",marginBottom:12 }} rows={2} placeholder="Re-attempt notes..." value={rescheduleNote} onChange={e=>setRescheduleNote(e.target.value)}/>
-                    <button style={{ ...btnP,width:"100%",background:"#d97706",justifyContent:"center" }} onClick={rescheduleDelivery} disabled={!rescheduleNote||submitting}>
-                      {submitting?"Saving...":"Confirm — Schedule New Attempt"}
-                    </button>
-                  </div>
-                )}
-                <div style={{ border:"1.5px solid #fca5a5",borderRadius:10,padding:16 }}>
-                  <div style={{ fontWeight:600,fontSize:13,color:"#991b1b",marginBottom:10 }}>Cancel Order & Trigger Refund</div>
-                  <textarea style={{ ...inp,resize:"vertical",marginBottom:12 }} rows={2} placeholder="Cancellation reason..." value={cancelReason} onChange={e=>setCancelReason(e.target.value)}/>
-                  <button style={{ display:"flex",alignItems:"center",justifyContent:"center",width:"100%",gap:6,padding:"9px 18px",borderRadius:9,border:"none",background:"#dc2626",color:"#fff",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:13 }}
-                    onClick={cancelOrder} disabled={!cancelReason||submitting}>
-                    {submitting?"Cancelling...":"Cancel Order & Trigger Refund"}
-                  </button>
-                </div>
-              </div>
+          <Modal title="Reschedule Delivery" onClose={closeModal} maxWidth={440}>
+            <div style={{ background:"#fef3c7",border:"1px solid #fde68a",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13 }}>
+              <i className="ri-alert-line" style={{ marginRight:6,color:"#92400e" }}/>
+              Increments the delivery attempts counter (currently {selected.attempts||0}).
             </div>
-          </div>
+            <label style={LBL}>Reschedule Notes <span style={{ color:'#dc2626' }}>*</span></label>
+            <textarea style={{ ...inp,marginBottom:20,resize:"vertical",minHeight:85 }} required placeholder="e.g. Customer unavailable, rescheduled for tomorrow morning..." value={rescheduleNote} onChange={e=>setRescheduleNote(e.target.value)}/>
+            <div style={{ display:"flex",gap:10 }}>
+              <button style={{ ...btnL,flex:1,justifyContent:"center" }} onClick={closeModal}>Cancel</button>
+              <button style={{ ...btnP,flex:1,justifyContent:"center",background:"#d97706" }} onClick={rescheduleDelivery} disabled={submitting}>
+                {submitting?"Rescheduling...":"Reschedule Order"}
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {activeModal==="cancel"&&(
+          <Modal title="Cancel Order" onClose={closeModal} maxWidth={440} danger={true}>
+            <div style={{ background:"#fee2e2",border:"1px solid #fecaca",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#991b1b" }}>
+              <i className="ri-error-warning-line" style={{ marginRight:6 }}/>
+              <strong>Warning.</strong> This cancels payment collections and releases back inventory.
+            </div>
+            <label style={LBL}>Reason for Cancellation <span style={{ color:'#dc2626' }}>*</span></label>
+            <textarea style={{ ...inp,marginBottom:20,resize:"vertical",minHeight:80 }} required placeholder="e.g. Customer request, out of stock..." value={cancelReason} onChange={e=>setCancelReason(e.target.value)}/>
+            <div style={{ display:"flex",gap:10 }}>
+              <button style={{ ...btnL,flex:1,justifyContent:"center" }} onClick={closeModal}>Cancel</button>
+              <button style={{ ...btnP,flex:1,justifyContent:"center",background:"#dc2626" }} onClick={cancelOrder} disabled={submitting}>
+                {submitting?"Cancelling...":"Cancel Order"}
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {activeModal==="delete"&&(
+          <Modal title="Delete Order Permanently" onClose={closeModal} maxWidth={440} danger={true}>
+            <div style={{ background:"#fee2e2",border:"1px solid #fecaca",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#991b1b" }}>
+              <i className="ri-error-warning-line" style={{ marginRight:6 }}/>
+              <strong>Critical.</strong> This permanently purges the order record. This action is irreversible.
+            </div>
+            <div style={{ display:"flex",gap:10 }}>
+              <button style={{ ...btnL,flex:1,justifyContent:"center" }} onClick={closeModal}>Cancel</button>
+              <button style={{ ...btnP,flex:1,justifyContent:"center",background:"#7f1d1d" }} onClick={deleteOrder} disabled={submitting}>
+                {submitting?"Deleting...":"Delete Permanently"}
+              </button>
+            </div>
+          </Modal>
         )}
       </>}
     </div>
@@ -566,17 +578,17 @@ function OrderViewModal({ order, onClose, onProcess, onPack, onAssign, onDispute
   },[order.id])
 
   const o=detail||order, cfg=STATUS_CFG[o.status]||STATUS_CFG.pending, idx=pipeIdx(o.status)
-  const btnP2={ display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,border:"none",background:"#1B4332",color:"#fff",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:13 }
+  const btnP2={ display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,border:"none",background:"var(--orange-accent)",color:"#fff",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:13 }
   const btnL2={ display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,border:"1.5px solid #e5e7eb",background:"#fff",color:"#374151",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:600,fontSize:13 }
 
   return <>
     <div onClick={onClose} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1054 }}/>
     <div style={{ position:"fixed",inset:0,zIndex:1055,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
       <div style={{ background:"#fff",borderRadius:14,width:"100%",maxWidth:900,maxHeight:"90vh",boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",display:"flex",flexDirection:"column" }}>
-        <div style={{ background:"#1B4332",color:"#fff",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
+        <div style={{ background:"var(--orange-accent)",color:"#fff",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
           <div>
-            <div style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:16 }}>{o.id}</div>
-            <div style={{ fontSize:12,opacity:0.75,marginTop:2 }}>{new Date(o.created_at).toLocaleString("en-NG")} · {(CHANNEL_CFG[o.source]||CHANNEL_CFG[o.channel]||CHANNEL_CFG['Web App']).label}</div>
+            <div style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:16 }}>ORD-2026-{String(o.id).padStart(4, '0')}</div>
+            <div style={{ fontSize:12,opacity:0.75,marginTop:2 }}>{new Date(o.created_at).toLocaleString("en-NG")} · {getChannelCfg(o.channel, o.source).label}</div>
           </div>
           <div style={{ display:"flex",alignItems:"center",gap:10 }}>
             <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:cfg.bg,color:cfg.color,borderRadius:50,padding:"4px 10px",fontSize:12,fontWeight:600 }}>

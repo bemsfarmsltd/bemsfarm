@@ -34,12 +34,36 @@ export default function CustomerDetail() {
   const [error, setError]       = useState(null)
   const [activeTab, setActiveTab] = useState('orders')
 
+  const [insights, setInsights] = useState(null)
+  const [loadingInsights, setLoadingInsights] = useState(false)
+  const [insightsError, setInsightsError] = useState(null)
+
+  const fetchInsights = async () => {
+    if (insights || loadingInsights) return
+    setLoadingInsights(true)
+    setInsightsError(null)
+    try {
+      const res = await api.get(`/admin/customers/${id}/insights`)
+      setInsights(res.data.insights)
+    } catch (err) {
+      setInsightsError(err.response?.data?.message || 'Failed to generate AI insights')
+    } finally {
+      setLoadingInsights(false)
+    }
+  }
+
   useEffect(() => {
     api.get(`/admin/customers/${id}`)
       .then(r => setCustomer(r.data))
       .catch(err => setError(err.response?.data?.message || 'Customer not found'))
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    if (activeTab === 'insights') {
+      fetchInsights()
+    }
+  }, [activeTab])
 
   if (loading) return (
     <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'Nunito, sans-serif' }}>
@@ -64,6 +88,7 @@ export default function CustomerDetail() {
     { id:'orders', label:'Order History',  icon:'ri-shopping-bag-line', count:(c.orders||[]).length },
     { id:'points', label:'Loyalty Points', icon:'ri-medal-line',        count:null },
     { id:'notes',  label:'Notes & Info',   icon:'ri-sticky-note-line',  count:null },
+    { id:'insights', label:'AI Insights',   icon:'ri-sparkling-2-line',  count:null },
   ]
 
   const pill = (text, bg, color, border, icon) => (
@@ -302,6 +327,63 @@ export default function CustomerDetail() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* AI Insights */}
+          {activeTab==='insights' && (
+            <div style={{ padding:20 }}>
+              {loadingInsights && (
+                <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, color:'var(--orange-accent)', fontWeight:700, fontSize:13 }}>
+                    <i className="ri-sparkling-2-line animate-pulse" />
+                    <span>Bems Farms AI is analyzing purchase history and generating strategic recommendations...</span>
+                  </div>
+                  <div style={{ background:'#f3f4f6', height:16, width:'90%', borderRadius:4 }} />
+                  <div style={{ background:'#f3f4f6', height:16, width:'85%', borderRadius:4 }} />
+                  <div style={{ background:'#f3f4f6', height:16, width:'95%', borderRadius:4 }} />
+                  <div style={{ background:'#f3f4f6', height:16, width:'60%', borderRadius:4 }} />
+                </div>
+              )}
+              {insightsError && (
+                <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:12, color:'#dc2626', fontSize:13 }}>
+                  {insightsError}
+                  <button style={{ ...btnL, display:'block', marginTop:8, padding:'4px 8px', fontSize:11 }} onClick={fetchInsights}>Try Again</button>
+                </div>
+              )}
+              {insights && (
+                <div style={{ color:'#374151', fontSize:13, lineHeight:1.6 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, color:'var(--orange-accent)', fontWeight:700, fontSize:14, marginBottom:16, paddingBottom:8, borderBottom:'1px solid #f3f4f6' }}>
+                    <i className="ri-sparkling-2-line" />
+                    <span>AI Customer Success Insights</span>
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                    {insights.split("\n\n").map((block, idx) => {
+                      if (block.startsWith("###")) {
+                        return (
+                          <h4 key={idx} style={{ margin:'8px 0 4px', fontSize:14, fontWeight:700, color:'#1B4332', fontFamily:'Syne, sans-serif' }}>
+                            {block.replace("###", "").trim()}
+                          </h4>
+                        );
+                      }
+                      return (
+                        <p key={idx} style={{ margin:0 }}>
+                          {block.split("\n").map((line, lIdx) => {
+                            if (line.trim().startsWith("-") || line.trim().startsWith("*")) {
+                              return (
+                                <span key={lIdx} style={{ display:'block', paddingLeft:12, textIndent:-12, marginBottom:4 }}>
+                                  • {line.trim().slice(1).trim()}
+                                </span>
+                              );
+                            }
+                            return <span key={lIdx} style={{ display:'block' }}>{line}</span>;
+                          })}
+                        </p>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

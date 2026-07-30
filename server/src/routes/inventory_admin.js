@@ -326,7 +326,14 @@ router.get("/movements", async (req, res) => {
     const where = [];
 
     if (product_id) { params.push(parseInt(product_id)); where.push(`sm.product_id = $${params.length}`); }
-    if (type)       { params.push(type); where.push(`sm.type = $${params.length}`); }
+    if (type) {
+      if (type === "transfer") {
+        where.push(`sm.type IN ('transfer_in', 'transfer_out')`);
+      } else {
+        params.push(type);
+        where.push(`sm.type = $${params.length}`);
+      }
+    }
     if (from)       { params.push(from); where.push(`sm.created_at >= $${params.length}`); }
     if (to)         { params.push(to);   where.push(`sm.created_at <= $${params.length} + INTERVAL '1 day'`); }
 
@@ -748,6 +755,75 @@ router.patch(
         [parseInt(reorder_level), req.params.id]
       );
       res.json({ message: "Reorder level updated successfully" });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+// ── GET /api/admin/inventory/alerts/check ──────────────────────────────
+router.get(
+  "/alerts/check",
+  requireRole("superadmin", "manager", "admin", "storekeeper"),
+  async (req, res) => {
+    try {
+      // 1. Get low stock products
+      const lowStockRes = await pool.query(
+        `SELECT id, name, sku, stock, low_stock_threshold
+         FROM products
+         WHERE stock <= low_stock_threshold AND status = 'active'
+         ORDER BY stock ASC`
+      );
+
+      const items = lowStockRes.rows;
+
+      // 2. Fetch configurations
+      const configRes = await pool.query(
+        `SELECT key, value FROM settings WHERE key IN ('notif_low_stock', 'store_email', 'notif_email_enabled')`
+      );
+
+      const settings = {};
+      configRes.rows.forEach(r => { settings[r.key] = r.value; });
+
+      const notifLowStock = settings['notif_low_stock'] === 'true';
+      const emailEnabled = settings['notif_email_enabled'] !== 'false';
+      const storeEmail = settings['store_email'] || 'info@bemsfarms.com';
+
+      let notified = false;
+      let emailResult = null;
+
+      if (items.length > 0 && notifLowStock && emailEnabled) {
+        const { sendLowStockAlertEmail } = require("../services/emailService");
+        emailResult = await sendLowStockAlertEmail(storeEmail, items);
+        notified = true;
+      }
+
+      res.json({
+        success: true,
+        checked_at: new Date(),
+        low_stock_count: items.length,
+        notified,
+        email_sent_to: notified ? storeEmail : null,
+        email_result: emailResult,
+        items,
+        config: {
+          notif_low_stock: notifLowStock,
+          notif_email_enabled: emailEnabled,
+          store_email: storeEmail
+        }
+      });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+// ── DELETE /api/admin/inventory/lost-items/:id ─────────────────────────
+router.delete(
+  "/lost-items/:id",
+  requireRole("superadmin", "manager", "admin"),
+  async (req, res) => {
+    try {
+      await pool.query("DELETE FROM lost_items WHERE id = $1", [req.params.id]);
+      res.json({ success: true, message: "Lost item report deleted successfully" });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }

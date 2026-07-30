@@ -332,7 +332,7 @@ export default function ChefBemsPage() {
           width: 100%;
           overflow: hidden;
           font-family: 'Nunito', sans-serif;
-          background-color: #FAF9F6;
+          background-color: var(--gray-50);
         }
         @media (max-width: 768px) {
           .chef-page-layout {
@@ -497,15 +497,17 @@ export default function ChefBemsPage() {
           gap: 16px;
           padding: 12px 16px;
           border-radius: 12px;
+          background-color: var(--white);
+          border: 1px solid var(--gray-200);
           transition: background-color 0.2s;
         }
         .message-content-wrapper.assistant {
-          background-color: rgba(46, 125, 50, 0.04);
-          border: 1px solid rgba(46, 125, 50, 0.08);
+          background-color: var(--primary-bg);
+          border: 1px solid var(--gray-200);
         }
         .message-content-wrapper.error {
-          background-color: #FEF2F2;
-          border-color: #FCA5A5;
+          background-color: rgba(239, 68, 68, 0.06);
+          border: 1px solid rgba(239, 68, 68, 0.25);
         }
         
         .msg-avatar {
@@ -535,13 +537,13 @@ export default function ChefBemsPage() {
         .msg-sender-name {
           font-size: 12px;
           font-weight: 700;
-          color: #4B5563;
+          color: var(--gray-500);
           margin-bottom: 4px;
         }
         .msg-text {
           font-size: 15px;
           line-height: 1.6;
-          color: #1F2937;
+          color: var(--gray-900);
         }
         .msg-text p {
           margin: 0 0 10px;
@@ -550,13 +552,13 @@ export default function ChefBemsPage() {
           margin-bottom: 0;
         }
         .msg-text strong {
-          color: #111827;
+          color: var(--gray-900);
         }
 
         /* Bottom Floating Input bar */
         .chat-input-sticky {
           padding: 24px;
-          background: linear-gradient(to top, #FAF9F6 70%, transparent 100%);
+          background: linear-gradient(to top, var(--white) 70%, transparent 100%);
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -566,8 +568,8 @@ export default function ChefBemsPage() {
         .chat-input-wrapper {
           width: 100%;
           max-width: 700px;
-          background-color: #ffffff;
-          border: 1px solid #E5E7EB;
+          background-color: var(--white);
+          border: 1px solid var(--gray-200);
           border-radius: 16px;
           box-shadow: 0 10px 25px rgba(0,0,0,0.03);
           display: flex;
@@ -585,7 +587,7 @@ export default function ChefBemsPage() {
           background: transparent;
           border: none;
           outline: none;
-          color: #1F2937;
+          color: var(--gray-900);
           font-size: 15px;
           line-height: 1.5;
           resize: none;
@@ -596,7 +598,7 @@ export default function ChefBemsPage() {
         }
         
         .chat-textarea::placeholder {
-          color: #9CA3AF;
+          color: var(--gray-500);
         }
 
         .btn-input-icon {
@@ -645,8 +647,8 @@ export default function ChefBemsPage() {
         }
         
         .chatgpt-prompt-card {
-          background-color: #ffffff;
-          border: 1px solid #E5E7EB;
+          background-color: var(--white);
+          border: 1px solid var(--gray-200);
           border-radius: 12px;
           padding: 16px;
           text-align: left;
@@ -658,7 +660,7 @@ export default function ChefBemsPage() {
           box-shadow: 0 4px 6px rgba(0,0,0,0.01);
         }
         .chatgpt-prompt-card:hover {
-          background-color: rgba(46, 125, 50, 0.02);
+          background-color: var(--gray-50);
           border-color: #2E7D32;
           transform: translateY(-2px);
         }
@@ -667,7 +669,7 @@ export default function ChefBemsPage() {
         .btn-sidebar-toggle {
           background: none;
           border: none;
-          color: #374151;
+          color: var(--gray-700);
           font-size: 20px;
           cursor: pointer;
           padding: 8px;
@@ -677,17 +679,17 @@ export default function ChefBemsPage() {
           border-radius: 8px;
         }
         .btn-sidebar-toggle:hover {
-          background-color: rgba(0,0,0,0.05);
+          background-color: var(--gray-100);
         }
 
         .header-topbar {
           height: 60px;
-          border-bottom: 1px solid #E5E7EB;
+          border-bottom: 1px solid var(--gray-200);
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding: 0 16px;
-          background-color: #ffffff;
+          background-color: var(--white);
           flex-shrink: 0;
         }
         
@@ -855,10 +857,10 @@ export default function ChefBemsPage() {
                 ≡
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <h1 style={{ fontSize: "16px", fontWeight: "bold", margin: 0, color: "#1B4332", fontFamily: "Space Grotesk, sans-serif" }}>
+                <h1 style={{ fontSize: "16px", fontWeight: "bold", margin: 0, color: "var(--gray-900)", fontFamily: "Space Grotesk, sans-serif" }}>
                   Chef Bems 👨‍🍳
                 </h1>
-                <span style={{ fontSize: "12px", color: "#6B7280" }}>Online</span>
+                <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>Online</span>
               </div>
             </div>
             {messages.length > 1 && (
@@ -866,8 +868,8 @@ export default function ChefBemsPage() {
                 onClick={handleStartNewChat}
                 style={{
                   background: "transparent",
-                  color: "#1B4332",
-                  border: "1px solid #1B4332",
+                  color: "var(--primary)",
+                  border: "1px solid var(--primary)",
                   padding: "5px 12px",
                   borderRadius: "6px",
                   fontSize: "12px",
@@ -893,21 +895,21 @@ export default function ChefBemsPage() {
                   width: "72px",
                   height: "72px",
                   borderRadius: "50%",
-                  backgroundColor: "#ffffff",
+                  backgroundColor: "var(--white)",
                   boxShadow: "0 6px 15px rgba(0,0,0,0.05)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   margin: "0 auto 16px",
-                  border: "1.5px solid #F59E0B",
+                  border: "1.5px solid var(--accent)",
                   overflow: "hidden"
                 }}>
                   <img src={chefBemsAvatar} alt="Chef Bems" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </div>
-                <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "#1C3F2E", margin: 0, fontFamily: "Space Grotesk, sans-serif" }}>
+                <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "var(--gray-900)", margin: 0, fontFamily: "Space Grotesk, sans-serif" }}>
                   What can I help you cook today?
                 </h2>
-                <p style={{ fontSize: "14px", color: "#6B7280", margin: "8px 0 0", lineHeight: 1.5 }}>
+                <p style={{ fontSize: "14px", color: "var(--gray-500)", margin: "8px 0 0", lineHeight: 1.5 }}>
                   Ask me for Nigerian farm recipes, quick substitution options, ingredient prices, or scan your inventory with a photo!
                 </p>
                 
@@ -917,7 +919,7 @@ export default function ChefBemsPage() {
                   margin: "24px auto 0",
                   borderRadius: "12px",
                   overflow: "hidden",
-                  border: "1px solid #E5E7EB",
+                  border: "1px solid var(--gray-200)",
                   boxShadow: "0 4px 10px rgba(0,0,0,0.03)"
                 }}>
                   <img src={chefBemsImg} alt="Visual scanner banner" style={{ width: "100%", height: "150px", objectFit: "cover", display: "block" }} />
@@ -931,8 +933,8 @@ export default function ChefBemsPage() {
                       onClick={() => sendMessage(p.text)}
                     >
                       <div style={{ fontSize: "20px" }}>{p.icon}</div>
-                      <div style={{ fontSize: "13px", fontWeight: "bold", color: "#374151" }}>{p.text}</div>
-                      <div style={{ fontSize: "11px", color: "#9CA3AF" }}>Click to ask Chef Bems instantly</div>
+                      <div style={{ fontSize: "13px", fontWeight: "bold", color: "var(--gray-900)" }}>{p.text}</div>
+                      <div style={{ fontSize: "11px", color: "var(--gray-500)" }}>Click to ask Chef Bems instantly</div>
                     </div>
                   ))}
                 </div>
@@ -1002,8 +1004,8 @@ export default function ChefBemsPage() {
                                 <div
                                   key={idx}
                                   style={{
-                                    backgroundColor: "#ffffff",
-                                    border: "1px solid #E5E7EB",
+                                    backgroundColor: "var(--white)",
+                                    border: "1px solid var(--gray-200)",
                                     borderRadius: "8px",
                                     padding: "8px 12px",
                                     display: "flex",
@@ -1014,8 +1016,8 @@ export default function ChefBemsPage() {
                                   }}
                                 >
                                   <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontSize: "12px", fontWeight: "bold", color: "#1F2937", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                                    <div style={{ fontSize: "11px", color: "#6B7280" }}>₦{Number(p.price).toLocaleString()}</div>
+                                    <div style={{ fontSize: "12px", fontWeight: "bold", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
+                                    <div style={{ fontSize: "11px", color: "var(--gray-500)" }}>₦{Number(p.price).toLocaleString()}</div>
                                   </div>
                                   <button
                                     onClick={(e) => handleAddProduct(e, p)}

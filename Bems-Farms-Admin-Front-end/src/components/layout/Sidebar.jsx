@@ -381,7 +381,7 @@ export default function Sidebar({ mobileOpen = false }) {
               {is('superadmin', 'manager') && <li><SideLink to="/products/add">Add Product</SideLink></li>}
               <li><SideLink to="/products/categories">Categories</SideLink></li>
               <li><SideLink to="/products/sub-categories">Sub-Categories</SideLink></li>
-              <li><SideLink to="/products/units">Units of Measure</SideLink></li>
+
               {is('superadmin', 'manager') && <li><SideLink to="/products/variants">Variants</SideLink></li>}
               {is('superadmin', 'manager') && <li><SideLink to="/products/barcode">Barcode</SideLink></li>}
               {is('superadmin', 'manager') && <li><SideLink to="/products/export">Bulk Export</SideLink></li>}

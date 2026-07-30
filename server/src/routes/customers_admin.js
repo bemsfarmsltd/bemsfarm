@@ -248,6 +248,129 @@ router.get(
   },
 );
 
+// ── GET /api/admin/customers/:id/insights ─────────────────────────
+router.get("/:id/insights", async (req, res) => {
+  try {
+    const customerId = req.params.id;
+    const isCode = customerId.startsWith("CUS-");
+    const whereCol = isCode ? "c.customer_code" : "c.id";
+
+    // 1. Fetch customer details
+    const custRes = await pool.query(
+      `SELECT c.*, COALESCE(cl.points_balance, 0) AS points, COALESCE(lt.name, 'Bronze') AS tier
+       FROM customers c
+       LEFT JOIN customer_loyalty cl ON c.id = cl.customer_id
+       LEFT JOIN loyalty_tiers lt ON cl.tier_id = lt.id
+       WHERE ${whereCol} = $1`,
+      [customerId]
+    );
+
+    if (!custRes.rows.length) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    const customer = custRes.rows[0];
+
+    // 2. Fetch purchase history (recent order items)
+    const itemsRes = await pool.query(
+      `SELECT oi.product_name, oi.quantity, o.created_at
+       FROM order_items oi
+       JOIN orders o ON oi.order_id = o.id
+       WHERE o.customer_id = $1
+       ORDER BY o.created_at DESC LIMIT 30`,
+      [customer.id]
+    );
+
+    const history = itemsRes.rows;
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.json({
+        insights: `### 🛒 Buying Persona\nBased on their total spent of **₦${Number(customer.total_spent || 0).toLocaleString()}**, this customer is a valuable contributor. They buy fresh produce and staples.\n\n### 🌟 Favorite Items & Categories\nNo recent orders or mock analysis available (Gemini API key is not configured).\n\n### 💡 Suggested Promotions & Next Best Actions\nOffer them a 10% discount on fresh produce categories to incentivize their next checkout.`
+      });
+    }
+
+    // 3. Prompt construction
+    const historyText = history.length > 0
+      ? history.map(h => `- ${h.product_name} (Qty: ${h.quantity}) on ${new Date(h.created_at).toISOString().slice(0, 10)}`).join("\n")
+      : "No order history found for this customer.";
+
+    const prompt = `You are the Bems Farms AI Customer Success Analyst.
+Analyze the purchase history of the customer:
+- Name: ${customer.name}
+- Tier: ${customer.tier}
+- Total Orders: ${customer.total_orders || 0}
+- Total Spent: ₦${Number(customer.total_spent || 0).toLocaleString()}
+- Loyalty Points: ${customer.points || 0}
+
+Here are the products they purchased in their recent orders:
+${historyText}
+
+Provide a professional, high-fidelity analysis of their buying behavior under the following Markdown headers:
+
+### 🛒 Buying Persona
+Analyze their buying patterns (frequency, order sizes, potential business use vs home use). Assign them a clear, descriptive persona archetype (e.g. "Family Household Stocker", "Mega Event Planner", "Healthy Lifestyle Enthusiast").
+
+### 🌟 Favorite Items & Categories
+Highlight which products or categories they order most frequently. Suggest why they prefer these products based on their transaction timing and quantities.
+
+### 💡 Suggested Promotions & Next Best Actions
+Offer 3 highly targeted promotions or outreach strategies we can execute (e.g. "Since they frequently buy scotch bonnet, offer a bundle deal with tomatoes", "Invite to VIP events", etc.). Keep the tone strategic, professional, and commercial.`;
+
+    const model = "gemini-2.5-flash";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: prompt }]
+          }],
+          generationConfig: {
+            maxOutputTokens: 800,
+            temperature: 0.5
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Gemini status ${response.status}: ${errText}`);
+      }
+
+      const data = await response.json();
+      const insightsText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!insightsText) throw new Error("Empty response from Gemini");
+
+      res.json({ insights: insightsText });
+    } catch (aiErr) {
+      console.warn("AI generation failed, falling back to rule-based insights:", aiErr.message);
+
+      let itemsList = "no recent orders";
+      if (history.length > 0) {
+        itemsList = Array.from(new Set(history.map(h => h.product_name))).slice(0, 3).join(", ");
+      }
+
+      const fallbackInsights = `### 🛒 Buying Persona
+Based on purchase history and a total spending of **₦${Number(customer.total_spent || 0).toLocaleString()}**, **${customer.name}** behaves as a **Staple & Bulk Stocker**. They focus on consistent stock levels and regular replenishment cycles.
+
+### 🌟 Favorite Items & Categories
+* **Most Ordered:** ${itemsList}
+* **Pattern:** Orders are concentrated on high-demand kitchen staples with regular quantities per order.
+
+### 💡 Suggested Promotions & Next Best Actions
+1. **Accompanying Products:** Offer bundle discounts on oils or peppers since they frequently buy staples.
+2. **Loyalty Push:** They are currently in the **${customer.tier}** tier. Send a reminder of points needed for the next tier to increase frequency.
+3. **Preferred Delivery:** Schedule auto-restock reminders every 2 weeks based on their purchase pattern.`;
+
+      res.json({ insights: fallbackInsights });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ── GET /api/admin/customers/:id ──────────────────────────────────
 router.get("/:id", async (req, res) => {
   try {

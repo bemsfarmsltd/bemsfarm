@@ -1,12 +1,90 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link, useLocation } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
 const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
 const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:5 }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
 const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+
+function NumericStepper({ value, onChange, min=0 }) {
+  const handleMinus = () => {
+    const val = parseInt(value) || 0
+    if (val > min) onChange(val - 1)
+  }
+  const handlePlus = () => {
+    const val = parseInt(value) || 0
+    onChange(val + 1)
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+      <button
+        type="button"
+        onClick={handleMinus}
+        style={{
+          width: 32,
+          height: 32,
+          border: '1.5px solid var(--border)',
+          borderRight: 'none',
+          borderRadius: '8px 0 0 8px',
+          background: 'var(--bg-card)',
+          color: 'var(--text-secondary)',
+          fontSize: 16,
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          outline: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        −
+      </button>
+      <input
+        type="number"
+        min={min}
+        value={value}
+        onChange={e => onChange(parseInt(e.target.value) || 0)}
+        style={{
+          width: 48,
+          height: 32,
+          border: '1.5px solid var(--border)',
+          background: 'var(--bg-card)',
+          color: 'var(--text-primary)',
+          textAlign: 'center',
+          fontFamily: 'Nunito, sans-serif',
+          fontSize: 13,
+          fontWeight: 600,
+          outline: 'none',
+          margin: 0,
+        }}
+      />
+      <button
+        type="button"
+        onClick={handlePlus}
+        style={{
+          width: 32,
+          height: 32,
+          border: '1.5px solid var(--border)',
+          borderLeft: 'none',
+          borderRadius: '0 8px 8px 0',
+          background: 'var(--bg-card)',
+          color: 'var(--text-secondary)',
+          fontSize: 16,
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          outline: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        +
+      </button>
+    </div>
+  )
+}
 
 function Card({ title, children, style={} }) {
   return (
@@ -121,15 +199,73 @@ export default function AddProduct() {
 
   const S = '#6b7280', B = '#e5e7eb'
 
+  const location = useLocation()
+  const currentTab = location.pathname.includes('/import') ? 'import' : 'single'
+
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
-      {/* Header */}
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12 }}>
+      {/* Header & Breadcrumbs */}
+      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'#111827' }}>{isEdit ? 'Edit Product' : 'Add Product'}</div>
-          <div style={{ fontSize:12,color:S,marginTop:2 }}>{isEdit ? 'Modify product details' : 'Create a new product'}</div>
+          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>{isEdit ? 'Edit Product' : 'Add Products'}</div>
         </div>
-        <button style={btnL} type="button" onClick={()=>navigate('/products')}><i className="ri-arrow-left-line"/>Back to Products</button>
+        <div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)' }}>
+          <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Products</span>
+          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <span style={{ fontWeight:600,color:'var(--text-primary)' }}>{isEdit ? 'Edit Product' : 'Add Products'}</span>
+        </div>
+      </div>
+
+      {/* Tabs Row */}
+      <div style={{ display:'flex',gap:12,marginBottom:24,borderBottom:'1px solid var(--border)',paddingBottom:12 }}>
+        <Link
+          to="/products/add"
+          style={{
+            display:'inline-flex',
+            alignItems:'center',
+            gap:6,
+            padding:'9px 16px',
+            borderRadius:8,
+            border:'none',
+            background: currentTab === 'single' ? 'var(--orange-accent)' : 'var(--bg-card)',
+            color: currentTab === 'single' ? '#fff' : 'var(--text-secondary)',
+            cursor:'pointer',
+            fontFamily:'Nunito,sans-serif',
+            fontWeight:700,
+            fontSize:13,
+            textDecoration:'none',
+            border: currentTab === 'single' ? 'none' : '1px solid var(--border)',
+            boxShadow: currentTab === 'single' ? '0 4px 12px rgba(245,124,0,0.15)' : 'none',
+            transition:'all 0.15s'
+          }}
+        >
+          <i className="ri-file-text-line" style={{ fontSize:15 }}/>
+          Add Single Product
+        </Link>
+        <Link
+          to="/products/import"
+          style={{
+            display:'inline-flex',
+            alignItems:'center',
+            gap:6,
+            padding:'9px 16px',
+            borderRadius:8,
+            border:'none',
+            background: currentTab === 'import' ? 'var(--orange-accent)' : 'var(--bg-card)',
+            color: currentTab === 'import' ? '#fff' : 'var(--text-secondary)',
+            cursor:'pointer',
+            fontFamily:'Nunito,sans-serif',
+            fontWeight:700,
+            fontSize:13,
+            textDecoration:'none',
+            border: currentTab === 'import' ? 'none' : '1px solid var(--border)',
+            boxShadow: currentTab === 'import' ? '0 4px 12px rgba(245,124,0,0.15)' : 'none',
+            transition:'all 0.15s'
+          }}
+        >
+          <i className="ri-cloud-upload-line" style={{ fontSize:15 }}/>
+          Bulk Import
+        </Link>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -147,7 +283,7 @@ export default function AddProduct() {
                   <label style={LBL}>Description</label>
                   <textarea style={{ ...inp,resize:'vertical' }} rows={3} placeholder="Describe this product…" value={formData.description} onChange={e=>set('description',e.target.value)}/>
                 </div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12 }}>
+                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12 }}>
                   <div>
                     <label style={LBL}>Category <span style={{ color:'#f06548' }}>*</span></label>
                     <select style={inp} value={formData.category_id} onChange={e=>{ set('category_id',e.target.value); set('sub_category_id','') }} required>
@@ -157,11 +293,19 @@ export default function AddProduct() {
                   </div>
                   <div>
                     <label style={LBL}>Sub-Category</label>
-                    <select style={{ ...inp,opacity:(!formData.category_id||filteredSubs.length===0)?.5:1 }}
+                    <select style={{ ...inp,opacity:(!formData.category_id||filteredSubs.length===0) ? 0.5 : 1 }}
                       value={formData.sub_category_id} onChange={e=>set('sub_category_id',e.target.value)}
                       disabled={!formData.category_id||filteredSubs.length===0}>
-                      <option value="">{formData.category_id?'— Select sub-cat —':'— Pick category first —'}</option>
+                      <option value="">{formData.category_id?'— Pick a category —':'— Pick category first —'}</option>
                       {filteredSubs.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={LBL}>Brand</label>
+                    <select style={inp} defaultValue="">
+                      <option value="">— Select brand —</option>
+                      <option value="bems_farms">Bems Farms</option>
+                      <option value="other">Other</option>
                     </select>
                   </div>
                 </div>
@@ -200,19 +344,19 @@ export default function AddProduct() {
                   <input style={{ ...inp,background:'#f9fafb',color:margin?'#16a34a':'#6b7280',fontWeight:700 }} readOnly value={margin?`${margin}%`:'—'}/>
                 </div>
               </div>
-              <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16 }}>
+              <div style={{ display:'grid',gridTemplateColumns:'1.2fr 1.2fr 1fr',gap:16,alignItems:'center' }}>
                 <div>
                   <label style={LBL}>Stock Quantity</label>
-                  <input style={inp} type="number" min="0" value={formData.stock_quantity} onChange={e=>set('stock_quantity',e.target.value)}/>
+                  <NumericStepper value={formData.stock_quantity} onChange={v => set('stock_quantity', v)} />
                 </div>
                 <div>
                   <label style={LBL}>Low Stock Alert</label>
-                  <input style={inp} type="number" min="0" value={formData.low_stock_threshold} onChange={e=>set('low_stock_threshold',e.target.value)}/>
+                  <NumericStepper value={formData.low_stock_threshold} onChange={v => set('low_stock_threshold', v)} />
                 </div>
-                <div style={{ display:'flex',alignItems:'flex-end',paddingBottom:2 }}>
+                <div style={{ display:'flex',flexDirection:'column',justifyContent:'center',height:'100%',paddingTop:18 }}>
                   <label style={{ display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,fontWeight:600,color:'#374151' }}>
                     <div onClick={()=>set('available_for_sale',!formData.available_for_sale)}
-                      style={{ width:40,height:22,borderRadius:20,background:formData.available_for_sale?'#1B4332':'#d1d5db',position:'relative',transition:'background .2s',cursor:'pointer',flexShrink:0 }}>
+                      style={{ width:40,height:22,borderRadius:20,background:formData.available_for_sale?'var(--orange-accent)':'#d1d5db',position:'relative',transition:'background .2s',cursor:'pointer',flexShrink:0 }}>
                       <div style={{ position:'absolute',top:2,left:formData.available_for_sale?20:2,width:18,height:18,borderRadius:'50%',background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
                     </div>
                     Available for Sale
@@ -263,7 +407,7 @@ export default function AddProduct() {
                 <div style={{ display:'flex',alignItems:'flex-end',paddingBottom:2 }}>
                   <label style={{ display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,fontWeight:600,color:'#374151' }}>
                     <div onClick={()=>set('track_inventory',!formData.track_inventory)}
-                      style={{ width:40,height:22,borderRadius:20,background:formData.track_inventory?'#1B4332':'#d1d5db',position:'relative',transition:'background .2s',cursor:'pointer',flexShrink:0 }}>
+                      style={{ width:40,height:22,borderRadius:20,background:formData.track_inventory?'var(--orange-accent)':'#d1d5db',position:'relative',transition:'background .2s',cursor:'pointer',flexShrink:0 }}>
                       <div style={{ position:'absolute',top:2,left:formData.track_inventory?20:2,width:18,height:18,borderRadius:'50%',background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
                     </div>
                     Track Inventory
@@ -275,26 +419,120 @@ export default function AddProduct() {
 
           {/* RIGHT */}
           <div style={{ position:'sticky',top:80 }}>
-            <Card title="Images & Media">
+            <Card title="Product Images & Media">
               <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-                <div>
-                  <label style={LBL}>Main Image URL <span style={{ color:'#f06548' }}>*</span></label>
-                  <input style={inp} type="url" placeholder="https://…" value={formData.image_url} onChange={e=>set('image_url',e.target.value)} required/>
-                  {formData.image_url&&<img src={formData.image_url} alt="preview" style={{ marginTop:8,width:'100%',height:140,objectFit:'cover',borderRadius:8,border:`1px solid ${B}` }}/>}
+                {/* Drag and drop uploader mockup */}
+                <div style={{
+                  border: '2px dashed var(--border)',
+                  borderRadius: 12,
+                  padding: '24px 16px',
+                  textAlign: 'center',
+                  background: 'var(--bg-subtle)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 8,
+                }}>
+                  <i className="ri-upload-cloud-2-line" style={{ fontSize: 32, color: 'var(--text-light)' }} />
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>Drag &amp; Drop images here or click to upload</div>
+                  <input
+                    type="url"
+                    placeholder="Or paste Main Image URL here..."
+                    value={formData.image_url}
+                    onChange={e => set('image_url', e.target.value)}
+                    required
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                      ...inp,
+                      marginTop: 8,
+                      textAlign: 'center',
+                      borderStyle: 'solid',
+                      fontSize: 12,
+                    }}
+                  />
+                  {formData.image_url && (
+                    <img
+                      src={formData.image_url}
+                      alt="Preview"
+                      style={{ marginTop: 8, width: '100%', height: 140, objectFit: 'cover', borderRadius: 8, border: `1px solid var(--border)` }}
+                    />
+                  )}
                 </div>
-                <div>
-                  <label style={LBL}>Image 2 URL</label>
-                  <input style={inp} type="url" placeholder="https://…" value={formData.image_2_url} onChange={e=>set('image_2_url',e.target.value)}/>
+
+                {/* Smaller Thumbnail Upload slots */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                  {/* Image 2 */}
+                  <div style={{
+                    border: '1.5px dashed var(--border)',
+                    borderRadius: 8,
+                    padding: '10px 8px',
+                    textAlign: 'center',
+                    background: 'var(--bg-subtle)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 4
+                  }}>
+                    <i className="ri-image-add-line" style={{ fontSize: 18, color: 'var(--text-light)' }} />
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)' }}>Image 2</div>
+                    <input
+                      type="url"
+                      placeholder="Paste URL..."
+                      value={formData.image_2_url}
+                      onChange={e => set('image_2_url', e.target.value)}
+                      style={{ ...inp, padding: '4px 6px', fontSize: 10, textAlign: 'center', marginTop: 4 }}
+                    />
+                  </div>
+
+                  {/* Image 3 */}
+                  <div style={{
+                    border: '1.5px dashed var(--border)',
+                    borderRadius: 8,
+                    padding: '10px 8px',
+                    textAlign: 'center',
+                    background: 'var(--bg-subtle)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 4
+                  }}>
+                    <i className="ri-image-add-line" style={{ fontSize: 18, color: 'var(--text-light)' }} />
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)' }}>Image 3</div>
+                    <input
+                      type="url"
+                      placeholder="Paste URL..."
+                      value={formData.image_3_url}
+                      onChange={e => set('image_3_url', e.target.value)}
+                      style={{ ...inp, padding: '4px 6px', fontSize: 10, textAlign: 'center', marginTop: 4 }}
+                    />
+                  </div>
+
+                  {/* Image 4 */}
+                  <div style={{
+                    border: '1.5px dashed var(--border)',
+                    borderRadius: 8,
+                    padding: '10px 8px',
+                    textAlign: 'center',
+                    background: 'var(--bg-subtle)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 4
+                  }}>
+                    <i className="ri-image-add-line" style={{ fontSize: 18, color: 'var(--text-light)' }} />
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)' }}>Image 4</div>
+                    <input
+                      type="url"
+                      placeholder="Paste URL..."
+                      value={formData.image_4_url}
+                      onChange={e => set('image_4_url', e.target.value)}
+                      style={{ ...inp, padding: '4px 6px', fontSize: 10, textAlign: 'center', marginTop: 4 }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label style={LBL}>Image 3 URL</label>
-                  <input style={inp} type="url" placeholder="https://…" value={formData.image_3_url} onChange={e=>set('image_3_url',e.target.value)}/>
-                </div>
-                <div>
-                  <label style={LBL}>Image 4 URL</label>
-                  <input style={inp} type="url" placeholder="https://…" value={formData.image_4_url} onChange={e=>set('image_4_url',e.target.value)}/>
-                </div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                   <div>
                     <label style={LBL}>Image Title</label>
                     <input style={inp} type="text" placeholder="Alt text" value={formData.image_title} onChange={e=>set('image_title',e.target.value)}/>

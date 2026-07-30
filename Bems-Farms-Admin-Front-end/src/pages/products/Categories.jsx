@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ImportModal from '../../components/ImportModal'
 
 import api from '../../lib/api'
@@ -22,13 +23,14 @@ const BLANK = { name:'', code:'', products:0, status:'active', description:'' }
 
 const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
 const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:5 }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
 const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
 const btnD = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
 const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'#f9fafb' }
 const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
 
 export default function Categories() {
+  const navigate = useNavigate()
   const [items, setItems]               = useState([])
   const [search, setSearch]             = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -128,11 +130,15 @@ export default function Categories() {
 
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
-      {/* Page header */}
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12 }}>
+      {/* Page header & Breadcrumbs */}
+      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'#111827' }}>Categories</div>
-          <div style={{ fontSize:12,color:S,marginTop:2 }}>Products → Categories</div>
+          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Categories</div>
+        </div>
+        <div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)' }}>
+          <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Products</span>
+          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <span style={{ fontWeight:600,color:'var(--text-primary)' }}>Categories</span>
         </div>
       </div>
 
@@ -145,8 +151,8 @@ export default function Categories() {
               <i className={c.icon} style={{ fontSize:22,color:c.color }}/>
             </div>
             <div>
-              <div style={{ fontWeight:800,fontSize:22,color:c.color,fontFamily:'Syne,sans-serif' }}>{c.value}</div>
-              <div style={{ fontSize:12,color:S }}>{c.label}</div>
+              <div style={{ fontWeight:800,fontSize:22,color:'var(--text-primary)',fontFamily:'Syne,sans-serif' }}>{c.value}</div>
+              <div style={{ fontSize:12,color:'var(--text-muted)' }}>{c.label}</div>
             </div>
           </div>
         ))}
@@ -164,37 +170,49 @@ export default function Categories() {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
-          <button style={btnL} onClick={()=>setActiveModal('import')}><i className="ri-upload-cloud-2-line"/>Import</button>
+          <button style={btnL} onClick={()=>setActiveModal('import')}><i className="ri-cloud-upload-line"/>Import</button>
           <button style={btnP} onClick={openAdd}><i className="ri-add-line"/>Add Category</button>
         </div>
 
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%',borderCollapse:'collapse' }}>
             <thead>
-              <tr>{['Category','Description','Code','Products','Status','Created','Action'].map(h=><th key={h} style={TH}>{h}</th>)}</tr>
+              <tr>{['Category','Code','Products','Status','Created','Action'].map(h=><th key={h} style={TH}>{h}</th>)}</tr>
             </thead>
             <tbody>
               {filtered.length===0&&(
-                <tr><td colSpan={7} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
+                <tr><td colSpan={6} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
                   <i className="ri-price-tag-3-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>No categories found
                 </td></tr>
               )}
               {filtered.map(r=>(
                 <tr key={r.id}>
                   <td style={{ ...TD,fontWeight:600 }}>{r.name}</td>
-                  <td style={{ ...TD,color:S,fontSize:12,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }} title={r.description}>{r.description || '—'}</td>
-                  <td style={TD}><code style={{ fontSize:11,background:'#f3f4f6',padding:'2px 6px',borderRadius:4,color:'#374151' }}>{r.code}</code></td>
-                  <td style={TD}><span style={{ background:'#f3f4f6',color:'#374151',borderRadius:20,padding:'2px 10px',fontSize:11,fontWeight:600 }}>{r.products}</span></td>
                   <td style={TD}>
-                    <span style={{ background:r.status==='active'?'#dcfce7':'#f3f4f6',color:r.status==='active'?'#166534':'#6b7280',borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}>
+                    <span style={{ fontSize:13,color:'#d53f8c',fontWeight:600,fontFamily:'var(--font-mono, monospace)' }}>{r.code}</span>
+                  </td>
+                  <td style={TD}>
+                    <span style={{ background:'#f3f4f6',color:'#374151',borderRadius:4,padding:'2px 8px',fontSize:12,fontWeight:600 }}>
+                      {r.products}
+                    </span>
+                  </td>
+                  <td style={TD}>
+                    <span style={{
+                      background: r.status==='active' ? '#dcfce7' : '#e0e7ff',
+                      color: r.status==='active' ? '#15803d' : '#4338ca',
+                      borderRadius: 50,
+                      padding: '3px 10px',
+                      fontSize: 11,
+                      fontWeight: 600
+                    }}>
                       {r.status==='active'?'Active':'Inactive'}
                     </span>
                   </td>
                   <td style={{ ...TD,color:S,fontSize:12 }}>{r.created}</td>
                   <td style={TD}>
-                    <div style={{ display:'flex',gap:4 }}>
-                      <button onClick={()=>openEdit(r)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0f4ff',color:'#405189',cursor:'pointer' }}><i className="ri-pencil-line"/></button>
-                      <button onClick={()=>openDelete(r)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#fff0f0',color:'#f06548',cursor:'pointer' }}><i className="ri-delete-bin-line"/></button>
+                    <div style={{ display:'flex',gap:12,alignItems:'center' }}>
+                      <button onClick={()=>openEdit(r)} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-pencil-line" style={{ fontSize:16 }}/></button>
+                      <button onClick={()=>openDelete(r)} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:16 }}/></button>
                     </div>
                   </td>
                 </tr>
@@ -213,7 +231,7 @@ export default function Categories() {
           <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
             <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:460,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
+              <div style={{ background:'var(--orange-accent)',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                   <i className="ri-price-tag-3-line" style={{ fontSize:18 }}/>
                 </div>

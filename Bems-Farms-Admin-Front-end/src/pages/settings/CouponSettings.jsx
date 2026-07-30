@@ -10,7 +10,7 @@ const NAV = [
   { label:'POS',          to:'/settings/pos'            },
   { label:'Payment',      to:'/settings/payment'        },
   { label:'Currencies',   to:'/settings/currencies'     },
-  { label:'Invoices',     to:'/settings/invoices'       },
+  { label:'Receipts',     to:'/settings/invoices'       },
   { label:'Manager',      to:'/settings/manager'        },
   { label:'Notifications',to:'/settings/notifications'  },
 ]

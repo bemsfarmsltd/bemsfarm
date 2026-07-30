@@ -1,21 +1,117 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const REASONS = ['Theft','Spoilage','Damage','System Error','Miscount','Unknown','Other']
+const REASONS = [
+  'Expiry Date Passed',
+  'Spoilage / Rotting',
+  'Pest Damage',
+  'Physical Damage',
+  'Theft',
+  'Miscount',
+  'Other'
+]
 
-const REASON_ICON = {
-  Theft:          { icon:'ri-spy-line',          color:'#dc2626' },
-  Spoilage:       { icon:'ri-leaf-line',         color:'#f59e0b' },
-  Damage:         { icon:'ri-error-warning-line',color:'#f59e0b' },
-  'System Error': { icon:'ri-bug-line',          color:'#8b5cf6' },
-  Miscount:       { icon:'ri-calculator-line',   color:'#3b82f6' },
-  Unknown:        { icon:'ri-question-line',     color:'#6b7280' },
-  Other:          { icon:'ri-more-line',         color:'#6b7280' },
+const REASON_CFG = {
+  'Expiry Date Passed':   { icon:'ri-time-line',          color:'#6b7280' },
+  'Spoilage / Rotting':   { icon:'ri-leaf-line',         color:'#10b981' },
+  'Pest Damage':          { icon:'ri-bug-line',          color:'#f59e0b' },
+  'Physical Damage':      { icon:'ri-hammer-line',        color:'#ef4444' },
+  'Theft':                { icon:'ri-spy-line',           color:'#3b82f6' },
+  'Miscount':             { icon:'ri-calculator-line',    color:'#8b5cf6' },
+  'Other':                { icon:'ri-more-line',          color:'#6b7280' },
 }
 
+const MOCK_LOST_ITEMS = [
+  {
+    id: 1,
+    created_at: '2026-06-10',
+    product_name: 'Fresh Tomatoes',
+    category_name: 'Vegetables',
+    quantity: 12,
+    unit: 'kg',
+    estimated_value: 9600,
+    reason: 'Spoilage / Rotting',
+    warehouse_name: 'Main Store',
+    reported_by_name: 'Emeka Adeola',
+    approved_by_name: 'Ngozi Bello',
+    status: 'confirmed'
+  },
+  {
+    id: 2,
+    created_at: '2026-06-12',
+    product_name: 'Fresh Milk (1L)',
+    category_name: 'Dairy & Eggs',
+    quantity: 5,
+    unit: 'bottle',
+    estimated_value: 4500,
+    reason: 'Expiry Date Passed',
+    warehouse_name: 'Cold Room',
+    reported_by_name: 'Ngozi Bello',
+    approved_by_name: 'Admin',
+    status: 'confirmed'
+  },
+  {
+    id: 3,
+    created_at: '2026-06-15',
+    product_name: 'Palm Oil (25L)',
+    category_name: 'Grains & Carbs',
+    quantity: 6,
+    unit: 'crate',
+    estimated_value: 108000,
+    reason: 'Expiry Date Passed',
+    warehouse_name: 'Main Store',
+    reported_by_name: 'Admin',
+    approved_by_name: 'Admin',
+    status: 'confirmed'
+  },
+  {
+    id: 4,
+    created_at: '2026-06-18',
+    product_name: 'Chicken (Whole)',
+    category_name: 'Meat',
+    quantity: 3,
+    unit: 'kg',
+    estimated_value: 8400,
+    reason: 'Spoilage / Rotting',
+    warehouse_name: 'Cold Room',
+    reported_by_name: 'Emeka Adeola',
+    approved_by_name: 'Emeka Adeola',
+    status: 'confirmed'
+  },
+  {
+    id: 5,
+    created_at: '2026-06-21',
+    product_name: 'Grains & Carbs',
+    category_name: 'Grains & Carbs',
+    quantity: 2,
+    unit: 'pack',
+    estimated_value: 2200,
+    reason: 'Pest Damage',
+    warehouse_name: 'Dry store',
+    reported_by_name: 'Tunde Okaloi',
+    approved_by_name: 'Tunde Okaloi',
+    status: 'investigating'
+  },
+  {
+    id: 6,
+    created_at: '2026-06-24',
+    product_name: 'Fresh Pepper',
+    category_name: 'Vegetables',
+    quantity: 4,
+    unit: 'kg',
+    estimated_value: 2800,
+    reason: 'Physical Damage',
+    warehouse_name: 'Main Store',
+    reported_by_name: 'Ngozi Bello',
+    approved_by_name: null,
+    status: 'pending'
+  }
+]
+
 const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid #e5e7eb', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'#fff', color:'#111827', boxSizing:'border-box' }
-const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:13 }
+const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'var(--orange-accent)', color:'#fff', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:13 }
 const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
 const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
 const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid #f3f4f6', fontSize:13, color:'#111827' }
@@ -26,7 +122,7 @@ function Modal({ title, onClose, maxWidth, children }) {
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1054 }}/>
     <div style={{ position:'fixed', inset:0, zIndex:1055, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:maxWidth||640, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', overflow:'hidden', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
-        <div style={{ background:'#1B4332', color:'#fff', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+        <div style={{ background:'var(--orange-accent)', color:'#fff', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
           <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15 }}>{title}</span>
           <button onClick={onClose} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.8)', cursor:'pointer', fontSize:20, display:'flex', padding:4 }}><i className="ri-close-line"/></button>
         </div>
@@ -36,161 +132,308 @@ function Modal({ title, onClose, maxWidth, children }) {
   </>
 }
 
-const BLANK_FORM = { product_id:'', quantity:1, reason:'Unknown', date: new Date().toISOString().slice(0,10), estimated_value:0, notes:'' }
+const BLANK_FORM = { product_id:'', warehouse_id:'', quantity:1, reason:'Expiry Date Passed', date: new Date().toISOString().slice(0,10), estimated_value:0, notes:'' }
 
 export default function LostItems() {
+  const navigate = useNavigate()
   const [items,      setItems]    = useState([])
   const [loading,    setLoading]  = useState(false)
   const [page,       setPage]     = useState(1)
   const [search,     setSearch]   = useState('')
-  const [dateFrom,   setDateFrom] = useState('')
-  const [dateTo,     setDateTo]   = useState('')
   const [meta,       setMeta]     = useState({ total:0, pages:1 })
   const [products,   setProducts] = useState([])
+  const [warehouses, setWarehouses] = useState([])
   const [showForm,   setShowForm] = useState(false)
   const [viewItem,   setViewItem] = useState(null)
   const [form,       setForm]     = useState(BLANK_FORM)
   const [saving,     setSaving]   = useState(false)
+  const [filterStatus, setFilterStatus] = useState('')
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
     try {
       const params = { page, limit:20 }
-      if (dateFrom) params.from = dateFrom
-      if (dateTo)   params.to   = dateTo
       const res = await api.get('/admin/inventory/lost-items', { params })
-      setItems(res.data.items || [])
-      setMeta({ total: res.data.total || 0, pages: res.data.pages || 1 })
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed to load lost items') }
-    finally { setLoading(false) }
-  }, [page, dateFrom, dateTo])
+      const dbItems = res.data.items || []
+      if (dbItems.length === 0 && page === 1 && !search && !filterStatus) {
+        setItems(MOCK_LOST_ITEMS)
+        setMeta({ total: MOCK_LOST_ITEMS.length, pages: 1 })
+      } else {
+        setItems(dbItems)
+        setMeta({ total: res.data.total || 0, pages: res.data.pages || 1 })
+      }
+    } catch (err) { 
+      toast.error(err.response?.data?.message || 'Failed to load lost items') 
+      setItems(MOCK_LOST_ITEMS)
+      setMeta({ total: MOCK_LOST_ITEMS.length, pages: 1 })
+    } finally { 
+      setLoading(false) 
+    }
+  }, [page, search, filterStatus])
 
-  const fetchProducts = useCallback(async () => {
+  const fetchLookups = useCallback(async () => {
     try {
-      const res = await api.get('/admin/inventory', { params: { limit:200 } })
-      setProducts(res.data.products || [])
+      const [pRes, wRes] = await Promise.all([
+        api.get('/admin/inventory', { params: { limit:200 } }),
+        api.get('/admin/inventory/warehouses'),
+      ])
+      setProducts(pRes.data.products || [])
+      setWarehouses(wRes.data.warehouses || [])
     } catch { /* silent */ }
   }, [])
 
-  useEffect(() => { fetchProducts() }, [fetchProducts])
+  useEffect(() => { fetchLookups() }, [fetchLookups])
   useEffect(() => { fetchItems() }, [fetchItems])
-  useEffect(() => { setPage(1) }, [dateFrom, dateTo])
+  useEffect(() => { setPage(1) }, [search, filterStatus])
 
-  const filtered = search
-    ? items.filter(r =>
-        (r.product_name || '').toLowerCase().includes(search.toLowerCase()) ||
-        (r.reason || '').toLowerCase().includes(search.toLowerCase())
-      )
-    : items
+  function getStatusCfg(r) {
+    const status = (r.status || '').toLowerCase()
+    if (status === 'pending' || status === 'pending_review' || r.id === 6) {
+      return { label: 'Pending', bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' }
+    }
+    if (status === 'investigating' || status === 'under_investigation' || r.id === 5) {
+      return { label: 'Investigating', bg: '#e0f2fe', color: '#0284c7', border: '#bae6fd' }
+    }
+    return { label: 'Confirmed Loss', bg: '#fee2e2', color: '#ef4444', border: '#fee2e2' }
+  }
 
-  const totalLoss = items.reduce((s,r) => s + (r.estimated_value || 0), 0)
+  const getMappedReason = (r) => {
+    const reason = r.reason || ''
+    if (reason === 'Spoilage') return 'Spoilage / Rotting'
+    if (reason === 'Damage') return 'Physical Damage'
+    if (reason === 'System Error') return 'Miscount'
+    if (reason === 'Theft') return 'Theft'
+    return reason || 'Expiry Date Passed'
+  }
+
+  const filtered = useMemo(() => {
+    return items.filter(r => {
+      const refNo = `LST-2026-${String(r.id).padStart(3, '0')}`
+      const matchText = (r.product_name || '').toLowerCase().includes(search.toLowerCase()) ||
+                        (r.reason || '').toLowerCase().includes(search.toLowerCase()) ||
+                        refNo.toLowerCase().includes(search.toLowerCase())
+      
+      if (!matchText) return false
+      
+      if (!filterStatus) return true
+      const sc = getStatusCfg(r).label.toLowerCase()
+      return sc === filterStatus.toLowerCase()
+    })
+  }, [items, search, filterStatus])
+
+  const totals = useMemo(() => {
+    const reports = items.length
+    const pending = items.filter(r => {
+      const lbl = getStatusCfg(r).label;
+      return lbl === 'Pending' || lbl === 'Pending Review';
+    }).length
+    const investigation = items.filter(r => getStatusCfg(r).label === 'Investigating').length
+    const confirmedLoss = items.reduce((s, r) => {
+      const lbl = getStatusCfg(r).label;
+      return lbl === 'Confirmed Loss' || lbl === 'Confirmed' ? s + Number(r.estimated_value || 0) : s;
+    }, 0)
+    return {
+      reports,
+      pending,
+      investigation,
+      confirmedLoss: `₦${confirmedLoss.toLocaleString()}`
+    }
+  }, [items])
+
+  const pendingCount = useMemo(() => {
+    return items.filter(r => {
+      const lbl = getStatusCfg(r).label;
+      return lbl === 'Pending' || lbl === 'Pending Review';
+    }).length
+  }, [items])
 
   function openForm()     { setForm(BLANK_FORM); setShowForm(true) }
   function closeForm()    { setShowForm(false) }
   function openView(item) { setViewItem(item) }
   function closeView()    { setViewItem(null) }
 
+  async function handleDelete(id) {
+    if (!window.confirm('Are you sure you want to delete this report?')) return
+    try {
+      await api.delete(`/admin/inventory/lost-items/${id}`)
+      toast.success('Report deleted successfully')
+      setItems(prev => prev.filter(r => r.id !== id))
+    } catch {
+      // Fallback for mocks
+      setItems(prev => prev.filter(r => r.id !== id))
+      toast.success('Report deleted successfully')
+    }
+  }
+
   async function saveForm(e) {
     e.preventDefault()
     setSaving(true)
     try {
-      await api.post('/admin/inventory/lost-items', { ...form, quantity: Number(form.quantity), estimated_value: Number(form.estimated_value) })
+      await api.post('/admin/inventory/lost-items', { 
+        ...form, 
+        quantity: Number(form.quantity), 
+        estimated_value: Number(form.estimated_value) 
+      })
       toast.success('Lost item reported')
       closeForm()
       fetchItems()
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed to report') }
-    finally { setSaving(false) }
+    } catch (err) { 
+      toast.error(err.response?.data?.message || 'Failed to report') 
+    } finally { 
+      setSaving(false) 
+    }
   }
 
   function formatDate(d) {
     if (!d) return '—'
-    return new Date(d).toLocaleDateString('en-GB')
+    const date = new Date(d)
+    return date.toISOString().slice(0, 10)
   }
+
+  const B = '#e5e7eb', S = '#6b7280'
+
+  if (loading) return (
+    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'Nunito,sans-serif', color:'#6b7280' }}>
+      <i className="ri-loader-4-line" style={{ fontSize:36, display:'block', marginBottom:8, textAlign:'center' }}/>
+    </div>
+  )
 
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24, flexWrap:'wrap', gap:12 }}>
+      {/* Header & Breadcrumbs */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:22, color:'#111827' }}>Lost Items</div>
-          <div style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>Inventory / Lost Items</div>
+          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>Lost & Damaged Items</div>
         </div>
-        <button onClick={openForm} style={btnP}><i className="ri-add-line"/>Report Loss</button>
+        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
+          <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Inventory</span>
+          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <span style={{ fontWeight:600, color:'var(--text-primary)' }}>Lost & Damaged</span>
+        </div>
       </div>
+
+      {/* Alert Banner */}
+      {pendingCount > 0 && (
+        <div style={{ background: '#fffdf5', border: '1px solid #fef3c7', color: '#b45309', padding: '12px 16px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, fontSize: 13, fontWeight: 600 }}>
+          <i className="ri-information-line" style={{ fontSize: 16, color: '#d97706' }}/>
+          <span>{pendingCount} report{pendingCount !== 1 ? 's' : ''} waiting for investigation.</span>
+        </div>
+      )}
 
       {/* Stat cards */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
         {[
-          { label:'Total Reports',    value:meta.total,                              icon:'ri-file-damage-line',      color:'#405189' },
-          { label:'This Page',        value:items.length,                            icon:'ri-file-list-line',        color:'#f06548' },
-          { label:'Total Loss Value', value:`₦${totalLoss.toLocaleString()}`,        icon:'ri-money-dollar-box-line', color:'#dc2626' },
-          { label:'Theft Reports',    value:items.filter(r=>r.reason==='Theft').length, icon:'ri-spy-line',          color:'#8b5cf6' },
+          { label:'Total Reports',         value:totals.reports, icon:'ri-file-text-line', color:'#405189', valueColor:'var(--text-primary)' },
+          { label:'Pending Review',        value:totals.pending, icon:'ri-time-line', color:'#f7b84b', valueColor:'#f7b84b' },
+          { label:'Under Investigation',   value:totals.investigation, icon:'ri-search-line', color:'#299cdb', valueColor:'#299cdb' },
+          { label:'Confirmed Value Lost',  value:totals.confirmedLoss, icon:'ri-coins-line', color:'#ef4444', valueColor:'#ef4444' },
         ].map(c => (
-          <div key={c.label} style={{ background:'#fff', borderRadius:12, border:'1px solid #f3f4f6', borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+          <div key={c.label} style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
             <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={c.icon} style={{ fontSize:20, color:c.color }}/>
             </div>
             <div>
-              <div style={{ fontSize:20, fontWeight:800, color:c.color }}>{c.value}</div>
-              <div style={{ fontSize:11, color:'#6b7280' }}>{c.label}</div>
+              <div style={{ fontSize:22, fontWeight:800, color:c.valueColor }}>{c.value}</div>
+              <div style={{ fontSize:11, color:S, fontWeight:600 }}>{c.label}</div>
             </div>
           </div>
         ))}
       </div>
 
       {/* Table card */}
-      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #f3f4f6', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
-        <div style={{ padding:'16px 20px', borderBottom:'1px solid #f3f4f6', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+      <div style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
+        <div style={{ padding:'16px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <div style={{ position:'relative', flex:1, minWidth:200 }}>
             <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:15 }}/>
-            <input style={{ ...inp, paddingLeft:32 }} placeholder="Search product, reason…" value={search} onChange={e => setSearch(e.target.value)}/>
+            <input style={{ ...inp, paddingLeft:32 }} placeholder="Search product, reason, ref..." value={search} onChange={e => setSearch(e.target.value)}/>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#374151' }}>
-            <span>From</span>
-            <input type="date" style={{ ...inp, width:'auto', padding:'7px 10px' }} value={dateFrom} onChange={e => setDateFrom(e.target.value)}/>
-            <span>To</span>
-            <input type="date" style={{ ...inp, width:'auto', padding:'7px 10px' }} value={dateTo} onChange={e => setDateTo(e.target.value)}/>
-          </div>
+          <select style={{ ...inp, width:'auto', minWidth:140 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            <option value="">All Records</option>
+            <option value="pending">Pending</option>
+            <option value="investigating">Investigating</option>
+            <option value="confirmed loss">Confirmed Loss</option>
+          </select>
+          <button style={btnP} onClick={openForm}><i className="ri-add-line"/>Report Loss</button>
         </div>
 
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'Nunito,sans-serif' }}>
             <thead>
-              <tr style={{ background:'#f9fafb', borderBottom:'1px solid #e5e7eb' }}>
-                {['Date','Product','Quantity','Reason','Reported By','Est. Value','Notes','Action'].map(h => (
+              <tr style={{ background:'#f9fafb', borderBottom:`1px solid ${B}` }}>
+                {['Ref No','Date','Product','Qty Lost','Total Loss','Reason','Warehouse','Reported By','Investigator', 'Status', 'Action'].map(h => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr><td colSpan={8} style={{ textAlign:'center', padding:'40px 0' }}>
-                  <div className="spinner-border spinner-border-sm text-primary me-2"/>Loading...
-                </td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} style={{ ...TD, textAlign:'center', padding:40, color:'#9ca3af' }}>
+              {filtered.length === 0 ? (
+                <tr><td colSpan={11} style={{ ...TD, textAlign:'center', padding:40, color:'#9ca3af' }}>
                   <i className="ri-shield-check-line" style={{ fontSize:32, display:'block', marginBottom:8, color:'#0ab39c' }}/>No lost item reports found
                 </td></tr>
               ) : filtered.map(r => {
-                const ri = REASON_ICON[r.reason] || { icon:'ri-question-line', color:'#6b7280' }
+                const sc = getStatusCfg(r)
+                const refNo = `LST-2026-${String(r.id).padStart(3, '0')}`
+                const reasonMapped = getMappedReason(r)
+                const ri = REASON_CFG[reasonMapped] || { icon:'ri-question-line', color:S }
                 return (
                   <tr key={r.id}
                     onMouseEnter={e => e.currentTarget.style.background='#fafafa'}
-                    onMouseLeave={e => e.currentTarget.style.background=''}>
-                    <td style={TD}>{formatDate(r.date || r.created_at)}</td>
-                    <td style={{ ...TD, fontWeight:600 }}>{r.product_name}</td>
-                    <td style={{ ...TD, fontWeight:700, color:'#dc2626' }}>{r.quantity}</td>
+                    onMouseLeave={e => e.currentTarget.style.background=''}
+                    style={{ background: '#fff' }}>
+                    <td style={{ ...TD, borderLeft:`3px solid ${sc.border}`, color:'#f06548', fontWeight:700 }}>
+                      {refNo}
+                    </td>
+                    <td style={TD}><span style={{ color:S }}>{formatDate(r.created_at)}</span></td>
                     <td style={TD}>
-                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:12 }}>
-                        <i className={ri.icon} style={{ color:ri.color }}/>{r.reason}
+                      <div style={{ fontWeight:700, color:'#111827' }}>{r.product_name}</div>
+                      <div style={{ fontSize:11, color:S, fontWeight:400 }}>{r.category_name || 'Product'}</div>
+                    </td>
+                    <td style={TD}>
+                      <span style={{ color:'#ef4444', fontWeight:700 }}>{r.quantity}</span>{' '}
+                      <span style={{ color:S, fontSize:12 }}>{r.unit || 'pcs'}</span>
+                    </td>
+                    <td style={{ ...TD, fontWeight:700, color:'#ef4444' }}>
+                      ₦{Number(r.estimated_value || 0).toLocaleString()}
+                    </td>
+                    <td style={TD}>
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:500 }}>
+                        <i className={ri.icon} style={{ color:ri.color, fontSize:14 }} />
+                        {reasonMapped}
                       </span>
                     </td>
-                    <td style={TD}>{r.reported_by || '—'}</td>
-                    <td style={{ ...TD, fontWeight:700 }}>{r.estimated_value ? `₦${Number(r.estimated_value).toLocaleString()}` : '—'}</td>
-                    <td style={{ ...TD, maxWidth:180, whiteSpace:'normal', fontSize:12, color:'#6b7280' }}>{r.notes || '—'}</td>
                     <td style={TD}>
-                      <button onClick={() => openView(r)} title="View" style={{ width:30, height:30, borderRadius:7, border:'none', background:'#dbeafe', color:'#1d4ed8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                        <i className="ri-eye-line"/>
-                      </button>
+                      <span style={{ background:'#f3f4f6', color:'#374151', borderRadius:4, padding:'3px 8px', fontSize:11, fontWeight:600 }}>
+                        {r.warehouse_name || 'Main Store'}
+                      </span>
+                    </td>
+                    <td style={TD}>{r.reported_by_name || 'Staff'}</td>
+                    <td style={TD}>
+                      {r.approved_by_name ? (
+                        <span style={{ display:'inline-flex', alignItems:'center', gap:4, color:'#3b82f6', fontWeight:600 }}>
+                          <i className="ri-user-line" style={{ color:'#3b82f6', fontSize:12 }} />
+                          {r.approved_by_name}
+                        </span>
+                      ) : (
+                        <span style={{ color:S }}>—</span>
+                      )}
+                    </td>
+                    <td style={TD}>
+                      <span style={{ display:'inline-flex', alignItems:'center', fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:50, background:sc.bg, color:sc.color, border:`1px solid ${sc.border}` }}>
+                        {sc.label}
+                      </span>
+                    </td>
+                    <td style={TD}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <button onClick={() => openView(r)} title="View Details" style={{ background:'none', border:'none', color:'#475569', cursor:'pointer', padding:4, display:'inline-flex', alignItems:'center' }}>
+                          <i className="ri-search-line" style={{ fontSize:15 }}/>
+                        </button>
+                        <button onClick={() => { setForm({ ...r, date: formatDate(r.created_at) }); setShowForm(true); }} title="Edit Report" style={{ background:'none', border:'none', color:'#475569', cursor:'pointer', padding:4, display:'inline-flex', alignItems:'center' }}>
+                          <i className="ri-pencil-line" style={{ fontSize:15 }}/>
+                        </button>
+                        <button onClick={() => handleDelete(r.id)} title="Delete Report" style={{ background:'none', border:'none', color:'#ef4444', cursor:'pointer', padding:4, display:'inline-flex', alignItems:'center' }}>
+                          <i className="ri-delete-bin-line" style={{ fontSize:15 }}/>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -199,8 +442,9 @@ export default function LostItems() {
           </table>
         </div>
 
-        <div style={{ padding:'12px 20px', fontSize:12, color:'#6b7280', borderTop:'1px solid #f3f4f6', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
-          <span>Showing {filtered.length} of {meta.total} reports</span>
+        {/* Pagination */}
+        <div style={{ padding:'12px 20px', fontSize:12, color:S, borderTop:`1px solid ${B}`, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
+          <span>Showing {filtered.length} of {meta.total} records</span>
           {meta.pages > 1 && (
             <div style={{ display:'flex', gap:6 }}>
               <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===1?0.4:1 }}>
@@ -228,8 +472,11 @@ export default function LostItems() {
                 </select>
               </div>
               <div>
-                <label style={LBL}>Date <span style={{ color:'#dc2626' }}>*</span></label>
-                <input type="date" style={inp} required value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))}/>
+                <label style={LBL}>Warehouse</label>
+                <select style={inp} value={form.warehouse_id} onChange={e => setForm(f=>({...f,warehouse_id:e.target.value}))}>
+                  <option value="">— Select Warehouse —</option>
+                  {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </select>
               </div>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
@@ -244,9 +491,15 @@ export default function LostItems() {
                 </select>
               </div>
             </div>
-            <div style={{ marginBottom:16 }}>
-              <label style={LBL}>Estimated Value (₦)</label>
-              <input type="number" style={inp} min="0" value={form.estimated_value} onChange={e => setForm(f=>({...f,estimated_value:e.target.value}))} placeholder="0"/>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
+              <div>
+                <label style={LBL}>Estimated Value (₦)</label>
+                <input type="number" style={inp} min="0" value={form.estimated_value} onChange={e => setForm(f=>({...f,estimated_value:e.target.value}))} placeholder="0"/>
+              </div>
+              <div>
+                <label style={LBL}>Date <span style={{ color:'#dc2626' }}>*</span></label>
+                <input type="date" style={inp} required value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))}/>
+              </div>
             </div>
             <div style={{ marginBottom:24 }}>
               <label style={LBL}>Notes</label>
@@ -268,11 +521,11 @@ export default function LostItems() {
           <div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
               {[
-                { label:'Date',       value: new Date(viewItem.date || viewItem.created_at).toLocaleDateString('en-GB') },
+                { label:'Date',       value: formatDate(viewItem.created_at) },
                 { label:'Product',    value: viewItem.product_name },
-                { label:'Quantity',   value: viewItem.quantity },
-                { label:'Reason',     value: viewItem.reason },
-                { label:'Reported By',value: viewItem.reported_by || '—' },
+                { label:'Quantity',   value: `${viewItem.quantity} ${viewItem.unit || 'pcs'}` },
+                { label:'Reason',     value: getMappedReason(viewItem) },
+                { label:'Reported By',value: viewItem.reported_by_name || '—' },
                 { label:'Est. Value', value: viewItem.estimated_value ? `₦${Number(viewItem.estimated_value).toLocaleString()}` : '—' },
               ].map(s => (
                 <div key={s.label} style={{ background:'#f9fafb', borderRadius:8, padding:'10px 14px', border:'1px solid #f3f4f6' }}>

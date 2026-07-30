@@ -209,4 +209,75 @@ router.delete("/warranties/:id", async (req, res) => {
   }
 });
 
+// Helper to convert rows to CSV
+function convertToCSV(headers, rows) {
+  const csvRows = [headers.join(",")];
+  for (const row of rows) {
+    const values = headers.map(header => {
+      const fieldVal = row[header] !== undefined && row[header] !== null ? row[header] : "";
+      const escaped = String(fieldVal).replace(/"/g, '""');
+      return `"${escaped}"`;
+    });
+    csvRows.push(values.join(","));
+  }
+  return csvRows.join("\n");
+}
+
+// ── GET /api/admin/config/export ─────────────────────────────────────
+router.get("/export", async (req, res) => {
+  try {
+    const { type } = req.query;
+    let queryStr = "";
+    let headers = [];
+
+    if (type === "products") {
+      queryStr = `
+        SELECT p.name, p.sku, p.barcode, c.name as category,
+               COALESCE(p.unit_price, p.price, 0) as unit_price,
+               COALESCE(p.cost_price, 0) as cost_price,
+               p.stock, p.status, p.created_at
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        ORDER BY p.id DESC`;
+      headers = ["name", "sku", "barcode", "category", "unit_price", "cost_price", "stock", "status", "created_at"];
+    } else if (type === "categories") {
+      queryStr = `
+        SELECT name, code, status, created_at
+        FROM categories
+        ORDER BY id DESC`;
+      headers = ["name", "code", "status", "created_at"];
+    } else if (type === "sub_categories") {
+      queryStr = `
+        SELECT s.name, c.name as parent_category, s.code, s.status, s.created_at
+        FROM subcategories s
+        LEFT JOIN categories c ON s.category_id = c.id
+        ORDER BY s.id DESC`;
+      headers = ["name", "parent_category", "code", "status", "created_at"];
+    } else if (type === "units") {
+      queryStr = `
+        SELECT name, short, type, step, status, created_at
+        FROM units
+        ORDER BY id DESC`;
+      headers = ["name", "short", "type", "step", "status", "created_at"];
+    } else if (type === "inventory") {
+      queryStr = `
+        SELECT name, sku, stock, low_stock_threshold, status
+        FROM products
+        ORDER BY id DESC`;
+      headers = ["name", "sku", "stock", "low_stock_threshold", "status"];
+    } else {
+      return res.status(400).json({ message: "Invalid export type" });
+    }
+
+    const result = await pool.query(queryStr);
+    const csvContent = convertToCSV(headers, result.rows);
+    
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="${type}_export_${Date.now()}.csv"`);
+    res.status(200).send(csvContent);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

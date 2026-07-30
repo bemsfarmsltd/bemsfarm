@@ -238,6 +238,101 @@ router.get("/invoices", async (req, res) => {
   }
 });
 
+// ── POST /api/admin/orders/invoices ─────────────────────────────────────────
+router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const {
+      customer_name,
+      customer_phone,
+      customer_email,
+      customer_address,
+      due_date,
+      payment_method,
+      notes,
+      items,
+      delivery_fee = 0,
+      discount_amount = 0,
+      status = "draft"
+    } = req.body;
+
+    if (!customer_name) {
+      return res.status(400).json({ message: "Customer name is required" });
+    }
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "At least one item is required" });
+    }
+
+    // Calculate subtotal and validate items
+    let subtotal = 0;
+    const cleanItems = [];
+    for (const item of items) {
+      const qty = parseInt(item.qty || item.quantity || 1);
+      const price = parseFloat(item.price || item.unit_price || 0);
+      if (qty <= 0) {
+        return res.status(400).json({ message: `Invalid quantity for item ${item.name}` });
+      }
+      const itemTotal = qty * price;
+      subtotal += itemTotal;
+      cleanItems.push({
+        name: item.name,
+        qty,
+        unit: item.unit || "kg",
+        price,
+        total: itemTotal
+      });
+    }
+
+    const df = parseFloat(delivery_fee);
+    const disc = parseFloat(discount_amount);
+    const totalAmount = subtotal + df - disc;
+
+    const tempRef = `temp-${Date.now()}`;
+
+    // Insert invoice
+    const result = await client.query(
+      `INSERT INTO invoices (
+        invoice_ref, customer_name, customer_id, channel, type, date_issued, due_date,
+        amount, discount_amount, delivery_fee, payment_method, status, notes,
+        created_by, created_at, items
+      ) VALUES ($1, $2, null, 'manual', 'manual', NOW(), $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11)
+      RETURNING id`,
+      [
+        tempRef,
+        customer_name,
+        due_date || null,
+        totalAmount,
+        disc,
+        df,
+        payment_method || "Bank Transfer",
+        status || "draft",
+        notes || null,
+        req.user.id,
+        JSON.stringify(cleanItems)
+      ]
+    );
+
+    const invoiceId = result.rows[0].id;
+    const invoiceRef = `INV-2026-${String(invoiceId).padStart(4, "0")}`;
+
+    // Update invoice reference
+    await client.query(
+      `UPDATE invoices SET invoice_ref = $1 WHERE id = $2`,
+      [invoiceRef, invoiceId]
+    );
+
+    await client.query("COMMIT");
+    res.status(201).json({ message: "Invoice created successfully", id: invoiceId, invoice_ref: invoiceRef });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ message: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 // ── PATCH /api/admin/orders/invoices/:id/status ───────────────────────────
 router.patch("/invoices/:id/status", requireRole("superadmin", "manager", "admin"), async (req, res) => {
   try {
@@ -249,6 +344,86 @@ router.patch("/invoices/:id/status", requireRole("superadmin", "manager", "admin
     res.json({ message: "Invoice updated", status });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// ── POST /api/admin/orders/returns ─────────────────────────────────────────
+router.post("/returns", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const {
+      ordRef,
+      customer,
+      product,
+      qty,
+      unitPrice,
+      reason,
+      notes,
+      refundMethod = "Bank Transfer"
+    } = req.body;
+
+    if (!customer) {
+      return res.status(400).json({ message: "Customer name is required" });
+    }
+    if (!product) {
+      return res.status(400).json({ message: "Product name is required" });
+    }
+    if (!qty || parseInt(qty) <= 0) {
+      return res.status(400).json({ message: "Quantity must be greater than 0" });
+    }
+
+    // 1. Resolve customer_id
+    const custRes = await client.query("SELECT id FROM customers WHERE name = $1 LIMIT 1", [customer]);
+    const customer_id = custRes.rows[0]?.id || null;
+
+    // 2. Resolve product_id
+    const prodRes = await client.query("SELECT id FROM products WHERE name = $1 LIMIT 1", [product]);
+    const product_id = prodRes.rows[0]?.id || null;
+
+    if (!product_id) {
+      return res.status(400).json({ message: `Product "${product}" not found in catalog` });
+    }
+
+    const calculatedRefund = parseFloat(qty) * parseFloat(unitPrice || 0);
+    const tempRef = `temp-rtn-${Date.now()}`;
+
+    // 3. Insert return record
+    const insertRes = await client.query(
+      `INSERT INTO returns (
+        refund_ref, order_id, user_id, customer_id, product_id, quantity,
+        reason, description, status, created_at, refund_amount, refund_method, processed_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW(), $9, $10, $11)
+      RETURNING id`,
+      [
+        tempRef,
+        ordRef || null,
+        req.user.id,
+        customer_id,
+        product_id,
+        parseInt(qty),
+        reason || "Damaged on delivery",
+        notes || null,
+        calculatedRefund,
+        refundMethod,
+        req.user.id
+      ]
+    );
+
+    const returnId = insertRes.rows[0].id;
+    const finalRef = `RTN-2026-${String(returnId).padStart(3, "0")}`;
+
+    // 4. Update final reference
+    await client.query("UPDATE returns SET refund_ref = $1 WHERE id = $2", [finalRef, returnId]);
+
+    await client.query("COMMIT");
+    res.status(201).json({ message: "Return logged successfully", id: returnId, refund_ref: finalRef });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ message: err.message });
+  } finally {
+    client.release();
   }
 });
 

@@ -99,7 +99,7 @@ export default function OrderDetail() {
           <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:cfg.bg,color:cfg.color,borderRadius:50,padding:"5px 12px",fontSize:12,fontWeight:600 }}>
             {o.status?.replace(/_/g," ")}
           </span>
-          <button style={btnL}><i className="ri-printer-line"/>Print Invoice</button>
+          <button style={btnL}><i className="ri-printer-line"/>Print Receipt</button>
         </div>
       </div>
 

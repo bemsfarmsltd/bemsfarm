@@ -129,11 +129,11 @@ export default function ProductCard({ product, index = 0 }) {
       onHoverEnd={() => setHovered(false)}
       onClick={() => navigate(`/product/${product.id}`)}
       style={{
-        backgroundColor: "white",
+        backgroundColor: "var(--white)",
         borderRadius: "16px",
         overflow: "hidden",
         cursor: "pointer",
-        border: "1px solid #E8EAED",
+        border: "1px solid var(--gray-200)",
         position: "relative",
         minWidth: 0,
       }}
@@ -210,7 +210,7 @@ export default function ProductCard({ product, index = 0 }) {
         style={{
           paddingTop: "75%",
           position: "relative",
-          backgroundColor: "#F8F9FA",
+          backgroundColor: "var(--gray-50)",
         }}
       >
         <motion.img
@@ -249,7 +249,7 @@ export default function ProductCard({ product, index = 0 }) {
 
       {/* INFO */}
       <div style={{ padding: "12px", minWidth: 0 }}>
-        <p style={{ fontSize: 11, color: "#9AA0A6", marginBottom: 2 }}>
+        <p style={{ fontSize: 11, color: "var(--gray-500)", marginBottom: 2 }}>
           {product.category_name}
         </p>
 
@@ -257,7 +257,7 @@ export default function ProductCard({ product, index = 0 }) {
           style={{
             fontSize: 13,
             fontWeight: 700,
-            color: "#202124",
+            color: "var(--gray-900)",
             margin: "0 0 4px",
             lineHeight: 1.35,
             display: "-webkit-box",
@@ -270,7 +270,7 @@ export default function ProductCard({ product, index = 0 }) {
           {product.name}
         </h3>
 
-        <p style={{ fontSize: 11, color: "#9AA0A6", marginBottom: 8 }}>
+        <p style={{ fontSize: 11, color: "var(--gray-500)", marginBottom: 8 }}>
           {product.unit}
         </p>
 
@@ -286,7 +286,7 @@ export default function ProductCard({ product, index = 0 }) {
             style={{
               fontSize: 15,
               fontWeight: 800,
-              color: "#2E7D32",
+              color: "var(--primary)",
               margin: 0,
               minWidth: 0,
               overflow: "hidden",

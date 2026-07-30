@@ -10,7 +10,7 @@ const NAV = [
   { label:'POS',         to:'/settings/pos'           },
   { label:'Payment',     to:'/settings/payment'       },
   { label:'Currencies',  to:'/settings/currencies'    },
-  { label:'Invoices',    to:'/settings/invoices'      },
+  { label:'Receipts',    to:'/settings/invoices'      },
   { label:'Manager',     to:'/settings/manager'       },
   { label:'Notifications',to:'/settings/notifications'},
 ]
@@ -99,8 +99,8 @@ export default function GeneralSettings() {
         <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
       ) : (
         <form onSubmit={handleSave}>
-          <Card title="Store & Business Information" subtitle="Displayed on invoices, receipts, and customer-facing documents.">
-            <Row label="Shop Name" desc="Appears on all receipts and invoices.">
+          <Card title="Store & Business Information" subtitle="Displayed on receipts, and customer-facing documents.">
+            <Row label="Shop Name" desc="Appears on all receipts.">
               <input style={inp} value={form.shop_name} onChange={e=>set('shop_name',e.target.value)} placeholder="Bems Farms"/>
             </Row>
             <Row label="Shop Email" desc="Receives system alerts and notifications.">
@@ -109,10 +109,10 @@ export default function GeneralSettings() {
             <Row label="Shop Phone" desc="Used for customer support communication.">
               <input style={inp} value={form.shop_phone} onChange={e=>set('shop_phone',e.target.value)} placeholder="+234 802 345 6789"/>
             </Row>
-            <Row label="Shop Address" desc="Printed on invoices and delivery notes.">
+            <Row label="Shop Address" desc="Printed on receipts and delivery notes.">
               <textarea style={{ ...inp,resize:'vertical' }} rows={2} value={form.shop_address} onChange={e=>set('shop_address',e.target.value)} placeholder="14 Farm Road, Epe, Lagos"/>
             </Row>
-            <Row label="Logo URL" desc="URL to your store logo (PNG/SVG). Shown on invoices.">
+            <Row label="Logo URL" desc="URL to your store logo (PNG/SVG). Shown on receipts.">
               <input style={inp} value={form.shop_logo} onChange={e=>set('shop_logo',e.target.value)} placeholder="https://..."/>
               {form.shop_logo && (
                 <img src={form.shop_logo} alt="logo preview" style={{ marginTop:8,height:40,objectFit:'contain',borderRadius:6,border:`1px solid ${B}` }}/>

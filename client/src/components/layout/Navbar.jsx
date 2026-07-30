@@ -9,6 +9,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { useTheme } from "../../context/ThemeContext";
 import logo from "../../assets/bemsfarms_logo.png";
 import api from "../../services/api";
 
@@ -405,6 +406,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { cartItems } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -473,10 +475,10 @@ export default function Navbar() {
         position: "sticky",
         top: 0,
         zIndex: 200,
-        backgroundColor: "white",
-        borderBottom: scrolled ? "1px solid #E5E7EB" : "1px solid transparent",
-        boxShadow: scrolled ? "0 2px 16px rgba(27,67,50,0.06)" : "none",
-        transition: "box-shadow 0.3s, border-color 0.3s",
+        backgroundColor: "var(--white)",
+        borderBottom: scrolled ? "1px solid var(--gray-200)" : "1px solid transparent",
+        boxShadow: scrolled ? (theme === "dark" ? "0 2px 16px rgba(0,0,0,0.3)" : "0 2px 16px rgba(27,67,50,0.06)") : "none",
+        transition: "box-shadow 0.3s, border-color 0.3s, background-color 0.3s",
       }}
     >
       <style>{NAVBAR_CSS}</style>
@@ -562,6 +564,30 @@ export default function Navbar() {
             flexShrink: 0,
           }}
         >
+          {/* Dark Mode Toggle */}
+          <button
+            onClick={toggleTheme}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "7px",
+              borderRadius: "10px",
+              lineHeight: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "background-color 0.2s",
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--gray-100)"}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+            title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            <span style={{ fontSize: "19px" }}>
+              {theme === "dark" ? "☀️" : "🌙"}
+            </span>
+          </button>
+
           {user ? (
             <>
               <NavSearchBar />

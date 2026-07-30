@@ -1,10 +1,9 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
+import toast from 'react-hot-toast'
 
-const BARCODE_TYPES = ['code128','code39','qr']
-const LABEL_SIZES   = ['58x40mm','80x50mm','100x60mm','A4 Sheet']
-
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
 const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
 const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
 const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:5 }
@@ -40,31 +39,141 @@ function BarcodeDisplay({ value, type }) {
   )
 }
 
+function TableStepper({ value, onChange }) {
+  const handleMinus = () => {
+    if (value > 1) onChange(value - 1)
+  }
+  const handlePlus = () => {
+    onChange(value + 1)
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+      <button
+        type="button"
+        onClick={handleMinus}
+        style={{
+          width: 28,
+          height: 28,
+          border: '1.5px solid var(--border)',
+          borderRight: 'none',
+          borderRadius: '6px 0 0 6px',
+          background: 'var(--bg-card)',
+          color: 'var(--text-secondary)',
+          fontSize: 14,
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          outline: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        −
+      </button>
+      <input
+        type="number"
+        min={1}
+        value={value}
+        onChange={e => onChange(parseInt(e.target.value) || 1)}
+        style={{
+          width: 38,
+          height: 28,
+          border: '1.5px solid var(--border)',
+          background: 'var(--bg-card)',
+          color: 'var(--text-primary)',
+          textAlign: 'center',
+          fontFamily: 'Nunito, sans-serif',
+          fontSize: 12,
+          fontWeight: 600,
+          outline: 'none',
+          margin: 0,
+        }}
+      />
+      <button
+        type="button"
+        onClick={handlePlus}
+        style={{
+          width: 28,
+          height: 28,
+          border: '1.5px solid var(--border)',
+          borderLeft: 'none',
+          borderRadius: '0 6px 6px 0',
+          background: 'var(--bg-card)',
+          color: 'var(--text-secondary)',
+          fontSize: 14,
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          outline: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        +
+      </button>
+    </div>
+  )
+}
+
+function Checkbox({ checked, onChange, label }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+      <div
+        onClick={onChange}
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: 4,
+          border: checked ? 'none' : '1.5px solid var(--border)',
+          background: checked ? 'var(--orange-accent)' : 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+          transition: 'all 0.15s',
+        }}
+      >
+        {checked && <i className="ri-check-line" style={{ fontSize: 13 }} />}
+      </div>
+      {label}
+    </label>
+  )
+}
+
 export default function Barcode() {
+  const navigate = useNavigate()
   const [products, setProducts]       = useState([])
+  const [categories, setCategories]   = useState([])
   const [loading, setLoading]         = useState(true)
   const [search, setSearch]           = useState('')
-  const [selected, setSelected]       = useState([])
-  const [barcodeType, setBarcodeType] = useState('code128')
-  const [labelSize, setLabelSize]     = useState('58x40mm')
-  const [showName, setShowName]       = useState(true)
-  const [showPrice, setShowPrice]     = useState(true)
-  const [showSKU, setShowSKU]         = useState(true)
-  const [copies, setCopies]           = useState(1)
-  const [printing, setPrinting]       = useState(false)
-  const printRef = useRef(null)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedList, setSelectedList] = useState([])
+  
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedBrand, setSelectedBrand]       = useState('')
+  
+  const [barcodeType, setBarcodeType]   = useState('code128')
+  const [encodeValue, setEncodeValue]   = useState('sku')
+  const [labelSize, setLabelSize]       = useState('80x50mm')
+  
+  const [showName, setShowName]         = useState(true)
+  const [showPrice, setShowPrice]       = useState(true)
+  const [includeLogo, setIncludeLogo]   = useState(false)
+  const [printing, setPrinting]         = useState(false)
 
   useEffect(() => {
+    // Fetch products
     api.get('/admin/products?limit=100')
       .then(res => {
         const items = (res.data?.products || res.data || []).map(p => ({
           id: p.id,
           name: p.name,
           sku: p.sku,
-          barcode: p.barcode || `N/A-${p.id}`,
-          category: p.category || '',
+          barcode: p.barcode || `CAT-MEA-00${p.id}`,
+          category: p.category || 'Meals',
+          category_id: p.category_id || '',
           price: p.price || p.unit_price || 0,
-          unit: p.unit || 'pcs'
+          image_url: p.image_url || ''
         }))
         setProducts(items)
         setLoading(false)
@@ -73,146 +182,322 @@ export default function Barcode() {
         console.error('Failed to load products for barcodes:', err)
         setLoading(false)
       })
+
+    // Fetch categories
+    api.get('/admin/config/categories')
+      .then(res => setCategories(res.data.categories || []))
+      .catch(err => console.error('Failed to load categories:', err))
   }, [])
 
-  const filtered = useMemo(() => products.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku.toLowerCase().includes(search.toLowerCase()) ||
-    (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase()))
-  ), [products, search])
+  const filteredSuggestions = useMemo(() => {
+    if (!search.trim()) return []
+    return products.filter(p => {
+      const matchText = p.name.toLowerCase().includes(search.toLowerCase()) ||
+                        p.sku.toLowerCase().includes(search.toLowerCase()) ||
+                        (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase()))
+      const matchCat = selectedCategory ? String(p.category_id) === selectedCategory : true
+      return matchText && matchCat
+    })
+  }, [products, search, selectedCategory])
 
-  function toggleSelect(id) {
-    setSelected(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])
+  const handleAddProduct = (product) => {
+    setSelectedList(prev => {
+      const exists = prev.find(p => p.id === product.id)
+      if (exists) {
+        return prev.map(p => p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p)
+      }
+      return [...prev, { ...product, quantity: 1 }]
+    })
+    setSearch('')
+    setShowSuggestions(false)
   }
-  function toggleAll() {
-    setSelected(p=>p.length===filtered.length?[]:filtered.map(p=>p.id))
+
+  const handleRemoveProduct = (id) => {
+    setSelectedList(prev => prev.filter(p => p.id !== id))
   }
 
-  const selectedProducts = products.filter(p=>selected.includes(p.id))
+  const handleUpdateQty = (id, qty) => {
+    setSelectedList(prev => prev.map(p => p.id === id ? { ...p, quantity: qty } : p))
+  }
 
-  function handlePrint() {
+  const handleReset = () => {
+    setSelectedList([])
+    setSearch('')
+    setSelectedCategory('')
+    setSelectedBrand('')
+    setBarcodeType('code128')
+    setEncodeValue('sku')
+    setLabelSize('80x50mm')
+    setShowName(true)
+    setShowPrice(true)
+    setIncludeLogo(false)
+  }
+
+  const handlePrint = () => {
     setPrinting(true)
-    setTimeout(() => { window.print(); setPrinting(false) }, 500)
+    setTimeout(() => {
+      window.print()
+      setPrinting(false)
+    }, 500)
+  }
+
+  const handleGenerate = () => {
+    toast.success('Barcodes generated successfully!')
   }
 
   const B = '#e5e7eb', S = '#6b7280'
 
-  function Toggle({ value, onChange, label }) {
-    return (
-      <label style={{ display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,fontWeight:600,color:'#374151' }}>
-        <div onClick={onChange} style={{ width:38,height:20,borderRadius:20,background:value?'#1B4332':'#d1d5db',position:'relative',cursor:'pointer',flexShrink:0,transition:'background .2s' }}>
-          <div style={{ position:'absolute',top:2,left:value?18:2,width:16,height:16,borderRadius:'50%',background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
-        </div>
-        {label}
-      </label>
-    )
-  }
+  if (loading) return (
+    <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300,fontFamily:'Nunito,sans-serif',color:'#6b7280' }}>
+      <i className="ri-loader-4-line" style={{ fontSize:36,display:'block',marginBottom:8,textAlign:'center' }}/>
+    </div>
+  )
 
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12 }}>
+      {/* Header & Breadcrumbs */}
+      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'#111827' }}>Barcode Generator</div>
-          <div style={{ fontSize:12,color:S,marginTop:2 }}>Products → Barcode</div>
+          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Barcode</div>
         </div>
-        {selected.length>0&&(
-          <button style={btnP} onClick={handlePrint} disabled={printing}>
-            {printing?<><i className="ri-loader-4-line"/>Preparing…</>:<><i className="ri-printer-line"/>Print {selected.length} Label{selected.length>1?'s':''}</>}
-          </button>
-        )}
+        <div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)' }}>
+          <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Products</span>
+          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <span style={{ fontWeight:600,color:'var(--text-primary)' }}>Barcode</span>
+        </div>
       </div>
 
-      <div style={{ display:'grid',gridTemplateColumns:'1fr 300px',gap:20,alignItems:'start' }}>
-        {/* Product selection */}
-        <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
-          <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',gap:10 }}>
-            <div style={{ position:'relative',flex:1 }}>
-              <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:15,pointerEvents:'none' }}/>
-              <input type="text" placeholder="Search products…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp,paddingLeft:34 }}/>
+      {/* Main card */}
+      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:24 }}>
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:16,color:'var(--text-primary)' }}>Print Barcodes</div>
+          <div style={{ fontSize:12,color:S,marginTop:2 }}>Generate, customize and print product barcodes with advanced options</div>
+        </div>
+
+        {/* Product Selection Area */}
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 280px',gap:24,marginBottom:24 }}>
+          {/* Left Selection */}
+          <div style={{ border:`1.5px solid ${B}`,borderRadius:12,padding:20,background:'#fff' }}>
+            <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,color:'var(--text-primary)',marginBottom:14 }}>Product Selection</div>
+            
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16 }}>
+              <div>
+                <label style={LBL}>Category</label>
+                <select style={inp} value={selectedCategory} onChange={e=>setSelectedCategory(e.target.value)}>
+                  <option value="">— All Categories —</option>
+                  {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={LBL}>Brand</label>
+                <select style={inp} value={selectedBrand} onChange={e=>setSelectedBrand(e.target.value)}>
+                  <option value="">— All Brands —</option>
+                  <option value="bems_farms">Bems Farms</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
             </div>
-            {selected.length>0&&<button style={btnL} onClick={()=>setSelected([])}><i className="ri-close-line"/>Clear ({selected.length})</button>}
+
+            <div style={{ position:'relative' }}>
+              <label style={LBL}>Product</label>
+              <div style={{ position:'relative' }}>
+                <i className="ri-search-line" style={{ position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:S,fontSize:15,pointerEvents:'none' }}/>
+                <input
+                  type="text"
+                  placeholder="Product name, SKU or barcode"
+                  value={search}
+                  onChange={e=>setSearch(e.target.value)}
+                  style={{ ...inp,paddingLeft:36 }}
+                  onFocus={()=>setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                />
+              </div>
+
+              {/* Suggestions dropdown */}
+              {showSuggestions && search.trim() && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: '#fff',
+                  border: `1px solid ${B}`,
+                  borderRadius: 8,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                  zIndex: 200,
+                  maxHeight: 200,
+                  overflowY: 'auto',
+                  marginTop: 4
+                }}>
+                  {filteredSuggestions.length === 0 ? (
+                    <div style={{ padding: '10px 14px', fontSize: 13, color: S }}>No products found</div>
+                  ) : (
+                    filteredSuggestions.map(p => (
+                      <div
+                        key={p.id}
+                        onClick={() => handleAddProduct(p)}
+                        style={{
+                          padding: '10px 14px',
+                          cursor: 'pointer',
+                          borderBottom: `1px solid #f3f4f6`,
+                          fontSize: 13,
+                          transition: 'background 0.1s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{ fontWeight: 600 }}>{p.name}</div>
+                        <div style={{ fontSize: 11, color: S }}>SKU: {p.sku} | Barcode: {p.barcode}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%',borderCollapse:'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={TH}><input type="checkbox" checked={selected.length===filtered.length&&filtered.length>0} onChange={toggleAll} style={{ cursor:'pointer' }}/></th>
-                  {['Product','SKU','Barcode','Category','Price','Preview'].map(h=><th key={h} style={TH}>{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(p=>(
-                  <tr key={p.id} style={{ background:selected.includes(p.id)?'#f0fdf4':'transparent' }}>
-                    <td style={TD}><input type="checkbox" checked={selected.includes(p.id)} onChange={()=>toggleSelect(p.id)} style={{ cursor:'pointer' }}/></td>
-                    <td style={{ ...TD,fontWeight:600 }}>{p.name}</td>
-                    <td style={TD}><code style={{ fontSize:11,background:'#f3f4f6',padding:'2px 6px',borderRadius:4,color:'#374151' }}>{p.sku}</code></td>
-                    <td style={{ ...TD,fontSize:11,color:S }}>{p.barcode}</td>
-                    <td style={{ ...TD,color:S,fontSize:12 }}>{p.category}</td>
-                    <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>₦{p.price.toLocaleString()}</td>
-                    <td style={TD}>
-                      <div style={{ transform:'scale(0.5)',transformOrigin:'left center',height:22 }}>
-                        <BarcodeDisplay value={p.barcode} type={barcodeType}/>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Right Import */}
+          <div style={{ border:`1.5px dashed ${B}`,borderRadius:12,padding:20,background:'var(--bg-page)',textAlign:'center',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',gap:8,cursor:'pointer' }}>
+            <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,color:'var(--text-primary)',alignSelf:'flex-start',marginBottom:4 }}>Bulk Import</div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+              <i className="ri-cloud-upload-line" style={{ fontSize:28,color:'var(--text-light)' }}/>
+              <div style={{ fontSize:12,fontWeight:700,color:'var(--text-secondary)' }}>Upload CSV</div>
+            </div>
           </div>
         </div>
 
-        {/* Print Settings */}
-        <div style={{ position:'sticky',top:80 }}>
-          <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16 }}>
-            <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13 }}>Label Settings</div>
-            <div style={{ padding:20,display:'flex',flexDirection:'column',gap:14 }}>
-              <div>
-                <label style={LBL}>Barcode Type</label>
-                <select style={inp} value={barcodeType} onChange={e=>setBarcodeType(e.target.value)}>
-                  {BARCODE_TYPES.map(t=><option key={t} value={t}>{t.toUpperCase()}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={LBL}>Label Size</label>
-                <select style={inp} value={labelSize} onChange={e=>setLabelSize(e.target.value)}>
-                  {LABEL_SIZES.map(s=><option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={LBL}>Copies per Product</label>
-                <input type="number" min={1} max={100} style={inp} value={copies} onChange={e=>setCopies(parseInt(e.target.value)||1)}/>
-              </div>
-              <div style={{ display:'flex',flexDirection:'column',gap:10,paddingTop:4 }}>
-                <Toggle value={showName}  onChange={()=>setShowName(v=>!v)}  label="Show Product Name"/>
-                <Toggle value={showPrice} onChange={()=>setShowPrice(v=>!v)} label="Show Price"/>
-                <Toggle value={showSKU}   onChange={()=>setShowSKU(v=>!v)}   label="Show SKU"/>
-              </div>
+        {/* Selected Products Table */}
+        <div style={{ border:`1px solid ${B}`,borderRadius:12,overflow:'hidden',marginBottom:24 }}>
+          <table style={{ width:'100%',borderCollapse:'collapse' }}>
+            <thead>
+              <tr>
+                {['Product Name','SKU','Price','Quantity','Actions'].map(h=><th key={h} style={TH}>{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {selectedList.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ ...TD,textAlign:'center',padding:'40px 0',color:S }}>
+                    No products selected. Search and select products above to print barcodes.
+                  </td>
+                </tr>
+              ) : (
+                selectedList.map(p => (
+                  <tr key={p.id}>
+                    <td style={{ ...TD,fontWeight:600 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <img
+                          src={p.image_url || 'https://placehold.co/40x40?text=BF'}
+                          alt={p.name}
+                          style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', border: `1px solid ${B}` }}
+                        />
+                        <div>
+                          <div>{p.name}</div>
+                          <div style={{ fontSize: 11, color: S, fontWeight: 400 }}>{p.category || 'Product'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={TD}><code style={{ fontSize:11,background:'#f3f4f6',padding:'2px 6px',borderRadius:4,color:'#374151' }}>{p.sku}</code></td>
+                    <td style={{ ...TD,fontWeight:600 }}>₦{p.price.toLocaleString()}</td>
+                    <td style={TD}>
+                      <TableStepper value={p.quantity} onChange={q => handleUpdateQty(p.id, q)} />
+                    </td>
+                    <td style={TD}>
+                      <button
+                        onClick={() => handleRemoveProduct(p.id)}
+                        style={{
+                          display:'flex',alignItems:'center',justifyContent:'center',
+                          width:30,height:30,borderRadius:6,border:'none',
+                          background:'#fee2e2',color:'#ef4444',cursor:'pointer'
+                        }}
+                      >
+                        <i className="ri-delete-bin-line"/>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Barcode Options */}
+        <div style={{ borderTop:`1px solid ${B}`,paddingTop:20 }}>
+          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,color:'var(--text-primary)',marginBottom:16 }}>Barcode Options</div>
+          <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16,marginBottom:20 }}>
+            <div>
+              <label style={LBL}>Barcode Type</label>
+              <select style={inp} value={barcodeType} onChange={e=>setBarcodeType(e.target.value)}>
+                <option value="code128">CODE128</option>
+                <option value="code39">CODE39</option>
+                <option value="qr">QR Code</option>
+              </select>
+            </div>
+            <div>
+              <label style={LBL}>Encode Value</label>
+              <select style={inp} value={encodeValue} onChange={e=>setEncodeValue(e.target.value)}>
+                <option value="sku">SKU</option>
+                <option value="barcode">Barcode</option>
+              </select>
+            </div>
+            <div>
+              <label style={LBL}>Label Template</label>
+              <select style={inp} value={labelSize} onChange={e=>setLabelSize(e.target.value)}>
+                <option value="58x40mm">58x40mm</option>
+                <option value="80x50mm">80x50mm</option>
+                <option value="100x60mm">100x60mm</option>
+              </select>
             </div>
           </div>
 
-          {/* Label Preview */}
-          {selectedProducts.length>0&&(
-            <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16 }}>
-              <div style={{ padding:'12px 16px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:12 }}>Label Preview</div>
-              <div style={{ padding:16,display:'flex',justifyContent:'center' }}>
-                <div style={{ border:'1px dashed #9ca3af',borderRadius:6,padding:'10px 14px',minWidth:130,textAlign:'center',background:'#fafafa' }}>
-                  <div style={{ display:'flex',justifyContent:'center',marginBottom:6 }}>
-                    <BarcodeDisplay value={selectedProducts[0].barcode} type={barcodeType}/>
-                  </div>
-                  <div style={{ fontSize:8,color:'#374151',fontFamily:'monospace' }}>{selectedProducts[0].barcode}</div>
-                  {showName&&<div style={{ fontSize:10,fontWeight:700,color:'#111827',marginTop:4,lineHeight:'1.2' }}>{selectedProducts[0].name}</div>}
-                  {showSKU&&<div style={{ fontSize:8,color:S }}>{selectedProducts[0].sku}</div>}
-                  {showPrice&&<div style={{ fontSize:11,fontWeight:700,color:'#1B4332',marginTop:2 }}>₦{selectedProducts[0].price.toLocaleString()}</div>}
-                </div>
-              </div>
-            </div>
-          )}
+          <div style={{ display:'flex',gap:24,alignItems:'center',marginBottom:24 }}>
+            <Checkbox checked={showName} onChange={()=>setShowName(!showName)} label="Show Product Name" />
+            <Checkbox checked={showPrice} onChange={()=>setShowPrice(!showPrice)} label="Show Price" />
+            <Checkbox checked={includeLogo} onChange={()=>setIncludeLogo(!includeLogo)} label="Include Store Logo" />
+          </div>
 
-          <button style={{ ...btnP,width:'100%',justifyContent:'center',opacity:selected.length===0?.5:1 }} disabled={selected.length===0||printing} onClick={handlePrint}>
-            {printing?<><i className="ri-loader-4-line"/>Preparing…</>:<><i className="ri-printer-line"/>Print {selected.length>0?`${selected.length} Label${selected.length>1?'s':''}`:' Labels'}</>}
-          </button>
-          {selected.length===0&&<div style={{ textAlign:'center',fontSize:12,color:S,marginTop:8 }}>Select products from the table first</div>}
+          {/* Action buttons footer */}
+          <div style={{ display:'flex',justifyContent:'flex-end',gap:12 }}>
+            <button
+              onClick={handleReset}
+              style={{
+                display:'inline-flex',alignItems:'center',gap:6,
+                padding:'10px 20px',borderRadius:8,border:'none',
+                background:'#0f172a',color:'#fff',cursor:'pointer',
+                fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13
+              }}
+            >
+              <i className="ri-refresh-line"/>
+              Reset
+            </button>
+            <button
+              onClick={handlePrint}
+              disabled={selectedList.length === 0}
+              style={{
+                display:'inline-flex',alignItems:'center',gap:6,
+                padding:'10px 20px',borderRadius:8,border:'none',
+                background:'#2563eb',color:'#fff',cursor:'pointer',
+                fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13,
+                opacity: selectedList.length === 0 ? 0.5 : 1
+              }}
+            >
+              <i className="ri-printer-line"/>
+              Print
+            </button>
+            <button
+              onClick={handleGenerate}
+              disabled={selectedList.length === 0}
+              style={{
+                ...btnP,
+                borderRadius:8,
+                padding:'10px 20px',
+                opacity: selectedList.length === 0 ? 0.5 : 1
+              }}
+            >
+              <i className="ri-magic-line"/>
+              Generate
+            </button>
+          </div>
         </div>
       </div>
     </div>

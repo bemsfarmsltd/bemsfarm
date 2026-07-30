@@ -142,18 +142,18 @@ export default function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               
               {/* Card 1: Ofada Rice */}
-              <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-md flex flex-col items-center text-center relative hover:shadow-lg transition-shadow">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#2E7D32] bg-white absolute -top-12 shadow-md">
+              <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 border border-gray-100 dark:border-neutral-800 shadow-md flex flex-col items-center text-center relative hover:shadow-lg transition-shadow">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#2E7D32] bg-white dark:bg-neutral-900 absolute -top-12 shadow-md">
                   <img src={REAL_OFADA.image_url} alt="Ofada Rice" className="w-full h-full object-cover" />
                 </div>
                 <div className="pt-14 flex-1">
-                  <h3 className="font-bold text-lg text-gray-800 mb-2">{REAL_OFADA.name}</h3>
-                  <p className="text-gray-500 text-[13px] leading-relaxed mb-5">
+                  <h3 className="font-bold text-lg text-gray-800 dark:text-white mb-2">{REAL_OFADA.name}</h3>
+                  <p className="text-gray-500 dark:text-neutral-400 text-[13px] leading-relaxed mb-5">
                     {REAL_OFADA.description}
                   </p>
                 </div>
-                <div className="w-full flex justify-between items-center pt-3 border-t border-gray-50">
-                  <span className="font-extrabold text-[#2E7D32] text-[15px]">₦4,050</span>
+                <div className="w-full flex justify-between items-center pt-3 border-t border-gray-50 dark:border-neutral-800">
+                  <span className="font-extrabold text-[#2E7D32] dark:text-emerald-400 text-[15px]">₦4,050</span>
                   <button
                     onClick={() => addToCart(REAL_OFADA)}
                     className="bg-[#2E7D32] hover:bg-emerald-800 text-white font-bold text-xs py-1.5 px-4 rounded-full transition-colors"
@@ -164,63 +164,63 @@ export default function HomePage() {
               </div>
 
               {/* Card 2: Palm Oil */}
-              <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-md flex flex-col items-center text-center relative hover:shadow-lg transition-shadow">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#2E7D32] bg-white absolute -top-12 shadow-md">
+              <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 border border-gray-100 dark:border-neutral-800 shadow-md flex flex-col items-center text-center relative hover:shadow-lg transition-shadow">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#2E7D32] bg-white dark:bg-neutral-900 absolute -top-12 shadow-md">
                   <img src={REAL_PALM_OIL.image_url} alt="Palm Oil" className="w-full h-full object-cover" />
                 </div>
                 <div className="pt-14 flex-1">
-                  <h3 className="font-bold text-lg text-gray-800 mb-2">{REAL_PALM_OIL.name}</h3>
-                  <p className="text-gray-500 text-[13px] leading-relaxed mb-5">
+                  <h3 className="font-bold text-lg text-gray-800 dark:text-white mb-2">{REAL_PALM_OIL.name}</h3>
+                  <p className="text-gray-500 dark:text-neutral-400 text-[13px] leading-relaxed mb-5">
                     {REAL_PALM_OIL.description}
                   </p>
                 </div>
-                <div className="w-full flex justify-between items-center pt-3 border-t border-gray-50">
-                  <span className="font-extrabold text-[#2E7D32] text-[15px]">₦1,800</span>
+                <div className="w-full flex justify-between items-center pt-3 border-t border-gray-50 dark:border-neutral-800">
+                  <span className="font-extrabold text-[#2E7D32] dark:text-emerald-400 text-[15px]">₦1,800</span>
                   <button
                     onClick={() => addToCart(REAL_PALM_OIL)}
                     className="bg-[#2E7D32] hover:bg-emerald-800 text-white font-bold text-xs py-1.5 px-4 rounded-full transition-colors"
                   >
                     Buy now
-                </button>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {/* Card 3: Fresh Tomatoes */}
-            <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-md flex flex-col items-center text-center relative hover:shadow-lg transition-shadow">
-              <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#2E7D32] bg-white absolute -top-12 shadow-md">
-                <img src={REAL_TOMATOES.image_url} alt="Fresh Tomatoes" className="w-full h-full object-cover" />
+              {/* Card 3: Fresh Tomatoes */}
+              <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 border border-gray-100 dark:border-neutral-800 shadow-md flex flex-col items-center text-center relative hover:shadow-lg transition-shadow">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#2E7D32] bg-white dark:bg-neutral-900 absolute -top-12 shadow-md">
+                  <img src={REAL_TOMATOES.image_url} alt="Fresh Tomatoes" className="w-full h-full object-cover" />
+                </div>
+                <div className="pt-14 flex-1">
+                  <h3 className="font-bold text-lg text-gray-800 dark:text-white mb-2">{REAL_TOMATOES.name}</h3>
+                  <p className="text-gray-500 dark:text-neutral-400 text-[13px] leading-relaxed mb-5">
+                    {REAL_TOMATOES.description}
+                  </p>
+                </div>
+                <div className="w-full flex justify-between items-center pt-3 border-t border-gray-50 dark:border-neutral-800">
+                  <span className="font-extrabold text-[#2E7D32] dark:text-emerald-400 text-[15px]">₦2,250</span>
+                  <button
+                    onClick={() => addToCart(REAL_TOMATOES)}
+                    className="bg-[#2E7D32] hover:bg-emerald-800 text-white font-bold text-xs py-1.5 px-4 rounded-full transition-colors"
+                  >
+                    Buy now
+                  </button>
+                </div>
               </div>
-              <div className="pt-14 flex-1">
-                <h3 className="font-bold text-lg text-gray-800 mb-2">{REAL_TOMATOES.name}</h3>
-                <p className="text-gray-500 text-[13px] leading-relaxed mb-5">
-                  {REAL_TOMATOES.description}
-                </p>
-              </div>
-              <div className="w-full flex justify-between items-center pt-3 border-t border-gray-50">
-                <span className="font-extrabold text-[#2E7D32] text-[15px]">₦2,250</span>
-                <button
-                  onClick={() => addToCart(REAL_TOMATOES)}
-                  className="bg-[#2E7D32] hover:bg-emerald-800 text-white font-bold text-xs py-1.5 px-4 rounded-full transition-colors"
-                >
-                  Buy now
-                </button>
-              </div>
-            </div>
 
-          </div>
+            </div>
         </div>
 
       </section>
 
       {/* ────────────────── WHY CHOOSE US? (MATCHING SYSTEM COLORS) ────────────────── */}
-      <section id="why-choose-us" className="py-20 bg-white">
+      <section id="why-choose-us" className="py-20 bg-white dark:bg-neutral-950 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
           
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-2xl md:text-3xl font-extrabold text-[#2E7D32] tracking-tight uppercase mb-4">
+            <h2 className="text-2xl md:text-3xl font-extrabold text-[#2E7D32] dark:text-emerald-400 tracking-tight uppercase mb-4">
               Why Choose Us?
             </h2>
-            <p className="text-gray-500 font-medium text-[15px] leading-relaxed">
+            <p className="text-gray-500 dark:text-neutral-400 font-medium text-[15px] leading-relaxed">
               We are No.1 at preparing the best Nigerian delicacies that soothe your taste whether you are an indigene or a foreigner.
             </p>
           </div>
@@ -228,28 +228,28 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
             {/* Box 1 */}
-            <div className="bg-white border-2 border-emerald-50 p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#2E7D32] flex items-center justify-center text-xl mb-5">📁</div>
-              <h3 className="font-bold text-[16px] text-gray-800 mb-2">Best Quality</h3>
-              <p className="text-gray-500 text-[12.5px] leading-relaxed">
+            <div className="bg-white dark:bg-neutral-900 border-2 border-emerald-50 dark:border-neutral-800 p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">📁</div>
+              <h3 className="font-bold text-[16px] text-gray-800 dark:text-white mb-2">Best Quality</h3>
+              <p className="text-gray-500 dark:text-neutral-400 text-[12.5px] leading-relaxed">
                 We create the best dishes from fresh farm produce to give you healthy consumption as much as we can.
               </p>
             </div>
 
             {/* Box 2 */}
-            <div className="bg-white border-2 border-emerald-50 p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#2E7D32] flex items-center justify-center text-xl mb-5">🍲</div>
-              <h3 className="font-bold text-[16px] text-gray-800 mb-2">Variety of Dishes</h3>
-              <p className="text-gray-500 text-[12.5px] leading-relaxed">
+            <div className="bg-white dark:bg-neutral-900 border-2 border-emerald-50 dark:border-neutral-800 p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">🍲</div>
+              <h3 className="font-bold text-[16px] text-gray-800 dark:text-white mb-2">Variety of Dishes</h3>
+              <p className="text-gray-500 dark:text-neutral-400 text-[12.5px] leading-relaxed">
                 We bring to live several local cuisines from the deep roots of Nigeria to soothe your taste buds.
               </p>
             </div>
 
             {/* Box 3 */}
-            <div className="bg-white border-2 border-emerald-50 p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#2E7D32] flex items-center justify-center text-xl mb-5">🎁</div>
-              <h3 className="font-bold text-[16px] text-gray-800 mb-2">Reusable Packs</h3>
-              <p className="text-gray-500 text-[12.5px] leading-relaxed">
+            <div className="bg-white dark:bg-neutral-900 border-2 border-emerald-50 dark:border-neutral-800 p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">🎁</div>
+              <h3 className="font-bold text-[16px] text-gray-800 dark:text-white mb-2">Reusable Packs</h3>
+              <p className="text-gray-500 dark:text-neutral-400 text-[12.5px] leading-relaxed">
                 Our food packaging are durable and can be reused at home for food packs, we charge nothing for.
               </p>
             </div>
@@ -260,12 +260,12 @@ export default function HomePage() {
       </section>
 
       {/* ────────────────── REAL PRODUCT CATALOGUE (MAINTAINS SYSTEM FUNCTIONALITY) ────────────────── */}
-      <section id="menu" className="py-20 bg-[#F8FAFC]">
+      <section id="menu" className="py-20 bg-[#F8FAFC] dark:bg-neutral-900 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
           
           <div className="text-center mb-12">
             <span className="text-xs font-bold tracking-widest text-[#F57C00] uppercase">Store Catalogue</span>
-            <h2 className="text-3xl font-extrabold text-gray-900 mt-1 mb-2">Our Fresh Farm Products</h2>
+            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mt-1 mb-2">Our Fresh Farm Products</h2>
             <div className="w-12 h-1 bg-[#2E7D32] mx-auto rounded-full mb-8" />
             
             {/* Catalog search bar */}
@@ -274,18 +274,18 @@ export default function HomePage() {
               placeholder="Search farm fresh ingredients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-md w-full px-5 py-3 border-2 border-gray-150 focus:border-[#2E7D32] rounded-full text-[14px] font-medium outline-none transition-all placeholder-gray-300 bg-white"
+              className="max-w-md w-full px-5 py-3 border-2 border-gray-150 dark:border-neutral-800 focus:border-[#2E7D32] rounded-full text-[14px] font-medium outline-none transition-all placeholder-gray-300 bg-white dark:bg-neutral-950 dark:text-white"
             />
           </div>
 
           {/* Categories Tab selectors */}
-          <div className="flex justify-center gap-2 border-b border-gray-200/50 pb-4 mb-8 overflow-x-auto hide-scrollbar">
+          <div className="flex justify-center gap-2 border-b border-gray-200/50 dark:border-neutral-800 pb-4 mb-8 overflow-x-auto hide-scrollbar">
             <button
               onClick={() => setActiveTab("All")}
               className={`text-xs px-4 py-2 rounded-full font-bold border transition-colors ${
                 activeTab === "All"
                   ? "bg-[#2E7D32] border-[#2E7D32] text-white shadow-sm"
-                  : "bg-white border-gray-100 text-gray-500 hover:border-gray-200"
+                  : "bg-white dark:bg-neutral-950 border-gray-100 dark:border-neutral-800 text-gray-500 dark:text-neutral-450 hover:border-gray-200 dark:hover:border-neutral-700"
               }`}
             >
               All Categories
@@ -297,7 +297,7 @@ export default function HomePage() {
                 className={`text-xs px-4 py-2 rounded-full font-bold border transition-colors white-space-nowrap ${
                   activeTab === cat.name
                     ? "bg-[#2E7D32] border-[#2E7D32] text-white shadow-sm"
-                    : "bg-white border-gray-100 text-gray-500 hover:border-gray-200"
+                    : "bg-white dark:bg-neutral-950 border-gray-100 dark:border-neutral-800 text-gray-500 dark:text-neutral-450 hover:border-gray-200 dark:hover:border-neutral-700"
                 }`}
               >
                 {cat.name}

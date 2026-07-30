@@ -10,7 +10,7 @@ const NAV = [
   { label:'POS',          to:'/settings/pos'            },
   { label:'Payment',      to:'/settings/payment'        },
   { label:'Currencies',   to:'/settings/currencies'     },
-  { label:'Invoices',     to:'/settings/invoices'       },
+  { label:'Receipts',     to:'/settings/invoices'       },
   { label:'Manager',      to:'/settings/manager'        },
   { label:'Notifications',to:'/settings/notifications'  },
 ]
@@ -109,7 +109,7 @@ export default function TaxSettings() {
           {!form.tax_enabled && (
             <div style={{ background:'#fef3c7',border:'1px solid #fcd34d',borderRadius:10,padding:'12px 16px',marginBottom:20,fontSize:13,color:'#92400e',display:'flex',alignItems:'center',gap:10 }}>
               <i className="ri-alert-line" style={{ fontSize:18 }}/>
-              <span><strong>Tax system is disabled.</strong> Tax will not be applied to sales or invoices.</span>
+              <span><strong>Tax system is disabled.</strong> Tax will not be applied to sales or receipts.</span>
             </div>
           )}
 
@@ -118,7 +118,7 @@ export default function TaxSettings() {
               <Row label="Enable Tax System" desc="Turn tax calculation on or off across the system.">
                 <Toggle value={form.tax_enabled} onChange={()=>set('tax_enabled',!form.tax_enabled)}/>
               </Row>
-              <Row label="Tax Name / Label" desc="Label shown on receipts and invoices (e.g. VAT, GST).">
+              <Row label="Tax Name / Label" desc="Label shown on receipts (e.g. VAT, GST).">
                 <input style={inp} value={form.tax_name} onChange={e=>set('tax_name',e.target.value)} placeholder="VAT"/>
               </Row>
               <Row label="Tax Rate (%)" desc="Nigerian standard VAT is 7.5%.">

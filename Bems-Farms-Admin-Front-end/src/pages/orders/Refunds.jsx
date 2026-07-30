@@ -113,10 +113,15 @@ export default function Refunds() {
     } catch { toast.error("Failed to update status") }
   }
 
-  function saveLog(e) {
+  const saveLog = async (e) => {
     e.preventDefault()
-    toast.error("Manual logging of return via UI not implemented")
-    closeModal()
+    try {
+      await api.post('/admin/orders/returns', logForm)
+      toast.success("Return logged successfully")
+      closeModal(); load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to log return")
+    }
   }
 
   function saveInspection() { updateStatus('inspecting', procForm.inspectionNotes) }

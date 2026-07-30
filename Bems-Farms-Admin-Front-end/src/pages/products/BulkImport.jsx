@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
 const IMPORT_TYPES = {
   products: {
@@ -65,7 +66,7 @@ const STATUS_STYLE = {
 }
 
 const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
 const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
 const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'#f9fafb' }
 const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
@@ -85,6 +86,7 @@ function parseCSVHeaders(text) {
 }
 
 export default function BulkImport() {
+  const navigate = useNavigate()
   const [activeType, setActiveType]     = useState('products')
   const [step, setStep]                 = useState(1)
   const [dragOver, setDragOver]         = useState(false)
@@ -143,9 +145,66 @@ export default function BulkImport() {
 
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
-      <div style={{ marginBottom:24 }}>
-        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'#111827' }}>Bulk Import</div>
-        <div style={{ fontSize:12,color:S,marginTop:2 }}>Products → Bulk Import</div>
+      {/* Header & Breadcrumbs */}
+      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12 }}>
+        <div>
+          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Add Products</div>
+        </div>
+        <div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)' }}>
+          <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Products</span>
+          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <span style={{ fontWeight:600,color:'var(--text-primary)' }}>Add Products</span>
+        </div>
+      </div>
+
+      {/* Tabs Row */}
+      <div style={{ display:'flex',gap:12,marginBottom:24,borderBottom:'1px solid var(--border)',paddingBottom:12 }}>
+        <Link
+          to="/products/add"
+          style={{
+            display:'inline-flex',
+            alignItems:'center',
+            gap:6,
+            padding:'9px 16px',
+            borderRadius:8,
+            border:'none',
+            background: 'var(--bg-card)',
+            color: 'var(--text-secondary)',
+            cursor:'pointer',
+            fontFamily:'Nunito,sans-serif',
+            fontWeight:700,
+            fontSize:13,
+            textDecoration:'none',
+            border: '1px solid var(--border)',
+            transition:'all 0.15s'
+          }}
+        >
+          <i className="ri-file-text-line" style={{ fontSize:15 }}/>
+          Add Single Product
+        </Link>
+        <Link
+          to="/products/import"
+          style={{
+            display:'inline-flex',
+            alignItems:'center',
+            gap:6,
+            padding:'9px 16px',
+            borderRadius:8,
+            border:'none',
+            background: 'var(--orange-accent)',
+            color: '#fff',
+            cursor:'pointer',
+            fontFamily:'Nunito,sans-serif',
+            fontWeight:700,
+            fontSize:13,
+            textDecoration:'none',
+            boxShadow: '0 4px 12px rgba(245,124,0,0.15)',
+            transition:'all 0.15s'
+          }}
+        >
+          <i className="ri-cloud-upload-line" style={{ fontSize:15 }}/>
+          Bulk Import
+        </Link>
       </div>
 
       {/* Type selector */}

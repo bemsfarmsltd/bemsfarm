@@ -46,7 +46,7 @@ export default function Layout() {
         display: 'flex',
         flexDirection: 'column',
       }}>
-        <div style={{ flex: 1, padding: '24px 24px 32px' }}>
+        <div style={{ flex: '1 0 auto', padding: '24px 24px 32px' }}>
           <Outlet />
         </div>
 

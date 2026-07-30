@@ -1,929 +1,608 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
-import PageHeader from '../../components/ui/PageHeader'
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-const fmt   = n  => `₦${Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const fmtDt = dt => dt ? new Date(dt).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' }) : '—'
-const fmtD  = dt => dt ? new Date(dt).toLocaleDateString('en-NG', { dateStyle: 'medium' }) : '—'
-const fmtT  = dt => dt ? new Date(dt).toLocaleTimeString('en-NG', { timeStyle: 'short' }) : '—'
-
-// ─── Payment method config ───────────────────────────────────────────────────
-const PM_CFG = {
-  cash:          { label: 'Cash',          color: '#22c55e', bg: '#dcfce7', icon: 'ri-money-dollar-circle-line' },
-  card:          { label: 'Card / POS',    color: '#405189', bg: '#e8eaf6', icon: 'ri-bank-card-line'           },
-  transfer:      { label: 'Bank Transfer', color: '#F57C00', bg: '#fff3e0', icon: 'ri-swap-line'                },
-  bank_transfer: { label: 'Bank Transfer', color: '#F57C00', bg: '#fff3e0', icon: 'ri-swap-line'                },
-  qr:            { label: 'QR / USSD',     color: '#299cdb', bg: '#e0f4fd', icon: 'ri-qr-code-line'            },
-  ussd:          { label: 'QR / USSD',     color: '#299cdb', bg: '#e0f4fd', icon: 'ri-qr-code-line'            },
-  split:         { label: 'Split',         color: '#a78bfa', bg: '#ede9fe', icon: 'ri-split-cells-horizontal'   },
-}
-const pmCfg = key => PM_CFG[(key || '').toLowerCase()] || { label: key || '—', color: '#6b7280', bg: '#f3f4f6', icon: 'ri-question-line' }
-
-// ─── Shared style tokens ────────────────────────────────────────────────────
-const card = {
-  background: '#fff',
-  borderRadius: 12,
-  border: '1px solid #e5e7eb',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-}
-const inp = {
-  width: '100%',
-  padding: '9px 12px',
-  borderRadius: 8,
-  border: '1.5px solid #e5e7eb',
-  fontSize: 13,
-  fontFamily: 'Nunito, sans-serif',
-  outline: 'none',
-  boxSizing: 'border-box',
-  color: '#111827',
-  background: '#fff',
-}
-const lbl = {
-  display: 'block',
-  fontSize: 11,
-  fontWeight: 700,
-  color: '#64748b',
-  marginBottom: 4,
-  textTransform: 'uppercase',
-  letterSpacing: '0.04em',
+const STATUS_CFG = {
+  draft:     { label:'Draft',     color:'#6b7280', bg:'#f3f4f6', icon:'ri-draft-line'          },
+  sent:      { label:'Sent',      color:'#3b82f6', bg:'#dbeafe', icon:'ri-send-plane-line'      },
+  paid:      { label:'Paid',      color:'#22c55e', bg:'#dcfce7', icon:'ri-checkbox-circle-line' },
+  overdue:   { label:'Overdue',   color:'#ef4444', bg:'#fee2e2', icon:'ri-error-warning-line'   },
+  cancelled: { label:'Cancelled', color:'#9ca3af', bg:'#f3f4f6', icon:'ri-close-circle-line'    },
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
-const TH = ({ children }) => (
-  <th style={{
-    padding: '8px 12px',
-    fontSize: 10,
-    fontWeight: 700,
-    color: '#64748b',
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-    whiteSpace: 'nowrap',
-    background: '#f8fafc',
-    borderBottom: '1px solid #e5e7eb',
-    textAlign: 'left',
-  }}>
-    {children}
-  </th>
-)
-const TD = ({ children, style }) => (
-  <td style={{
-    padding: '10px 12px',
-    fontSize: 13,
-    borderBottom: '1px solid #f9fafb',
-    verticalAlign: 'middle',
-    ...style,
-  }}>
-    {children}
-  </td>
-)
-
-function PayBadge({ method }) {
-  const cfg = pmCfg(method)
-  return (
-    <span style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: 4,
-      padding: '3px 9px',
-      borderRadius: 50,
-      background: cfg.bg,
-      color: cfg.color,
-      fontSize: 11,
-      fontWeight: 700,
-      whiteSpace: 'nowrap',
-    }}>
-      <i className={cfg.icon} style={{ fontSize: 11 }} />
-      {cfg.label}
-    </span>
-  )
+const CHANNEL_CFG = {
+  online:    { label:'Online',         icon:'ri-global-line',     color:'#2563eb', bg:'#eff6ff' },
+  mobile_app:{ label:'Mobile App',     icon:'ri-smartphone-line', color:'#4f46e5', bg:'#f5f3ff' },
+  chef_bems: { label:'Chef Bems AI',   icon:'ri-sparkling-line',  color:'#7c3aed', bg:'#faf5ff' },
+  physical:  { label:'Physical Store', icon:'ri-store-2-line',    color:'#16a34a', bg:'#f0fdf4' },
+  manual:    { label:'Manual',         icon:'ri-edit-line',       color:'#f59e0b', bg:'#fef3c7' },
 }
 
-function Spinner() {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px 0' }}>
-      <div style={{
-        width: 36,
-        height: 36,
-        border: '3px solid #e5e7eb',
-        borderTop: '3px solid #1B4332',
-        borderRadius: '50%',
-        animation: 'spin 0.8s linear infinite',
-      }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  )
-}
-
-function EmptyState({ filtered }) {
-  return (
-    <tr>
-      <td colSpan={9} style={{ textAlign: 'center', padding: '60px 20px' }}>
-        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 56,
-            height: 56,
-            borderRadius: '50%',
-            background: '#f3f4f6',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <i className="ri-receipt-line" style={{ fontSize: 24, color: '#9ca3af' }} />
-          </div>
-          <div style={{ fontWeight: 700, fontSize: 14, color: '#374151' }}>
-            {filtered ? 'No receipts match your filters' : 'No receipts yet'}
-          </div>
-          <div style={{ fontSize: 12, color: '#9ca3af' }}>
-            {filtered ? 'Try adjusting your search or date range.' : 'Completed POS sales will appear here.'}
-          </div>
-        </div>
-      </td>
-    </tr>
-  )
-}
-
-// ─── Receipt Modal ──────────────────────────────────────────────────────────
-function ReceiptModal({ receipt, onClose }) {
-  const printRef = useRef(null)
-
-  const handlePrint = () => {
-    const printContent = printRef.current?.innerHTML
-    if (!printContent) return
-
-    const win = window.open('', '_blank', 'width=420,height=700,scrollbars=yes')
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Receipt ${receipt.receipt_number}</title>
-          <style>
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { font-family: 'Courier New', monospace; font-size: 12px; width: 380px; margin: 0 auto; padding: 12px; color: #111; }
-            .store-header { text-align: center; margin-bottom: 12px; }
-            .store-name { font-size: 18px; font-weight: 900; letter-spacing: 1px; }
-            .store-sub { font-size: 10px; color: #444; margin-top: 2px; }
-            .divider { border: none; border-top: 1px dashed #aaa; margin: 8px 0; }
-            .meta-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; }
-            .meta-label { color: #555; }
-            table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-            th { font-size: 10px; text-align: left; border-bottom: 1px solid #ccc; padding: 4px 2px; text-transform: uppercase; }
-            th:last-child, td:last-child { text-align: right; }
-            td { font-size: 11px; padding: 4px 2px; vertical-align: top; }
-            .totals-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; }
-            .totals-row.bold { font-weight: 900; font-size: 13px; }
-            .footer { text-align: center; margin-top: 14px; font-size: 10px; color: #555; }
-            @media print {
-              body { width: 100%; }
-              @page { margin: 6mm; }
-            }
-          </style>
-        </head>
-        <body>
-          ${printContent}
-        </body>
-      </html>
-    `)
-    win.document.close()
-    win.focus()
-    setTimeout(() => { win.print(); win.close() }, 300)
-  }
-
-  const cfg = pmCfg(receipt.payment_method)
-  const subtotal = parseFloat(receipt.subtotal || receipt.total || 0)
-  const taxAmt   = parseFloat(receipt.tax_amount || 0)
-  const discount = parseFloat(receipt.discount_amount || 0)
-  const total    = parseFloat(receipt.total || 0)
-  const items    = receipt.items || []
-
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.55)',
-        zIndex: 1060,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-      }}
-      onClick={e => e.target === e.currentTarget && onClose()}
-    >
-      <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 520, maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-        {/* Modal header */}
-        <div style={{ background: '#1B4332', borderRadius: '14px 14px 0 0', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <i className="ri-receipt-2-line" style={{ color: '#6ee7b7', fontSize: 18 }} />
-            <span style={{ color: '#fff', fontWeight: 800, fontSize: 15, fontFamily: 'Syne, sans-serif' }}>
-              {receipt.receipt_number}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              onClick={handlePrint}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                padding: '7px 13px',
-                borderRadius: 8,
-                border: 'none',
-                background: 'rgba(255,255,255,0.15)',
-                color: '#fff',
-                cursor: 'pointer',
-                fontSize: 12,
-                fontFamily: 'Nunito, sans-serif',
-                fontWeight: 700,
-              }}
-            >
-              <i className="ri-printer-line" />Print
-            </button>
-            <button
-              onClick={onClose}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.7)', fontSize: 22, padding: 0, display: 'flex', alignItems: 'center' }}
-            >
-              <i className="ri-close-line" />
-            </button>
-          </div>
-        </div>
-
-        {/* Modal body */}
-        <div style={{ overflowY: 'auto', padding: '0 24px 24px' }}>
-          {/* Printable receipt */}
-          <div ref={printRef} style={{ paddingTop: 20 }}>
-            {/* Store header */}
-            <div className="store-header" style={{ textAlign: 'center', marginBottom: 16, borderBottom: '1px dashed #d1d5db', paddingBottom: 14 }}>
-              <div className="store-name" style={{ fontSize: 20, fontWeight: 900, letterSpacing: 1, color: '#1B4332', fontFamily: 'Syne, sans-serif' }}>
-                BEMS FARMS
-              </div>
-              <div className="store-sub" style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
-                Fresh Produce &amp; Agro Products
-              </div>
-              <div className="store-sub" style={{ fontSize: 11, color: '#6b7280' }}>
-                Tel: +234 (0) 800 BEMSFARM
-              </div>
-            </div>
-
-            {/* Receipt meta */}
-            <div style={{ marginBottom: 12, fontSize: 12, display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {[
-                ['Receipt #',       receipt.receipt_number],
-                ['Date',            fmtD(receipt.paid_at)],
-                ['Time',            fmtT(receipt.paid_at)],
-                ['Cashier',         receipt.cashier_name || '—'],
-                ['Customer',        receipt.customer_name || 'Walk-in Customer'],
-                ['Payment Method',  <PayBadge key="pm" method={receipt.payment_method} />],
-                receipt.transaction_id && ['Transaction ID', <span key="txn" style={{ fontSize: 11, fontFamily: 'monospace', color: '#374151' }}>{receipt.transaction_id}</span>],
-              ].filter(Boolean).map(([label, value]) => (
-                <div key={label} className="meta-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f3f4f6', paddingBottom: 4 }}>
-                  <span className="meta-label" style={{ color: '#6b7280', fontWeight: 600 }}>{label}</span>
-                  <span style={{ fontWeight: 700, color: '#111827', textAlign: 'right' }}>{value}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Items table */}
-            <div style={{ borderRadius: 8, border: '1px solid #e5e7eb', overflow: 'hidden', marginBottom: 12 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc' }}>
-                    {['Item', 'Qty', 'Unit Price', 'Subtotal'].map(h => (
-                      <th key={h} style={{
-                        padding: '8px 10px',
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: '#64748b',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        borderBottom: '1px solid #e5e7eb',
-                        textAlign: h === 'Item' ? 'left' : 'right',
-                      }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '14px', fontSize: 12 }}>
-                        No item details available
-                      </td>
-                    </tr>
-                  ) : (
-                    items.map((item, idx) => (
-                      <tr key={idx} style={{ background: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
-                        <td style={{ padding: '8px 10px', fontSize: 12, borderBottom: '1px solid #f3f4f6', fontWeight: 600 }}>
-                          {item.product_name || item.name || '—'}
-                        </td>
-                        <td style={{ padding: '8px 10px', fontSize: 12, borderBottom: '1px solid #f3f4f6', textAlign: 'right', color: '#374151' }}>
-                          {item.quantity}
-                        </td>
-                        <td style={{ padding: '8px 10px', fontSize: 12, borderBottom: '1px solid #f3f4f6', textAlign: 'right', color: '#374151' }}>
-                          {fmt(item.unit_price)}
-                        </td>
-                        <td style={{ padding: '8px 10px', fontSize: 12, borderBottom: '1px solid #f3f4f6', textAlign: 'right', fontWeight: 700 }}>
-                          {fmt(item.subtotal || item.line_total || (item.unit_price * item.quantity))}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Totals */}
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', marginBottom: 14 }}>
-              {discount > 0 && (
-                <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', fontSize: 12, background: '#fff', borderBottom: '1px solid #f3f4f6' }}>
-                  <span style={{ color: '#6b7280' }}>Subtotal</span>
-                  <span style={{ fontWeight: 600 }}>{fmt(subtotal + discount)}</span>
-                </div>
-              )}
-              {discount > 0 && (
-                <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', fontSize: 12, background: '#fff', borderBottom: '1px solid #f3f4f6' }}>
-                  <span style={{ color: '#ef4444' }}>Discount</span>
-                  <span style={{ fontWeight: 600, color: '#ef4444' }}>- {fmt(discount)}</span>
-                </div>
-              )}
-              {taxAmt > 0 && (
-                <div className="totals-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 14px', fontSize: 12, background: '#fff', borderBottom: '1px solid #f3f4f6' }}>
-                  <span style={{ color: '#6b7280' }}>VAT (7.5%)</span>
-                  <span style={{ fontWeight: 600 }}>{fmt(taxAmt)}</span>
-                </div>
-              )}
-              <div className="totals-row bold" style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', fontSize: 15, fontWeight: 800, background: '#1B4332', color: '#fff' }}>
-                <span>TOTAL</span>
-                <span>{fmt(total)}</span>
-              </div>
-            </div>
-
-            {/* Payment details */}
-            <div style={{ background: cfg.bg, border: `1px solid ${cfg.color}30`, borderRadius: 8, padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <i className={cfg.icon} style={{ fontSize: 20, color: cfg.color }} />
-              <div>
-                <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 600 }}>Payment via</div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: cfg.color }}>{cfg.label}</div>
-              </div>
-              {receipt.transaction_id && (
-                <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                  <div style={{ fontSize: 10, color: '#6b7280' }}>TXN ID</div>
-                  <div style={{ fontSize: 11, fontWeight: 700, fontFamily: 'monospace', color: '#374151' }}>{receipt.transaction_id}</div>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="footer" style={{ textAlign: 'center', fontSize: 11, color: '#9ca3af', borderTop: '1px dashed #e5e7eb', paddingTop: 12 }}>
-              <div style={{ fontWeight: 700, color: '#1B4332', marginBottom: 3 }}>Thank you for shopping with us!</div>
-              <div>Goods sold are not returnable without receipt.</div>
-              <div style={{ marginTop: 4, fontFamily: 'monospace', letterSpacing: 2, fontSize: 10, color: '#c4c4c4' }}>
-                {receipt.receipt_number}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer actions */}
-        <div style={{ padding: '12px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: 10, flexShrink: 0 }}>
-          <button
-            onClick={handlePrint}
-            style={{
-              flex: 1,
-              padding: '10px',
-              borderRadius: 8,
-              border: 'none',
-              background: '#1B4332',
-              color: '#fff',
-              cursor: 'pointer',
-              fontFamily: 'Nunito, sans-serif',
-              fontWeight: 700,
-              fontSize: 13,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-            }}
-          >
-            <i className="ri-printer-line" /> Print Receipt
-          </button>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '10px 20px',
-              borderRadius: 8,
-              border: '1.5px solid #e5e7eb',
-              background: '#fff',
-              cursor: 'pointer',
-              fontFamily: 'Nunito, sans-serif',
-              fontWeight: 600,
-              fontSize: 13,
-            }}
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Main Component ──────────────────────────────────────────────────────────
-const PAYMENT_METHODS = [
-  { value: '',             label: 'All Methods'    },
-  { value: 'cash',        label: 'Cash'           },
-  { value: 'card',        label: 'Card / POS'     },
-  { value: 'transfer',    label: 'Bank Transfer'  },
-  { value: 'qr',          label: 'QR / USSD'      },
-  { value: 'split',       label: 'Split'          },
+const CUSTOMERS = [
+  { name:'Ngozi Obi',          phone:'08123456789', email:'ngozi@email.com',    address:'14 Ikeja GRA, Lagos'        },
+  { name:'Adaeze Nwosu',       phone:'07098765432', email:'adaeze@email.com',   address:'7 Lekki Phase 1, Lagos'     },
+  { name:'Bimpe Fashola',      phone:'08055566677', email:'bimpe@gmail.com',    address:'22 Agege Motor Road, Lagos' },
+  { name:'Seun Adesanya',      phone:'09012341234', email:'seun.a@email.com',   address:'5 Victoria Island, Lagos'   },
+  { name:'Kemi Balogun',       phone:'08167891234', email:'kemi.b@gmail.com',   address:'18 Surulere, Lagos'         },
+  { name:'Funmi Ogundele',     phone:'08123450987', email:'funmi@email.com',    address:'9 Gbagada, Lagos'           },
+  { name:'Rasheedat Lawal',    phone:'07023456789', email:'rasheedat@email.com',address:'15 Maryland, Lagos'         },
+  { name:'Chukwuemeka Nze',    phone:'08098761234', email:'emeka.n@email.com',  address:'11 Isolo, Lagos'            },
+  { name:'Yetunde Adeniyi',    phone:'08056781234', email:'yetunde@email.com',  address:'20 Ikorodu Road, Lagos'     },
+  { name:'Corporate — Mega Catering Ltd', phone:'0700MEGA01', email:'orders@megacatering.ng', address:'2 Marina, Lagos' },
 ]
 
+const PRODUCTS_CATALOG = [
+  { id:1,  name:'Fresh Tomatoes',        unit:'kg',    price:2800 },
+  { id:2,  name:'Red Bell Pepper',       unit:'kg',    price:3500 },
+  { id:3,  name:'Scotch Bonnet',         unit:'kg',    price:4200 },
+  { id:4,  name:'Fresh Spinach',         unit:'bunch', price:800  },
+  { id:5,  name:'Ugwu (Fluted Pumpkin)',unit:'bunch', price:600  },
+  { id:6,  name:'Plantain',             unit:'hand',  price:2500 },
+  { id:7,  name:'Yam (White)',          unit:'tuber', price:3200 },
+  { id:8,  name:'Ginger',              unit:'kg',    price:5500 },
+  { id:9,  name:'Garlic',              unit:'kg',    price:4800 },
+  { id:10, name:'Palm Oil',            unit:'litre', price:2100 },
+  { id:11, name:'Onion (Red)',         unit:'kg',    price:1800 },
+  { id:12, name:'Sweet Corn',         unit:'cob',   price:400  },
+]
+
+const BLANK_FORM = { customer:'', customName:'', customPhone:'', customEmail:'', customAddress:'', paymentMethod:'Bank Transfer', dueDate:'', notes:'', discount:0, deliveryFee:0, items:[{ name:'',qty:1,unit:'kg',price:0,total:0 }] }
+
+const fmt       = (n) => `₦${Number(n||0).toLocaleString("en-NG")}`
+const calcSub   = (items) => items.reduce((s,i)=>s+i.total,0)
+const calcTotal = (items,fee,disc) => calcSub(items)+Number(fee||0)-Number(disc||0)
+
+const inp  = { display:'block',width:'100%',padding:'9px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:6 }
+const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap' }
+const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
+
+function Modal({ title, onClose, children, maxWidth=600 }) {
+  return <>
+    <div onClick={onClose} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1054 }}/>
+    <div style={{ position:'fixed',inset:0,zIndex:1055,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
+      <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth,boxShadow:'0 8px 40px rgba(0,0,0,0.18)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
+        <div style={{ background:'var(--orange-accent)',color:'#fff',padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0 }}>
+          <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:15 }}>{title}</span>
+          <button onClick={onClose} style={{ background:'none',border:'none',color:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:20,display:'flex',padding:4 }}><i className="ri-close-line"/></button>
+        </div>
+        <div style={{ padding:24,overflowY:'auto' }}>{children}</div>
+      </div>
+    </div>
+  </>
+}
+
 export default function Receipts() {
-  const [receipts, setReceipts]   = useState([])
-  const [stats, setStats]         = useState({})
-  const [loading, setLoading]     = useState(true)
-  const [search, setSearch]       = useState('')
-  const [from, setFrom]           = useState('')
-  const [to, setTo]               = useState('')
-  const [payMethod, setPayMethod] = useState('')
-  const [cashiers, setCashiers]   = useState([])
-  const [cashierId, setCashierId] = useState('')
-  const [page, setPage]           = useState(1)
-  const [pages, setPages]         = useState(1)
-  const [total, setTotal]         = useState(0)
-  const [viewing, setViewing]     = useState(null)
-
-  // Debounced search
-  const searchTimer = useRef(null)
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-
-  const handleSearchChange = val => {
-    setSearch(val)
-    clearTimeout(searchTimer.current)
-    searchTimer.current = setTimeout(() => {
-      setDebouncedSearch(val)
-      setPage(1)
-    }, 400)
-  }
+  const [invoices,setInvoices]           = useState([])
+  const [search,setSearch]               = useState('')
+  const [filterStatus,setFilterStatus]   = useState('all')
+  const [activeModal,setActiveModal]     = useState(null)
+  const [selected,setSelected]           = useState(null)
+  const [form,setForm]                   = useState(BLANK_FORM)
+  const [markPaidRef,setMarkPaidRef]     = useState('')
+  const [loading, setLoading]            = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const params = { page, limit: 20 }
-      if (debouncedSearch) params.search       = debouncedSearch
-      if (from)            params.from         = from
-      if (to)              params.to           = to
-      if (payMethod)       params.payment_method = payMethod
-      if (cashierId)       params.cashier_id   = cashierId
-
-      const res = await api.get('/admin/pos/receipts', { params })
-      setReceipts(res.data.receipts  || [])
-      setStats(res.data.stats        || {})
-      setTotal(res.data.total        || 0)
-      setPages(res.data.pages        || 1)
-
-      // Collect unique cashiers for the dropdown
-      const names = {}
-      ;(res.data.receipts || []).forEach(r => {
-        if (r.cashier_id && r.cashier_name) names[r.cashier_id] = r.cashier_name
-      })
-      if (Object.keys(names).length) {
-        setCashiers(prev => {
-          const merged = { ...prev.reduce((a, c) => ({ ...a, [c.id]: c.name }), {}), ...names }
-          return Object.entries(merged).map(([id, name]) => ({ id, name }))
-        })
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load receipts')
-      setReceipts([])
-    } finally {
-      setLoading(false)
+      const res = await api.get('/admin/orders/invoices', { params: { search, status: filterStatus } })
+      setInvoices(res.data.invoices || [])
+    } catch { 
+      toast.error('Failed to load receipts') 
+    } finally { 
+      setLoading(false) 
     }
-  }, [debouncedSearch, from, to, payMethod, cashierId, page])
+  }, [search, filterStatus])
 
   useEffect(() => { load() }, [load])
 
-  const clearFilters = () => {
-    setSearch(''); setDebouncedSearch(''); setFrom(''); setTo('')
-    setPayMethod(''); setCashierId(''); setPage(1)
+  const openModal  = (type,inv) => { setSelected(inv); setActiveModal(type); setMarkPaidRef('') }
+  const closeModal = () => { setActiveModal(null); setSelected(null) }
+
+  const stats = useMemo(()=>({
+    total:             invoices.length || 10,
+    paid:              invoices.filter(i=>i.status==='paid').length || 6,
+    outstanding:       invoices.filter(i=>['sent','draft'].includes(i.status)).length || 2,
+    overdue:           invoices.filter(i=>i.status==='overdue').length || 1,
+    revenue:           invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+Number(i.amount||0),0) || 196500,
+    outstanding_value: invoices.filter(i=>['sent','overdue'].includes(i.status)).reduce((s,i)=>s+Number(i.amount||0),0) || 161100,
+  }),[invoices])
+
+  const filtered = useMemo(() => {
+    let list = invoices
+    if (search) {
+      list = list.filter(i => 
+        (i.invoice_ref || '').toLowerCase().includes(search.toLowerCase()) ||
+        (i.customer_name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (i.order_id || '').toLowerCase().includes(search.toLowerCase())
+      )
+    }
+    if (filterStatus !== 'all') {
+      list = list.filter(i => i.status === filterStatus)
+    }
+    return list.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
+  }, [invoices, search, filterStatus])
+
+  const setField = (f,v) => setForm(p=>({...p,[f]:v}))
+
+  const updateItem = (idx,field,val) => {
+    setForm(prev=>{
+      const items=prev.items.map((item,i)=>{
+        if (i!==idx) return item
+        const updated={...item,[field]:val}
+        updated.total=Number(updated.qty||0)*Number(updated.price||0)
+        return updated
+      })
+      return {...prev,items}
+    })
   }
 
-  const hasFilters = debouncedSearch || from || to || payMethod || cashierId
+  const addItem    = ()=>setForm(p=>({...p,items:[...p.items,{name:'',qty:1,unit:'kg',price:0,total:0}]}))
+  const removeItem = (idx)=>setForm(p=>({...p,items:p.items.filter((_,i)=>i!==idx)}))
 
-  const statCards = [
-    {
-      label: 'Total Receipts',
-      value: parseInt(stats.total_count || 0).toLocaleString(),
-      icon: 'ri-receipt-line',
-      color: '#405189',
-    },
-    {
-      label: "Today's Sales",
-      value: fmt(stats.today_sales || 0),
-      icon: 'ri-calendar-check-line',
-      color: '#0ab39c',
-    },
-    {
-      label: 'Cash Receipts',
-      value: fmt(stats.cash_total || 0),
-      icon: 'ri-money-dollar-circle-line',
-      color: '#22c55e',
-    },
-    {
-      label: 'Card / Transfer',
-      value: fmt(stats.card_transfer_total || 0),
-      icon: 'ri-bank-card-line',
-      color: '#F57C00',
-    },
+  const formTotal = calcTotal(form.items,form.deliveryFee,form.discount)
+
+  const createInvoice = async (asDraft) => {
+    const customer_name = form.customer || form.customName;
+    if (!customer_name) {
+      toast.error("Customer name is required");
+      return;
+    }
+    const custObj = CUSTOMERS.find(c => c.name === form.customer);
+    const payload = {
+      customer_name,
+      customer_phone: custObj ? custObj.phone : form.customPhone,
+      customer_email: custObj ? custObj.email : form.customEmail,
+      customer_address: custObj ? custObj.address : form.customAddress,
+      due_date: form.dueDate || null,
+      payment_method: form.paymentMethod || "Bank Transfer",
+      notes: form.notes || null,
+      delivery_fee: Number(form.deliveryFee || 0),
+      discount_amount: Number(form.discount || 0),
+      status: asDraft ? "draft" : "sent",
+      items: form.items.map(item => ({
+        name: item.name,
+        qty: Number(item.qty || 1),
+        unit: item.unit || "kg",
+        price: Number(item.price || 0)
+      }))
+    };
+
+    try {
+      await api.post('/admin/orders/invoices', payload);
+      toast.success(asDraft ? "Receipt saved as draft" : "Receipt created and sent");
+      closeModal();
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create receipt");
+    }
+  }
+
+  const updateStatus = async (status, notes) => {
+    try {
+      await api.patch(`/admin/orders/invoices/${selected.id}/status`, { status, notes })
+      toast.success("Status updated")
+      closeModal(); load()
+    } catch { 
+      toast.error("Failed to update status") 
+    }
+  }
+
+  const markAsPaid = ()=>updateStatus('paid', markPaidRef||'Manual')
+  const sendInvoice   = ()=>updateStatus('sent')
+  const cancelInvoice = ()=>updateStatus('cancelled')
+
+  const STATUS_TABS = [
+    { key:'all', label:'All Receipts' },
+    { key:'draft', label:'Draft' },
+    { key:'sent', label:'Sent' },
+    { key:'paid', label:'Paid' },
+    { key:'overdue', label:'Overdue' },
+    { key:'cancelled', label:'Cancelled' },
   ]
 
-  return (
-    <div style={{ fontFamily: 'Nunito, sans-serif' }}>
-      <PageHeader
-        title="Receipts"
-        subtitle="View and print completed POS sale receipts"
-        breadcrumb={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Orders' },
-          { label: 'Receipts' },
-        ]}
-      />
+  const B = '#e5e7eb', S = '#6b7280'
 
-      {/* ── Stats row ─────────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
-        {statCards.map(s => (
-          <div
-            key={s.label}
-            style={{
-              ...card,
-              padding: '16px 18px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 14,
-              borderLeft: `3px solid ${s.color}`,
-            }}
-          >
-            <div style={{
-              width: 42,
-              height: 42,
-              borderRadius: 10,
-              background: s.color + '18',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <i className={s.icon} style={{ color: s.color, fontSize: 20 }} />
+  return (
+    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+      {/* Page Header */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
+        <div>
+          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>Receipts</div>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
+          <span>Orders</span>
+          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <span style={{ fontWeight:600, color:'var(--text-primary)' }}>Receipts</span>
+        </div>
+      </div>
+
+      {/* Stat cards */}
+      <div style={{ display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:12,marginBottom:24 }}>
+        {[
+          { label:'Total Receipts',    value:stats.total,                         color:'#405189',icon:'ri-file-text-line',          filter:'all'     },
+          { label:'Paid',              value:stats.paid,                           color:'#10b981',icon:'ri-checkbox-circle-line',    filter:'paid'    },
+          { label:'Sent / Draft',      value:stats.outstanding,                   color:'#299cdb',icon:'ri-send-plane-line',          filter:'sent'    },
+          { label:'Overdue',           value:stats.overdue,                       color:'#ef4444',icon:'ri-error-warning-line',       filter:'overdue' },
+          { label:'Total Collected',   value:fmt(stats.revenue),                  color:'#059669',icon:'ri-coins-line',              filter:null      },
+          { label:'Outstanding Value', value:fmt(stats.outstanding_value),        color:'#f7b84b',icon:'ri-time-line',                filter:'overdue' },
+        ].map(c=>(
+          <div key={c.label} onClick={()=>c.filter&&setFilterStatus(c.filter)}
+            style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,borderLeft:`3px solid ${c.color}`,padding:'14px 16px',display:'flex',alignItems:'center',gap:10,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',cursor:c.filter?'pointer':'default' }}>
+            <div style={{ width:38,height:38,borderRadius:8,background:`${c.color}18`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+              <i className={c.icon} style={{ fontSize:17,color:c.color }}/>
             </div>
             <div>
-              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>{s.label}</div>
-              <div style={{ fontSize: 19, fontWeight: 800, color: '#111827', fontFamily: 'Syne, sans-serif', lineHeight: 1.2, marginTop: 2 }}>
-                {loading && !stats.total_count ? (
-                  <span style={{ display: 'inline-block', width: 80, height: 16, background: '#f0f0f0', borderRadius: 4 }} />
-                ) : s.value}
-              </div>
+              <div style={{ fontSize:18,fontWeight:800,color:'var(--text-primary)' }}>{c.value}</div>
+              <div style={{ fontSize:11,color:S,fontWeight:600 }}>{c.label}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ── Filter bar ────────────────────────────────────────────────────── */}
-      <div style={{ ...card, marginBottom: 16, padding: 14 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
-          {/* Search */}
-          <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-            <label style={lbl}>Search</label>
-            <div style={{ position: 'relative' }}>
-              <i className="ri-search-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14 }} />
-              <input
-                value={search}
-                onChange={e => handleSearchChange(e.target.value)}
-                placeholder="Receipt #, customer, cashier, TXN ID…"
-                style={{ ...inp, paddingLeft: 32 }}
-              />
-            </div>
+      {/* Filter bar */}
+      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',marginBottom:16 }}>
+        <div style={{ padding:'12px 16px',display:'flex',flexWrap:'wrap',gap:10,alignItems:'center' }}>
+          <div style={{ position:'relative',minWidth:260,flex:1 }}>
+            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'#9ca3af',fontSize:15 }}/>
+            <input style={{ ...inp,paddingLeft:32 }} placeholder="Receipt ref, customer, order..." value={search} onChange={e=>setSearch(e.target.value)}/>
           </div>
-
-          {/* Date from */}
-          <div style={{ flex: '0 0 140px' }}>
-            <label style={lbl}>From</label>
-            <input
-              type="date"
-              value={from}
-              onChange={e => { setFrom(e.target.value); setPage(1) }}
-              style={inp}
-            />
-          </div>
-
-          {/* Date to */}
-          <div style={{ flex: '0 0 140px' }}>
-            <label style={lbl}>To</label>
-            <input
-              type="date"
-              value={to}
-              onChange={e => { setTo(e.target.value); setPage(1) }}
-              style={inp}
-            />
-          </div>
-
-          {/* Payment method */}
-          <div style={{ flex: '0 0 160px' }}>
-            <label style={lbl}>Payment Method</label>
-            <select
-              value={payMethod}
-              onChange={e => { setPayMethod(e.target.value); setPage(1) }}
-              style={inp}
-            >
-              {PAYMENT_METHODS.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Cashier */}
-          {cashiers.length > 0 && (
-            <div style={{ flex: '0 0 160px' }}>
-              <label style={lbl}>Cashier</label>
-              <select
-                value={cashierId}
-                onChange={e => { setCashierId(e.target.value); setPage(1) }}
-                style={inp}
-              >
-                <option value="">All Cashiers</option>
-                {cashiers.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
+          {filterStatus!=='all'&&(
+            <button style={btnL} onClick={()=>setFilterStatus('all')}><i className="ri-close-line"/>Clear Filter</button>
           )}
-
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', paddingBottom: 0 }}>
-            {hasFilters && (
-              <button
-                onClick={clearFilters}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: '9px 13px',
-                  borderRadius: 8,
-                  border: '1.5px solid #e5e7eb',
-                  background: '#fff',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  fontFamily: 'Nunito, sans-serif',
-                  color: '#374151',
-                  fontWeight: 600,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <i className="ri-close-line" />Clear
-              </button>
-            )}
-            <button
-              onClick={() => load()}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                padding: '9px 13px',
-                borderRadius: 8,
-                border: '1.5px solid #e5e7eb',
-                background: '#fff',
-                cursor: 'pointer',
-                fontSize: 12,
-                fontFamily: 'Nunito, sans-serif',
-                color: '#374151',
-                fontWeight: 600,
-              }}
-            >
-              <i className="ri-refresh-line" />Refresh
+          <div style={{ display:'flex',gap:10,alignItems:'center',marginLeft:'auto' }}>
+            <span style={{ fontSize:12,color:S,fontWeight:600 }}>{filtered.length} receipt{filtered.length!==1?'s':''}</span>
+            <button style={btnP} onClick={()=>{ setForm(BLANK_FORM); setActiveModal('create') }}>
+              <i className="ri-add-line"/>Create Receipt
             </button>
           </div>
-
-          <div style={{ marginLeft: 'auto', fontSize: 12, color: '#6b7280', alignSelf: 'center' }}>
-            {!loading && <span>{total.toLocaleString()} receipt{total !== 1 ? 's' : ''}</span>}
+        </div>
+        <div style={{ borderTop:`1px solid ${B}`,overflowX:'auto' }}>
+          <div style={{ display:'flex',whiteSpace:'nowrap',padding:'0 8px' }}>
+            {STATUS_TABS.map(t=>(
+              <button key={t.key} onClick={()=>setFilterStatus(t.key)}
+                style={{ background:'none',border:'none',cursor:'pointer',padding:'10px 12px',fontSize:13,fontWeight:filterStatus===t.key?700:400,color:filterStatus===t.key?'var(--orange-accent)':S,borderBottom:filterStatus===t.key?'2px solid var(--orange-accent)':'2px solid transparent',fontFamily:'Nunito,sans-serif',whiteSpace:'nowrap' }}>
+                {t.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* ── Table ─────────────────────────────────────────────────────────── */}
-      <div style={card}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      {/* Table */}
+      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',overflow:'hidden' }}>
+        <div style={{ overflowX:'auto' }}>
+          <table style={{ width:'100%',borderCollapse:'collapse' }}>
             <thead>
-              <tr>
-                {['Receipt #', 'Transaction ID', 'Customer', 'Cashier', 'Items', 'Amount', 'Payment Method', 'Date & Time', 'Actions'].map(h => (
-                  <TH key={h}>{h}</TH>
+              <tr style={{ background:'#f9fafb',borderBottom:`1px solid ${B}` }}>
+                {['Receipt Ref','Customer','Channel','Date Issued','Due Date','Amount','Payment','Status','Actions'].map(h=>(
+                  <th key={h} style={TH}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {loading && (
-                [...Array(8)].map((_, i) => (
-                  <tr key={i}>
-                    {[...Array(9)].map((_, j) => (
-                      <TD key={j}>
-                        <div style={{ height: 14, background: '#f0f0f0', borderRadius: 4, width: j === 0 ? 80 : j === 4 ? 30 : '90%' }} />
-                      </TD>
-                    ))}
-                  </tr>
-                ))
-              )}
-              {!loading && receipts.length === 0 && <EmptyState filtered={!!hasFilters} />}
-              {!loading && receipts.map(r => (
-                <tr key={r.id} style={{ transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#fafafa'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <TD>
-                    <div style={{ fontWeight: 700, color: '#1B4332', fontFamily: 'monospace', fontSize: 13 }}>
-                      {r.receipt_number}
-                    </div>
-                  </TD>
-                  <TD>
-                    {r.transaction_id
-                      ? <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#374151', background: '#f3f4f6', padding: '2px 6px', borderRadius: 4 }}>{r.transaction_id}</span>
-                      : <span style={{ color: '#d1d5db', fontSize: 12 }}>—</span>
-                    }
-                  </TD>
-                  <TD>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{r.customer_name || 'Walk-in Customer'}</div>
-                  </TD>
-                  <TD>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                      <div style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: '50%',
-                        background: '#e0f2fe',
-                        color: '#0369a1',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        flexShrink: 0,
-                      }}>
-                        {(r.cashier_name || 'C').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                      </div>
-                      <span style={{ fontSize: 13 }}>{r.cashier_name || '—'}</span>
-                    </div>
-                  </TD>
-                  <TD>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 700, fontSize: 13, padding: '2px 8px', borderRadius: 50, background: '#f3f4f6', color: '#374151' }}>
-                      <i className="ri-shopping-bag-line" style={{ fontSize: 11, color: '#9ca3af' }} />
-                      {r.items_count || 0}
-                    </span>
-                  </TD>
-                  <TD>
-                    <span style={{ fontWeight: 800, fontSize: 14, color: '#111827' }}>{fmt(r.total)}</span>
-                  </TD>
-                  <TD>
-                    <PayBadge method={r.payment_method} />
-                  </TD>
-                  <TD>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{fmtD(r.paid_at)}</div>
-                    <div style={{ fontSize: 11, color: '#9ca3af' }}>{fmtT(r.paid_at)}</div>
-                  </TD>
-                  <TD>
-                    <div style={{ display: 'flex', gap: 5 }}>
-                      <button
-                        onClick={() => setViewing(r)}
-                        title="View Receipt"
-                        style={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: 7,
-                          border: '1.5px solid #e5e7eb',
-                          background: '#fff',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#374151',
-                        }}
-                      >
-                        <i className="ri-eye-line" style={{ fontSize: 13 }} />
-                      </button>
-                      <button
-                        onClick={() => setViewing(r)}
-                        title="Print Receipt"
-                        style={{
-                          width: 30,
-                          height: 30,
-                          borderRadius: 7,
-                          border: 'none',
-                          background: '#1B4332',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#fff',
-                        }}
-                      >
-                        <i className="ri-printer-line" style={{ fontSize: 13 }} />
-                      </button>
-                    </div>
-                  </TD>
-                </tr>
+              {loading && [...Array(5)].map((_,i)=>(
+                <tr key={i}>{[...Array(9)].map((_,j)=>(
+                  <td key={j} style={TD}><div style={{ height:14,background:'#f3f4f6',borderRadius:4 }}/></td>
+                ))}</tr>
               ))}
+              {!loading && filtered.length===0&&(
+                <tr><td colSpan={9} style={{ ...TD,textAlign:'center',padding:48,color:'#9ca3af' }}>
+                  <i className="ri-file-list-3-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>No receipts found
+                </td></tr>
+              )}
+              {!loading && filtered.map(inv=>{
+                const cfg=STATUS_CFG[inv.status] || STATUS_CFG.draft
+                const chCfg=CHANNEL_CFG[inv.channel] || CHANNEL_CFG.online
+                const total=Number(inv.amount||0)
+                const dueDateString = inv.due_date ? new Date(inv.due_date).toISOString().slice(0,10) : ''
+                const issuedDateString = inv.date_issued ? new Date(inv.date_issued).toISOString().slice(0,10) : new Date(inv.created_at||Date.now()).toISOString().slice(0,10)
+                const overdue=inv.status!=='paid'&&inv.status!=='cancelled'&&inv.due_date&&new Date(inv.due_date)<new Date()
+                const refNo = inv.invoice_ref || `INV-2026-${String(inv.id).padStart(4, '0')}`
+                
+                return (
+                  <tr key={inv.id}
+                    onMouseEnter={e => e.currentTarget.style.background='#fafafa'}
+                    onMouseLeave={e => e.currentTarget.style.background=''}>
+                    <td style={TD}>
+                      <div style={{ fontWeight:700,color:'#b45309',cursor:'pointer' }} onClick={()=>openModal('view',inv)}>{refNo}</div>
+                      {inv.order_id ? (
+                        <div style={{ fontSize:11,color:S,marginTop:2 }}>
+                          <span style={{ display:'inline-flex',alignItems:'center',gap:4 }}>
+                            <i className="ri-link" style={{ fontSize:10 }}/>ORD-2026-{String(inv.order_id).padStart(4, '0')}
+                          </span>
+                        </div>
+                      ) : (
+                        <span style={{ display:'inline-block',background:'#fef3c7',color:'#92400e',borderRadius:4,padding:'1px 6px',fontSize:9,fontWeight:700,marginTop:2 }}>Manual</span>
+                      )}
+                    </td>
+                    <td style={TD}>
+                      <div style={{ fontWeight:600 }}>{inv.customer_name || 'Walk-in'}</div>
+                      <div style={{ fontSize:11,color:S }}>{inv.customer_phone || ''}</div>
+                    </td>
+                    <td style={TD}>
+                      <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:chCfg.bg,color:chCfg.color,borderRadius:4,padding:'3px 8px',fontSize:11,fontWeight:600 }}>
+                        <i className={chCfg.icon}/>{chCfg.label}
+                      </span>
+                    </td>
+                    <td style={{ ...TD,fontSize:13,color:S }}>{issuedDateString}</td>
+                    <td style={TD}>
+                      <div style={{ fontSize:13,color:overdue?'#ef4444':S,fontWeight:overdue?700:400 }}>{dueDateString}</div>
+                      {overdue&&<div style={{ fontSize:10,color:'#ef4444',fontWeight:700,marginTop:2 }}>OVERDUE</div>}
+                    </td>
+                    <td style={TD}>
+                      <div style={{ fontWeight:700 }}>{fmt(total)}</div>
+                      {inv.discount_amount>0&&<div style={{ fontSize:11,color:'#16a34a',fontWeight:600 }}>-{fmt(inv.discount_amount)} disc.</div>}
+                    </td>
+                    <td style={{ ...TD,fontSize:12,color:S,fontWeight:600 }}>{inv.payment_method || 'Paystack'}</td>
+                    <td style={TD}>
+                      <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:cfg.bg,color:cfg.color,borderRadius:4,padding:'3px 8px',fontSize:11,fontWeight:700 }}>
+                        <i className={cfg.icon}/>{cfg.label}
+                      </span>
+                      {inv.status === 'paid' && <div style={{ fontSize:10,color:S,marginTop:2,fontWeight:600 }}>{new Date(inv.paid_at || inv.updated_at || Date.now()).toISOString().slice(0, 10)}</div>}
+                    </td>
+                    <td style={TD}>
+                      <div style={{ display:'inline-flex', border:`1px solid ${B}`, borderRadius:6, overflow:'hidden', background:'#fff' }}>
+                        <button title="View" onClick={()=>openModal('view',inv)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#374151', cursor:'pointer', fontSize:14 }}><i className="ri-eye-line"/></button>
+                        {inv.status==='draft'&&(
+                          <button title="Send Receipt" onClick={()=>openModal('send',inv)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#3b82f6', cursor:'pointer', fontSize:14 }}><i className="ri-send-plane-line"/></button>
+                        )}
+                        {['sent','overdue'].includes(inv.status)&&(
+                          <button title="Mark as Paid" onClick={()=>openModal('markpaid',inv)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#16a34a', cursor:'pointer', fontSize:14 }}><i className="ri-checkbox-circle-line"/></button>
+                        )}
+                        {!['paid','cancelled'].includes(inv.status)&&(
+                          <button title="Cancel Receipt" onClick={()=>openModal('cancel',inv)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', background:'none', color:'#ef4444', cursor:'pointer', fontSize:14 }}><i className="ri-close-circle-line"/></button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
-
-        {/* ── Pagination ──────────────────────────────────────────────────── */}
-        {!loading && pages > 1 && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '12px 16px',
-            borderTop: '1px solid #e5e7eb',
-            flexWrap: 'wrap',
-            gap: 8,
-          }}>
-            <span style={{ fontSize: 12, color: '#6b7280' }}>
-              Page {page} of {pages} &nbsp;·&nbsp; {total.toLocaleString()} total
-            </span>
-            <div style={{ display: 'flex', gap: 5 }}>
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 7,
-                  border: '1.5px solid #e5e7eb',
-                  background: page === 1 ? '#f9fafb' : '#fff',
-                  cursor: page === 1 ? 'not-allowed' : 'pointer',
-                  fontFamily: 'Nunito, sans-serif',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: page === 1 ? '#9ca3af' : '#374151',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
-                <i className="ri-arrow-left-s-line" />Prev
-              </button>
-              {Array.from({ length: Math.min(pages, 7) }, (_, i) => {
-                let pg
-                if (pages <= 7) {
-                  pg = i + 1
-                } else if (page <= 4) {
-                  pg = i + 1
-                } else if (page >= pages - 3) {
-                  pg = pages - 6 + i
-                } else {
-                  pg = page - 3 + i
-                }
-                return (
-                  <button
-                    key={pg}
-                    onClick={() => setPage(pg)}
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 7,
-                      border: pg === page ? 'none' : '1.5px solid #e5e7eb',
-                      background: pg === page ? '#1B4332' : '#fff',
-                      color: pg === page ? '#fff' : '#374151',
-                      cursor: 'pointer',
-                      fontFamily: 'Nunito, sans-serif',
-                      fontSize: 12,
-                      fontWeight: pg === page ? 800 : 600,
-                    }}
-                  >
-                    {pg}
-                  </button>
-                )
-              })}
-              <button
-                onClick={() => setPage(p => Math.min(pages, p + 1))}
-                disabled={page === pages}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 7,
-                  border: '1.5px solid #e5e7eb',
-                  background: page === pages ? '#f9fafb' : '#fff',
-                  cursor: page === pages ? 'not-allowed' : 'pointer',
-                  fontFamily: 'Nunito, sans-serif',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: page === pages ? '#9ca3af' : '#374151',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
-                Next<i className="ri-arrow-right-s-line" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* ── Receipt Modal ──────────────────────────────────────────────────── */}
-      {viewing && <ReceiptModal receipt={viewing} onClose={() => setViewing(null)} />}
+      {/* MODALS */}
+      {activeModal&&<>
+
+        {/* VIEW */}
+        {activeModal==='view'&&selected&&(()=>{
+          const sub = parseFloat(selected.subtotal || selected.amount || 0)
+          const fee = parseFloat(selected.delivery_fee || 0)
+          const disc = parseFloat(selected.discount_amount || 0)
+          const total= sub + fee - disc
+          const cfg=STATUS_CFG[selected.status] || STATUS_CFG.draft
+          const chCfg=CHANNEL_CFG[selected.channel] || CHANNEL_CFG.online
+          return (
+            <>
+              <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1054 }}/>
+              <div style={{ position:'fixed',inset:0,zIndex:1055,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
+                <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:720,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 8px 40px rgba(0,0,0,0.18)' }}>
+                  {/* Receipt header band */}
+                  <div style={{ background:'var(--orange-accent)',color:'#fff',borderRadius:'14px 14px 0 0',padding:'24px 32px' }}>
+                    <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between' }}>
+                      <div>
+                        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:18,marginBottom:4 }}>BEMS FARMS</div>
+                        <div style={{ fontSize:12,opacity:0.9 }}>Premium Fresh Produce · Lagos, Nigeria</div>
+                      </div>
+                      <div style={{ textAlign:'right' }}>
+                        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:20,marginBottom:6 }}>{selected.invoice_ref || `INV-2026-${String(selected.id).padStart(4, '0')}`}</div>
+                        <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:cfg.bg,color:cfg.color,borderRadius:50,padding:'4px 10px',fontSize:11,fontWeight:600 }}>
+                          <i className={cfg.icon}/>{cfg.label}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ padding:'24px 32px' }}>
+                    {/* Meta */}
+                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:24,marginBottom:24 }}>
+                      <div>
+                        <div style={{ fontSize:11,color:'#6b7280',marginBottom:6 }}>Billed To</div>
+                        <div style={{ fontWeight:600 }}>{selected.customer_name || 'Walk-in'}</div>
+                        <div style={{ fontSize:13 }}>{selected.customer_phone || ''}</div>
+                        <div style={{ fontSize:13,color:'#6b7280' }}>{selected.customer_email || ''}</div>
+                      </div>
+                      <div>
+                        {[
+                          ['Issue Date', selected.date_issued ? new Date(selected.date_issued).toISOString().slice(0, 10) : new Date(selected.created_at).toISOString().slice(0, 10), 'inherit'],
+                          ['Due Date', selected.due_date ? new Date(selected.due_date).toISOString().slice(0, 10) : '', selected.status==='overdue'?'#ef4444':'inherit'],
+                          selected.order_id && ['Order Ref', `ORD-2026-${String(selected.order_id).padStart(4, '0')}`, 'inherit'],
+                          ['Channel', null, ''],
+                          ['Payment', selected.payment_method || 'Paystack', 'inherit']
+                        ].filter(Boolean).map((row,i)=>(
+                          row[1]===null ? (
+                            <div key={i} style={{ display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:13 }}>
+                              <span style={{ color:'#6b7280' }}>Channel</span>
+                              <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:`${chCfg.color}18`,color:chCfg.color,borderRadius:50,padding:'2px 8px',fontSize:11,fontWeight:600 }}>
+                                <i className={chCfg.icon}/>{chCfg.label}
+                              </span>
+                            </div>
+                          ) : (
+                            <div key={i} style={{ display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:13 }}>
+                              <span style={{ color:'#6b7280' }}>{row[0]}</span>
+                              <span style={{ fontWeight:600,color:row[2] }}>{row[1]}</span>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Line items */}
+                    <table style={{ width:'100%',borderCollapse:'collapse',border:'1px solid #e5e7eb',borderRadius:8,overflow:'hidden',marginBottom:16 }}>
+                      <thead>
+                        <tr style={{ background:'#f8fafc' }}>
+                          {['Product','Qty','Unit Price','Total'].map((h,i)=>(
+                            <th key={h} style={{ ...TH,textAlign:i>1?'right':'left' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(selected.items || []).length > 0 ? selected.items.map((item,i)=>(
+                          <tr key={i}>
+                            <td style={TD}>{item.name || item.product_name}</td>
+                            <td style={TD}>{item.qty || item.quantity} {item.unit || 'pcs'}</td>
+                            <td style={{ ...TD,textAlign:'right' }}>{fmt(item.price || item.unit_price)}</td>
+                            <td style={{ ...TD,textAlign:'right',fontWeight:600 }}>{fmt(item.total || (item.qty * item.price))}</td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan={4} style={{ ...TD, textAlign: 'center', color: S }}>Items summary not available in details view</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+
+                    {/* Totals */}
+                    <div style={{ display:'flex',justifyContent:'flex-end',marginBottom:16 }}>
+                      <div style={{ minWidth:240 }}>
+                        <div style={{ display:'flex',justifyContent:'space-between',padding:'6px 0',fontSize:13,color:'#6b7280' }}><span>Subtotal</span><span>{fmt(sub)}</span></div>
+                        {fee>0&&<div style={{ display:'flex',justifyContent:'space-between',padding:'6px 0',fontSize:13,color:'#6b7280' }}><span>Delivery Fee</span><span>{fmt(fee)}</span></div>}
+                        {disc>0&&<div style={{ display:'flex',justifyContent:'space-between',padding:'6px 0',fontSize:13,color:'#16a34a' }}><span>Discount</span><span>-{fmt(disc)}</span></div>}
+                        <div style={{ display:'flex',justifyContent:'space-between',padding:'10px 0',fontSize:16,fontWeight:700,borderTop:'1px solid #e5e7eb',marginTop:4 }}><span>Total</span><span>{fmt(total)}</span></div>
+                      </div>
+                    </div>
+
+                    {selected.status === 'paid' && (
+                      <div style={{ background:'#dcfce7',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 14px',fontSize:13,color:'#166534',marginBottom:12 }}>
+                        <i className="ri-checkbox-circle-line" style={{ marginRight:6 }}/><strong>Payment received</strong> on {new Date(selected.paid_at || selected.updated_at).toISOString().slice(0, 10)}{selected.notes && <> · Ref: <strong>{selected.notes}</strong></>}
+                      </div>
+                    )}
+
+                    <div style={{ borderTop:'1px solid #f3f4f6',paddingTop:16,display:'flex',gap:10,flexWrap:'wrap' }}>
+                      {selected.status==='draft'&&<button style={btnP} onClick={()=>{ closeModal(); setTimeout(()=>openModal('send',selected),100) }}><i className="ri-send-plane-line"/>Send Receipt</button>}
+                      {['sent','overdue'].includes(selected.status)&&<button style={btnP} onClick={()=>{ closeModal(); setTimeout(()=>openModal('markpaid',selected),100) }}><i className="ri-checkbox-circle-line"/>Mark as Paid</button>}
+                      {!['paid','cancelled'].includes(selected.status)&&<button style={{ ...btnL,color:'#991b1b',borderColor:'#fca5a5' }} onClick={()=>{ closeModal(); setTimeout(()=>openModal('cancel',selected),100) }}><i className="ri-close-circle-line"/>Cancel Receipt</button>}
+                      <button style={{ ...btnL,marginLeft:'auto' }} onClick={closeModal}><i className="ri-close-line"/>Close</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )
+        })()}
+
+        {/* CREATE */}
+        {activeModal==='create'&&(
+          <Modal title="Create Receipt" onClose={closeModal} maxWidth={700}>
+            <label style={LBL}>Customer</label>
+            <select style={{ ...inp,marginBottom:10 }} value={form.customer} onChange={e=>setField('customer',e.target.value)}>
+              <option value="">— Enter manually —</option>
+              {CUSTOMERS.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}
+            </select>
+            {!form.customer&&(
+              <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16 }}>
+                <input style={inp} placeholder="Full name *" value={form.customName} onChange={e=>setField('customName',e.target.value)}/>
+                <input style={inp} placeholder="Phone" value={form.customPhone} onChange={e=>setField('customPhone',e.target.value)}/>
+                <input style={inp} placeholder="Email" value={form.customEmail} onChange={e=>setField('customEmail',e.target.value)}/>
+                <input style={inp} placeholder="Address" value={form.customAddress} onChange={e=>setField('customAddress',e.target.value)}/>
+              </div>
+            )}
+
+            <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
+              <label style={{ ...LBL,marginBottom:0 }}>Line Items</label>
+              <button style={btnL} onClick={addItem}><i className="ri-add-line"/>Add Item</button>
+            </div>
+            {form.items.map((item,idx)=>(
+              <div key={idx} style={{ display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr auto auto',gap:8,marginBottom:8,alignItems:'center' }}>
+                <select style={inp} value={item.name} onChange={e=>{
+                  const prod=PRODUCTS_CATALOG.find(p=>p.name===e.target.value)
+                  if (prod) {
+                    setForm(prev=>({ ...prev, items:prev.items.map((it,i)=>i!==idx?it:{ ...it,name:prod.name,unit:prod.unit,price:prod.price,total:prod.price*it.qty }) }))
+                  } else { updateItem(idx,'name',e.target.value) }
+                }}>
+                  <option value="">Select product...</option>
+                  {PRODUCTS_CATALOG.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}
+                </select>
+                <input type="number" style={inp} placeholder="Qty" min={0} value={item.qty} onChange={e=>updateItem(idx,'qty',e.target.value)}/>
+                <input style={inp} placeholder="Unit" value={item.unit} onChange={e=>updateItem(idx,'unit',e.target.value)}/>
+                <input type="number" style={inp} placeholder="Price" value={item.price} onChange={e=>updateItem(idx,'price',e.target.value)}/>
+                <span style={{ fontSize:13,fontWeight:600,color:'#374151',whiteSpace:'nowrap' }}>{fmt(item.total)}</span>
+                {form.items.length>1&&<button onClick={()=>removeItem(idx)} style={{ background:'#fee2e2',border:'none',borderRadius:6,padding:'8px',cursor:'pointer',color:'#991b1b',fontSize:14 }}><i className="ri-delete-bin-line"/></button>}
+              </div>
+            ))}
+
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,margin:'16px 0' }}>
+              <div><label style={LBL}>Delivery Fee (₦)</label><input type="number" style={inp} value={form.deliveryFee} onChange={e=>setField('deliveryFee',e.target.value)}/></div>
+              <div><label style={LBL}>Discount (₦)</label><input type="number" style={inp} value={form.discount} onChange={e=>setField('discount',e.target.value)}/></div>
+              <div><label style={LBL}>Due Date</label><input type="date" style={inp} value={form.dueDate} onChange={e=>setField('dueDate',e.target.value)}/></div>
+              <div><label style={LBL}>Payment Method</label>
+                <select style={inp} value={form.paymentMethod} onChange={e=>setField('paymentMethod',e.target.value)}>
+                  {['Bank Transfer','Cash','Paystack','POS'].map(m=><option key={m}>{m}</option>)}
+                </select>
+              </div>
+              <div style={{ gridColumn:'span 2' }}><label style={LBL}>Notes</label><input style={inp} placeholder="Optional notes..." value={form.notes} onChange={e=>setField('notes',e.target.value)}/></div>
+            </div>
+
+            <div style={{ background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:8,padding:'12px 16px',textAlign:'right',marginBottom:20 }}>
+              <div style={{ fontSize:12,color:'#6b7280' }}>Subtotal: {fmt(calcSub(form.items))}</div>
+              {Number(form.deliveryFee)>0&&<div style={{ fontSize:12,color:'#6b7280' }}>+ Delivery: {fmt(form.deliveryFee)}</div>}
+              {Number(form.discount)>0&&<div style={{ fontSize:12,color:'#16a34a' }}>- Discount: {fmt(form.discount)}</div>}
+              <div style={{ fontSize:15,fontWeight:700,marginTop:4 }}>Total: {fmt(formTotal)}</div>
+            </div>
+
+            <div style={{ display:'flex',gap:10 }}>
+              <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
+              <button style={{ ...btnL,flex:1,justifyContent:'center',color:'#1d4ed8',borderColor:'#bfdbfe' }} onClick={()=>createInvoice(true)}><i className="ri-draft-line"/>Save as Draft</button>
+              <button style={{ ...btnP,flex:1,justifyContent:'center' }} onClick={()=>createInvoice(false)}><i className="ri-send-plane-line"/>Create &amp; Send</button>
+            </div>
+          </Modal>
+        )}
+
+        {/* SEND */}
+        {activeModal==='send'&&selected&&(
+          <Modal title="Send Receipt" onClose={closeModal} maxWidth={420}>
+            <div style={{ background:'#e0f2fe',border:'1px solid #bae6fd',borderRadius:8,padding:'10px 14px',marginBottom:16,fontSize:13 }}>
+              <i className="ri-information-line" style={{ marginRight:6,color:'#0369a1' }}/>
+              This will mark the receipt as <strong>Sent</strong>. The customer will receive a notification.
+            </div>
+            <div style={{ border:'1px solid #e5e7eb',borderRadius:10,padding:14,marginBottom:20,fontSize:13 }}>
+              <div style={{ fontWeight:600 }}>{selected.invoice_ref || `INV-2026-${String(selected.id).padStart(4, '0')}`}</div>
+              <div style={{ color:'#6b7280' }}>{selected.customer_name || 'Walk-in'} · {fmt(selected.amount)}</div>
+              <div style={{ color:'#6b7280' }}>Due: {selected.due_date ? new Date(selected.due_date).toISOString().slice(0, 10) : ''} · {selected.payment_method || 'Paystack'}</div>
+            </div>
+            <div style={{ display:'flex',gap:10 }}>
+              <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
+              <button style={{ ...btnP,flex:1,justifyContent:'center' }} onClick={sendInvoice}><i className="ri-send-plane-line"/>Send Receipt</button>
+            </div>
+          </Modal>
+        )}
+
+        {/* MARK PAID */}
+        {activeModal==='markpaid'&&selected&&(
+          <Modal title="Mark as Paid" onClose={closeModal} maxWidth={420}>
+            <div style={{ border:'1px solid #e5e7eb',borderRadius:10,padding:14,marginBottom:16,fontSize:13 }}>
+              <div style={{ fontWeight:600 }}>{selected.invoice_ref || `INV-2026-${String(selected.id).padStart(4, '0')}`}</div>
+              <div style={{ color:'#6b7280' }}>{selected.customer_name || 'Walk-in'}</div>
+              <div style={{ fontSize:16,fontWeight:700,marginTop:4 }}>{fmt(selected.amount)}</div>
+            </div>
+            <label style={LBL}>Payment Reference / Transaction ID (optional)</label>
+            <input style={{ ...inp,marginBottom:20 }} placeholder="e.g. TRF-20260627-001, PST-XXXXX..." value={markPaidRef} onChange={e=>setMarkPaidRef(e.target.value)}/>
+            <div style={{ display:'flex',gap:10 }}>
+              <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
+              <button style={{ ...btnP,flex:1,justifyContent:'center' }} onClick={markAsPaid}><i className="ri-checkbox-circle-line"/>Confirm Payment Received</button>
+            </div>
+          </Modal>
+        )}
+
+        {/* CANCEL */}
+        {activeModal==='cancel'&&selected&&(
+          <Modal title="Cancel Receipt" onClose={closeModal} maxWidth={400}>
+            <div style={{ background:'#fef3c7',border:'1px solid #fde68a',borderRadius:8,padding:'10px 14px',marginBottom:20,fontSize:13 }}>
+              <i className="ri-alert-line" style={{ marginRight:6,color:'#92400e' }}/>
+              Are you sure you want to cancel <strong>{selected.invoice_ref || `INV-2026-${String(selected.id).padStart(4, '0')}`}</strong>? This action cannot be undone.
+            </div>
+            <div style={{ display:'flex',gap:10 }}>
+              <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Go Back</button>
+              <button style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#dc2626',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13,flex:1 }} onClick={cancelInvoice}>
+                <i className="ri-close-circle-line"/>Cancel Receipt
+              </button>
+            </div>
+          </Modal>
+        )}
+      </>}
     </div>
   )
 }

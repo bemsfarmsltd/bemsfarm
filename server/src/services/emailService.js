@@ -272,6 +272,47 @@ async function sendReferralUpgradeEmail(email, count, newCode) {
   });
 }
 
+async function sendLowStockAlertEmail(toEmail, items) {
+  const itemsHtml = items.map(item => `
+    <tr style="border-bottom: 1px solid #f3f4f6;">
+      <td style="padding: 10px; font-size: 13px; color: #111827;">${item.name}</td>
+      <td style="padding: 10px; font-size: 13px; color: #4B5563;">${item.sku || "N/A"}</td>
+      <td style="padding: 10px; font-size: 13px; font-weight: 700; color: #dc2626;">${item.stock}</td>
+      <td style="padding: 10px; font-size: 13px; color: #9CA3AF;">${item.low_stock_threshold}</td>
+    </tr>
+  `).join("");
+
+  return sendMail({
+    to: toEmail,
+    subject: "⚠️ Low Stock Alert: Items require replenishment",
+    html: `<div style="${emailStyles}">
+      ${header(`Low Stock Alert ⚠️`)}
+      <p style="color: #4B5563; line-height: 1.7;">
+        The following items have dropped below their designated reorder thresholds and require replenishment:
+      </p>
+      <table style="width: 100%; border-collapse: collapse; margin: 20px 0; text-align: left;">
+        <thead>
+          <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+            <th style="padding: 10px; font-size: 12px; font-weight: 700; color: #374151;">Product</th>
+            <th style="padding: 10px; font-size: 12px; font-weight: 700; color: #374151;">SKU</th>
+            <th style="padding: 10px; font-size: 12px; font-weight: 700; color: #dc2626;">Current Stock</th>
+            <th style="padding: 10px; font-size: 12px; font-weight: 700; color: #374151;">Threshold</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+      </table>
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="https://admin.bemsfarms.com/inventory" style="background: #dc2626; color: white; padding: 12px 28px;
+          border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 14px;
+          display: inline-block;">Manage Inventory →</a>
+      </div>
+      ${footer}
+    </div>`,
+  });
+}
+
 module.exports = {
   sendWelcomeEmail,
   sendOrderConfirmationEmail,
@@ -279,4 +320,5 @@ module.exports = {
   sendSubscriptionWelcomeEmail,
   sendPasswordResetEmail,
   sendReferralUpgradeEmail,
+  sendLowStockAlertEmail,
 };

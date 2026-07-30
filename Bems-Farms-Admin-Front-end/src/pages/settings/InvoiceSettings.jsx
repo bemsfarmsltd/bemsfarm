@@ -10,7 +10,7 @@ const NAV = [
   { label:'POS',          to:'/settings/pos'            },
   { label:'Payment',      to:'/settings/payment'        },
   { label:'Currencies',   to:'/settings/currencies'     },
-  { label:'Invoices',     to:'/settings/invoices'       },
+  { label:'Receipts',     to:'/settings/invoices'       },
   { label:'Manager',      to:'/settings/manager'        },
   { label:'Notifications',to:'/settings/notifications'  },
 ]
@@ -99,11 +99,11 @@ export default function InvoiceSettings() {
         <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
       ) : (
         <form onSubmit={handleSave}>
-          <Card title="Invoice Numbering" subtitle="Define the prefix and auto-increment pattern for invoice numbers.">
-            <Row label="Invoice Prefix" desc="Prepended to every invoice number (e.g. BEMS-INV-1001).">
+          <Card title="Receipts Numbering" subtitle="Define the prefix and auto-increment pattern for receipt numbers.">
+            <Row label="Receipt Prefix" desc="Prepended to every receipt number (e.g. BEMS-INV-1001).">
               <input style={inp} value={form.invoice_prefix} onChange={e=>set('invoice_prefix',e.target.value)} placeholder="BEMS-INV"/>
             </Row>
-            <Row label="Next Invoice Number" desc="The next number in the auto-increment sequence.">
+            <Row label="Next Receipt Number" desc="The next number in the auto-increment sequence.">
               <input type="number" style={inp} min={1} value={form.next_invoice_number} onChange={e=>set('next_invoice_number',parseInt(e.target.value)||1)}/>
             </Row>
             <div style={{ padding:'10px 14px',background:'#f0f4ff',borderRadius:8,fontSize:12,color:'#405189' }}>
@@ -111,8 +111,8 @@ export default function InvoiceSettings() {
             </div>
           </Card>
 
-          <Card title="Invoice Format" subtitle="Control how invoices look and what they display.">
-            <Row label="Payment Due Days" desc="Number of days after invoice date before payment is due.">
+          <Card title="Receipts Format" subtitle="Control how receipts look and what they display.">
+            <Row label="Payment Due Days" desc="Number of days after receipt date before payment is due.">
               <div style={{ display:'flex',alignItems:'center',gap:8 }}>
                 <input type="number" style={{ ...inp,width:100 }} min={0} value={form.due_days} onChange={e=>set('due_days',parseInt(e.target.value)||0)}/>
                 <span style={{ fontSize:13,color:S,fontWeight:600 }}>days</span>
@@ -120,14 +120,14 @@ export default function InvoiceSettings() {
             </Row>
           </Card>
 
-          <Card title="Invoice Content" subtitle="Footer and notes printed on every invoice.">
+          <Card title="Receipts Content" subtitle="Footer and notes printed on every receipt.">
             <div style={{ marginBottom:18 }}>
-              <label style={LBL}>Invoice Footer</label>
+              <label style={LBL}>Receipt Footer</label>
               <textarea style={{ ...inp,resize:'vertical' }} rows={3} value={form.invoice_footer} onChange={e=>set('invoice_footer',e.target.value)} placeholder="Thank you for your business!"/>
             </div>
             <div>
-              <label style={LBL}>Invoice Notes / Terms</label>
-              <textarea style={{ ...inp,resize:'vertical' }} rows={3} value={form.invoice_notes} onChange={e=>set('invoice_notes',e.target.value)} placeholder="Payment due within 7 days of invoice date."/>
+              <label style={LBL}>Receipt Notes / Terms</label>
+              <textarea style={{ ...inp,resize:'vertical' }} rows={3} value={form.invoice_notes} onChange={e=>set('invoice_notes',e.target.value)} placeholder="Payment due within 7 days of receipt date."/>
             </div>
           </Card>
 

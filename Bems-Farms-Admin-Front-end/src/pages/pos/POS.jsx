@@ -756,7 +756,7 @@ export default function POS() {
           <div style={{ display:'flex', borderTop:`1px solid ${B}`, background:'#fff' }}>
             {[
               { label:'Hold',    icon:'ri-pause-circle-line',   color:'#0ab39c', modal:'hold'     },
-              { label:'Invoice', icon:'ri-file-text-line',      color:'#f06548', modal:'invoice'  },
+              { label:'Receipts', icon:'ri-file-text-line',      color:'#f06548', modal:'invoice'  },
               { label:'Pay Later',icon:'ri-time-line',          color:'#f7b84b', modal:'paylater' },
               { label:'History', icon:'ri-folder-history-line', color:'#299cdb', modal:'history'  },
             ].map(b => (
@@ -1080,11 +1080,11 @@ export default function POS() {
         </ModalBox>
       )}
 
-      {/* INVOICE PREVIEW */}
+      {/* RECEIPTS PREVIEW */}
       {activeModal==='invoice' && (
         <ModalBox maxWidth={680}>
           <div style={{ background:'#fff', padding:'14px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', flexWrap:'wrap', gap:12, flexShrink:0 }}>
-            <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15, flex:1 }}>Invoice Preview</span>
+            <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15, flex:1 }}>Receipt Preview</span>
             <div style={{ display:'flex', gap:8 }}>
               {[['ri-file-pdf-2-line','PDF'],['ri-mail-line','Email'],['ri-printer-line','Print']].map(([icon,label])=>(
                 <button key={label} style={btnL}><i className={icon}/>{label}</button>
@@ -1166,13 +1166,13 @@ export default function POS() {
           <div style={{ padding:24, overflowY:'auto' }}>
             <div style={{ position:'relative', marginBottom:16 }}>
               <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:15 }}/>
-              <input style={{ ...inp, paddingLeft:34 }} placeholder="Search invoices…"/>
+              <input style={{ ...inp, paddingLeft:34 }} placeholder="Search receipts…"/>
             </div>
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
                   <tr style={{ background:BG2, borderBottom:`1px solid ${B}` }}>
-                    {['Invoice','Customer','Payment','Time','Amount','Actions'].map(h=>(
+                    {['Receipt','Customer','Payment','Time','Amount','Actions'].map(h=>(
                       <th key={h} style={{ padding:'10px 12px', fontSize:11, fontWeight:700, color:S, textTransform:'uppercase', letterSpacing:'.06em', textAlign:'left', whiteSpace:'nowrap' }}>{h}</th>
                     ))}
                   </tr>

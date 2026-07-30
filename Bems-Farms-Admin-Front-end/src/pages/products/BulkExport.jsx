@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react'
+import api from '../../lib/api'
+import toast from 'react-hot-toast'
 
 const EXPORT_TYPES = [
   { key:'products',       label:'Products',        icon:'ri-box-3-line',       color:'#0ab39c', fields:['Name','SKU','Barcode','Category','Sub-Category','Unit Price','Cost Price','Stock','Unit','Low Stock Alert','Tax %','Status','Description','Created'] },
@@ -50,13 +52,42 @@ export default function BulkExport() {
     }
   }
 
-  function handleExport() {
+  async function handleExport() {
+    if (selectedFormat !== 'CSV') {
+      toast.error('Only CSV format is currently supported for direct exports.')
+      return
+    }
     setExporting(true)
-    setTimeout(() => {
-      const fname = `${selectedType}_export_${new Date().toISOString().slice(0,10)}.${selectedFormat.toLowerCase()}`
-      setHistory(p=>[{ type:selectedType,file:fname,by:'Admin',rows:Math.floor(Math.random()*50+5),format:selectedFormat,date:new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),size:'— KB' },...p])
+    try {
+      const res = await api.get(`/admin/config/export`, {
+        params: { type: selectedType },
+        responseType: 'blob'
+      })
+      const blob = new Blob([res.data], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      const filename = `${selectedType}_export_${new Date().toISOString().slice(0,10)}.csv`
+      link.href = url
+      link.setAttribute('download', filename)
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode.removeChild(link)
+
+      setHistory(p => [{
+        type: selectedType,
+        file: filename,
+        by: 'Admin',
+        rows: 'All',
+        format: 'CSV',
+        date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        size: `${Math.round(blob.size / 1024)} KB`
+      }, ...p])
+      toast.success('Report exported successfully')
+    } catch {
+      toast.error('Failed to export data')
+    } finally {
       setExporting(false)
-    }, 1200)
+    }
   }
 
   const B = '#e5e7eb', S = '#6b7280'

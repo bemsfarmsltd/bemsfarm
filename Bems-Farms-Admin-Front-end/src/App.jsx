@@ -24,10 +24,10 @@ import ProductsList    from './pages/products/ProductsList'
 import AddProduct      from './pages/products/AddProduct'
 import Categories      from './pages/products/Categories'
 import SubCategories   from './pages/products/SubCategories'
-import Units           from './pages/products/Units'
 import Variants        from './pages/products/Variants'
 import Barcode         from './pages/products/Barcode'
 import BulkExport      from './pages/products/BulkExport'
+import BulkImport      from './pages/products/BulkImport'
 
 // Inventory
 import StockList       from './pages/inventory/StockList'
@@ -133,10 +133,10 @@ function App() {
               <Route path="/products/:id/edit"       element={<AddProduct />} />
               <Route path="/products/categories"     element={<Categories />} />
               <Route path="/products/sub-categories" element={<SubCategories />} />
-              <Route path="/products/units"          element={<Units />} />
               <Route path="/products/variants"       element={<Variants />} />
               <Route path="/products/barcode"        element={<Barcode />} />
               <Route path="/products/export"         element={<BulkExport />} />
+              <Route path="/products/import"         element={<BulkImport />} />
 
               <Route path="/inventory/stock"      element={<StockList />} />
               <Route path="/inventory/adjustment" element={<StockAdjustment />} />
