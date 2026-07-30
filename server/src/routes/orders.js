@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, requireRole } = require("../middleware/authMiddleware");
 const { trackActivity } = require("../utils/aiContext");
 
 // ─────────────────────────────────────────────
@@ -175,44 +175,44 @@ router.get("/:id", protect, async (req, res) => {
 // ─────────────────────────────────────────────
 // UPDATE ORDER STATUS (ADMIN ONLY - SIMPLE VERSION)
 // ─────────────────────────────────────────────
-router.patch("/:id/status", protect, async (req, res) => {
-  try {
-    // TEMP SIMPLE ADMIN CHECK
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin access required" });
-    }
+router.patch(
+  "/:id/status",
+  protect,
+  requireRole("superadmin", "admin", "manager", "delivery_manager"),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
 
-    const { id } = req.params;
-    const { status } = req.body;
+      if (!VALID_STATUSES.includes(status)) {
+        return res.status(400).json({
+          message: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}`,
+        });
+      }
 
-    if (!VALID_STATUSES.includes(status)) {
-      return res.status(400).json({
-        message: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}`,
-      });
-    }
-
-    const result = await pool.query(
-      `UPDATE orders
+      const result = await pool.query(
+        `UPDATE orders
        SET status = $1, updated_at = NOW()
        WHERE id = $2
        RETURNING *`,
-      [status, id],
-    );
+        [status, id],
+      );
 
-    if (!result.rows.length) {
-      return res.status(404).json({ message: "Order not found" });
+      if (!result.rows.length) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      res.json({
+        message: "Order status updated successfully",
+        order: result.rows[0],
+      });
+    } catch (err) {
+      res.status(500).json({
+        message: "Failed to update status: " + err.message,
+      });
     }
-
-    res.json({
-      message: "Order status updated successfully",
-      order: result.rows[0],
-    });
-  } catch (err) {
-    res.status(500).json({
-      message: "Failed to update status: " + err.message,
-    });
-  }
-});
+  },
+);
 
 // ─────────────────────────────────────────────
 // CANCEL ORDER

@@ -659,6 +659,50 @@ Tone: Warm, encouraging, practical — like a knowledgeable friend who loves coo
 
 Never claim to be human. You are an AI kitchen assistant. If asked something outside cooking/nutrition, gently redirect to food topics.`;
 
+// Extracts which real catalog products (if any) a Chef Bems reply recommends,
+// so the frontend can render "Add to Cart" buttons for them. Only used on the
+// local Gemini fallback path — the n8n webhook path supplies its own
+// relatedProducts. Same validate-against-real-catalog approach as
+// getAiProductMatches() in advanced-ai.js: Gemini can only pick from the exact
+// names it's given, and anything it returns is filtered against that list
+// before being trusted. Fails soft (returns []) so a bad extraction never
+// breaks the chat reply itself.
+async function matchProductsInReply(replyText, allProducts) {
+  if (!GEMINI_API_KEY || !replyText) return [];
+
+  const catalogNames = allProducts.map((p) => p.name);
+  const prompt = `Chef Bems (a Nigerian cooking assistant) just gave this reply to a customer:
+"${replyText}"
+
+Here is the FULL product catalog available (these are the ONLY valid product names):
+${catalogNames.map((n) => `- ${n}`).join("\n")}
+
+Which of these catalog products, if any, does the reply recommend or suggest the customer buy? Respond with ONLY a JSON array of product names copied EXACTLY as they appear in the list above. If none, respond with [].`;
+
+  try {
+    const text = await callGeminiRaw(prompt, { maxOutputTokens: 200, temperature: 0.2 });
+    const cleaned = text.trim().replace(/^```json\s*/i, "").replace(/```\s*$/i, "");
+    const suggestedNames = JSON.parse(cleaned);
+    if (!Array.isArray(suggestedNames)) return [];
+
+    const catalogSet = new Set(catalogNames);
+    const validNames = suggestedNames.filter((n) => catalogSet.has(n));
+
+    return allProducts
+      .filter((p) => validNames.includes(p.name))
+      .slice(0, 8)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        price: Math.round((p.price || 2000) * 1500),
+        unit: p.unit || "1 unit",
+      }));
+  } catch (err) {
+    console.warn("⚠️ Chef Bems product-match extraction failed:", err.message);
+    return [];
+  }
+}
+
 router.post("/chef-chat", async (req, res) => {
   try {
     const { message, history = [], cartItems = [], session_id, userPreferences = {} } = req.body;
@@ -757,7 +801,13 @@ router.post("/chef-chat", async (req, res) => {
           maybeSummarizeConversation(conversationId, callGeminiRaw);
         }
 
-        return res.json({ reply, source: "gemini" });
+        const productsResult = await pool.query(
+          `SELECT id, name, price, unit, stock FROM products
+           WHERE COALESCE(stock, 100) > 0 ORDER BY name ASC LIMIT 100`,
+        );
+        const relatedProducts = await matchProductsInReply(reply, productsResult.rows);
+
+        return res.json({ reply, relatedProducts, source: "gemini" });
       } catch (geminiErr) {
         console.warn("⚠️ Chef Bems Gemini failed:", geminiErr.message);
 

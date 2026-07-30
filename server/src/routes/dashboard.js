@@ -15,8 +15,8 @@ const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 
-// All dashboard routes require login
-router.use(protect);
+// All dashboard routes require staff-level access
+router.use(protect, requireRole("superadmin", "admin", "manager"));
 
 // ── HELPER: safe query (returns [] on error) ──────────────────────
 async function q(sql, params = []) {

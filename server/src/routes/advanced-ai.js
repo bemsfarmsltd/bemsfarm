@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
+const { protect, requireRole } = require("../middleware/authMiddleware");
 
 // ═══════════════════════════════════════════════════════════════
 // PHASE 3: SEMANTIC SEARCH — now a real hybrid system
@@ -307,7 +308,7 @@ const SEASONALITY_MULTIPLIERS = {
   },
 };
 
-router.post("/dynamic-pricing", async (req, res) => {
+router.post("/dynamic-pricing", protect, requireRole("superadmin", "admin", "manager"), async (req, res) => {
   try {
     const { product_id } = req.body;
     const result = await pool.query(
@@ -397,7 +398,7 @@ router.post("/dynamic-pricing", async (req, res) => {
 // PHASE 5: FRAUD DETECTION
 // ═══════════════════════════════════════════════════════════════
 
-router.post("/fraud-check", async (req, res) => {
+router.post("/fraud-check", protect, requireRole("superadmin", "admin", "manager"), async (req, res) => {
   try {
     const { user_id, order_amount, payment_method, behavior_metrics } = req.body;
     const riskFactors = [];
@@ -500,7 +501,7 @@ router.post("/fraud-check", async (req, res) => {
 // PHASE 6: DEMAND FORECASTING + INVENTORY ALERTS
 // ═══════════════════════════════════════════════════════════════
 
-router.get("/demand-forecast", async (req, res) => {
+router.get("/demand-forecast", protect, requireRole("superadmin", "admin", "manager"), async (req, res) => {
   try {
     const historical = await pool.query(`
       SELECT p.id, p.name,
@@ -567,7 +568,7 @@ router.get("/demand-forecast", async (req, res) => {
   }
 });
 
-router.get("/inventory-alerts", async (req, res) => {
+router.get("/inventory-alerts", protect, requireRole("superadmin", "admin", "manager"), async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT id, name,

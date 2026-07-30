@@ -26,6 +26,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const crypto = require("crypto");
+const { protect, requireRole } = require("../middleware/authMiddleware");
 
 // ── ZOHO TOKEN MANAGEMENT ────────────────────────────────────────
 // Zoho uses OAuth2. The access token expires every hour.
@@ -240,7 +241,7 @@ async function handleZohoSale(event) {
 // Admin can trigger this to pull current inventory from Zoho
 // and reconcile it with the BemsFarms database
 // ═══════════════════════════════════════════════════════════════
-router.get("/sync", async (req, res) => {
+router.get("/sync", protect, requireRole("superadmin", "admin", "manager"), async (req, res) => {
   try {
     if (!process.env.ZOHO_CLIENT_ID) {
       return res.status(503).json({
@@ -301,7 +302,7 @@ router.get("/sync", async (req, res) => {
 // Returns side-by-side view of online orders vs physical sales
 // for the admin reconciliation dashboard
 // ═══════════════════════════════════════════════════════════════
-router.get("/reconcile", async (req, res) => {
+router.get("/reconcile", protect, requireRole("superadmin", "admin", "manager"), async (req, res) => {
   try {
     const { from, to } = req.query;
     const fromDate =
@@ -367,7 +368,7 @@ router.get("/reconcile", async (req, res) => {
 });
 
 // ── ZOHO CONNECTION TEST ─────────────────────────────────────────
-router.get("/status", async (req, res) => {
+router.get("/status", protect, requireRole("superadmin", "admin", "manager"), async (req, res) => {
   const configured = !!(
     process.env.ZOHO_CLIENT_ID &&
     process.env.ZOHO_CLIENT_SECRET &&

@@ -731,6 +731,8 @@ router.get("/notifications", requireRole("superadmin", "manager"), async (req, r
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+});
+
 // ── POST /api/admin/deliveries/drivers/:id/location ─────────────────
 router.post("/drivers/:id/location", async (req, res) => {
   const { id } = req.params;

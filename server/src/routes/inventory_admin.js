@@ -816,6 +816,8 @@ router.get(
       res.status(500).json({ message: err.message });
     }
   }
+);
+
 // ── DELETE /api/admin/inventory/lost-items/:id ─────────────────────────
 router.delete(
   "/lost-items/:id",
