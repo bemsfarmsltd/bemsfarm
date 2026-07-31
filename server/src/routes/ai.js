@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const jwt  = require("jsonwebtoken");
+const { NAIRA_PER_UNIT } = require("../utils/currency");
 const {
   buildContextString,
   getOrCreateConversation,
@@ -242,7 +243,7 @@ router.post("/recommendations", async (req, res) => {
           matched.push({
             product_name: product.name,
             product_id: product.id,
-            price: Math.round((product.price || 2000) * 1500),
+            price: Math.round((product.price || 2000) * NAIRA_PER_UNIT),
             unit: product.unit || "1kg",
             reason: getPriorityReason(keyword, priority, dietary_need),
             suggested_quantity: getSuggestedQuantity(keyword, family_size),
@@ -323,7 +324,7 @@ router.post("/co-purchase", async (req, res) => {
     const recommendations = result.rows.map((r) => ({
       product_name: r.name,
       product_id: r.id,
-      price: Math.round((r.price || 2000) * 1500),
+      price: Math.round((r.price || 2000) * NAIRA_PER_UNIT),
       unit: r.unit,
       frequency: r.frequency,
       buyTogetherPercentage: r.buy_together_percentage,
@@ -496,7 +497,7 @@ router.post("/recipe-helper", async (req, res) => {
         ingredient_name: ingredient,
         product_id: product?.id || null,
         product_name: product?.name || ingredient,
-        price: product ? Math.round((product.price || 2000) * 1500) : null,
+        price: product ? Math.round((product.price || 2000) * NAIRA_PER_UNIT) : null,
         unit: product?.unit || "1 unit",
       };
     });
@@ -694,7 +695,7 @@ Which of these catalog products, if any, does the reply recommend or suggest the
       .map((p) => ({
         id: p.id,
         name: p.name,
-        price: Math.round((p.price || 2000) * 1500),
+        price: Math.round((p.price || 2000) * NAIRA_PER_UNIT),
         unit: p.unit || "1 unit",
       }));
   } catch (err) {
@@ -1043,7 +1044,7 @@ router.post("/visual-scan", async (req, res) => {
         relatedProducts.push({
           id: p.id,
           name: p.name,
-          price: Math.round((p.price || 2) * 1500),
+          price: Math.round((p.price || 2) * NAIRA_PER_UNIT),
           unit: p.unit || "1 unit",
           stock: p.stock
         });

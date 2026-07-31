@@ -27,6 +27,7 @@ const router = express.Router();
 const pool = require("../db/pool");
 const crypto = require("crypto");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { NAIRA_PER_UNIT } = require("../utils/currency");
 
 // ── ZOHO TOKEN MANAGEMENT ────────────────────────────────────────
 // Zoho uses OAuth2. The access token expires every hour.
@@ -213,7 +214,7 @@ async function handleZohoSale(event) {
         await client.query(
           `INSERT INTO order_items (order_id, product_id, quantity, price)
            VALUES ($1, $2, $3, $4)`,
-          [orderId, p.id, qty, parseFloat(item.rate || item.price || 0) / 1500],
+          [orderId, p.id, qty, parseFloat(item.rate || item.price || 0) / NAIRA_PER_UNIT],
         );
 
         console.log(

@@ -13,6 +13,7 @@ const express  = require("express");
 const router   = express.Router();
 const pool     = require("../db/pool");
 const jwt      = require("jsonwebtoken");
+const { NAIRA_PER_UNIT } = require("../utils/currency");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -184,7 +185,7 @@ router.post("/notify", async (req, res) => {
           }
 
           const priceInNaira = parseFloat(catalogueRow.unit_price || 0);
-          const priceInUsd = priceInNaira / 1500;
+          const priceInUsd = priceInNaira / NAIRA_PER_UNIT;
 
           const insertRes = await client.query(
             `INSERT INTO products 

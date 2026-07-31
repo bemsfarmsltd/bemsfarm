@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { NAIRA_PER_UNIT } = require("../utils/currency");
 
 // ═══════════════════════════════════════════════════════════════
 // PHASE 3: SEMANTIC SEARCH — now a real hybrid system
@@ -233,7 +234,7 @@ router.post("/semantic-search", async (req, res) => {
       results: results.map((p) => ({
         id: p.id,
         name: p.name,
-        price: Math.round((parseFloat(p.price) || 2) * 1500),
+        price: Math.round((parseFloat(p.price) || 2) * NAIRA_PER_UNIT),
         unit: p.unit,
         stock: p.stock,
       })),
@@ -321,7 +322,7 @@ router.post("/dynamic-pricing", protect, requireRole("superadmin", "admin", "man
     }
 
     const product = result.rows[0];
-    const basePrice = parseFloat(product.price) * 1500;
+    const basePrice = parseFloat(product.price) * NAIRA_PER_UNIT;
     const currentMonth = new Date().toLocaleString("en-US", { month: "short" });
     const currentStock = parseInt(product.stock) || 100;
 

@@ -1,5 +1,6 @@
 require("dotenv").config();
 const pool = require("../db/pool");
+const { NAIRA_PER_UNIT } = require("../utils/currency");
 
 // ── GET DASHBOARD STATS ──────────────────────────────────────
 const getStats = async (req, res) => {
@@ -37,7 +38,7 @@ const getStats = async (req, res) => {
       pool.query(`
         SELECT p.id, p.name, p.price, p.image_url,
           COALESCE(SUM(oi.quantity), 0) as total_sold,
-          COALESCE(SUM(oi.quantity * oi.price * 1500), 0) as revenue,
+          COALESCE(SUM(oi.quantity * oi.price * ${NAIRA_PER_UNIT}), 0) as revenue,
           COALESCE(p.stock, 100) as current_stock
         FROM products p
         LEFT JOIN order_items oi ON oi.product_id = p.id
