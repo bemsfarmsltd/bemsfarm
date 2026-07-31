@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -57,6 +57,8 @@ export default function LandingPage() {
   }, []);
 
   const [heroVisualIndex, setHeroVisualIndex] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const videoRef = useRef(null);
 
   // Rotate hero images and video
   useEffect(() => {
@@ -67,6 +69,16 @@ export default function LandingPage() {
     }, 4000);
 
     return () => clearTimeout(timer);
+  }, [heroVisualIndex]);
+
+  // Autoplay fallback checker
+  useEffect(() => {
+    if (heroVisualIndex === 5 && videoRef.current) {
+      videoRef.current.play().catch((err) => {
+        console.warn("Autoplay with audio blocked. Muting and retrying.", err);
+        setIsMuted(true);
+      });
+    }
   }, [heroVisualIndex]);
 
   return (
@@ -172,36 +184,50 @@ export default function LandingPage() {
             <motion.div
               animate={{ y: [0, -12, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="relative w-[280px] h-[280px] md:w-[430px] md:h-[430px] rounded-full overflow-hidden border-8 border-white shadow-2xl bg-white flex items-center justify-center"
+              className="relative w-[280px] h-[280px] md:w-[430px] md:h-[430px] rounded-full border-8 border-white shadow-2xl bg-white"
             >
-              <AnimatePresence>
-                {heroVisualIndex < 5 ? (
-                  <motion.img
-                    key={heroVisualIndex}
-                    src={HERO_IMAGES[heroVisualIndex]}
-                    alt="Fresh organic food plate"
-                    className="absolute w-full h-full object-cover"
-                    initial={{ opacity: 0, scale: 1.1, rotate: -5 }}
-                    animate={{ opacity: 1, scale: 1.05, rotate: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, rotate: 5 }}
-                    transition={{ duration: 1.0, ease: "easeInOut" }}
-                  />
-                ) : (
-                  <motion.video
-                    key="hero-video"
-                    src="https://res.cloudinary.com/dyzkjerez/video/upload/v1785505349/Create_a_Video_of_the_characte_xfqkn8.mp4"
-                    autoPlay
-                    muted
-                    playsInline
-                    onEnded={() => setHeroVisualIndex(0)}
-                    className="absolute w-full h-full object-cover"
-                    initial={{ opacity: 0, scale: 1.1 }}
-                    animate={{ opacity: 1, scale: 1.05 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 1.0, ease: "easeInOut" }}
-                  />
-                )}
-              </AnimatePresence>
+              <div className="w-full h-full rounded-full overflow-hidden relative flex items-center justify-center">
+                <AnimatePresence>
+                  {heroVisualIndex < 5 ? (
+                    <motion.img
+                      key={heroVisualIndex}
+                      src={HERO_IMAGES[heroVisualIndex]}
+                      alt="Fresh organic food plate"
+                      className="absolute w-full h-full object-cover"
+                      initial={{ opacity: 0, scale: 1.1, rotate: -5 }}
+                      animate={{ opacity: 1, scale: 1.05, rotate: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, rotate: 5 }}
+                      transition={{ duration: 1.0, ease: "easeInOut" }}
+                    />
+                  ) : (
+                    <motion.video
+                      key="hero-video"
+                      ref={videoRef}
+                      src="https://res.cloudinary.com/dyzkjerez/video/upload/v1785505349/Create_a_Video_of_the_characte_xfqkn8.mp4"
+                      autoPlay
+                      muted={isMuted}
+                      playsInline
+                      onEnded={() => setHeroVisualIndex(0)}
+                      className="absolute w-full h-full object-cover"
+                      initial={{ opacity: 0, scale: 1.1 }}
+                      animate={{ opacity: 1, scale: 1.05 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 1.0, ease: "easeInOut" }}
+                    />
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Sound Toggle Button */}
+              {heroVisualIndex === 5 && (
+                <button
+                  onClick={() => setIsMuted(!isMuted)}
+                  className="absolute bottom-6 left-6 md:left-12 z-20 w-10 h-10 rounded-full bg-white/90 hover:bg-white border border-gray-100 shadow-md flex items-center justify-center text-lg hover:scale-105 active:scale-95 transition-all"
+                  title={isMuted ? "Unmute" : "Mute"}
+                >
+                  {isMuted ? "🔇" : "🔊"}
+                </button>
+              )}
             </motion.div>
 
             {/* Floating Stars card */}
