@@ -37,7 +37,7 @@ const protect = async (req, res, next) => {
     }
 
     const result = await pool.query(
-      "SELECT id, name, email, role, status FROM users WHERE id = $1",
+      "SELECT id, name, email, role, status, token_version FROM users WHERE id = $1",
       [decoded.id],
     );
 
@@ -47,6 +47,18 @@ const protect = async (req, res, next) => {
 
     if (result.rows[0].status === "suspended") {
       return res.status(403).json({ message: "Account suspended" });
+    }
+
+    // Tokens issued before this field existed carry no tokenVersion claim —
+    // treat that as version 0 so already-issued valid sessions aren't broken
+    // by this rollout. Any token minted after a password reset always carries
+    // an explicit tokenVersion, so the check below still catches those.
+    const tokenVersion = decoded.tokenVersion || 0;
+    if (tokenVersion !== result.rows[0].token_version) {
+      return res.status(401).json({
+        message: "Session invalidated — please log in again",
+        code: "TOKEN_REVOKED",
+      });
     }
 
     req.user = result.rows[0];

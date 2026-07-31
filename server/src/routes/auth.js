@@ -20,7 +20,12 @@ if (!REFRESH_SECRET) {
 // ─────────────────────────────────────────────
 function generateAccessToken(user) {
   return jwt.sign(
-    { id: user.id, email: user.email, role: user.role || "user" },
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role || "user",
+      tokenVersion: user.token_version || 0,
+    },
     JWT_SECRET,
     { expiresIn: "7d" },
   );
@@ -394,8 +399,11 @@ router.post("/reset-password", async (req, res) => {
         .json({ message: "Invalid or expired reset token" });
 
     const hash = await bcrypt.hash(password, 12);
+    // Bump token_version (invalidates every already-issued access token via
+    // the check in protect()) and clear refresh_token (invalidates refresh
+    // tokens too) so a stolen session can't survive a password reset.
     await pool.query(
-      "UPDATE users SET password=$1, reset_token=NULL, reset_expires=NULL WHERE id=$2",
+      "UPDATE users SET password=$1, reset_token=NULL, reset_expires=NULL, token_version=token_version+1, refresh_token=NULL WHERE id=$2",
       [hash, decoded.id],
     );
 
