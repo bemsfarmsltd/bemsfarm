@@ -56,15 +56,18 @@ export default function LandingPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const [heroImageIndex, setHeroImageIndex] = useState(0);
+  const [heroVisualIndex, setHeroVisualIndex] = useState(0);
 
-  // Rotate hero images index
+  // Rotate hero images and video
   useEffect(() => {
-    const interval = setInterval(() => {
-      setHeroImageIndex((prev) => (prev + 1) % HERO_IMAGES.length);
+    if (heroVisualIndex === 5) return;
+
+    const timer = setTimeout(() => {
+      setHeroVisualIndex((prev) => prev + 1);
     }, 4000);
-    return () => clearInterval(interval);
-  }, []);
+
+    return () => clearTimeout(timer);
+  }, [heroVisualIndex]);
 
   return (
     <div className="min-h-screen bg-white text-gray-800 font-sans antialiased overflow-x-hidden">
@@ -171,17 +174,33 @@ export default function LandingPage() {
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
               className="relative w-[280px] h-[280px] md:w-[430px] md:h-[430px] rounded-full overflow-hidden border-8 border-white shadow-2xl bg-white flex items-center justify-center"
             >
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={heroImageIndex}
-                  src={HERO_IMAGES[heroImageIndex]}
-                  alt="Fresh organic food plate"
-                  className="absolute w-full h-full object-cover"
-                  initial={{ opacity: 0, scale: 1.1, rotate: -5 }}
-                  animate={{ opacity: 1, scale: 1.05, rotate: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, rotate: 5 }}
-                  transition={{ duration: 0.8, ease: "easeInOut" }}
-                />
+              <AnimatePresence>
+                {heroVisualIndex < 5 ? (
+                  <motion.img
+                    key={heroVisualIndex}
+                    src={HERO_IMAGES[heroVisualIndex]}
+                    alt="Fresh organic food plate"
+                    className="absolute w-full h-full object-cover"
+                    initial={{ opacity: 0, scale: 1.1, rotate: -5 }}
+                    animate={{ opacity: 1, scale: 1.05, rotate: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, rotate: 5 }}
+                    transition={{ duration: 1.0, ease: "easeInOut" }}
+                  />
+                ) : (
+                  <motion.video
+                    key="hero-video"
+                    src="https://res.cloudinary.com/dyzkjerez/video/upload/v1785505349/Create_a_Video_of_the_characte_xfqkn8.mp4"
+                    autoPlay
+                    muted
+                    playsInline
+                    onEnded={() => setHeroVisualIndex(0)}
+                    className="absolute w-full h-full object-cover"
+                    initial={{ opacity: 0, scale: 1.1 }}
+                    animate={{ opacity: 1, scale: 1.05 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 1.0, ease: "easeInOut" }}
+                  />
+                )}
               </AnimatePresence>
             </motion.div>
 
