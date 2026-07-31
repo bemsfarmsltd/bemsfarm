@@ -19,6 +19,14 @@ const LIVE_PRODUCTS = [
   { name: "Dried Crayfish", emoji: "🦐", category: "Seafood" },
 ];
 
+const HERO_IMAGES = [
+  "/fresh_salad_hero.png",
+  "/hero_food_1.jpg",
+  "/hero_food_2.jpg",
+  "/hero_food_3.jpg",
+  "/hero_food_4.jpg"
+];
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -45,6 +53,16 @@ export default function LandingPage() {
     const interval = setInterval(() => {
       setFeedIndex((prev) => (prev + 1) % LIVE_PRODUCTS.length);
     }, 2800);
+    return () => clearInterval(interval);
+  }, []);
+
+  const [heroImageIndex, setHeroImageIndex] = useState(0);
+
+  // Rotate hero images index
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHeroImageIndex((prev) => (prev + 1) % HERO_IMAGES.length);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -151,13 +169,20 @@ export default function LandingPage() {
             <motion.div
               animate={{ y: [0, -12, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="relative w-[280px] h-[280px] md:w-[430px] md:h-[430px] rounded-full overflow-hidden border-8 border-white shadow-2xl bg-white"
+              className="relative w-[280px] h-[280px] md:w-[430px] md:h-[430px] rounded-full overflow-hidden border-8 border-white shadow-2xl bg-white flex items-center justify-center"
             >
-              <img
-                src="/fresh_salad_hero.png"
-                alt="Fresh organic food plate"
-                className="w-full h-full object-cover scale-[1.05]"
-              />
+              <AnimatePresence mode="wait">
+                <motion.img
+                  key={heroImageIndex}
+                  src={HERO_IMAGES[heroImageIndex]}
+                  alt="Fresh organic food plate"
+                  className="absolute w-full h-full object-cover"
+                  initial={{ opacity: 0, scale: 1.1, rotate: -5 }}
+                  animate={{ opacity: 1, scale: 1.05, rotate: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, rotate: 5 }}
+                  transition={{ duration: 0.8, ease: "easeInOut" }}
+                />
+              </AnimatePresence>
             </motion.div>
 
             {/* Floating Stars card */}
