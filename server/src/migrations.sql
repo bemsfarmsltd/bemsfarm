@@ -802,3 +802,20 @@ ALTER TABLE invoices
   ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(50),
   ADD COLUMN IF NOT EXISTS customer_email VARCHAR(200),
   ADD COLUMN IF NOT EXISTS customer_address TEXT;
+
+-- ── 21. CUSTOMER ADDRESS BOOK ────────────────────────────────────
+-- ProfilePage.jsx's Address Book tab (Add/Edit/Delete/Save) had no
+-- backing table at all — every action was a no-op toast.
+CREATE TABLE IF NOT EXISTS user_addresses (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  label VARCHAR(50) NOT NULL DEFAULT 'Home',
+  receiver_name VARCHAR(100),
+  receiver_phone VARCHAR(30),
+  street_address TEXT NOT NULL,
+  city VARCHAR(100),
+  state VARCHAR(100),
+  is_default BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);

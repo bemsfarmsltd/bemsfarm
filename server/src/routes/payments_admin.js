@@ -149,7 +149,7 @@ router.post("/reconcile-manual", requireRole("superadmin", "manager", "admin", "
 
     // 2. Check if the order exists
     const orderCheck = await client.query(
-      "SELECT id, total, status FROM orders WHERE id = $1",
+      "SELECT id, total, status, payment_ref FROM orders WHERE id = $1",
       [order_id]
     );
 
@@ -159,6 +159,23 @@ router.post("/reconcile-manual", requireRole("superadmin", "manager", "admin", "
     }
 
     const order = orderCheck.rows[0];
+
+    if (order.status === "cancelled") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: `Order ${order_id} is cancelled and cannot be reconciled` });
+    }
+    if (order.payment_ref && order.payment_ref !== payment_ref) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: `Order ${order_id} is already linked to a different payment reference (${order.payment_ref})` });
+    }
+    const orderTotal = parseFloat(order.total) || 0;
+    const paidAmount = parseFloat(payment.amount) || 0;
+    if (Math.abs(paidAmount - orderTotal) > 1) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: `Amount mismatch: payment is ₦${paidAmount} but order total is ₦${orderTotal}. Reconciliation blocked — verify manually before retrying.`,
+      });
+    }
 
     // 3. Update the payment record to point to this order
     await client.query(

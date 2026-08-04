@@ -174,7 +174,7 @@ async function postTransaction(client, { bankAccountId, type, sourceType, source
 // ════════════════════════════════════════════════════════════════════════════
 // FINANCIAL OVERVIEW  ──  GET /api/admin/accounts/overview
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/overview", async (req, res) => {
+router.get("/overview", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
   try {
     const [
       monthIncome,
@@ -295,7 +295,7 @@ router.get("/overview", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // BANK ACCOUNTS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/bank-accounts", accountsController.getBankAccounts);
+router.get("/bank-accounts", requireRole("superadmin", "manager", "admin", "accountant"), accountsController.getBankAccounts);
 router.post("/bank-accounts", requireRole("superadmin", "manager"), accountsController.createBankAccount);
 router.patch("/bank-accounts/:id", requireRole("superadmin", "manager"), accountsController.updateBankAccount);
 router.delete("/bank-accounts/:id", requireRole("superadmin"), accountsController.deactivateBankAccount);
@@ -303,7 +303,7 @@ router.delete("/bank-accounts/:id", requireRole("superadmin"), accountsControlle
 // ════════════════════════════════════════════════════════════════════════════
 // INCOME
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/income", async (req, res) => {
+router.get("/income", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
   try {
     const { page = 1, limit = 20, search = "", source = "", status = "", from = "", to = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -414,7 +414,7 @@ router.delete("/income/:id", requireRole("superadmin"), async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // EXPENSES
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/expenses", async (req, res) => {
+router.get("/expenses", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
   try {
     const { page = 1, limit = 20, search = "", category = "", status = "", from = "", to = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -554,7 +554,7 @@ router.delete("/expenses/:id", requireRole("superadmin"), async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // TRANSACTIONS  ──  GET /api/admin/accounts/transactions
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/transactions", async (req, res) => {
+router.get("/transactions", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
   try {
     const { page = 1, limit = 20, type = "", bank_account_id = "", from = "", to = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -599,13 +599,13 @@ router.get("/transactions", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // MONEY TRANSFER  ──  GET + POST /api/admin/accounts/transfers
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/transfers", accountsController.getMoneyTransfers);
+router.get("/transfers", requireRole("superadmin", "manager", "admin", "accountant"), accountsController.getMoneyTransfers);
 router.post("/transfers", requireRole("superadmin", "manager"), accountsController.createMoneyTransfer);
 
 // ════════════════════════════════════════════════════════════════════════════
 // DRIVER COMMISSIONS  ──  GET /api/admin/accounts/commissions
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/commissions", async (req, res) => {
+router.get("/commissions", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
   try {
     const { page = 1, limit = 20, status = "", driver_id = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);

@@ -744,10 +744,20 @@ router.get("/notifications", requireRole("superadmin", "manager"), async (req, r
 });
 
 // ── POST /api/admin/deliveries/drivers/:id/location ─────────────────
-router.post("/drivers/:id/location", async (req, res) => {
+// No per-driver login exists yet (drivers aren't linked to a users row), so
+// this can't verify a driver is reporting only their own location — but it
+// must at least require staff auth instead of any authenticated account.
+router.post("/drivers/:id/location", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res) => {
   const { id } = req.params;
   const { latitude, longitude, heading = 0, speed = 0, accuracy = 0 } = req.body;
+  if (latitude == null || longitude == null) {
+    return res.status(400).json({ message: "latitude and longitude are required" });
+  }
   try {
+    const driver = await pool.query("SELECT id FROM drivers WHERE id=$1", [id]);
+    if (!driver.rows.length) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
     // Check if table driver_locations exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS driver_locations (

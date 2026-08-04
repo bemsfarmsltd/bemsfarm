@@ -244,7 +244,7 @@ router.get("/me", protect, async (req, res) => {
   try {
     // Fetch fresh user data from DB (don't rely on stale JWT payload)
     const result = await pool.query(
-      `SELECT id, name, email, role, avatar_url, store_id, status
+      `SELECT id, name, email, phone, role, avatar_url, store_id, status
        FROM users WHERE id = $1`,
       [req.user.id],
     );
@@ -269,6 +269,7 @@ router.get("/me", protect, async (req, res) => {
         first_name: nameParts[0] || "",
         last_name: nameParts.slice(1).join(" ") || "",
         email: user.email,
+        phone: user.phone || "",
         role: user.role,
         avatar_url: user.avatar_url || null,
         store_id: user.store_id || null,
@@ -277,6 +278,57 @@ router.get("/me", protect, async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: "Could not fetch user: " + err.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// UPDATE PROFILE  (name / phone — the fields that are real DB columns)
+// ─────────────────────────────────────────────
+router.patch("/profile", protect, async (req, res) => {
+  try {
+    const { name, phone } = req.body;
+    if (!name?.trim()) {
+      return res.status(400).json({ message: "Name is required" });
+    }
+    const result = await pool.query(
+      "UPDATE users SET name=$1, phone=$2, updated_at=NOW() WHERE id=$3 RETURNING id, name, email, phone",
+      [name.trim(), phone || null, req.user.id],
+    );
+    res.json({ user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ message: "Could not update profile: " + err.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// CHANGE PASSWORD  (logged-in user, knows their current password)
+// ─────────────────────────────────────────────
+router.post("/change-password", protect, async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+    if (!current_password || !new_password) {
+      return res.status(400).json({ message: "Current and new password are required" });
+    }
+    if (new_password.length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters" });
+    }
+
+    const result = await pool.query("SELECT password FROM users WHERE id=$1", [req.user.id]);
+    if (!result.rows.length) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const valid = await bcrypt.compare(current_password, result.rows[0].password);
+    if (!valid) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    const hash = await bcrypt.hash(new_password, 12);
+    await pool.query("UPDATE users SET password=$1, updated_at=NOW() WHERE id=$2", [hash, req.user.id]);
+
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Could not update password: " + err.message });
   }
 });
 

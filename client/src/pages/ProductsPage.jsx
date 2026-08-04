@@ -511,7 +511,6 @@ export default function ProductsPage() {
             <div className="bp-products-grid">
               {filtered.map((product) => {
                 const isFavorite = !!favorites[product.id];
-                const mockDiscount = product.id % 2 === 0 ? (product.id % 4 === 0 ? "15%" : "10%") : null;
 
                 return (
                   <div
@@ -559,12 +558,6 @@ export default function ProductsPage() {
                       >
                         <i className={isFavorite ? "ri-heart-fill" : "ri-heart-line"} />
                       </button>
-
-                      {mockDiscount && (
-                        <div style={{ backgroundColor: "#EF4444", color: "white", fontSize: "10px", fontWeight: 800, padding: "2px 8px", borderRadius: "50px" }}>
-                          {mockDiscount} OFF
-                        </div>
-                      )}
                     </div>
 
                     {/* Product Image */}

@@ -39,7 +39,6 @@ export default function StockTransfer() {
   const [showForm,   setShowForm]  = useState(false)
   const [form,       setForm]      = useState(BLANK_FORM)
   const [saving,     setSaving]    = useState(false)
-  const [filterStatus, setFilterStatus] = useState('')
 
   const fetchMovements = useCallback(async () => {
     setLoading(true)
@@ -68,7 +67,7 @@ export default function StockTransfer() {
 
   useEffect(() => { fetchLookups() }, [fetchLookups])
   useEffect(() => { fetchMovements() }, [fetchMovements])
-  useEffect(() => { setPage(1) }, [search, filterStatus])
+  useEffect(() => { setPage(1) }, [search])
 
   function openForm() { setForm(BLANK_FORM); setShowForm(true) }
   function close()    { setShowForm(false) }
@@ -115,52 +114,21 @@ export default function StockTransfer() {
     return parts.length > 1 ? parts.slice(1).join('|').trim() : notes.includes('→') ? 'Restock' : notes
   }
 
-  const getStatusCfg = (m) => {
-    const notes = m.notes || ''
-    if (notes.includes('Pending') || m.id % 4 === 0) return { label: 'Pending', bg: '#fef9c3', color: '#b45309' }
-    if (notes.includes('Transit') || m.id % 5 === 0) return { label: 'In Transit', bg: '#e0f2fe', color: '#0369a1' }
-    return { label: 'Completed', bg: '#dcfce7', color: '#15803d' }
-  }
+  // Transfers are recorded as an already-applied stock movement pair — the
+  // backend has no pending/in-transit workflow, so every real transfer is
+  // Completed the moment it's created. (Previously this badge was randomly
+  // derived from `id % 4` / `id % 5`, which was meaningless.)
+  const getStatusCfg = () => ({ label: 'Completed', bg: '#dcfce7', color: '#15803d' })
 
-  const filteredMovements = useMemo(() => {
-    return movements.filter(m => {
-      if (!filterStatus) return true
-      const st = getStatusCfg(m).label.toLowerCase()
-      return st === filterStatus.toLowerCase()
-    })
-  }, [movements, filterStatus])
-
-  // Stat computations with mockup fallbacks
-  const statValues = useMemo(() => {
-    let pending = 0
-    let completed = 0
-    let transit = 0
-    movements.forEach(m => {
-      const label = getStatusCfg(m).label
-      if (label === 'Pending') pending++
-      else if (label === 'In Transit') transit++
-      else completed++
-    })
-    return {
-      total: meta.total || 5,
-      transit: transit || 1,
-      completed: completed || 3,
-      pending: pending || 1
-    }
-  }, [movements, meta])
+  const statValues = useMemo(() => ({
+    total: meta.total,
+    completed: movements.length,
+  }), [movements, meta])
 
   function formatDate(d) {
     if (!d) return '—'
     const date = new Date(d)
     return date.toISOString().slice(0, 10)
-  }
-
-  const handleEdit = (m) => {
-    toast.success('Editing transfer details...')
-  }
-
-  const handleDelete = (m) => {
-    toast.success('Transfer deleted successfully')
   }
 
   const B = '#e5e7eb', S = '#6b7280'
@@ -180,12 +148,10 @@ export default function StockTransfer() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:16, marginBottom:24 }}>
         {[
           { label:'Total Transfers', value:statValues.total,     icon:'ri-file-text-line', color:'#405189', valueColor:'var(--text-primary)' },
-          { label:'In Transit',      value:statValues.transit,   icon:'ri-truck-line', color:'#299cdb', valueColor:'#299cdb' },
           { label:'Completed',       value:statValues.completed, icon:'ri-checkbox-circle-line', color:'#0ab39c', valueColor:'#0ab39c' },
-          { label:'Pending',         value:statValues.pending,   icon:'ri-time-line', color:'#f7b84b', valueColor:'#f7b84b' },
         ].map(c => (
           <div key={c.label} style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
             <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -206,12 +172,6 @@ export default function StockTransfer() {
             <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:15 }}/>
             <input style={{ ...inp, paddingLeft:32 }} placeholder="Search reference, product, w..." value={search} onChange={e => setSearch(e.target.value)}/>
           </div>
-          <select style={{ ...inp, width:'auto', minWidth:140 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="in transit">In Transit</option>
-            <option value="completed">Completed</option>
-          </select>
           <button style={btnP} onClick={openForm}><i className="ri-add-line"/>New Transfer</button>
         </div>
 
@@ -219,21 +179,21 @@ export default function StockTransfer() {
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'Nunito,sans-serif' }}>
             <thead>
               <tr style={{ background:'#f9fafb', borderBottom:`1px solid ${B}` }}>
-                {['Ref No','Date','From','To','Products','Total Qty','Status','Notes','Action'].map(h => (
+                {['Ref No','Date','From','To','Products','Total Qty','Status','Notes'].map(h => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} style={{ textAlign:'center', padding:'40px 0' }}>
+                <tr><td colSpan={8} style={{ textAlign:'center', padding:'40px 0' }}>
                   <div className="spinner-border spinner-border-sm text-primary me-2"/>Loading...
                 </td></tr>
-              ) : filteredMovements.length === 0 ? (
-                <tr><td colSpan={9} style={{ ...TD, textAlign:'center', padding:40, color:'#9ca3af' }}>
+              ) : movements.length === 0 ? (
+                <tr><td colSpan={8} style={{ ...TD, textAlign:'center', padding:40, color:'#9ca3af' }}>
                   <i className="ri-swap-box-line" style={{ fontSize:32, display:'block', marginBottom:8 }}/>No transfers found
                 </td></tr>
-              ) : filteredMovements.map(m => {
+              ) : movements.map(m => {
                 const sc = getStatusCfg(m)
                 const refNo = `TRF-2026-00${m.id}`
                 const dest = getDestination(m)
@@ -262,12 +222,6 @@ export default function StockTransfer() {
                       </span>
                     </td>
                     <td style={{ ...TD, maxWidth:180, whiteSpace:'normal', fontSize:12, color:S }}>{getExtraNotes(m)}</td>
-                    <td style={TD}>
-                      <div style={{ display:'flex',gap:12,alignItems:'center' }}>
-                        <button onClick={()=>handleEdit(m)} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-pencil-line" style={{ fontSize:16 }}/></button>
-                        <button onClick={()=>handleDelete(m)} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:16 }}/></button>
-                      </div>
-                    </td>
                   </tr>
                 )
               })}
@@ -277,7 +231,7 @@ export default function StockTransfer() {
 
         {/* Pagination */}
         <div style={{ padding:'12px 20px', fontSize:12, color:S, borderTop:`1px solid ${B}`, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
-          <span>Showing {filteredMovements.length} of {meta.total} transfers</span>
+          <span>Showing {movements.length} of {meta.total} transfers</span>
           {meta.pages > 1 && (
             <div style={{ display:'flex', gap:6 }}>
               <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===1?0.4:1 }}>

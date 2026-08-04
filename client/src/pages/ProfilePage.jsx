@@ -440,10 +440,105 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSaveFields = () => {
+  const [saveError, setSaveError] = useState(null);
+  const handleSaveFields = async () => {
     localStorage.setItem("user_profile_fields", JSON.stringify(fields));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaveError(null);
+    try {
+      // name/phone are the fields that actually exist on the server — the
+      // rest (gender, tax info, etc.) stay local-only, there's nothing to
+      // sync them to.
+      await api.patch("/auth/profile", {
+        name: `${fields.firstName} ${fields.lastName}`.trim(),
+        phone: fields.phone,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setSaveError(err?.response?.data?.message || "Failed to save changes");
+    }
+  };
+
+  // Password change
+  const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState(null);
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    if (!passwordForm.current || !passwordForm.next) {
+      setPasswordError("Fill in all password fields");
+      return;
+    }
+    if (passwordForm.next !== passwordForm.confirm) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      await api.post("/auth/change-password", {
+        current_password: passwordForm.current,
+        new_password: passwordForm.next,
+      });
+      setPasswordForm({ current: "", next: "", confirm: "" });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setPasswordError(err?.response?.data?.message || "Failed to update password");
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  // Address book
+  const [addresses, setAddresses] = useState([]);
+  const [addressForm, setAddressForm] = useState({ label: "", receiver_name: "", receiver_phone: "", street_address: "", city: "", state: "" });
+  const [editingAddressId, setEditingAddressId] = useState(null);
+  const [addressError, setAddressError] = useState(null);
+
+  const loadAddresses = () => {
+    api.get("/addresses").then((r) => setAddresses(r.data.addresses || [])).catch(() => {});
+  };
+  useEffect(() => { loadAddresses(); }, []);
+
+  const openAddAddress = () => {
+    setEditingAddressId(null);
+    setAddressForm({ label: "", receiver_name: "", receiver_phone: "", street_address: "", city: "", state: "" });
+    setAddressError(null);
+    setAdding(true);
+  };
+  const openEditAddress = (addr) => {
+    setEditingAddressId(addr.id);
+    setAddressForm({
+      label: addr.label || "", receiver_name: addr.receiver_name || "", receiver_phone: addr.receiver_phone || "",
+      street_address: addr.street_address || "", city: addr.city || "", state: addr.state || "",
+    });
+    setAddressError(null);
+    setAdding(true);
+  };
+  const saveAddress = async () => {
+    if (!addressForm.street_address.trim()) {
+      setAddressError("Street address is required");
+      return;
+    }
+    try {
+      if (editingAddressId) {
+        await api.patch(`/addresses/${editingAddressId}`, addressForm);
+      } else {
+        await api.post("/addresses", addressForm);
+      }
+      setAdding(false);
+      loadAddresses();
+    } catch (err) {
+      setAddressError(err?.response?.data?.message || "Failed to save address");
+    }
+  };
+  const deleteAddress = async (id) => {
+    try {
+      await api.delete(`/addresses/${id}`);
+      loadAddresses();
+    } catch {
+      // ignore
+    }
   };
 
   const menuTabs = [
@@ -656,6 +751,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
+                  {saveError && <p style={{ color: "#EF4444", fontSize: "13px", marginBottom: "8px" }}>{saveError}</p>}
                   <div className="p-actions">
                     <button className="p-save-btn" onClick={handleSaveFields}>
                       {saved ? "✓ Changes Saved!" : "Save Changes"}
@@ -673,22 +769,23 @@ export default function ProfilePage() {
                 >
                   <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "Syne, sans-serif" }}>Password Changes</h3>
                   <div style={{ display: "flex", flexDirection: "column", gap: "16px", maxWidth: "480px" }}>
+                    {passwordError && <p style={{ color: "#EF4444", fontSize: "13px", margin: 0 }}>{passwordError}</p>}
                     <div className="p-field">
                       <label className="p-label">Current Password</label>
-                      <input className="p-input" type="password" placeholder="Current Password" />
+                      <input className="p-input" type="password" placeholder="Current Password" value={passwordForm.current} onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })} />
                     </div>
                     <div className="p-field">
                       <label className="p-label">New Password</label>
-                      <input className="p-input" type="password" placeholder="New Password" />
+                      <input className="p-input" type="password" placeholder="New Password" value={passwordForm.next} onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })} />
                     </div>
                     <div className="p-field">
                       <label className="p-label">Confirm New Password</label>
-                      <input className="p-input" type="password" placeholder="Confirm New Password" />
+                      <input className="p-input" type="password" placeholder="Confirm New Password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} />
                     </div>
                   </div>
                   <div className="p-actions">
-                    <button className="p-save-btn" onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 1500); }}>
-                      {saved ? "✓ Updated!" : "Update Password"}
+                    <button className="p-save-btn" onClick={handleChangePassword} disabled={passwordSaving}>
+                      {passwordSaving ? "Updating…" : saved ? "✓ Updated!" : "Update Password"}
                     </button>
                   </div>
                 </motion.div>
@@ -703,19 +800,21 @@ export default function ProfilePage() {
                 >
                   <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "Syne, sans-serif" }}>Address Book</h3>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "16px", marginBottom: "24px" }}>
-                    <div style={{ border: "2px solid #2E7D32", borderRadius: "16px", padding: "18px", position: "relative" }}>
-                      <span style={{ position: "absolute", top: "10px", right: "10px", backgroundColor: "#E8F5E9", color: "#2E7D32", fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "20px" }}>Default</span>
-                      <p style={{ fontWeight: 700, marginBottom: "6px", fontSize: "14px" }}>Home Address</p>
-                      <p style={{ fontSize: "13px", color: "#6B7280", marginBottom: "4px" }}>{fields.address || "15C West 42nd Street, Lagos"}</p>
-                      <p style={{ fontSize: "13px", color: "#6B7280", marginBottom: "16px" }}>🇳🇬 {fields.phone || "+234 801 234 5678"}</p>
-                      <div style={{ display: "flex", gap: "12px" }}>
-                        <button style={{ color: "#F57C00", border: "none", background: "none", cursor: "pointer", fontWeight: 700, fontSize: "13px" }}>Edit</button>
-                        <button style={{ color: "#EF4444", border: "none", background: "none", cursor: "pointer", fontWeight: 500, fontSize: "13px" }}>Delete</button>
+                    {addresses.map((addr) => (
+                      <div key={addr.id} style={{ border: addr.is_default ? "2px solid #2E7D32" : "1px solid #E5E7EB", borderRadius: "16px", padding: "18px", position: "relative" }}>
+                        {addr.is_default && <span style={{ position: "absolute", top: "10px", right: "10px", backgroundColor: "#E8F5E9", color: "#2E7D32", fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "20px" }}>Default</span>}
+                        <p style={{ fontWeight: 700, marginBottom: "6px", fontSize: "14px" }}>{addr.label}</p>
+                        <p style={{ fontSize: "13px", color: "#6B7280", marginBottom: "4px" }}>{addr.street_address}{addr.city ? `, ${addr.city}` : ""}{addr.state ? `, ${addr.state}` : ""}</p>
+                        <p style={{ fontSize: "13px", color: "#6B7280", marginBottom: "16px" }}>🇳🇬 {addr.receiver_phone || "—"}</p>
+                        <div style={{ display: "flex", gap: "12px" }}>
+                          <button onClick={() => openEditAddress(addr)} style={{ color: "#F57C00", border: "none", background: "none", cursor: "pointer", fontWeight: 700, fontSize: "13px" }}>Edit</button>
+                          <button onClick={() => deleteAddress(addr.id)} style={{ color: "#EF4444", border: "none", background: "none", cursor: "pointer", fontWeight: 500, fontSize: "13px" }}>Delete</button>
+                        </div>
                       </div>
-                    </div>
+                    ))}
 
                     <button
-                      onClick={() => setAdding(true)}
+                      onClick={openAddAddress}
                       style={{
                         border: "2px dashed #E5E7EB",
                         borderRadius: "16px",
@@ -737,18 +836,19 @@ export default function ProfilePage() {
 
                   {adding && (
                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ border: "1px solid #E5E7EB", borderRadius: "16px", padding: "24px", backgroundColor: "#F9FAFB" }}>
-                      <h4 style={{ fontWeight: 700, marginBottom: "18px", fontSize: "15px" }}>Add New Address</h4>
+                      <h4 style={{ fontWeight: 700, marginBottom: "18px", fontSize: "15px" }}>{editingAddressId ? "Edit Address" : "Add New Address"}</h4>
+                      {addressError && <p style={{ color: "#EF4444", fontSize: "13px", marginBottom: "12px" }}>{addressError}</p>}
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "20px" }}>
-                        <input className="p-input" placeholder="Label (e.g. Office, Parent's house)" />
-                        <input className="p-input" placeholder="Receiver's Full Name" />
-                        <input className="p-input" placeholder="Receiver's Phone Number" />
-                        <input className="p-input" placeholder="Street Address" />
-                        <input className="p-input" placeholder="City" />
-                        <input className="p-input" placeholder="State" />
+                        <input className="p-input" placeholder="Label (e.g. Office, Parent's house)" value={addressForm.label} onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })} />
+                        <input className="p-input" placeholder="Receiver's Full Name" value={addressForm.receiver_name} onChange={(e) => setAddressForm({ ...addressForm, receiver_name: e.target.value })} />
+                        <input className="p-input" placeholder="Receiver's Phone Number" value={addressForm.receiver_phone} onChange={(e) => setAddressForm({ ...addressForm, receiver_phone: e.target.value })} />
+                        <input className="p-input" placeholder="Street Address" value={addressForm.street_address} onChange={(e) => setAddressForm({ ...addressForm, street_address: e.target.value })} />
+                        <input className="p-input" placeholder="City" value={addressForm.city} onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })} />
+                        <input className="p-input" placeholder="State" value={addressForm.state} onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })} />
                       </div>
                       <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
                         <button className="p-delete-btn" onClick={() => setAdding(false)}>Cancel</button>
-                        <button className="p-upload-btn" onClick={() => setAdding(false)}>Save Address</button>
+                        <button className="p-upload-btn" onClick={saveAddress}>Save Address</button>
                       </div>
                     </motion.div>
                   )}

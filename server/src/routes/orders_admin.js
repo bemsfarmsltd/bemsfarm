@@ -267,6 +267,7 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (r
     await client.query("BEGIN");
 
     const {
+      customer_id,
       customer_name,
       customer_phone,
       customer_email,
@@ -283,6 +284,15 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (r
     if (!customer_name) {
       await client.query("ROLLBACK");
       return res.status(400).json({ message: "Customer name is required" });
+    }
+
+    let linkedCustomerId = null;
+    if (customer_id) {
+      const custCheck = await client.query(
+        "SELECT id FROM customers WHERE id::text=$1 OR customer_code=$1",
+        [String(customer_id)],
+      );
+      if (custCheck.rows.length) linkedCustomerId = custCheck.rows[0].id;
     }
     if (!items || !Array.isArray(items) || items.length === 0) {
       await client.query("ROLLBACK");
@@ -323,7 +333,7 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (r
         customer_id, channel, type, date_issued, due_date,
         amount, discount_amount, delivery_fee, payment_method, status, notes,
         created_by, created_at, items
-      ) VALUES ($1, $2, $3, $4, $5, null, 'manual', 'manual', NOW(), $6, $7, $8, $9, $10, $11, $12, $13, NOW(), $14)
+      ) VALUES ($1, $2, $3, $4, $5, $6, 'manual', 'manual', NOW(), $7, $8, $9, $10, $11, $12, $13, $14, NOW(), $15)
       RETURNING id`,
       [
         tempRef,
@@ -331,6 +341,7 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (r
         customer_phone || null,
         customer_email || null,
         customer_address || null,
+        linkedCustomerId,
         due_date || null,
         totalAmount,
         disc,

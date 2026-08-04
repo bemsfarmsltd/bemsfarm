@@ -18,43 +18,11 @@ const CHANNEL_CFG = {
   manual:    { label:'Manual',         icon:'ri-edit-line',       color:'#f59e0b' },
 }
 
-const CUSTOMERS = [
-  { name:'Ngozi Obi',          phone:'08123456789', email:'ngozi@email.com',    address:'14 Ikeja GRA, Lagos'        },
-  { name:'Adaeze Nwosu',       phone:'07098765432', email:'adaeze@email.com',   address:'7 Lekki Phase 1, Lagos'     },
-  { name:'Bimpe Fashola',      phone:'08055566677', email:'bimpe@gmail.com',    address:'22 Agege Motor Road, Lagos' },
-  { name:'Seun Adesanya',      phone:'09012341234', email:'seun.a@email.com',   address:'5 Victoria Island, Lagos'   },
-  { name:'Kemi Balogun',       phone:'08167891234', email:'kemi.b@gmail.com',   address:'18 Surulere, Lagos'         },
-  { name:'Funmi Ogundele',     phone:'08123450987', email:'funmi@email.com',    address:'9 Gbagada, Lagos'           },
-  { name:'Rasheedat Lawal',    phone:'07023456789', email:'rasheedat@email.com',address:'15 Maryland, Lagos'         },
-  { name:'Chukwuemeka Nze',    phone:'08098761234', email:'emeka.n@email.com',  address:'11 Isolo, Lagos'            },
-  { name:'Yetunde Adeniyi',    phone:'08056781234', email:'yetunde@email.com',  address:'20 Ikorodu Road, Lagos'     },
-  { name:'Corporate — Mega Catering Ltd', phone:'0700MEGA01', email:'orders@megacatering.ng', address:'2 Marina, Lagos' },
-]
-
-const PRODUCTS_CATALOG = [
-  { id:1,  name:'Fresh Tomatoes',        unit:'kg',    price:2800 },
-  { id:2,  name:'Red Bell Pepper',       unit:'kg',    price:3500 },
-  { id:3,  name:'Scotch Bonnet',         unit:'kg',    price:4200 },
-  { id:4,  name:'Fresh Spinach',         unit:'bunch', price:800  },
-  { id:5,  name:'Ugwu (Fluted Pumpkin)',unit:'bunch', price:600  },
-  { id:6,  name:'Plantain',             unit:'hand',  price:2500 },
-  { id:7,  name:'Yam (White)',          unit:'tuber', price:3200 },
-  { id:8,  name:'Ginger',              unit:'kg',    price:5500 },
-  { id:9,  name:'Garlic',              unit:'kg',    price:4800 },
-  { id:10, name:'Palm Oil',            unit:'litre', price:2100 },
-  { id:11, name:'Onion (Red)',         unit:'kg',    price:1800 },
-  { id:12, name:'Sweet Corn',         unit:'cob',   price:400  },
-]
-
-const p = (id, qty) => { const prod=PRODUCTS_CATALOG.find(x=>x.id===id); return { ...prod, qty, total:prod.price*qty } }
-
-const INVOICES_INIT = []
-
 const fmt       = (n) => `₦${Number(n).toLocaleString()}`
 const calcSub   = (items) => items.reduce((s,i)=>s+i.total,0)
 const calcTotal = (items,fee,disc) => calcSub(items)+Number(fee||0)-Number(disc||0)
 
-const BLANK_FORM = { customer:'', customName:'', customPhone:'', customEmail:'', customAddress:'', paymentMethod:'Bank Transfer', dueDate:'', notes:'', discount:0, deliveryFee:0, items:[{ name:'',qty:1,unit:'kg',price:0,total:0 }] }
+const BLANK_FORM = { customerId:'', customName:'', customPhone:'', customEmail:'', customAddress:'', paymentMethod:'Bank Transfer', dueDate:'', notes:'', discount:0, deliveryFee:0, items:[{ name:'',qty:1,unit:'kg',price:0,total:0 }] }
 
 const inp  = { display:'block',width:'100%',padding:'9px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box' }
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
@@ -87,6 +55,13 @@ export default function Invoices() {
   const [form,setForm]                   = useState(BLANK_FORM)
   const [markPaidRef,setMarkPaidRef]     = useState('')
   const [loading, setLoading]            = useState(true)
+  const [customers, setCustomers]        = useState([])
+  const [productsCatalog, setProductsCatalog] = useState([])
+
+  useEffect(() => {
+    api.get('/admin/customers', { params: { limit: 200 } }).then(r => setCustomers(r.data.customers || [])).catch(() => {})
+    api.get('/admin/products', { params: { limit: 200 } }).then(r => setProductsCatalog(r.data.products || [])).catch(() => {})
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -135,7 +110,8 @@ export default function Invoices() {
   const [creating, setCreating] = useState(false)
 
   const createInvoice = async (asDraft) => {
-    const customerName = form.customer || form.customName.trim()
+    const custObj = customers.find(c => String(c.id) === String(form.customerId))
+    const customerName = custObj ? custObj.name : form.customName.trim()
     if (!customerName) { toast.error("Enter a customer name"); return }
     const cleanItems = form.items.filter(i => i.name && Number(i.qty) > 0)
     if (!cleanItems.length) { toast.error("Add at least one line item"); return }
@@ -143,9 +119,10 @@ export default function Invoices() {
     setCreating(true)
     try {
       await api.post('/admin/orders/invoices', {
+        customer_id: custObj ? custObj.id : undefined,
         customer_name: customerName,
-        customer_phone: form.customPhone || undefined,
-        customer_email: form.customEmail || undefined,
+        customer_phone: custObj ? custObj.phone : (form.customPhone || undefined),
+        customer_email: custObj ? custObj.email : (form.customEmail || undefined),
         customer_address: form.customAddress || undefined,
         due_date: form.dueDate || undefined,
         payment_method: form.paymentMethod,
@@ -430,18 +407,20 @@ export default function Invoices() {
         {activeModal==='create'&&(
           <Modal title="Create Invoice" onClose={closeModal} maxWidth={700}>
             <label style={LBL}>Customer</label>
-            <select style={{ ...inp,marginBottom:10 }} value={form.customer} onChange={e=>setField('customer',e.target.value)}>
+            <select style={{ ...inp,marginBottom:10 }} value={form.customerId} onChange={e=>setField('customerId',e.target.value)}>
               <option value="">— Enter manually —</option>
-              {CUSTOMERS.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}
+              {customers.map(c=><option key={c.id} value={c.id}>{c.name} ({c.customer_code})</option>)}
             </select>
-            {!form.customer&&(
+            {!form.customerId&&(
               <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16 }}>
                 <input style={inp} placeholder="Full name *" value={form.customName} onChange={e=>setField('customName',e.target.value)}/>
                 <input style={inp} placeholder="Phone" value={form.customPhone} onChange={e=>setField('customPhone',e.target.value)}/>
                 <input style={inp} placeholder="Email" value={form.customEmail} onChange={e=>setField('customEmail',e.target.value)}/>
-                <input style={inp} placeholder="Address" value={form.customAddress} onChange={e=>setField('customAddress',e.target.value)}/>
               </div>
             )}
+            <div style={{ marginBottom:16 }}>
+              <input style={inp} placeholder="Billing / delivery address" value={form.customAddress} onChange={e=>setField('customAddress',e.target.value)}/>
+            </div>
 
             <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
               <label style={{ ...LBL,marginBottom:0 }}>Line Items</label>
@@ -450,13 +429,14 @@ export default function Invoices() {
             {form.items.map((item,idx)=>(
               <div key={idx} style={{ display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr auto auto',gap:8,marginBottom:8,alignItems:'center' }}>
                 <select style={inp} value={item.name} onChange={e=>{
-                  const prod=PRODUCTS_CATALOG.find(p=>p.name===e.target.value)
+                  const prod=productsCatalog.find(p=>p.name===e.target.value)
                   if (prod) {
-                    setForm(prev=>({ ...prev, items:prev.items.map((it,i)=>i!==idx?it:{ ...it,name:prod.name,unit:prod.unit,price:prod.price,total:prod.price*it.qty }) }))
+                    const price = Number(prod.unit_price ?? prod.price ?? 0)
+                    setForm(prev=>({ ...prev, items:prev.items.map((it,i)=>i!==idx?it:{ ...it,name:prod.name,price,total:price*it.qty }) }))
                   } else { updateItem(idx,'name',e.target.value) }
                 }}>
                   <option value="">Select product...</option>
-                  {PRODUCTS_CATALOG.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}
+                  {productsCatalog.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}
                 </select>
                 <input type="number" style={inp} placeholder="Qty" min={0} value={item.qty} onChange={e=>updateItem(idx,'qty',e.target.value)}/>
                 <input style={inp} placeholder="Unit" value={item.unit} onChange={e=>updateItem(idx,'unit',e.target.value)}/>

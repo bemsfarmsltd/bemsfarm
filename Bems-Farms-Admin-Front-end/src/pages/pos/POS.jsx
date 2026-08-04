@@ -200,6 +200,20 @@ export default function POS() {
       .finally(() => setCatalogLoading(false))
   }, [])
 
+  // Real tax config from Settings → Tax — the backend applies the same
+  // rules at sale time, so this preview matches what actually gets charged.
+  const [taxSettings, setTaxSettings] = useState({ enabled: false, rate: 0, inclusive: false })
+  useEffect(() => {
+    api.get('/admin/settings/tax').then(({ data }) => {
+      const s = data.settings || {}
+      setTaxSettings({
+        enabled: s.tax_enabled === 'true',
+        rate: parseFloat(s.tax_rate ?? '7.5') || 0,
+        inclusive: s.tax_inclusive === 'true',
+      })
+    }).catch(() => {})
+  }, [])
+
   const categories = useMemo(() => {
     const seen = new Map()
     catalog.forEach(p => { if (p.category_id != null && !seen.has(p.category_id)) seen.set(p.category_id, p.category || 'Other') })
@@ -323,8 +337,10 @@ export default function POS() {
   const subtotal    = cart.reduce((s, i) => s + i.price * i.qty, 0)
   const discountAmt = Math.round(subtotal * discountPct / 100)
   const taxable     = subtotal - discountAmt
-  const vat         = Math.round(taxable * 0.075)
-  const total       = taxable + vat
+  const vat         = !taxSettings.enabled ? 0
+    : taxSettings.inclusive ? Math.round(taxable - taxable / (1 + taxSettings.rate / 100))
+    : Math.round(taxable * (taxSettings.rate / 100))
+  const total       = taxSettings.inclusive ? taxable : taxable + vat
   const itemCount   = cart.reduce((s, i) => s + i.qty, 0)
   const cashChange  = cashReceived ? Math.max(0, Number(cashReceived) - total) : 0
 
@@ -754,7 +770,7 @@ export default function POS() {
             {[
               { label:'Subtotal',                   value:fmt(subtotal),          show:true           },
               { label:`Discount (${discountPct}%)`, value:'− '+fmt(discountAmt),  show:discountPct>0, color:'#f06548' },
-              { label:'VAT (7.5%)',                 value:fmt(vat),               show:true,          color:S },
+              { label:`VAT (${taxSettings.rate}%)`, value:fmt(vat),               show:taxSettings.enabled, color:S },
             ].filter(r=>r.show).map(r=>(
               <div key={r.label} style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
                 <span style={{ fontSize:11, color:S }}>{r.label}</span>
@@ -833,7 +849,9 @@ export default function POS() {
 
       {/* SCANNER BASKET */}
       {activeModal==='scanner' && (() => {
-        const scSub=scanCart.reduce((s,i)=>s+i.price*i.qty,0), scVat=Math.round(scSub*.075), scTotal=scSub+scVat
+        const scSub=scanCart.reduce((s,i)=>s+i.price*i.qty,0)
+        const scVat=!taxSettings.enabled?0:taxSettings.inclusive?Math.round(scSub-scSub/(1+taxSettings.rate/100)):Math.round(scSub*(taxSettings.rate/100))
+        const scTotal=taxSettings.inclusive?scSub:scSub+scVat
         return (
           <ModalBox maxWidth={780}>
             <MHead title="Scan Basket" onClose={()=>{ setScanCart([]); closeModal() }} color="linear-gradient(135deg,#0ab39c,#405189)" icon="🛒"/>
@@ -873,7 +891,7 @@ export default function POS() {
             {scanCart.length>0 && (
               <div style={{ padding:'16px 20px', borderTop:`2px solid ${B}`, background:BG2, flexShrink:0 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6, fontSize:13, color:S }}><span>Subtotal ({scanCart.reduce((s,i)=>s+i.qty,0)} items)</span><span>{fmt(scSub)}</span></div>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12, fontSize:13, color:S }}><span>VAT (7.5%)</span><span>{fmt(scVat)}</span></div>
+                {taxSettings.enabled && <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12, fontSize:13, color:S }}><span>VAT ({taxSettings.rate}%)</span><span>{fmt(scVat)}</span></div>}
                 <div style={{ display:'flex', justifyContent:'space-between', marginBottom:16 }}><span style={{ fontWeight:700, fontSize:18 }}>Total</span><span style={{ fontWeight:900, fontSize:24, color:'#0ab39c' }}>{fmt(scTotal)}</span></div>
                 <div style={{ display:'flex', gap:12 }}>
                   <button style={{ ...btnL, flex:1, padding:'14px' }} onClick={scannerAddToOrder}><i className="ri-add-circle-line" style={{ fontSize:18 }}/>Add to Order</button>
@@ -1178,7 +1196,7 @@ export default function POS() {
                     </tr>
                   ))}
                   {discountPct>0&&<tr><td colSpan={3} style={{ textAlign:'right', fontSize:12, color:'#f06548', padding:'6px 0' }}>Discount ({discountPct}%)</td><td style={{ textAlign:'right', fontSize:12, color:'#f06548', padding:'6px 0' }}>− {fmt(discountAmt)}</td></tr>}
-                  <tr><td colSpan={3} style={{ textAlign:'right', fontSize:12, color:S, padding:'6px 0' }}>VAT (7.5%)</td><td style={{ textAlign:'right', fontSize:12, color:S, padding:'6px 0' }}>{fmt(vat)}</td></tr>
+                  {taxSettings.enabled && <tr><td colSpan={3} style={{ textAlign:'right', fontSize:12, color:S, padding:'6px 0' }}>VAT ({taxSettings.rate}%)</td><td style={{ textAlign:'right', fontSize:12, color:S, padding:'6px 0' }}>{fmt(vat)}</td></tr>}
                   <tr style={{ borderTop:`2px solid ${B}` }}>
                     <td colSpan={3} style={{ fontWeight:700, padding:'10px 0', fontSize:14, textAlign:'right' }}>Total Payable</td>
                     <td style={{ fontWeight:800, padding:'10px 0', fontSize:15, textAlign:'right', color:'#22c55e' }}>{fmt(total)}</td>

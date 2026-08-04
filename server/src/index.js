@@ -113,6 +113,7 @@ const chefBemsAdminRoutes = require("./routes/chef_bems_admin");
 const paymentsAdminRoutes = require("./routes/payments_admin");
 const configAdminRoutes = require("./routes/config_admin");
 const issuesRoutes = require("./routes/issues");
+const addressesRoutes = require("./routes/addresses");
 
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/orders", paymentLimiter, ordersRoutes);
@@ -145,6 +146,7 @@ app.use("/api/admin/payments", paymentsAdminRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/ai/context", aiContextRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/addresses", addressesRoutes);
 app.use("/api", miscRoutes);
 app.use("/api/advanced-ai", aiLimiter, advancedAiRoutes);
 app.use("/api/zoho", zohoRoutes);

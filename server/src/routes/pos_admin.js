@@ -16,6 +16,7 @@ const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { NAIRA_PER_UNIT } = require("../utils/currency");
 const { validateCoupon, recordCouponUsage } = require("../utils/coupons");
+const { getTaxSettings, computeTax } = require("../utils/taxSettings");
 
 router.use(protect);
 
@@ -270,8 +271,9 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), asyn
       }
     }
 
-    // Matches the 7.5% VAT the POS terminal displays to the cashier before charging
-    const tax_amount     = Math.round((subtotal - finalDiscount) * 0.075);
+    // Uses the real tax config from Settings → Tax, not a hardcoded rate
+    const taxSettings    = await getTaxSettings();
+    const tax_amount     = computeTax(subtotal - finalDiscount, taxSettings);
     const total          = subtotal - finalDiscount + tax_amount;
     const change_amount  = amount_tendered ? Math.max(0, parseFloat(amount_tendered) - total) : 0;
     const reference      = await nextPOSRef(client);

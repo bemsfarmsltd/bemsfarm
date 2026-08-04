@@ -49,10 +49,7 @@ export default function DealsPage() {
 
   const pad = (n) => String(n).padStart(2, "0");
 
-  const dealProducts = products.map((p) => ({
-    ...p,
-    discount: Math.floor(Math.random() * 30) + 10,
-  }));
+  const dealProducts = products;
 
   return (
     <PageWrapper>
@@ -201,48 +198,6 @@ export default function DealsPage() {
             ))}
           </div>
 
-          {/* Coupon code */}
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "12px",
-              backgroundColor: "rgba(255,255,255,0.15)",
-              borderRadius: "14px",
-              padding: "12px 24px",
-              border: "1px dashed rgba(255,255,255,0.4)",
-            }}
-          >
-            <span style={{ fontSize: "14px", color: "rgba(255,255,255,0.8)" }}>
-              Use code:
-            </span>
-            <span
-              style={{
-                fontSize: "20px",
-                fontWeight: 900,
-                letterSpacing: "2px",
-                color: "#FFF176",
-              }}
-            >
-              FRESH20
-            </span>
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => navigator.clipboard?.writeText("FRESH20")}
-              style={{
-                backgroundColor: "rgba(255,255,255,0.2)",
-                border: "none",
-                color: "white",
-                borderRadius: "8px",
-                padding: "6px 12px",
-                cursor: "pointer",
-                fontSize: "12px",
-                fontWeight: 600,
-              }}
-            >
-              Copy
-            </motion.button>
-          </div>
         </motion.div>
       </div>
 
@@ -270,7 +225,7 @@ export default function DealsPage() {
               🔥 All Deals
             </h2>
             <p style={{ color: "#9AA0A6", fontSize: "14px" }}>
-              All products have discounts applied at checkout with code FRESH20
+              Check out our fresh picks below — have a coupon code? Apply it at checkout.
             </p>
           </div>
           <motion.button
@@ -321,22 +276,6 @@ export default function DealsPage() {
           >
             {dealProducts.map((product, i) => (
               <motion.div key={product.id} style={{ position: "relative" }}>
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "12px",
-                    left: "12px",
-                    zIndex: 10,
-                    backgroundColor: "#C62828",
-                    color: "white",
-                    fontSize: "12px",
-                    fontWeight: 800,
-                    padding: "4px 10px",
-                    borderRadius: "8px",
-                  }}
-                >
-                  -{product.discount}%
-                </div>
                 <ProductCard product={product} index={i} />
               </motion.div>
             ))}
