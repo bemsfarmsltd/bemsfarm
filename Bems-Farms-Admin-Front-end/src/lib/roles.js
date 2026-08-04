@@ -62,8 +62,6 @@ export const ROLE_META = {
     color:       '#dc2626',
     bg:          '#fee2e2',
     icon:        'ri-shield-star-line',
-    email:       'superadmin@bemsfarms.com',
-    password:    'super123',
   },
   manager: {
     label:       'Manager',
@@ -71,8 +69,6 @@ export const ROLE_META = {
     color:       '#7c3aed',
     bg:          '#ede9fe',
     icon:        'ri-user-star-line',
-    email:       'manager@bemsfarms.com',
-    password:    'manager123',
   },
   accountant: {
     label:       'Accountant',
@@ -80,8 +76,6 @@ export const ROLE_META = {
     color:       '#0369a1',
     bg:          '#e0f2fe',
     icon:        'ri-bank-card-line',
-    email:       'accountant@bemsfarms.com',
-    password:    'account123',
   },
   delivery_manager: {
     label:       'Delivery Manager',
@@ -89,8 +83,6 @@ export const ROLE_META = {
     color:       '#b45309',
     bg:          '#fef3c7',
     icon:        'ri-bike-line',
-    email:       'delivery@bemsfarms.com',
-    password:    'delivery123',
   },
   cashier: {
     label:       'Cashier',
@@ -98,8 +90,6 @@ export const ROLE_META = {
     color:       '#15803d',
     bg:          '#dcfce7',
     icon:        'ri-store-2-line',
-    email:       'cashier@bemsfarms.com',
-    password:    'cashier123',
   },
   kitchen_staff: {
     label:       'Kitchen Staff',
@@ -107,7 +97,5 @@ export const ROLE_META = {
     color:       '#9d174d',
     bg:          '#fce7f3',
     icon:        'ri-restaurant-line',
-    email:       'kitchen@bemsfarms.com',
-    password:    'kitchen123',
   },
 }

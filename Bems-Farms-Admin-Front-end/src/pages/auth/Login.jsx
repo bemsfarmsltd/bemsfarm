@@ -6,6 +6,24 @@ import toast from 'react-hot-toast'
 
 const ROLES_ORDER = ['superadmin', 'manager', 'accountant', 'delivery_manager', 'cashier', 'kitchen_staff']
 
+// Dev-only quick-sign-in credentials. Only ever read from inside the
+// `import.meta.env.DEV &&` branch below, so Vite/esbuild statically
+// replace that check with `false` in production builds and dead-code
+// eliminate this whole block — verified by grepping the prod bundle
+// for these strings after building. Previously this lived in
+// lib/roles.js's ROLE_META (imported unconditionally by Sidebar.jsx/
+// Topbar.jsx/Unauthorized.jsx/Login.jsx) with no DEV gate anywhere,
+// so every login page visitor could one-click sign in as superadmin
+// with the plaintext password shown on screen.
+const DEV_CREDENTIALS = {
+  superadmin:       { email: 'superadmin@bemsfarms.com', password: 'super123' },
+  manager:          { email: 'manager@bemsfarms.com',    password: 'manager123' },
+  accountant:       { email: 'accountant@bemsfarms.com', password: 'account123' },
+  delivery_manager: { email: 'delivery@bemsfarms.com',   password: 'delivery123' },
+  cashier:          { email: 'cashier@bemsfarms.com',    password: 'cashier123' },
+  kitchen_staff:    { email: 'kitchen@bemsfarms.com',    password: 'kitchen123' },
+}
+
 const ROLE_ACCESS = {
   superadmin:       ['Dashboard', 'POS', 'Products', 'Inventory', 'Orders', 'Deliveries', 'Customers', 'Staff', 'Finance', 'Reports', 'Chef Bems AI', 'Multi-Store', 'Settings'],
   manager:          ['Dashboard', 'POS', 'Products', 'Inventory', 'Orders', 'Deliveries', 'Customers', 'Staff', 'Finance', 'Reports', 'Chef Bems AI', 'Settings'],
@@ -155,70 +173,73 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Dev Quick-Fill */}
-          <div style={{ marginTop: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-              <span style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>
-                Dev — Quick Sign In
-              </span>
-              <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-            </div>
+          {/* Dev Quick-Fill — dev builds only, stripped entirely from production */}
+          {import.meta.env.DEV && (
+            <div style={{ marginTop: 28 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+                <span style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>
+                  Dev — Quick Sign In
+                </span>
+                <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+              </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {ROLES_ORDER.map(roleKey => {
-                const m = ROLE_META[roleKey]
-                const isActive = form.email === m.email
-                return (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {ROLES_ORDER.map(roleKey => {
+                  const m = ROLE_META[roleKey]
+                  const cred = DEV_CREDENTIALS[roleKey]
+                  const isActive = form.email === cred.email
+                  return (
+                    <button
+                      key={roleKey}
+                      type="button"
+                      onClick={() => fill(cred.email, cred.password)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '8px 10px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                        background: isActive ? m.bg : '#fff',
+                        border: `1.5px solid ${isActive ? m.color : '#e5e7eb'}`,
+                        transition: 'all 0.12s',
+                        fontFamily: 'Nunito, sans-serif',
+                      }}
+                    >
+                      <div style={{
+                        width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                        background: m.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <i className={m.icon} style={{ color: m.color, fontSize: 13 }} />
+                      </div>
+                      <div style={{ overflow: 'hidden' }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: m.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.label}</div>
+                        <div style={{ fontSize: 10, color: '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.description}</div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {form.email && (
+                <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ fontSize: 11, color: '#64748b', overflow: 'hidden' }}>
+                    <i className="ri-mail-line" style={{ marginRight: 4 }} />{form.email}
+                    <span style={{ margin: '0 6px' }}>·</span>
+                    <i className="ri-lock-line" style={{ marginRight: 4 }} />{form.password}
+                  </div>
                   <button
-                    key={roleKey}
-                    type="button"
-                    onClick={() => fill(m.email, m.password)}
+                    onClick={handleSubmit}
+                    disabled={loading}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '8px 10px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                      background: isActive ? m.bg : '#fff',
-                      border: `1.5px solid ${isActive ? m.color : '#e5e7eb'}`,
-                      transition: 'all 0.12s',
-                      fontFamily: 'Nunito, sans-serif',
+                      padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                      fontSize: 11, fontWeight: 700, background: '#1B4332', color: '#fff',
+                      fontFamily: 'Nunito, sans-serif', flexShrink: 0,
                     }}
                   >
-                    <div style={{
-                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                      background: m.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <i className={m.icon} style={{ color: m.color, fontSize: 13 }} />
-                    </div>
-                    <div style={{ overflow: 'hidden' }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: m.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.label}</div>
-                      <div style={{ fontSize: 10, color: '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.description}</div>
-                    </div>
+                    {loading ? '…' : 'Go →'}
                   </button>
-                )
-              })}
-            </div>
-
-            {form.email && (
-              <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <div style={{ fontSize: 11, color: '#64748b', overflow: 'hidden' }}>
-                  <i className="ri-mail-line" style={{ marginRight: 4 }} />{form.email}
-                  <span style={{ margin: '0 6px' }}>·</span>
-                  <i className="ri-lock-line" style={{ marginRight: 4 }} />{form.password}
                 </div>
-                <button
-                  onClick={handleSubmit}
-                  disabled={loading}
-                  style={{
-                    padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                    fontSize: 11, fontWeight: 700, background: '#1B4332', color: '#fff',
-                    fontFamily: 'Nunito, sans-serif', flexShrink: 0,
-                  }}
-                >
-                  {loading ? '…' : 'Go →'}
-                </button>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
