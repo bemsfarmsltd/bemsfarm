@@ -4,6 +4,7 @@ import { useCart } from "../context/CartContext";
 import { useState } from "react";
 import PageWrapper from "../components/layout/PageWrapper";
 import { getProductEmoji, getProductBg } from "../components/ui/ProductCard";
+import api from "../services/api";
 
 /*
   ── RESPONSIVE STRATEGY ──────────────────────────────────────
@@ -47,39 +48,47 @@ const CART_CSS = `
 
 export default function CartPage() {
   const navigate = useNavigate();
-  const { cartItems, cartSubtotal, updateQuantity, removeFromCart } = useCart();
+  const { cartItems, cartSubtotal, updateQuantity, removeFromCart, appliedCoupon, setAppliedCoupon } = useCart();
   const delivery = cartSubtotal > 15000 ? 0 : 1500;
-  const total = cartSubtotal + delivery;
+  const discount = appliedCoupon?.discount || 0;
+  const total = cartSubtotal + delivery - discount;
   const [coupon, setCoupon] = useState("");
-  const [discount, setDiscount] = useState(0);
   const [couponMsg, setCouponMsg] = useState("");
   const [couponValid, setCouponValid] = useState(null);
+  const [validating, setValidating] = useState(false);
 
-  const validCoupons = {
-    BEMS10: { type: "percent", value: 10, label: "10% off" },
-    FRESH20: { type: "percent", value: 20, label: "20% off" },
-    SAVE500: { type: "fixed", value: 500, label: "₦500 off" },
-    NEWUSER: { type: "percent", value: 15, label: "15% off" },
+  const applyCoupon = async () => {
+    const code = coupon.toUpperCase().trim();
+    if (!code) return;
+    setValidating(true);
+    try {
+      const { data } = await api.post("/admin/coupons/validate", {
+        code,
+        order_total: cartSubtotal,
+      });
+      if (data.valid) {
+        setAppliedCoupon({ code, discount: data.discount, type: data.coupon.type, value: data.coupon.value });
+        setCouponMsg(`✅ Coupon applied! You saved ₦${data.discount.toLocaleString()}`);
+        setCouponValid(true);
+      } else {
+        setAppliedCoupon(null);
+        setCouponMsg(`❌ ${data.message || "Invalid coupon code"}`);
+        setCouponValid(false);
+      }
+    } catch {
+      setAppliedCoupon(null);
+      setCouponMsg("❌ Could not validate coupon. Please try again.");
+      setCouponValid(false);
+    } finally {
+      setValidating(false);
+    }
   };
 
-  const applyCoupon = () => {
-    const code = coupon.toUpperCase().trim();
-    if (validCoupons[code]) {
-      const c = validCoupons[code];
-      const disc =
-        c.type === "percent"
-          ? Math.round((cartSubtotal * c.value) / 100)
-          : c.value;
-      setDiscount(disc);
-      setCouponMsg(
-        `✅ Coupon applied! You saved ₦${disc.toLocaleString()} (${c.label})`,
-      );
-      setCouponValid(true);
-    } else {
-      setDiscount(0);
-      setCouponMsg("❌ Invalid coupon code. Try BEMS10 or FRESH20");
-      setCouponValid(false);
-    }
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCoupon("");
+    setCouponMsg("");
+    setCouponValid(null);
   };
 
   if (cartItems.length === 0)
@@ -396,13 +405,14 @@ export default function CartPage() {
                 >
                   <input
                     value={coupon}
+                    disabled={!!appliedCoupon || validating}
                     onChange={(e) => {
                       setCoupon(e.target.value);
                       setCouponMsg("");
                       setCouponValid(null);
                     }}
                     onKeyDown={(e) => e.key === "Enter" && applyCoupon()}
-                    placeholder="Coupon code (try BEMS10)"
+                    placeholder="Coupon code"
                     style={{
                       flex: 1,
                       minWidth: 0,
@@ -413,24 +423,46 @@ export default function CartPage() {
                       outline: "none",
                     }}
                   />
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={applyCoupon}
-                    style={{
-                      padding: "12px 20px",
-                      borderRadius: "10px",
-                      backgroundColor: "#F57C00",
-                      border: "none",
-                      color: "white",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      fontSize: "14px",
-                      whiteSpace: "nowrap",
-                      boxShadow: "0 4px 12px rgba(245,124,0,0.3)",
-                    }}
-                  >
-                    Apply
-                  </motion.button>
+                  {appliedCoupon ? (
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
+                      onClick={removeCoupon}
+                      style={{
+                        padding: "12px 20px",
+                        borderRadius: "10px",
+                        backgroundColor: "white",
+                        border: "1px solid #E8EAED",
+                        color: "#C62828",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Remove
+                    </motion.button>
+                  ) : (
+                    <motion.button
+                      whileTap={{ scale: 0.97 }}
+                      onClick={applyCoupon}
+                      disabled={validating}
+                      style={{
+                        padding: "12px 20px",
+                        borderRadius: "10px",
+                        backgroundColor: "#F57C00",
+                        border: "none",
+                        color: "white",
+                        fontWeight: 700,
+                        cursor: validating ? "not-allowed" : "pointer",
+                        fontSize: "14px",
+                        whiteSpace: "nowrap",
+                        opacity: validating ? 0.7 : 1,
+                        boxShadow: "0 4px 12px rgba(245,124,0,0.3)",
+                      }}
+                    >
+                      {validating ? "Checking..." : "Apply"}
+                    </motion.button>
+                  )}
                 </div>
                 {couponMsg && (
                   <motion.p
@@ -484,7 +516,7 @@ export default function CartPage() {
               <span
                 style={{ fontWeight: 800, fontSize: "18px", color: "#2E7D32" }}
               >
-                ₦{(cartSubtotal + delivery - discount).toLocaleString()}
+                ₦{cartSubtotal.toLocaleString()}
               </span>
             </div>
             <div

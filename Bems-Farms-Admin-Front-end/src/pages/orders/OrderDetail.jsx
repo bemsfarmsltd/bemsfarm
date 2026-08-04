@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import toast from "react-hot-toast";
 import api from "../../lib/api";
 
 const fmt = (n) => `₦${Number(n||0).toLocaleString("en-NG")}`
@@ -12,6 +13,7 @@ const STATUS_CFG = {
   packed_ready:     { label:"Packed & Ready",  color:"#8b5cf6", bg:"#ede9fe" },
   driver_assigned:  { label:"Driver Assigned", color:"#06b6d4", bg:"#cffafe" },
   out_for_delivery: { label:"Out for Delivery",color:"#3b82f6", bg:"#dbeafe" },
+  delivery_attempted:{ label:"Delivery Attempted", color:"#f97316", bg:"#ffedd5" },
   delivered:        { label:"Delivered",       color:"#22c55e", bg:"#dcfce7" },
   dispute:          { label:"Dispute",         color:"#ef4444", bg:"#fee2e2" },
   cancelled:        { label:"Cancelled",       color:"#6b7280", bg:"#f3f4f6" },
@@ -21,6 +23,9 @@ const TH   = { padding:"10px 16px",fontSize:11,fontWeight:700,color:"#6b7280",te
 const TD   = { padding:"12px 16px",verticalAlign:"middle",borderBottom:"1px solid #f3f4f6",fontSize:13,color:"#111827" }
 const btnP = { display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",borderRadius:9,border:"none",background:"#1B4332",color:"#fff",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:13 }
 const btnL = { display:"inline-flex",alignItems:"center",gap:6,padding:"9px 16px",borderRadius:9,border:"1.5px solid #e5e7eb",background:"#fff",color:"#374151",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:600,fontSize:13 }
+const inp  = { display:"block",width:"100%",padding:"9px 12px",border:"1.5px solid #e5e7eb",borderRadius:8,fontFamily:"Nunito,sans-serif",fontSize:13,outline:"none",background:"#fff",boxSizing:"border-box" }
+const LBL  = { display:"block",fontSize:12,fontWeight:700,color:"#374151",marginBottom:6 }
+const S    = "#6b7280"
 
 function InfoCard({ title, children }) {
   return (
@@ -31,12 +36,37 @@ function InfoCard({ title, children }) {
   )
 }
 
+function Modal({ title, onClose, children, maxWidth=480, danger=false }) {
+  return <>
+    <div onClick={onClose} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1054 }}/>
+    <div style={{ position:"fixed",inset:0,zIndex:1055,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
+      <div style={{ background:"#fff",borderRadius:14,width:"100%",maxWidth,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",maxHeight:"90vh",display:"flex",flexDirection:"column" }}>
+        <div style={{ background:danger?"#7f1d1d":"#1B4332",color:"#fff",padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
+          <span style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15 }}>{title}</span>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:"rgba(255,255,255,0.8)",cursor:"pointer",fontSize:20,display:"flex",padding:4 }}><i className="ri-close-line"/></button>
+        </div>
+        <div style={{ padding:24,overflowY:"auto" }}>{children}</div>
+      </div>
+    </div>
+  </>
+}
+
 export default function OrderDetail() {
   const { id } = useParams()
   const [order,setOrder]     = useState(null)
   const [loading,setLoading] = useState(true)
   const [error,setError]     = useState(null)
   const [updating,setUpdating] = useState(false)
+
+  const [drivers,setDrivers] = useState([])
+  const [activeModal,setActiveModal] = useState(null) // assign | dispute | reschedule | cancel
+  const [assignDriverId,setAssignDriverId] = useState("")
+  const [assignType,setAssignType] = useState("initial")
+  const [disputeDecision,setDisputeDecision] = useState("")
+  const [disputeNote,setDisputeNote] = useState("")
+  const [disputeAmount,setDisputeAmount] = useState("")
+  const [cancelReason,setCancelReason] = useState("")
+  const [rescheduleNote,setRescheduleNote] = useState("")
 
   const load = async () => {
     setLoading(true)
@@ -51,17 +81,73 @@ export default function OrderDetail() {
   }
 
   useEffect(()=>{ load() },[id])
+  useEffect(()=>{ api.get("/admin/orders/form-data/drivers").then(r=>setDrivers(r.data.drivers||[])).catch(()=>{}) },[])
 
-  const updateStatus = async (status) => {
+  const openModal = (type, meta={}) => {
+    setActiveModal(type)
+    setAssignDriverId(""); setDisputeDecision(""); setDisputeNote("")
+    setDisputeAmount(""); setCancelReason(""); setRescheduleNote("")
+    if (type==="assign") setAssignType(meta.assignType||"initial")
+  }
+  const closeModal = () => setActiveModal(null)
+
+  const updateStatus = async (status, notes, extra={}) => {
     setUpdating(true)
     try {
-      await api.patch(`/admin/orders/${id}/status`,{ status })
-      load()
-    } catch {
-      alert("Failed to update status")
+      await api.patch(`/admin/orders/${id}/status`,{ status, notes, ...extra })
+      toast.success("Order updated"); closeModal(); load()
+    } catch (err) {
+      toast.error(err.response?.data?.message||"Failed to update status")
     } finally {
       setUpdating(false)
     }
+  }
+
+  const processOrder = () => updateStatus("processing", "Order sent to picking queue")
+  const markPacked    = () => updateStatus("packed_ready", "Goods picked, packed and labelled")
+
+  const assignDriver = async () => {
+    if (!assignDriverId) return
+    setUpdating(true)
+    try {
+      await api.patch(`/admin/orders/${id}/assign-driver`,{ driver_id:parseInt(assignDriverId), reassign:assignType==="manual_reassign" })
+      toast.success(assignType==="manual_reassign"?"Driver reassigned":"Driver assigned"); closeModal(); load()
+    } catch (err) {
+      toast.error(err.response?.data?.message||"Failed to assign driver")
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const resolveDispute = async () => {
+    if (!disputeDecision || !disputeNote) return
+    setUpdating(true)
+    try {
+      await api.patch(`/admin/orders/${id}/resolve-dispute`,{ decision:disputeDecision, notes:disputeNote, refund_amount:disputeAmount })
+      toast.success("Dispute resolved"); closeModal(); load()
+    } catch (err) {
+      toast.error(err.response?.data?.message||"Failed to resolve dispute")
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const cancelOrder = async () => {
+    if (!cancelReason) return
+    setUpdating(true)
+    try {
+      await api.patch(`/admin/orders/${id}/cancel`,{ reason:cancelReason })
+      toast.success("Order cancelled"); closeModal(); load()
+    } catch (err) {
+      toast.error(err.response?.data?.message||"Failed to cancel order")
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const rescheduleDelivery = async () => {
+    if (!rescheduleNote) return
+    await updateStatus("driver_assigned", `Delivery rescheduled (attempt ${(order?.attempts||0)+1}). ${rescheduleNote}`)
   }
 
   if (loading) return (
@@ -81,6 +167,7 @@ export default function OrderDetail() {
 
   const o   = order
   const cfg = STATUS_CFG[o.status]||STATUS_CFG.cancelled
+  const hasDriver = !!(o.driver_id || o.driver_name)
 
   return (
     <div style={{ fontFamily:"Nunito,sans-serif" }}>
@@ -149,16 +236,34 @@ export default function OrderDetail() {
           </InfoCard>
 
           <InfoCard title="Update Status">
-            <div style={{ display:"flex",flexWrap:"wrap",gap:8 }}>
-              {["processing","packed_ready","driver_assigned","out_for_delivery","delivered","cancelled"].map(s=>{
-                const isCurrent=o.status===s
-                return (
-                  <button key={s} onClick={()=>updateStatus(s)} disabled={updating}
-                    style={{ padding:"7px 14px",borderRadius:8,border:isCurrent?"none":"1.5px solid #e5e7eb",background:isCurrent?"#1B4332":"#fff",color:isCurrent?"#fff":"#374151",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:isCurrent?700:500,fontSize:13 }}>
-                    {s.replace(/_/g," ")}
-                  </button>
-                )
-              })}
+            {/* Guarded actions only — mirrors OrdersList.jsx's per-status action
+                buttons so this page can't skip driver assignment or bypass the
+                refund-aware dispute flow the way a free-for-all status list could. */}
+            <div style={{ display:"flex",flexWrap:"wrap",gap:10 }}>
+              {["paid","new_order","pending"].includes(o.status)&&(
+                <button style={btnP} onClick={processOrder} disabled={updating}><i className="ri-play-circle-line"/>Process Order</button>
+              )}
+              {o.status==="processing"&&(
+                <button style={btnP} onClick={markPacked} disabled={updating}><i className="ri-archive-line"/>Mark as Packed</button>
+              )}
+              {["packed_ready","packed"].includes(o.status)&&(
+                <button style={btnP} onClick={()=>openModal("assign",{assignType:"initial"})} disabled={updating}><i className="ri-user-add-line"/>Assign Driver</button>
+              )}
+              {["driver_assigned","assigned","out_for_delivery","shipped","delivery_attempted"].includes(o.status)&&hasDriver&&(
+                <button style={{ ...btnP,background:"#d97706" }} onClick={()=>openModal("assign",{assignType:"manual_reassign"})} disabled={updating}><i className="ri-user-follow-line"/>Reassign Driver</button>
+              )}
+              {o.status==="dispute"&&(
+                <button style={{ ...btnP,background:"#dc2626" }} onClick={()=>openModal("dispute")} disabled={updating}><i className="ri-shield-check-line"/>Resolve Dispute</button>
+              )}
+              {o.status==="delivery_attempted"&&(
+                <button style={btnL} onClick={()=>openModal("reschedule")} disabled={updating}><i className="ri-calendar-line"/>Reschedule</button>
+              )}
+              {["paid","new_order","pending","processing","packed_ready","packed","driver_assigned","assigned"].includes(o.status)&&(
+                <button style={{ ...btnL,color:"#991b1b",borderColor:"#fca5a5" }} onClick={()=>openModal("cancel")} disabled={updating}><i className="ri-close-circle-line"/>Cancel Order</button>
+              )}
+              {["delivered","cancelled"].includes(o.status)&&(
+                <span style={{ fontSize:13,color:S }}>No further actions — order is {o.status}.</span>
+              )}
             </div>
           </InfoCard>
 
@@ -232,6 +337,118 @@ export default function OrderDetail() {
           )}
         </div>
       </div>
+
+      {/* ASSIGN / REASSIGN DRIVER */}
+      {activeModal==="assign"&&(
+        <Modal title={assignType==="manual_reassign"?"Manual Driver Reassignment":"Assign Driver"} onClose={closeModal}>
+          {drivers.length===0?(
+            <div style={{ textAlign:"center",color:"#6b7280",padding:"32px 0" }}>No active drivers found. Add drivers first.</div>
+          ):(
+            <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:16 }}>
+              {drivers.map(driver=>(
+                <div key={driver.id} onClick={()=>setAssignDriverId(String(driver.id))}
+                  style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",border:`1.5px solid ${Number(assignDriverId)===driver.id?"#8b5cf6":"#e5e7eb"}`,borderRadius:10,cursor:"pointer",background:Number(assignDriverId)===driver.id?"#ede9fe":"#fff" }}>
+                  <div style={{ width:36,height:36,borderRadius:"50%",background:"#6366f1",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0 }}>
+                    {(driver.name||"D").split(" ").map(n=>n[0]).join("")}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:600,fontSize:13 }}>{driver.name}</div>
+                    <div style={{ fontSize:11,color:S }}>{driver.phone} · {driver.vehicle_plate||driver.vehicle_type}</div>
+                  </div>
+                  {Number(assignDriverId)===driver.id&&<i className="ri-checkbox-circle-fill" style={{ fontSize:18,color:"#6366f1" }}/>}
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display:"flex",gap:10 }}>
+            <button style={{ ...btnL,flex:1,justifyContent:"center" }} onClick={closeModal}>Cancel</button>
+            <button style={{ ...btnP,flex:1,justifyContent:"center",background:assignType==="manual_reassign"?"#d97706":"#1B4332" }} onClick={assignDriver} disabled={!assignDriverId||updating}>
+              {updating?"Assigning...":assignType==="manual_reassign"?"Reassign & Notify":"Assign & Notify"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* RESOLVE DISPUTE */}
+      {activeModal==="dispute"&&(
+        <Modal title="Resolve Dispute" maxWidth={540} onClose={closeModal}>
+          <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:16 }}>
+            {[
+              { key:"full_refund",    label:"Full Refund",    desc:`Refund ${fmt(o.total)} to customer`,          color:"#22c55e",icon:"ri-refund-2-line"           },
+              { key:"partial_refund", label:"Partial Refund", desc:"Specify refund amount",                        color:"#f59e0b",icon:"ri-money-dollar-circle-line"  },
+              { key:"replacement",    label:"Replacement",    desc:"Driver collects goods, replacement arranged.", color:"#f97316",icon:"ri-refresh-line"              },
+              { key:"reject",         label:"Reject Claim",   desc:"Customer receives written rejection reason.",  color:"#6b7280",icon:"ri-close-circle-line"         },
+            ].map(d=>(
+              <div key={d.key} onClick={()=>setDisputeDecision(d.key)}
+                style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",border:`1.5px solid ${disputeDecision===d.key?d.color:"#e5e7eb"}`,borderRadius:10,cursor:"pointer",background:disputeDecision===d.key?`${d.color}12`:"#fff" }}>
+                <div style={{ width:36,height:36,borderRadius:"50%",background:`${d.color}20`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                  <i className={d.icon} style={{ fontSize:16,color:d.color }}/>
+                </div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:600,fontSize:13 }}>{d.label}</div>
+                  <div style={{ fontSize:11,color:S }}>{d.desc}</div>
+                </div>
+                {disputeDecision===d.key&&<i className="ri-checkbox-circle-fill" style={{ fontSize:18,color:d.color }}/>}
+              </div>
+            ))}
+          </div>
+
+          {disputeDecision==="partial_refund"&&(
+            <div style={{ marginBottom:16 }}>
+              <label style={LBL}>Refund Amount (₦) <span style={{ color:'#dc2626' }}>*</span></label>
+              <input type="number" style={inp} min="1" max={o.total} required value={disputeAmount} onChange={e=>setDisputeAmount(e.target.value)} placeholder="Enter amount"/>
+            </div>
+          )}
+
+          <div style={{ marginBottom:20 }}>
+            <label style={LBL}>Notes / Rationale <span style={{ color:'#dc2626' }}>*</span></label>
+            <textarea style={{ ...inp,resize:"vertical",minHeight:80 }} required value={disputeNote} onChange={e=>setDisputeNote(e.target.value)} placeholder="Provide context for customer support..."/>
+          </div>
+
+          <div style={{ display:"flex",gap:10 }}>
+            <button style={{ ...btnL,flex:1,justifyContent:"center" }} onClick={closeModal}>Cancel</button>
+            <button style={{ ...btnP,flex:1,justifyContent:"center",background:"#dc2626" }} onClick={resolveDispute} disabled={!disputeDecision||!disputeNote||updating}>
+              {updating?"Resolving...":"Confirm Decision"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* RESCHEDULE */}
+      {activeModal==="reschedule"&&(
+        <Modal title="Reschedule Delivery" onClose={closeModal}>
+          <div style={{ background:"#fef3c7",border:"1px solid #fde68a",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13 }}>
+            <i className="ri-alert-line" style={{ marginRight:6,color:"#92400e" }}/>
+            Increments the delivery attempts counter (currently {o.attempts||0}).
+          </div>
+          <label style={LBL}>Reschedule Notes <span style={{ color:'#dc2626' }}>*</span></label>
+          <textarea style={{ ...inp,marginBottom:20,resize:"vertical",minHeight:85 }} required placeholder="e.g. Customer unavailable, rescheduled for tomorrow morning..." value={rescheduleNote} onChange={e=>setRescheduleNote(e.target.value)}/>
+          <div style={{ display:"flex",gap:10 }}>
+            <button style={{ ...btnL,flex:1,justifyContent:"center" }} onClick={closeModal}>Cancel</button>
+            <button style={{ ...btnP,flex:1,justifyContent:"center",background:"#d97706" }} onClick={rescheduleDelivery} disabled={!rescheduleNote||updating}>
+              {updating?"Rescheduling...":"Reschedule Order"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* CANCEL */}
+      {activeModal==="cancel"&&(
+        <Modal title="Cancel Order" danger onClose={closeModal}>
+          <div style={{ background:"#fee2e2",border:"1px solid #fecaca",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#991b1b" }}>
+            <i className="ri-error-warning-line" style={{ marginRight:6 }}/>
+            <strong>Warning.</strong> This cancels payment collections and releases back inventory.
+          </div>
+          <label style={LBL}>Reason for Cancellation <span style={{ color:'#dc2626' }}>*</span></label>
+          <textarea style={{ ...inp,marginBottom:20,resize:"vertical",minHeight:80 }} required placeholder="e.g. Customer request, out of stock..." value={cancelReason} onChange={e=>setCancelReason(e.target.value)}/>
+          <div style={{ display:"flex",gap:10 }}>
+            <button style={{ ...btnL,flex:1,justifyContent:"center" }} onClick={closeModal}>Cancel</button>
+            <button style={{ ...btnP,flex:1,justifyContent:"center",background:"#dc2626" }} onClick={cancelOrder} disabled={!cancelReason||updating}>
+              {updating?"Cancelling...":"Cancel Order"}
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

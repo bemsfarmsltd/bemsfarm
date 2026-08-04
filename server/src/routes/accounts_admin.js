@@ -359,8 +359,8 @@ router.post("/income", requireRole("superadmin", "manager", "admin"), async (req
     await client.query("BEGIN");
 
     const { source, category, description, amount, date, payment_method, bank_account_id, order_id, notes, status = "completed" } = req.body;
-    if (!source)      return res.status(400).json({ message: "source required" });
-    if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ message: "amount must be > 0" });
+    if (!source)      { await client.query("ROLLBACK"); return res.status(400).json({ message: "source required" }); }
+    if (!amount || parseFloat(amount) <= 0) { await client.query("ROLLBACK"); return res.status(400).json({ message: "amount must be > 0" }); }
 
     const ref    = await nextRef(client, "INC", "income");
     const result = await client.query(
@@ -474,9 +474,9 @@ router.post("/expenses", requireRole("superadmin", "manager", "admin"), async (r
     await client.query("BEGIN");
 
     const { category, description, supplier_name, amount, date, due_date, payment_method, bank_account_id, receipt_url, notes } = req.body;
-    if (!category)    return res.status(400).json({ message: "category required" });
-    if (!description) return res.status(400).json({ message: "description required" });
-    if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ message: "amount must be > 0" });
+    if (!category)    { await client.query("ROLLBACK"); return res.status(400).json({ message: "category required" }); }
+    if (!description) { await client.query("ROLLBACK"); return res.status(400).json({ message: "description required" }); }
+    if (!amount || parseFloat(amount) <= 0) { await client.query("ROLLBACK"); return res.status(400).json({ message: "amount must be > 0" }); }
 
     const ref    = await nextRef(client, "EXP", "expenses");
     const result = await client.query(
@@ -651,7 +651,7 @@ router.post("/commissions/generate", requireRole("superadmin", "manager"), async
     await client.query("BEGIN");
 
     const { period_from, period_to, rate_per_delivery = 500 } = req.body;
-    if (!period_from || !period_to) return res.status(400).json({ message: "period_from and period_to required" });
+    if (!period_from || !period_to) { await client.query("ROLLBACK"); return res.status(400).json({ message: "period_from and period_to required" }); }
 
     // Count delivered orders per driver in the period
     const driverStats = await client.query(`
@@ -698,7 +698,7 @@ router.patch("/commissions/:id", requireRole("superadmin", "manager"), async (re
 
     const { status, bonus, deductions, payment_ref, bank_account_id } = req.body;
     const allowed = ["pending", "approved", "paid"];
-    if (status && !allowed.includes(status)) return res.status(400).json({ message: `status must be: ${allowed.join(", ")}` });
+    if (status && !allowed.includes(status)) { await client.query("ROLLBACK"); return res.status(400).json({ message: `status must be: ${allowed.join(", ")}` }); }
 
     const cur = await client.query("SELECT * FROM driver_commissions WHERE id=$1", [req.params.id]);
     if (!cur.rows.length) { await client.query("ROLLBACK"); return res.status(404).json({ message: "Commission not found" }); }

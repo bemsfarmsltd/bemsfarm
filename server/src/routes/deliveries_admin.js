@@ -133,8 +133,10 @@ router.patch(
       const del = await client.query("SELECT * FROM deliveries WHERE id=$1", [
         req.params.id,
       ]);
-      if (!del.rows.length)
+      if (!del.rows.length) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ message: "Delivery not found" });
+      }
 
       const patch = { status };
       if (status === "out_for_delivery") patch.dispatched_at = "NOW()";
@@ -207,8 +209,10 @@ router.patch(
     try {
       await client.query("BEGIN");
       const { driver_id, note } = req.body;
-      if (!driver_id)
+      if (!driver_id) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "driver_id required" });
+      }
 
       const del = await client.query("SELECT * FROM deliveries WHERE id=$1", [
         req.params.id,
@@ -216,10 +220,14 @@ router.patch(
       const driver = await client.query("SELECT * FROM drivers WHERE id=$1", [
         driver_id,
       ]);
-      if (!del.rows.length)
+      if (!del.rows.length) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ message: "Delivery not found" });
-      if (!driver.rows.length)
+      }
+      if (!driver.rows.length) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ message: "Driver not found" });
+      }
 
       const d = driver.rows[0];
 
@@ -285,8 +293,10 @@ router.patch(
       const del = await client.query("SELECT * FROM deliveries WHERE id=$1", [
         req.params.id,
       ]);
-      if (!del.rows.length)
+      if (!del.rows.length) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ message: "Delivery not found" });
+      }
 
       const newAttempts = (del.rows[0].attempts || 0) + 1;
 

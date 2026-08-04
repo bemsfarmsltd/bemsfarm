@@ -37,8 +37,35 @@ const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { validateCoupon } = require("../utils/coupons");
 
 router.use(protect);
+
+// ════════════════════════════════════════════════════════════════════════════
+// VALIDATE COUPON  ──  POST /api/admin/coupons/validate
+// Used by cart/checkout and POS to preview a coupon before order creation.
+// Registered before the requireRole gate below so any logged-in customer
+// (not just staff) can call it — order creation independently re-validates
+// and recomputes the discount server-side, this is a preview only.
+// ════════════════════════════════════════════════════════════════════════════
+router.post("/validate", async (req, res) => {
+  try {
+    const { code, order_total = 0, customer_id } = req.body;
+    if (!code) return res.status(400).json({ message: "code required" });
+
+    const result = await validateCoupon(pool, { code, subtotal: parseFloat(order_total), customerId: customer_id || null });
+    if (!result.ok) return res.json({ valid: false, message: result.message });
+
+    res.json({
+      valid:    true,
+      coupon:   { id: result.coupon.id, code: result.coupon.code, type: result.coupon.type, value: result.coupon.value },
+      discount: Math.round(result.discount * 100) / 100,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.use(requireRole("superadmin", "manager", "admin"));
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -131,13 +158,13 @@ router.post("/", async (req, res) => {
       applicable_to = "all", start_date, end_date, is_active = true,
     } = req.body;
 
-    if (!code?.trim()) return res.status(400).json({ message: "Coupon code is required" });
-    if (!value || parseFloat(value) <= 0) return res.status(400).json({ message: "Discount value must be > 0" });
-    if (!["percentage", "fixed"].includes(type)) return res.status(400).json({ message: "type must be percentage or fixed" });
-    if (type === "percentage" && parseFloat(value) > 100) return res.status(400).json({ message: "Percentage cannot exceed 100" });
+    if (!code?.trim()) { await client.query("ROLLBACK"); return res.status(400).json({ message: "Coupon code is required" }); }
+    if (!value || parseFloat(value) <= 0) { await client.query("ROLLBACK"); return res.status(400).json({ message: "Discount value must be > 0" }); }
+    if (!["percentage", "fixed"].includes(type)) { await client.query("ROLLBACK"); return res.status(400).json({ message: "type must be percentage or fixed" }); }
+    if (type === "percentage" && parseFloat(value) > 100) { await client.query("ROLLBACK"); return res.status(400).json({ message: "Percentage cannot exceed 100" }); }
 
     const duplicate = await client.query("SELECT id FROM coupons WHERE UPPER(code)=UPPER($1)", [code.trim()]);
-    if (duplicate.rows.length) return res.status(400).json({ message: "Coupon code already exists" });
+    if (duplicate.rows.length) { await client.query("ROLLBACK"); return res.status(400).json({ message: "Coupon code already exists" }); }
 
     const result = await client.query(
       `INSERT INTO coupons
@@ -174,7 +201,7 @@ router.patch("/:id", async (req, res) => {
     await client.query("BEGIN");
 
     const coupon = await client.query("SELECT id FROM coupons WHERE id=$1", [req.params.id]);
-    if (!coupon.rows.length) return res.status(404).json({ message: "Coupon not found" });
+    if (!coupon.rows.length) { await client.query("ROLLBACK"); return res.status(404).json({ message: "Coupon not found" }); }
 
     const allowed = ["description","type","value","min_order","max_discount",
                      "usage_limit","per_user_limit","applicable_to","start_date","end_date","is_active"];
@@ -186,7 +213,7 @@ router.patch("/:id", async (req, res) => {
         sets.push(`${field}=$${params.length}`);
       }
     }
-    if (!sets.length) return res.status(400).json({ message: "No fields to update" });
+    if (!sets.length) { await client.query("ROLLBACK"); return res.status(400).json({ message: "No fields to update" }); }
 
     params.push(req.params.id);
     const result = await client.query(
@@ -235,60 +262,6 @@ router.delete("/:id", requireRole("superadmin"), async (req, res) => {
 
     await pool.query("DELETE FROM coupons WHERE id=$1", [req.params.id]);
     res.json({ message: `Coupon "${coupon.rows[0].code}" deleted` });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ════════════════════════════════════════════════════════════════════════════
-// VALIDATE COUPON  ──  POST /api/admin/coupons/validate
-// Used by POS / order creation to verify a coupon code.
-// Public-ish: doesn't require admin role (called from customer-facing).
-// ════════════════════════════════════════════════════════════════════════════
-router.post("/validate", async (req, res) => {
-  try {
-    const { code, order_total = 0, customer_id } = req.body;
-    if (!code) return res.status(400).json({ message: "code required" });
-
-    const result = await pool.query(
-      "SELECT * FROM coupons WHERE UPPER(code)=UPPER($1)", [code.trim()]
-    );
-    if (!result.rows.length) return res.json({ valid: false, message: "Coupon not found" });
-
-    const c = result.rows[0];
-    const now = new Date();
-
-    if (!c.is_active) return res.json({ valid: false, message: "Coupon is not active" });
-    if (c.start_date && new Date(c.start_date) > now) return res.json({ valid: false, message: "Coupon not yet valid" });
-    if (c.end_date   && new Date(c.end_date)   < now) return res.json({ valid: false, message: "Coupon has expired" });
-    if (c.usage_limit && c.used_count >= c.usage_limit) return res.json({ valid: false, message: "Coupon usage limit reached" });
-    if (parseFloat(order_total) < parseFloat(c.min_order || 0))
-      return res.json({ valid: false, message: `Minimum order amount is ₦${c.min_order}` });
-
-    // Check per-user usage
-    if (customer_id && c.per_user_limit) {
-      const userUsage = await pool.query(
-        "SELECT COUNT(*) FROM coupon_usages WHERE coupon_id=$1 AND customer_id=$2",
-        [c.id, customer_id]
-      );
-      if (parseInt(userUsage.rows[0].count) >= c.per_user_limit)
-        return res.json({ valid: false, message: "You have already used this coupon" });
-    }
-
-    // Calculate discount amount
-    let discount = 0;
-    if (c.type === "percentage") {
-      discount = (parseFloat(order_total) * parseFloat(c.value)) / 100;
-      if (c.max_discount) discount = Math.min(discount, parseFloat(c.max_discount));
-    } else {
-      discount = Math.min(parseFloat(c.value), parseFloat(order_total));
-    }
-
-    res.json({
-      valid:    true,
-      coupon:   { id: c.id, code: c.code, type: c.type, value: c.value },
-      discount: Math.round(discount * 100) / 100,
-    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

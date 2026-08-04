@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import api from '../../lib/api'
 
 const IMPORT_TYPES = {
   products: {
@@ -51,17 +53,14 @@ const IMPORT_TYPES = {
 
 }
 
-const HISTORY = [
-  { file:'products_jan.xlsx',   type:'products',       by:'Admin',           status:'success',    date:'12 Jan 2026' },
-  { file:'variants_feb.csv',    type:'products',       by:'Store Manager',   status:'success',    date:'08 Feb 2026' },
-  { file:'price_update.xls',    type:'products',       by:'Admin',           status:'failed',     date:'22 Feb 2026' },
-  { file:'category_import.csv', type:'categories',     by:'Inventory Team',  status:'processing', date:'01 Mar 2026' },
-  { file:'supplier_products.xlsx',type:'products',     by:'Warehouse Admin', status:'success',    date:'10 Mar 2026' },
-]
+// Real import history isn't persisted server-side — this list only reflects
+// imports actually run in this browser session, not fabricated past runs.
+const HISTORY = []
 
 const STATUS_STYLE = {
   success:    { background:'#dcfce7',color:'#166534' },
   failed:     { background:'#fee2e2',color:'#991b1b' },
+  partial:    { background:'#fef3c7',color:'#92400e' },
   processing: { background:'#e0f2fe',color:'#0369a1' },
 }
 
@@ -81,8 +80,34 @@ function downloadTemplate(typeKey) {
   URL.revokeObjectURL(url)
 }
 
-function parseCSVHeaders(text) {
-  return text.split('\n')[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''))
+// Minimal CSV parser handling quoted fields (embedded commas/quotes/newlines)
+// — no CSV library is installed in this project, and this is a small enough
+// grammar to parse correctly by hand.
+function parseCSV(text) {
+  const rows = []
+  let row = [], field = '', inQuotes = false
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++ }
+        else inQuotes = false
+      } else field += c
+    } else if (c === '"') {
+      inQuotes = true
+    } else if (c === ',') {
+      row.push(field); field = ''
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++
+      row.push(field); field = ''
+      if (row.some(f => f.trim() !== '')) rows.push(row)
+      row = []
+    } else {
+      field += c
+    }
+  }
+  if (field !== '' || row.length) { row.push(field); if (row.some(f => f.trim() !== '')) rows.push(row) }
+  return rows
 }
 
 export default function BulkImport() {
@@ -92,38 +117,48 @@ export default function BulkImport() {
   const [dragOver, setDragOver]         = useState(false)
   const [uploadedFile, setUploadedFile] = useState(null)
   const [fileHeaders, setFileHeaders]   = useState([])
+  const [dataRows, setDataRows]         = useState([]) // raw CSV data rows (arrays), one per record
   const [mapping, setMapping]           = useState({})
   const [importing, setImporting]       = useState(false)
+  const [importResult, setImportResult] = useState(null) // { imported, failed, total, errors }
+  const [fileError, setFileError]       = useState('')
   const [history, setHistory]           = useState(HISTORY)
   const fileInputRef = useRef(null)
 
   const typeConfig = IMPORT_TYPES[activeType]
 
   function handleTypeChange(key) { setActiveType(key); resetUpload() }
-  function resetUpload() { setStep(1); setUploadedFile(null); setFileHeaders([]); setMapping({}) }
+  function resetUpload() { setStep(1); setUploadedFile(null); setFileHeaders([]); setDataRows([]); setMapping({}); setImportResult(null); setFileError('') }
 
   function handleFile(file) {
     if (!file) return
-    setUploadedFile(file)
+    setFileError('')
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setFileError('Only CSV files are supported. Export your spreadsheet as CSV and try again.')
+      return
+    }
     const reader = new FileReader()
     reader.onload = e => {
-      const headers = parseCSVHeaders(e.target.result)
+      const parsed = parseCSV(e.target.result)
+      if (parsed.length < 2) {
+        setFileError('This file has no data rows below the header.')
+        return
+      }
+      const headers = parsed[0].map(h => h.trim())
+      const rows = parsed.slice(1)
       setFileHeaders(headers)
+      setDataRows(rows)
       const autoMap = {}
       typeConfig.fields.forEach(f => {
         const match = headers.find(h => h.toLowerCase()===f.key.toLowerCase()||h.toLowerCase()===f.label.toLowerCase())
         if (match) autoMap[f.key] = match
       })
-      setMapping(autoMap); setStep(2)
+      setMapping(autoMap)
+      setUploadedFile(file)
+      setStep(2)
     }
-    if (file.name.endsWith('.csv')) {
-      reader.readAsText(file)
-    } else {
-      setFileHeaders(typeConfig.templateHeaders)
-      const autoMap = {}
-      typeConfig.fields.forEach(f => { if (typeConfig.templateHeaders.includes(f.key)) autoMap[f.key]=f.key })
-      setMapping(autoMap); setUploadedFile(file); setStep(2)
-    }
+    reader.onerror = () => setFileError('Could not read this file.')
+    reader.readAsText(file)
   }
 
   function handleDrop(e) {
@@ -131,12 +166,34 @@ export default function BulkImport() {
     const file = e.dataTransfer.files[0]; if (file) handleFile(file)
   }
 
-  function handleImport() {
+  async function handleImport() {
     setImporting(true)
-    setTimeout(() => {
-      setHistory(prev => [{ file:uploadedFile.name, type:activeType, by:'Admin', status:'success', date:new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) }, ...prev])
-      setImporting(false); setStep(3)
-    }, 1800)
+    try {
+      const rows = dataRows.map(dataRow => {
+        const obj = {}
+        typeConfig.fields.forEach(f => {
+          const col = mapping[f.key]
+          if (!col) return
+          const colIdx = fileHeaders.indexOf(col)
+          if (colIdx === -1) return
+          obj[f.key] = (dataRow[colIdx] || '').trim()
+        })
+        return obj
+      })
+
+      const { data } = await api.post('/admin/products/bulk-import', { type: activeType, rows })
+      setImportResult(data)
+      setHistory(prev => [{
+        file: uploadedFile.name, type: activeType,
+        by: 'You', status: data.failed === 0 ? 'success' : (data.imported === 0 ? 'failed' : 'partial'),
+        date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      }, ...prev])
+      setStep(3)
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Import failed')
+    } finally {
+      setImporting(false)
+    }
   }
 
   const requiredMapped = typeConfig.fields.filter(f=>f.required).every(f=>mapping[f.key])
@@ -250,10 +307,15 @@ export default function BulkImport() {
               style={{ border:`2px dashed ${dragOver?typeConfig.color:B}`,borderRadius:12,padding:'52px 24px',textAlign:'center',cursor:'pointer',background:dragOver?`${typeConfig.color}08`:'#fafafa',transition:'all .15s' }}>
               <div style={{ fontSize:48 }}>📂</div>
               <div style={{ fontWeight:700,fontSize:16,marginTop:10,marginBottom:4 }}>Drag & drop your file here</div>
-              <div style={{ fontSize:13,color:S,marginBottom:16 }}>or click to browse — CSV, XLS, XLSX accepted (max 10 MB)</div>
+              <div style={{ fontSize:13,color:S,marginBottom:16 }}>or click to browse — CSV only (max 10 MB)</div>
               <button type="button" style={btnL} onClick={e=>{ e.stopPropagation(); fileInputRef.current?.click() }}>Browse File</button>
-              <input ref={fileInputRef} type="file" accept=".csv,.xls,.xlsx" style={{ display:'none' }} onChange={e=>handleFile(e.target.files[0])}/>
+              <input ref={fileInputRef} type="file" accept=".csv" style={{ display:'none' }} onChange={e=>handleFile(e.target.files[0])}/>
             </div>
+            {fileError && (
+              <div style={{ marginTop:14,background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:8,padding:'10px 14px',fontSize:13,color:'#991b1b' }}>
+                <i className="ri-error-warning-line" style={{ marginRight:6 }}/>{fileError}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -324,13 +386,24 @@ export default function BulkImport() {
         </div>
       )}
 
-      {/* Step 3: Success */}
-      {step===3&&(
+      {/* Step 3: Result */}
+      {step===3&&importResult&&(
         <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
-          <div style={{ padding:'60px 24px',textAlign:'center' }}>
-            <div style={{ fontSize:56 }}>✅</div>
-            <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:18,marginTop:12,marginBottom:6 }}>Import Successful</div>
-            <div style={{ fontSize:13,color:S,marginBottom:20 }}>{uploadedFile?.name} has been imported as {typeConfig.label}.</div>
+          <div style={{ padding:'48px 24px',textAlign:'center' }}>
+            <div style={{ fontSize:56 }}>{importResult.failed===0?'✅':importResult.imported===0?'❌':'⚠️'}</div>
+            <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:18,marginTop:12,marginBottom:6 }}>
+              {importResult.imported} of {importResult.total} row{importResult.total!==1?'s':''} imported
+            </div>
+            <div style={{ fontSize:13,color:S,marginBottom:20 }}>{uploadedFile?.name} as {typeConfig.label}.</div>
+
+            {importResult.errors.length>0&&(
+              <div style={{ textAlign:'left',maxWidth:520,margin:'0 auto 20px',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:'14px 18px',maxHeight:220,overflowY:'auto' }}>
+                <div style={{ fontWeight:700,fontSize:12,color:'#991b1b',marginBottom:8 }}>{importResult.failed} row{importResult.failed!==1?'s':''} failed:</div>
+                {importResult.errors.map((e,i)=>(
+                  <div key={i} style={{ fontSize:12,color:'#991b1b',marginBottom:4 }}>Row {e.row}: {e.message}</div>
+                ))}
+              </div>
+            )}
             <button style={btnP} onClick={resetUpload}><i className="ri-upload-line"/>Import Another File</button>
           </div>
         </div>

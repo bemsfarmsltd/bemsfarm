@@ -383,6 +383,105 @@ router.post(
   },
 );
 
+// ── POST /api/admin/products/bulk-import ────────────────────────────
+// Accepts rows already mapped client-side to the target field names
+// (see Bems-Farms-Admin-Front-end BulkImport.jsx). Each row is inserted
+// independently so one bad row doesn't roll back the rest of the batch.
+router.post(
+  "/bulk-import",
+  requireRole("superadmin", "manager", "admin"),
+  async (req, res) => {
+    const { type, rows } = req.body;
+    if (!["products", "categories", "sub_categories"].includes(type)) {
+      return res.status(400).json({ message: "Invalid import type" });
+    }
+    if (!Array.isArray(rows) || !rows.length) {
+      return res.status(400).json({ message: "No rows to import" });
+    }
+    if (rows.length > 2000) {
+      return res.status(400).json({ message: "Cannot import more than 2000 rows at once" });
+    }
+
+    let imported = 0;
+    const errors = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2; // account for the header row in the source file
+      try {
+        if (type === "products") {
+          if (!row.name?.trim()) throw new Error("name is required");
+          if (!row.sku?.trim()) throw new Error("sku is required");
+          if (!row.category_id) throw new Error("category_id is required");
+          if (row.unit_price === undefined || row.unit_price === "" || isNaN(parseFloat(row.unit_price))) {
+            throw new Error("unit_price is required and must be a number");
+          }
+          if (row.stock_qty === undefined || row.stock_qty === "" || isNaN(parseInt(row.stock_qty))) {
+            throw new Error("stock_qty is required and must be a number");
+          }
+
+          const dup = await pool.query("SELECT id FROM products WHERE sku=$1", [row.sku.trim()]);
+          if (dup.rows.length) throw new Error(`SKU "${row.sku.trim()}" already exists`);
+
+          const unitPrice = parseFloat(row.unit_price);
+          const stockQty = parseInt(row.stock_qty);
+          await pool.query(
+            `INSERT INTO products
+               (name, sku, barcode, category_id, sub_category_id, unit_price, price, cost_price,
+                stock, stock_quantity, unit, low_stock_threshold, tax_rate, description, status,
+                available_for_sale, track_inventory, created_by, created_at, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$6,$7,$8,$8,$9,$10,$11,$12,$13,true,true,$14,NOW(),NOW())`,
+            [
+              row.name.trim(),
+              row.sku.trim(),
+              row.barcode?.trim() || null,
+              parseInt(row.category_id),
+              row.sub_category_id ? parseInt(row.sub_category_id) : null,
+              unitPrice,
+              row.cost_price ? parseFloat(row.cost_price) : null,
+              stockQty,
+              row.unit?.trim() || null,
+              row.low_stock_alert ? parseInt(row.low_stock_alert) : 10,
+              row.tax_percent ? parseFloat(row.tax_percent) : 7.5,
+              row.description?.trim() || null,
+              row.status?.trim() || "active",
+              req.user.id,
+            ],
+          );
+        } else if (type === "categories") {
+          if (!row.name?.trim()) throw new Error("name is required");
+          await pool.query(
+            `INSERT INTO categories (name, code, description, status, created_at)
+             VALUES ($1,$2,$3,$4,NOW())`,
+            [row.name.trim(), row.code?.trim() || null, row.description?.trim() || null, row.status?.trim() || "active"],
+          );
+        } else {
+          if (!row.name?.trim()) throw new Error("name is required");
+          if (!row.category_id) throw new Error("category_id is required");
+          const catCheck = await pool.query("SELECT id FROM categories WHERE id=$1", [parseInt(row.category_id)]);
+          if (!catCheck.rows.length) throw new Error(`category_id ${row.category_id} does not exist`);
+          await pool.query(
+            `INSERT INTO sub_categories (name, category_id, description, status, created_at)
+             VALUES ($1,$2,$3,$4,NOW())`,
+            [row.name.trim(), parseInt(row.category_id), row.description?.trim() || null, row.status?.trim() || "active"],
+          );
+        }
+        imported++;
+      } catch (err) {
+        errors.push({ row: rowNum, message: err.message });
+      }
+    }
+
+    res.status(imported > 0 ? 201 : 400).json({
+      imported,
+      failed: errors.length,
+      total: rows.length,
+      errors: errors.slice(0, 50),
+      message: `${imported} of ${rows.length} rows imported${errors.length ? `, ${errors.length} failed` : ""}`,
+    });
+  },
+);
+
 // ── PATCH /api/admin/products/:id ────────────────────────────────
 router.patch(
   "/:id",

@@ -141,6 +141,7 @@ router.post("/reconcile-manual", requireRole("superadmin", "manager", "admin", "
     );
 
     if (payCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ message: `Payment reference ${payment_ref} not found in validated payments list.` });
     }
 
@@ -153,6 +154,7 @@ router.post("/reconcile-manual", requireRole("superadmin", "manager", "admin", "
     );
 
     if (orderCheck.rows.length === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ message: `Order ID ${order_id} not found.` });
     }
 

@@ -1,8 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
+import api from '../../lib/api'
 
 const ini    = n => n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
 const fmtPts = n => Number(n).toLocaleString()+' pts'
+const fmtDate = d => d ? new Date(d).toISOString().slice(0,10) : '—'
 
 const TIER_CFG = {
   Platinum: { bg:'#f5f3ff', color:'#7c3aed', border:'#ddd6fe', icon:'ri-vip-crown-2-fill', min:10000, next:null,      label:'Platinum' },
@@ -12,36 +15,7 @@ const TIER_CFG = {
 }
 const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec4899','#f97316','#14b8a6','#6366f1','#84cc16','#a855f7','#ef4444','#10b981','#d97706','#6366f1']
 
-const INIT_DATA = [
-  { id:'CUS-004', name:'Funke Oladele',   tier:'Platinum', points:9840,  lifetime:9840,  lastEarned:'2026-06-27' },
-  { id:'CUS-012', name:'Bisi Awojobi',    tier:'Platinum', points:11200, lifetime:11200, lastEarned:'2026-06-27' },
-  { id:'CUS-001', name:'Adaeze Nwosu',    tier:'Gold',     points:4120,  lifetime:4120,  lastEarned:'2026-06-25' },
-  { id:'CUS-007', name:'Babatunde Ojo',   tier:'Gold',     points:5240,  lifetime:5240,  lastEarned:'2026-06-26' },
-  { id:'CUS-009', name:'Emeka Okonkwo',   tier:'Gold',     points:7200,  lifetime:7200,  lastEarned:'2026-06-23' },
-  { id:'CUS-002', name:'Seun Adesanya',   tier:'Silver',   points:2845,  lifetime:2845,  lastEarned:'2026-06-27' },
-  { id:'CUS-006', name:'Ngozi Umeh',      tier:'Silver',   points:1780,  lifetime:1780,  lastEarned:'2026-06-24' },
-  { id:'CUS-011', name:'Chidi Okeke',     tier:'Silver',   points:2340,  lifetime:2340,  lastEarned:'2026-06-20' },
-  { id:'CUS-014', name:'Chioma Obi',      tier:'Silver',   points:1520,  lifetime:1520,  lastEarned:'2026-06-21' },
-  { id:'CUS-015', name:'Lanre Fasanya',   tier:'Silver',   points:3600,  lifetime:3600,  lastEarned:'2026-05-12' },
-  { id:'CUS-003', name:'Chukwuemeka Eze', tier:'Bronze',   points:982,   lifetime:982,   lastEarned:'2026-06-22' },
-  { id:'CUS-005', name:'Tolulope Badmus', tier:'Bronze',   points:624,   lifetime:624,   lastEarned:'2026-06-18' },
-  { id:'CUS-008', name:'Aminat Suleiman', tier:'Bronze',   points:285,   lifetime:285,   lastEarned:'2026-06-10' },
-  { id:'CUS-010', name:'Kemi Adeleke',    tier:'Bronze',   points:1120,  lifetime:1120,  lastEarned:'2026-04-30' },
-  { id:'CUS-013', name:'Yusuf Abdullahi', tier:'Bronze',   points:440,   lifetime:440,   lastEarned:'2026-06-15' },
-]
-
-const POINTS_HISTORY = [
-  { customer:'Funke Oladele',   type:'earn',  desc:'Order ORD-2026-0142 — 1 pt per ₦10 spent', pts:+8500, date:'2026-06-27' },
-  { customer:'Bisi Awojobi',    type:'earn',  desc:'Platinum weekly bonus',                      pts:+500,  date:'2026-06-27' },
-  { customer:'Seun Adesanya',   type:'earn',  desc:'Order ORD-2026-0139',                       pts:+320,  date:'2026-06-27' },
-  { customer:'Adaeze Nwosu',    type:'earn',  desc:'Order ORD-2026-0141',                       pts:+185,  date:'2026-06-25' },
-  { customer:'Emeka Okonkwo',   type:'redeem',desc:'Redeemed 500 pts for ₦2,000 wallet credit', pts:-500,  date:'2026-06-23' },
-  { customer:'Babatunde Ojo',   type:'earn',  desc:'Order ORD-2026-0139',                       pts:+1200, date:'2026-06-26' },
-  { customer:'Chioma Obi',      type:'earn',  desc:'Referral bonus — brought new customer',     pts:+200,  date:'2026-06-21' },
-  { customer:'Ngozi Umeh',      type:'earn',  desc:'Order ORD-2026-0135',                       pts:+140,  date:'2026-06-24' },
-  { customer:'Chidi Okeke',     type:'redeem',desc:'Redeemed 300 pts for free delivery',        pts:-300,  date:'2026-06-20' },
-  { customer:'Kemi Adeleke',    type:'admin', desc:'Admin bonus — feedback survey reward',      pts:+100,  date:'2026-06-18' },
-]
+const HIST_TYPE = { earned:'earn', bonus:'admin', referral:'admin', redeemed:'redeem', deducted:'admin' }
 
 const card = { background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
 const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid #e5e7eb', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'#111827', background:'#fff' }
@@ -51,14 +25,44 @@ const TH = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontW
 const TD = ({ children, style }) => <td style={{ padding:'10px 12px', fontSize:13, borderBottom:'1px solid #f9fafb', verticalAlign:'middle', ...style }}>{children}</td>
 
 export default function LoyaltyPoints() {
-  const [data, setData]         = useState(INIT_DATA)
+  const [data, setData]         = useState([])
+  const [history, setHistory]   = useState([])
+  const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
   const [filterTier, setTier]   = useState('all')
   const [selected, setSelected] = useState(null)
   const [modal, setModal]       = useState(null) // 'award' | 'deduct'
   const [pts, setPts]           = useState('')
   const [reason, setReason]     = useState('')
-  const [history, setHistory]   = useState(POINTS_HISTORY)
+  const [saving, setSaving]     = useState(false)
+
+  const loadData = useCallback(async () => {
+    try {
+      const [custRes, actRes] = await Promise.all([
+        api.get('/admin/customers', { params: { limit: 200 } }),
+        api.get('/admin/customers/loyalty/activity', { params: { limit: 30 } }),
+      ])
+      setData((custRes.data.customers || []).map(c => ({
+        id: c.customer_code, dbId: c.id, name: c.name,
+        tier: c.tier, points: Number(c.points) || 0,
+        lifetime: Number(c.lifetime_points) || 0,
+        lastEarned: fmtDate(c.last_earned_at),
+      })))
+      setHistory((actRes.data.activity || []).map(a => ({
+        customer: a.customer_name,
+        type: HIST_TYPE[a.type] || 'admin',
+        desc: a.description || '—',
+        pts: Number(a.points),
+        date: fmtDate(a.created_at),
+      })))
+    } catch {
+      toast.error('Failed to load loyalty data')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
 
   const filtered = useMemo(() => data.filter(c => {
     if (filterTier!=='all' && c.tier!==filterTier) return false
@@ -68,23 +72,24 @@ export default function LoyaltyPoints() {
 
   const totalPts  = data.reduce((s,c)=>s+c.points, 0)
 
-  function processPoints(type) {
+  async function processPoints(type) {
     const amount = parseInt(pts)
-    if (!amount || !selected) return
-    const sign = type==='award' ? +amount : -amount
-    setData(prev => prev.map(c => {
-      if (c.id!==selected.id) return c
-      const newPts = Math.max(0, c.points + sign)
-      const newTier = newPts>=10000?'Platinum':newPts>=5000?'Gold':newPts>=1000?'Silver':'Bronze'
-      return { ...c, points:newPts, tier:newTier }
-    }))
-    setHistory(prev => [{
-      customer:selected.name,
-      type: type==='award'?'admin':'redeem',
-      desc: reason || (type==='award'?'Admin points award':'Admin points deduction'),
-      pts:sign, date:new Date().toISOString().slice(0,10)
-    }, ...prev])
-    setModal(null); setPts(''); setReason(''); setSelected(null)
+    if (!amount || !selected || saving) return
+    const signed = type==='award' ? amount : -amount
+    setSaving(true)
+    try {
+      await api.post(`/admin/customers/${selected.dbId}/loyalty`, {
+        points: signed,
+        description: reason || (type==='award'?'Admin points award':'Admin points deduction'),
+      })
+      toast.success(type==='award' ? 'Points awarded' : 'Points deducted')
+      setModal(null); setPts(''); setReason(''); setSelected(null)
+      await loadData()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update points')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const closeModal = () => { setModal(null); setSelected(null); setPts(''); setReason('') }
@@ -96,6 +101,10 @@ export default function LoyaltyPoints() {
         subtitle="Manage customer loyalty tiers and points — earn 1 pt per ₦10 spent"
       />
 
+      {loading ? (
+        <div style={{ textAlign:'center', padding:60, color:'#6b7280' }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
+      ) : (
+      <>
       {/* Tier Cards */}
       <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:20 }}>
         {Object.entries(TIER_CFG).reverse().map(([tier, cfg]) => {
@@ -142,6 +151,9 @@ export default function LoyaltyPoints() {
                   <tr>{['CUSTOMER','TIER','POINTS BALANCE','LIFETIME PTS','LAST EARNED',''].map(h => <TH key={h}>{h}</TH>)}</tr>
                 </thead>
                 <tbody>
+                  {filtered.length === 0 && (
+                    <tr><td colSpan={6} style={{ padding:'30px 12px', textAlign:'center', color:'#94a3b8', fontSize:13 }}>No customers found</td></tr>
+                  )}
                   {filtered.map((c,i) => {
                     const tc = TIER_CFG[c.tier]
                     const pctToNext = tc.next ? Math.min(100,(c.points/TIER_CFG[tc.next].min)*100) : 100
@@ -174,7 +186,7 @@ export default function LoyaltyPoints() {
                             <button onClick={() => { setSelected(c); setModal('award'); setPts(''); setReason('') }} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:7, border:'none', background:'#f0fdf4', color:'#16a34a', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'Nunito, sans-serif' }}>
                               <i className="ri-add-line" />Award
                             </button>
-                            <button onClick={() => { setSelected(c); setModal('deduct'); setPts(''); setReason('') }} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:7, border:'1.5px solid #fecaca', background:'#fff', color:'#dc2626', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'Nunito, sans-serif' }}>
+                            <button onClick={() => { setSelected(c); setModal('deduct'); setPts(''); setReason('') }} disabled={c.points===0} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:7, border:'1.5px solid #fecaca', background:'#fff', color:'#dc2626', fontSize:11, fontWeight:700, cursor: c.points===0?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', opacity: c.points===0?0.5:1 }}>
                               <i className="ri-subtract-line" />Deduct
                             </button>
                           </div>
@@ -192,6 +204,9 @@ export default function LoyaltyPoints() {
         <div style={card}>
           <div style={{ padding:'12px 16px', borderBottom:'1px solid #e5e7eb', fontWeight:700, fontSize:14, color:'#111827' }}>Points Activity</div>
           <div>
+            {history.length === 0 && (
+              <div style={{ padding:'30px 16px', textAlign:'center', color:'#94a3b8', fontSize:13 }}>No activity yet</div>
+            )}
             {history.slice(0,12).map((h,i) => (
               <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 16px', borderBottom: i<11?'1px solid #f9fafb':'none' }}>
                 <div style={{ width:32, height:32, borderRadius:'50%', background: h.type==='earn'?'#f0fdf4':h.type==='redeem'?'#fef2f2':'#f5f3ff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -246,13 +261,15 @@ export default function LoyaltyPoints() {
               </div>
               <div style={{ display:'flex', gap:10 }}>
                 <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600 }}>Cancel</button>
-                <button disabled={!pts||parseInt(pts)<1} onClick={() => processPoints(modal)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background: modal==='award'?'#16a34a':'#dc2626', color:'#fff', cursor: (!pts||parseInt(pts)<1)?'not-allowed':'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:700, opacity: (!pts||parseInt(pts)<1)?0.6:1 }}>
-                  {modal==='award'?'Award':'Deduct'} {pts?fmtPts(pts):'Points'}
+                <button disabled={!pts||parseInt(pts)<1||saving} onClick={() => processPoints(modal)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background: modal==='award'?'#16a34a':'#dc2626', color:'#fff', cursor: (!pts||parseInt(pts)<1||saving)?'not-allowed':'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:700, opacity: (!pts||parseInt(pts)<1||saving)?0.6:1 }}>
+                  {saving ? 'Saving…' : `${modal==='award'?'Award':'Deduct'} ${pts?fmtPts(pts):'Points'}`}
                 </button>
               </div>
             </div>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   )

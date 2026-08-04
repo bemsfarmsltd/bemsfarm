@@ -51,7 +51,7 @@ const PAYSTACK_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "";
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { cartItems, cartSubtotal, clearCart } = useCart();
+  const { cartItems, cartSubtotal, clearCart, appliedCoupon } = useCart();
 
   const pageMountTime = useRef(Date.now());
   const clickCount = useRef(0);
@@ -88,7 +88,8 @@ export default function CheckoutPage() {
   const [psLoaded, setPsLoaded] = useState(false);
 
   const DELIVERY = 500;
-  const total = cartSubtotal + DELIVERY;
+  const discount = appliedCoupon?.discount || 0;
+  const total = cartSubtotal + DELIVERY - discount;
 
   useEffect(() => {
     if (document.getElementById("paystack-js")) {
@@ -181,6 +182,7 @@ export default function CheckoutPage() {
       payment_method: payMethod,
       payment_ref: ref || null,
       address: `${form.address}, ${form.city}, ${form.state}`,
+      coupon_code: appliedCoupon?.code || undefined,
       behavior_metrics: {
         timeSpent: Math.round((Date.now() - pageMountTime.current) / 1000),
         clicks: clickCount.current,
@@ -904,6 +906,24 @@ export default function CheckoutPage() {
                     ₦{DELIVERY.toLocaleString()}
                   </span>
                 </div>
+                {discount > 0 && (
+                  <div
+                    style={{ display: "flex", justifyContent: "space-between" }}
+                  >
+                    <span style={{ fontSize: "13px", color: "#1B4332" }}>
+                      Discount ({appliedCoupon.code})
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "13px",
+                        color: "#1B4332",
+                        fontWeight: 600,
+                      }}
+                    >
+                      -₦{discount.toLocaleString()}
+                    </span>
+                  </div>
+                )}
                 <div
                   style={{
                     display: "flex",

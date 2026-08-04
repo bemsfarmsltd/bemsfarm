@@ -218,8 +218,8 @@ router.post("/", requireRole("superadmin", "manager", "admin"), async (req, res)
       status = "draft",
     } = req.body;
 
-    if (!supplier_id) return res.status(400).json({ message: "supplier_id required" });
-    if (!items.length) return res.status(400).json({ message: "At least one item required" });
+    if (!supplier_id) { await client.query("ROLLBACK"); return res.status(400).json({ message: "supplier_id required" }); }
+    if (!items.length) { await client.query("ROLLBACK"); return res.status(400).json({ message: "At least one item required" }); }
 
     // Calculate totals
     const subtotal = items.reduce((sum, it) => sum + parseFloat(it.unit_cost) * parseInt(it.quantity_ordered), 0);
@@ -271,7 +271,7 @@ router.patch("/:id/status", requireRole("superadmin", "manager", "admin"), async
 
     const { status, notes } = req.body;
     const allowed = ["draft", "pending", "approved", "ordered", "partial", "received", "cancelled"];
-    if (!allowed.includes(status)) return res.status(400).json({ message: `status must be one of: ${allowed.join(", ")}` });
+    if (!allowed.includes(status)) { await client.query("ROLLBACK"); return res.status(400).json({ message: `status must be one of: ${allowed.join(", ")}` }); }
 
     const cur = await client.query("SELECT * FROM purchase_orders WHERE id=$1 FOR UPDATE", [req.params.id]);
     if (!cur.rows.length) { await client.query("ROLLBACK"); return res.status(404).json({ message: "Purchase order not found" }); }
@@ -308,7 +308,7 @@ router.post("/:id/receive", requireRole("superadmin", "manager", "admin", "store
 
     const { items = [], warehouse_id } = req.body;
     // items: [{ purchase_order_item_id, quantity_received }]
-    if (!items.length) return res.status(400).json({ message: "items required" });
+    if (!items.length) { await client.query("ROLLBACK"); return res.status(400).json({ message: "items required" }); }
 
     const po = await client.query("SELECT * FROM purchase_orders WHERE id=$1 FOR UPDATE", [req.params.id]);
     if (!po.rows.length) { await client.query("ROLLBACK"); return res.status(404).json({ message: "Purchase order not found" }); }
@@ -466,8 +466,8 @@ router.post("/returns", requireRole("superadmin", "manager", "admin"), async (re
     await client.query("BEGIN");
 
     const { purchase_order_id, supplier_id, reason, items = [] } = req.body;
-    if (!purchase_order_id) return res.status(400).json({ message: "purchase_order_id required" });
-    if (!items.length)      return res.status(400).json({ message: "At least one return item required" });
+    if (!purchase_order_id) { await client.query("ROLLBACK"); return res.status(400).json({ message: "purchase_order_id required" }); }
+    if (!items.length)      { await client.query("ROLLBACK"); return res.status(400).json({ message: "At least one return item required" }); }
 
     const totalValue = items.reduce((s, it) => s + (parseFloat(it.unit_cost || 0) * parseInt(it.quantity || 0)), 0);
     const ref        = await nextRef(client, "PR", "purchase_returns");

@@ -57,8 +57,11 @@ router.get("/", async (req, res) => {
         c.area AS zone, c.status, c.total_orders, c.total_spent,
         c.joined_at, c.last_order_at,
         COALESCE(cl.points_balance, 0) AS points,
+        COALESCE(cl.lifetime_points, 0) AS lifetime_points,
+        cl.last_earned_at,
         COALESCE(lt.name, 'Bronze') AS tier,
-        COALESCE(cw.balance, 0) AS wallet_balance
+        COALESCE(cw.balance, 0) AS wallet_balance,
+        COALESCE(cw.total_topped_up, 0) AS wallet_total_topped_up
       FROM customers c
       LEFT JOIN customer_loyalty cl ON c.id = cl.customer_id
       LEFT JOIN loyalty_tiers lt ON cl.tier_id = lt.id
@@ -579,7 +582,7 @@ router.patch(
     try {
       const { status } = req.body;
       await pool.query(
-        "UPDATE customers SET status=$1 WHERE id=$2 OR customer_code=$2",
+        "UPDATE customers SET status=$1 WHERE id::text=$2 OR customer_code=$2",
         [status, req.params.id],
       );
       res.json({ message: "Status updated" });
@@ -603,7 +606,7 @@ router.delete(
         phone  = 'deleted_' || id,
         email  = NULL,
         status = 'inactive'
-      WHERE id=$1 OR customer_code=$1
+      WHERE id::text=$1 OR customer_code=$1
     `,
         [req.params.id],
       );
@@ -623,44 +626,83 @@ router.post(
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-      const { points, type = "bonus", description } = req.body;
-      if (!points) return res.status(400).json({ message: "points required" });
+      const { points, type: requestedType, description } = req.body;
+      const delta = parseInt(points);
+      if (!delta) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "points required" });
+      }
+      // loyalty_transactions.type is DB-constrained to a fixed set — fall
+      // back to a sign-appropriate value if the caller didn't send a valid one
+      const VALID_LOYALTY_TYPES = ["earned", "redeemed", "bonus", "referral", "deducted"];
+      const type = VALID_LOYALTY_TYPES.includes(requestedType)
+        ? requestedType
+        : (delta > 0 ? "bonus" : "deducted");
 
       const custRow = await client.query(
-        "SELECT id FROM customers WHERE id=$1 OR customer_code=$1",
+        "SELECT id FROM customers WHERE id::text=$1 OR customer_code=$1",
         [req.params.id],
       );
-      if (!custRow.rows.length)
+      if (!custRow.rows.length) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ message: "Customer not found" });
+      }
       const customerId = custRow.rows[0].id;
 
+      // Lock (or create) the loyalty row so the balance math below is safe
+      // against concurrent awards/deductions for the same customer.
+      let loyaltyRow = await client.query(
+        "SELECT points_balance, lifetime_points FROM customer_loyalty WHERE customer_id=$1 FOR UPDATE",
+        [customerId],
+      );
+      if (!loyaltyRow.rows.length) {
+        loyaltyRow = await client.query(
+          `INSERT INTO customer_loyalty (customer_id, tier_id, points_balance, lifetime_points, updated_at)
+           VALUES ($1, (SELECT id FROM loyalty_tiers ORDER BY min_points ASC LIMIT 1), 0, 0, NOW())
+           RETURNING points_balance, lifetime_points`,
+          [customerId],
+        );
+      }
+
+      const currentBalance = loyaltyRow.rows[0].points_balance;
+      const newBalance = currentBalance + delta;
+      if (newBalance < 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: `Cannot deduct more than the current balance (${currentBalance} pts)` });
+      }
+      const newLifetime = delta > 0 ? loyaltyRow.rows[0].lifetime_points + delta : loyaltyRow.rows[0].lifetime_points;
+
       await client.query(
-        `
-      INSERT INTO loyalty_transactions (customer_id, type, points, description, created_by, created_at)
-      VALUES ($1,$2,$3,$4,$5,NOW())
-    `,
-        [
-          customerId,
-          type,
-          parseInt(points),
-          description || "Manual adjustment",
-          req.user.id,
-        ],
+        `INSERT INTO loyalty_transactions (customer_id, type, points, description, created_by, created_at)
+         VALUES ($1,$2,$3,$4,$5,NOW())`,
+        [customerId, type, delta, description || "Manual adjustment", req.user.id],
+      );
+
+      const newTier = await client.query(
+        "SELECT id FROM loyalty_tiers WHERE min_points <= $1 ORDER BY min_points DESC LIMIT 1",
+        [newBalance],
       );
 
       await client.query(
-        `
-      UPDATE customer_loyalty SET
-        points_balance  = points_balance + $1,
-        lifetime_points = CASE WHEN $1 > 0 THEN lifetime_points + $1 ELSE lifetime_points END,
-        updated_at      = NOW()
-      WHERE customer_id = $2
-    `,
-        [parseInt(points), customerId],
+        `UPDATE customer_loyalty SET
+           points_balance  = $1,
+           lifetime_points = $2,
+           tier_id         = COALESCE($3, tier_id),
+           last_earned_at  = CASE WHEN $4 > 0 THEN NOW() ELSE last_earned_at END,
+           updated_at      = NOW()
+         WHERE customer_id = $5`,
+        [newBalance, newLifetime, newTier.rows[0]?.id || null, delta, customerId],
+      );
+
+      // customers.loyalty_points is a denormalized copy read directly by the
+      // POS customer lookup — keep it in sync with the real ledger.
+      await client.query(
+        "UPDATE customers SET loyalty_points = $1 WHERE id = $2",
+        [newBalance, customerId],
       );
 
       await client.query("COMMIT");
-      res.json({ message: "Points updated" });
+      res.json({ message: "Points updated", points_balance: newBalance });
     } catch (err) {
       await client.query("ROLLBACK");
       res.status(500).json({ message: err.message });
@@ -669,5 +711,145 @@ router.post(
     }
   },
 );
+
+// ── POST /api/admin/customers/:id/wallet ──────────────────────────
+// Manually top up or debit a customer's wallet
+router.post(
+  "/:id/wallet",
+  requireRole("superadmin", "manager", "admin"),
+  async (req, res) => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const { amount, type, method = "Admin Adjustment", note } = req.body;
+      const amt = parseFloat(amount);
+      if (!amt || amt <= 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "A positive amount is required" });
+      }
+      if (!["topup", "debit"].includes(type)) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "type must be topup or debit" });
+      }
+
+      const custRow = await client.query(
+        "SELECT id FROM customers WHERE id::text=$1 OR customer_code=$1",
+        [req.params.id],
+      );
+      if (!custRow.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Customer not found" });
+      }
+      const customerId = custRow.rows[0].id;
+
+      let walletRow = await client.query(
+        "SELECT id, balance FROM customer_wallets WHERE customer_id=$1 FOR UPDATE",
+        [customerId],
+      );
+      if (!walletRow.rows.length) {
+        walletRow = await client.query(
+          `INSERT INTO customer_wallets (customer_id, balance, total_topped_up, total_spent, updated_at)
+           VALUES ($1, 0, 0, 0, NOW()) RETURNING id, balance`,
+          [customerId],
+        );
+      }
+      const walletId = walletRow.rows[0].id;
+      const currentBalance = parseFloat(walletRow.rows[0].balance);
+      const signedAmount = type === "topup" ? amt : -amt;
+      const newBalance = currentBalance + signedAmount;
+
+      if (newBalance < 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: `Cannot debit more than the current balance (₦${currentBalance})` });
+      }
+
+      const reference = `${type === "topup" ? "WLT" : "DBT"}-${Date.now().toString(36).toUpperCase()}`;
+      // wallet_transactions.type is DB-constrained to order/refund/loyalty
+      // vocabulary — there's no generic "manual debit" value, so a manual
+      // admin debit is recorded as order_payment with a clarifying description
+      const dbType = type === "topup" ? "top_up" : "order_payment";
+
+      await client.query(
+        `INSERT INTO wallet_transactions
+           (customer_id, wallet_id, type, amount, balance_after, reference, payment_method, description, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())`,
+        [customerId, walletId, dbType, signedAmount, newBalance, reference, method, note || (type === "debit" ? "Manual admin debit" : null)],
+      );
+
+      await client.query(
+        `UPDATE customer_wallets SET
+           balance          = $1,
+           total_topped_up  = total_topped_up + $2,
+           total_spent      = total_spent + $3,
+           updated_at       = NOW()
+         WHERE id = $4`,
+        [newBalance, type === "topup" ? amt : 0, type === "debit" ? amt : 0, walletId],
+      );
+
+      await client.query("COMMIT");
+      res.json({ message: "Wallet updated", balance: newBalance, reference });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      res.status(500).json({ message: err.message });
+    } finally {
+      client.release();
+    }
+  },
+);
+
+// ── GET /api/admin/customers/loyalty/activity ─────────────────────
+router.get("/loyalty/activity", async (req, res) => {
+  try {
+    const { limit = 30, customer_id } = req.query;
+    const params = [];
+    const where = [];
+    if (customer_id) {
+      params.push(customer_id);
+      where.push(`(c.id::text = $${params.length} OR c.customer_code = $${params.length})`);
+    }
+    params.push(parseInt(limit));
+    const result = await pool.query(
+      `SELECT lt.id, lt.type, lt.points, lt.description, lt.created_at,
+              c.id AS customer_id, c.customer_code, c.name AS customer_name
+       FROM loyalty_transactions lt
+       JOIN customers c ON c.id = lt.customer_id
+       ${where.length ? "WHERE " + where.join(" AND ") : ""}
+       ORDER BY lt.created_at DESC
+       LIMIT $${params.length}`,
+      params,
+    );
+    res.json({ activity: result.rows });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── GET /api/admin/customers/wallet/activity ──────────────────────
+router.get("/wallet/activity", async (req, res) => {
+  try {
+    const { limit = 30, customer_id } = req.query;
+    const params = [];
+    const where = [];
+    if (customer_id) {
+      params.push(customer_id);
+      where.push(`(c.id::text = $${params.length} OR c.customer_code = $${params.length})`);
+    }
+    params.push(parseInt(limit));
+    const result = await pool.query(
+      `SELECT wt.id, wt.type, wt.amount, wt.balance_after, wt.reference,
+              wt.payment_method, wt.description, wt.created_at,
+              c.id AS customer_id, c.customer_code, c.name AS customer_name
+       FROM wallet_transactions wt
+       JOIN customers c ON c.id = wt.customer_id
+       ${where.length ? "WHERE " + where.join(" AND ") : ""}
+       ORDER BY wt.created_at DESC
+       LIMIT $${params.length}`,
+      params,
+    );
+    res.json({ activity: result.rows });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 module.exports = router;

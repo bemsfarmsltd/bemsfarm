@@ -526,6 +526,7 @@ export default function ProductDetail() {
               </div>
               <motion.button
                 disabled={product.stock === 0}
+                onClick={handleAdd}
                 style={{
                   flex: 1,
                   backgroundColor:

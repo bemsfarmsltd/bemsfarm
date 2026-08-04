@@ -1,46 +1,17 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
+import api from '../../lib/api'
 
 const fmt = n => `₦${Number(n).toLocaleString()}`
 const ini = n => n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
+const fmtDate = d => d ? new Date(d).toISOString().slice(0,10) : '—'
+const fmtTime = d => d ? new Date(d).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : ''
 
 const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec4899','#f97316','#14b8a6','#6366f1','#84cc16','#a855f7','#ef4444','#10b981','#d97706','#6366f1']
 
-const INIT_CUSTOMERS = [
-  { id:'CUS-004', name:'Funke Oladele',   phone:'08023456789', zone:'Victoria Island', tier:'Platinum', wallet:32_000, lastTopUp:'2026-06-15', totalTopUps:8,  status:'active'   },
-  { id:'CUS-012', name:'Bisi Awojobi',    phone:'08178901234', zone:'Ogba',            tier:'Platinum', wallet:48_000, lastTopUp:'2026-06-01', totalTopUps:12, status:'active'   },
-  { id:'CUS-009', name:'Emeka Okonkwo',   phone:'09034567890', zone:'Lekki Phase 2',   tier:'Gold',     wallet:22_300, lastTopUp:'2026-06-10', totalTopUps:6,  status:'active'   },
-  { id:'CUS-007', name:'Babatunde Ojo',   phone:'08067890123', zone:'Gbagada',         tier:'Gold',     wallet:18_700, lastTopUp:'2026-06-20', totalTopUps:5,  status:'active'   },
-  { id:'CUS-001', name:'Adaeze Nwosu',    phone:'08031234567', zone:'Lekki Phase 1',   tier:'Gold',     wallet:15_200, lastTopUp:'2026-06-20', totalTopUps:4,  status:'active'   },
-  { id:'CUS-015', name:'Lanre Fasanya',   phone:'07012345678', zone:'Opebi',           tier:'Silver',   wallet:13_400, lastTopUp:'2026-05-02', totalTopUps:3,  status:'inactive' },
-  { id:'CUS-011', name:'Chidi Okeke',     phone:'07023456789', zone:'Oshodi',          tier:'Silver',   wallet:9_800,  lastTopUp:'2026-06-12', totalTopUps:3,  status:'active'   },
-  { id:'CUS-002', name:'Seun Adesanya',   phone:'07056789012', zone:'Ikeja GRA',       tier:'Silver',   wallet:8_500,  lastTopUp:'2026-06-27', totalTopUps:2,  status:'active'   },
-  { id:'CUS-014', name:'Chioma Obi',      phone:'08090123456', zone:'Anthony Village', tier:'Silver',   wallet:6_200,  lastTopUp:'2026-06-08', totalTopUps:2,  status:'active'   },
-  { id:'CUS-006', name:'Ngozi Umeh',      phone:'08145678901', zone:'Yaba',            tier:'Silver',   wallet:5_400,  lastTopUp:'2026-06-15', totalTopUps:2,  status:'active'   },
-  { id:'CUS-010', name:'Kemi Adeleke',    phone:'08156789012', zone:'Maryland',        tier:'Bronze',   wallet:4_100,  lastTopUp:'2026-04-20', totalTopUps:1,  status:'inactive' },
-  { id:'CUS-005', name:'Tolulope Badmus', phone:'07034512890', zone:'Ajah',            tier:'Bronze',   wallet:3_200,  lastTopUp:'2026-06-05', totalTopUps:1,  status:'active'   },
-  { id:'CUS-008', name:'Aminat Suleiman', phone:'07089012345', zone:'Ikorodu',         tier:'Bronze',   wallet:1_000,  lastTopUp:'2026-06-01', totalTopUps:1,  status:'active'   },
-  { id:'CUS-003', name:'Chukwuemeka Eze', phone:'09012345678', zone:'Surulere',        tier:'Bronze',   wallet:0,      lastTopUp:'—',          totalTopUps:0,  status:'active'   },
-  { id:'CUS-013', name:'Yusuf Abdullahi', phone:'09045678901', zone:'Sangotedo',       tier:'Bronze',   wallet:0,      lastTopUp:'—',          totalTopUps:0,  status:'active'   },
-]
-
-const INIT_HISTORY = [
-  { id:'WLT-0234', customer:'Seun Adesanya',   customerId:'CUS-002', type:'topup',  method:'Bank Transfer', amount:+20_000, bal:8_500,  date:'2026-06-27', time:'09:21', note:'Self top-up via transfer' },
-  { id:'WLT-0233', customer:'Funke Oladele',   customerId:'CUS-004', type:'topup',  method:'Paystack',      amount:+50_000, bal:82_000, date:'2026-06-15', time:'14:30', note:'Quarterly wallet load' },
-  { id:'WLT-0232', customer:'Bisi Awojobi',    customerId:'CUS-012', type:'topup',  method:'Bank Transfer', amount:+200_000,bal:248_000,date:'2026-06-01', time:'10:05', note:'Annual platinum top-up' },
-  { id:'WLT-0231', customer:'Babatunde Ojo',   customerId:'CUS-007', type:'topup',  method:'Bank Transfer', amount:+50_000, bal:68_700, date:'2026-06-20', time:'08:45', note:'' },
-  { id:'WLT-0230', customer:'Emeka Okonkwo',   customerId:'CUS-009', type:'topup',  method:'Paystack',      amount:+30_000, bal:52_300, date:'2026-06-10', time:'11:20', note:'Routine top-up' },
-  { id:'ORD-0143', customer:'Bisi Awojobi',    customerId:'CUS-012', type:'debit',  method:'Order Payment', amount:-95_000, bal:48_000, date:'2026-06-27', time:'12:00', note:'Weekly Platinum box' },
-  { id:'ORD-0142', customer:'Funke Oladele',   customerId:'CUS-004', type:'debit',  method:'Order Payment', amount:-85_000, bal:32_000, date:'2026-06-27', time:'09:00', note:'Corporate order' },
-  { id:'ORD-0141', customer:'Adaeze Nwosu',    customerId:'CUS-001', type:'debit',  method:'Order Payment', amount:-18_500, bal:15_200, date:'2026-06-25', time:'14:32', note:'' },
-  { id:'WLT-0229', customer:'Adaeze Nwosu',    customerId:'CUS-001', type:'topup',  method:'Bank Transfer', amount:+10_000, bal:33_700, date:'2026-06-20', time:'16:10', note:'' },
-  { id:'LYL-0041', customer:'Funke Oladele',   customerId:'CUS-004', type:'credit', method:'Loyalty Reward',amount:+12_000, bal:117_000,date:'2026-06-10', time:'00:00', note:'Platinum 6-month milestone' },
-  { id:'WLT-0228', customer:'Babatunde Ojo',   customerId:'CUS-007', type:'topup',  method:'Bank Transfer', amount:+50_000, bal:138_700,date:'2026-06-20', time:'09:00', note:'' },
-  { id:'WLT-0227', customer:'Ngozi Umeh',      customerId:'CUS-006', type:'topup',  method:'Paystack',      amount:+5_400,  bal:5_400,  date:'2026-06-15', time:'13:15', note:'First-time top-up' },
-  { id:'RFC-0048', customer:'Chukwuemeka Eze', customerId:'CUS-003', type:'refund', method:'Order Refund',  amount:+14_200, bal:14_200, date:'2026-06-20', time:'16:00', note:'Cancelled delivery refund' },
-  { id:'ORD-0139', customer:'Babatunde Ojo',   customerId:'CUS-007', type:'debit',  method:'Order Payment', amount:-120_000,bal:18_700, date:'2026-06-26', time:'11:00', note:'Bulk order' },
-  { id:'WLT-0226', customer:'Chioma Obi',      customerId:'CUS-014', type:'topup',  method:'Bank Transfer', amount:+6_200,  bal:6_200,  date:'2026-06-08', time:'10:30', note:'' },
-]
+// DB wallet_transactions.type is constrained to order/refund/loyalty vocabulary
+const DB_TYPE_TO_UI = { top_up:'topup', order_payment:'debit', refund_credit:'refund', loyalty_redemption:'credit' }
 
 const TYPE_CFG = {
   topup:  { label:'Top-up',        icon:'ri-add-circle-line',    color:'#22c55e', bg:'#f0fdf4', border:'#bbf7d0' },
@@ -91,8 +62,9 @@ function CustomerSummary({ c, customers, label }) {
 }
 
 export default function WalletBalance() {
-  const [customers, setCustomers]     = useState(INIT_CUSTOMERS)
-  const [history, setHistory]         = useState(INIT_HISTORY)
+  const [customers, setCustomers]     = useState([])
+  const [history, setHistory]         = useState([])
+  const [loading, setLoading]         = useState(true)
   const [search, setSearch]           = useState('')
   const [filterType, setFilterType]   = useState('all')
   const [selectedCust, setSelectedCust] = useState(null)
@@ -100,34 +72,80 @@ export default function WalletBalance() {
   const [amount, setAmount]           = useState('')
   const [method, setMethod]           = useState('Bank Transfer')
   const [note, setNote]               = useState('')
+  const [saving, setSaving]           = useState(false)
+
+  const loadData = useCallback(async () => {
+    try {
+      const [custRes, actRes] = await Promise.all([
+        api.get('/admin/customers', { params: { limit: 200 } }),
+        api.get('/admin/customers/wallet/activity', { params: { limit: 30 } }),
+      ])
+      const rawHistory = (actRes.data.activity || []).map(a => ({
+        id: a.reference, customer: a.customer_name, customerId: a.customer_code,
+        type: DB_TYPE_TO_UI[a.type] || 'debit', method: a.payment_method || '—',
+        amount: Number(a.amount), bal: Number(a.balance_after),
+        date: fmtDate(a.created_at), time: fmtTime(a.created_at), note: a.description || '',
+      }))
+      setCustomers((custRes.data.customers || []).map(c => {
+        const topups = rawHistory.filter(h => h.customerId === c.customer_code && h.type === 'topup')
+        return {
+          id: c.customer_code, dbId: c.id, name: c.name, phone: c.phone,
+          zone: c.zone || '—', tier: c.tier, wallet: Number(c.wallet_balance) || 0,
+          lastTopUp: topups.length ? topups[0].date : '—',
+          totalTopUps: topups.length,
+          status: c.status,
+        }
+      }))
+      setHistory(rawHistory)
+    } catch {
+      toast.error('Failed to load wallet data')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
 
   const filteredCust    = useMemo(() => customers.filter(c => { if (!search) return true; const q=search.toLowerCase(); return c.name.toLowerCase().includes(q)||c.phone.includes(q)||c.zone.toLowerCase().includes(q) }), [customers, search])
   const filteredHistory = useMemo(() => filterType==='all' ? history : history.filter(h=>h.type===filterType), [history, filterType])
 
   const totalFunds     = customers.reduce((s,c)=>s+c.wallet, 0)
   const withBalance    = customers.filter(c=>c.wallet>0).length
-  const todayTopups    = history.filter(h=>h.type==='topup'&&h.date==='2026-06-27').reduce((s,h)=>s+h.amount,0)
+  const todayStr       = new Date().toISOString().slice(0,10)
+  const todayTopups    = history.filter(h=>h.type==='topup'&&h.date===todayStr).reduce((s,h)=>s+h.amount,0)
 
   const closeModal = () => { setModal(null); setSelectedCust(null); setAmount(''); setNote('') }
 
-  const processTopUp = () => {
+  async function processTopUp() {
     const amt = parseInt(amount)
-    if (!amt||!selectedCust) return
-    const ref = `WLT-${String(history.length+235).padStart(4,'0')}`
-    const newBal = selectedCust.wallet + amt
-    setCustomers(prev => prev.map(c => c.id===selectedCust.id ? { ...c, wallet:newBal, lastTopUp:new Date().toISOString().slice(0,10), totalTopUps:c.totalTopUps+1 } : c))
-    setHistory(prev => [{ id:ref, customer:selectedCust.name, customerId:selectedCust.id, type:'topup', method, amount:+amt, bal:newBal, date:new Date().toISOString().slice(0,10), time:new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}), note:note||'' }, ...prev])
-    closeModal()
+    if (!amt || !selectedCust || saving) return
+    setSaving(true)
+    try {
+      await api.post(`/admin/customers/${selectedCust.dbId}/wallet`, { amount: amt, type: 'topup', method, note })
+      toast.success('Wallet topped up')
+      closeModal()
+      await loadData()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Top-up failed')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const processDebit = () => {
+  async function processDebit() {
     const amt = parseInt(amount)
-    if (!amt||!selectedCust||amt>selectedCust.wallet) return
-    const ref = `DBT-${String(history.length+100).padStart(4,'0')}`
-    const newBal = selectedCust.wallet - amt
-    setCustomers(prev => prev.map(c => c.id===selectedCust.id ? { ...c, wallet:newBal } : c))
-    setHistory(prev => [{ id:ref, customer:selectedCust.name, customerId:selectedCust.id, type:'debit', method:'Admin Debit', amount:-amt, bal:newBal, date:new Date().toISOString().slice(0,10), time:new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}), note:note||'Manual debit by admin' }, ...prev])
-    closeModal()
+    if (!amt || !selectedCust || amt>selectedCust.wallet || saving) return
+    setSaving(true)
+    try {
+      await api.post(`/admin/customers/${selectedCust.dbId}/wallet`, { amount: amt, type: 'debit', note: note || 'Manual debit by admin' })
+      toast.success('Wallet debited')
+      closeModal()
+      await loadData()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Debit failed')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const custHistory = selectedCust ? history.filter(h=>h.customerId===selectedCust.id) : []
@@ -136,6 +154,10 @@ export default function WalletBalance() {
     <div style={{ fontFamily:'Nunito, sans-serif' }}>
       <PageHeader title="Wallet Balances" subtitle="Manage customer wallet funds, top-ups, and credits" />
 
+      {loading ? (
+        <div style={{ textAlign:'center', padding:60, color:'#6b7280' }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
+      ) : (
+      <>
       {/* KPI Strip */}
       <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:14, marginBottom:20 }}>
         {[
@@ -178,6 +200,9 @@ export default function WalletBalance() {
                   <tr>{['CUSTOMER','TIER','WALLET BALANCE','LAST TOP-UP','TOTAL TOP-UPS',''].map(h => <TH key={h}>{h}</TH>)}</tr>
                 </thead>
                 <tbody>
+                  {filteredCust.length === 0 && (
+                    <tr><td colSpan={6} style={{ padding:'30px 12px', textAlign:'center', color:'#94a3b8', fontSize:13 }}>No customers found</td></tr>
+                  )}
                   {filteredCust.map((c,i) => {
                     const tc = TIER_CFG[c.tier]
                     return (
@@ -238,6 +263,9 @@ export default function WalletBalance() {
           <div style={card}>
             <div style={{ padding:'12px 16px', borderBottom:'1px solid #e5e7eb', fontWeight:700, fontSize:14, color:'#111827' }}>Wallet Transactions</div>
             <div style={{ maxHeight:520, overflowY:'auto' }}>
+              {filteredHistory.length === 0 && (
+                <div style={{ padding:'30px 16px', textAlign:'center', color:'#94a3b8', fontSize:13 }}>No transactions yet</div>
+              )}
               {filteredHistory.map((h,i) => {
                 const tc = TYPE_CFG[h.type]
                 return (
@@ -298,8 +326,8 @@ export default function WalletBalance() {
             </div>
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600 }}>Cancel</button>
-              <button disabled={!amount||parseInt(amount)<1} onClick={processTopUp} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#16a34a', color:'#fff', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:700, cursor:(!amount||parseInt(amount)<1)?'not-allowed':'pointer', opacity:(!amount||parseInt(amount)<1)?0.6:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                <i className="ri-add-circle-line" />Top Up {amount?fmt(amount):''}
+              <button disabled={!amount||parseInt(amount)<1||saving} onClick={processTopUp} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#16a34a', color:'#fff', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:700, cursor:(!amount||parseInt(amount)<1||saving)?'not-allowed':'pointer', opacity:(!amount||parseInt(amount)<1||saving)?0.6:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                <i className="ri-add-circle-line" />{saving ? 'Saving…' : `Top Up ${amount?fmt(amount):''}`}
               </button>
             </div>
           </div>
@@ -326,8 +354,8 @@ export default function WalletBalance() {
             </div>
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600 }}>Cancel</button>
-              <button disabled={!amount||parseInt(amount)<1||parseInt(amount)>selectedCust.wallet||!note.trim()} onClick={processDebit} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:700, cursor:'pointer' }}>
-                Debit {amount?fmt(amount):''}
+              <button disabled={!amount||parseInt(amount)<1||parseInt(amount)>selectedCust.wallet||!note.trim()||saving} onClick={processDebit} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:700, cursor:'pointer' }}>
+                {saving ? 'Saving…' : `Debit ${amount?fmt(amount):''}`}
               </button>
             </div>
           </div>
@@ -370,6 +398,8 @@ export default function WalletBalance() {
             <button onClick={closeModal} style={{ flex:1, padding:'8px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:12, fontFamily:'Nunito, sans-serif', fontWeight:600 }}>Close</button>
           </div>
         </ModalShell>
+      )}
+      </>
       )}
     </div>
   )

@@ -5,6 +5,7 @@ const CartContext = createContext();
 export function CartProvider({ children }) {
   const [cart, setCart] = useState({});
   const [products, setProducts] = useState([]);
+  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discount, type, value }
 
   const addToCart = (product) => {
     setCart((prev) => ({
@@ -35,7 +36,7 @@ export function CartProvider({ children }) {
     }));
   };
 
-  const clearCart = () => setCart({});
+  const clearCart = () => { setCart({}); setAppliedCoupon(null); };
 
   const cartItems = Object.values(cart);
   const cartCount = cartItems.reduce((a, item) => a + item.quantity, 0);
@@ -55,6 +56,8 @@ export function CartProvider({ children }) {
         removeFromCart,
         updateQuantity,
         clearCart,
+        appliedCoupon,
+        setAppliedCoupon,
       }}
     >
       {children}

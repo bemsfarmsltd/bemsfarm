@@ -780,3 +780,25 @@ DELETE FROM products WHERE name IN (
 ALTER TABLE customer_carts DROP CONSTRAINT IF EXISTS customer_carts_customer_id_fkey;
 ALTER TABLE customer_carts ALTER COLUMN customer_id DROP NOT NULL;
 ALTER TABLE customer_carts ADD CONSTRAINT customer_carts_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE CASCADE;
+
+-- ── 19. CONTACT FORM ────────────────────────────────────────────
+-- Backs POST /api/contact — the "Get In Touch" page previously faked
+-- success with a setTimeout and never persisted or sent anything.
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(200) NOT NULL,
+  email VARCHAR(200) NOT NULL,
+  phone VARCHAR(50),
+  message TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'new',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ── 20. MANUAL INVOICES — BILLED-TO DETAILS ─────────────────────
+-- POST /api/admin/orders/invoices collected phone/email/address on the
+-- form but the columns to store them didn't exist, so they were silently
+-- dropped.
+ALTER TABLE invoices
+  ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS customer_email VARCHAR(200),
+  ADD COLUMN IF NOT EXISTS customer_address TEXT;

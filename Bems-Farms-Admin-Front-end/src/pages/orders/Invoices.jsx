@@ -132,9 +132,36 @@ export default function Invoices() {
 
   const formTotal = calcTotal(form.items,form.deliveryFee,form.discount)
 
+  const [creating, setCreating] = useState(false)
+
   const createInvoice = async (asDraft) => {
-    toast.error("Not implemented: manual invoice creation via UI");
-    setForm(BLANK_FORM); closeModal();
+    const customerName = form.customer || form.customName.trim()
+    if (!customerName) { toast.error("Enter a customer name"); return }
+    const cleanItems = form.items.filter(i => i.name && Number(i.qty) > 0)
+    if (!cleanItems.length) { toast.error("Add at least one line item"); return }
+
+    setCreating(true)
+    try {
+      await api.post('/admin/orders/invoices', {
+        customer_name: customerName,
+        customer_phone: form.customPhone || undefined,
+        customer_email: form.customEmail || undefined,
+        customer_address: form.customAddress || undefined,
+        due_date: form.dueDate || undefined,
+        payment_method: form.paymentMethod,
+        notes: form.notes || undefined,
+        items: cleanItems,
+        delivery_fee: form.deliveryFee,
+        discount_amount: form.discount,
+        status: asDraft ? 'draft' : 'sent',
+      })
+      toast.success(asDraft ? 'Invoice saved as draft' : 'Invoice created and sent')
+      setForm(BLANK_FORM); closeModal(); load()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to create invoice')
+    } finally {
+      setCreating(false)
+    }
   }
 
   const updateStatus = async (status, notes) => {
@@ -459,9 +486,9 @@ export default function Invoices() {
             </div>
 
             <div style={{ display:'flex',gap:10 }}>
-              <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
-              <button style={{ ...btnL,flex:1,justifyContent:'center',color:'#1d4ed8',borderColor:'#bfdbfe' }} onClick={()=>createInvoice(true)}><i className="ri-draft-line"/>Save as Draft</button>
-              <button style={{ ...btnP,flex:1,justifyContent:'center' }} onClick={()=>createInvoice(false)}><i className="ri-send-plane-line"/>Create & Send</button>
+              <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal} disabled={creating}>Cancel</button>
+              <button style={{ ...btnL,flex:1,justifyContent:'center',color:'#1d4ed8',borderColor:'#bfdbfe' }} onClick={()=>createInvoice(true)} disabled={creating}><i className="ri-draft-line"/>{creating?'Saving…':'Save as Draft'}</button>
+              <button style={{ ...btnP,flex:1,justifyContent:'center' }} onClick={()=>createInvoice(false)} disabled={creating}><i className="ri-send-plane-line"/>{creating?'Saving…':'Create & Send'}</button>
             </div>
           </Modal>
         )}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useResponsive } from "../hooks/useResponsive";
+import api from "../services/api";
 export default function ContactPage() {
   const [form, setForm] = useState({
     name: "",
@@ -11,6 +12,7 @@ export default function ContactPage() {
   });
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [copied, setCopied] = useState("");
   const { width } = useResponsive();
   const isMobile = width < 640;
@@ -19,9 +21,18 @@ export default function ContactPage() {
   const handleSend = async () => {
     if (!form.name || !form.email || !form.message) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setSent(true);
-    setLoading(false);
+    setError(null);
+    try {
+      await api.post("/contact", form);
+      setSent(true);
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ||
+          "Failed to send message. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const copyToClipboard = (text, id) => {
@@ -524,6 +535,21 @@ export default function ContactPage() {
                   onFocus={(e) => (e.target.style.borderColor = "#2E7D32")}
                   onBlur={(e) => (e.target.style.borderColor = "#E8EAED")}
                 />
+                {error && (
+                  <div
+                    style={{
+                      backgroundColor: "#FEF2F2",
+                      border: "1px solid #FECACA",
+                      borderRadius: "10px",
+                      padding: "12px 16px",
+                      marginBottom: "16px",
+                      color: "#DC2626",
+                      fontSize: "14px",
+                    }}
+                  >
+                    ⚠️ {error}
+                  </div>
+                )}
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
                   <motion.button
                     whileHover={{ scale: 1.02 }}

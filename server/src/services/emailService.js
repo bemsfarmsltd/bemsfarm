@@ -314,6 +314,7 @@ async function sendLowStockAlertEmail(toEmail, items) {
 }
 
 module.exports = {
+  sendMail,
   sendWelcomeEmail,
   sendOrderConfirmationEmail,
   sendOrderStatusEmail,

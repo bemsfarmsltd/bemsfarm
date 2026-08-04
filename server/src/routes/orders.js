@@ -3,6 +3,9 @@ const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { trackActivity } = require("../utils/aiContext");
+const { NAIRA_PER_UNIT } = require("../utils/currency");
+const { verifyPaystackTransaction } = require("../utils/paystack");
+const { validateCoupon, recordCouponUsage } = require("../utils/coupons");
 
 // ─────────────────────────────────────────────
 // CONFIG
@@ -16,58 +19,178 @@ const VALID_STATUSES = [
   "cancelled",
 ];
 
+const VALID_PAYMENT_METHODS = ["paystack", "cod"];
+const DELIVERY_FEE = 500; // Naira — must match client/src/pages/CheckoutPage.jsx DELIVERY
+
 // ─────────────────────────────────────────────
 // CREATE ORDER
+// Prices/total are ALWAYS recomputed here from the products table.
+// Client-supplied price/total values are never trusted.
 // ─────────────────────────────────────────────
 router.post("/", protect, async (req, res) => {
-  const client = await pool.connect();
+  const { items, payment_method, payment_ref, address, source, coupon_code } = req.body;
 
+  if (!items || !items.length) {
+    return res.status(400).json({ message: "No items in order" });
+  }
+
+  const method = payment_method || "paystack";
+  if (!VALID_PAYMENT_METHODS.includes(method)) {
+    return res.status(400).json({ message: "Invalid payment method" });
+  }
+
+  // Normalize + dedupe requested items
+  const requested = new Map();
+  for (const item of items) {
+    const productId = parseInt(item.product_id);
+    const quantity = parseInt(item.quantity);
+    if (!Number.isInteger(productId) || !Number.isInteger(quantity) || quantity <= 0) {
+      return res.status(400).json({ message: "Invalid item in order" });
+    }
+    requested.set(productId, (requested.get(productId) || 0) + quantity);
+  }
+
+  // For Paystack orders, verify the transaction with Paystack directly
+  // BEFORE touching the DB — never trust the client's "payment succeeded"
+  // callback, and never charge order rows/stock a lock for a slow HTTP call.
+  let paystackData = null;
+  if (method === "paystack") {
+    if (!payment_ref) {
+      return res.status(400).json({ message: "Missing payment reference" });
+    }
+    try {
+      paystackData = await verifyPaystackTransaction(payment_ref);
+    } catch (err) {
+      return res.status(402).json({
+        message: "Payment could not be verified: " + err.message,
+      });
+    }
+    if (paystackData.status !== "success") {
+      return res.status(402).json({ message: "Payment was not successful" });
+    }
+    if (paystackData.currency !== "NGN") {
+      return res.status(402).json({ message: "Unexpected payment currency" });
+    }
+  }
+
+  const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
-    const { items, total, payment_method, payment_ref, address, source } = req.body;
+    // Idempotency: don't let the same Paystack payment fund two orders
+    if (method === "paystack") {
+      const dup = await client.query(
+        "SELECT id FROM orders WHERE payment_ref = $1",
+        [payment_ref],
+      );
+      if (dup.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(200).json({
+          message: "Order already created for this payment",
+          orderId: dup.rows[0].id,
+        });
+      }
+    }
 
-    if (!items || !items.length) {
-      return res.status(400).json({ message: "No items in order" });
+    const productIds = [...requested.keys()];
+    const productRows = await client.query(
+      `SELECT id, name, price, stock, available_for_sale
+       FROM products WHERE id = ANY($1::int[]) FOR UPDATE`,
+      [productIds],
+    );
+    const productsById = new Map(productRows.rows.map((p) => [p.id, p]));
+
+    let subtotal = 0;
+    const orderItemRows = [];
+    for (const [productId, quantity] of requested) {
+      const p = productsById.get(productId);
+      if (!p) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: `Product ${productId} is not available` });
+      }
+      if (p.available_for_sale === false) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: `${p.name} is no longer available` });
+      }
+      const availableStock = p.stock ?? 0;
+      if (quantity > availableStock) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          message: `Only ${availableStock} of "${p.name}" left in stock`,
+        });
+      }
+      const unitPrice = parseFloat(p.price) * NAIRA_PER_UNIT;
+      const lineTotal = unitPrice * quantity;
+      subtotal += lineTotal;
+      orderItemRows.push({ productId, quantity, unitPrice });
+    }
+
+    // Coupon discount is recomputed here from the coupons table — the
+    // client's preview discount is never trusted directly.
+    let appliedCoupon = null;
+    let couponDiscount = 0;
+    if (coupon_code) {
+      const couponResult = await validateCoupon(client, { code: coupon_code, subtotal, customerId: null });
+      if (!couponResult.ok) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: couponResult.message });
+      }
+      appliedCoupon = couponResult.coupon;
+      couponDiscount = couponResult.discount;
+    }
+
+    const total = subtotal - couponDiscount + DELIVERY_FEE;
+
+    // Reconcile: the amount actually paid via Paystack must match the
+    // server-computed total (protects against a tampered client-side amount).
+    if (method === "paystack") {
+      const expectedKobo = Math.round(total * 100);
+      if (Math.abs(paystackData.amount - expectedKobo) > 1) {
+        await client.query("ROLLBACK");
+        return res.status(402).json({
+          message: "Amount paid does not match order total. Please contact support with reference " + payment_ref,
+        });
+      }
     }
 
     const orderId = "BF-" + Date.now().toString(36).toUpperCase();
+    const status = method === "paystack" ? "confirmed" : "pending";
 
-    // Insert order
     await client.query(
-      `INSERT INTO orders 
-       (id, user_id, total, status, payment_method, payment_ref, address, created_at, source)
-       VALUES ($1, $2, $3, 'pending', $4, $5, $6, NOW(), $7)`,
+      `INSERT INTO orders
+       (id, user_id, total, discount_amount, status, payment_method, payment_ref, address, created_at, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9)`,
       [
         orderId,
         req.user.id,
-        parseFloat(total) || 0,
-        payment_method || "paystack",
-        payment_ref || null,
+        total,
+        couponDiscount,
+        status,
+        method,
+        method === "paystack" ? payment_ref : null,
         address || "",
         source || "Web App",
       ],
     );
 
-    // Insert order items + update stock
-    for (const item of items) {
+    for (const item of orderItemRows) {
       await client.query(
         `INSERT INTO order_items (order_id, product_id, quantity, price)
          VALUES ($1, $2, $3, $4)`,
-        [
-          orderId,
-          parseInt(item.product_id),
-          parseInt(item.quantity),
-          parseFloat(item.price),
-        ],
+        [orderId, item.productId, item.quantity, item.unitPrice],
       );
 
       await client.query(
-        `UPDATE products 
-         SET stock = GREATEST(0, COALESCE(stock, 100) - $1)
+        `UPDATE products
+         SET stock = GREATEST(0, COALESCE(stock, 0) - $1),
+             stock_quantity = GREATEST(0, COALESCE(stock_quantity, 0) - $1)
          WHERE id = $2`,
-        [parseInt(item.quantity), parseInt(item.product_id)],
+        [item.quantity, item.productId],
       );
+    }
+
+    if (appliedCoupon) {
+      await recordCouponUsage(client, { coupon: appliedCoupon, discount: couponDiscount, customerId: null, orderId });
     }
 
     await client.query("COMMIT");
@@ -76,7 +199,7 @@ router.post("/", protect, async (req, res) => {
     trackActivity(req.user.id, "order_created", {
       entityType: "order",
       entityId: orderId,
-      metadata: { total: parseFloat(total) || 0, item_count: items.length },
+      metadata: { total, item_count: orderItemRows.length },
       ip: req.ip || req.connection?.remoteAddress
     });
 

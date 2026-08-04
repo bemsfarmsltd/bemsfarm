@@ -1,12 +1,49 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
-const { sendSubscriptionWelcomeEmail, sendReferralUpgradeEmail } = require("../services/emailService");
+const { sendSubscriptionWelcomeEmail, sendReferralUpgradeEmail, sendMail } = require("../services/emailService");
 const crypto = require("crypto");
 
 function generateReferralCode() {
   return "BF-" + crypto.randomBytes(3).toString("hex").toUpperCase();
 }
+
+// ── CONTACT FORM ──────────────────────────────────────────────
+router.post("/contact", async (req, res) => {
+  const { name, email, phone, message } = req.body;
+
+  if (!name?.trim() || !email?.trim() || !message?.trim()) {
+    return res.status(400).json({ message: "Name, email and message are required" });
+  }
+  if (!email.includes("@") || !email.includes(".")) {
+    return res.status(400).json({ message: "Please enter a valid email address" });
+  }
+
+  try {
+    await pool.query(
+      `INSERT INTO contact_messages (name, email, phone, message, created_at)
+       VALUES ($1, $2, $3, $4, NOW())`,
+      [name.trim(), email.trim().toLowerCase(), phone?.trim() || null, message.trim()]
+    );
+
+    const supportEmail = process.env.SUPPORT_EMAIL || "support@bemsfarms.com";
+    sendMail({
+      to: supportEmail,
+      subject: `New contact message from ${name.trim()}`,
+      html: `
+        <p><strong>From:</strong> ${name.trim()} (${email.trim()})</p>
+        ${phone ? `<p><strong>Phone:</strong> ${phone.trim()}</p>` : ""}
+        <p><strong>Message:</strong></p>
+        <p>${message.trim().replace(/\n/g, "<br>")}</p>
+      `,
+    }).catch((err) => console.error("⚠️ Contact notification email failed:", err.message));
+
+    res.json({ success: true, message: "Message sent! We'll get back to you within 24 hours." });
+  } catch (err) {
+    console.error("❌ Contact form DB error:", err.message);
+    res.status(500).json({ message: "Failed to send message. Please try again." });
+  }
+});
 
 // ── SUBSCRIBE ─────────────────────────────────────────────────
 router.post("/subscribe", async (req, res) => {
@@ -157,9 +194,14 @@ router.post(
   async (req, res) => {
     console.log("🔔 Paystack webhook received");
     const crypto = require("crypto");
-    const secret = process.env.PAYSTACK_SECRET || "MOCK_SECRET";
+    const secret = process.env.PAYSTACK_SECRET;
     const signature = req.headers["x-paystack-signature"];
-    
+
+    if (!secret) {
+      console.error("❌ PAYSTACK_SECRET is not configured — refusing webhook (fail closed)");
+      return res.status(503).json({ message: "Webhook processing not configured" });
+    }
+
     let event;
     let rawPayload;
     
@@ -257,6 +299,22 @@ router.post(
       // 5. Automatic Reconciliation actions
       if (status === "successful") {
         if (orderId) {
+          const orderTotal = parseFloat(linkedOrder.total) || 0;
+          if (Math.abs(amount - orderTotal) > 0.01) {
+            console.warn(
+              `⚠️ Amount mismatch for order ${orderId}: paid ₦${amount} vs order total ₦${orderTotal}. Not auto-confirming — flagged for manual review.`
+            );
+            await pool.query(
+              `INSERT INTO payment_webhook_logs (event_type, payment_ref, payload, signature_verified, status, error_message)
+               VALUES ($1, $2, $3, true, 'error', $4)`,
+              [eventType, reference, event, `Amount mismatch: paid ${amount} vs order total ${orderTotal}`]
+            );
+            return res.status(200).json({
+              success: false,
+              message: "Amount mismatch — order not auto-confirmed, flagged for manual review",
+            });
+          }
+
           // Reconcile order as 'confirmed'
           await pool.query(
             "UPDATE orders SET status = 'confirmed', payment_method = $1, payment_ref = $2, updated_at = NOW() WHERE id = $3",

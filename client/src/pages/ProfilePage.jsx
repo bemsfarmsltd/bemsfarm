@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
 import PageWrapper from "../components/layout/PageWrapper";
+import api from "../services/api";
 
 const DEFAULT_AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80";
 
@@ -307,11 +309,38 @@ const PROFILE_CSS = `
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { user, logout, isLoggedIn } = useAuth();
+  const { addToCart } = useCart();
   const fileInputRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState("profile");
   const [saved, setSaved] = useState(false);
   const [adding, setAdding] = useState(false);
+
+  // Wishlist — reads the same localStorage["favorites"] map ProductsPage.jsx
+  // writes to, so this tab shows what the customer actually favorited
+  // instead of two hardcoded products.
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("favorites") || "{}");
+    } catch {
+      return {};
+    }
+  });
+  const [allProducts, setAllProducts] = useState([]);
+
+  useEffect(() => {
+    api.get("/products").then((r) => setAllProducts(r.data.products || [])).catch(() => {});
+  }, []);
+
+  const wishlistProducts = allProducts.filter((p) => favorites[p.id]);
+
+  const removeFromWishlist = (productId) => {
+    setFavorites((prev) => {
+      const updated = { ...prev, [productId]: false };
+      localStorage.setItem("favorites", JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   // Avatar state
   const [avatar, setAvatar] = useState(() => {
@@ -734,45 +763,22 @@ export default function ProfilePage() {
                   exit={{ opacity: 0, y: -10 }}
                 >
                   <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "Syne, sans-serif" }}>Payment Options</h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "24px" }}>
-                    {[
-                      { type: "Visa", last4: "5496", expiry: "09/27", default: true, bg: "#1A1F71" },
-                      { type: "Mastercard", last4: "2341", expiry: "03/26", default: false, bg: "#EB001B" },
-                    ].map((card, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "18px",
-                          border: `2px solid ${card.default ? "#2E7D32" : "#E5E7EB"}`,
-                          borderRadius: "16px",
-                          backgroundColor: card.default ? "rgba(46, 125, 50, 0.02)" : "white"
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                          <div style={{ width: "50px", height: "32px", borderRadius: "6px", backgroundColor: card.bg, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "9px", fontWeight: 900 }}>
-                            {card.type.toUpperCase()}
-                          </div>
-                          <div>
-                            <p style={{ fontWeight: 700, fontSize: "14px", margin: "0 0 2px" }}>•••• •••• •••• {card.last4}</p>
-                            <p style={{ fontSize: "12px", color: "#9CA3AF", margin: 0 }}>Expires {card.expiry}</p>
-                          </div>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                          {card.default && <span style={{ fontSize: "12px", color: "#2E7D32", fontWeight: 700 }}>Default</span>}
-                          <button style={{ color: "#F57C00", border: "none", background: "none", cursor: "pointer", fontWeight: 700, fontSize: "13px" }}>Edit</button>
-                          <button style={{ color: "#EF4444", border: "none", background: "none", cursor: "pointer", fontSize: "13px" }}>Remove</button>
-                        </div>
-                      </div>
-                    ))}
+                  <div
+                    style={{
+                      border: "1px dashed #E5E7EB",
+                      borderRadius: "16px",
+                      padding: "32px 24px",
+                      textAlign: "center",
+                      color: "#6B7280",
+                    }}
+                  >
+                    <div style={{ fontSize: "32px", marginBottom: "10px" }}>💳</div>
+                    <p style={{ fontWeight: 700, color: "#111827", margin: "0 0 6px" }}>No saved cards</p>
+                    <p style={{ fontSize: "13px", margin: 0 }}>
+                      BemsFarms doesn't store your card details — you'll enter them
+                      securely through Paystack each time you check out.
+                    </p>
                   </div>
-
-                  <button className="p-delete-btn" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span>+</span>
-                    <span>Add New Card</span>
-                  </button>
                 </motion.div>
               )}
 
@@ -784,18 +790,29 @@ export default function ProfilePage() {
                   exit={{ opacity: 0, y: -10 }}
                 >
                   <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "Syne, sans-serif" }}>My Wishlist</h3>
+                  {wishlistProducts.length === 0 ? (
+                    <p style={{ color: "#9CA3AF", fontSize: "14px" }}>
+                      No saved items yet. Tap the ♡ on any product to save it here.
+                    </p>
+                  ) : (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "20px" }}>
-                    {[
-                      { id: 10, name: "Dried Crayfish", price: 7500, img: "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141631/crayfish_bslwl4.jpg" },
-                      { id: 2, name: "Palm Oil", price: 4800, img: "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141485/palm_oil_ufbfu6.jpg" },
-                    ].map((item) => (
+                    {wishlistProducts.map((item) => (
                       <div key={item.id} style={{ border: "1px solid #E5E7EB", borderRadius: "16px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                        <img src={item.img} alt={item.name} style={{ width: "100%", height: "130px", objectFit: "cover" }} />
+                        <div style={{ position: "relative" }}>
+                          <img src={item.image_url} alt={item.name} style={{ width: "100%", height: "130px", objectFit: "cover" }} onClick={() => navigate(`/product/${item.id}`)} />
+                          <button
+                            onClick={() => removeFromWishlist(item.id)}
+                            title="Remove from wishlist"
+                            style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", backgroundColor: "rgba(255,255,255,0.9)", color: "#EF4444", cursor: "pointer", fontSize: "14px" }}
+                          >
+                            ✕
+                          </button>
+                        </div>
                         <div style={{ padding: "14px", flex: 1, display: "flex", flexDirection: "column" }}>
                           <p style={{ fontWeight: 700, fontSize: "14px", margin: "0 0 4px" }}>{item.name}</p>
-                          <p style={{ color: "#2E7D32", fontWeight: 800, fontSize: "15px", margin: "0 0 14px" }}>₦{item.price.toLocaleString()}</p>
+                          <p style={{ color: "#2E7D32", fontWeight: 800, fontSize: "15px", margin: "0 0 14px" }}>₦{(item.price * 1500).toLocaleString()}</p>
                           <button
-                            onClick={() => navigate(`/product/${item.id}`)}
+                            onClick={() => addToCart(item)}
                             style={{
                               width: "100%",
                               backgroundColor: "#F57C00",
@@ -815,6 +832,7 @@ export default function ProfilePage() {
                       </div>
                     ))}
                   </div>
+                  )}
                 </motion.div>
               )}
 

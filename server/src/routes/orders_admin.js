@@ -221,14 +221,36 @@ router.get("/invoices", async (req, res) => {
     params.push(offset);
 
     const rows = await pool.query(`
-      SELECT * FROM invoices 
-      ${whereClause} 
-      ORDER BY created_at DESC 
+      SELECT * FROM invoices
+      ${whereClause}
+      ORDER BY created_at DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `, params);
 
+    // The table view reads flat/snake_case fields (inv.due_date, inv.amount,
+    // ...); the view modal reads a nested customer object + camelCase
+    // aliases (selected.customer.name, selected.dueDate, ...). Both shapes
+    // are included so either consumer works off the same response.
+    const invoices = rows.rows.map((row) => ({
+      ...row,
+      customer: {
+        name: row.customer_name,
+        phone: row.customer_phone,
+        email: row.customer_email,
+        address: row.customer_address,
+      },
+      orderId: row.order_id,
+      issuedDate: row.date_issued,
+      dueDate: row.due_date,
+      paymentMethod: row.payment_method,
+      deliveryFee: parseFloat(row.delivery_fee) || 0,
+      discount: parseFloat(row.discount_amount) || 0,
+      paidDate: row.paid_at,
+      items: Array.isArray(row.items) ? row.items : [],
+    }));
+
     res.json({
-      invoices: rows.rows,
+      invoices,
       total: parseInt(countRes.rows[0].count),
       page: parseInt(page),
       pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit))
@@ -259,9 +281,11 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (r
     } = req.body;
 
     if (!customer_name) {
+      await client.query("ROLLBACK");
       return res.status(400).json({ message: "Customer name is required" });
     }
     if (!items || !Array.isArray(items) || items.length === 0) {
+      await client.query("ROLLBACK");
       return res.status(400).json({ message: "At least one item is required" });
     }
 
@@ -269,9 +293,10 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (r
     let subtotal = 0;
     const cleanItems = [];
     for (const item of items) {
-      const qty = parseInt(item.qty || item.quantity || 1);
+      const qty = parseInt(item.qty ?? item.quantity ?? 1);
       const price = parseFloat(item.price || item.unit_price || 0);
-      if (qty <= 0) {
+      if (!Number.isInteger(qty) || qty <= 0) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: `Invalid quantity for item ${item.name}` });
       }
       const itemTotal = qty * price;
@@ -294,14 +319,18 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (r
     // Insert invoice
     const result = await client.query(
       `INSERT INTO invoices (
-        invoice_ref, customer_name, customer_id, channel, type, date_issued, due_date,
+        invoice_ref, customer_name, customer_phone, customer_email, customer_address,
+        customer_id, channel, type, date_issued, due_date,
         amount, discount_amount, delivery_fee, payment_method, status, notes,
         created_by, created_at, items
-      ) VALUES ($1, $2, null, 'manual', 'manual', NOW(), $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11)
+      ) VALUES ($1, $2, $3, $4, $5, null, 'manual', 'manual', NOW(), $6, $7, $8, $9, $10, $11, $12, $13, NOW(), $14)
       RETURNING id`,
       [
         tempRef,
         customer_name,
+        customer_phone || null,
+        customer_email || null,
+        customer_address || null,
         due_date || null,
         totalAmount,
         disc,
@@ -338,8 +367,8 @@ router.patch("/invoices/:id/status", requireRole("superadmin", "manager", "admin
   try {
     const { status, notes } = req.body;
     await pool.query(
-      `UPDATE invoices SET status = $1, notes = COALESCE($2, notes), paid_at = CASE WHEN $1 = 'paid' THEN NOW() ELSE paid_at END WHERE id = $3 OR invoice_ref = $3::text`,
-      [status, notes || null, req.params.id]
+      `UPDATE invoices SET status = $1::varchar, notes = COALESCE($2, notes), paid_at = CASE WHEN $1::varchar = 'paid' THEN NOW() ELSE paid_at END WHERE id::text = $3 OR invoice_ref = $3`,
+      [status, notes || null, String(req.params.id)]
     );
     res.json({ message: "Invoice updated", status });
   } catch (err) {
@@ -569,14 +598,31 @@ router.patch(
       await client.query("BEGIN");
       const { status, notes, picking_staff } = req.body;
 
+      const VALID_STATUSES = ["processing", "packed_ready", "driver_assigned", "out_for_delivery", "delivery_attempted", "delivered", "cancelled", "dispute"];
+      if (!VALID_STATUSES.includes(status)) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: `status must be one of: ${VALID_STATUSES.join(", ")}` });
+      }
+
       const current = await client.query(
-        "SELECT status FROM orders WHERE id=$1",
+        "SELECT status, driver_id FROM orders WHERE id=$1",
         [req.params.id],
       );
-      if (!current.rows.length)
+      if (!current.rows.length) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ message: "Order not found" });
+      }
 
       const fromStatus = current.rows[0].status;
+
+      if (fromStatus === "dispute") {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "This order is disputed — use the dispute resolution flow instead" });
+      }
+      if (["driver_assigned", "out_for_delivery"].includes(status) && !current.rows[0].driver_id) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Assign a driver first" });
+      }
 
       await client.query(
         "UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2",
@@ -675,20 +721,26 @@ router.patch(
       await client.query("BEGIN");
       const { driver_id, reassign = false } = req.body;
 
-      if (!driver_id)
+      if (!driver_id) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "driver_id required" });
+      }
 
       const order = await client.query("SELECT * FROM orders WHERE id=$1", [
         req.params.id,
       ]);
-      if (!order.rows.length)
+      if (!order.rows.length) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ message: "Order not found" });
+      }
 
       const driver = await client.query("SELECT * FROM drivers WHERE id=$1", [
         driver_id,
       ]);
-      if (!driver.rows.length)
+      if (!driver.rows.length) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ message: "Driver not found" });
+      }
 
       const d = driver.rows[0];
       const prevDriverId = order.rows[0].driver_id;
@@ -784,8 +836,20 @@ router.patch(
       await client.query("BEGIN");
       const { decision, notes, refund_amount } = req.body;
 
-      if (!decision)
+      if (!decision) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "decision required" });
+      }
+
+      const current = await client.query("SELECT status FROM orders WHERE id=$1", [req.params.id]);
+      if (!current.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Order not found" });
+      }
+      if (current.rows[0].status !== "dispute") {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "This order is not currently disputed" });
+      }
 
       const noteMap = {
         full_refund: `Admin decision: Full refund processed. ${notes || ""}`,
@@ -842,8 +906,14 @@ router.patch(
         "SELECT status FROM orders WHERE id=$1",
         [req.params.id],
       );
-      if (!order.rows.length)
+      if (!order.rows.length) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ message: "Order not found" });
+      }
+      if (["delivered", "cancelled"].includes(order.rows[0].status)) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: `Cannot cancel an order that is already ${order.rows[0].status}` });
+      }
 
       await client.query(
         "UPDATE orders SET status='cancelled', cancel_reason=$1, cancelled_at=NOW(), updated_at=NOW() WHERE id=$2",

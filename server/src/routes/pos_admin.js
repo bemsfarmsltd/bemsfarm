@@ -14,14 +14,16 @@ const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { NAIRA_PER_UNIT } = require("../utils/currency");
+const { validateCoupon, recordCouponUsage } = require("../utils/coupons");
 
 router.use(protect);
 
 // ─── Sequence helper ────────────────────────────────────────────────────────
 async function nextPOSRef(client) {
   const r = await client.query(
-    `SELECT COALESCE(MAX(CAST(REGEXP_REPLACE(reference,'POS-','') AS INTEGER)),1000)+1 AS next
-     FROM orders WHERE reference LIKE 'POS-%'`
+    `SELECT COALESCE(MAX(CAST(REGEXP_REPLACE(order_ref,'POS-','') AS INTEGER)),1000)+1 AS next
+     FROM orders WHERE order_ref LIKE 'POS-%'`
   );
   return `POS-${r.rows[0].next}`;
 }
@@ -205,39 +207,87 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), asyn
       notes, session_id,
     } = req.body;
 
-    if (!items?.length) return res.status(400).json({ message: "Items required" });
+    if (!items?.length) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Items required" });
+    }
 
-    // Calculate totals from products
+    // Calculate totals from products — lock rows so stock can't be
+    // oversold by a concurrent sale, and never trust a client-supplied price.
+    const productIds = [...new Set(items.map((i) => parseInt(i.product_id)))];
+    const prodRows = await client.query(
+      "SELECT id, name, unit_price, price, stock FROM products WHERE id = ANY($1::int[]) FOR UPDATE",
+      [productIds]
+    );
+    const productsById = new Map(prodRows.rows.map((p) => [p.id, p]));
+
     let subtotal = 0;
     const lineItems = [];
     for (const item of items) {
-      const prod = await client.query(
-        "SELECT id, name, unit_price, price FROM products WHERE id=$1", [item.product_id]
-      );
-      if (!prod.rows.length) continue;
-      const p = prod.rows[0];
-      const unit_price = parseFloat(p.unit_price || p.price || 0);
-      const line_total = unit_price * parseInt(item.quantity);
+      const productId = parseInt(item.product_id);
+      const quantity = parseInt(item.quantity);
+      const p = productsById.get(productId);
+      if (!p || !Number.isInteger(quantity) || quantity <= 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: `Product ${item.product_id} is not available` });
+      }
+      const availableStock = p.stock ?? 0;
+      if (quantity > availableStock) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: `Only ${availableStock} of "${p.name}" left in stock` });
+      }
+      // price/unit_price are stored in a smaller base unit — convert to Naira
+      const unit_price = parseFloat(p.unit_price || p.price || 0) * NAIRA_PER_UNIT;
+      const line_total = unit_price * quantity;
       subtotal += line_total;
-      lineItems.push({ product_id: p.id, name: p.name, quantity: item.quantity, unit_price, line_total });
+      lineItems.push({ product_id: p.id, name: p.name, quantity, unit_price, line_total });
     }
 
-    const tax_amount     = 0; // Pull from settings if needed
-    const total          = subtotal - parseFloat(discount_amount) + tax_amount;
+    // Discount is never trusted as-is from the client:
+    //  - with a coupon code, the discount is computed server-side from the
+    //    coupon's own rules (mirrors POST /admin/coupons/validate)
+    //  - without one, only manager+ roles may apply a manual discount, so a
+    //    cashier token can't zero out a sale on its own
+    let appliedCoupon = null;
+    let finalDiscount = 0;
+
+    if (coupon_code) {
+      const result = await validateCoupon(client, { code: coupon_code, subtotal, customerId: customer_id || null });
+      if (!result.ok) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: result.message });
+      }
+      appliedCoupon = result.coupon;
+      finalDiscount = result.discount;
+    } else {
+      const requestedDiscount = parseFloat(discount_amount) || 0;
+      if (requestedDiscount > 0) {
+        if (!["superadmin", "manager", "admin"].includes(req.user.role)) {
+          await client.query("ROLLBACK");
+          return res.status(403).json({ message: "A manager must apply a discount without a coupon code" });
+        }
+        finalDiscount = Math.max(0, Math.min(requestedDiscount, subtotal));
+      }
+    }
+
+    // Matches the 7.5% VAT the POS terminal displays to the cashier before charging
+    const tax_amount     = Math.round((subtotal - finalDiscount) * 0.075);
+    const total          = subtotal - finalDiscount + tax_amount;
     const change_amount  = amount_tendered ? Math.max(0, parseFloat(amount_tendered) - total) : 0;
     const reference      = await nextPOSRef(client);
 
-    // Create order
+    // Create order — `id` has no DB default, so it must be supplied explicitly
+    // (the `reference` value, e.g. "POS-1001", doubles as the order id).
     const order = await client.query(
       `INSERT INTO orders
-         (reference, customer_id, customer_name, subtotal, discount_amount, tax_amount,
+         (id, order_ref, customer_id, customer_name, subtotal, discount_amount, tax_amount,
           total, payment_method, payment_status, status, source, pos_session_id,
           notes, created_by, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'paid','completed','Physical Store (POS)',$9,$10,$11,NOW(),NOW())
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'paid','completed','Physical Store (POS)',$10,$11,$12,NOW(),NOW())
        RETURNING *`,
       [
-        reference, customer_id || null, customer_name,
-        subtotal, parseFloat(discount_amount), tax_amount, total,
+        reference, reference, customer_id || null, customer_name,
+        subtotal, finalDiscount, tax_amount, total,
         payment_method, session_id || null, notes || null, req.user.id,
       ]
     );
@@ -246,32 +296,22 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), asyn
     // Insert order items and deduct stock
     for (const item of lineItems) {
       await client.query(
-        `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, subtotal)
-         VALUES ($1,$2,$3,$4,$5,$6)`,
+        `INSERT INTO order_items (order_id, product_id, product_name, quantity, price, unit_price, subtotal)
+         VALUES ($1,$2,$3,$4,$5,$5,$6)`,
         [orderId, item.product_id, item.name, item.quantity, item.unit_price, item.line_total]
       );
       await client.query(
         `UPDATE products
-         SET stock_quantity = GREATEST(0, COALESCE(stock_quantity,0) - $1),
+         SET stock = GREATEST(0, COALESCE(stock,0) - $1),
+             stock_quantity = GREATEST(0, COALESCE(stock_quantity,0) - $1),
              updated_at = NOW()
          WHERE id=$2`,
         [item.quantity, item.product_id]
       );
     }
 
-    // Track coupon usage
-    if (coupon_code) {
-      const coupon = await client.query("SELECT id FROM coupons WHERE UPPER(code)=UPPER($1)", [coupon_code]);
-      if (coupon.rows.length) {
-        await client.query(
-          "INSERT INTO coupon_usages (coupon_id, customer_id, order_id, discount_amount, used_at) VALUES ($1,$2,$3,$4,NOW())",
-          [coupon.rows[0].id, customer_id || null, reference, parseFloat(discount_amount)]
-        );
-        await client.query(
-          "UPDATE coupons SET used_count=used_count+1, updated_at=NOW() WHERE id=$1",
-          [coupon.rows[0].id]
-        );
-      }
+    if (appliedCoupon) {
+      await recordCouponUsage(client, { coupon: appliedCoupon, discount: finalDiscount, customerId: customer_id || null, orderId: reference });
     }
 
     await client.query("COMMIT");
@@ -535,8 +575,8 @@ router.get("/products", async (req, res) => {
     params.push(parseInt(limit));
 
     const result = await pool.query(
-      `SELECT p.id, p.name, p.sku, p.barcode, p.unit_price AS price,
-              p.stock_quantity AS stock, p.image_url,
+      `SELECT p.id, p.name, p.sku, p.barcode, p.unit_price AS price, p.unit,
+              p.stock_quantity AS stock, p.image_url, p.category_id,
               c.name AS category
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
@@ -545,7 +585,12 @@ router.get("/products", async (req, res) => {
        LIMIT $${params.length}`,
       params
     );
-    res.json({ products: result.rows });
+    // product prices are stored in a smaller base unit — convert to Naira here
+    const products = result.rows.map((p) => ({
+      ...p,
+      price: parseFloat(p.price || 0) * NAIRA_PER_UNIT,
+    }));
+    res.json({ products });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

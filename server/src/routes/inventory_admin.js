@@ -385,12 +385,12 @@ router.post(
 
       const { product_id, warehouse_id, new_quantity, reason, notes } = req.body;
 
-      if (!product_id) return res.status(400).json({ message: "product_id required" });
-      if (new_quantity === undefined || new_quantity === null) return res.status(400).json({ message: "new_quantity required" });
-      if (!reason) return res.status(400).json({ message: "reason required for stock adjustments" });
+      if (!product_id) { await client.query("ROLLBACK"); return res.status(400).json({ message: "product_id required" }); }
+      if (new_quantity === undefined || new_quantity === null) { await client.query("ROLLBACK"); return res.status(400).json({ message: "new_quantity required" }); }
+      if (!reason) { await client.query("ROLLBACK"); return res.status(400).json({ message: "reason required for stock adjustments" }); }
 
       const cur = await client.query("SELECT stock FROM products WHERE id=$1 FOR UPDATE", [parseInt(product_id)]);
-      if (!cur.rows.length) return res.status(404).json({ message: "Product not found" });
+      if (!cur.rows.length) { await client.query("ROLLBACK"); return res.status(404).json({ message: "Product not found" }); }
 
       const beforeQty = parseInt(cur.rows[0].stock) || 0;
       const afterQty  = Math.max(0, parseInt(new_quantity));
@@ -443,11 +443,11 @@ router.post(
 
       const { product_id, from_warehouse_id, to_warehouse_id, quantity, notes } = req.body;
 
-      if (!product_id)       return res.status(400).json({ message: "product_id required" });
-      if (!from_warehouse_id) return res.status(400).json({ message: "from_warehouse_id required" });
-      if (!to_warehouse_id)  return res.status(400).json({ message: "to_warehouse_id required" });
-      if (!quantity || parseInt(quantity) <= 0) return res.status(400).json({ message: "quantity must be > 0" });
-      if (from_warehouse_id === to_warehouse_id) return res.status(400).json({ message: "From and To warehouses must be different" });
+      if (!product_id)       { await client.query("ROLLBACK"); return res.status(400).json({ message: "product_id required" }); }
+      if (!from_warehouse_id) { await client.query("ROLLBACK"); return res.status(400).json({ message: "from_warehouse_id required" }); }
+      if (!to_warehouse_id)  { await client.query("ROLLBACK"); return res.status(400).json({ message: "to_warehouse_id required" }); }
+      if (!quantity || parseInt(quantity) <= 0) { await client.query("ROLLBACK"); return res.status(400).json({ message: "quantity must be > 0" }); }
+      if (from_warehouse_id === to_warehouse_id) { await client.query("ROLLBACK"); return res.status(400).json({ message: "From and To warehouses must be different" }); }
 
       const ref = `TRF-${Date.now()}`;
       const qty = parseInt(quantity);
@@ -686,8 +686,8 @@ router.post(
 
       const { product_id, warehouse_id, quantity, reason, notes, deduct_stock = true } = req.body;
 
-      if (!product_id) return res.status(400).json({ message: "product_id required" });
-      if (!quantity || parseInt(quantity) <= 0) return res.status(400).json({ message: "quantity must be > 0" });
+      if (!product_id) { await client.query("ROLLBACK"); return res.status(400).json({ message: "product_id required" }); }
+      if (!quantity || parseInt(quantity) <= 0) { await client.query("ROLLBACK"); return res.status(400).json({ message: "quantity must be > 0" }); }
 
       const prod = await client.query("SELECT unit_price, price FROM products WHERE id=$1", [parseInt(product_id)]);
       const unitValue = parseFloat(prod.rows[0]?.unit_price || prod.rows[0]?.price || 0);
