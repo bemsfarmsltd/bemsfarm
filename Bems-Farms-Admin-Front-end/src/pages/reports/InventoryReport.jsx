@@ -80,7 +80,7 @@ export default function InventoryReport() {
             ))}
           </div>
 
-          <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
+          <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
             {data.by_category?.length > 0 && (
               <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
                 <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13 }}>Stock by Category</div>

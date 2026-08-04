@@ -396,10 +396,10 @@ export default function POS() {
       </header>
 
       {/* BODY */}
-      <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
+      <div className="pos-body" style={{ flex:1, display:'flex', overflow:'hidden' }}>
 
         {/* LEFT: Products */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', borderRight:`1px solid ${B}`, background:'#fff' }}>
+        <div className="pos-left" style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', borderRight:`1px solid ${B}`, background:'#fff' }}>
 
           {/* Quick action cards */}
           <div style={{ padding:'10px 16px', borderBottom:`1px solid ${B}`, background:BG2, flexShrink:0, display:'flex', gap:10 }}>
@@ -466,7 +466,7 @@ export default function POS() {
         </div>
 
         {/* RIGHT: Order Panel */}
-        <div style={{ width:500, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', background:'#fff' }}>
+        <div className="pos-right" style={{ width:500, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', background:'#fff' }}>
 
           {/* Held orders strip */}
           {heldOrders.length > 0 && (
@@ -1510,6 +1510,19 @@ export default function POS() {
         body.sidebar-hidden .page-wrapper { display: none !important; }
         body.sidebar-hidden #main-sidebar { display: none !important; }
         body.sidebar-hidden #main-topbar  { display: none !important; }
+        /*
+          POS is a fixed-height, side-by-side terminal layout: products
+          (flex:1) next to a hard-coded 500px-wide order panel, no wrap.
+          That's fine down to tablet width — real POS use is a store
+          terminal or tablet, not a phone — but below ~900px the 500px
+          panel alone can exceed the viewport. Stack vertically instead
+          of forcing horizontal overflow.
+        */
+        @media (max-width: 900px) {
+          .pos-body  { flex-direction: column !important; overflow-y: auto !important; }
+          .pos-left  { border-right: none !important; border-bottom: 1px solid #e5e7eb; min-height: 280px; }
+          .pos-right { width: 100% !important; flex-shrink: 1 !important; }
+        }
       `}</style>
     </div>
   )

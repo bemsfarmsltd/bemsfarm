@@ -67,7 +67,7 @@ const BLANK = { product_name:'', associated_product_name:'', association_type:'p
 function AssocForm({ form, setForm }) {
   return (
     <div style={{ display:'grid', gap:16 }}>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+      <div className="grid-form-cols" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         <div>
           <label style={lbl}>Product <span style={{ color:'#dc2626' }}>*</span></label>
           <input value={form.product_name} onChange={e => setForm(f => ({...f, product_name:e.target.value}))} placeholder="e.g. Jollof Rice" style={inp} />
@@ -217,7 +217,7 @@ export default function MealAssociations() {
       />
 
       {/* KPI Strip */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
         {[
           { label:'Total Associations', value:total,      icon:'ri-links-line',         bg:'#eff6ff', color:'#1d4ed8' },
           { label:'Association Types',  value:kpi.types,  icon:'ri-price-tag-3-line',   bg:'#fdf4ff', color:'#7e22ce' },

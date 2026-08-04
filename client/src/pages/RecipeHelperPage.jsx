@@ -228,6 +228,7 @@ export default function RecipeHelperPage() {
         }}
       >
         <div
+          className="recipe-hero-decoration"
           style={{
             position: "absolute",
             right: "5%",
@@ -974,6 +975,13 @@ export default function RecipeHelperPage() {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        /* Decorative header image risks overlapping the title text once
+           the viewport is narrow enough that the title wraps close to it —
+           it's purely decorative (opacity 0.2, gradient-faded), so just
+           hide it below the point where that becomes a real risk. */
+        @media (max-width: 640px) {
+          .recipe-hero-decoration { display: none; }
+        }
       `}</style>
     </div>
   );

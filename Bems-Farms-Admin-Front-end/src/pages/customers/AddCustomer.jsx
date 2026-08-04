@@ -79,13 +79,13 @@ export default function AddCustomer() {
       />
 
       <form onSubmit={handleSubmit} noValidate>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 360px', gap:20, alignItems:'start' }}>
+        <div className="grid-sidebar-split" style={{ display:'grid', gridTemplateColumns:'1fr 360px', gap:20, alignItems:'start' }}>
           {/* Left column */}
           <div>
             {/* Personal Info */}
             <div style={card}>
               <CardHeader icon="ri-user-line" color="#3b82f6" title="Personal Information" />
-              <div style={{ padding:'16px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+              <div className="grid-form-cols" style={{ padding:'16px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
                 <div>
                   <label style={lbl}>First Name <span style={{ color:'#dc2626' }}>*</span></label>
                   <input value={form.first_name} onChange={e => fld('first_name', e.target.value)} placeholder="e.g. Adaeze" style={inp} required />
@@ -111,7 +111,7 @@ export default function AddCustomer() {
             {/* Delivery Address */}
             <div style={card}>
               <CardHeader icon="ri-map-pin-line" color="#22c55e" title="Delivery Address" />
-              <div style={{ padding:'16px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+              <div className="grid-form-cols" style={{ padding:'16px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
                 <div>
                   <label style={lbl}>Area / Zone</label>
                   {zones.length > 0

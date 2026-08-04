@@ -408,7 +408,7 @@ export default function DriverCommissions() {
               <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={() => setGenerateModal(false)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+              <div className="grid-form-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Period From *</label>
                   <input type="date" style={inpStyle} value={genForm.period_from} onChange={e => setGenForm(f => ({ ...f, period_from: e.target.value }))} />

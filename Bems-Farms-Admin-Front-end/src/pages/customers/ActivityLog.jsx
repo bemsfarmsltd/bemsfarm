@@ -93,7 +93,7 @@ export default function ActivityLog() {
       />
 
       {/* KPI Strip */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:14, marginBottom:20 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:14, marginBottom:20 }}>
         {[
           { label:'Total Events',      val:ACTIVITIES.length, icon:'ri-list-check-3',       color:'#3b82f6', bg:'#eff6ff' },
           { label:"Today's Activity",  val:todayCount,        icon:'ri-calendar-check-line', color:'#22c55e', bg:'#f0fdf4' },
@@ -115,7 +115,7 @@ export default function ActivityLog() {
 
       {/* Filters */}
       <div style={{ ...card, padding:'14px 16px', marginBottom:14 }}>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto auto auto', gap:10, alignItems:'center' }}>
+        <div className="grid-form-cols" style={{ display:'grid', gridTemplateColumns:'1fr 1fr auto auto auto', gap:10, alignItems:'center' }}>
           <div style={{ position:'relative' }}>
             <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:14 }} />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search events, customers…" style={{ ...inp, paddingLeft:32 }} />

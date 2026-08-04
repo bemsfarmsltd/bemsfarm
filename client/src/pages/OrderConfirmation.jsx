@@ -1,21 +1,26 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useResponsive } from "../hooks/useResponsive";
 
 export default function OrderConfirmation() {
   const navigate = useNavigate();
-  const { isMobile, isTablet, isDesktop, isTabletAny, padding, gap, cols } =
-    useResponsive();
-  const orderId = "BF-" + Math.random().toString(36).substr(2, 8).toUpperCase();
+  const location = useLocation();
+  const { isMobile } = useResponsive();
+  // Real order ID, passed via router state from CheckoutPage's navigate() call
+  // on success. Previously this was a fake Math.random() ID that had no
+  // relation to the actual order — a customer quoting it to support would
+  // get nowhere. Falls back gracefully if state is missing (e.g. a hard
+  // refresh on this route, which drops React Router's in-memory state).
+  const orderId = location.state?.orderId || null;
 
   return (
     <PageWrapper>
       <div
         style={{
           maxWidth: "600px",
-          margin: "60px auto",
-          padding: "40px 24px",
+          margin: isMobile ? "24px auto" : "60px auto",
+          padding: isMobile ? "24px 16px" : "40px 24px",
           textAlign: "center",
         }}
       >
@@ -46,8 +51,8 @@ export default function OrderConfirmation() {
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 200, damping: 15 }}
             style={{
-              width: "100px",
-              height: "100px",
+              width: isMobile ? "76px" : "100px",
+              height: isMobile ? "76px" : "100px",
               borderRadius: "50%",
               backgroundColor: "#2E7D32",
               display: "flex",
@@ -61,7 +66,7 @@ export default function OrderConfirmation() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.3, type: "spring" }}
-              style={{ fontSize: "48px", color: "white" }}
+              style={{ fontSize: isMobile ? "36px" : "48px", color: "white" }}
             >
               ✓
             </motion.span>
@@ -75,7 +80,7 @@ export default function OrderConfirmation() {
         >
           <h1
             style={{
-              fontSize: "32px",
+              fontSize: isMobile ? "24px" : "32px",
               fontWeight: 900,
               color: "#2E7D32",
               marginBottom: "12px",
@@ -106,9 +111,10 @@ export default function OrderConfirmation() {
               backgroundColor: "#F8F9FA",
               border: "1px solid #E8EAED",
               borderRadius: "14px",
-              padding: "16px 24px",
-              marginBottom: "32px",
+              padding: isMobile ? "14px 20px" : "16px 24px",
+              marginBottom: isMobile ? "24px" : "32px",
               display: "inline-block",
+              maxWidth: "100%",
             }}
           >
             <p
@@ -122,13 +128,14 @@ export default function OrderConfirmation() {
             </p>
             <p
               style={{
-                fontSize: "20px",
+                fontSize: isMobile ? "16px" : "20px",
                 fontWeight: 800,
                 color: "#202124",
                 fontFamily: "monospace",
+                wordBreak: "break-all",
               }}
             >
-              #{orderId}
+              {orderId ? `#${orderId}` : "Check your Orders page for details"}
             </p>
           </div>
 
@@ -138,7 +145,9 @@ export default function OrderConfirmation() {
               display: "flex",
               justifyContent: "center",
               gap: "0",
-              marginBottom: "40px",
+              marginBottom: isMobile ? "28px" : "40px",
+              overflowX: isMobile ? "auto" : "visible",
+              padding: isMobile ? "0 4px 4px" : 0,
             }}
           >
             {[
@@ -149,19 +158,24 @@ export default function OrderConfirmation() {
             ].map((step, i) => (
               <div
                 key={step.label}
-                style={{ display: "flex", alignItems: "center" }}
+                style={{ display: "flex", alignItems: "center", flexShrink: 0 }}
               >
-                <div style={{ textAlign: "center", minWidth: "80px" }}>
+                <div
+                  style={{
+                    textAlign: "center",
+                    minWidth: isMobile ? "60px" : "80px",
+                  }}
+                >
                   <div
                     style={{
-                      width: "40px",
-                      height: "40px",
+                      width: isMobile ? "32px" : "40px",
+                      height: isMobile ? "32px" : "40px",
                       borderRadius: "50%",
                       backgroundColor: i === 0 ? "#2E7D32" : "#F1F3F4",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: "18px",
+                      fontSize: isMobile ? "14px" : "18px",
                       margin: "0 auto 6px",
                       border: i === 1 ? "2px dashed #2E7D32" : "none",
                     }}
@@ -173,6 +187,7 @@ export default function OrderConfirmation() {
                       fontSize: "11px",
                       color: i === 0 ? "#2E7D32" : "#9AA0A6",
                       fontWeight: i === 0 ? 700 : 400,
+                      whiteSpace: isMobile ? "nowrap" : "normal",
                     }}
                   >
                     {step.label}
@@ -181,7 +196,7 @@ export default function OrderConfirmation() {
                 {i < 3 && (
                   <div
                     style={{
-                      width: "40px",
+                      width: isMobile ? "20px" : "40px",
                       height: "2px",
                       backgroundColor: i === 0 ? "#2E7D32" : "#E8EAED",
                       flexShrink: 0,
@@ -194,7 +209,12 @@ export default function OrderConfirmation() {
           </div>
 
           <div
-            style={{ display: "flex", gap: "12px", justifyContent: "center" }}
+            style={{
+              display: "flex",
+              gap: "12px",
+              justifyContent: "center",
+              flexWrap: "wrap",
+            }}
           >
             <motion.button
               whileHover={{ scale: 1.03 }}
@@ -205,11 +225,12 @@ export default function OrderConfirmation() {
                 color: "white",
                 border: "none",
                 borderRadius: "14px",
-                padding: "16px 32px",
+                padding: isMobile ? "14px 24px" : "16px 32px",
                 fontSize: "16px",
                 fontWeight: 700,
                 cursor: "pointer",
                 boxShadow: "0 4px 16px rgba(46,125,50,0.3)",
+                flex: isMobile ? "1 1 auto" : "none",
               }}
             >
               Track Order 📦
@@ -223,10 +244,11 @@ export default function OrderConfirmation() {
                 color: "#202124",
                 border: "1px solid #E8EAED",
                 borderRadius: "14px",
-                padding: "16px 32px",
+                padding: isMobile ? "14px 24px" : "16px 32px",
                 fontSize: "16px",
                 fontWeight: 700,
                 cursor: "pointer",
+                flex: isMobile ? "1 1 auto" : "none",
               }}
             >
               Continue Shopping

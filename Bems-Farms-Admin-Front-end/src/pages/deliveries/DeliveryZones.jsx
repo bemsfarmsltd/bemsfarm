@@ -112,7 +112,7 @@ export default function DeliveryZones() {
 
   const FormContent = () => (
     <div style={{ padding:24, overflowY:'auto' }}>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+      <div className="grid-form-cols" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
         <div style={{ gridColumn:'1 / -1' }}>
           <label style={lbl}>Zone Name <span style={{ color:'#dc2626' }}>*</span></label>
           <input placeholder="e.g. Victoria Island" value={form.zone_name} onChange={e=>setField('zone_name',e.target.value)} style={inp} />
@@ -183,7 +183,7 @@ export default function DeliveryZones() {
       } />
 
       {/* Stats */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:14, marginBottom:20 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:14, marginBottom:20 }}>
         {[
           { label:'Total Zones',      value:stats.total,                   color:'#6366f1', icon:'ri-map-2-line'                },
           { label:'Active',           value:stats.active,                  color:'#22c55e', icon:'ri-checkbox-circle-line'       },
@@ -370,7 +370,7 @@ export default function DeliveryZones() {
                     </span>
                   </div>
                   <div style={{ padding:20 }}>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:20 }}>
+                    <div className="grid-form-cols" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:20 }}>
                       {[
                         { label:'Delivery Fee',  value:fmt(selected.delivery_fee),      color:'#3b82f6' },
                         { label:'Min. Order',    value:fmt(selected.min_order_amount),  color:'#6366f1' },

@@ -230,7 +230,7 @@ export default function Recommendation() {
       />
 
       {/* KPI Strip */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
         {[
           { label:'Total Recommendations', value:total,       icon:'ri-thumb-up-line',        bg:'#eff6ff', color:'#1d4ed8' },
           { label:'Active',                value:kpi.active,  icon:'ri-checkbox-circle-line', bg:'#f0fdf4', color:'#15803d' },

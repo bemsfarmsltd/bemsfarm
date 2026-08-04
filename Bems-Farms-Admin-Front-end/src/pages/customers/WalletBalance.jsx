@@ -137,7 +137,7 @@ export default function WalletBalance() {
       <PageHeader title="Wallet Balances" subtitle="Manage customer wallet funds, top-ups, and credits" />
 
       {/* KPI Strip */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:14, marginBottom:20 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:14, marginBottom:20 }}>
         {[
           { label:'Total Funds in System',  val:fmt(totalFunds),   icon:'ri-safe-line',           color:'#22c55e', bg:'#f0fdf4' },
           { label:'Wallets with Balance',   val:withBalance,        icon:'ri-wallet-3-line',        color:'#3b82f6', bg:'#eff6ff' },
@@ -157,7 +157,7 @@ export default function WalletBalance() {
         ))}
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 400px', gap:16, alignItems:'start' }}>
+      <div className="grid-sidebar-split" style={{ display:'grid', gridTemplateColumns:'1fr 400px', gap:16, alignItems:'start' }}>
         {/* Left — Customer Table */}
         <div>
           <div style={{ ...card, padding:'10px 14px', marginBottom:12 }}>

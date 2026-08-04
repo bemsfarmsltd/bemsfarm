@@ -86,7 +86,7 @@ export default function FinanceReport() {
             ))}
           </div>
 
-          <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16 }}>
+          <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16 }}>
             {/* Income by category */}
             {data.income?.by_category?.length > 0 && (
               <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>

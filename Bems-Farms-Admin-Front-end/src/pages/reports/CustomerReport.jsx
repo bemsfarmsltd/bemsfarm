@@ -85,7 +85,7 @@ export default function CustomerReport() {
             ))}
           </div>
 
-          <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
+          <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
             {/* Top Customers */}
             {data.top_customers?.length > 0 && (
               <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>

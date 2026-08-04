@@ -60,7 +60,7 @@ function SubForm({ form, setForm }) {
   const confColor = confPct >= 80 ? '#15803d' : confPct >= 60 ? '#b45309' : '#dc2626'
   return (
     <div style={{ display:'grid', gap:16 }}>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+      <div className="grid-form-cols" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
         <div>
           <label style={lbl}>Original Item <span style={{ color:'#dc2626' }}>*</span></label>
           <input value={form.original_item} onChange={e => setForm(f => ({...f, original_item:e.target.value}))} placeholder="e.g. Butter" style={inp} />
@@ -221,7 +221,7 @@ export default function Substitution() {
       />
 
       {/* KPI Strip */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
         {[
           { label:'Total Substitutions', value:total,        icon:'ri-exchange-line',        bg:'#eff6ff', color:'#1d4ed8' },
           { label:'Active',              value:kpi.active,   icon:'ri-checkbox-circle-line', bg:'#f0fdf4', color:'#15803d' },

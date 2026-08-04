@@ -97,7 +97,7 @@ export default function LoyaltyPoints() {
       />
 
       {/* Tier Cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:20 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:20 }}>
         {Object.entries(TIER_CFG).reverse().map(([tier, cfg]) => {
           const count       = data.filter(c=>c.tier===tier).length
           const totalInTier = data.filter(c=>c.tier===tier).reduce((s,c)=>s+c.points,0)
@@ -120,7 +120,7 @@ export default function LoyaltyPoints() {
         })}
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 340px', gap:16, alignItems:'start' }}>
+      <div className="grid-sidebar-split" style={{ display:'grid', gridTemplateColumns:'1fr 340px', gap:16, alignItems:'start' }}>
         {/* Left — Points Table */}
         <div>
           {/* Search */}

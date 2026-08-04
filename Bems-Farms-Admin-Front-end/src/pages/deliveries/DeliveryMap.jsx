@@ -314,7 +314,7 @@ export default function DeliveryMap() {
       </div>
 
       {/* Map + Side Panel */}
-      <div style={{ flex:1, display:'grid', gridTemplateColumns:'320px 1fr', borderRadius:12, overflow:'hidden', border:'1px solid #e5e7eb', minHeight:0 }}>
+      <div className="grid-sidebar-split" style={{ flex:1, display:'grid', gridTemplateColumns:'320px 1fr', borderRadius:12, overflow:'hidden', border:'1px solid #e5e7eb', minHeight:0 }}>
 
         {/* Side panel */}
         <div style={{ overflowY:'auto', background:'#fcfcfc', borderRight:'1px solid #e5e7eb' }}>

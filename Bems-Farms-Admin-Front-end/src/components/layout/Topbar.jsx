@@ -419,10 +419,9 @@ export default function Topbar({ onToggleSidebar }) {
   }, [])
 
   return (
-    <header style={{
+    <header className="bf-admin-topbar" style={{
       position: 'fixed',
       top: 0,
-      left: 258,
       right: 0,
       height: 60,
       background: 'var(--bg-topbar)',
@@ -430,10 +429,11 @@ export default function Topbar({ onToggleSidebar }) {
       display: 'flex',
       alignItems: 'center',
       gap: 10,
-      padding: '0 20px 0 16px',
+      padding: '0 12px',
       zIndex: 99,
       fontFamily: 'Nunito, sans-serif',
       color: 'var(--text-primary)',
+      overflowX: 'auto',
     }}>
 
       {/* Sidebar toggle */}
@@ -446,9 +446,9 @@ export default function Topbar({ onToggleSidebar }) {
       {/* Add New */}
       <AddNewDropdown />
 
-      {/* Store indicator */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 6,
+      {/* Store indicator — desktop only, not essential on a phone-width topbar */}
+      <div className="bf-admin-topbar-wide-only" style={{
+        alignItems: 'center', gap: 6,
         padding: '5px 10px', borderRadius: 8,
         border: `1px solid var(--border)`,
         fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)',
@@ -461,8 +461,8 @@ export default function Topbar({ onToggleSidebar }) {
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
-      {/* Search */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+      {/* Search — desktop only; fixed 210px would overflow a phone-width topbar */}
+      <div className="bf-admin-topbar-wide-only" style={{ position: 'relative', alignItems: 'center', flexShrink: 0 }}>
         <i className="ri-search-line" style={{
           position: 'absolute', left: 10, fontSize: 15,
           color: 'var(--text-muted)', pointerEvents: 'none',
@@ -483,12 +483,14 @@ export default function Topbar({ onToggleSidebar }) {
         />
       </div>
 
-      {/* Fullscreen */}
-      <IconBtn
-        icon={isFullscreen ? 'ri-fullscreen-exit-line' : 'ri-fullscreen-line'}
-        title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-        onClick={toggleFullscreen}
-      />
+      {/* Fullscreen — desktop only, not meaningful on mobile browsers */}
+      <div className="bf-admin-topbar-wide-only">
+        <IconBtn
+          icon={isFullscreen ? 'ri-fullscreen-exit-line' : 'ri-fullscreen-line'}
+          title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          onClick={toggleFullscreen}
+        />
+      </div>
 
       {/* Dark mode */}
       <IconBtn

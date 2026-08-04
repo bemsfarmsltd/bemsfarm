@@ -282,7 +282,7 @@ export default function CustomerReport() {
       />
 
       {/* ── Stats Row ────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+      <div className="grid-stats-auto" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
         <StatCard
           label="Total Customers"
           value={fmtN(stats.total)}
@@ -556,7 +556,7 @@ export default function CustomerReport() {
       </div>
 
       {/* ── Growth & Segments Row ─────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+      <div className="grid-form-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
 
         {/* Growth Chart */}
         <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
@@ -587,7 +587,7 @@ export default function CustomerReport() {
           </div>
 
           {/* Growth summary numbers */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0, borderTop: `1px solid ${B}` }}>
+          <div className="grid-form-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0, borderTop: `1px solid ${B}` }}>
             {[
               { label: 'This Month', value: fmtN(growth.this_month), color: '#0ab39c', icon: 'ri-user-add-line' },
               { label: 'Last Month', value: fmtN(growth.last_month), color: '#405189', icon: 'ri-user-3-line' },
@@ -621,7 +621,7 @@ export default function CustomerReport() {
             </span>
             <span style={{ fontSize: 11, color: S }}>{fmtN(stats.total)} total</span>
           </div>
-          <div style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="grid-form-cols" style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <SegmentCard
               label="Returning"
               count={segments.returning}

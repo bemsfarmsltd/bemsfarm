@@ -39,7 +39,7 @@ export default function StatsCard({ title, value, sub, icon: Icon, riIcon, color
         height: '120px',
         borderRadius: '50%',
         background: glow,
-Filter: 'blur(40px)',
+        filter: 'blur(40px)',
         pointerEvents: 'none',
         zIndex: 0,
       }} />

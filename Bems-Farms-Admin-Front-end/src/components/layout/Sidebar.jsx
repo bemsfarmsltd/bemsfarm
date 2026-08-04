@@ -328,22 +328,22 @@ export default function Sidebar({ mobileOpen = false }) {
   const showPOS       = is('superadmin', 'manager', 'cashier')
 
   return (
-    <aside style={{
-      width: 258,
-      minWidth: 258,
-      height: '100vh',
-      background: C.bg,
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      zIndex: 100,
-      fontFamily: 'Nunito, sans-serif',
-      // On small screens sidebar slides in/out; on desktop it's always visible
-      transform: mobileOpen ? 'translateX(0)' : undefined,
-      transition: 'transform 0.25s ease',
-    }}>
+    <aside
+      className={`bf-admin-sidebar${mobileOpen ? ' mobile-open' : ''}`}
+      style={{
+        width: 258,
+        minWidth: 258,
+        height: '100vh',
+        background: C.bg,
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        zIndex: 100,
+        fontFamily: 'Nunito, sans-serif',
+        transition: 'transform 0.25s ease',
+      }}>
 
       {/* ── Logo ── */}
       <div style={{

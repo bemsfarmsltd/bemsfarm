@@ -454,7 +454,7 @@ export default function BankAccounts() {
                 <input style={inpStyle} placeholder="e.g. Bems Farms Operations" value={form.account_name} onChange={e => setForm(f => ({ ...f, account_name: e.target.value }))} required />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+              <div className="grid-form-cols" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Account Number * (10 digits)</label>
                   <input style={inpStyle} maxLength="10" placeholder="0123456789" value={form.account_number} onChange={e => setForm(f => ({ ...f, account_number: e.target.value.replace(/\D/g, '') }))} required />
@@ -465,7 +465,7 @@ export default function BankAccounts() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="grid-form-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Account Type</label>
                   <select style={inpStyle} value={form.account_type} onChange={e => setForm(f => ({ ...f, account_type: e.target.value }))}>
@@ -520,7 +520,7 @@ export default function BankAccounts() {
                 <input style={inpStyle} value={form.account_name} onChange={e => setForm(f => ({ ...f, account_name: e.target.value }))} required />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="grid-form-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Account Number *</label>
                   <input style={inpStyle} maxLength="10" value={form.account_number} onChange={e => setForm(f => ({ ...f, account_number: e.target.value.replace(/\D/g, '') }))} required />
@@ -533,7 +533,7 @@ export default function BankAccounts() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="grid-form-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Status</label>
                   <select style={inpStyle} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>

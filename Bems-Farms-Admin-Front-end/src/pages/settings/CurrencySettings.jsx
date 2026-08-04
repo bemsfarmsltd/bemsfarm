@@ -170,7 +170,7 @@ export default function CurrencySettings() {
                   <label style={LBL}>Currency Name <span style={{ color:'#f06548' }}>*</span></label>
                   <input style={inp} required value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g. US Dollar"/>
                 </div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
+                <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
                   <div>
                     <label style={LBL}>Code <span style={{ color:'#f06548' }}>*</span></label>
                     <input style={inp} required value={form.code} onChange={e=>setForm(f=>({...f,code:e.target.value.toUpperCase()}))} placeholder="USD" maxLength={5}/>

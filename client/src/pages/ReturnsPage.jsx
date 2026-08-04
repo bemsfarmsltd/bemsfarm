@@ -350,7 +350,7 @@ export default function ReturnsPage() {
                             {/* ── Expanded controls (when selected) ── */}
                             {isOn && (
                               <div style={{ borderTop: "1px solid #D1FAE5", padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "14px" }}>
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>
                                   {/* Quantity */}
                                   <div>
                                     <label style={labelStyle}>

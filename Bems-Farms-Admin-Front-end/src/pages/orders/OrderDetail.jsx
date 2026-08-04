@@ -84,8 +84,14 @@ export default function OrderDetail() {
 
   return (
     <div style={{ fontFamily:"Nunito,sans-serif" }}>
+      {/* Fixed 320px sidebar column would overflow on any phone-width screen */}
+      <style>{`
+        @media (max-width: 700px) {
+          .ordd-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
       {/* Page header */}
-      <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:24 }}>
+      <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:24,flexWrap:"wrap" }}>
         <Link to="/orders" style={{ display:"inline-flex",alignItems:"center",justifyContent:"center",width:36,height:36,borderRadius:8,border:"1.5px solid #e5e7eb",background:"#fff",color:"#374151",textDecoration:"none" }}>
           <i className="ri-arrow-left-line" style={{ fontSize:16 }}/>
         </Link>
@@ -103,7 +109,7 @@ export default function OrderDetail() {
         </div>
       </div>
 
-      <div style={{ display:"grid",gridTemplateColumns:"1fr 320px",gap:24 }}>
+      <div className="ordd-grid" style={{ display:"grid",gridTemplateColumns:"1fr 320px",gap:24 }}>
         {/* Left column */}
         <div>
           <InfoCard title="Order Items">

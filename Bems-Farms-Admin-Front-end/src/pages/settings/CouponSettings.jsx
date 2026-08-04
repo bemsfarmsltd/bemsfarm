@@ -209,7 +209,7 @@ export default function CouponSettings() {
                 <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <form onSubmit={handleSave} style={{ padding:24,overflowY:'auto' }}>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
+                <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
                   <div>
                     <label style={LBL}>Coupon Code <span style={{ color:'#f06548' }}>*</span></label>
                     <input style={inp} required value={form.code} onChange={e=>setForm(f=>({...f,code:e.target.value.toUpperCase()}))} placeholder="HARVEST15"/>
@@ -223,7 +223,7 @@ export default function CouponSettings() {
                     </select>
                   </div>
                 </div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
+                <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
                   <div>
                     <label style={LBL}>Discount Type</label>
                     <select style={inp} value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}>
@@ -236,7 +236,7 @@ export default function CouponSettings() {
                     <input type="number" style={inp} required min={0} value={form.value} onChange={e=>setForm(f=>({...f,value:parseFloat(e.target.value)||0}))}/>
                   </div>
                 </div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14,marginBottom:14 }}>
+                <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14,marginBottom:14 }}>
                   <div>
                     <label style={LBL}>Min Order (₦)</label>
                     <input type="number" style={inp} min={0} value={form.min_order} onChange={e=>setForm(f=>({...f,min_order:parseFloat(e.target.value)||0}))}/>
@@ -250,7 +250,7 @@ export default function CouponSettings() {
                     <input type="number" style={inp} min={1} value={form.usage_limit} onChange={e=>setForm(f=>({...f,usage_limit:parseInt(e.target.value)||1}))}/>
                   </div>
                 </div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14,marginBottom:14 }}>
+                <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14,marginBottom:14 }}>
                   <div>
                     <label style={LBL}>Per User Limit</label>
                     <input type="number" style={inp} min={1} value={form.per_user_limit} onChange={e=>setForm(f=>({...f,per_user_limit:parseInt(e.target.value)||1}))}/>

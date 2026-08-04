@@ -213,7 +213,7 @@ export default function ManagerSettings() {
                   <label style={LBL}>Password <span style={{ color:'#f06548' }}>*</span></label>
                   <input type="password" style={inp} required minLength={8} value={addForm.password} onChange={e=>setAddForm(f=>({...f,password:e.target.value}))} placeholder="Min 8 characters"/>
                 </div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:24 }}>
+                <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:24 }}>
                   <div>
                     <label style={LBL}>Role</label>
                     <select style={inp} value={addForm.role} onChange={e=>setAddForm(f=>({...f,role:e.target.value}))}>
@@ -253,7 +253,7 @@ export default function ManagerSettings() {
                   <label style={LBL}>Name</label>
                   <input style={inp} value={editForm.name} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
                 </div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
+                <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
                   <div>
                     <label style={LBL}>Role</label>
                     <select style={inp} value={editForm.role} onChange={e=>setEditForm(f=>({...f,role:e.target.value}))}>

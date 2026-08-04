@@ -182,7 +182,7 @@ export default function DietaryRules() {
       />
 
       {/* KPI Strip */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
         {[
           { label:'Total Rules',      value:total,      icon:'ri-file-list-3-line',     bg:'#eff6ff', color:'#1d4ed8' },
           { label:'High Priority',    value:kpi.high,   icon:'ri-alarm-warning-line',   bg:'#fef2f2', color:'#dc2626' },

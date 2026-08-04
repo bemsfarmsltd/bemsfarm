@@ -338,7 +338,7 @@ export default function ActiveDeliveries() {
       {activeTab==='live' && (
         <>
           {/* Stat Cards */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:20 }}>
+          <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:20 }}>
             {[
               { label:'Total Active',       value:parseInt(stats.total||0),    color:'#6366f1', icon:'ri-route-line',          filter:'all'                },
               { label:'En Route',           value:parseInt(stats.en_route||0), color:'#3b82f6', icon:'ri-truck-line',          filter:'out_for_delivery'   },

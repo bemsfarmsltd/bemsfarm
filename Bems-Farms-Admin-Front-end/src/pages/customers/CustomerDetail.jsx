@@ -116,7 +116,7 @@ export default function CustomerDetail() {
         </div>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'300px 1fr', gap:20, alignItems:'start' }}>
+      <div className="grid-sidebar-split" style={{ display:'grid', gridTemplateColumns:'300px 1fr', gap:20, alignItems:'start' }}>
         {/* Left sidebar */}
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           {/* Profile card */}
@@ -157,7 +157,7 @@ export default function CustomerDetail() {
 
           {/* Stats */}
           <div style={{ ...card, padding:14 }}>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+            <div className="grid-form-cols" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
               {[
                 { label:'Total Orders', val:c.total_orders||0, color:'#3b82f6' },
                 { label:'Total Spent',  val:fmt(c.total_spent), color:'#22c55e' },
@@ -253,7 +253,7 @@ export default function CustomerDetail() {
           {activeTab==='points' && (
             <div>
               <div style={{ padding:'16px 20px', borderBottom:'1px solid #f3f4f6', background:'#f8fafc' }}>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:10 }}>
+                <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:10 }}>
                   {[
                     { label:'Current Balance', val:fmtPts(c.points), color:'#8b5cf6', big:true },
                     { label:'Tier',            val:c.tier,            color:tc.color           },
@@ -297,7 +297,7 @@ export default function CustomerDetail() {
                   <div style={{ fontSize:13, color:'#78350f', lineHeight:1.6 }}>{c.notes}</div>
                 </div>
               )}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:20 }}>
+              <div className="grid-form-cols" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:20 }}>
                 {[
                   { icon:'ri-map-pin-2-line',    label:'Delivery zone',   val:c.area,       color:'#0ea5e9' },
                   { icon:'ri-calendar-check-line',label:'Member since',    val:c.joined_at ? new Date(c.joined_at).toLocaleDateString('en-NG') : '—', color:'#8b5cf6' },

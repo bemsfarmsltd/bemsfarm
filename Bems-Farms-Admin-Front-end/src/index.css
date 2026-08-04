@@ -174,3 +174,24 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 10px 25px -5px rgba(64, 145, 108, 0.25);
 }
+
+/* ── Responsive grid utilities ────────────────────────────────────────────────
+   Applied across dashboard pages that use inline gridTemplateColumns with
+   fixed ratios/columns and no mobile handling. Using shared classes here
+   (with !important, required to beat the inline style) instead of a
+   <style> block per file, since the same 3 shapes repeat across ~35 pages:
+     .grid-stats-auto   — N equal stat/metric cards in a row → auto-fill
+     .grid-sidebar-split — fixed-px sidebar + fluid main (e.g. "300px 1fr")
+                            → single column below tablet width
+     .grid-form-cols     — simple N-equal-column form/content grid
+                            → single column below phone width
+*/
+.grid-stats-auto {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+}
+@media (max-width: 900px) {
+  .grid-sidebar-split { grid-template-columns: 1fr !important; }
+}
+@media (max-width: 640px) {
+  .grid-form-cols { grid-template-columns: 1fr !important; }
+}

@@ -159,7 +159,7 @@ export default function DriversManagement() {
       } />
 
       {/* Stats */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:14, marginBottom:20 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:14, marginBottom:20 }}>
         {[
           { label:'Total Drivers',    value:parseInt(stats.total||0),       color:'#6366f1', icon:'ri-group-line',           filter:'all'         },
           { label:'On Delivery',      value:parseInt(stats.on_delivery||0), color:'#3b82f6', icon:'ri-truck-line',           filter:'on_delivery' },
@@ -384,7 +384,7 @@ export default function DriversManagement() {
                     </div>
                   </div>
                   <div style={{ padding:20 }}>
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
+                    <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
                       {[
                         { label:'Total Deliveries', value:selected.total_deliveries||0, color:'#6366f1' },
                         { label:'Rating', value:<StarRating rating={selected.rating||0} />, color:'#f59e0b' },
@@ -425,7 +425,7 @@ export default function DriversManagement() {
           {(activeModal==='add'||activeModal==='edit') && (
             <ModalShell title={isEditing?'Edit Driver':'Add New Driver'} onClose={closeModal} maxWidth={520}>
               <div style={{ padding:24, overflowY:'auto' }}>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+                <div className="grid-form-cols" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
                   <div>
                     <label style={lbl}>Full Name <span style={{ color:'#dc2626' }}>*</span></label>
                     <input value={form.name} onChange={e=>setField('name',e.target.value)} placeholder="Tunde Adeyemi" style={inp} />

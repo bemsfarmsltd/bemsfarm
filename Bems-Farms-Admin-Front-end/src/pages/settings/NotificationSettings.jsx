@@ -112,7 +112,7 @@ export default function NotificationSettings() {
         <form onSubmit={handleSave}>
           {/* Notification Channels */}
           <Card title="Notification Channels" subtitle="Enable or disable notification delivery methods.">
-            <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12 }}>
+            <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12 }}>
               {[
                 { key:'email_orders', label:'Email (Orders)',   icon:'ri-mail-line',           color:'#405189', desc:'Order alerts by email'   },
                 { key:'sms_enabled',  label:'SMS',             icon:'ri-smartphone-line',      color:'#0ab39c', desc:'SMS notifications'       },

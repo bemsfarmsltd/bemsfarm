@@ -164,7 +164,7 @@ export default function Conversations() {
       />
 
       {/* KPI Strip */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:12, marginBottom:20 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:12, marginBottom:20 }}>
         {KPIS.map(k => (
           <div key={k.label} style={{ background:k.bg, borderRadius:12, padding:'12px 14px', border:`1px solid ${k.bg}` }}>
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -193,7 +193,7 @@ export default function Conversations() {
       )}
 
       {/* Chat shell */}
-      <div style={{ display:'grid', gridTemplateColumns:'300px 1fr', background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.05)', minHeight:580, overflow:'hidden' }}>
+      <div className="grid-sidebar-split" style={{ display:'grid', gridTemplateColumns:'300px 1fr', background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.05)', minHeight:580, overflow:'hidden' }}>
 
         {/* Left panel */}
         <div style={{ display:'flex', flexDirection:'column', borderRight:'1px solid #f3f4f6' }}>

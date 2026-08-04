@@ -102,7 +102,7 @@ function StatGrid({ children, cols = 'repeat(auto-fill, minmax(160px, 1fr))' }) 
 
 function TwoCol({ left, right, ratio = '1fr 1fr', gap = 16, mb = 20 }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: ratio, gap, marginBottom: mb }}>
+    <div className="dash-two-col" style={{ display: 'grid', gridTemplateColumns: ratio, gap, marginBottom: mb }}>
       {left}
       {right}
     </div>
@@ -1024,7 +1024,16 @@ export default function Dashboard() {
 
   return (
     <div style={{ fontFamily: 'Nunito, sans-serif' }}>
-      <style>{`@keyframes shimmer { to { background-position: -200% 0; } }`}</style>
+      <style>{`
+        @keyframes shimmer { to { background-position: -200% 0; } }
+        /* TwoCol is used ~15x across every tab for chart+table side-by-side
+           layouts, all with fixed ratios (2fr 1fr etc) and no mobile collapse.
+           Force single-column below tablet width — !important is required
+           since it must beat the inline gridTemplateColumns style. */
+        @media (max-width: 900px) {
+          .dash-two-col { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
 
       <PageHeader
         title={`Good ${getGreeting()}, ${user?.first_name ?? 'Admin'}`}

@@ -35,7 +35,7 @@ function Card({ title, subtitle, children }) {
 
 function Row({ label, desc, children }) {
   return (
-    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,paddingBottom:18,marginBottom:18,borderBottom:`1px solid #f3f4f6`,alignItems:'start' }}>
+    <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,paddingBottom:18,marginBottom:18,borderBottom:`1px solid #f3f4f6`,alignItems:'start' }}>
       <div>
         <div style={{ fontWeight:600,fontSize:13,color:'#111827',marginBottom:2 }}>{label}</div>
         {desc&&<div style={{ fontSize:12,color:S }}>{desc}</div>}

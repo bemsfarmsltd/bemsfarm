@@ -171,7 +171,7 @@ export default function PaymentSettings() {
                     <i className={showKeys?'ri-eye-off-line':'ri-eye-line'}/>{showKeys?'Hide':'Show'}
                   </button>
                 </div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14 }}>
+                <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14 }}>
                   <div>
                     <label style={{ ...LBL,fontWeight:500,color:S }}>Public Key</label>
                     <input type={showKeys?'text':'password'} style={inp} placeholder="pk_live_…" value={editForm.public_key} onChange={e=>setEditForm(f=>({...f,public_key:e.target.value}))}/>

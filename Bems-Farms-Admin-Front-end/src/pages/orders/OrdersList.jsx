@@ -49,6 +49,11 @@ const btnP = { display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px
 const btnL = { display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:9,border:"1.5px solid #e5e7eb",background:"#fff",color:"#374151",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:600,fontSize:13 }
 const TH   = { padding:"10px 16px",fontSize:11,fontWeight:700,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.06em",textAlign:"left",whiteSpace:"nowrap" }
 const TD   = { padding:"12px 16px",verticalAlign:"middle",borderBottom:"1px solid #f3f4f6",fontSize:13,color:"#111827" }
+// Was referenced in the dispute/reschedule/cancel modals below but never
+// defined anywhere in this file — opening any of those 3 modals threw
+// "ReferenceError: LBL is not defined" and crashed. Matches the style
+// already used inline for the process/pack modals' labels.
+const LBL  = { display:"block",fontSize:12,fontWeight:700,color:"#374151",marginBottom:6 }
 
 function Modal({ title, onClose, children, maxWidth=600, danger=false }) {
   return <>
@@ -215,8 +220,8 @@ export default function OrdersList() {
         </div>
       </div>
 
-      {/* Stat cards in 2x4 grid */}
-      <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,marginBottom:24 }}>
+      {/* Stat cards — auto-fill/minmax collapses naturally on narrow screens, no media query needed */}
+      <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(140px, 1fr))",gap:16,marginBottom:24 }}>
         {[
           { label:"Total Orders",       value:stats.total||14,              color:"#405189",icon:"ri-inbox-archive-line" },
           { label:"New Orders",         value:stats.new_orders||2,         color:"#299cdb",icon:"ri-file-list-line" },
@@ -582,6 +587,16 @@ function OrderViewModal({ order, onClose, onProcess, onPack, onAssign, onDispute
   const btnL2={ display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,border:"1.5px solid #e5e7eb",background:"#fff",color:"#374151",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:600,fontSize:13 }
 
   return <>
+    {/* The modal's 2-column body (1fr 300px) and the customer/address info
+        grid (1fr 1fr) inside it are both fixed-ratio — on a 375px phone the
+        modal itself is only ~340px wide, less than the 300px sidebar column
+        alone needs. Force single-column below tablet width. */}
+    <style>{`
+      @media (max-width: 700px) {
+        .ord-modal-grid { grid-template-columns: 1fr !important; }
+        .ord-info-grid { grid-template-columns: 1fr !important; }
+      }
+    `}</style>
     <div onClick={onClose} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1054 }}/>
     <div style={{ position:"fixed",inset:0,zIndex:1055,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
       <div style={{ background:"#fff",borderRadius:14,width:"100%",maxWidth:900,maxHeight:"90vh",boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",display:"flex",flexDirection:"column" }}>
@@ -625,10 +640,10 @@ function OrderViewModal({ order, onClose, onProcess, onPack, onAssign, onDispute
               <i className="ri-loader-4-line" style={{ fontSize:32,display:"block",marginBottom:8 }}/>Loading order details...
             </div>
           ):(
-            <div style={{ padding:24,display:"grid",gridTemplateColumns:"1fr 300px",gap:24 }}>
+            <div className="ord-modal-grid" style={{ padding:24,display:"grid",gridTemplateColumns:"1fr 300px",gap:24 }}>
               <div>
                 <div style={{ border:"1px solid #f3f4f6",borderRadius:10,padding:16,marginBottom:16 }}>
-                  <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:16 }}>
+                  <div className="ord-info-grid" style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:16 }}>
                     <div>
                       <div style={{ fontSize:11,color:"#6b7280",marginBottom:4 }}>Customer</div>
                       <div style={{ fontWeight:600 }}>{o.customer_name}</div>

@@ -48,11 +48,11 @@ export default function ProductDetail() {
         <div
           style={{
             maxWidth: "1100px",
-            margin: "60px auto",
+            margin: isMobile ? "24px auto" : "60px auto",
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "40px",
-            padding: "0 24px",
+            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+            gap: isMobile ? "20px" : "40px",
+            padding: isMobile ? "0 16px" : "0 24px",
           }}
         >
           {[...Array(2)].map((_, i) => (
@@ -61,7 +61,7 @@ export default function ProductDetail() {
               animate={{ opacity: [0.4, 0.8, 0.4] }}
               transition={{ duration: 1.4, repeat: Infinity }}
               style={{
-                height: "400px",
+                height: isMobile ? "260px" : "400px",
                 backgroundColor: "#F8F9FA",
                 borderRadius: "20px",
               }}
@@ -83,7 +83,11 @@ export default function ProductDetail() {
   return (
     <PageWrapper>
       <div
-        style={{ maxWidth: "1100px", margin: "0 auto", padding: "32px 24px" }}
+        style={{
+          maxWidth: "1100px",
+          margin: "0 auto",
+          padding: isMobile ? "20px 16px" : "32px 24px",
+        }}
       >
         {/* Breadcrumb */}
         <div
@@ -91,9 +95,10 @@ export default function ProductDetail() {
             display: "flex",
             alignItems: "center",
             gap: "8px",
-            marginBottom: "32px",
+            marginBottom: isMobile ? "20px" : "32px",
             fontSize: "13px",
             color: "#9AA0A6",
+            flexWrap: "wrap",
           }}
         >
           <button
@@ -128,9 +133,9 @@ export default function ProductDetail() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "60px",
-            marginBottom: "60px",
+            gridTemplateColumns: isMobile || isTabletAny ? "1fr" : "1fr 1fr",
+            gap: isMobile ? "24px" : isTabletAny ? "36px" : "60px",
+            marginBottom: isMobile ? "36px" : "60px",
           }}
         >
           {/* Left — Images */}
@@ -141,7 +146,7 @@ export default function ProductDetail() {
               style={{
                 backgroundColor: getProductBg(product.name),
                 borderRadius: "24px",
-                height: "420px",
+                height: isMobile ? "260px" : isTabletAny ? "340px" : "420px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -198,7 +203,7 @@ export default function ProductDetail() {
               )}
             </motion.div>
             {/* Thumbnail strip */}
-            <div style={{ display: "flex", gap: "10px" }}>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               {["main", "alt1", "alt2", "alt3"].map((v, i) => (
                 <div
                   key={v}
@@ -239,7 +244,7 @@ export default function ProductDetail() {
             </p>
             <h1
               style={{
-                fontSize: "32px",
+                fontSize: isMobile ? "24px" : "32px",
                 fontWeight: 900,
                 color: "#202124",
                 marginBottom: "8px",
@@ -284,7 +289,7 @@ export default function ProductDetail() {
 
             <p
               style={{
-                fontSize: "32px",
+                fontSize: isMobile ? "24px" : "32px",
                 fontWeight: 900,
                 color: "#202124",
                 marginBottom: "20px",
@@ -462,8 +467,9 @@ export default function ProductDetail() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "16px",
+                gap: isMobile ? "10px" : "16px",
                 marginBottom: "24px",
+                flexWrap: "wrap",
               }}
             >
               <div
@@ -581,7 +587,11 @@ export default function ProductDetail() {
                 Total for {quantity} {quantity === 1 ? product.unit : "units"}
               </span>
               <span
-                style={{ fontSize: "22px", fontWeight: 900, color: "#2E7D32" }}
+                style={{
+                  fontSize: isMobile ? "18px" : "22px",
+                  fontWeight: 900,
+                  color: "#2E7D32",
+                }}
               >
                 ₦{(product.price * 1500 * quantity).toLocaleString()}
               </span>
@@ -646,6 +656,7 @@ export default function ProductDetail() {
               gap: "0",
               borderBottom: "2px solid #E8EAED",
               marginBottom: "24px",
+              overflowX: "auto",
             }}
           >
             {["description", "reviews", "shipping"].map((tab) => (
@@ -653,10 +664,11 @@ export default function ProductDetail() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 style={{
-                  padding: "12px 24px",
+                  padding: isMobile ? "12px 14px" : "12px 24px",
                   border: "none",
                   background: "none",
                   cursor: "pointer",
+                  whiteSpace: "nowrap",
                   fontSize: "15px",
                   fontWeight: activeTab === tab ? 700 : 500,
                   color: activeTab === tab ? "#202124" : "#9AA0A6",

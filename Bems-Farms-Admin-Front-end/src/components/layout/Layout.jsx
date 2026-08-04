@@ -19,6 +19,31 @@ export default function Layout() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-page)', color: 'var(--text-primary)', fontFamily: 'Nunito, sans-serif' }}>
 
+      {/*
+        Below 1024px the sidebar is an off-canvas drawer (hidden by default,
+        slides in via .mobile-open) and main/topbar have no left offset.
+        At 1024px+ it's the classic always-visible fixed sidebar.
+        Previously: Sidebar's mobileOpen=false rendered `transform: undefined`,
+        which is visually identical to translateX(0) — the sidebar was ALWAYS
+        full-width-visible on every screen size, and main/topbar had
+        marginLeft/left hardcoded to SIDEBAR_W unconditionally. On a 375px
+        phone that left just 117px for all page content — this is why the
+        entire admin dashboard was unusable on mobile, not any individual page.
+      */}
+      <style>{`
+        .bf-admin-sidebar { transform: translateX(-100%); }
+        .bf-admin-sidebar.mobile-open { transform: translateX(0); }
+        .bf-admin-main { margin-left: 0; }
+        .bf-admin-topbar { left: 0; }
+        .bf-admin-topbar-wide-only { display: none; }
+        @media (min-width: 1024px) {
+          .bf-admin-sidebar { transform: translateX(0) !important; }
+          .bf-admin-main { margin-left: ${SIDEBAR_W}px; }
+          .bf-admin-topbar { left: ${SIDEBAR_W}px; }
+          .bf-admin-topbar-wide-only { display: flex; }
+        }
+      `}</style>
+
       {/* Mobile overlay — tap to close sidebar */}
       {mobileSidebarOpen && (
         <div
@@ -38,9 +63,8 @@ export default function Layout() {
 
       <Topbar onToggleSidebar={() => setMobileSidebarOpen(o => !o)} />
 
-      {/* Main content — offset right of the fixed sidebar */}
-      <main style={{
-        marginLeft: SIDEBAR_W,
+      {/* Main content — offset right of the fixed sidebar on desktop only */}
+      <main className="bf-admin-main" style={{
         paddingTop: TOPBAR_H,
         minHeight: '100vh',
         display: 'flex',
