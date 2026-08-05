@@ -12,6 +12,7 @@ import { useCart } from "../../context/CartContext";
 import { useTheme } from "../../context/ThemeContext";
 import logo from "../../assets/bemsfarms_logo.png";
 import api from "../../services/api";
+import { NAIRA_PER_UNIT } from "../../utils/currency";
 
 const NAVBAR_CSS = `
 .bf-navbar-links { display: none; }
@@ -292,7 +293,7 @@ function NavSearchBar() {
                     {product.name}
                   </div>
                   <div style={{ fontSize: 12, color: "#9CA3AF" }}>
-                    ₦{Number(product.price * 1500).toLocaleString()} ·{" "}
+                    ₦{Number(product.price * NAIRA_PER_UNIT).toLocaleString()} ·{" "}
                     {product.category_name || product.category}
                   </div>
                 </div>

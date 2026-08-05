@@ -374,6 +374,66 @@ Based on purchase history and a total spending of **₦${Number(customer.total_s
   }
 });
 
+// ── GET /api/admin/customers/site-activity ────────────────────────
+// Real platform-wide activity feed (logins, orders, admin product edits,
+// AI chats, etc.) recorded by utils/aiContext.js's trackActivity() —
+// replaces ActivityLog.jsx's previously fully-hardcoded 25-row fixture.
+// Must be registered before GET /:id or Express treats "site-activity"
+// as an :id value.
+router.get("/site-activity", requireRole("superadmin", "manager"), async (req, res) => {
+  try {
+    const { type = "", search = "", date_from = "", date_to = "", limit = 100 } = req.query;
+    const params = [];
+    const where = [];
+
+    if (type) {
+      params.push(type);
+      where.push(`a.type = $${params.length}`);
+    }
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(u.name ILIKE $${params.length} OR u.email ILIKE $${params.length} OR a.entity_id ILIKE $${params.length})`);
+    }
+    if (date_from) {
+      params.push(date_from);
+      where.push(`a.created_at::date >= $${params.length}`);
+    }
+    if (date_to) {
+      params.push(date_to);
+      where.push(`a.created_at::date <= $${params.length}`);
+    }
+
+    const clause = where.length ? "WHERE " + where.join(" AND ") : "";
+    params.push(parseInt(limit));
+
+    const [result, countRow, typeCounts] = await Promise.all([
+      pool.query(
+        `SELECT a.id, a.type, a.entity_type, a.entity_id, a.metadata, a.ip_address, a.created_at,
+                u.id AS user_id, u.name AS user_name, u.email AS user_email
+         FROM ai_user_activity a
+         LEFT JOIN users u ON u.id = a.user_id
+         ${clause}
+         ORDER BY a.created_at DESC
+         LIMIT $${params.length}`,
+        params,
+      ),
+      pool.query(
+        `SELECT COUNT(*) FROM ai_user_activity a LEFT JOIN users u ON u.id = a.user_id ${clause}`,
+        params.slice(0, -1),
+      ),
+      pool.query(`SELECT type, COUNT(*) FROM ai_user_activity GROUP BY type`),
+    ]);
+
+    res.json({
+      activity: result.rows,
+      total: parseInt(countRow.rows[0].count),
+      type_counts: Object.fromEntries(typeCounts.rows.map((r) => [r.type, parseInt(r.count)])),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ── GET /api/admin/customers/:id ──────────────────────────────────
 router.get("/:id", async (req, res) => {
   try {

@@ -10,6 +10,7 @@ import ProductCard, {
 } from "../components/ui/ProductCard";
 import api from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
+import { NAIRA_PER_UNIT } from "../utils/currency";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -295,7 +296,7 @@ export default function ProductDetail() {
                 marginBottom: "20px",
               }}
             >
-              ₦{(product.price * 1500).toLocaleString()}
+              ₦{(product.price * NAIRA_PER_UNIT).toLocaleString()}
               <span
                 style={{ fontSize: "14px", color: "#9AA0A6", fontWeight: 400 }}
               >
@@ -594,7 +595,7 @@ export default function ProductDetail() {
                   color: "#2E7D32",
                 }}
               >
-                ₦{(product.price * 1500 * quantity).toLocaleString()}
+                ₦{(product.price * NAIRA_PER_UNIT * quantity).toLocaleString()}
               </span>
             </div>
 

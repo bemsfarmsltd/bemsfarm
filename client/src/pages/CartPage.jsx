@@ -5,6 +5,7 @@ import { useState } from "react";
 import PageWrapper from "../components/layout/PageWrapper";
 import { getProductEmoji, getProductBg } from "../components/ui/ProductCard";
 import api from "../services/api";
+import { NAIRA_PER_UNIT } from "../utils/currency";
 
 /*
   ── RESPONSIVE STRATEGY ──────────────────────────────────────
@@ -290,7 +291,7 @@ export default function CartPage() {
                       }}
                     >
                       <span style={{ display: "inline" }}>
-                        ₦{(product.price * 1500).toLocaleString()} each
+                        ₦{(product.price * NAIRA_PER_UNIT).toLocaleString()} each
                       </span>
                     </p>
 
@@ -367,7 +368,7 @@ export default function CartPage() {
                         margin: 0,
                       }}
                     >
-                      ₦{(product.price * 1500 * quantity).toLocaleString()}
+                      ₦{(product.price * NAIRA_PER_UNIT * quantity).toLocaleString()}
                     </p>
                   </div>
                 </motion.div>

@@ -698,18 +698,6 @@ router.post("/notifications", requireRole("superadmin", "manager"), async (req, 
     if (!title?.trim()) return res.status(400).json({ message: "Title is required" });
     if (!message?.trim()) return res.status(400).json({ message: "Message is required" });
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS driver_notifications (
-        id         SERIAL PRIMARY KEY,
-        title      VARCHAR(255) NOT NULL,
-        message    TEXT NOT NULL,
-        target     VARCHAR(20) NOT NULL DEFAULT 'all',
-        driver_ids INTEGER[],
-        sent_by    INTEGER REFERENCES users(id),
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
-
     const result = await pool.query(
       `INSERT INTO driver_notifications (title, message, target, driver_ids, sent_by)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
@@ -725,13 +713,6 @@ router.post("/notifications", requireRole("superadmin", "manager"), async (req, 
 // ── GET /api/admin/deliveries/notifications ───────────────────────
 router.get("/notifications", requireRole("superadmin", "manager"), async (req, res) => {
   try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS driver_notifications (
-        id SERIAL PRIMARY KEY, title VARCHAR(255) NOT NULL, message TEXT NOT NULL,
-        target VARCHAR(20) NOT NULL DEFAULT 'all', driver_ids INTEGER[],
-        sent_by INTEGER REFERENCES users(id), created_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
     const result = await pool.query(
       `SELECT dn.*, u.name AS sent_by_name
        FROM driver_notifications dn LEFT JOIN users u ON u.id = dn.sent_by
@@ -758,19 +739,6 @@ router.post("/drivers/:id/location", requireRole("superadmin", "manager", "admin
     if (!driver.rows.length) {
       return res.status(404).json({ message: "Driver not found" });
     }
-    // Check if table driver_locations exists
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS driver_locations (
-        id SERIAL PRIMARY KEY,
-        driver_id BIGINT,
-        latitude NUMERIC,
-        longitude NUMERIC,
-        heading NUMERIC DEFAULT 0,
-        speed NUMERIC DEFAULT 0,
-        accuracy NUMERIC DEFAULT 0,
-        recorded_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
     await pool.query(
       `INSERT INTO driver_locations (driver_id, latitude, longitude, heading, speed, accuracy, recorded_at)
        VALUES ($1, $2, $3, $4, $5, $6, NOW())`,

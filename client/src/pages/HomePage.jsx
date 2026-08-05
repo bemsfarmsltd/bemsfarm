@@ -1,38 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useCart } from "../context/CartContext";
 import api from "../services/api";
 import ProductCard from "../components/ui/ProductCard";
 import PageWrapper from "../components/layout/PageWrapper";
-
-// Real system product representations for hero cards
-const REAL_OFADA = {
-  id: 1, // Matches typical seed id
-  name: "Ofada Rice",
-  price: 4050 / 1500, // Converts to USD price
-  unit: "1 kg bag",
-  description: "Premium unpolished local rice, rich in dietary fiber and essential nutrients.",
-  image_url: "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141430/ofada_rice_mhhzt2.jpg",
-};
-
-const REAL_PALM_OIL = {
-  id: 2,
-  name: "Palm Oil",
-  price: 1800 / 1500,
-  unit: "1 Litre bottle",
-  description: "Naturally processed local red palm oil, perfect for cooking traditional stews.",
-  image_url: "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141485/palm_oil_ufbfu6.jpg",
-};
-
-const REAL_TOMATOES = {
-  id: 3,
-  name: "Fresh Tomatoes",
-  price: 2250 / 1500,
-  unit: "1 basket",
-  description: "Plump, juicy, field-fresh red tomatoes directly harvested from our growers.",
-  image_url: "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141584/tomatoes_omiotj.jpg",
-};
+import { NAIRA_PER_UNIT } from "../utils/currency";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -60,6 +33,14 @@ export default function HomePage() {
       .catch((err) => console.error("Error loading products:", err))
       .finally(() => setLoading(false));
   }, []);
+
+  // Hero showcase — real, currently-in-stock products (prefers featured ones)
+  // instead of hardcoded ids that could point at deleted/reseeded products.
+  const heroProducts = useMemo(() => {
+    const inStock = products.filter((p) => (p.stock ?? 1) > 0);
+    const featured = inStock.filter((p) => p.is_featured);
+    return (featured.length >= 3 ? featured : inStock).slice(0, 3);
+  }, [products]);
 
   // Filtered products list
   const filteredProducts = products.filter((p) => {
@@ -122,93 +103,54 @@ export default function HomePage() {
                 />
               </motion.div>
 
-              {/* Sub-orbiter floating plates (mini illustrations - matched to system products) */}
-              <div className="absolute w-[360px] h-[360px] md:w-[500px] md:h-[500px] rounded-full -z-10 pointer-events-none">
-                <div className="absolute top-[8%] left-[10%] w-14 h-14 md:w-18 md:h-18 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
-                  <img src={REAL_OFADA.image_url} className="w-full h-full object-cover" alt="" />
+              {/* Sub-orbiter floating plates (mini illustrations, real catalog products) */}
+              {heroProducts.length === 3 && (
+                <div className="absolute w-[360px] h-[360px] md:w-[500px] md:h-[500px] rounded-full -z-10 pointer-events-none">
+                  <div className="absolute top-[8%] left-[10%] w-14 h-14 md:w-18 md:h-18 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
+                    <img src={heroProducts[0].image_url} className="w-full h-full object-cover" alt="" />
+                  </div>
+                  <div className="absolute top-[50%] right-[-4%] w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
+                    <img src={heroProducts[1].image_url} className="w-full h-full object-cover" alt="" />
+                  </div>
+                  <div className="absolute bottom-[4%] left-[45%] w-14 h-14 md:w-18 md:h-18 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
+                    <img src={heroProducts[2].image_url} className="w-full h-full object-cover" alt="" />
+                  </div>
                 </div>
-                <div className="absolute top-[50%] right-[-4%] w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
-                  <img src={REAL_PALM_OIL.image_url} className="w-full h-full object-cover" alt="" />
-                </div>
-                <div className="absolute bottom-[4%] left-[45%] w-14 h-14 md:w-18 md:h-18 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
-                  <img src={REAL_TOMATOES.image_url} className="w-full h-full object-cover" alt="" />
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
-          {/* ─── Hero Cards Showcase Row (Matched to System Products) ─── */}
-          <div className="max-w-7xl mx-auto px-6 md:px-12 mt-16 md:mt-24">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              
-              {/* Card 1: Ofada Rice */}
-              <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 border border-gray-100 dark:border-neutral-800 shadow-md flex flex-col items-center text-center relative hover:shadow-lg transition-shadow">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#2E7D32] bg-white dark:bg-neutral-900 absolute -top-12 shadow-md">
-                  <img src={REAL_OFADA.image_url} alt="Ofada Rice" className="w-full h-full object-cover" />
-                </div>
-                <div className="pt-14 flex-1">
-                  <h3 className="font-bold text-lg text-gray-800 dark:text-white mb-2">{REAL_OFADA.name}</h3>
-                  <p className="text-gray-500 dark:text-neutral-400 text-[13px] leading-relaxed mb-5">
-                    {REAL_OFADA.description}
-                  </p>
-                </div>
-                <div className="w-full flex justify-between items-center pt-3 border-t border-gray-50 dark:border-neutral-800">
-                  <span className="font-extrabold text-[#2E7D32] dark:text-emerald-400 text-[15px]">₦4,050</span>
-                  <button
-                    onClick={() => addToCart(REAL_OFADA)}
-                    className="bg-[#2E7D32] hover:bg-emerald-800 text-white font-bold text-xs py-1.5 px-4 rounded-full transition-colors"
-                  >
-                    Buy now
-                  </button>
-                </div>
+          {/* ─── Hero Cards Showcase Row (real catalog products) ─── */}
+          {heroProducts.length > 0 && (
+            <div className="max-w-7xl mx-auto px-6 md:px-12 mt-16 md:mt-24">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {heroProducts.map((product) => (
+                  <div key={product.id} className="bg-white dark:bg-neutral-900 rounded-3xl p-5 border border-gray-100 dark:border-neutral-800 shadow-md flex flex-col items-center text-center relative hover:shadow-lg transition-shadow">
+                    <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#2E7D32] bg-white dark:bg-neutral-900 absolute -top-12 shadow-md">
+                      <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="pt-14 flex-1">
+                      <h3 className="font-bold text-lg text-gray-800 dark:text-white mb-2">{product.name}</h3>
+                      <p className="text-gray-500 dark:text-neutral-400 text-[13px] leading-relaxed mb-5">
+                        {product.description}
+                      </p>
+                    </div>
+                    <div className="w-full flex justify-between items-center pt-3 border-t border-gray-50 dark:border-neutral-800">
+                      <span className="font-extrabold text-[#2E7D32] dark:text-emerald-400 text-[15px]">
+                        ₦{Math.round(product.price * NAIRA_PER_UNIT).toLocaleString()}
+                      </span>
+                      <button
+                        onClick={() => addToCart(product)}
+                        className="bg-[#2E7D32] hover:bg-emerald-800 text-white font-bold text-xs py-1.5 px-4 rounded-full transition-colors"
+                      >
+                        Buy now
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-
-              {/* Card 2: Palm Oil */}
-              <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 border border-gray-100 dark:border-neutral-800 shadow-md flex flex-col items-center text-center relative hover:shadow-lg transition-shadow">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#2E7D32] bg-white dark:bg-neutral-900 absolute -top-12 shadow-md">
-                  <img src={REAL_PALM_OIL.image_url} alt="Palm Oil" className="w-full h-full object-cover" />
-                </div>
-                <div className="pt-14 flex-1">
-                  <h3 className="font-bold text-lg text-gray-800 dark:text-white mb-2">{REAL_PALM_OIL.name}</h3>
-                  <p className="text-gray-500 dark:text-neutral-400 text-[13px] leading-relaxed mb-5">
-                    {REAL_PALM_OIL.description}
-                  </p>
-                </div>
-                <div className="w-full flex justify-between items-center pt-3 border-t border-gray-50 dark:border-neutral-800">
-                  <span className="font-extrabold text-[#2E7D32] dark:text-emerald-400 text-[15px]">₦1,800</span>
-                  <button
-                    onClick={() => addToCart(REAL_PALM_OIL)}
-                    className="bg-[#2E7D32] hover:bg-emerald-800 text-white font-bold text-xs py-1.5 px-4 rounded-full transition-colors"
-                  >
-                    Buy now
-                  </button>
-                </div>
-              </div>
-
-              {/* Card 3: Fresh Tomatoes */}
-              <div className="bg-white dark:bg-neutral-900 rounded-3xl p-5 border border-gray-100 dark:border-neutral-800 shadow-md flex flex-col items-center text-center relative hover:shadow-lg transition-shadow">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#2E7D32] bg-white dark:bg-neutral-900 absolute -top-12 shadow-md">
-                  <img src={REAL_TOMATOES.image_url} alt="Fresh Tomatoes" className="w-full h-full object-cover" />
-                </div>
-                <div className="pt-14 flex-1">
-                  <h3 className="font-bold text-lg text-gray-800 dark:text-white mb-2">{REAL_TOMATOES.name}</h3>
-                  <p className="text-gray-500 dark:text-neutral-400 text-[13px] leading-relaxed mb-5">
-                    {REAL_TOMATOES.description}
-                  </p>
-                </div>
-                <div className="w-full flex justify-between items-center pt-3 border-t border-gray-50 dark:border-neutral-800">
-                  <span className="font-extrabold text-[#2E7D32] dark:text-emerald-400 text-[15px]">₦2,250</span>
-                  <button
-                    onClick={() => addToCart(REAL_TOMATOES)}
-                    className="bg-[#2E7D32] hover:bg-emerald-800 text-white font-bold text-xs py-1.5 px-4 rounded-full transition-colors"
-                  >
-                    Buy now
-                  </button>
-                </div>
-              </div>
-
             </div>
-        </div>
+          )}
 
       </section>
 

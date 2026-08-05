@@ -5,6 +5,7 @@ import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import { NAIRA_PER_UNIT } from "../utils/currency";
 
 const PRODUCT_IMAGES = {
   "Ofada Rice":
@@ -587,7 +588,7 @@ export default function ProductsPage() {
                       <div style={{ minWidth: 0 }}>
                         <span style={{ fontSize: "10px", color: "#9CA3AF" }}>{product.unit}</span>
                         <div style={{ fontSize: "16px", fontWeight: 800, color: "#1B4332", fontFamily: "Syne, sans-serif" }}>
-                          ₦{(product.price * 1500).toLocaleString()}
+                          ₦{(product.price * NAIRA_PER_UNIT).toLocaleString()}
                         </div>
                       </div>
 

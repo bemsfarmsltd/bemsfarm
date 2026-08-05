@@ -114,7 +114,6 @@ export default function StockAdjustment() {
     })
   }, [movements, filterType])
 
-  // Stat computations with mockup fallbacks
   const statValues = useMemo(() => {
     let added = 0
     let deducted = 0
@@ -127,10 +126,9 @@ export default function StockAdjustment() {
       }
     })
     return {
-      total: meta.total || 8,
-      added: added > 0 ? `+${added}` : '+55',
-      deducted: deducted > 0 ? `-${deducted}` : '-28',
-      pending: 2
+      total: meta.total || 0,
+      added: `+${added}`,
+      deducted: `-${deducted}`,
     }
   }, [movements, meta])
 
@@ -170,12 +168,11 @@ export default function StockAdjustment() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:24 }}>
         {[
           { label:'Total Adjustments', value:statValues.total, icon:'ri-equalizer-line', color:'#405189', valueColor:'var(--text-primary)' },
           { label:'Units Added',       value:statValues.added, icon:'ri-add-circle-line', color:'#0ab39c', valueColor:'#0ab39c' },
           { label:'Units Deducted',    value:statValues.deducted, icon:'ri-indeterminate-circle-line', color:'#f06548', valueColor:'#f06548' },
-          { label:'Pending Approval',  value:statValues.pending, icon:'ri-time-line', color:'#f7b84b', valueColor:'#f7b84b' },
         ].map(c => (
           <div key={c.label} style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
             <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>

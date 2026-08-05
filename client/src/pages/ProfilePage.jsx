@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import PageWrapper from "../components/layout/PageWrapper";
 import api from "../services/api";
+import { NAIRA_PER_UNIT } from "../utils/currency";
 
 const DEFAULT_AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80";
 
@@ -910,7 +911,7 @@ export default function ProfilePage() {
                         </div>
                         <div style={{ padding: "14px", flex: 1, display: "flex", flexDirection: "column" }}>
                           <p style={{ fontWeight: 700, fontSize: "14px", margin: "0 0 4px" }}>{item.name}</p>
-                          <p style={{ color: "#2E7D32", fontWeight: 800, fontSize: "15px", margin: "0 0 14px" }}>₦{(item.price * 1500).toLocaleString()}</p>
+                          <p style={{ color: "#2E7D32", fontWeight: 800, fontSize: "15px", margin: "0 0 14px" }}>₦{(item.price * NAIRA_PER_UNIT).toLocaleString()}</p>
                           <button
                             onClick={() => addToCart(item)}
                             style={{

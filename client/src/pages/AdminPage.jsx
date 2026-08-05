@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useResponsive } from "../hooks/useResponsive";
 import api from "../services/api";
 import logoImg from "../assets/bemsfarms_logo.png";
+import { NAIRA_PER_UNIT } from "../utils/currency";
 const C = {
   sidebar: "#0F172A", // Dark navy (more modern than dark blue-purple)
   sidebarBorder: "rgba(255,255,255,0.07)",
@@ -153,7 +154,7 @@ export default function AdminPage() {
     try {
       const payload = {
         name: editProduct.name,
-        price: editProduct.price * 1500,
+        price: editProduct.price * NAIRA_PER_UNIT,
         unit: editProduct.unit,
         description: editProduct.description || "",
         is_featured: editProduct.is_featured,
@@ -167,7 +168,7 @@ export default function AdminPage() {
             ? {
                 ...p,
                 ...payload,
-                price: payload.price / 1500,
+                price: payload.price / NAIRA_PER_UNIT,
                 image_url: payload.image_url,
               }
             : p,
@@ -942,7 +943,7 @@ export default function AdminPage() {
                                   color: C.primary,
                                 }}
                               >
-                                ₦{((p.price ?? 0) * 1500).toLocaleString()}
+                                ₦{((p.price ?? 0) * NAIRA_PER_UNIT).toLocaleString()}
                               </p>
                               <p style={{ fontSize: "10px", color: C.muted }}>
                                 {p.total_sold || 0} sold
@@ -1010,7 +1011,7 @@ export default function AdminPage() {
                                 flexShrink: 0,
                               }}
                             >
-                              ₦{((p.price ?? 0) * 1500).toLocaleString()}
+                              ₦{((p.price ?? 0) * NAIRA_PER_UNIT).toLocaleString()}
                             </p>
                           </div>
                         ))}
@@ -1631,7 +1632,7 @@ export default function AdminPage() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          ₦{((p.price ?? 0) * 1500).toLocaleString()}
+                          ₦{((p.price ?? 0) * NAIRA_PER_UNIT).toLocaleString()}
                         </td>
                         <td style={{ padding: "14px 16px" }}>
                           <span
@@ -2403,7 +2404,7 @@ export default function AdminPage() {
                   label: "Price (₦)",
                   key: "displayPrice",
                   type: "number",
-                  value: Math.round((editProduct.price ?? 0) * 1500),
+                  value: Math.round((editProduct.price ?? 0) * NAIRA_PER_UNIT),
                 },
                 { label: "Unit", key: "unit", type: "text" },
                 { label: "Stock", key: "stock", type: "number" },
@@ -2428,7 +2429,7 @@ export default function AdminPage() {
                       if (f.key === "displayPrice") {
                         setEditProduct((prev) => ({
                           ...prev,
-                          price: parseFloat(e.target.value) / 1500 || 0,
+                          price: parseFloat(e.target.value) / NAIRA_PER_UNIT || 0,
                         }));
                       } else {
                         setEditProduct((prev) => ({

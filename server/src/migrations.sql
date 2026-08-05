@@ -819,3 +819,28 @@ CREATE TABLE IF NOT EXISTS user_addresses (
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- ── 22. DRIVER NOTIFICATIONS / LOCATIONS ─────────────────────────
+-- deliveries_admin.js ran these CREATE TABLE IF NOT EXISTS statements on
+-- every single request to 3 endpoints instead of once at setup — moved
+-- here so the tables are guaranteed to exist without per-request DDL.
+CREATE TABLE IF NOT EXISTS driver_notifications (
+  id         SERIAL PRIMARY KEY,
+  title      VARCHAR(255) NOT NULL,
+  message    TEXT NOT NULL,
+  target     VARCHAR(20) NOT NULL DEFAULT 'all',
+  driver_ids INTEGER[],
+  sent_by    INTEGER REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS driver_locations (
+  id SERIAL PRIMARY KEY,
+  driver_id BIGINT,
+  latitude NUMERIC,
+  longitude NUMERIC,
+  heading NUMERIC DEFAULT 0,
+  speed NUMERIC DEFAULT 0,
+  accuracy NUMERIC DEFAULT 0,
+  recorded_at TIMESTAMP DEFAULT NOW()
+);

@@ -5,6 +5,7 @@ import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
 import { useResponsive } from "../hooks/useResponsive";
 import api from "../services/api";
+import { NAIRA_PER_UNIT } from "../utils/currency";
 
 // These are search categories that the AI understands
 const SEARCH_SUGGESTIONS = [
@@ -63,7 +64,7 @@ export default function SemanticSearchPage() {
     addToCart({
       id: product.id,
       name: product.name,
-      price: product.price / 1500, // Convert from base price to display price
+      price: product.price / NAIRA_PER_UNIT, // Convert from base price to display price
       unit: product.unit,
     });
     setJustAdded((prev) => ({ ...prev, [product.id]: true }));

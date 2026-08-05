@@ -1,4 +1,5 @@
 import { createContext, useContext, useState } from "react";
+import { NAIRA_PER_UNIT } from "../utils/currency";
 
 const CartContext = createContext();
 
@@ -41,7 +42,7 @@ export function CartProvider({ children }) {
   const cartItems = Object.values(cart);
   const cartCount = cartItems.reduce((a, item) => a + item.quantity, 0);
   const cartSubtotal = cartItems.reduce(
-    (a, item) => a + item.product.price * 1500 * item.quantity,
+    (a, item) => a + item.product.price * NAIRA_PER_UNIT * item.quantity,
     0,
   );
 

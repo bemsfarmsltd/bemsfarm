@@ -8,10 +8,10 @@ const TOTAL_STEPS = 4;
 
 // Step panel images — real farm/food photography for each step
 const STEP_IMAGES = [
-  "https://images.unsplash.com/photo-1542838132-92c53300491e?w=900&q=90", // market stall
-  "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=900&q=90", // farm harvest
-  "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=900&q=90", // fresh veg
-  "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=900&q=90", // produce
+  "https://images.unsplash.com/photo-1542838132-92c53300491e?w=1000&q=90", // market stall
+  "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=1000&q=90", // farm harvest
+  "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=1000&q=90", // fresh veg
+  "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=1000&q=90", // produce
 ];
 
 const FAMILY_SIZES = [
@@ -19,25 +19,29 @@ const FAMILY_SIZES = [
     value: "solo",
     label: "Just me",
     desc: "1 person",
+    emoji: "🧍",
     img: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&q=80",
   },
   {
     value: "couple",
     label: "Couple",
     desc: "2 people",
+    emoji: "🧑‍🤝‍🧑",
     img: "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=300&q=80",
   },
   {
     value: "small",
     label: "Small family",
     desc: "3–4 people",
-    img: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=300&q=80",
+    emoji: "👨‍👩‍👧",
+    img: "https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=300&q=80",
   },
   {
     value: "large",
     label: "Large family",
     desc: "5+ people",
-    img: "https://images.unsplash.com/photo-1571115764595-644a1f56a55c?w=300&q=80",
+    emoji: "👨‍👩‍👧‍👦",
+    img: "https://images.unsplash.com/photo-1544025162-d76694265947?w=300&q=80",
   },
 ];
 
@@ -46,80 +50,49 @@ const BUDGETS = [
     value: 5000,
     label: "₦5,000",
     desc: "Budget-friendly",
-    gradient: "linear-gradient(135deg, #E8F5E9, #C8E6C9)",
+    gradient: "linear-gradient(135deg, #EAF7EC, #CFEBD3)",
     textColor: "#1B4332",
   },
   {
     value: 10000,
     label: "₦10,000",
     desc: "Moderate",
-    gradient: "linear-gradient(135deg, #FFF8E1, #FFECB3)",
+    gradient: "linear-gradient(135deg, #FFF6E0, #FCE7B0)",
     textColor: "#7B5800",
   },
   {
     value: 25000,
     label: "₦25,000",
     desc: "Comfortable",
-    gradient: "linear-gradient(135deg, #FFF3E0, #FFE0B2)",
-    textColor: "#8B3A00",
+    gradient: "linear-gradient(135deg, #FFEEE3, #FFD5BC)",
+    textColor: "#9A3E12",
   },
   {
     value: 50000,
     label: "₦50,000+",
     desc: "Premium",
-    gradient: "linear-gradient(135deg, #1B4332, #40916C)",
+    gradient: "linear-gradient(135deg, #1B4332, #2F6B4F)",
     textColor: "#FFFFFF",
   },
 ];
 
 const HEALTH_GOALS = [
-  {
-    value: "general",
-    label: "General health",
-    img: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=80&q=80",
-  },
-  {
-    value: "weight_loss",
-    label: "Weight management",
-    img: "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=80&q=80",
-  },
-  {
-    value: "diabetes",
-    label: "Diabetes-friendly",
-    img: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=80&q=80",
-  },
-  {
-    value: "heart_health",
-    label: "Heart health",
-    img: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=80&q=80",
-  },
-  {
-    value: "pregnancy",
-    label: "Pregnancy / nursing",
-    img: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=80&q=80",
-  },
-  {
-    value: "muscle_gain",
-    label: "Muscle & fitness",
-    img: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=80&q=80",
-  },
-  {
-    value: "children",
-    label: "Kids & family",
-    img: "https://images.unsplash.com/photo-1595855759920-86582396756a?w=80&q=80",
-  },
-  {
-    value: "hypertension",
-    label: "Low sodium",
-    img: "https://images.unsplash.com/photo-1567741358010-587b3ff2e3f5?w=80&q=80",
-  },
+  { value: "general", label: "General health", emoji: "🌿" },
+  { value: "weight_loss", label: "Weight management", emoji: "⚖️" },
+  { value: "diabetes", label: "Diabetes-friendly", emoji: "🩺" },
+  { value: "heart_health", label: "Heart health", emoji: "❤️" },
+  { value: "pregnancy", label: "Pregnancy / nursing", emoji: "🤰" },
+  { value: "muscle_gain", label: "Muscle & fitness", emoji: "💪" },
+  { value: "children", label: "Kids & family", emoji: "🧒" },
+  { value: "hypertension", label: "Low sodium", emoji: "🧂" },
 ];
 
 const FEATURE_CARDS = [
   {
-    img: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=200&q=80",
+    img: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=500&q=80",
     title: "AI-powered search",
-    desc: "Finds exactly what you need",
+    desc: "Finds exactly what you need, in seconds",
+    featured: true,
   },
   {
     img: "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141430/ofada_rice_mhhzt2.jpg",
@@ -127,12 +100,12 @@ const FEATURE_CARDS = [
     desc: "No middlemen, better prices",
   },
   {
-    img: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=200&q=80",
+    img: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=300&q=80",
     title: "Smart pricing",
     desc: "Fair, transparent costs",
   },
   {
-    img: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80",
+    img: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&q=80",
     title: "Recipe suggestions",
     desc: "Cook better, eat fresher",
   },
@@ -140,35 +113,98 @@ const FEATURE_CARDS = [
 
 const STEPS_META = [
   {
+    eyebrow: "Welcome",
     headline: "Fresh from Nigerian farms\nto your door",
     sub: "BemsFarms uses AI to personalise your shopping — better prices, smarter picks, recipes you'll actually cook.",
   },
   {
+    eyebrow: "Household",
     headline: "Who are you\nshopping for?",
     sub: "We'll suggest the right quantities and bundle deals for your household.",
   },
   {
+    eyebrow: "Budget",
     headline: "What's your weekly\nfood budget?",
     sub: "We'll highlight the best value options and alert you to deals in your range.",
   },
   {
+    eyebrow: "Health",
     headline: "Any health goals?\n(optional)",
     sub: "Pick as many as you like. Our AI will prioritise products that support your goals.",
   },
 ];
 
 const OB_CSS = `
-.ob-layout { display: flex; min-height: 100vh; }
+.ob-layout { display: flex; min-height: 100vh; position: relative; }
 .ob-panel { display: none; }
-.ob-content { flex: 1; padding: 24px 20px 60px; overflow-y: auto; }
-.ob-topbar { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #F0F0EE; }
+.ob-content { flex: 1; padding: 24px 20px 60px; overflow-y: auto; position: relative; z-index: 1; }
+.ob-topbar { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid rgba(27,67,50,0.08); position: relative; z-index: 1; }
+.ob-desktop-skip { display: none; }
+
+.ob-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ob-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.ob-bento {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  grid-template-rows: repeat(3, 84px);
+  gap: 12px;
+}
+.ob-bento-feature { grid-row: 1 / span 3; }
+
+.ob-pill-btn {
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+@media (max-width: 640px) {
+  .ob-bento { grid-template-columns: 1fr; grid-template-rows: 170px repeat(3, auto); }
+  .ob-bento-feature { grid-row: auto; }
+}
 
 @media (min-width: 768px) {
   .ob-panel { display: flex; }
-  .ob-content { padding: 48px 56px 60px; }
+  .ob-content { padding: 52px 64px 60px; }
   .ob-topbar { display: none; }
+  .ob-desktop-skip { display: flex; }
 }
 `;
+
+function Chip({ children }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        fontSize: "11px",
+        letterSpacing: "2px",
+        fontWeight: 700,
+        color: "#1B4332",
+        textTransform: "uppercase",
+        background: "rgba(27,67,50,0.07)",
+        border: "1px solid rgba(27,67,50,0.12)",
+        borderRadius: "999px",
+        padding: "6px 14px",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
@@ -231,7 +267,7 @@ export default function OnboardingPage() {
   return (
     <div
       className="ob-layout"
-      style={{ backgroundColor: "#FAFAF8", fontFamily: "Nunito, sans-serif" }}
+      style={{ backgroundColor: "#FBF8F3", fontFamily: "Nunito, sans-serif" }}
     >
       <style>{OB_CSS}</style>
 
@@ -239,22 +275,24 @@ export default function OnboardingPage() {
       <div
         className="ob-panel"
         style={{
-          width: "38%",
+          width: "40%",
           flexShrink: 0,
           position: "sticky",
           top: 0,
           height: "100vh",
           flexDirection: "column",
           overflow: "hidden",
+          borderTopRightRadius: "32px",
+          borderBottomRightRadius: "32px",
         }}
       >
         {/* Background image with cross-fade */}
         {STEP_IMAGES.map((img, i) => (
           <motion.div
             key={img}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: i === step ? 1 : 0 }}
-            transition={{ duration: 0.9 }}
+            initial={{ opacity: 0, scale: 1.06 }}
+            animate={{ opacity: i === step ? 1 : 0, scale: i === step ? 1 : 1.06 }}
+            transition={{ duration: 1.1, ease: "easeOut" }}
             style={{
               position: "absolute",
               inset: 0,
@@ -264,13 +302,27 @@ export default function OnboardingPage() {
             }}
           />
         ))}
-        {/* Dark overlay */}
+        {/* Warm dark overlay */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(160deg, rgba(13,43,26,0.88) 0%, rgba(27,67,50,0.72) 100%)",
+              "linear-gradient(165deg, rgba(11,36,22,0.92) 0%, rgba(27,67,50,0.68) 55%, rgba(64,145,108,0.5) 100%)",
+          }}
+        />
+        {/* Grain texture for warmth */}
+        <div className="ob-grain" />
+
+        {/* Glow accent */}
+        <div
+          className="ob-blob"
+          style={{
+            width: "280px",
+            height: "280px",
+            top: "-60px",
+            right: "-80px",
+            background: "radial-gradient(circle, rgba(245,158,11,0.35), transparent 70%)",
           }}
         />
 
@@ -282,18 +334,20 @@ export default function OnboardingPage() {
             display: "flex",
             flexDirection: "column",
             height: "100%",
-            padding: "32px",
+            padding: "36px",
           }}
         >
           {/* Logo */}
           <div style={{ marginBottom: "auto" }}>
             <div
               style={{
-                backgroundColor: "white",
-                borderRadius: "10px",
+                backgroundColor: "rgba(255,255,255,0.97)",
+                backdropFilter: "blur(6px)",
+                borderRadius: "12px",
                 padding: "8px 14px",
                 display: "inline-block",
-                marginBottom: "32px",
+                marginBottom: "36px",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
               }}
             >
               <img
@@ -306,32 +360,44 @@ export default function OnboardingPage() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={step}
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
-                transition={{ duration: 0.4 }}
+                exit={{ opacity: 0, y: -18 }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
               >
-                <p
+                <div
                   style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
                     fontSize: "11px",
                     letterSpacing: "2.5px",
                     fontWeight: 700,
-                    color: "rgba(165,214,167,0.9)",
+                    color: "#FFD37A",
                     textTransform: "uppercase",
-                    marginBottom: "12px",
+                    marginBottom: "16px",
                   }}
                 >
-                  Step {step + 1} of {TOTAL_STEPS}
-                </p>
+                  <span
+                    style={{
+                      width: "20px",
+                      height: "1.5px",
+                      background: "#FFD37A",
+                      display: "inline-block",
+                    }}
+                  />
+                  {meta.eyebrow} · Step {step + 1} of {TOTAL_STEPS}
+                </div>
                 <h2
                   style={{
                     fontFamily: "Syne, sans-serif",
-                    fontSize: "28px",
-                    fontWeight: 900,
+                    fontSize: "clamp(26px, 3vw, 32px)",
+                    fontWeight: 800,
+                    letterSpacing: "-0.01em",
                     color: "white",
-                    lineHeight: 1.25,
+                    lineHeight: 1.22,
                     whiteSpace: "pre-line",
-                    marginBottom: "14px",
+                    marginBottom: "16px",
                   }}
                 >
                   {meta.headline}
@@ -339,8 +405,9 @@ export default function OnboardingPage() {
                 <p
                   style={{
                     fontSize: "14px",
-                    color: "rgba(255,255,255,0.72)",
-                    lineHeight: 1.7,
+                    color: "rgba(255,255,255,0.75)",
+                    lineHeight: 1.75,
+                    maxWidth: "340px",
                   }}
                 >
                   {meta.sub}
@@ -349,18 +416,19 @@ export default function OnboardingPage() {
             </AnimatePresence>
           </div>
 
-          {/* Step dots */}
+          {/* Step progress — segmented bar */}
           <div style={{ display: "flex", gap: "8px", marginTop: "40px" }}>
             {STEPS_META.map((_, i) => (
               <div
                 key={i}
                 style={{
-                  height: "4px",
-                  width: i === step ? "28px" : "10px",
-                  borderRadius: "2px",
+                  height: "5px",
+                  flex: 1,
+                  borderRadius: "3px",
                   backgroundColor:
-                    i <= step ? "#F59E0B" : "rgba(255,255,255,0.25)",
-                  transition: "all 0.35s ease",
+                    i <= step ? "#F59E0B" : "rgba(255,255,255,0.22)",
+                  boxShadow: i === step ? "0 0 12px rgba(245,158,11,0.7)" : "none",
+                  transition: "all 0.4s ease",
                 }}
               />
             ))}
@@ -375,8 +443,32 @@ export default function OnboardingPage() {
           display: "flex",
           flexDirection: "column",
           minHeight: "100vh",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
+        {/* Decorative background blobs */}
+        <div
+          className="ob-blob"
+          style={{
+            width: "420px",
+            height: "420px",
+            top: "-140px",
+            right: "-140px",
+            background: "radial-gradient(circle, rgba(64,145,108,0.14), transparent 70%)",
+          }}
+        />
+        <div
+          className="ob-blob"
+          style={{
+            width: "360px",
+            height: "360px",
+            bottom: "-120px",
+            left: "-100px",
+            background: "radial-gradient(circle, rgba(245,158,11,0.10), transparent 70%)",
+          }}
+        />
+
         {/* Mobile top bar */}
         <div className="ob-topbar">
           <div
@@ -404,7 +496,8 @@ export default function OnboardingPage() {
               cursor: "pointer",
               color: "#6B7280",
               fontSize: "14px",
-              fontWeight: 600,
+              fontWeight: 700,
+              fontFamily: "Nunito, sans-serif",
             }}
           >
             Skip →
@@ -412,7 +505,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Mobile progress bar */}
-        <div style={{ height: "3px", backgroundColor: "#E5E7EB" }}>
+        <div style={{ height: "3px", backgroundColor: "#E5E7EB", position: "relative", zIndex: 1 }}>
           <motion.div
             animate={{ width: `${((step + 1) / TOTAL_STEPS) * 100}%` }}
             transition={{ duration: 0.4, ease: "easeOut" }}
@@ -426,11 +519,10 @@ export default function OnboardingPage() {
         <div className="ob-content" style={{ flex: 1 }}>
           {/* Desktop skip */}
           <div
-            className="ob-topbar"
+            className="ob-desktop-skip"
             style={{
-              display: "flex",
               justifyContent: "flex-end",
-              marginBottom: "32px",
+              marginBottom: "36px",
             }}
           >
             <button
@@ -441,7 +533,8 @@ export default function OnboardingPage() {
                 cursor: "pointer",
                 color: "#9CA3AF",
                 fontSize: "14px",
-                fontWeight: 600,
+                fontWeight: 700,
+                fontFamily: "Nunito, sans-serif",
               }}
             >
               Skip setup →
@@ -456,19 +549,21 @@ export default function OnboardingPage() {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.28, ease: "easeInOut" }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
             >
               {/* STEP 0: WELCOME */}
               {step === 0 && (
                 <div>
+                  <Chip>Welcome</Chip>
                   <h1
                     style={{
                       fontFamily: "Syne, sans-serif",
-                      fontSize: "clamp(26px, 4vw, 36px)",
-                      fontWeight: 900,
+                      fontSize: "clamp(28px, 4vw, 40px)",
+                      fontWeight: 800,
+                      letterSpacing: "-0.015em",
                       color: "#0D1117",
-                      lineHeight: 1.2,
-                      marginBottom: "8px",
+                      lineHeight: 1.15,
+                      margin: "14px 0 10px",
                     }}
                   >
                     Welcome to BemsFarms
@@ -484,69 +579,69 @@ export default function OnboardingPage() {
                   >
                     Let's personalise your experience in 3 quick questions.
                   </p>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "14px",
-                    }}
-                  >
+                  <div className="ob-bento">
                     {FEATURE_CARDS.map((card, i) => (
                       <motion.div
                         key={card.title}
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.08 }}
+                        transition={{ delay: i * 0.08, duration: 0.4 }}
+                        whileHover={{ y: -3 }}
+                        className={card.featured ? "ob-bento-feature" : ""}
                         style={{
-                          borderRadius: "16px",
+                          position: "relative",
+                          borderRadius: "18px",
                           overflow: "hidden",
-                          border: "1px solid #E5E7EB",
-                          boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+                          boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
                         }}
                       >
-                        <div
+                        <img
+                          src={card.img}
+                          alt={card.title}
                           style={{
-                            height: "100px",
-                            overflow: "hidden",
-                            position: "relative",
+                            position: "absolute",
+                            inset: 0,
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
                           }}
-                        >
-                          <img
-                            src={card.img}
-                            alt={card.title}
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
-                          />
-                          <div
-                            style={{
-                              position: "absolute",
-                              inset: 0,
-                              background:
-                                "linear-gradient(to top, rgba(0,0,0,0.6), transparent)",
-                            }}
-                          />
-                        </div>
+                        />
                         <div
                           style={{
-                            padding: "12px 14px",
-                            backgroundColor: "white",
+                            position: "absolute",
+                            inset: 0,
+                            background:
+                              "linear-gradient(to top, rgba(13,17,23,0.88) 0%, rgba(13,17,23,0.25) 55%, transparent 100%)",
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: "relative",
+                            height: "100%",
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "flex-end",
+                            padding: card.featured ? "20px" : "12px 14px",
                           }}
                         >
                           <p
                             style={{
                               fontFamily: "Syne, sans-serif",
-                              fontSize: "14px",
+                              fontSize: card.featured ? "17px" : "13px",
                               fontWeight: 700,
-                              color: "#0D1117",
-                              marginBottom: "2px",
+                              color: "white",
+                              marginBottom: "3px",
                             }}
                           >
                             {card.title}
                           </p>
-                          <p style={{ fontSize: "12px", color: "#9CA3AF" }}>
+                          <p
+                            style={{
+                              fontSize: card.featured ? "12.5px" : "11px",
+                              color: "rgba(255,255,255,0.78)",
+                              lineHeight: 1.4,
+                            }}
+                          >
                             {card.desc}
                           </p>
                         </div>
@@ -559,13 +654,15 @@ export default function OnboardingPage() {
               {/* STEP 1: FAMILY SIZE */}
               {step === 1 && (
                 <div>
+                  <Chip>Household</Chip>
                   <h1
                     style={{
                       fontFamily: "Syne, sans-serif",
-                      fontSize: "clamp(24px, 4vw, 34px)",
-                      fontWeight: 900,
+                      fontSize: "clamp(26px, 4vw, 36px)",
+                      fontWeight: 800,
+                      letterSpacing: "-0.01em",
                       color: "#0D1117",
-                      marginBottom: "8px",
+                      margin: "14px 0 8px",
                     }}
                   >
                     Who are you shopping for?
@@ -583,7 +680,7 @@ export default function OnboardingPage() {
                     style={{
                       display: "grid",
                       gridTemplateColumns: "1fr 1fr",
-                      gap: "12px",
+                      gap: "14px",
                     }}
                   >
                     {FAMILY_SIZES.map((opt) => {
@@ -591,26 +688,27 @@ export default function OnboardingPage() {
                       return (
                         <motion.button
                           key={opt.value}
-                          whileHover={{ scale: 1.02 }}
+                          whileHover={{ scale: 1.02, y: -2 }}
                           whileTap={{ scale: 0.97 }}
                           onClick={() => setFamilySize(opt.value)}
                           style={{
                             padding: 0,
-                            borderRadius: "16px",
-                            border: `2.5px solid ${selected ? "#1B4332" : "#E5E7EB"}`,
+                            borderRadius: "18px",
+                            border: `2.5px solid ${selected ? "#1B4332" : "#ECE7DE"}`,
                             cursor: "pointer",
                             overflow: "hidden",
                             boxShadow: selected
-                              ? "0 0 0 3px rgba(27,67,50,0.15)"
-                              : "0 2px 8px rgba(0,0,0,0.06)",
-                            transition: "all 0.2s",
+                              ? "0 0 0 4px rgba(27,67,50,0.14), 0 10px 26px rgba(27,67,50,0.18)"
+                              : "0 2px 10px rgba(0,0,0,0.05)",
+                            transition: "all 0.25s ease",
                             position: "relative",
                             textAlign: "left",
+                            backgroundColor: "white",
                           }}
                         >
                           <div
                             style={{
-                              height: "120px",
+                              height: "118px",
                               overflow: "hidden",
                               position: "relative",
                             }}
@@ -622,7 +720,6 @@ export default function OnboardingPage() {
                                 width: "100%",
                                 height: "100%",
                                 objectFit: "cover",
-                                transition: "transform 0.3s",
                               }}
                             />
                             <div
@@ -630,40 +727,54 @@ export default function OnboardingPage() {
                                 position: "absolute",
                                 inset: 0,
                                 background:
-                                  "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 50%)",
+                                  "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 55%)",
                               }}
                             />
+                            <span
+                              style={{
+                                position: "absolute",
+                                top: "10px",
+                                left: "10px",
+                                fontSize: "20px",
+                                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.4))",
+                              }}
+                            >
+                              {opt.emoji}
+                            </span>
                             {selected && (
-                              <div
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
                                 style={{
                                   position: "absolute",
                                   top: "10px",
                                   right: "10px",
-                                  width: "22px",
-                                  height: "22px",
+                                  width: "24px",
+                                  height: "24px",
                                   borderRadius: "50%",
                                   backgroundColor: "#1B4332",
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
+                                  boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
                                 }}
                               >
                                 <span
                                   style={{
                                     color: "white",
-                                    fontSize: "12px",
+                                    fontSize: "13px",
                                     fontWeight: 800,
                                   }}
                                 >
                                   ✓
                                 </span>
-                              </div>
+                              </motion.div>
                             )}
                           </div>
                           <div
                             style={{
-                              padding: "12px 14px",
-                              backgroundColor: selected ? "#F0FFF4" : "white",
+                              padding: "13px 14px",
+                              backgroundColor: selected ? "#F0FAF3" : "white",
                             }}
                           >
                             <p
@@ -691,13 +802,15 @@ export default function OnboardingPage() {
               {/* STEP 2: BUDGET */}
               {step === 2 && (
                 <div>
+                  <Chip>Budget</Chip>
                   <h1
                     style={{
                       fontFamily: "Syne, sans-serif",
-                      fontSize: "clamp(24px, 4vw, 34px)",
-                      fontWeight: 900,
+                      fontSize: "clamp(26px, 4vw, 36px)",
+                      fontWeight: 800,
+                      letterSpacing: "-0.01em",
                       color: "#0D1117",
-                      marginBottom: "8px",
+                      margin: "14px 0 8px",
                     }}
                   >
                     Weekly food budget?
@@ -715,7 +828,7 @@ export default function OnboardingPage() {
                     style={{
                       display: "grid",
                       gridTemplateColumns: "1fr 1fr",
-                      gap: "12px",
+                      gap: "14px",
                     }}
                   >
                     {BUDGETS.map((opt) => {
@@ -723,19 +836,19 @@ export default function OnboardingPage() {
                       return (
                         <motion.button
                           key={opt.value}
-                          whileHover={{ scale: 1.03 }}
+                          whileHover={{ scale: 1.03, y: -2 }}
                           whileTap={{ scale: 0.97 }}
                           onClick={() => setBudget(opt.value)}
                           style={{
-                            padding: "24px 18px",
-                            borderRadius: "16px",
+                            padding: "26px 20px",
+                            borderRadius: "18px",
                             border: `2.5px solid ${selected ? "#1B4332" : "transparent"}`,
                             cursor: "pointer",
                             background: opt.gradient,
                             boxShadow: selected
-                              ? "0 0 0 3px rgba(27,67,50,0.15), 0 8px 24px rgba(0,0,0,0.12)"
-                              : "0 2px 8px rgba(0,0,0,0.06)",
-                            transition: "all 0.2s",
+                              ? "0 0 0 4px rgba(27,67,50,0.14), 0 10px 28px rgba(0,0,0,0.14)"
+                              : "0 2px 10px rgba(0,0,0,0.05)",
+                            transition: "all 0.25s ease",
                             textAlign: "left",
                             position: "relative",
                           }}
@@ -744,10 +857,10 @@ export default function OnboardingPage() {
                             <div
                               style={{
                                 position: "absolute",
-                                top: "12px",
-                                right: "12px",
-                                width: "22px",
-                                height: "22px",
+                                top: "14px",
+                                right: "14px",
+                                width: "24px",
+                                height: "24px",
                                 borderRadius: "50%",
                                 backgroundColor:
                                   opt.textColor === "#FFFFFF"
@@ -761,7 +874,7 @@ export default function OnboardingPage() {
                               <span
                                 style={{
                                   color: opt.textColor,
-                                  fontSize: "12px",
+                                  fontSize: "13px",
                                   fontWeight: 800,
                                 }}
                               >
@@ -772,10 +885,11 @@ export default function OnboardingPage() {
                           <p
                             style={{
                               fontFamily: "Syne, sans-serif",
-                              fontSize: "20px",
-                              fontWeight: 900,
+                              fontSize: "22px",
+                              fontWeight: 800,
+                              letterSpacing: "-0.01em",
                               color: opt.textColor,
-                              marginBottom: "4px",
+                              marginBottom: "5px",
                             }}
                           >
                             {opt.label}
@@ -785,6 +899,7 @@ export default function OnboardingPage() {
                               fontSize: "13px",
                               color: opt.textColor,
                               opacity: 0.75,
+                              fontWeight: 600,
                             }}
                           >
                             {opt.desc}
@@ -799,13 +914,15 @@ export default function OnboardingPage() {
               {/* STEP 3: HEALTH GOALS */}
               {step === 3 && (
                 <div>
+                  <Chip>Health</Chip>
                   <h1
                     style={{
                       fontFamily: "Syne, sans-serif",
-                      fontSize: "clamp(24px, 4vw, 34px)",
-                      fontWeight: 900,
+                      fontSize: "clamp(26px, 4vw, 36px)",
+                      fontWeight: 800,
+                      letterSpacing: "-0.01em",
                       color: "#0D1117",
-                      marginBottom: "8px",
+                      margin: "14px 0 8px",
                     }}
                   >
                     Any health goals?
@@ -838,42 +955,39 @@ export default function OnboardingPage() {
                             display: "flex",
                             alignItems: "center",
                             gap: "12px",
-                            padding: "12px 14px",
-                            borderRadius: "14px",
-                            border: `2px solid ${selected ? "#1B4332" : "#E5E7EB"}`,
-                            backgroundColor: selected ? "#F0FFF4" : "white",
+                            padding: "13px 16px",
+                            borderRadius: "16px",
+                            border: `2px solid ${selected ? "#1B4332" : "#ECE7DE"}`,
+                            backgroundColor: selected ? "#F0FAF3" : "white",
                             cursor: "pointer",
                             textAlign: "left",
                             transition: "all 0.2s",
                             boxShadow: selected
-                              ? "0 0 0 2px rgba(27,67,50,0.1)"
-                              : "none",
+                              ? "0 0 0 3px rgba(27,67,50,0.1)"
+                              : "0 1px 4px rgba(0,0,0,0.03)",
                           }}
                         >
                           <div
                             style={{
-                              width: "44px",
-                              height: "44px",
-                              borderRadius: "10px",
-                              overflow: "hidden",
+                              width: "40px",
+                              height: "40px",
+                              borderRadius: "12px",
                               flexShrink: 0,
-                              border: `1px solid ${selected ? "#1B4332" : "#E5E7EB"}`,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "20px",
+                              backgroundColor: selected
+                                ? "rgba(27,67,50,0.1)"
+                                : "#F8F6F1",
                             }}
                           >
-                            <img
-                              src={goal.img}
-                              alt={goal.label}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                              }}
-                            />
+                            {goal.emoji}
                           </div>
                           <span
                             style={{
                               fontSize: "13px",
-                              fontWeight: 600,
+                              fontWeight: 700,
                               color: selected ? "#1B4332" : "#4B5563",
                               flex: 1,
                               fontFamily: "Nunito, sans-serif",
@@ -905,7 +1019,7 @@ export default function OnboardingPage() {
                       textAlign: "center",
                       fontSize: "12px",
                       color: "#9CA3AF",
-                      marginTop: "16px",
+                      marginTop: "18px",
                     }}
                   >
                     You can update these anytime in your profile
@@ -922,13 +1036,14 @@ export default function OnboardingPage() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={goBack}
+                className="ob-pill-btn"
                 style={{
-                  padding: "15px 22px",
-                  borderRadius: "14px",
-                  border: "1.5px solid #E5E7EB",
+                  padding: "16px 24px",
+                  borderRadius: "999px",
+                  border: "1.5px solid #E5E1D8",
                   background: "white",
                   color: "#6B7280",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   cursor: "pointer",
                   fontSize: "14px",
                   fontFamily: "Nunito, sans-serif",
@@ -938,19 +1053,24 @@ export default function OnboardingPage() {
               </motion.button>
             )}
             <motion.button
-              whileHover={{ scale: canContinue() ? 1.02 : 1 }}
+              whileHover={
+                canContinue()
+                  ? { scale: 1.015, boxShadow: "0 12px 32px rgba(27,67,50,0.36)" }
+                  : {}
+              }
               whileTap={{ scale: canContinue() ? 0.97 : 1 }}
               onClick={step === TOTAL_STEPS - 1 ? finish : goNext}
               disabled={!canContinue() || saving}
+              className="ob-pill-btn"
               style={{
                 flex: 1,
-                padding: "16px",
-                borderRadius: "14px",
+                padding: "17px",
+                borderRadius: "999px",
                 border: "none",
                 background: canContinue()
                   ? "linear-gradient(135deg, #1B4332, #40916C)"
-                  : "#F3F4F6",
-                color: canContinue() ? "white" : "#9CA3AF",
+                  : "#F1EEE7",
+                color: canContinue() ? "white" : "#B3AEA3",
                 fontWeight: 800,
                 cursor: canContinue() ? "pointer" : "default",
                 fontSize: "15px",
@@ -958,7 +1078,6 @@ export default function OnboardingPage() {
                 boxShadow: canContinue()
                   ? "0 8px 24px rgba(27,67,50,0.28)"
                   : "none",
-                transition: "all 0.2s",
               }}
             >
               {saving

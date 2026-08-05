@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useCart } from "../../context/CartContext";
+import { NAIRA_PER_UNIT } from "../../utils/currency";
 
 /* ---------------- IMAGE HELPERS ---------------- */
 
@@ -294,7 +295,7 @@ export default function ProductCard({ product, index = 0 }) {
               whiteSpace: "nowrap",
             }}
           >
-            ₦{(product.price * 1500).toLocaleString()}
+            ₦{(product.price * NAIRA_PER_UNIT).toLocaleString()}
           </p>
 
           <motion.button
