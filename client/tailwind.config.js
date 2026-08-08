@@ -10,10 +10,11 @@ export default {
       colors: {
         primary: { DEFAULT: '#2E7D32', dark: '#1B5E20', light: '#4CAF50' },
         accent:  { DEFAULT: '#F57C00', light: '#FF9800' },
+        cream:   { DEFAULT: '#FBF8F3', dark: '#F3EDE1' },
       },
       fontFamily: {
-        sans:    ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
-        display: ['Fraunces', 'serif'],
+        sans:    ['Nunito', 'system-ui', 'sans-serif'],
+        display: ['Syne', 'sans-serif'],
       },
     },
   },

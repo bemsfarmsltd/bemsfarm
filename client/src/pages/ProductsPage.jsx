@@ -58,6 +58,18 @@ const CATEGORY_EMOJIS = {
 };
 
 const DASHBOARD_CSS = `
+.bp-page {
+  background-color: #FBF8F3;
+  position: relative;
+  overflow-x: hidden;
+}
+.bp-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  z-index: 0;
+}
 .bp-container {
   max-width: 1280px;
   margin: 0 auto;
@@ -66,6 +78,8 @@ const DASHBOARD_CSS = `
   display: flex;
   flex-direction: column;
   gap: 28px;
+  position: relative;
+  z-index: 1;
 }
 
 /* Top Header Bar */
@@ -269,9 +283,10 @@ const DASHBOARD_CSS = `
 }
 .bp-category-card {
   flex-shrink: 0;
-  background-color: var(--white);
+  background-color: rgba(255,255,255,0.7);
+  backdrop-filter: blur(6px);
   border: 1px solid var(--gray-200);
-  border-radius: 16px;
+  border-radius: 999px;
   padding: 12px 18px;
   display: flex;
   align-items: center;
@@ -281,16 +296,18 @@ const DASHBOARD_CSS = `
   font-weight: 700;
   color: var(--gray-700);
   font-family: 'Nunito', sans-serif;
-  transition: all 0.2s;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 .bp-category-card:hover {
   background-color: var(--gray-50);
   border-color: var(--gray-400);
+  transform: translateY(-1px);
 }
 .bp-category-card.active {
-  background-color: var(--primary-bg);
-  border-color: var(--primary-light);
-  color: var(--gray-900);
+  background-color: #1B5E20;
+  border-color: #1B5E20;
+  color: white;
+  box-shadow: 0 10px 24px -8px rgba(27,94,32,0.5);
 }
 
 /* Product Catalog Grid */
@@ -384,10 +401,12 @@ export default function ProductsPage() {
 
   return (
     <PageWrapper>
-      <div className="bp-container">
+      <div className="bp-page">
         <style>{DASHBOARD_CSS}</style>
+        <div className="bp-blob" style={{ width: 340, height: 340, top: -100, left: -120, background: "radial-gradient(circle, rgba(46,125,50,0.10), transparent 70%)" }} />
+        <div className="bp-blob" style={{ width: 280, height: 280, top: 400, right: -140, background: "radial-gradient(circle, rgba(245,158,11,0.10), transparent 70%)" }} />
 
-
+        <div className="bp-container">
 
         {/* ── 2. PROMO CARD BANNER ── */}
         <div className="bp-promo-card" style={{ position: "relative", overflow: "hidden", background: "none", padding: 0, height: "480px" }}>
@@ -403,7 +422,7 @@ export default function ProductsPage() {
               pointerEvents: "none",
               borderRadius: "24px"
             }}
-            src="https://res.cloudinary.com/dyzkjerez/video/upload/v1784552209/Create_an_exiting_carousel_vid_xh7212.mp4"
+            src="https://res.cloudinary.com/dyzkjerez/video/upload/v1786166618/A_vibrant_top_down_flat_lay_vi_xuitwq.mp4"
           />
         </div>
 
@@ -439,13 +458,13 @@ export default function ProductsPage() {
               value={sort}
               onChange={(e) => setSort(e.target.value)}
               style={{
-                padding: "6px 12px",
+                padding: "8px 16px",
                 border: "1px solid #E5E7EB",
-                borderRadius: "10px",
+                borderRadius: "999px",
                 fontSize: "12px",
                 color: "#4B5563",
                 outline: "none",
-                backgroundColor: "white",
+                backgroundColor: "rgba(255,255,255,0.8)",
                 fontFamily: "Nunito, sans-serif",
                 cursor: "pointer"
               }}
@@ -489,7 +508,11 @@ export default function ProductsPage() {
                 border: "1px solid #E5E7EB"
               }}
             >
-              <div style={{ fontSize: "48px", marginBottom: "12px" }}>🌾</div>
+              <img
+                src="https://res.cloudinary.com/dyzkjerez/image/upload/v1786166844/Gemini_Generated_Image_ez0fcxez0fcxez0f_atfxkk.png"
+                alt=""
+                style={{ width: "72px", height: "72px", marginBottom: "12px" }}
+              />
               <h4 style={{ margin: "0 0 6px", fontFamily: "Syne, sans-serif", fontSize: "16px", fontWeight: 700 }}>No products found</h4>
               <p style={{ color: "#9CA3AF", fontSize: "13px", margin: "0 0 16px" }}>Try searching something else</p>
               <button
@@ -498,7 +521,7 @@ export default function ProductsPage() {
                   backgroundColor: "#1B4332",
                   color: "white",
                   border: "none",
-                  borderRadius: "10px",
+                  borderRadius: "999px",
                   padding: "10px 20px",
                   fontWeight: 700,
                   fontSize: "13px",
@@ -518,9 +541,9 @@ export default function ProductsPage() {
                     key={product.id}
                     onClick={() => navigate(`/product/${product.id}`)}
                     style={{
-                      backgroundColor: "white",
-                      border: "1px solid #E5E7EB",
-                      borderRadius: "18px",
+                      backgroundColor: "rgba(255,255,255,0.85)",
+                      border: "1px solid rgba(27,67,50,0.08)",
+                      borderRadius: "20px",
                       padding: "12px",
                       display: "flex",
                       flexDirection: "column",
@@ -619,6 +642,7 @@ export default function ProductsPage() {
               })}
             </div>
           )}
+        </div>
         </div>
       </div>
     </PageWrapper>

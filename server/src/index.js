@@ -91,7 +91,6 @@ const adminRoutes = require("./routes/admin");
 const aiRoutes = require("./routes/ai");
 const miscRoutes = require("./routes/misc");
 const advancedAiRoutes = require("./routes/advanced-ai");
-const zohoRoutes = require("./routes/zoho");
 const dashboardRoutes = require("./routes/dashboard");
 const productsAdminRoutes = require("./routes/products_admin");
 const ordersAdminRoutes = require("./routes/orders_admin");
@@ -149,7 +148,6 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/addresses", addressesRoutes);
 app.use("/api", miscRoutes);
 app.use("/api/advanced-ai", aiLimiter, advancedAiRoutes);
-app.use("/api/zoho", zohoRoutes);
 
 app.get("/api", (req, res) => res.json({ status: "OK", name: "Bems Farms API", version: "1.0", time: new Date() }));
 app.get("/health", (req, res) => res.json({ status: "OK", time: new Date() }));

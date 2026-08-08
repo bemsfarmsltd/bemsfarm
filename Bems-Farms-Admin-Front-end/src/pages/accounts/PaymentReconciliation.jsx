@@ -466,7 +466,7 @@ export default function PaymentReconciliation() {
               </p>
               
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Paystack Reference / Transaction ID</label>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Monnify Reference / Transaction ID</label>
                 <input type="text" style={inpStyle} placeholder="e.g. 7PV89L0Z" value={manualForm.payment_ref} onChange={e => setManualForm({ ...manualForm, payment_ref: e.target.value })} required />
               </div>
               

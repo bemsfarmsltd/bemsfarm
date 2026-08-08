@@ -452,7 +452,7 @@ export default function Invoices() {
               <div><label style={LBL}>Due Date</label><input type="date" style={inp} value={form.dueDate} onChange={e=>setField('dueDate',e.target.value)}/></div>
               <div><label style={LBL}>Payment Method</label>
                 <select style={inp} value={form.paymentMethod} onChange={e=>setField('paymentMethod',e.target.value)}>
-                  {['Bank Transfer','Cash','Paystack','POS'].map(m=><option key={m}>{m}</option>)}
+                  {['Bank Transfer','Cash','Monnify','POS'].map(m=><option key={m}>{m}</option>)}
                 </select>
               </div>
               <div style={{ gridColumn:'span 2' }}><label style={LBL}>Notes</label><input style={inp} placeholder="Optional notes..." value={form.notes} onChange={e=>setField('notes',e.target.value)}/></div>

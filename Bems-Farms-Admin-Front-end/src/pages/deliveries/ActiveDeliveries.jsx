@@ -714,7 +714,7 @@ export default function ActiveDeliveries() {
                     )}
                     <div style={{ border:'1px solid #e5e7eb', borderRadius:8, padding:'14px 16px', background:'#f8fafc', fontSize:12, marginBottom:20 }}>
                       <div style={{ fontWeight:700, fontSize:11, color:'#6b7280', marginBottom:10, textTransform:'uppercase' }}>This cancellation will trigger:</div>
-                      {['Refund via Paystack to customer','Driver instructed to return goods to store','Admin checks goods back in','Stock quantities restored'].map((s,i) => (
+                      {['Refund via Monnify to customer','Driver instructed to return goods to store','Admin checks goods back in','Stock quantities restored'].map((s,i) => (
                         <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'4px 0' }}>
                           <i className="ri-arrow-right-s-line" style={{ color:'#9ca3af' }} /><span>{s}</span>
                         </div>

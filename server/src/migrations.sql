@@ -844,3 +844,8 @@ CREATE TABLE IF NOT EXISTS driver_locations (
   accuracy NUMERIC DEFAULT 0,
   recorded_at TIMESTAMP DEFAULT NOW()
 );
+
+-- ── 23. PAYSTACK → MONNIFY ────────────────────────────────────────
+-- Swapping payment gateways; issues.paystack_refund_id held Paystack's
+-- refund id string, now holds Monnify's refundReference instead.
+ALTER TABLE issues RENAME COLUMN paystack_refund_id TO monnify_refund_id;

@@ -163,7 +163,7 @@ export default function PaymentSettings() {
               <form onSubmit={handleSave} style={{ padding:24 }}>
                 <div style={{ marginBottom:14 }}>
                   <label style={LBL}>Gateway Name</label>
-                  <input style={inp} value={editForm.name} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Paystack"/>
+                  <input style={inp} value={editForm.name} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Monnify"/>
                 </div>
                 <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
                   <label style={{ ...LBL,marginBottom:0 }}>API Keys</label>

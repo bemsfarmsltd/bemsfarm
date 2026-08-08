@@ -92,7 +92,7 @@ const SMS = {
   refundProcessed: (phone, name, amount) =>
     sendSMS(
       phone,
-      `Hi ${name}, your BemsFarms refund of ₦${Number(amount).toLocaleString()} has been processed via Paystack. It will reflect in your account within 3-5 business days.`,
+      `Hi ${name}, your BemsFarms refund of ₦${Number(amount).toLocaleString()} has been processed via Monnify. It will reflect in your account within 3-5 business days.`,
     ),
 
   // Customer: issue resolved

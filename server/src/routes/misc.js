@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const { sendSubscriptionWelcomeEmail, sendReferralUpgradeEmail, sendMail } = require("../services/emailService");
+const { verifyMonnifyWebhookSignature } = require("../utils/monnify");
 const crypto = require("crypto");
 
 function generateReferralCode() {
@@ -188,23 +189,27 @@ router.post("/subscribe", async (req, res) => {
   }
 });
 
-// ── PAYSTACK WEBHOOK ──────────────────────────────────────────
+// ── MONNIFY WEBHOOK ──────────────────────────────────────────
+// Built against Monnify's documented webhook shape
+// (https://developers.monnify.com/docs/integration-tools/webhooks/) — not
+// yet exercised against a real sandbox event. Verify the exact eventType
+// values and eventData field names against a live test webhook once real
+// MONNIFY_SECRET_KEY is configured, the same way the Paystack webhook was
+// verified end-to-end earlier.
 router.post(
-  "/webhooks/paystack",
+  "/webhooks/monnify",
   async (req, res) => {
-    console.log("🔔 Paystack webhook received");
-    const crypto = require("crypto");
-    const secret = process.env.PAYSTACK_SECRET;
-    const signature = req.headers["x-paystack-signature"];
+    console.log("🔔 Monnify webhook received");
+    const signature = req.headers["monnify-signature"];
 
-    if (!secret) {
-      console.error("❌ PAYSTACK_SECRET is not configured — refusing webhook (fail closed)");
+    if (!process.env.MONNIFY_SECRET_KEY) {
+      console.error("❌ MONNIFY_SECRET_KEY is not configured — refusing webhook (fail closed)");
       return res.status(503).json({ message: "Webhook processing not configured" });
     }
 
     let event;
     let rawPayload;
-    
+
     try {
       rawPayload = req.rawBody || Buffer.from(typeof req.body === "string" ? req.body : JSON.stringify(req.body));
       event = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
@@ -212,18 +217,16 @@ router.post(
         event = JSON.parse(req.rawBody.toString("utf8"));
       }
     } catch (parseErr) {
-      console.error("❌ Failed to parse Paystack webhook body:", parseErr.message);
+      console.error("❌ Failed to parse Monnify webhook body:", parseErr.message);
       return res.status(400).json({ message: "Invalid JSON body" });
     }
 
-    const hash = crypto
-      .createHmac("sha512", secret)
-      .update(rawPayload)
-      .digest("hex");
-
-    const isVerified = (hash === signature);
-    const reference = event?.data?.reference || null;
-    const eventType = event?.event || null;
+    const isVerified = verifyMonnifyWebhookSignature(rawPayload, signature);
+    // transactionReference is what we store as orders.payment_ref (see
+    // orders.js / CheckoutPage.jsx); paymentReference is our own
+    // client-generated tracking reference, kept only for the audit log.
+    const reference = event?.eventData?.transactionReference || null;
+    const eventType = event?.eventType || null;
 
     if (!isVerified) {
       console.warn("⚠️ Webhook signature mismatch!");
@@ -262,21 +265,23 @@ router.post(
       }
 
       // 2. Process Successful, Failed, or Reversed transaction
+      const eventData = event?.eventData || {};
       let status = "pending";
-      if (eventType === "charge.success") {
+      if (eventType === "SUCCESSFUL_TRANSACTION" || eventData.paymentStatus === "PAID") {
         status = "successful";
-      } else if (eventType === "charge.failed") {
+      } else if (eventType === "FAILED_TRANSACTION" || eventData.paymentStatus === "FAILED") {
         status = "failed";
-      } else if (eventType?.includes("reversed") || eventType?.includes("refund")) {
+      } else if (eventType?.toUpperCase().includes("REVERS") || eventType?.toUpperCase().includes("REFUND")) {
         status = "reversed";
       }
 
-      const amount = event?.data?.amount ? parseFloat(event.data.amount) / 100 : 0; // Paystack is in kobo
-      const email = event?.data?.customer?.email || null;
-      const metadata = event?.data?.metadata || null;
-      const terminalId = event?.data?.pos_terminal_id || metadata?.pos_terminal_id || null;
-      const paidAt = event?.data?.paid_at ? new Date(event.data.paid_at) : null;
-      const paymentMethod = event?.data?.channel || event?.data?.payment_method || null;
+      // Monnify amounts are plain Naira decimals, not kobo.
+      const amount = parseFloat(eventData.amountPaid || 0);
+      const email = eventData.customer?.email || null;
+      const metadata = eventData.metaData || eventData.metadata || null;
+      const paidAt = eventData.paidOn ? new Date(eventData.paidOn) : null;
+      const paymentMethod = eventData.paymentMethod || null;
+      const terminalId = metadata?.pos_terminal_id || null;
 
       // 3. Find matching order in Bems Farms database
       const orderSearch = await pool.query(

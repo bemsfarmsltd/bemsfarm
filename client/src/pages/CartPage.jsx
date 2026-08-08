@@ -24,6 +24,13 @@ import { NAIRA_PER_UNIT } from "../utils/currency";
     >=900px   : original 4-column grid + sticky sidebar summary
 */
 const CART_CSS = `
+.bf-cart-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  z-index: 0;
+}
 .bf-cart-page-pad { padding: 20px 16px; }
 .bf-cart-grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
 .bf-cart-row-header { display: none; }
@@ -95,46 +102,52 @@ export default function CartPage() {
   if (cartItems.length === 0)
     return (
       <PageWrapper>
-        <div
-          style={{
-            maxWidth: "600px",
-            margin: "60px auto",
-            textAlign: "center",
-            padding: "32px 20px",
-          }}
-        >
-          <motion.div
-            animate={{ y: [0, -12, 0] }}
-            transition={{ duration: 2.5, repeat: Infinity }}
-            style={{ fontSize: "80px", marginBottom: "20px" }}
-          >
-            🛒
-          </motion.div>
-          <h2
-            style={{ fontSize: "22px", fontWeight: 800, marginBottom: "10px" }}
-          >
-            Your cart is empty
-          </h2>
-          <p style={{ color: "#9AA0A6", marginBottom: "20px" }}>
-            Looks like you haven't added any Nigerian foods yet!
-          </p>
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => navigate("/products")}
+        <style>{CART_CSS}</style>
+        <div style={{ backgroundColor: "#FBF8F3", position: "relative", overflow: "hidden", minHeight: "70vh" }}>
+          <div className="bf-cart-blob" style={{ width: 320, height: 320, top: -100, left: -100, background: "radial-gradient(circle, rgba(46,125,50,0.12), transparent 70%)" }} />
+          <div
             style={{
-              backgroundColor: "#2E7D32",
-              color: "white",
-              border: "none",
-              borderRadius: "14px",
-              padding: "14px 32px",
-              fontSize: "15px",
-              fontWeight: 700,
-              cursor: "pointer",
-              boxShadow: "0 4px 16px rgba(46,125,50,0.3)",
+              maxWidth: "600px",
+              margin: "0 auto",
+              textAlign: "center",
+              padding: "80px 20px",
+              position: "relative",
+              zIndex: 1,
             }}
           >
-            Browse Products 🌾
-          </motion.button>
+            <motion.img
+              src="https://res.cloudinary.com/dyzkjerez/image/upload/v1786166844/Gemini_Generated_Image_ez0fcxez0fcxez0f_atfxkk.png"
+              alt=""
+              animate={{ y: [0, -12, 0] }}
+              transition={{ duration: 2.5, repeat: Infinity }}
+              style={{ width: "120px", height: "120px", marginBottom: "20px" }}
+            />
+            <h2
+              style={{ fontSize: "22px", fontWeight: 800, marginBottom: "10px", fontFamily: "Syne, sans-serif" }}
+            >
+              Your cart is empty
+            </h2>
+            <p style={{ color: "#9AA0A6", marginBottom: "20px" }}>
+              Looks like you haven't added any Nigerian foods yet!
+            </p>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => navigate("/products")}
+              style={{
+                backgroundColor: "#2E7D32",
+                color: "white",
+                border: "none",
+                borderRadius: "999px",
+                padding: "14px 32px",
+                fontSize: "15px",
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 4px 16px rgba(46,125,50,0.3)",
+              }}
+            >
+              Browse Products 🌾
+            </motion.button>
+          </div>
         </div>
       </PageWrapper>
     );
@@ -142,9 +155,12 @@ export default function CartPage() {
   return (
     <PageWrapper>
       <style>{CART_CSS}</style>
+      <div style={{ backgroundColor: "#FBF8F3", position: "relative", overflow: "hidden" }}>
+        <div className="bf-cart-blob" style={{ width: 320, height: 320, top: -100, left: -100, background: "radial-gradient(circle, rgba(46,125,50,0.10), transparent 70%)" }} />
+        <div className="bf-cart-blob" style={{ width: 260, height: 260, bottom: -80, right: -80, background: "radial-gradient(circle, rgba(245,158,11,0.10), transparent 70%)" }} />
       <div
         className="bf-cart-page-pad"
-        style={{ maxWidth: "1100px", margin: "0 auto" }}
+        style={{ maxWidth: "1100px", margin: "0 auto", position: "relative", zIndex: 1 }}
       >
         <div
           style={{
@@ -176,6 +192,7 @@ export default function CartPage() {
             fontSize: "clamp(22px, 5vw, 28px)",
             fontWeight: 800,
             marginBottom: "20px",
+            fontFamily: "Syne, sans-serif",
           }}
         >
           My Cart
@@ -212,10 +229,10 @@ export default function CartPage() {
                   exit={{ opacity: 0, x: 20, height: 0 }}
                   style={{
                     padding: "16px",
-                    backgroundColor: "white",
-                    borderRadius: "16px",
+                    backgroundColor: "rgba(255,255,255,0.85)",
+                    borderRadius: "20px",
                     marginBottom: "12px",
-                    border: "1px solid #E8EAED",
+                    border: "1px solid rgba(27,67,50,0.08)",
                   }}
                 >
                   {/* Product */}
@@ -302,7 +319,7 @@ export default function CartPage() {
                         gap: "8px",
                         justifyContent: "center",
                         backgroundColor: "#F8F9FA",
-                        borderRadius: "10px",
+                        borderRadius: "999px",
                         padding: "6px 10px",
                         border: "1px solid #E8EAED",
                       }}
@@ -313,7 +330,7 @@ export default function CartPage() {
                         style={{
                           width: "26px",
                           height: "26px",
-                          borderRadius: "8px",
+                          borderRadius: "50%",
                           border: "1px solid #E8EAED",
                           backgroundColor: "white",
                           cursor: "pointer",
@@ -343,7 +360,7 @@ export default function CartPage() {
                         style={{
                           width: "26px",
                           height: "26px",
-                          borderRadius: "8px",
+                          borderRadius: "50%",
                           border: "none",
                           backgroundColor: "#F57C00",
                           cursor: "pointer",
@@ -389,7 +406,7 @@ export default function CartPage() {
                 onClick={() => navigate("/products")}
                 style={{
                   padding: "12px 24px",
-                  borderRadius: "10px",
+                  borderRadius: "999px",
                   border: "1px solid #E8EAED",
                   backgroundColor: "white",
                   cursor: "pointer",
@@ -419,7 +436,7 @@ export default function CartPage() {
                       minWidth: 0,
                       padding: "12px 16px",
                       border: `1px solid ${couponValid === true ? "#2E7D32" : couponValid === false ? "#C62828" : "#E8EAED"}`,
-                      borderRadius: "10px",
+                      borderRadius: "999px",
                       fontSize: "14px",
                       outline: "none",
                     }}
@@ -430,7 +447,7 @@ export default function CartPage() {
                       onClick={removeCoupon}
                       style={{
                         padding: "12px 20px",
-                        borderRadius: "10px",
+                        borderRadius: "999px",
                         backgroundColor: "white",
                         border: "1px solid #E8EAED",
                         color: "#C62828",
@@ -449,7 +466,7 @@ export default function CartPage() {
                       disabled={validating}
                       style={{
                         padding: "12px 20px",
-                        borderRadius: "10px",
+                        borderRadius: "999px",
                         backgroundColor: "#F57C00",
                         border: "none",
                         color: "white",
@@ -487,10 +504,11 @@ export default function CartPage() {
           <div
             className="bf-cart-summary"
             style={{
-              backgroundColor: "white",
-              borderRadius: "16px",
+              backgroundColor: "rgba(255,255,255,0.7)",
+              backdropFilter: "blur(10px)",
+              borderRadius: "20px",
               padding: "22px",
-              border: "1px solid #E8EAED",
+              border: "1px solid rgba(27,67,50,0.08)",
             }}
           >
             <h3
@@ -498,6 +516,7 @@ export default function CartPage() {
                 fontSize: "17px",
                 fontWeight: 700,
                 marginBottom: "18px",
+                fontFamily: "Syne, sans-serif",
               }}
             >
               Cart Total
@@ -608,7 +627,7 @@ export default function CartPage() {
                 backgroundColor: "#F57C00",
                 color: "white",
                 border: "none",
-                borderRadius: "14px",
+                borderRadius: "999px",
                 padding: "16px",
                 fontSize: "15px",
                 fontWeight: 800,
@@ -620,6 +639,7 @@ export default function CartPage() {
             </motion.button>
           </div>
         </div>
+      </div>
       </div>
     </PageWrapper>
   );

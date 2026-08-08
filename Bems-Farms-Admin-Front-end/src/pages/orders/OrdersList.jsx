@@ -307,7 +307,9 @@ export default function OrdersList() {
                     <td style={TD}>
                       <div style={{ fontWeight:700,color:"#b45309",cursor:"pointer" }} onClick={()=>openModal("view",order)}>{refNo}</div>
                       <div style={{ fontSize:11,color:S,marginTop:2,display:'flex',alignItems:'center',gap:4 }}>
-                        {order.payment_method==="paystack"?(
+                        {order.payment_method==="monnify"?(
+                          <><span style={{ width:6,height:6,borderRadius:'50%',background:'#09a5db' }}/>Monnify</>
+                        ):order.payment_method==="paystack"?(
                           <><span style={{ width:6,height:6,borderRadius:'50%',background:'#09a5db' }}/>Paystack</>
                         ):order.payment_method==="cash"?(
                           <><i className="ri-money-dollar-circle-line" style={{ color:'#10b981' }}/>Cash</>

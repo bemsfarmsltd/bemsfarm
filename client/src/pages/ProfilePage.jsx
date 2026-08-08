@@ -877,7 +877,7 @@ export default function ProfilePage() {
                     <p style={{ fontWeight: 700, color: "#111827", margin: "0 0 6px" }}>No saved cards</p>
                     <p style={{ fontSize: "13px", margin: 0 }}>
                       BemsFarms doesn't store your card details — you'll enter them
-                      securely through Paystack each time you check out.
+                      securely through Monnify each time you check out.
                     </p>
                   </div>
                 </motion.div>

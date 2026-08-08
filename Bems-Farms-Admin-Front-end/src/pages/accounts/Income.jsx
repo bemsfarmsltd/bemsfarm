@@ -7,11 +7,11 @@ const fmt  = n => `₦${Number(n).toLocaleString()}`
 const fmtD = s => s ? new Date(s).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'
 
 const CATEGORIES  = ['Sales', 'Wallet Top-up', 'Delivery Fee', 'Corporate Supply', 'POS Sale', 'Refund Recovery', 'Other']
-const PAY_METHODS = ['Paystack', 'Bank Transfer', 'Cash', 'POS Terminal', 'Wallet', 'USSD']
+const PAY_METHODS = ['Monnify', 'Bank Transfer', 'Cash', 'POS Terminal', 'Wallet', 'USSD']
 
 const BLANK_FORM = {
   date: new Date().toISOString().split('T')[0],
-  reference: '', source: '', category: 'Sales', payment_method: 'Paystack',
+  reference: '', source: '', category: 'Sales', payment_method: 'Monnify',
   status: 'paid', amount: '', description: '', notes: '', bank_account_id: '', currency: 'NGN',
 }
 
@@ -73,7 +73,7 @@ export default function Income() {
       reference: r.reference || '',
       source: r.source || '',
       category: r.category || 'Sales',
-      payment_method: r.payment_method || 'Paystack',
+      payment_method: r.payment_method || 'Monnify',
       status: r.status || 'paid',
       amount: r.amount || '',
       description: r.description || '',

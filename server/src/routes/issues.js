@@ -28,7 +28,7 @@
 //   resolved_at TIMESTAMP,
 //   refund_amount DECIMAL(10,2),
 //   refund_status VARCHAR(20),
-//   paystack_refund_id VARCHAR(100),
+//   monnify_refund_id VARCHAR(100),
 //   created_at TIMESTAMP DEFAULT NOW()
 // );
 // CREATE TABLE issue_activities (
@@ -47,6 +47,7 @@ const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { SMS } = require("../services/smsService");
+const { initiateMonnifyRefund } = require("../utils/monnify");
 
 const STAFF_ROLES = ["superadmin", "admin", "manager"];
 const VALID_STATUSES = [
@@ -75,7 +76,7 @@ async function ensureIssueTables() {
       resolved_at TIMESTAMP,
       refund_amount DECIMAL(10,2),
       refund_status VARCHAR(20),
-      paystack_refund_id VARCHAR(100),
+      monnify_refund_id VARCHAR(100),
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
@@ -359,10 +360,10 @@ router.patch(
         }
       }
 
-      // If refund — trigger Paystack refund (fire and forget)
+      // If refund — trigger Monnify refund (fire and forget)
       if (status === "resolved_refund" && refund_amount && issue.order_payment_ref) {
-        triggerPaystackRefund(issue.order_payment_ref, refund_amount, id).catch(
-          (err) => console.error("[Paystack Refund] Trigger failed:", err.message),
+        triggerMonnifyRefund(issue.order_payment_ref, refund_amount, id).catch(
+          (err) => console.error("[Monnify Refund] Trigger failed:", err.message),
         );
       }
 
@@ -406,39 +407,34 @@ router.post(
   },
 );
 
-// ─── Helper: Paystack refund ──────────────────────────────────────────────────
-async function triggerPaystackRefund(paymentRef, amount, issueId) {
-  const axios = require("axios");
-  const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET;
-  if (!PAYSTACK_SECRET) {
+// ─── Helper: Monnify refund ─────────────────────────────────────────────────
+async function triggerMonnifyRefund(paymentRef, amount, issueId) {
+  if (!process.env.MONNIFY_SECRET_KEY) {
     console.warn(
-      "[Paystack Refund] PAYSTACK_SECRET not configured — skipping refund trigger",
+      "[Monnify Refund] MONNIFY_SECRET_KEY not configured — skipping refund trigger",
     );
     return;
   }
 
   try {
-    const response = await axios.post(
-      "https://api.paystack.co/refund",
-      {
-        transaction: paymentRef,
-        amount: Math.round(amount * 100), // Paystack uses kobo
-        currency: "NGN",
-        customer_note: `Refund for issue #${issueId}`,
-        merchant_note: `BemsFarms issue resolution refund`,
-      },
-      { headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` } },
-    );
+    const refundReference = `BF-RFD-${issueId}-${Date.now().toString(36).toUpperCase()}`;
+    const response = await initiateMonnifyRefund({
+      transactionReference: paymentRef,
+      refundReference,
+      refundAmount: amount, // Monnify amounts are plain Naira, not kobo
+      refundReason: `Refund for issue #${issueId}`,
+      customerNote: "BemsFarms refund",
+    });
 
     await pool.query(
-      `UPDATE issues SET refund_status = 'processing', paystack_refund_id = $1 WHERE id = $2`,
-      [response.data?.data?.id || null, issueId],
+      `UPDATE issues SET refund_status = 'processing', monnify_refund_id = $1 WHERE id = $2`,
+      [response?.refundReference || refundReference, issueId],
     );
 
-    console.log("[Paystack Refund] Initiated:", response.data);
+    console.log("[Monnify Refund] Initiated:", response);
   } catch (err) {
     console.error(
-      "[Paystack Refund] Failed:",
+      "[Monnify Refund] Failed:",
       err.response?.data || err.message,
     );
     await pool.query(`UPDATE issues SET refund_status = 'failed' WHERE id = $1`, [

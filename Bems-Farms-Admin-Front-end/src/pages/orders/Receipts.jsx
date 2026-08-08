@@ -316,7 +316,7 @@ export default function Receipts() {
                       <div style={{ fontWeight:700 }}>{fmt(total)}</div>
                       {inv.discount_amount>0&&<div style={{ fontSize:11,color:'#16a34a',fontWeight:600 }}>-{fmt(inv.discount_amount)} disc.</div>}
                     </td>
-                    <td style={{ ...TD,fontSize:12,color:S,fontWeight:600 }}>{inv.payment_method || 'Paystack'}</td>
+                    <td style={{ ...TD,fontSize:12,color:S,fontWeight:600 }}>{inv.payment_method || 'Monnify'}</td>
                     <td style={TD}>
                       <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:cfg.bg,color:cfg.color,borderRadius:4,padding:'3px 8px',fontSize:11,fontWeight:700 }}>
                         <i className={cfg.icon}/>{cfg.label}
@@ -391,7 +391,7 @@ export default function Receipts() {
                           ['Due Date', selected.due_date ? new Date(selected.due_date).toISOString().slice(0, 10) : '', selected.status==='overdue'?'#ef4444':'inherit'],
                           selected.order_id && ['Order Ref', `ORD-2026-${String(selected.order_id).padStart(4, '0')}`, 'inherit'],
                           ['Channel', null, ''],
-                          ['Payment', selected.payment_method || 'Paystack', 'inherit']
+                          ['Payment', selected.payment_method || 'Monnify', 'inherit']
                         ].filter(Boolean).map((row,i)=>(
                           row[1]===null ? (
                             <div key={i} style={{ display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:13 }}>
@@ -513,7 +513,7 @@ export default function Receipts() {
               <div><label style={LBL}>Due Date</label><input type="date" style={inp} value={form.dueDate} onChange={e=>setField('dueDate',e.target.value)}/></div>
               <div><label style={LBL}>Payment Method</label>
                 <select style={inp} value={form.paymentMethod} onChange={e=>setField('paymentMethod',e.target.value)}>
-                  {['Bank Transfer','Cash','Paystack','POS'].map(m=><option key={m}>{m}</option>)}
+                  {['Bank Transfer','Cash','Monnify','POS'].map(m=><option key={m}>{m}</option>)}
                 </select>
               </div>
               <div style={{ gridColumn:'span 2' }}><label style={LBL}>Notes</label><input style={inp} placeholder="Optional notes..." value={form.notes} onChange={e=>setField('notes',e.target.value)}/></div>
@@ -544,7 +544,7 @@ export default function Receipts() {
             <div style={{ border:'1px solid #e5e7eb',borderRadius:10,padding:14,marginBottom:20,fontSize:13 }}>
               <div style={{ fontWeight:600 }}>{selected.invoice_ref || `INV-2026-${String(selected.id).padStart(4, '0')}`}</div>
               <div style={{ color:'#6b7280' }}>{selected.customer_name || 'Walk-in'} · {fmt(selected.amount)}</div>
-              <div style={{ color:'#6b7280' }}>Due: {selected.due_date ? new Date(selected.due_date).toISOString().slice(0, 10) : ''} · {selected.payment_method || 'Paystack'}</div>
+              <div style={{ color:'#6b7280' }}>Due: {selected.due_date ? new Date(selected.due_date).toISOString().slice(0, 10) : ''} · {selected.payment_method || 'Monnify'}</div>
             </div>
             <div style={{ display:'flex',gap:10 }}>
               <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>

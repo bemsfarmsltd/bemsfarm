@@ -1217,7 +1217,7 @@ Each table entry has four sections:
 
 ### `payment_gateways`
 
-**Purpose:** Stores Paystack (and future gateway) API credentials and mode (test/live). Backend reads this to initialise payment processing.
+**Purpose:** Stores Monnify (and future gateway) API credentials and mode (test/live). Backend reads this to initialise payment processing.
 
 **Used By:** `ADMIN` (Settings → Payment Gateways page — superadmin only), `BACKEND` (payment initialisation)
 

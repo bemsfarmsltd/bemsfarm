@@ -613,7 +613,7 @@ UPDATE products SET unit_price = price WHERE unit_price IS NULL;
 | customer_name | VARCHAR(100) | | walk-in fallback |
 | customer_phone | VARCHAR(20) | | walk-in fallback |
 | channel | VARCHAR(30) | DEFAULT 'online' | online, mobile_app, chef_bems_ai, pos, physical_store |
-| payment_method | VARCHAR(30) | | paystack, cash, bank_transfer, pos_card, qr_ussd, split |
+| payment_method | VARCHAR(30) | | monnify, cash, bank_transfer, pos_card, qr_ussd, split |
 | payment_ref | VARCHAR(100) | | gateway reference |
 | subtotal | DECIMAL(12,2) | | before discounts |
 | discount_amount | DECIMAL(12,2) | DEFAULT 0 | |
@@ -1426,13 +1426,13 @@ ALTER TABLE delivery_zones
 ---
 
 ### `payment_gateways`
-> Gateway configurations (Paystack, Flutterwave, etc.).  
+> Gateway configurations (Monnify, Flutterwave, etc.).  
 > **Status: MISSING**
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | id | BIGSERIAL | PK | |
-| name | VARCHAR(100) | NOT NULL | e.g. Paystack |
+| name | VARCHAR(100) | NOT NULL | e.g. Monnify |
 | public_key | TEXT | | |
 | secret_key | TEXT | | stored encrypted |
 | webhook_url | TEXT | | |
@@ -1559,7 +1559,7 @@ ALTER TABLE delivery_zones
 | amount | DECIMAL(12,2) | NOT NULL | positive = credit, negative = debit |
 | balance_after | DECIMAL(12,2) | NOT NULL | balance snapshot |
 | reference | VARCHAR(50) | | order ref / payment ref |
-| payment_method | VARCHAR(50) | | for top-ups: paystack, bank_transfer |
+| payment_method | VARCHAR(50) | | for top-ups: monnify, bank_transfer |
 | description | VARCHAR(255) | | |
 | created_at | TIMESTAMP | DEFAULT NOW() | |
 
@@ -1799,7 +1799,7 @@ EVENT                          → WHO IS NOTIFIED                → TABLE
 1. Customer places order       → Admin (new_order)              → notifications
                                → Customer (order_placed)        → customer_notifications
 2. Payment confirmed           → Admin                          → notifications
-   (Paystack webhook)          → Customer (payment_confirmed)   → customer_notifications
+   (Monnify webhook)           → Customer (payment_confirmed)   → customer_notifications
 3. Admin confirms order        → Kitchen staff                  → notifications
                                → Customer (order_confirmed)     → customer_notifications
 4. Kitchen preparing           → Customer (preparing)           → customer_notifications

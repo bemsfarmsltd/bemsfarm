@@ -2063,7 +2063,7 @@ CREATE TABLE public.issues (
     resolved_at timestamp without time zone,
     refund_amount numeric(10,2),
     refund_status character varying(30),
-    paystack_refund_id character varying(100),
+    monnify_refund_id character varying(100),
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
     CONSTRAINT issues_refund_status_check CHECK (((refund_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text]))),

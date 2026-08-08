@@ -1,11 +1,37 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useCart } from "../context/CartContext";
 import api from "../services/api";
 import ProductCard from "../components/ui/ProductCard";
 import PageWrapper from "../components/layout/PageWrapper";
+import ErrorBoundary from "../components/ErrorBoundary";
 import { NAIRA_PER_UNIT } from "../utils/currency";
+
+const Hero3D = lazy(() => import("../components/Hero3D"));
+
+const HOME_CSS = `
+.home-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.home-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+.home-glass-card {
+  background: rgba(255,255,255,0.6);
+  border: 1px solid rgba(27,67,50,0.08);
+  backdrop-filter: blur(10px);
+}
+`;
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -51,19 +77,47 @@ export default function HomePage() {
 
   return (
     <PageWrapper>
-      <div className="min-h-screen bg-white text-gray-800 font-sans antialiased overflow-x-hidden">
-        
-        {/* ────────────────── HERO SECTION (MATCHING SYSTEM COLORS) ────────────────── */}
-        <section className="relative pt-8 pb-12 md:pt-14 bg-gradient-to-b from-white via-white to-emerald-50/10 overflow-hidden">
-          
-          {/* Curving emerald green backdrop block on hero */}
-          <div className="absolute top-0 right-0 w-[55%] h-[95%] bg-[#2E7D32] rounded-bl-[200px] -z-10 hidden lg:block" />
+      <div className="min-h-screen text-gray-800 font-sans antialiased overflow-x-hidden" style={{ backgroundColor: "#FBF8F3" }}>
+        <style>{HOME_CSS}</style>
+
+        {/* ────────────────── HERO SECTION ────────────────── */}
+        <section className="relative z-0 pt-8 pb-12 md:pt-14 overflow-hidden">
+
+          {/* Curving emerald backdrop block on hero, with real farm footage playing inside it */}
+          <div className="absolute top-0 right-0 w-[55%] h-[95%] rounded-bl-[200px] -z-10 hidden lg:block overflow-hidden bg-[#2E7D32]">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover opacity-40"
+              src="https://res.cloudinary.com/dyzkjerez/video/upload/v1786166058/A_warm_sun_drenched_Nigerian_f7oi4i.mp4"
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#1B4332]/70 via-[#2E7D32]/50 to-[#2E7D32]/70" />
+          </div>
+          <div className="home-grain hidden lg:block" style={{ right: 0, left: "45%" }} />
+
+          {/* Decorative blobs on the cream side of the hero */}
+          <div
+            className="home-blob"
+            style={{ width: 320, height: 320, top: -80, left: -100, background: "radial-gradient(circle, rgba(46,125,50,0.12), transparent 70%)" }}
+          />
+          <div
+            className="home-blob"
+            style={{ width: 240, height: 240, bottom: -60, left: "20%", background: "radial-gradient(circle, rgba(245,158,11,0.12), transparent 70%)" }}
+          />
 
           <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
-            
+
             {/* Hero Left Content */}
             <div className="lg:col-span-6 text-center lg:text-left flex flex-col items-center lg:items-start">
-              <h1 className="text-[44px] md:text-[62px] lg:text-[70px] leading-[1.08] font-extrabold text-gray-900 mb-6 font-serif tracking-tight">
+              <span
+                className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-emerald-800 px-3.5 py-1.5 rounded-full mb-5"
+                style={{ background: "rgba(46,125,50,0.08)", border: "1px solid rgba(46,125,50,0.16)" }}
+              >
+                🌾 Fresh from Nigerian farms
+              </span>
+              <h1 className="text-[44px] md:text-[62px] lg:text-[70px] leading-[1.08] font-extrabold text-gray-900 mb-6 font-display tracking-tight">
                 From Food Bar <br />
                 to Your <span className="text-[#2E7D32]">Door</span>
               </h1>
@@ -87,36 +141,51 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Hero Right Visuals: Circular rotating food dishes */}
+            {/* Hero Right Visuals: real 3D product cluster, degrades to CSS motion */}
             <div className="lg:col-span-6 flex justify-center items-center relative py-6">
-              
-              {/* Main revolving circle dish */}
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
-                className="relative w-[280px] h-[280px] md:w-[420px] md:h-[420px] rounded-full overflow-hidden border-8 border-white shadow-2xl bg-white shrink-0"
-              >
-                <img
-                  src="https://res.cloudinary.com/dyzkjerez/image/upload/v1784547066/Gemini_Generated_Image_gm16lpgm16lpgm16_s7uw3a.png"
-                  alt="Fresh Nigerian food platter"
-                  className="w-full h-full object-cover"
-                />
-              </motion.div>
+              {(() => {
+                const fallback = (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
+                      className="relative w-[280px] h-[280px] md:w-[420px] md:h-[420px] rounded-full overflow-hidden border-8 border-white shadow-2xl bg-white shrink-0"
+                    >
+                      <img
+                        src="https://res.cloudinary.com/dyzkjerez/image/upload/v1784547066/Gemini_Generated_Image_gm16lpgm16lpgm16_s7uw3a.png"
+                        alt="Fresh Nigerian food platter"
+                        className="w-full h-full object-cover"
+                      />
+                    </motion.div>
 
-              {/* Sub-orbiter floating plates (mini illustrations, real catalog products) */}
-              {heroProducts.length === 3 && (
-                <div className="absolute w-[360px] h-[360px] md:w-[500px] md:h-[500px] rounded-full -z-10 pointer-events-none">
-                  <div className="absolute top-[8%] left-[10%] w-14 h-14 md:w-18 md:h-18 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
-                    <img src={heroProducts[0].image_url} className="w-full h-full object-cover" alt="" />
+                    {heroProducts.length === 3 && (
+                      <div className="absolute w-[360px] h-[360px] md:w-[500px] md:h-[500px] rounded-full -z-10 pointer-events-none">
+                        <div className="absolute top-[8%] left-[10%] w-14 h-14 md:w-18 md:h-18 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
+                          <img src={heroProducts[0].image_url} className="w-full h-full object-cover" alt="" />
+                        </div>
+                        <div className="absolute top-[50%] right-[-4%] w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
+                          <img src={heroProducts[1].image_url} className="w-full h-full object-cover" alt="" />
+                        </div>
+                        <div className="absolute bottom-[4%] left-[45%] w-14 h-14 md:w-18 md:h-18 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
+                          <img src={heroProducts[2].image_url} className="w-full h-full object-cover" alt="" />
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+
+                if (heroProducts.length < 3) return fallback;
+
+                return (
+                  <div className="relative w-full max-w-[480px] h-[340px] md:h-[440px]">
+                    <ErrorBoundary label="Hero3D" fallback={<div className="flex justify-center">{fallback}</div>}>
+                      <Suspense fallback={<div className="flex justify-center">{fallback}</div>}>
+                        <Hero3D heroProducts={heroProducts} />
+                      </Suspense>
+                    </ErrorBoundary>
                   </div>
-                  <div className="absolute top-[50%] right-[-4%] w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
-                    <img src={heroProducts[1].image_url} className="w-full h-full object-cover" alt="" />
-                  </div>
-                  <div className="absolute bottom-[4%] left-[45%] w-14 h-14 md:w-18 md:h-18 rounded-full border-4 border-white shadow-lg overflow-hidden bg-white">
-                    <img src={heroProducts[2].image_url} className="w-full h-full object-cover" alt="" />
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
 
@@ -154,12 +223,12 @@ export default function HomePage() {
 
       </section>
 
-      {/* ────────────────── WHY CHOOSE US? (MATCHING SYSTEM COLORS) ────────────────── */}
-      <section id="why-choose-us" className="py-20 bg-white dark:bg-neutral-950 transition-colors duration-300">
+      {/* ────────────────── WHY CHOOSE US? ────────────────── */}
+      <section id="why-choose-us" className="py-20 dark:bg-neutral-950 transition-colors duration-300" style={{ backgroundColor: "#FBF8F3" }}>
         <div className="max-w-7xl mx-auto px-6 md:px-12">
-          
+
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-2xl md:text-3xl font-extrabold text-[#2E7D32] dark:text-emerald-400 tracking-tight uppercase mb-4">
+            <h2 className="text-2xl md:text-3xl font-extrabold text-[#2E7D32] dark:text-emerald-400 tracking-tight uppercase mb-4 font-display">
               Why Choose Us?
             </h2>
             <p className="text-gray-500 dark:text-neutral-400 font-medium text-[15px] leading-relaxed">
@@ -170,7 +239,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
             {/* Box 1 */}
-            <div className="bg-white dark:bg-neutral-900 border-2 border-emerald-50 dark:border-neutral-800 p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
+            <div className="home-glass-card p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
               <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">📁</div>
               <h3 className="font-bold text-[16px] text-gray-800 dark:text-white mb-2">Best Quality</h3>
               <p className="text-gray-500 dark:text-neutral-400 text-[12.5px] leading-relaxed">
@@ -179,7 +248,7 @@ export default function HomePage() {
             </div>
 
             {/* Box 2 */}
-            <div className="bg-white dark:bg-neutral-900 border-2 border-emerald-50 dark:border-neutral-800 p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
+            <div className="home-glass-card p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
               <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">🍲</div>
               <h3 className="font-bold text-[16px] text-gray-800 dark:text-white mb-2">Variety of Dishes</h3>
               <p className="text-gray-500 dark:text-neutral-400 text-[12.5px] leading-relaxed">
@@ -188,7 +257,7 @@ export default function HomePage() {
             </div>
 
             {/* Box 3 */}
-            <div className="bg-white dark:bg-neutral-900 border-2 border-emerald-50 dark:border-neutral-800 p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
+            <div className="home-glass-card p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
               <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">🎁</div>
               <h3 className="font-bold text-[16px] text-gray-800 dark:text-white mb-2">Reusable Packs</h3>
               <p className="text-gray-500 dark:text-neutral-400 text-[12.5px] leading-relaxed">
@@ -202,12 +271,12 @@ export default function HomePage() {
       </section>
 
       {/* ────────────────── REAL PRODUCT CATALOGUE (MAINTAINS SYSTEM FUNCTIONALITY) ────────────────── */}
-      <section id="menu" className="py-20 bg-[#F8FAFC] dark:bg-neutral-900 transition-colors duration-300">
+      <section id="menu" className="py-20 dark:bg-neutral-900 transition-colors duration-300" style={{ backgroundColor: "#F3EDE1" }}>
         <div className="max-w-7xl mx-auto px-6 md:px-12">
-          
+
           <div className="text-center mb-12">
             <span className="text-xs font-bold tracking-widest text-[#F57C00] uppercase">Store Catalogue</span>
-            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mt-1 mb-2">Our Fresh Farm Products</h2>
+            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mt-1 mb-2 font-display">Our Fresh Farm Products</h2>
             <div className="w-12 h-1 bg-[#2E7D32] mx-auto rounded-full mb-8" />
             
             {/* Catalog search bar */}

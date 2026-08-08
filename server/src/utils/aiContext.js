@@ -349,6 +349,48 @@ async function saveMessages(conversationId, messages = []) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// CONVERSATION AUTO-TITLING
+// Fired (fire-and-forget) right after a conversation's first message is
+// saved, so threads show a real title instead of always "Untitled Chat".
+// Mirrors maybeSummarizeConversation's callGeminiRaw injection pattern —
+// falls back to a plain truncation of the user's message if the AI call
+// fails or isn't configured, so titling never blocks or breaks the chat.
+// ════════════════════════════════════════════════════════════════════════════
+async function maybeTitleConversation(conversationId, firstUserMessage, callGeminiRaw) {
+  if (!conversationId || !firstUserMessage) return;
+  try {
+    const conv = await pool.query(
+      "SELECT title, message_count FROM admin_ai_conversations WHERE id=$1",
+      [conversationId]
+    );
+    if (!conv.rows.length || conv.rows[0].title) return; // already titled
+    if (conv.rows[0].message_count > 2) return; // not the opening exchange anymore
+
+    let title = null;
+    try {
+      const raw = await callGeminiRaw(
+        `Write a short chat title (max 6 words, no quotes, no trailing punctuation) summarizing this user's request:\n"${firstUserMessage.slice(0, 300)}"`,
+        { maxOutputTokens: 20, temperature: 0.4 }
+      );
+      title = raw?.trim().replace(/^["']|["']$/g, "").slice(0, 80) || null;
+    } catch (err) {
+      // fall through to the truncation fallback below
+    }
+    if (!title) {
+      const trimmed = firstUserMessage.trim();
+      title = trimmed.length > 48 ? trimmed.slice(0, 48) + "…" : trimmed;
+    }
+
+    await pool.query(
+      "UPDATE admin_ai_conversations SET title=$1 WHERE id=$2 AND title IS NULL",
+      [title, conversationId]
+    );
+  } catch (err) {
+    console.warn("[aiContext] maybeTitleConversation failed:", err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // CONVERSATION SUMMARIZER
 // Called when a conversation reaches 20+ messages to archive the history
 // and store a compact summary for future context injection.
@@ -437,6 +479,7 @@ module.exports = {
   getOrCreateConversation,
   saveMessages,
   maybeSummarizeConversation,
+  maybeTitleConversation,
   exportUserData,
   deleteAllMemory,
 };

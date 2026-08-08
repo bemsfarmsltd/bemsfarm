@@ -8,6 +8,7 @@ const {
   getOrCreateConversation,
   saveMessages,
   maybeSummarizeConversation,
+  maybeTitleConversation,
   trackActivity,
 } = require("../utils/aiContext");
 
@@ -594,6 +595,7 @@ router.post("/chat", async (req, res) => {
           { role: "user",      content: lastMessage,   source: "user" },
           { role: "assistant", content: ruleBasedReply, source: "rule-based" },
         ]);
+        maybeTitleConversation(conversationId, lastMessage, callGeminiRaw);
       }
       return res.json({ reply: ruleBasedReply, source: "rule-based" });
     }
@@ -612,6 +614,7 @@ router.post("/chat", async (req, res) => {
           { role: "assistant", content: aiReply,     source: "gemini" },
         ]);
         maybeSummarizeConversation(conversationId, callGeminiRaw);
+        maybeTitleConversation(conversationId, lastMessage, callGeminiRaw);
       }
 
       return res.json({ reply: aiReply, source: "gemini" });
@@ -623,6 +626,7 @@ router.post("/chat", async (req, res) => {
           { role: "user",      content: lastMessage, source: "user" },
           { role: "assistant", content: fallback,    source: "fallback" },
         ]);
+        maybeTitleConversation(conversationId, lastMessage, callGeminiRaw);
       }
       return res.json({ reply: fallback, source: "fallback" });
     }
@@ -755,6 +759,7 @@ router.post("/chef-chat", async (req, res) => {
             { role: "assistant", content: reply,   source: "n8n" },
           ]);
           maybeSummarizeConversation(conversationId, callGeminiRaw);
+          maybeTitleConversation(conversationId, message, callGeminiRaw);
         }
 
         return res.json({
@@ -800,6 +805,7 @@ router.post("/chef-chat", async (req, res) => {
             { role: "assistant", content: reply,   source: "gemini" },
           ]);
           maybeSummarizeConversation(conversationId, callGeminiRaw);
+          maybeTitleConversation(conversationId, message, callGeminiRaw);
         }
 
         const productsResult = await pool.query(
@@ -824,6 +830,7 @@ router.post("/chef-chat", async (req, res) => {
             { role: "user",      content: message,  source: "user" },
             { role: "assistant", content: fallback, source: "fallback" },
           ]);
+          maybeTitleConversation(conversationId, message, callGeminiRaw);
         }
         return res.json({ reply: fallback, source: "fallback" });
       }

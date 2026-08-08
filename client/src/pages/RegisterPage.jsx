@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { GoogleLogin } from "@react-oauth/google";
 
@@ -10,6 +11,38 @@ const PREF_TAGS = [
   { id: "tubers", label: "Tubers & Roots 🥔" },
   { id: "spices", label: "Spices & Seasonings 🌶️" },
 ];
+
+const AUTH_CSS = `
+.auth-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.auth-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  pointer-events: none;
+  z-index: 0;
+}
+.auth-pill-btn {
+  border-radius: 999px !important;
+  transition: box-shadow 0.25s ease, transform 0.2s ease;
+}
+.auth-pill-btn:hover:not(:disabled) {
+  box-shadow: 0 12px 28px -8px rgba(27,94,32,0.55);
+  transform: translateY(-1px);
+}
+.auth-input {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.auth-input:focus {
+  box-shadow: 0 0 0 4px rgba(46,125,50,0.08);
+}
+`;
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -25,7 +58,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { register, loginWithGoogle } = useAuth();
-  
+
   const navigate = useNavigate();
 
   const handleInputChange = (field, value) => {
@@ -43,7 +76,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e?.preventDefault();
     setError("");
-    
+
     if (!form.name.trim()) return setError("Please enter your full name");
     if (!form.email.trim()) return setError("Please enter your email");
     if (form.email.toLowerCase().trim() !== form.confirmEmail.toLowerCase().trim())
@@ -81,15 +114,34 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#2E7D32] flex items-center justify-center p-4 md:p-8 font-sans">
-      
+    <div
+      className="min-h-screen flex items-center justify-center p-4 md:p-8 font-sans relative overflow-hidden"
+      style={{ backgroundColor: "#FBF8F3" }}
+    >
+      <style>{AUTH_CSS}</style>
+
+      {/* Decorative blobs on the cream backdrop */}
+      <div
+        className="auth-blob"
+        style={{ width: 320, height: 320, top: -100, right: -100, background: "radial-gradient(circle, rgba(46,125,50,0.16), transparent 70%)" }}
+      />
+      <div
+        className="auth-blob"
+        style={{ width: 260, height: 260, bottom: -80, left: -60, background: "radial-gradient(circle, rgba(245,158,11,0.14), transparent 70%)" }}
+      />
+
       {/* Outer Card Container */}
-      <div className="max-w-5xl w-full h-auto md:h-[720px] bg-white rounded-[32px] overflow-hidden shadow-2xl flex flex-col md:flex-row">
-        
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="max-w-5xl w-full h-auto md:h-[720px] bg-white rounded-[32px] overflow-hidden shadow-2xl flex flex-col md:flex-row relative z-10"
+        style={{ boxShadow: "0 30px 80px -20px rgba(27,67,50,0.25)" }}
+      >
         {/* Left Side: Video Pane */}
         <div className="w-full md:w-1/2 relative overflow-hidden h-[240px] md:h-full shrink-0">
           <video
-            src="https://res.cloudinary.com/dyzkjerez/video/upload/v1784540535/Create_a_vibrant_and_animated_u6qaef.mp4"
+            src="https://res.cloudinary.com/dyzkjerez/video/upload/v1786166480/A_slow_looping_cinematic_shot_i0swkm.mp4"
             autoPlay
             loop
             muted
@@ -98,10 +150,21 @@ export default function RegisterPage() {
           />
           {/* Dark green gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/90 via-emerald-950/30 to-transparent" />
-          
+          <div className="auth-grain" />
+
+          {/* Glass chip */}
+          <div className="absolute top-6 md:top-10 left-6 md:left-12 z-10">
+            <span
+              className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-white/90 px-3.5 py-1.5 rounded-full"
+              style={{ background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.25)", backdropFilter: "blur(6px)" }}
+            >
+              🌱 Join BemsFarms
+            </span>
+          </div>
+
           {/* Text Overlay */}
           <div className="absolute bottom-6 md:bottom-12 left-6 md:left-12 right-6 md:right-12 text-white z-10 text-left">
-            <h2 className="text-[28px] md:text-[38px] font-bold leading-tight font-serif mb-3">
+            <h2 className="text-[28px] md:text-[38px] font-bold leading-tight font-display mb-3">
               Create your <br />
               Free Account
             </h2>
@@ -113,14 +176,14 @@ export default function RegisterPage() {
 
         {/* Right Side: Form Pane */}
         <div className="flex-1 p-6 md:p-10 flex flex-col justify-between overflow-y-auto">
-          
+
           {/* Header decoration */}
           <div className="flex justify-end text-gray-400 text-xs font-semibold mb-4">
             <span>English (USA) ▼</span>
           </div>
 
           <div className="w-full max-w-sm mx-auto my-auto text-left">
-            <h1 className="text-2xl font-extrabold text-gray-900 mb-1">Sign up</h1>
+            <h1 className="text-2xl font-extrabold text-gray-900 mb-1 font-display">Sign up</h1>
             <p className="text-gray-500 text-[13px] mb-6 font-medium">
               Already have an account?{" "}
               <Link to="/login" className="text-emerald-700 hover:text-emerald-800 font-bold transition-colors">
@@ -145,7 +208,7 @@ export default function RegisterPage() {
                   value={form.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
                   placeholder="John Doe"
-                  className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                  className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
                   required
                 />
               </div>
@@ -161,7 +224,7 @@ export default function RegisterPage() {
                     value={form.email}
                     onChange={(e) => handleInputChange("email", e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
                     required
                   />
                 </div>
@@ -174,7 +237,7 @@ export default function RegisterPage() {
                     value={form.confirmEmail}
                     onChange={(e) => handleInputChange("confirmEmail", e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
                     required
                   />
                 </div>
@@ -191,7 +254,7 @@ export default function RegisterPage() {
                     value={form.phone}
                     onChange={(e) => handleInputChange("phone", e.target.value)}
                     placeholder="+234..."
-                    className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
                     required
                   />
                 </div>
@@ -204,7 +267,7 @@ export default function RegisterPage() {
                     value={form.confirmPhone}
                     onChange={(e) => handleInputChange("confirmPhone", e.target.value)}
                     placeholder="+234..."
-                    className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
                     required
                   />
                 </div>
@@ -221,7 +284,7 @@ export default function RegisterPage() {
                     value={form.password}
                     onChange={(e) => handleInputChange("password", e.target.value)}
                     placeholder="••••••"
-                    className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
                     required
                   />
                 </div>
@@ -234,13 +297,13 @@ export default function RegisterPage() {
                     value={form.confirm}
                     onChange={(e) => handleInputChange("confirm", e.target.value)}
                     placeholder="••••••"
-                    className="w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none transition-all placeholder-gray-300 bg-gray-50/50"
+                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
                     required
                   />
                 </div>
               </div>
 
-              {/* Preferences selector tags (Mockup "Select Skills" style) */}
+              {/* Preferences selector tags */}
               <div>
                 <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">
                   Select Preferences
@@ -271,7 +334,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#1B5E20] hover:bg-emerald-900 text-white font-bold py-3.5 rounded-2xl transition-all shadow-lg text-[14px] disabled:opacity-50 mt-4"
+                className="auth-pill-btn w-full bg-[#1B5E20] hover:bg-emerald-900 text-white font-bold py-3.5 rounded-2xl shadow-lg text-[14px] disabled:opacity-50 mt-4"
               >
                 {loading ? "Creating Account..." : "Create an Account"}
               </button>
@@ -306,7 +369,7 @@ export default function RegisterPage() {
 
         </div>
 
-      </div>
+      </motion.div>
 
     </div>
   );

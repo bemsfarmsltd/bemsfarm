@@ -398,7 +398,7 @@ export default function LandingPage() {
             <div className="p-6 bg-[#F8FAFC] border border-gray-100 rounded-2xl text-center flex flex-col items-center">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-[16px] text-primary font-bold mb-4">🔒</div>
               <h4 className="font-bold text-[15px] text-gray-800 mb-1.5">Secured Payments</h4>
-              <p className="text-gray-500 text-[12px] leading-relaxed">Integrates with Paystack for seamless debit card transactions.</p>
+              <p className="text-gray-500 text-[12px] leading-relaxed">Integrates with Monnify for seamless debit card transactions.</p>
             </div>
 
             {/* Feature Box 4 */}

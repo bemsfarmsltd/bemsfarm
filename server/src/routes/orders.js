@@ -4,7 +4,7 @@ const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { trackActivity } = require("../utils/aiContext");
 const { NAIRA_PER_UNIT } = require("../utils/currency");
-const { verifyPaystackTransaction } = require("../utils/paystack");
+const { verifyMonnifyTransaction } = require("../utils/monnify");
 const { validateCoupon, recordCouponUsage } = require("../utils/coupons");
 
 // ─────────────────────────────────────────────
@@ -19,7 +19,7 @@ const VALID_STATUSES = [
   "cancelled",
 ];
 
-const VALID_PAYMENT_METHODS = ["paystack", "cod"];
+const VALID_PAYMENT_METHODS = ["monnify", "cod"];
 const DELIVERY_FEE = 500; // Naira — must match client/src/pages/CheckoutPage.jsx DELIVERY
 
 // ─────────────────────────────────────────────
@@ -34,7 +34,7 @@ router.post("/", protect, async (req, res) => {
     return res.status(400).json({ message: "No items in order" });
   }
 
-  const method = payment_method || "paystack";
+  const method = payment_method || "monnify";
   if (!VALID_PAYMENT_METHODS.includes(method)) {
     return res.status(400).json({ message: "Invalid payment method" });
   }
@@ -50,25 +50,26 @@ router.post("/", protect, async (req, res) => {
     requested.set(productId, (requested.get(productId) || 0) + quantity);
   }
 
-  // For Paystack orders, verify the transaction with Paystack directly
+  // For Monnify orders, verify the transaction with Monnify directly
   // BEFORE touching the DB — never trust the client's "payment succeeded"
-  // callback, and never charge order rows/stock a lock for a slow HTTP call.
-  let paystackData = null;
-  if (method === "paystack") {
+  // callback, and never hold a row lock for a slow HTTP call.
+  // NOTE: Monnify amounts are plain Naira decimals (unlike Paystack's kobo).
+  let monnifyData = null;
+  if (method === "monnify") {
     if (!payment_ref) {
       return res.status(400).json({ message: "Missing payment reference" });
     }
     try {
-      paystackData = await verifyPaystackTransaction(payment_ref);
+      monnifyData = await verifyMonnifyTransaction(payment_ref);
     } catch (err) {
       return res.status(402).json({
         message: "Payment could not be verified: " + err.message,
       });
     }
-    if (paystackData.status !== "success") {
+    if (monnifyData.paymentStatus !== "PAID") {
       return res.status(402).json({ message: "Payment was not successful" });
     }
-    if (paystackData.currency !== "NGN") {
+    if (monnifyData.currencyCode !== "NGN") {
       return res.status(402).json({ message: "Unexpected payment currency" });
     }
   }
@@ -77,8 +78,8 @@ router.post("/", protect, async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    // Idempotency: don't let the same Paystack payment fund two orders
-    if (method === "paystack") {
+    // Idempotency: don't let the same Monnify payment fund two orders
+    if (method === "monnify") {
       const dup = await client.query(
         "SELECT id FROM orders WHERE payment_ref = $1",
         [payment_ref],
@@ -141,11 +142,11 @@ router.post("/", protect, async (req, res) => {
 
     const total = subtotal - couponDiscount + DELIVERY_FEE;
 
-    // Reconcile: the amount actually paid via Paystack must match the
+    // Reconcile: the amount actually paid via Monnify must match the
     // server-computed total (protects against a tampered client-side amount).
-    if (method === "paystack") {
-      const expectedKobo = Math.round(total * 100);
-      if (Math.abs(paystackData.amount - expectedKobo) > 1) {
+    // Monnify amounts are plain Naira decimals, not kobo.
+    if (method === "monnify") {
+      if (Math.abs(monnifyData.amountPaid - total) > 1) {
         await client.query("ROLLBACK");
         return res.status(402).json({
           message: "Amount paid does not match order total. Please contact support with reference " + payment_ref,
@@ -154,7 +155,7 @@ router.post("/", protect, async (req, res) => {
     }
 
     const orderId = "BF-" + Date.now().toString(36).toUpperCase();
-    const status = method === "paystack" ? "confirmed" : "pending";
+    const status = method === "monnify" ? "confirmed" : "pending";
 
     await client.query(
       `INSERT INTO orders
@@ -167,7 +168,7 @@ router.post("/", protect, async (req, res) => {
         couponDiscount,
         status,
         method,
-        method === "paystack" ? payment_ref : null,
+        method === "monnify" ? payment_ref : null,
         address || "",
         source || "Web App",
       ],

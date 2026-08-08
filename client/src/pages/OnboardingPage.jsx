@@ -9,7 +9,7 @@ const TOTAL_STEPS = 4;
 // Step panel images — real farm/food photography for each step
 const STEP_IMAGES = [
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=1000&q=90", // market stall
-  "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=1000&q=90", // farm harvest
+  "https://res.cloudinary.com/dyzkjerez/image/upload/v1786167154/Gemini_Generated_Image_ep0doxep0doxep0d_hxtkii.png", // family sharing a meal
   "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=1000&q=90", // fresh veg
   "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=1000&q=90", // produce
 ];

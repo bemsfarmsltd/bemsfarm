@@ -770,7 +770,7 @@ export default function OrderDetailPage() {
               textAlign: "right",
             }}
           >
-            Paid via {order.payment_method || "Paystack"}
+            Paid via {order.payment_method || "Monnify"}
           </div>
         </div>
       </div>

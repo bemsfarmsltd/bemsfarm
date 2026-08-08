@@ -10,7 +10,7 @@ export default function FraudDetectionPage() {
   // Form inputs
   const [userId, setUserId] = useState(1);
   const [orderAmount, setOrderAmount] = useState(25000);
-  const [paymentMethod, setPaymentMethod] = useState("paystack");
+  const [paymentMethod, setPaymentMethod] = useState("monnify");
 
   // Results
   const [fraudCheck, setFraudCheck] = useState(null);
@@ -237,7 +237,7 @@ export default function FraudDetectionPage() {
                     (e.currentTarget.style.borderColor = "#E5E7EB")
                   }
                 >
-                  <option value="paystack">Paystack</option>
+                  <option value="monnify">Monnify</option>
                   <option value="cod">Cash on Delivery</option>
                   <option value="bank_transfer">Bank Transfer</option>
                 </select>

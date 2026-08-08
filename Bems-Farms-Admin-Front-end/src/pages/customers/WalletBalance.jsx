@@ -25,7 +25,7 @@ const TIER_CFG = {
   Silver:   { bg:'#f8fafc', color:'#64748b', border:'#cbd5e1' },
   Bronze:   { bg:'#fff7ed', color:'#c2410c', border:'#fed7aa' },
 }
-const METHODS = ['Bank Transfer','Paystack','Cash','POS','USSD']
+const METHODS = ['Bank Transfer','Monnify','Cash','POS','USSD']
 
 const card = { background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
 const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid #e5e7eb', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'#111827', background:'#fff' }

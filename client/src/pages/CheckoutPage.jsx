@@ -46,7 +46,8 @@ const STATES = [
   "Zamfara",
 ];
 
-const PAYSTACK_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "";
+const MONNIFY_API_KEY = import.meta.env.VITE_MONNIFY_API_KEY || "";
+const MONNIFY_CONTRACT_CODE = import.meta.env.VITE_MONNIFY_CONTRACT_CODE || "";
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -82,26 +83,26 @@ export default function CheckoutPage() {
     city: "",
     state: "Lagos",
   });
-  const [payMethod, setPayMethod] = useState("paystack");
+  const [payMethod, setPayMethod] = useState("monnify");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [psLoaded, setPsLoaded] = useState(false);
+  const [monnifyLoaded, setMonnifyLoaded] = useState(false);
 
   const DELIVERY = 500;
   const discount = appliedCoupon?.discount || 0;
   const total = cartSubtotal + DELIVERY - discount;
 
   useEffect(() => {
-    if (document.getElementById("paystack-js")) {
-      setPsLoaded(true);
+    if (document.getElementById("monnify-js")) {
+      setMonnifyLoaded(true);
       return;
     }
     const s = document.createElement("script");
-    s.id = "paystack-js";
-    s.src = "https://js.paystack.co/v1/inline.js";
+    s.id = "monnify-js";
+    s.src = "https://sdk.monnify.com/plugin/monnify.js";
     s.async = true;
-    s.onload = () => setPsLoaded(true);
-    s.onerror = () => console.warn("⚠️ Paystack script failed to load");
+    s.onload = () => setMonnifyLoaded(true);
+    s.onerror = () => console.warn("⚠️ Monnify script failed to load");
     document.body.appendChild(s);
   }, []);
 
@@ -193,8 +194,8 @@ export default function CheckoutPage() {
     return res.data.orderId || res.data.id;
   };
 
-  // ── PAYSTACK PAYMENT ────────────────────────────────────────
-  const handlePaystack = (e) => {
+  // ── MONNIFY PAYMENT ─────────────────────────────────────────
+  const handleMonnify = (e) => {
     e.preventDefault();
     const err = validate();
     if (err) {
@@ -202,7 +203,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Validate cart items BEFORE opening Paystack — catch nested-shape
+    // Validate cart items BEFORE opening Monnify — catch nested-shape
     // or NaN problems before the customer is ever charged.
     try {
       buildOrderItems();
@@ -211,7 +212,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (!psLoaded || !window.PaystackPop) {
+    if (!monnifyLoaded || !window.MonnifySDK) {
       setError(
         "Payment gateway not ready. Please use Cash on Delivery or refresh the page.",
       );
@@ -221,49 +222,56 @@ export default function CheckoutPage() {
     setError(null);
     setLoading(true);
 
-    const onPaymentSuccess = (response) => {
-      console.log("✅ Paystack success:", response.reference);
-      finalizeOrderAfterPayment(response.reference);
-    };
-
-    const finalizeOrderAfterPayment = async (reference) => {
+    // transactionReference (not our own paymentReference) is what the
+    // server's verify call and webhook key off of — see utils/monnify.js.
+    const finalizeOrderAfterPayment = async (transactionReference) => {
       try {
-        const orderId = await createOrder(reference);
+        const orderId = await createOrder(transactionReference);
         clearCart();
         setTimeout(() => {
           setLoading(false);
-          navigate("/order-confirmed", { state: { orderId, reference } });
+          navigate("/order-confirmed", { state: { orderId, reference: transactionReference } });
         }, 400);
       } catch (orderErr) {
         console.error("❌ Order creation after payment failed:", orderErr);
         setLoading(false);
         const detail = orderErr?.response?.data?.message || orderErr.message;
         setError(
-          `Payment was received (ref: ${reference}) but order creation failed: ${detail}. ` +
+          `Payment was received (ref: ${transactionReference}) but order creation failed: ${detail}. ` +
             `Please contact support with this reference number — your payment is safe.`,
         );
       }
     };
 
     try {
-      const handler = window.PaystackPop.setup({
-        key: PAYSTACK_KEY,
-        email: form.email,
-        amount: Math.round(total * 100),
-        ref: `BF-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      window.MonnifySDK.initialize({
+        amount: total, // Monnify amounts are plain Naira, not kobo
         currency: "NGN",
-        channels: ["card", "bank", "ussd", "qr", "bank_transfer"],
-        callback: onPaymentSuccess,
+        reference: `BF-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        customerFullName: form.fullName,
+        customerEmail: form.email,
+        apiKey: MONNIFY_API_KEY,
+        contractCode: MONNIFY_CONTRACT_CODE,
+        paymentDescription: "BemsFarms order",
+        paymentMethods: ["CARD", "ACCOUNT_TRANSFER", "USSD"],
+        onLoadStart: () => console.log("ℹ️ Monnify checkout opened"),
+        onComplete: (response) => {
+          if (response.paymentStatus !== "PAID" && response.status !== "SUCCESS") {
+            setLoading(false);
+            setError("Payment was not completed. Try again or use Cash on Delivery.");
+            return;
+          }
+          console.log("✅ Monnify success:", response.transactionReference);
+          finalizeOrderAfterPayment(response.transactionReference);
+        },
         onClose: () => {
-          console.log("ℹ️ Paystack modal closed");
+          console.log("ℹ️ Monnify modal closed");
           setLoading(false);
           setError("Payment was cancelled. Try again or use Cash on Delivery.");
         },
       });
-
-      handler.openIframe();
-    } catch (psErr) {
-      console.error("❌ Paystack setup error:", psErr);
+    } catch (mfErr) {
+      console.error("❌ Monnify setup error:", mfErr);
       setLoading(false);
       setError("Could not open payment modal. Please try Cash on Delivery.");
     }
@@ -330,7 +338,7 @@ export default function CheckoutPage() {
               background: "#1B4332",
               color: "white",
               border: "none",
-              borderRadius: "10px",
+              borderRadius: "999px",
               fontWeight: 700,
               cursor: "pointer",
               fontSize: "14px",
@@ -366,9 +374,9 @@ export default function CheckoutPage() {
     letterSpacing: "0.5px",
   };
   const cardStyle = {
-    backgroundColor: "white",
-    border: "1px solid #E5E7EB",
-    borderRadius: "16px",
+    backgroundColor: "rgba(255,255,255,0.85)",
+    border: "1px solid rgba(27,67,50,0.08)",
+    borderRadius: "20px",
     padding: "24px",
   };
 
@@ -376,17 +384,23 @@ export default function CheckoutPage() {
     <PageWrapper>
       <div
         style={{
-          backgroundColor: "#F9FAFB",
+          backgroundColor: "#FBF8F3",
           minHeight: "100vh",
           padding: "0 0 80px",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
+        <div className="bf-cart-blob" style={{ position: "absolute", width: 320, height: 320, top: -100, left: -100, borderRadius: "50%", filter: "blur(90px)", pointerEvents: "none", background: "radial-gradient(circle, rgba(46,125,50,0.10), transparent 70%)" }} />
         <div
           style={{
-            backgroundColor: "white",
-            borderBottom: "1px solid #F3F4F6",
+            backgroundColor: "rgba(255,255,255,0.6)",
+            backdropFilter: "blur(8px)",
+            borderBottom: "1px solid rgba(27,67,50,0.06)",
             padding: "20px 24px",
             marginBottom: "24px",
+            position: "relative",
+            zIndex: 1,
           }}
         >
           <div style={{ maxWidth: "960px", margin: "0 auto" }}>
@@ -408,7 +422,7 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        <div style={{ maxWidth: "960px", margin: "0 auto", padding: "0 16px" }}>
+        <div style={{ maxWidth: "960px", margin: "0 auto", padding: "0 16px", position: "relative", zIndex: 1 }}>
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
@@ -643,9 +657,9 @@ export default function CheckoutPage() {
                 >
                   {[
                     {
-                      id: "paystack",
+                      id: "monnify",
                       icon: "💳",
-                      label: "Card / Bank (Paystack)",
+                      label: "Card / Bank (Monnify)",
                       desc: "Visa, Mastercard, USSD, Bank Transfer",
                     },
                     {
@@ -663,7 +677,7 @@ export default function CheckoutPage() {
                         alignItems: "center",
                         gap: "12px",
                         padding: "14px 16px",
-                        borderRadius: "12px",
+                        borderRadius: "18px",
                         border: "none",
                         cursor: "pointer",
                         textAlign: "left",
@@ -727,13 +741,13 @@ export default function CheckoutPage() {
                 <motion.button
                   whileTap={{ scale: loading ? 1 : 0.97 }}
                   onClick={
-                    payMethod === "paystack" ? handlePaystack : handleCOD
+                    payMethod === "monnify" ? handleMonnify : handleCOD
                   }
                   disabled={loading}
                   style={{
                     width: "100%",
                     padding: "16px",
-                    borderRadius: "12px",
+                    borderRadius: "999px",
                     border: "none",
                     background: loading
                       ? "#9CA3AF"
@@ -768,7 +782,7 @@ export default function CheckoutPage() {
                       </motion.span>
                       Processing…
                     </>
-                  ) : payMethod === "paystack" ? (
+                  ) : payMethod === "monnify" ? (
                     <>🔒 Pay ₦{total.toLocaleString()} Securely</>
                   ) : (
                     <>📦 Confirm Order · ₦{total.toLocaleString()}</>
@@ -962,7 +976,7 @@ export default function CheckoutPage() {
                   marginTop: "16px",
                   padding: "10px",
                   border: "1px solid #E5E7EB",
-                  borderRadius: "10px",
+                  borderRadius: "999px",
                   background: "white",
                   color: "#6B7280",
                   fontSize: "13px",
