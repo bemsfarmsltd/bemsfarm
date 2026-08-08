@@ -69,7 +69,7 @@ router.post("/", protect, async (req, res) => {
     if (monnifyData.paymentStatus !== "PAID") {
       return res.status(402).json({ message: "Payment was not successful" });
     }
-    if (monnifyData.currencyCode !== "NGN") {
+    if (monnifyData.currency !== "NGN") {
       return res.status(402).json({ message: "Unexpected payment currency" });
     }
   }

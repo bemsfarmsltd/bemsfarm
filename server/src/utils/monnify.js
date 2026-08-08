@@ -67,7 +67,7 @@ async function verifyMonnifyTransaction(transactionReference) {
     );
   }
 
-  return data.responseBody; // { paymentStatus, amountPaid, transactionReference, paymentReference, currencyCode, ... }
+  return data.responseBody; // { paymentStatus, amountPaid (string), transactionReference, paymentReference, currency, ... } — verified live 2026-08-08 against sandbox
 }
 
 // Monnify signs webhook payloads with HMAC-SHA512 over the raw request
