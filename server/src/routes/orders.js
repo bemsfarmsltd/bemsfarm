@@ -194,6 +194,34 @@ router.post("/", protect, async (req, res) => {
       await recordCouponUsage(client, { coupon: appliedCoupon, discount: couponDiscount, customerId: null, orderId });
     }
 
+    // Monnify's webhook can arrive before this order row exists (it fires the
+    // moment Monnify's backend sees the payment, independent of our own
+    // create-order round trip). When that happens, the webhook's order lookup
+    // in misc.js finds nothing, writes its `payments` row with order_id=NULL,
+    // and — since webhooks aren't retried on a 2xx response — never gets
+    // another chance to link it or write the income ledger entry. Close that
+    // gap here: if an orphaned payment for this payment_ref is already
+    // sitting there, link it and backfill the ledger entry the webhook would
+    // have written had it found this order in time.
+    if (method === "monnify") {
+      const orphanedPayment = await client.query(
+        "UPDATE payments SET order_id = $1, updated_at = NOW() WHERE payment_ref = $2 AND order_id IS NULL RETURNING id",
+        [orderId, payment_ref],
+      );
+      if (orphanedPayment.rows.length > 0) {
+        const systemUserRes = await client.query(
+          "SELECT id FROM users ORDER BY (CASE WHEN role='superadmin' THEN 1 WHEN role='manager' THEN 2 WHEN role='admin' THEN 3 ELSE 4 END) LIMIT 1",
+        );
+        const systemUserId = systemUserRes.rows[0]?.id || null;
+        await client.query(
+          `INSERT INTO income (reference, source, source_type, category, description, amount, payment_method, order_id, status, date, created_by)
+           VALUES ($1, 'sales', 'online_order', 'POS/Online Sale', $2, $3, 'transfer', $4, 'completed', CURRENT_DATE, $5)
+           ON CONFLICT (reference) DO NOTHING`,
+          [`INC-${payment_ref}`, `Automated payment reconciliation for Order #${orderId}`, monnifyData.amountPaid, String(orderId), systemUserId],
+        );
+      }
+    }
+
     await client.query("COMMIT");
 
     // Log order creation for AI memory

@@ -849,3 +849,13 @@ CREATE TABLE IF NOT EXISTS driver_locations (
 -- Swapping payment gateways; issues.paystack_refund_id held Paystack's
 -- refund id string, now holds Monnify's refundReference instead.
 ALTER TABLE issues RENAME COLUMN paystack_refund_id TO monnify_refund_id;
+
+-- ── 24. income.reference too short for Monnify transaction refs ──
+-- Found live: the webhook's income-ledger insert uses `INC-${transactionReference}`.
+-- Paystack references fit comfortably in VARCHAR(30); Monnify's format
+-- ("MNFY|<contract>|<timestamp>|<seq>") is itself already ~30 chars, so with
+-- the "INC-" prefix every real Monnify reconciliation was throwing
+-- "value too long for type character varying(30)" and silently failing to
+-- record the ledger entry (order still confirmed correctly — this only
+-- broke the accounting-side income row). Widened with headroom.
+ALTER TABLE income ALTER COLUMN reference TYPE VARCHAR(64);
