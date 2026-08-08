@@ -60,6 +60,31 @@ export default function LandingPage() {
   const [isMuted, setIsMuted] = useState(false);
   const videoRef = useRef(null);
 
+  // The Chef Bems showcase video sits well below the fold but was previously
+  // rendered unconditionally, so it started downloading and autoplaying
+  // immediately on page load — competing for bandwidth with everything
+  // above the fold and contributing to the reported page-load lag. Only
+  // mount (and start fetching) the video once its container actually
+  // scrolls into view.
+  const [chefVideoInView, setChefVideoInView] = useState(false);
+  const chefVideoContainerRef = useRef(null);
+
+  useEffect(() => {
+    const el = chefVideoContainerRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setChefVideoInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "300px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Rotate hero images and video
   useEffect(() => {
     if (heroVisualIndex === 5) return;
@@ -203,7 +228,7 @@ export default function LandingPage() {
                     <motion.video
                       key="hero-video"
                       ref={videoRef}
-                      src="https://res.cloudinary.com/dyzkjerez/video/upload/v1785505349/Create_a_Video_of_the_characte_xfqkn8.mp4"
+                      src="https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_640/v1785505349/Create_a_Video_of_the_characte_xfqkn8.mp4"
                       autoPlay
                       muted={isMuted}
                       playsInline
@@ -431,15 +456,17 @@ export default function LandingPage() {
                 <h4 className="text-[15px] font-serif font-extrabold text-emerald-950">Chef Bems Mascot</h4>
               </div>
               
-              <div className="w-full h-full">
-                <video
-                  src="https://res.cloudinary.com/dyzkjerez/video/upload/v1784539329/Give_me_a_video_of_the_charact_supd0d.mp4"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
+              <div ref={chefVideoContainerRef} className="w-full h-full bg-[#F8FAFC]">
+                {chefVideoInView && (
+                  <video
+                    src="https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_640/v1784539329/Give_me_a_video_of_the_charact_supd0d.mp4"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                )}
               </div>
             </div>
 

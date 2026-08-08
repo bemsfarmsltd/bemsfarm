@@ -422,7 +422,7 @@ export default function ProductsPage() {
               pointerEvents: "none",
               borderRadius: "24px"
             }}
-            src="https://res.cloudinary.com/dyzkjerez/video/upload/v1786166618/A_vibrant_top_down_flat_lay_vi_xuitwq.mp4"
+            src="https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166618/A_vibrant_top_down_flat_lay_vi_xuitwq.mp4"
           />
         </div>
 

@@ -91,7 +91,7 @@ export default function HomePage() {
               muted
               playsInline
               className="absolute inset-0 w-full h-full object-cover opacity-40"
-              src="https://res.cloudinary.com/dyzkjerez/video/upload/v1786166058/A_warm_sun_drenched_Nigerian_f7oi4i.mp4"
+              src="https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_960/v1786166058/A_warm_sun_drenched_Nigerian_f7oi4i.mp4"
             />
             <div className="absolute inset-0 bg-gradient-to-br from-[#1B4332]/70 via-[#2E7D32]/50 to-[#2E7D32]/70" />
           </div>

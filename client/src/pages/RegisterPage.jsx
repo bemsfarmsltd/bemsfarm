@@ -141,7 +141,7 @@ export default function RegisterPage() {
         {/* Left Side: Video Pane */}
         <div className="w-full md:w-1/2 relative overflow-hidden h-[240px] md:h-full shrink-0">
           <video
-            src="https://res.cloudinary.com/dyzkjerez/video/upload/v1786166480/A_slow_looping_cinematic_shot_i0swkm.mp4"
+            src="https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_640/v1786166480/A_slow_looping_cinematic_shot_i0swkm.mp4"
             autoPlay
             loop
             muted
