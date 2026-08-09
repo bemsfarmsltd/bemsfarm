@@ -39,48 +39,97 @@ const HOME_CSS = `
   border: 1px solid rgba(27,67,50,0.08);
   backdrop-filter: blur(14px);
 }
-.hero-floater {
-  border: 4px solid #fff;
-  box-shadow: 0 16px 34px -10px rgba(46,125,50,0.3);
+.hero-blob-shape {
+  position: absolute;
+  inset: 0;
+  animation: blobMorphA 11s ease-in-out infinite;
+}
+.hero-blob-shape.morph-b { animation-name: blobMorphB; }
+.hero-blob-shape.variant-emerald {
+  background:
+    radial-gradient(circle at 28% 24%, rgba(255,255,255,0.85), rgba(255,255,255,0) 34%),
+    conic-gradient(from 210deg at 50% 50%, #0F3D22, #2E7D32 28%, #7BE38A 46%, #1B4332 68%, #0F3D22 100%);
+  box-shadow:
+    inset -10px -12px 22px rgba(0,0,0,0.28),
+    inset 8px 10px 18px rgba(255,255,255,0.45),
+    0 22px 40px -12px rgba(27,67,50,0.4);
+}
+.hero-blob-shape.variant-amber {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.9), rgba(255,255,255,0) 32%),
+    conic-gradient(from 200deg at 50% 50%, #2B1B00, #F57C00 30%, #FFD54A 50%, #7A4A00 72%, #2B1B00 100%);
+  box-shadow:
+    inset -10px -12px 22px rgba(0,0,0,0.3),
+    inset 8px 10px 18px rgba(255,255,255,0.5),
+    0 22px 40px -12px rgba(154,90,0,0.35);
+}
+.hero-blob-shape.variant-pearl {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.95), rgba(255,255,255,0) 36%),
+    conic-gradient(from 180deg at 50% 50%, #EFE6CF, #FFFFFF 32%, #E4D6A8 55%, #FBF8F3 78%, #EFE6CF 100%);
+  box-shadow:
+    inset -8px -10px 18px rgba(120,90,20,0.2),
+    inset 6px 8px 16px rgba(255,255,255,0.6),
+    0 18px 34px -12px rgba(120,90,20,0.25);
+}
+.hero-blob-shine {
+  position: absolute;
+  width: 34%;
+  height: 22%;
+  top: 14%;
+  left: 20%;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.75);
+  filter: blur(4px);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+@keyframes blobMorphA {
+  0%, 100% { border-radius: 42% 58% 65% 35% / 45% 45% 55% 55%; }
+  33%      { border-radius: 60% 40% 30% 70% / 60% 35% 65% 40%; }
+  66%      { border-radius: 35% 65% 55% 45% / 40% 60% 40% 60%; }
+}
+@keyframes blobMorphB {
+  0%, 100% { border-radius: 65% 35% 45% 55% / 40% 55% 45% 60%; }
+  50%      { border-radius: 40% 60% 60% 40% / 60% 40% 55% 45%; }
 }
 `;
 
-// Playful floating product cutouts scattered behind the hero text — sized,
+// Playful floating liquid-glass blobs scattered behind the hero text — sized,
 // positioned, and timed by hand (not random) so the layout is stable across renders.
 // Tuned for the two-column desktop/tablet layout; shown md: and up only, since
 // the same coordinates would collide with body text once the layout stacks to 1 column.
-const HERO_FLOATERS = [
-  { size: 104, top: "2%",  left: "4%",  floatDur: 6.0, rotDur: 8.0,  delay: 0.0, tilt: 12, spin: 22, blur: 0 },
-  { size: 64,  top: "14%", left: "35%", floatDur: 5.0, rotDur: 6.5,  delay: 0.5, tilt: -10, spin: 18, blur: 1 },
-  { size: 130, top: "56%", left: "1%",  floatDur: 7.0, rotDur: 9.0,  delay: 1.0, tilt: 10, spin: 20, blur: 0 },
-  { size: 56,  top: "78%", left: "24%", floatDur: 4.5, rotDur: 5.5,  delay: 1.4, tilt: -14, spin: 16, blur: 1 },
-  { size: 88,  top: "36%", left: "18%", floatDur: 6.5, rotDur: 7.5,  delay: 0.3, tilt: 9,  spin: 20, blur: 0 },
-  { size: 74,  top: "0%",  left: "52%", floatDur: 5.5, rotDur: 7.0,  delay: 0.7, tilt: -12, spin: 18, blur: 1 },
-  { size: 112, top: "62%", left: "46%", floatDur: 6.0, rotDur: 8.5,  delay: 1.1, tilt: 11, spin: 20, blur: 0 },
-  { size: 50,  top: "28%", left: "44%", floatDur: 4.0, rotDur: 5.0,  delay: 1.7, tilt: -8,  spin: 16, blur: 1 },
-  { size: 96,  top: "8%",  left: "68%", floatDur: 6.2, rotDur: 7.8,  delay: 0.4, tilt: 13,  spin: 20, blur: 0.5 },
-  { size: 66,  top: "54%", left: "80%", floatDur: 5.2, rotDur: 6.0,  delay: 0.9, tilt: -11, spin: 18, blur: 1 },
-  { size: 84,  top: "80%", left: "62%", floatDur: 6.8, rotDur: 8.2,  delay: 1.3, tilt: 10,  spin: 20, blur: 0 },
-  { size: 48,  top: "44%", left: "92%", floatDur: 4.6, rotDur: 5.8,  delay: 0.6, tilt: -13, spin: 16, blur: 1.5 },
+const HERO_BLOBS = [
+  { size: 120, top: "2%",  left: "4%",  floatDur: 6.0, rotDur: 8.0,  delay: 0.0, tilt: 10, spin: 16, variant: "emerald", morph: "a" },
+  { size: 70,  top: "14%", left: "35%", floatDur: 5.0, rotDur: 6.5,  delay: 0.5, tilt: -9,  spin: 14, variant: "amber",   morph: "b" },
+  { size: 150, top: "54%", left: "0%",  floatDur: 7.0, rotDur: 9.0,  delay: 1.0, tilt: 8,   spin: 15, variant: "pearl",  morph: "a" },
+  { size: 62,  top: "78%", left: "24%", floatDur: 4.5, rotDur: 5.5,  delay: 1.4, tilt: -12, spin: 13, variant: "emerald", morph: "b" },
+  { size: 96,  top: "36%", left: "18%", floatDur: 6.5, rotDur: 7.5,  delay: 0.3, tilt: 8,   spin: 15, variant: "amber",   morph: "a" },
+  { size: 80,  top: "0%",  left: "52%", floatDur: 5.5, rotDur: 7.0,  delay: 0.7, tilt: -10, spin: 14, variant: "pearl",  morph: "b" },
+  { size: 126, top: "60%", left: "46%", floatDur: 6.0, rotDur: 8.5,  delay: 1.1, tilt: 9,   spin: 15, variant: "emerald", morph: "a" },
+  { size: 56,  top: "28%", left: "44%", floatDur: 4.0, rotDur: 5.0,  delay: 1.7, tilt: -7,  spin: 13, variant: "amber",   morph: "b" },
+  { size: 108, top: "8%",  left: "68%", floatDur: 6.2, rotDur: 7.8,  delay: 0.4, tilt: 11,  spin: 15, variant: "pearl",  morph: "a" },
+  { size: 74,  top: "54%", left: "80%", floatDur: 5.2, rotDur: 6.0,  delay: 0.9, tilt: -9,  spin: 14, variant: "emerald", morph: "b" },
+  { size: 94,  top: "80%", left: "62%", floatDur: 6.8, rotDur: 8.2,  delay: 1.3, tilt: 8,   spin: 15, variant: "amber",   morph: "a" },
+  { size: 54,  top: "44%", left: "92%", floatDur: 4.6, rotDur: 5.8,  delay: 0.6, tilt: -11, spin: 13, variant: "pearl",  morph: "b" },
 ];
 
 // Mobile gets a much smaller, corner-only set — the stacked single-column
 // layout leaves no safe gaps next to the body text for a dense cluster.
-const HERO_FLOATERS_MOBILE = [
-  { size: 60, top: "2%", left: "4%",  floatDur: 5.5, rotDur: 7.0, delay: 0.0, tilt: 12, spin: 18, blur: 0 },
-  { size: 52, top: "3%", left: "76%", floatDur: 4.8, rotDur: 6.2, delay: 0.4, tilt: -11, spin: 16, blur: 0 },
+const HERO_BLOBS_MOBILE = [
+  { size: 68, top: "2%", left: "4%",  floatDur: 5.5, rotDur: 7.0, delay: 0.0, tilt: 10, spin: 14, variant: "emerald", morph: "a" },
+  { size: 58, top: "3%", left: "76%", floatDur: 4.8, rotDur: 6.2, delay: 0.4, tilt: -9,  spin: 13, variant: "amber",   morph: "b" },
 ];
 
-function HeroFloater({ f, src }) {
+function HeroLiquidBlob({ f }) {
   return (
     <motion.div
-      className="hero-floater absolute rounded-full overflow-hidden bg-white"
+      className="absolute"
       style={{
         width: f.size,
         height: f.size,
         top: f.top,
         left: f.left,
-        filter: f.blur ? `blur(${f.blur}px)` : undefined,
         transformStyle: "preserve-3d",
       }}
       animate={{
@@ -94,7 +143,9 @@ function HeroFloater({ f, src }) {
         rotateY: { duration: f.rotDur, repeat: Infinity, ease: "easeInOut", delay: f.delay },
       }}
     >
-      <img src={src} alt="" className="w-full h-full object-cover" />
+      <div className={`hero-blob-shape variant-${f.variant} ${f.morph === "b" ? "morph-b" : ""}`} style={{ animationDuration: `${f.floatDur * 1.8}s` }}>
+        <div className="hero-blob-shine" />
+      </div>
     </motion.div>
   );
 }
@@ -133,13 +184,6 @@ export default function HomePage() {
     return (featured.length >= 3 ? featured : inStock).slice(0, 3);
   }, [products]);
 
-  // Real product photos used to fill the floating hero cluster — cycled if the
-  // catalogue has fewer items than floater slots.
-  const floatImages = useMemo(
-    () => products.filter((p) => p.image_url).map((p) => p.image_url),
-    [products]
-  );
-
   // Filtered products list
   const filteredProducts = products.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -160,21 +204,17 @@ export default function HomePage() {
           <div className="home-blob" style={{ width: 420, height: 420, top: -140, left: -120, background: "radial-gradient(circle, rgba(46,125,50,0.14), transparent 70%)" }} />
           <div className="home-blob" style={{ width: 340, height: 340, bottom: -120, right: -80, background: "radial-gradient(circle, rgba(245,158,11,0.14), transparent 70%)" }} />
 
-          {/* Playful floating 3D product cluster, sitting behind the text */}
-          {floatImages.length > 0 && (
-            <>
-              <div className="hidden md:block absolute inset-0 z-[1] pointer-events-none" style={{ perspective: 1200 }}>
-                {HERO_FLOATERS.map((f, i) => (
-                  <HeroFloater key={i} f={f} src={floatImages[i % floatImages.length]} />
-                ))}
-              </div>
-              <div className="md:hidden absolute inset-0 z-[1] pointer-events-none" style={{ perspective: 1200 }}>
-                {HERO_FLOATERS_MOBILE.map((f, i) => (
-                  <HeroFloater key={i} f={f} src={floatImages[i % floatImages.length]} />
-                ))}
-              </div>
-            </>
-          )}
+          {/* Playful floating liquid-glass blob cluster, sitting behind the text */}
+          <div className="hidden md:block absolute inset-0 z-[1] pointer-events-none" style={{ perspective: 1200 }}>
+            {HERO_BLOBS.map((f, i) => (
+              <HeroLiquidBlob key={i} f={f} />
+            ))}
+          </div>
+          <div className="md:hidden absolute inset-0 z-[1] pointer-events-none" style={{ perspective: 1200 }}>
+            {HERO_BLOBS_MOBILE.map((f, i) => (
+              <HeroLiquidBlob key={i} f={f} />
+            ))}
+          </div>
 
           <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-14 items-center relative z-10">
 
