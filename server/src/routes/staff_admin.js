@@ -128,7 +128,7 @@ async function generateEmployeeCode(client) {
 // ════════════════════════════════════════════════════════════════════════════
 // STAFF LIST  ──  GET /api/admin/staff
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", async (req, res) => {
+router.get("/", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     const { page = 1, limit = 20, search = "", department = "", status = "", role = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -199,7 +199,7 @@ router.get("/", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // STAFF DETAIL  ──  GET /api/admin/staff/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
@@ -432,7 +432,7 @@ router.delete("/:id", requireRole("superadmin"), async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // ATTENDANCE  ──  GET /api/admin/staff/attendance
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/attendance", async (req, res) => {
+router.get("/attendance", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     const { date = new Date().toISOString().slice(0, 10), page = 1, limit = 50, staff_id = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -576,7 +576,7 @@ router.post("/attendance/mark-absent", requireRole("superadmin", "manager"), asy
 // ════════════════════════════════════════════════════════════════════════════
 // SCHEDULE  ──  GET /api/admin/staff/schedule
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/schedule", async (req, res) => {
+router.get("/schedule", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     const { week_start } = req.query;
     const start = week_start || new Date().toISOString().slice(0, 10);
@@ -633,7 +633,7 @@ router.delete("/schedule/:id", requireRole("superadmin", "manager"), async (req,
 // ════════════════════════════════════════════════════════════════════════════
 // HOLIDAYS / LEAVE  ──  GET /api/admin/staff/holidays
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/holidays", async (req, res) => {
+router.get("/holidays", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     const { status = "", staff_id = "", page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -743,7 +743,7 @@ router.patch("/holidays/:id/approve", requireRole("superadmin", "manager"), asyn
 // ════════════════════════════════════════════════════════════════════════════
 // PAYROLL  ──  GET /api/admin/staff/payroll
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/payroll", async (req, res) => {
+router.get("/payroll", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     const now   = new Date();
     const month = parseInt(req.query.month) || now.getMonth() + 1;
@@ -875,7 +875,7 @@ router.patch("/payroll/:id", requireRole("superadmin", "manager"), async (req, r
 // ════════════════════════════════════════════════════════════════════════════
 // ROLES & PERMISSIONS  ──  GET /api/admin/staff/roles
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/roles", async (req, res) => {
+router.get("/roles", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     const roles = await pool.query(`
       SELECT sr.*,

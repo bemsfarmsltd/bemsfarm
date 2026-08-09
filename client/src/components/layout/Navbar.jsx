@@ -568,6 +568,7 @@ export default function Navbar() {
           {/* Dark Mode Toggle */}
           <button
             onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             style={{
               background: "none",
               border: "none",
@@ -596,6 +597,7 @@ export default function Navbar() {
               {/* Cart */}
               <button
                 onClick={() => navigate("/cart")}
+                aria-label={cartCount > 0 ? `View cart, ${cartCount} item${cartCount === 1 ? "" : "s"}` : "View cart"}
                 style={{
                   position: "relative",
                   background: "none",
@@ -634,6 +636,8 @@ export default function Navbar() {
               <div style={{ position: "relative" }} ref={dropdownRef}>
                 <button
                   onClick={() => setMenuOpen((o) => !o)}
+                  aria-label="Account menu"
+                  aria-expanded={menuOpen}
                   style={{
                     display: "flex",
                     alignItems: "center",

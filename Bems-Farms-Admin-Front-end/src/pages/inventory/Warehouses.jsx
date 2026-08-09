@@ -60,7 +60,7 @@ export default function Warehouses() {
     (w.code || '').toLowerCase().includes(search.toLowerCase())
   )
 
-  const totalCap = warehouses.reduce((s,w) => s + (w.capacity || 0), 0)
+  const totalCap = warehouses.reduce((s,w) => s + (Number(w.capacity) || 0), 0)
 
   function openAdd()   { setEdit(null); setForm(BLANK_FORM); setMod('form') }
   function openEdit(w) { setEdit(w); setForm({ name:w.name, code:w.code||'', location:w.location||'', manager:w.manager||'', capacity:w.capacity||0, status:w.status||'active' }); setMod('form') }

@@ -7,6 +7,7 @@ import { useChefStore } from "../store/useChefStore";
 import api from "../services/api";
 import chefBemsImg from "../assets/chef_bems_cooking.jpg";
 import chefBemsAvatar from "../assets/chef_bems_avatar.png";
+import { escapeHtml } from "../utils/sanitize";
 
 const QUICK_PROMPTS = [
   { icon: "🍲", text: "What can I cook with garri and tomatoes?" },
@@ -17,7 +18,7 @@ const QUICK_PROMPTS = [
 
 function formatMessage(text) {
   if (!text) return "";
-  return text
+  return escapeHtml(text)
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
     .replace(/\n/g, "<br/>");

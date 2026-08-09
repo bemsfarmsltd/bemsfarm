@@ -34,31 +34,50 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Restore session on mount
+  // Restore session on mount — a token/user pair sitting in localStorage
+  // could be expired, revoked, or forged, so it's only trusted once the
+  // server confirms it via /auth/me. Until that resolves, isLoggedIn stays
+  // false and ProtectedRoute won't render the page underneath it.
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
     const savedUser = localStorage.getItem("user");
 
-    if (savedToken && savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        // Basic sanity check — if "user" is just an email string,
-        // the old broken login stored it wrong; clear and force re-login
-        if (typeof parsed === "string" || !parsed?.id) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          setLoading(false);
-          return;
-        }
-        setToken(savedToken);
-        setUser(parsed);
-        api.defaults.headers.common.Authorization = `Bearer ${savedToken}`;
-      } catch {
+    if (!savedToken || !savedUser) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(savedUser);
+      // Basic sanity check — if "user" is just an email string,
+      // the old broken login stored it wrong; clear and force re-login
+      if (typeof parsed === "string" || !parsed?.id) {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
+        setLoading(false);
+        return;
       }
+
+      api.defaults.headers.common.Authorization = `Bearer ${savedToken}`;
+      api
+        .get("/auth/me")
+        .then((res) => {
+          const freshUser = res.data.user || parsed;
+          setToken(savedToken);
+          setUser(freshUser);
+          localStorage.setItem("user", JSON.stringify(freshUser));
+        })
+        .catch(() => {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          delete api.defaults.headers.common.Authorization;
+        })
+        .finally(() => setLoading(false));
+    } catch {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   // Internal: store a valid session after any auth method

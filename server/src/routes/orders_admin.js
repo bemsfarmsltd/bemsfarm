@@ -53,7 +53,7 @@ async function logTrackingEvent(
 }
 
 // ── GET /api/admin/orders ─────────────────────────────────────────
-router.get("/", async (req, res) => {
+router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   try {
     const {
       page = 1,
@@ -140,13 +140,13 @@ router.get("/", async (req, res) => {
     });
   } catch (err) {
     console.error("GET /admin/orders:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── GET /api/admin/orders/form-data/drivers ───────────────────────
 // Returns available drivers for the assign modal
-router.get("/form-data/drivers", async (req, res) => {
+router.get("/form-data/drivers", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   try {
     const rows = await pool.query(`
       SELECT id, name, phone, vehicle_plate, vehicle_type, status,
@@ -157,12 +157,12 @@ router.get("/form-data/drivers", async (req, res) => {
     `);
     res.json({ drivers: rows.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── DELETE /api/admin/orders/:id  (superadmin only) ──────────────
-router.delete("/:id", requireRole("superadmin"), async (req, res) => {
+router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -191,14 +191,14 @@ router.delete("/:id", requireRole("superadmin"), async (req, res) => {
     res.json({ message: `Order ${req.params.id} deleted successfully` });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
 });
 
 // ── GET /api/admin/orders/invoices ─────────────────────────────────────────
-router.get("/invoices", async (req, res) => {
+router.get("/invoices", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search = "", status = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -256,12 +256,12 @@ router.get("/invoices", async (req, res) => {
       pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit))
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── POST /api/admin/orders/invoices ─────────────────────────────────────────
-router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -367,14 +367,14 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (r
     res.status(201).json({ message: "Invoice created successfully", id: invoiceId, invoice_ref: invoiceRef });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
 });
 
 // ── PATCH /api/admin/orders/invoices/:id/status ───────────────────────────
-router.patch("/invoices/:id/status", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.patch("/invoices/:id/status", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const { status, notes } = req.body;
     await pool.query(
@@ -383,12 +383,12 @@ router.patch("/invoices/:id/status", requireRole("superadmin", "manager", "admin
     );
     res.json({ message: "Invoice updated", status });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── POST /api/admin/orders/returns ─────────────────────────────────────────
-router.post("/returns", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.post("/returns", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -461,14 +461,14 @@ router.post("/returns", requireRole("superadmin", "manager", "admin"), async (re
     res.status(201).json({ message: "Return logged successfully", id: returnId, refund_ref: finalRef });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
 });
 
 // ── GET /api/admin/orders/returns ─────────────────────────────────────────
-router.get("/returns", async (req, res) => {
+router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search = "", status = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -506,12 +506,12 @@ router.get("/returns", async (req, res) => {
       pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit))
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── PATCH /api/admin/orders/returns/:id/status ───────────────────────────
-router.patch("/returns/:id/status", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.patch("/returns/:id/status", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const { status, description } = req.body;
     await pool.query(
@@ -520,7 +520,7 @@ router.patch("/returns/:id/status", requireRole("superadmin", "manager", "admin"
     );
     res.json({ message: "Return updated", status });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -528,7 +528,7 @@ router.patch("/returns/:id/status", requireRole("superadmin", "manager", "admin"
 
 
 // ── GET /api/admin/orders/:id ─────────────────────────────────────
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   try {
     const order = await pool.query(
       `
@@ -594,7 +594,7 @@ router.get("/:id", async (req, res) => {
       tracking: tracking.rows,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -603,7 +603,7 @@ router.get("/:id", async (req, res) => {
 router.patch(
   "/:id/status",
   requireRole("superadmin", "manager", "admin", "delivery_manager"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -715,7 +715,7 @@ router.patch(
       res.json({ message: "Status updated", status });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -726,7 +726,7 @@ router.patch(
 router.patch(
   "/:id/assign-driver",
   requireRole("superadmin", "manager", "admin", "delivery_manager"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -830,7 +830,7 @@ router.patch(
       });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -841,7 +841,7 @@ router.patch(
 router.patch(
   "/:id/resolve-dispute",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -896,7 +896,7 @@ router.patch(
       res.json({ message: "Dispute resolved" });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -907,7 +907,7 @@ router.patch(
 router.patch(
   "/:id/cancel",
   requireRole("superadmin", "manager", "admin", "delivery_manager"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -953,7 +953,7 @@ router.patch(
       res.json({ message: "Order cancelled" });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }

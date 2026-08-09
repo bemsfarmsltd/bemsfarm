@@ -1835,7 +1835,7 @@ export default function AdminPage() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          ₦{c.spent.toLocaleString()}
+                          ₦{(Number(c.spent) || 0).toLocaleString()}
                         </td>
                         <td style={{ padding: "14px 16px" }}>
                           <span
@@ -3168,7 +3168,7 @@ export default function AdminPage() {
                 },
                 {
                   label: "Total Spent",
-                  value: `₦${viewCustomer.spent.toLocaleString()}`,
+                  value: `₦${(Number(viewCustomer.spent) || 0).toLocaleString()}`,
                   green: true,
                 },
                 {

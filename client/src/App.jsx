@@ -36,7 +36,6 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
-        <Route path="/dynamic-pricing" element={<DynamicPricingPage />} />
 
         <Route
           path="/returns"
@@ -149,6 +148,14 @@ function App() {
           element={
             <P>
               <ChefBemsPage />
+            </P>
+          }
+        />
+        <Route
+          path="/dynamic-pricing"
+          element={
+            <P>
+              <DynamicPricingPage />
             </P>
           }
         />

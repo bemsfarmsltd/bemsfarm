@@ -283,7 +283,7 @@ export default function ReturnsPage() {
                             </p>
                           </div>
                           <p style={{ fontWeight: 800, color: "#1B4332", fontSize: "15px" }}>
-                            ₦{parseFloat(order.total).toLocaleString()}
+                            ₦{(parseFloat(order.total) || 0).toLocaleString()}
                           </p>
                         </div>
                       </div>

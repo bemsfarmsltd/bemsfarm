@@ -102,7 +102,7 @@ async function saveGroup(group, body, updatedBy) {
 // GET  /api/admin/settings/general
 // POST /api/admin/settings/general
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/general", async (req, res) => {
+router.get("/general", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     res.json({ settings: await getGroup("general") });
   } catch (err) {
@@ -122,7 +122,7 @@ router.post("/general", requireRole("superadmin", "manager"), async (req, res) =
 // ════════════════════════════════════════════════════════════════════════════
 // NOTIFICATION SETTINGS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/notifications", async (req, res) => {
+router.get("/notifications", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     res.json({ settings: await getGroup("notifications") });
   } catch (err) {
@@ -144,7 +144,7 @@ router.post("/notifications", requireRole("superadmin", "manager"), async (req, 
 // GET  /api/admin/settings/payment
 // POST /api/admin/settings/payment/:gateway
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/payment", async (req, res) => {
+router.get("/payment", requireRole("superadmin"), async (req, res) => {
   try {
     const gateways = await pool.query(
       "SELECT id, name, slug, is_live, is_enabled, webhook_url, updated_at FROM payment_gateways ORDER BY id"
@@ -187,7 +187,7 @@ router.post("/payment/:slug", requireRole("superadmin"), async (req, res) => {
 // Frontend hits /settings/coupons which shows coupon management.
 // This just mirrors the list from /api/admin/coupons.
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/coupons", async (req, res) => {
+router.get("/coupons", requireRole("superadmin", "manager", "admin"), async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT * FROM coupons ORDER BY created_at DESC LIMIT 100`
@@ -201,7 +201,7 @@ router.get("/coupons", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // TAX SETTINGS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/tax", async (req, res) => {
+router.get("/tax", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     res.json({ settings: await getGroup("tax") });
   } catch (err) {
@@ -221,7 +221,7 @@ router.post("/tax", requireRole("superadmin", "manager"), async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // CURRENCY SETTINGS  (uses `currencies` table)
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/currencies", async (req, res) => {
+router.get("/currencies", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT * FROM currencies ORDER BY code"
@@ -260,7 +260,7 @@ router.post("/currencies", requireRole("superadmin"), async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // POS SETTINGS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/pos", async (req, res) => {
+router.get("/pos", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     res.json({ settings: await getGroup("pos") });
   } catch (err) {
@@ -280,7 +280,7 @@ router.post("/pos", requireRole("superadmin", "manager"), async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // INVOICE SETTINGS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/invoices", async (req, res) => {
+router.get("/invoices", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     res.json({ settings: await getGroup("invoices") });
   } catch (err) {
@@ -417,7 +417,7 @@ router.delete("/manager/:id", requireRole("superadmin"), async (req, res) => {
 // ALL SETTINGS  (bulk GET for initial page load)
 // GET /api/admin/settings
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", async (req, res) => {
+router.get("/", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT key, value, group_name FROM settings ORDER BY group_name, key"

@@ -1,10 +1,19 @@
 import axios from "axios";
 
 // ─────────────────────────────────────────────
+// BASE URL — single source of truth. Every request in this app (including
+// the raw fetch() calls in a couple of admin pages) must resolve through
+// this constant, so an unset VITE_API_URL can't split traffic across
+// different backends depending on which call site made the request.
+// ─────────────────────────────────────────────
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "https://api.bemsfarms.com/api";
+
+// ─────────────────────────────────────────────
 // BASE AXIOS INSTANCE
 // ─────────────────────────────────────────────
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "https://api.bemsfarms.com/api",
+  baseURL: API_BASE_URL,
   timeout: 60000,
   withCredentials: true,
 });
@@ -60,9 +69,7 @@ api.interceptors.response.use(
 
       try {
         const res = await axios.post(
-          `${
-            import.meta.env.VITE_API_URL || "http://localhost:5000/api"
-          }/auth/refresh`,
+          `${API_BASE_URL}/auth/refresh`,
           {},
           { withCredentials: true },
         );

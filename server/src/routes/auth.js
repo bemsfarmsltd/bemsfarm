@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const pool = require("../db/pool");
 const { protect } = require("../middleware/authMiddleware");
 const { upsertContext, trackActivity } = require("../utils/aiContext");
+const { sendPasswordResetEmail } = require("../services/emailService");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -38,7 +39,7 @@ function generateRefreshToken(userId) {
 // ─────────────────────────────────────────────
 // REGISTER  (BemsFarms customer app)
 // ─────────────────────────────────────────────
-router.post("/register", async (req, res) => {
+router.post("/register", async (req, res, next) => {
   try {
     const { name, email, password, phone } = req.body;
     if (!name?.trim())
@@ -96,14 +97,14 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json({ token: accessToken, user });
   } catch (err) {
-    res.status(500).json({ message: "Registration failed: " + err.message });
+    next(err);
   }
 });
 
 // ─────────────────────────────────────────────
 // LOGIN
 // ─────────────────────────────────────────────
-router.post("/login", async (req, res) => {
+router.post("/login", async (req, res, next) => {
   const clientIP = req.ip || req.connection?.remoteAddress || "unknown";
   const userAgent = req.headers["user-agent"] || "unknown";
   const origin =
@@ -232,7 +233,7 @@ router.post("/login", async (req, res) => {
     res.json({ token: accessToken, user: userPayload });
   } catch (err) {
     console.error(`   💥 LOGIN ERROR — ${err.message}`);
-    res.status(500).json({ message: "Login failed: " + err.message });
+    next(err);
   }
 });
 
@@ -240,7 +241,7 @@ router.post("/login", async (req, res) => {
 // GET ME  (Henry's AuthContext calls this on mount)
 // Returns { user: {...} } — note the wrapper object
 // ─────────────────────────────────────────────
-router.get("/me", protect, async (req, res) => {
+router.get("/me", protect, async (req, res, next) => {
   try {
     // Fetch fresh user data from DB (don't rely on stale JWT payload)
     const result = await pool.query(
@@ -277,14 +278,14 @@ router.get("/me", protect, async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: "Could not fetch user: " + err.message });
+    next(err);
   }
 });
 
 // ─────────────────────────────────────────────
 // UPDATE PROFILE  (name / phone — the fields that are real DB columns)
 // ─────────────────────────────────────────────
-router.patch("/profile", protect, async (req, res) => {
+router.patch("/profile", protect, async (req, res, next) => {
   try {
     const { name, phone } = req.body;
     if (!name?.trim()) {
@@ -296,14 +297,14 @@ router.patch("/profile", protect, async (req, res) => {
     );
     res.json({ user: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: "Could not update profile: " + err.message });
+    next(err);
   }
 });
 
 // ─────────────────────────────────────────────
 // CHANGE PASSWORD  (logged-in user, knows their current password)
 // ─────────────────────────────────────────────
-router.post("/change-password", protect, async (req, res) => {
+router.post("/change-password", protect, async (req, res, next) => {
   try {
     const { current_password, new_password } = req.body;
     if (!current_password || !new_password) {
@@ -328,14 +329,14 @@ router.post("/change-password", protect, async (req, res) => {
 
     res.json({ message: "Password updated successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Could not update password: " + err.message });
+    next(err);
   }
 });
 
 // ─────────────────────────────────────────────
 // REFRESH TOKEN
 // ─────────────────────────────────────────────
-router.post("/refresh", async (req, res) => {
+router.post("/refresh", async (req, res, next) => {
   try {
     const token = req.cookies?.refreshToken;
     if (!token) return res.status(401).json({ message: "No refresh token" });
@@ -379,7 +380,7 @@ router.post("/refresh", async (req, res) => {
 // ─────────────────────────────────────────────
 // LOGOUT
 // ─────────────────────────────────────────────
-router.post("/logout", protect, async (req, res) => {
+router.post("/logout", protect, async (req, res, next) => {
   await pool.query("UPDATE users SET refresh_token=NULL WHERE id=$1", [
     req.user.id,
   ]);
@@ -390,7 +391,7 @@ router.post("/logout", protect, async (req, res) => {
 // ─────────────────────────────────────────────
 // FORGOT PASSWORD
 // ─────────────────────────────────────────────
-router.post("/forgot-password", async (req, res) => {
+router.post("/forgot-password", async (req, res, next) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: "Email required" });
@@ -416,19 +417,22 @@ router.post("/forgot-password", async (req, res) => {
       [token, expires, result.rows[0].id],
     );
 
-    // TODO: send email with reset link
-    console.log(`🔑 Password reset token for ${email}: ${token}`);
+    const domain = process.env.FRONTEND_URL || "https://bemsfarms.com";
+    const resetUrl = `${domain}/reset-password?token=${token}`;
+    sendPasswordResetEmail({ email }, resetUrl).catch((err) =>
+      console.error(`Password reset email failed for ${email}:`, err.message),
+    );
 
     res.json({ message: "If that email exists, a reset link has been sent." });
   } catch (err) {
-    res.status(500).json({ message: "Failed: " + err.message });
+    next(err);
   }
 });
 
 // ─────────────────────────────────────────────
 // RESET PASSWORD
 // ─────────────────────────────────────────────
-router.post("/reset-password", async (req, res) => {
+router.post("/reset-password", async (req, res, next) => {
   try {
     const { token, password } = req.body;
     if (!token || !password)
@@ -461,7 +465,7 @@ router.post("/reset-password", async (req, res) => {
 
     res.json({ message: "Password reset successful" });
   } catch (err) {
-    res.status(500).json({ message: "Failed: " + err.message });
+    next(err);
   }
 });
 
@@ -470,7 +474,7 @@ router.post("/reset-password", async (req, res) => {
 // ─────────────────────────────────────────────
 const { OAuth2Client } = require("google-auth-library");
 
-router.post("/google", async (req, res) => {
+router.post("/google", async (req, res, next) => {
   try {
     const { credential } = req.body;
     if (!credential)

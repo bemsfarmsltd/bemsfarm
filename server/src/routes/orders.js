@@ -27,7 +27,7 @@ const DELIVERY_FEE = 500; // Naira — must match client/src/pages/CheckoutPage.
 // Prices/total are ALWAYS recomputed here from the products table.
 // Client-supplied price/total values are never trusted.
 // ─────────────────────────────────────────────
-router.post("/", protect, async (req, res) => {
+router.post("/", protect, async (req, res, next) => {
   const { items, payment_method, payment_ref, address, source, coupon_code } = req.body;
 
   if (!items || !items.length) {
@@ -238,9 +238,7 @@ router.post("/", protect, async (req, res) => {
     });
   } catch (err) {
     await client.query("ROLLBACK");
-    return res.status(500).json({
-      message: "Order failed: " + err.message,
-    });
+    return next(err);
   } finally {
     client.release();
   }
@@ -249,7 +247,7 @@ router.post("/", protect, async (req, res) => {
 // ─────────────────────────────────────────────
 // GET USER ORDERS
 // ─────────────────────────────────────────────
-router.get("/", protect, async (req, res) => {
+router.get("/", protect, async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT
@@ -276,16 +274,14 @@ router.get("/", protect, async (req, res) => {
 
     res.json({ orders: result.rows });
   } catch (err) {
-    res.status(500).json({
-      message: "Failed to fetch orders: " + err.message,
-    });
+    next(err);
   }
 });
 
 // ─────────────────────────────────────────────
 // GET SINGLE ORDER
 // ─────────────────────────────────────────────
-router.get("/:id", protect, async (req, res) => {
+router.get("/:id", protect, async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -318,9 +314,7 @@ router.get("/:id", protect, async (req, res) => {
 
     res.json({ order: result.rows[0] });
   } catch (err) {
-    res.status(500).json({
-      message: "Failed to fetch order: " + err.message,
-    });
+    next(err);
   }
 });
 
@@ -331,7 +325,7 @@ router.patch(
   "/:id/status",
   protect,
   requireRole("superadmin", "admin", "manager", "delivery_manager"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
@@ -359,9 +353,7 @@ router.patch(
         order: result.rows[0],
       });
     } catch (err) {
-      res.status(500).json({
-        message: "Failed to update status: " + err.message,
-      });
+      next(err);
     }
   },
 );
@@ -369,7 +361,7 @@ router.patch(
 // ─────────────────────────────────────────────
 // CANCEL ORDER
 // ─────────────────────────────────────────────
-router.patch("/:id/cancel", protect, async (req, res) => {
+router.patch("/:id/cancel", protect, async (req, res, next) => {
   const client = await pool.connect();
 
   try {
@@ -431,10 +423,7 @@ router.patch("/:id/cancel", protect, async (req, res) => {
     });
   } catch (err) {
     await client.query("ROLLBACK");
-
-    res.status(500).json({
-      message: "Cancellation failed: " + err.message,
-    });
+    next(err);
   } finally {
     client.release();
   }

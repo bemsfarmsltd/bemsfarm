@@ -112,7 +112,7 @@ async function applyStockChange(client, { productId, warehouseId, type, delta, r
 // ════════════════════════════════════════════════════════════════════════════
 // STOCK LIST  ──  GET /api/admin/inventory
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", async (req, res) => {
+router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
   try {
     const { page = 1, limit = 20, search = "", category = "", stock_status = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -189,7 +189,7 @@ router.get("/", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // STOCK ALERTS  ──  GET /api/admin/inventory/alerts
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/alerts", async (req, res) => {
+router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
   try {
     const [lowStock, outOfStock, expiringSoon, expiringBatches] = await Promise.all([
       pool.query(`
@@ -254,7 +254,7 @@ router.get("/alerts", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // STOCK VALUATION  ──  GET /api/admin/inventory/valuation
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/valuation", async (req, res) => {
+router.get("/valuation", requireRole("superadmin", "manager", "admin"), async (req, res) => {
   try {
     const [totalValue, byCategory, topValueItems, movements30d] = await Promise.all([
       pool.query(`
@@ -318,7 +318,7 @@ router.get("/valuation", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // MOVEMENT HISTORY  ──  GET /api/admin/inventory/movements
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/movements", async (req, res) => {
+router.get("/movements", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
   try {
     const { page = 1, limit = 20, product_id = "", type = "", from = "", to = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -478,7 +478,7 @@ router.post(
 // ════════════════════════════════════════════════════════════════════════════
 // WAREHOUSES
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/warehouses", async (req, res) => {
+router.get("/warehouses", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
   try {
     const rows = await pool.query(`
       SELECT
@@ -546,7 +546,7 @@ router.delete("/warehouses/:id", requireRole("superadmin"), async (req, res) => 
 // ════════════════════════════════════════════════════════════════════════════
 // BATCH MANAGEMENT
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/batches", async (req, res) => {
+router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
   try {
     const { page = 1, limit = 20, product_id = "", status = "", expiring = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -639,7 +639,7 @@ router.delete("/batches/:id", requireRole("superadmin", "manager"), async (req, 
 // ════════════════════════════════════════════════════════════════════════════
 // LOST / DAMAGED ITEMS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/lost-items", async (req, res) => {
+router.get("/lost-items", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
   try {
     const { page = 1, limit = 20, status = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);

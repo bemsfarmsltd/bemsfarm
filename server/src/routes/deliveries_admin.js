@@ -9,7 +9,7 @@ const { protect, requireRole } = require("../middleware/authMiddleware");
 router.use(protect);
 
 // ── GET /api/admin/deliveries/active ─────────────────────────────
-router.get("/active", async (req, res) => {
+router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res) => {
   try {
     const { search = "", status = "" } = req.query;
     const params = [];
@@ -84,7 +84,7 @@ router.get("/active", async (req, res) => {
 });
 
 // ── GET /api/admin/deliveries/auto-log ───────────────────────────
-router.get("/auto-log", async (req, res) => {
+router.get("/auto-log", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res) => {
   try {
     const rows = await pool.query(`
       SELECT
@@ -335,7 +335,7 @@ router.patch(
 );
 
 // ── GET /api/admin/deliveries/drivers ────────────────────────────
-router.get("/drivers", async (req, res) => {
+router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res) => {
   try {
     const { search = "", status = "" } = req.query;
     const params = [];
@@ -520,7 +520,7 @@ router.patch(
 );
 
 // ── GET /api/admin/delivery-zones ─────────────────────────────────
-router.get("/zones", async (req, res) => {
+router.get("/zones", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res) => {
   try {
     const rows = await pool.query(`
       SELECT

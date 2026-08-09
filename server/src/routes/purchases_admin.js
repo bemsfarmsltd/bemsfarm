@@ -97,7 +97,7 @@ async function syncSupplierBalance(client, supplierId) {
 // ════════════════════════════════════════════════════════════════════════════
 // PURCHASE ORDER LIST  ──  GET /api/admin/purchases
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", async (req, res) => {
+router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
   try {
     const { page = 1, limit = 20, search = "", status = "", payment_status = "", supplier_id = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -164,7 +164,7 @@ router.get("/", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // PURCHASE ORDER DETAIL  ──  GET /api/admin/purchases/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
   try {
     const po = await pool.query(`
       SELECT po.*,
@@ -376,7 +376,7 @@ router.post("/:id/receive", requireRole("superadmin", "manager", "admin", "store
 // ════════════════════════════════════════════════════════════════════════════
 // PURCHASE PAYMENTS  ──  GET /api/admin/purchases/payments
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/payments", async (req, res) => {
+router.get("/payments", requireRole("superadmin", "manager", "admin"), async (req, res) => {
   try {
     const { page = 1, limit = 20, supplier_id = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -418,7 +418,7 @@ router.get("/payments", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // PURCHASE RETURNS  ──  GET /api/admin/purchases/returns
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/returns", async (req, res) => {
+router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req, res) => {
   try {
     const { page = 1, limit = 20, status = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -543,7 +543,7 @@ router.patch("/returns/:id/approve", requireRole("superadmin", "manager"), async
 // FORM DATA  ──  GET /api/admin/purchases/form-data
 // Returns suppliers + products for dropdowns
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/form-data", async (req, res) => {
+router.get("/form-data", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
   try {
     const [suppliers, products] = await Promise.all([
       pool.query("SELECT id, name, supplier_code, payment_terms FROM suppliers WHERE status='active' ORDER BY name"),

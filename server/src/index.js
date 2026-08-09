@@ -2,11 +2,17 @@ require("dotenv").config();
 require("dns").setDefaultResultOrder("ipv4first");
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const app = express();
 
 app.set("trust proxy", 1);
+
+// This is a JSON-only API (no HTML pages or static assets served here), so
+// helmet's defaults are safe — no CSP directives need loosening for scripts,
+// styles, or cross-origin embeds.
+app.use(helmet());
 
 app.use(
   cors({

@@ -7,10 +7,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { API_BASE_URL } from "../../services/api";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
-const API =
-  import.meta.env.VITE_API_URL || "https://bemsfarms-api.onrender.com/api";
+// Shared with the rest of the app — see services/api.js for why this can't
+// have its own separate fallback URL.
+const API = API_BASE_URL;
 
 const ISSUE_TYPES = {
   damaged_item: { label: "Damaged Item", color: "#EF4444", bg: "#FEF2F2" },

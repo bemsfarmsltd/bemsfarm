@@ -582,7 +582,7 @@ export default function OrdersPage() {
 
                     <div className="op-header-col">
                       <span className="op-header-label">Total</span>
-                      <span className="op-header-value price">₦{parseFloat(order.total).toLocaleString()}</span>
+                      <span className="op-header-value price">₦{(parseFloat(order.total) || 0).toLocaleString()}</span>
                     </div>
 
                     <div className="op-header-col">

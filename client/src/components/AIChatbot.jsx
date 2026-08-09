@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import chefBemsAvatar from "../assets/chef_bems_avatar.png";
+import { escapeHtml } from "../utils/sanitize";
 
 const QUICK_QUESTIONS = [
   {
@@ -133,7 +134,7 @@ export default function AIChatbot() {
 
   const formatMessage = (content) => {
     return content.split("\n").map((line, i) => {
-      const boldFormatted = line.replace(
+      const boldFormatted = escapeHtml(line).replace(
         /\*\*(.*?)\*\*/g,
         "<strong>$1</strong>",
       );

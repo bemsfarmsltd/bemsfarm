@@ -62,7 +62,7 @@ async function nextSupplierCode(client) {
 // ════════════════════════════════════════════════════════════════════════════
 // SUPPLIER LIST  ──  GET /api/admin/suppliers
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", async (req, res) => {
+router.get("/", requireRole("superadmin", "manager", "admin"), async (req, res) => {
   try {
     const { page = 1, limit = 20, search = "", category = "", status = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -119,7 +119,7 @@ router.get("/", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // SUPPLIER DETAIL  ──  GET /api/admin/suppliers/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireRole("superadmin", "manager", "admin"), async (req, res) => {
   try {
     const result = await pool.query(
       "SELECT * FROM suppliers WHERE id=$1 OR supplier_code=$1",
@@ -261,7 +261,7 @@ router.delete("/:id", requireRole("superadmin", "manager"), async (req, res) => 
 // ════════════════════════════════════════════════════════════════════════════
 // SUPPLIER BALANCE  ──  GET /api/admin/suppliers/:id/balance
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/:id/balance", async (req, res) => {
+router.get("/:id/balance", requireRole("superadmin", "manager", "admin"), async (req, res) => {
   try {
     const supplier = await pool.query(
       "SELECT id, name, supplier_code, balance, total_purchases, total_paid, payment_terms FROM suppliers WHERE id=$1",
@@ -316,7 +316,7 @@ router.get("/:id/balance", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // SUPPLIER PAYMENTS  ──  GET /api/admin/suppliers/payments (all)
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/payments/all", async (req, res) => {
+router.get("/payments/all", requireRole("superadmin", "manager", "admin"), async (req, res) => {
   try {
     const { page = 1, limit = 20, supplier_id = "", from = "", to = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);

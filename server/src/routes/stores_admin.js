@@ -15,7 +15,7 @@ router.use(protect);
 // ════════════════════════════════════════════════════════════════════════════
 // LIST STORES  ──  GET /api/admin/stores
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", async (req, res) => {
+router.get("/", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     const { status = "", search = "", page = 1, limit = 50 } = req.query;
     const params = [];
@@ -60,7 +60,7 @@ router.get("/", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // GET SINGLE STORE  ──  GET /api/admin/stores/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT s.*, u.name AS manager_name
@@ -197,7 +197,7 @@ router.post("/:id/manager", requireRole("superadmin"), async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // LIST STAFF FOR A STORE  ──  GET /api/admin/stores/:id/staff
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/:id/staff", async (req, res) => {
+router.get("/:id/staff", requireRole("superadmin", "manager"), async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, employee_code, name, email, phone, role, department, status

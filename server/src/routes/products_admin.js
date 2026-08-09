@@ -54,7 +54,7 @@ async function syncToCatalogue(client, product) {
 
 // ── GET /api/admin/products ───────────────────────────────────────
 // Paginated product list with filters
-router.get("/", async (req, res) => {
+router.get("/", requireRole("superadmin", "manager", "admin"), async (req, res) => {
   try {
     const {
       page = 1,
@@ -136,7 +136,7 @@ router.get("/", async (req, res) => {
 
 // ── GET /api/admin/products/form-data ────────────────────────────
 // Returns categories, brands, units for dropdowns
-router.get("/form-data", async (req, res) => {
+router.get("/form-data", requireRole("superadmin", "manager", "admin"), async (req, res) => {
   try {
     const [categories, subCategories, units] = await Promise.all([
       pool.query(
@@ -161,7 +161,7 @@ router.get("/form-data", async (req, res) => {
 });
 
 // ── GET /api/admin/products/:id ───────────────────────────────────
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireRole("superadmin", "manager", "admin"), async (req, res) => {
   try {
     const result = await pool.query(
       `
@@ -180,9 +180,11 @@ router.get("/:id", async (req, res) => {
     if (!result.rows.length)
       return res.status(404).json({ message: "Product not found" });
 
-    // Fetch images
+    // Fetch images — aliased to the image_url/image_title field names the
+    // admin edit form already expects, since the underlying columns are
+    // named url/alt_text.
     const images = await pool.query(
-      "SELECT * FROM product_images WHERE product_id=$1 ORDER BY sort_order",
+      "SELECT id, product_id, url AS image_url, alt_text AS image_title, is_primary, sort_order, created_at FROM product_images WHERE product_id=$1 ORDER BY sort_order",
       [req.params.id],
     );
 
@@ -235,10 +237,29 @@ router.post(
 
       if (!name?.trim())
         return res.status(400).json({ message: "Product name required" });
-      if (!unit_price)
-        return res.status(400).json({ message: "Unit price required" });
       if (!image_url?.trim())
         return res.status(400).json({ message: "Main Product Image URL is required" });
+
+      // unit_price/cost_price/stock/low_stock_threshold/tax_rate are typed
+      // as numbers by the DB but arrive as arbitrary JSON here — a garbage
+      // or negative value must be rejected before it reaches parseFloat/parseInt,
+      // which would otherwise silently store NaN or a negative price/stock.
+      const parsedUnitPrice = parseFloat(unit_price);
+      if (unit_price === undefined || unit_price === "" || isNaN(parsedUnitPrice) || parsedUnitPrice < 0) {
+        return res.status(400).json({ message: "Unit price must be a number that isn't negative" });
+      }
+      if (cost_price !== undefined && cost_price !== "" && (isNaN(parseFloat(cost_price)) || parseFloat(cost_price) < 0)) {
+        return res.status(400).json({ message: "Cost price must be a number that isn't negative" });
+      }
+      if (isNaN(parseInt(stock_quantity)) || parseInt(stock_quantity) < 0) {
+        return res.status(400).json({ message: "Stock quantity must be a whole number that isn't negative" });
+      }
+      if (isNaN(parseInt(low_stock_threshold)) || parseInt(low_stock_threshold) < 0) {
+        return res.status(400).json({ message: "Low stock threshold must be a whole number that isn't negative" });
+      }
+      if (tax_rate !== undefined && tax_rate !== "" && (isNaN(parseFloat(tax_rate)) || parseFloat(tax_rate) < 0)) {
+        return res.status(400).json({ message: "Tax rate must be a number that isn't negative" });
+      }
 
       if (barcode && barcode.trim()) {
         const barcodeCheck = await client.query(
@@ -341,14 +362,13 @@ router.post(
         for (let i = 0; i < allImages.length; i++) {
           await client.query(
             `
-          INSERT INTO product_images (product_id, image_url, image_title, image_tags, is_primary, sort_order)
-          VALUES ($1,$2,$3,$4,$5,$6)
+          INSERT INTO product_images (product_id, url, alt_text, is_primary, sort_order)
+          VALUES ($1,$2,$3,$4,$5)
         `,
             [
               product.id,
               allImages[i],
               image_title || null,
-              image_tags || null,
               i === 0,
               i + 1,
             ],
@@ -527,6 +547,24 @@ router.patch(
 
       if (image_url !== undefined && (!image_url || !image_url.trim())) {
         return res.status(400).json({ message: "Main Product Image URL is required" });
+      }
+
+      // Only fields actually present in the PATCH body are validated —
+      // COALESCE below keeps anything omitted at its existing value.
+      if (unit_price !== undefined && unit_price !== "" && (isNaN(parseFloat(unit_price)) || parseFloat(unit_price) < 0)) {
+        return res.status(400).json({ message: "Unit price must be a number that isn't negative" });
+      }
+      if (cost_price !== undefined && cost_price !== "" && (isNaN(parseFloat(cost_price)) || parseFloat(cost_price) < 0)) {
+        return res.status(400).json({ message: "Cost price must be a number that isn't negative" });
+      }
+      if (stock_quantity !== undefined && (isNaN(parseInt(stock_quantity)) || parseInt(stock_quantity) < 0)) {
+        return res.status(400).json({ message: "Stock quantity must be a whole number that isn't negative" });
+      }
+      if (low_stock_threshold !== undefined && (isNaN(parseInt(low_stock_threshold)) || parseInt(low_stock_threshold) < 0)) {
+        return res.status(400).json({ message: "Low stock threshold must be a whole number that isn't negative" });
+      }
+      if (tax_rate !== undefined && tax_rate !== "" && (isNaN(parseFloat(tax_rate)) || parseFloat(tax_rate) < 0)) {
+        return res.status(400).json({ message: "Tax rate must be a number that isn't negative" });
       }
 
       if (barcode && barcode.trim()) {

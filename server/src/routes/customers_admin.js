@@ -9,7 +9,7 @@ const { protect, requireRole } = require("../middleware/authMiddleware");
 router.use(protect);
 
 // ── GET /api/admin/customers ──────────────────────────────────────
-router.get("/", async (req, res) => {
+router.get("/", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
   try {
     const {
       page = 1,
@@ -252,7 +252,7 @@ router.get(
 );
 
 // ── GET /api/admin/customers/:id/insights ─────────────────────────
-router.get("/:id/insights", async (req, res) => {
+router.get("/:id/insights", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
   try {
     const customerId = req.params.id;
     const isCode = customerId.startsWith("CUS-");
@@ -435,7 +435,7 @@ router.get("/site-activity", requireRole("superadmin", "manager"), async (req, r
 });
 
 // ── GET /api/admin/customers/:id ──────────────────────────────────
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
   try {
     const isCode = req.params.id.startsWith("CUS-");
     const whereCol = isCode ? "c.customer_code" : "c.id";
@@ -858,7 +858,7 @@ router.post(
 );
 
 // ── GET /api/admin/customers/loyalty/activity ─────────────────────
-router.get("/loyalty/activity", async (req, res) => {
+router.get("/loyalty/activity", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
   try {
     const { limit = 30, customer_id } = req.query;
     const params = [];
@@ -885,7 +885,7 @@ router.get("/loyalty/activity", async (req, res) => {
 });
 
 // ── GET /api/admin/customers/wallet/activity ──────────────────────
-router.get("/wallet/activity", async (req, res) => {
+router.get("/wallet/activity", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
   try {
     const { limit = 30, customer_id } = req.query;
     const params = [];

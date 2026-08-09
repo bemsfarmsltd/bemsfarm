@@ -343,9 +343,12 @@ export default function POS() {
   const total       = taxSettings.inclusive ? taxable : taxable + vat
   const itemCount   = cart.reduce((s, i) => s + i.qty, 0)
   const cashChange  = cashReceived ? Math.max(0, Number(cashReceived) - total) : 0
+  const splitAllocated = splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0)
+  const splitMismatch  = Math.abs(splitAllocated - total) > 0.01
 
   async function confirmPayment(method) {
     if (cart.length === 0 || confirmingPayment) return
+    if (method === 'Split Payment' && splitMismatch) return
     setConfirmingPayment(true)
     try {
       const { data } = await api.post('/admin/pos/sale', {
@@ -356,6 +359,9 @@ export default function POS() {
         amount_tendered: method === 'Cash' && cashReceived ? Number(cashReceived) : undefined,
         discount_amount: discountAmt,
         notes: orderNote || undefined,
+        split_payments: method === 'Split Payment'
+          ? splitRows.filter(r => Number(r.amount) > 0).map(r => ({ method: r.method, amount: Number(r.amount) }))
+          : undefined,
       })
       const { order: savedOrder, items: soldItems } = data
       // Reflect the real post-sale stock locally without a full refetch
@@ -1119,7 +1125,7 @@ export default function POS() {
                     </div>
                     <div>
                       <label style={LBL}>Amount (₦)</label>
-                      <input type="number" style={inp} placeholder="0.00" value={row.amount} onChange={e=>updateSplit(i,'amount',e.target.value)}/>
+                      <input type="number" min="0" style={inp} placeholder="0.00" value={row.amount} onChange={e=>updateSplit(i,'amount',e.target.value)}/>
                     </div>
                     <div>
                       {splitRows.length > 2 && (
@@ -1132,11 +1138,13 @@ export default function POS() {
             </div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
               <button style={btnL} onClick={addSplitRow}><i className="ri-add-line"/>Add Another</button>
-              <div style={{ fontSize:12, color:S }}>Allocated: <strong>{fmt(splitRows.reduce((s,r)=>s+(Number(r.amount)||0),0))}</strong> / {fmt(total)}</div>
+              <div style={{ fontSize:12, color: splitMismatch ? '#dc2626' : S }}>
+                Allocated: <strong>{fmt(splitAllocated)}</strong> / {fmt(total)}
+              </div>
             </div>
             <div style={{ display:'flex', gap:12 }}>
               <button style={{ ...btnL, flex:1 }} onClick={closeModal}>Cancel</button>
-              <button style={{ ...btnP, flex:1, background:'#7c3aed' }} disabled={confirmingPayment} onClick={()=>confirmPayment('Split Payment')}>{confirmingPayment?'Processing…':'Submit'}</button>
+              <button style={{ ...btnP, flex:1, background:'#7c3aed' }} disabled={confirmingPayment || splitMismatch} onClick={()=>confirmPayment('Split Payment')}>{confirmingPayment?'Processing…':splitMismatch?'Allocate full amount':'Submit'}</button>
             </div>
           </div>
         </ModalBox>

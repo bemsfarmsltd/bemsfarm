@@ -32,7 +32,7 @@ async function nextPOSRef(client) {
 // ════════════════════════════════════════════════════════════════════════════
 // OPEN SESSION  ──  POST /api/admin/pos/session/open
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/session/open", requireRole("superadmin","manager","admin","cashier"), async (req, res) => {
+router.post("/session/open", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -60,7 +60,7 @@ router.post("/session/open", requireRole("superadmin","manager","admin","cashier
     res.status(201).json({ session: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -69,7 +69,7 @@ router.post("/session/open", requireRole("superadmin","manager","admin","cashier
 // ════════════════════════════════════════════════════════════════════════════
 // CLOSE SESSION  ──  POST /api/admin/pos/session/:id/close
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/session/:id/close", requireRole("superadmin","manager","admin","cashier"), async (req, res) => {
+router.post("/session/:id/close", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -124,7 +124,7 @@ router.post("/session/:id/close", requireRole("superadmin","manager","admin","ca
     res.json({ session: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -133,7 +133,7 @@ router.post("/session/:id/close", requireRole("superadmin","manager","admin","ca
 // ════════════════════════════════════════════════════════════════════════════
 // GET CURRENT SESSION  ──  GET /api/admin/pos/session/current
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/session/current", async (req, res) => {
+router.get("/session/current", requireRole("superadmin", "manager", "admin", "cashier"), async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT ps.*, u.name AS cashier_name, s.name AS store_name
@@ -146,14 +146,14 @@ router.get("/session/current", async (req, res) => {
     );
     res.json({ session: result.rows[0] || null });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // SESSION HISTORY  ──  GET /api/admin/pos/sessions
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/sessions", requireRole("superadmin","manager","admin"), async (req, res) => {
+router.get("/sessions", requireRole("superadmin","manager","admin"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, from, to, cashier_id } = req.query;
     const params = []; const where = [];
@@ -188,7 +188,7 @@ router.get("/sessions", requireRole("superadmin","manager","admin"), async (req,
       pages:    Math.ceil(parseInt(count.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -196,7 +196,7 @@ router.get("/sessions", requireRole("superadmin","manager","admin"), async (req,
 // POS SALE  ──  POST /api/admin/pos/sale
 // Creates an order from the POS terminal.
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/sale", requireRole("superadmin","manager","admin","cashier"), async (req, res) => {
+router.post("/sale", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -205,12 +205,33 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), asyn
       items, customer_id, customer_name = "Walk-in Customer",
       payment_method = "cash", amount_tendered,
       discount_amount = 0, coupon_code,
-      notes, session_id,
+      notes, session_id, split_payments,
     } = req.body;
 
     if (!items?.length) {
       await client.query("ROLLBACK");
       return res.status(400).json({ message: "Items required" });
+    }
+
+    // A split sale must actually carry its per-method breakdown, and that
+    // breakdown must add up to the sale total — otherwise a sale can be
+    // marked "paid" with no record of what was collected, or with less
+    // than the full amount. Verified against `total` further down once
+    // it's computed, since the request can't know tax/discount in advance.
+    let normalizedSplitPayments = null;
+    if (payment_method === "Split Payment") {
+      if (!Array.isArray(split_payments) || split_payments.length === 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Split payment breakdown is required" });
+      }
+      normalizedSplitPayments = split_payments.map((p) => ({
+        method: String(p.method || "").trim(),
+        amount: Math.round((parseFloat(p.amount) || 0) * 100) / 100,
+      }));
+      if (normalizedSplitPayments.some((p) => !p.method || !(p.amount > 0))) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Every split payment row needs a method and a positive amount" });
+      }
     }
 
     // Calculate totals from products — lock rows so stock can't be
@@ -278,6 +299,17 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), asyn
     const change_amount  = amount_tendered ? Math.max(0, parseFloat(amount_tendered) - total) : 0;
     const reference      = await nextPOSRef(client);
 
+    if (normalizedSplitPayments) {
+      const allocated = normalizedSplitPayments.reduce((s, p) => s + p.amount, 0);
+      // Allow a 1-kobo rounding tolerance rather than requiring an exact float match
+      if (Math.abs(allocated - total) > 0.01) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          message: `Split payment total (₦${allocated.toLocaleString()}) doesn't match the sale total (₦${total.toLocaleString()})`,
+        });
+      }
+    }
+
     // Create order — `id` has no DB default, so it must be supplied explicitly
     // (the `reference` value, e.g. "POS-1001", doubles as the order id).
     const order = await client.query(
@@ -294,6 +326,20 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), asyn
       ]
     );
     const orderId = order.rows[0].id;
+
+    // A split sale gets one payments-ledger row per method so the actual
+    // per-method breakdown is auditable, not just the literal string
+    // "Split Payment" on the order.
+    if (normalizedSplitPayments) {
+      for (let i = 0; i < normalizedSplitPayments.length; i++) {
+        const p = normalizedSplitPayments[i];
+        await client.query(
+          `INSERT INTO payments (payment_ref, order_id, amount, status, payment_method, metadata, paid_at, created_at, updated_at)
+           VALUES ($1,$2,$3,'paid',$4,$5,NOW(),NOW(),NOW())`,
+          [`${reference}-${i + 1}`, orderId, p.amount, p.method, JSON.stringify({ pos_session_id: session_id || null, split_index: i })]
+        );
+      }
+    }
 
     // Insert order items and deduct stock
     for (const item of lineItems) {
@@ -324,7 +370,7 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), asyn
     });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -333,7 +379,7 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), asyn
 // ════════════════════════════════════════════════════════════════════════════
 // HELD ORDERS  ──  GET | POST /api/admin/pos/held
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/held", async (req, res) => {
+router.get("/held", requireRole("superadmin", "manager", "admin", "cashier"), async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT * FROM pos_held_orders
@@ -343,11 +389,11 @@ router.get("/held", async (req, res) => {
     );
     res.json({ held_orders: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/held", async (req, res) => {
+router.post("/held", requireRole("superadmin", "manager", "admin", "cashier"), async (req, res, next) => {
   try {
     const { label, items, session_id } = req.body;
     if (!items?.length) return res.status(400).json({ message: "Items required" });
@@ -360,11 +406,11 @@ router.post("/held", async (req, res) => {
     );
     res.status(201).json({ held_order: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.delete("/held/:id", async (req, res) => {
+router.delete("/held/:id", requireRole("superadmin", "manager", "admin", "cashier"), async (req, res, next) => {
   try {
     await pool.query(
       "UPDATE pos_held_orders SET status='released' WHERE id=$1 AND cashier_id=$2",
@@ -372,7 +418,7 @@ router.delete("/held/:id", async (req, res) => {
     );
     res.json({ message: "Hold released" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -397,7 +443,7 @@ const ENSURE_POS_TXN_TABLE = `
     created_at        TIMESTAMP DEFAULT NOW()
   )`;
 
-router.post("/verify-payment", requireRole("superadmin","manager","admin","cashier"), async (req, res) => {
+router.post("/verify-payment", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
   try {
     const { last_four, amount } = req.body;
     if (!last_four || String(last_four).length !== 4) {
@@ -428,14 +474,14 @@ router.post("/verify-payment", requireRole("superadmin","manager","admin","cashi
 
     res.json({ matches: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // MARK TRANSACTION USED  ──  PATCH /api/admin/pos/verify-payment/:id/use
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/verify-payment/:id/use", requireRole("superadmin","manager","admin","cashier"), async (req, res) => {
+router.patch("/verify-payment/:id/use", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
   try {
     const { order_id } = req.body;
     await pool.query(
@@ -444,7 +490,7 @@ router.patch("/verify-payment/:id/use", requireRole("superadmin","manager","admi
     );
     res.json({ message: "Transaction marked as used" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -452,7 +498,7 @@ router.patch("/verify-payment/:id/use", requireRole("superadmin","manager","admi
 // RECORD TRANSACTION  ──  POST /api/admin/pos/transaction
 // Called by POS terminal integration or manually to log a payment record.
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/transaction", requireRole("superadmin","manager","admin","cashier"), async (req, res) => {
+router.post("/transaction", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
   try {
     const { transaction_id, amount, payment_method, payment_time, customer_name, terminal_id, session_id } = req.body;
     if (!transaction_id || !amount) {
@@ -476,7 +522,7 @@ router.post("/transaction", requireRole("superadmin","manager","admin","cashier"
     );
     res.status(201).json({ transaction: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -484,7 +530,7 @@ router.post("/transaction", requireRole("superadmin","manager","admin","cashier"
 // RECEIPTS  ──  GET /api/admin/pos/receipts
 // Completed POS sales with full item breakdown
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/receipts", requireRole("superadmin","manager","admin","cashier","accountant"), async (req, res) => {
+router.get("/receipts", requireRole("superadmin","manager","admin","cashier","accountant"), async (req, res, next) => {
   try {
     const { search = "", from, to, payment_method, cashier_id, page = 1, limit = 20 } = req.query;
     const params = []; const where = ["o.status = 'completed'", "(o.source = 'pos' OR o.source = 'Physical Store (POS)')"];
@@ -552,7 +598,7 @@ router.get("/receipts", requireRole("superadmin","manager","admin","cashier","ac
       stats: stats.rows[0],
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -560,7 +606,7 @@ router.get("/receipts", requireRole("superadmin","manager","admin","cashier","ac
 // PRODUCT LOOKUP  ──  GET /api/admin/pos/products
 // Optimised for POS: barcode search, or text search, returns only what POS needs
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/products", async (req, res) => {
+router.get("/products", requireRole("superadmin", "manager", "admin", "cashier"), async (req, res, next) => {
   try {
     const { q = "", barcode, category_id, limit = 50 } = req.query;
     const params = []; const where = ["p.status='active'"];
@@ -594,14 +640,14 @@ router.get("/products", async (req, res) => {
     }));
     res.json({ products });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // CUSTOMER LOOKUP  ──  GET /api/admin/pos/customers
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/customers", async (req, res) => {
+router.get("/customers", requireRole("superadmin", "manager", "admin", "cashier"), async (req, res, next) => {
   try {
     const { q = "", limit = 20 } = req.query;
     const result = await pool.query(
@@ -613,14 +659,14 @@ router.get("/customers", async (req, res) => {
     );
     res.json({ customers: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // SESSION ORDERS  ──  GET /api/admin/pos/session/:id/orders
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/session/:id/orders", async (req, res) => {
+router.get("/session/:id/orders", requireRole("superadmin", "manager", "admin", "cashier"), async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT o.*, COUNT(oi.id) AS item_count
@@ -633,7 +679,7 @@ router.get("/session/:id/orders", async (req, res) => {
     );
     res.json({ orders: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 

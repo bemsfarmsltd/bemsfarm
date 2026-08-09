@@ -10,7 +10,7 @@ const { protect, requireRole } = require("../middleware/authMiddleware");
 router.use(protect);
 
 // ── GET /api/admin/payments/reconciliation ──────────────────────
-router.get("/reconciliation", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
+router.get("/reconciliation", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
     const { status = "", search = "", limit = 20, page = 1 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -72,12 +72,12 @@ router.get("/reconciliation", requireRole("superadmin", "manager", "admin", "acc
     });
   } catch (err) {
     console.error("GET payments reconciliation error:", err.message);
-    res.status(500).json({ message: "Database error: " + err.message });
+    next(err);
   }
 });
 
 // ── GET /api/admin/payments/webhook-logs ────────────────────────
-router.get("/webhook-logs", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
+router.get("/webhook-logs", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
     const { status = "", limit = 50, page = 1 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -118,12 +118,12 @@ router.get("/webhook-logs", requireRole("superadmin", "manager", "admin", "accou
     });
   } catch (err) {
     console.error("GET webhook-logs error:", err.message);
-    res.status(500).json({ message: "Database error: " + err.message });
+    next(err);
   }
 });
 
 // ── POST /api/admin/payments/reconcile-manual ───────────────────
-router.post("/reconcile-manual", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
+router.post("/reconcile-manual", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   const { payment_ref, order_id } = req.body;
 
   if (!payment_ref || !order_id) {
@@ -204,7 +204,7 @@ router.post("/reconcile-manual", requireRole("superadmin", "manager", "admin", "
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("Manual reconciliation failed:", err.message);
-    res.status(500).json({ message: "Failed to reconcile: " + err.message });
+    next(err);
   } finally {
     client.release();
   }
