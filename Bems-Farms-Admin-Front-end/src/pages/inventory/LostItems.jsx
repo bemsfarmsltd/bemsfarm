@@ -321,7 +321,7 @@ export default function LostItems() {
       )}
 
       {/* Stat cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
         {[
           { label:'Total Reports',         value:totals.reports, icon:'ri-file-text-line', color:'#405189', valueColor:'var(--text-primary)' },
           { label:'Pending Review',        value:totals.pending, icon:'ri-time-line', color:'#f7b84b', valueColor:'#f7b84b' },

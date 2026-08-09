@@ -424,25 +424,38 @@ export default function POS() {
 
   return (
     <div style={{ height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden', background:'#f3f4f6', fontFamily:'Nunito,sans-serif' }}>
+      <style>{`
+        /* The topbar packs logo + search + clock + exit + avatar into one
+           row — on narrow screens there isn't room for all of it, so drop
+           the secondary bits (clock, "scanner ready" label, exit text)
+           before anything is allowed to wrap or overlap. */
+        @media (max-width: 640px) {
+          .pos-topbar-clock { display: none; }
+        }
+        @media (max-width: 480px) {
+          .pos-scanner-ready { display: none; }
+          .pos-exit-label { display: none; }
+        }
+      `}</style>
 
       {/* TOPBAR */}
       <header style={{ height:58, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', zIndex:200, background:'#fff', borderBottom:`1px solid ${B}` }}>
-        <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, fontWeight:800, fontSize:15, color:'#0ab39c' }}>
+        <div style={{ flex:'0 0 auto', display:'flex', alignItems:'center', gap:8, fontWeight:800, fontSize:15, color:'#0ab39c', whiteSpace:'nowrap' }}>
           <span style={{ fontSize:24 }}>🌾</span>
           <span style={{ lineHeight:1.2 }}>Bems Farms<br/><span style={{ fontSize:9, fontWeight:500, color:S, letterSpacing:1 }}>POINT OF SALE</span></span>
         </div>
-        <div style={{ position:'relative', width:'100%', maxWidth:520 }}>
+        <div style={{ position:'relative', flex:'1 1 auto', minWidth:0, maxWidth:520, marginLeft:16 }}>
           <i className="ri-search-line" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#0ab39c', fontSize:15, pointerEvents:'none' }}/>
           <input id="scan-field" ref={scanInputRef} type="text" placeholder="Search products  ·  or scan / type barcode + Enter" autoComplete="off"
             value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => { if (e.key==='Enter'&&search.trim()) handleBarcodeScan(search) }}
             style={{ width:'100%', height:38, paddingLeft:38, paddingRight:96, border:'2px solid #0ab39c', borderRadius:8, fontSize:13, background:'#fff', color:'#111827', outline:'none', boxShadow:'0 0 0 3px rgba(10,179,156,.1)', boxSizing:'border-box' }}/>
           {search
             ? <button onClick={() => setSearch('')} style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:S, fontSize:16 }}>✕</button>
-            : <span style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', fontSize:9, color:'#0ab39c', fontWeight:700, letterSpacing:.5, pointerEvents:'none' }}>SCANNER READY</span>
+            : <span className="pos-scanner-ready" style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', fontSize:9, color:'#0ab39c', fontWeight:700, letterSpacing:.5, pointerEvents:'none', whiteSpace:'nowrap' }}>SCANNER READY</span>
           }
         </div>
         <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, justifyContent:'flex-end' }}>
-          <div style={{ fontSize:12, color:S, textAlign:'right' }}>
+          <div className="pos-topbar-clock" style={{ fontSize:12, color:S, textAlign:'right' }}>
             <div style={{ fontWeight:600 }}>{now.toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})}</div>
             <div style={{ fontSize:10 }}>{now.toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'})}</div>
           </div>
@@ -453,7 +466,7 @@ export default function POS() {
             </button>
           )}
           <Link to="/dashboard" style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'5px 12px', borderRadius:8, border:`1.5px solid ${B}`, background:'#fff', color:'#374151', textDecoration:'none', fontSize:12, fontWeight:600 }}>
-            <i className="ri-dashboard-2-line"/>Exit
+            <i className="ri-dashboard-2-line"/><span className="pos-exit-label">Exit</span>
           </Link>
           <div style={{ width:32, height:32, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:12 }}>
             {user ? (user.first_name?.[0]||'') + (user.last_name?.[0]||'') : 'AS'}

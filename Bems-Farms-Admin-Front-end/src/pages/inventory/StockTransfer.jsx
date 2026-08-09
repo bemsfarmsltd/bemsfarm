@@ -148,7 +148,7 @@ export default function StockTransfer() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:16, marginBottom:24 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:16, marginBottom:24 }}>
         {[
           { label:'Total Transfers', value:statValues.total,     icon:'ri-file-text-line', color:'#405189', valueColor:'var(--text-primary)' },
           { label:'Completed',       value:statValues.completed, icon:'ri-checkbox-circle-line', color:'#0ab39c', valueColor:'#0ab39c' },

@@ -195,7 +195,7 @@ export default function Login() {
                       type="button"
                       onClick={() => fill(cred.email, cred.password)}
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
+                        display: 'flex', alignItems: 'center', gap: 8, minWidth: 0,
                         padding: '8px 10px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                         background: isActive ? m.bg : '#fff',
                         border: `1.5px solid ${isActive ? m.color : '#e5e7eb'}`,
@@ -209,7 +209,7 @@ export default function Login() {
                       }}>
                         <i className={m.icon} style={{ color: m.color, fontSize: 13 }} />
                       </div>
-                      <div style={{ overflow: 'hidden' }}>
+                      <div style={{ overflow: 'hidden', minWidth: 0 }}>
                         <div style={{ fontSize: 12, fontWeight: 700, color: m.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.label}</div>
                         <div style={{ fontSize: 10, color: '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.description}</div>
                       </div>
@@ -265,7 +265,7 @@ export default function Login() {
           </p>
 
           {/* Role cards grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <div className="grid-stats-auto" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
             {ROLES_ORDER.map(roleKey => {
               const m = ROLE_META[roleKey]
               return (

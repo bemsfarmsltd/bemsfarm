@@ -99,13 +99,13 @@ export default function BulkExport() {
         <div style={{ fontSize:12,color:S,marginTop:2 }}>Products → Bulk Export</div>
       </div>
 
-      <div style={{ display:'grid',gridTemplateColumns:'1fr 340px',gap:20,alignItems:'start' }}>
+      <div className="grid-sidebar-split" style={{ display:'grid',gridTemplateColumns:'1fr 340px',gap:20,alignItems:'start' }}>
         {/* Left: config */}
         <div>
           {/* Export Type */}
           <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16 }}>
             <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13 }}>What to export?</div>
-            <div style={{ padding:20,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10 }}>
+            <div className="grid-stats-auto" style={{ padding:20,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10 }}>
               {EXPORT_TYPES.map(t=>(
                 <button key={t.key} onClick={()=>handleTypeChange(t.key)}
                   style={{ display:'flex',flexDirection:'column',alignItems:'flex-start',gap:6,padding:14,borderRadius:10,border:`2px solid ${selectedType===t.key?t.color:B}`,background:selectedType===t.key?`${t.color}0d`:'#fff',cursor:'pointer',textAlign:'left',transition:'all .15s' }}>

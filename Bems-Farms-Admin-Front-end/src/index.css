@@ -186,12 +186,26 @@ body {
      .grid-form-cols     — simple N-equal-column form/content grid
                             → single column below phone width
 */
+/* min-width: 0 breaks the "auto" content-based minimum that grid/flex items
+   get by default — without it, a long price/label/nested-grid inside one of
+   these can force its track wider than its fair share and blow the whole
+   row past the viewport, even though auto-fill/minmax looks like it should
+   already handle this. Applies whether the element is a grid container
+   (sizing its own tracks) or a grid/flex item inside something else. */
+.grid-stats-auto, .grid-sidebar-split, .grid-form-cols {
+  min-width: 0;
+}
 .grid-stats-auto {
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
 }
+.grid-stats-auto > * {
+  min-width: 0;
+}
 @media (max-width: 900px) {
   .grid-sidebar-split { grid-template-columns: 1fr !important; }
+  .grid-sidebar-split > * { min-width: 0; }
 }
 @media (max-width: 640px) {
   .grid-form-cols { grid-template-columns: 1fr !important; }
+  .grid-form-cols > * { min-width: 0; }
 }

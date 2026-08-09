@@ -104,7 +104,7 @@ export default function Warehouses() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
         {[
           { label:'Total Warehouses', value:warehouses.length,                     icon:'ri-building-line',      color:'#405189' },
           { label:'Active',           value:warehouses.filter(w=>w.status==='active').length, icon:'ri-checkbox-circle-line', color:'#0ab39c' },

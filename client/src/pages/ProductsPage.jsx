@@ -316,6 +316,9 @@ const DASHBOARD_CSS = `
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 24px;
 }
+.bp-products-grid > * {
+  min-width: 0;
+}
 
 @media (max-width: 768px) {
   .bp-container {
@@ -607,10 +610,10 @@ export default function ProductsPage() {
                     </div>
 
                     {/* Footer Row */}
-                    <div style={{ display: "flex", alignItems: "center", justifycontent: "space-between", marginTop: "auto" }}>
-                      <div style={{ minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "auto" }}>
+                      <div style={{ minWidth: 0, overflow: "hidden" }}>
                         <span style={{ fontSize: "10px", color: "#9CA3AF" }}>{product.unit}</span>
-                        <div style={{ fontSize: "16px", fontWeight: 800, color: "#1B4332", fontFamily: "Syne, sans-serif" }}>
+                        <div style={{ fontSize: "16px", fontWeight: 800, color: "#1B4332", fontFamily: "Syne, sans-serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           ₦{(product.price * NAIRA_PER_UNIT).toLocaleString()}
                         </div>
                       </div>

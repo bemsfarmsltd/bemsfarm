@@ -269,7 +269,7 @@ export default function AddProduct() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div style={{ display:'grid',gridTemplateColumns:'1fr 340px',gap:24,alignItems:'start' }}>
+        <div className="grid-sidebar-split" style={{ display:'grid',gridTemplateColumns:'1fr 340px',gap:24,alignItems:'start' }}>
 
           {/* LEFT */}
           <div>

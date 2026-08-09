@@ -151,7 +151,7 @@ export default function Refunds() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:24 }}>
+      <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:24 }}>
         {[
           { label:'Total Returns',        value:stats.total,                            icon:'ri-arrow-go-back-line',  color:'#405189',filter:'all'      },
           { label:'Pending / Inspecting', value:stats.pending,                          icon:'ri-time-line',           color:'#f7b84b', filter:'pending'  },

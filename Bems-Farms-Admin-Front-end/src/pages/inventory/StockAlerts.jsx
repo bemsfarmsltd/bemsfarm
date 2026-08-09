@@ -103,7 +103,7 @@ export default function StockAlerts() {
       )}
 
       {/* Stat cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
         {[
           { label:'Total Alerts', value:stats.total,    icon:'ri-alert-line',        color:'#405189', filter:'all'          },
           { label:'Out of Stock', value:stats.out,      icon:'ri-close-circle-line',  color:'#f06548', filter:'out_of_stock' },

@@ -92,7 +92,7 @@ export default function StockList() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
         {[
           { label:'Total SKUs',   value:totals.all, icon:'ri-box-3-line', color:'#405189', valueColor:'var(--text-primary)' },
           { label:'In Stock',     value:Math.max(0, totals.all - totals.low - totals.out), icon:'ri-checkbox-circle-line', color:'#0ab39c', valueColor:'var(--text-primary)' },

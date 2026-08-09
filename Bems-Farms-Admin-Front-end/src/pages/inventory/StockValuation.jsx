@@ -88,7 +88,7 @@ export default function StockValuation() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
         {[
           { label:'Cost Value (Stock)', value:`₦${totals.costValue.toLocaleString()}`, subText:'At purchase price', icon:'ri-box-3-line', color:'#405189', valueColor:'#405189' },
           { label:'Retail Value (Stock)', value:`₦${totals.retailValue.toLocaleString()}`, subText:'At selling price', icon:'ri-store-line', color:'#0ab39c', valueColor:'#0ab39c' },
@@ -99,8 +99,8 @@ export default function StockValuation() {
             <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={c.icon} style={{ fontSize:20, color:c.color }}/>
             </div>
-            <div>
-              <div style={{ fontSize:22, fontWeight:800, color:c.valueColor }}>{c.value}</div>
+            <div style={{ minWidth:0, overflow:'hidden' }}>
+              <div style={{ fontSize:22, fontWeight:800, color:c.valueColor, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.value}</div>
               <div style={{ fontSize:11, color:S, fontWeight:600 }}>{c.label}</div>
               <div style={{ fontSize:10, color:S, marginTop:2 }}>{c.subText}</div>
             </div>

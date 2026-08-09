@@ -275,7 +275,7 @@ export default function Barcode() {
         </div>
 
         {/* Product Selection Area */}
-        <div style={{ display:'grid',gridTemplateColumns:'1fr 280px',gap:24,marginBottom:24 }}>
+        <div className="grid-sidebar-split" style={{ display:'grid',gridTemplateColumns:'1fr 280px',gap:24,marginBottom:24 }}>
           {/* Left Selection */}
           <div style={{ border:`1.5px solid ${B}`,borderRadius:12,padding:20,background:'#fff' }}>
             <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,color:'var(--text-primary)',marginBottom:14 }}>Product Selection</div>

@@ -200,7 +200,7 @@ export default function Receipts() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:12,marginBottom:24 }}>
+      <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:12,marginBottom:24 }}>
         {[
           { label:'Total Receipts',    value:stats.total,                         color:'#405189',icon:'ri-file-text-line',          filter:'all'     },
           { label:'Paid',              value:stats.paid,                           color:'#10b981',icon:'ri-checkbox-circle-line',    filter:'paid'    },

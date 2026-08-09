@@ -168,7 +168,7 @@ export default function StockAdjustment() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:24 }}>
+      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:24 }}>
         {[
           { label:'Total Adjustments', value:statValues.total, icon:'ri-equalizer-line', color:'#405189', valueColor:'var(--text-primary)' },
           { label:'Units Added',       value:statValues.added, icon:'ri-add-circle-line', color:'#0ab39c', valueColor:'#0ab39c' },

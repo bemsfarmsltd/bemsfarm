@@ -239,7 +239,7 @@ export default function Landing() {
 
       {/* ── COUNTER STRIP ── */}
       <section style={{ background:'#1B4332', padding:'56px 24px' }}>
-        <div style={{ maxWidth:1100, margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:24 }}>
+        <div className="grid-stats-auto" style={{ maxWidth:1100, margin:'0 auto', display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:24 }}>
           {[
             { icon:'ri-store-2-line',       count:'1',      label:'Central Hub'      },
             { icon:'ri-shopping-bag-3-line',count:'500+',   label:'Orders / Month'   },

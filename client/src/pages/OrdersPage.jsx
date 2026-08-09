@@ -149,6 +149,7 @@ const ORDERS_CSS = `
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 .op-header-label {
   font-size: 11px;
@@ -161,6 +162,7 @@ const ORDERS_CSS = `
   font-size: 13px;
   font-weight: 700;
   color: #374151;
+  overflow-wrap: break-word;
 }
 .op-header-value.price {
   color: #1B4332;

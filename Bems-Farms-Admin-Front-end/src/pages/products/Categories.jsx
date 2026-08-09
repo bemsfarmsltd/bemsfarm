@@ -69,7 +69,7 @@ export default function Categories() {
     total:    items.length,
     active:   items.filter(i=>i.status==='active').length,
     inactive: items.filter(i=>i.status==='inactive').length,
-    products: items.reduce((s,i)=>s+i.products,0),
+    products: items.reduce((s,i)=>s+(Number(i.products)||0),0),
   }), [items])
 
   function openAdd() { setEditItem(null); setForm({ ...BLANK }); setActiveModal('form') }
@@ -143,7 +143,7 @@ export default function Categories() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:24 }}>
+      <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:24 }}>
         {STAT_CARDS.map(c=>(
           <div key={c.label} onClick={()=>setFilterStatus(c.filter)}
             style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,borderLeft:`4px solid ${c.color}`,padding:16,cursor:'pointer',boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'flex',alignItems:'center',gap:14 }}>

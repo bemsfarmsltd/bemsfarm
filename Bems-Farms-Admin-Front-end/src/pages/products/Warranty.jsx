@@ -133,7 +133,7 @@ export default function Warranty() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:14,marginBottom:24 }}>
+      <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:14,marginBottom:24 }}>
         {[
           { label:'Policies',       value:stats.policies,    icon:'ri-shield-check-line',    color:'#405189' },
           { label:'Active',         value:stats.active,      icon:'ri-checkbox-circle-line', color:'#0ab39c' },
