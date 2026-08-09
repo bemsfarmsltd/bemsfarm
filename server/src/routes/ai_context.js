@@ -28,7 +28,7 @@ router.use(protect);
 // ════════════════════════════════════════════════════════════════════════════
 // GET OWN CONTEXT  ──  GET /api/ai/context/me
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/me", async (req, res) => {
+router.get("/me", async (req, res, next) => {
   try {
     const [ctx, onb, activityStats, convStats] = await Promise.all([
       pool.query("SELECT * FROM ai_user_context    WHERE user_id=$1", [req.user.id]),
@@ -53,14 +53,14 @@ router.get("/me", async (req, res) => {
       chat_stats:     convStats.rows[0]  || {},
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // UPDATE PREFERENCES  ──  PATCH /api/ai/context/me
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/me", async (req, res) => {
+router.patch("/me", async (req, res, next) => {
   try {
     const allowed = ["preferred_language", "preferred_currency", "preferred_theme", "timezone"];
     const updates = {};
@@ -75,14 +75,14 @@ router.patch("/me", async (req, res) => {
     const result = await pool.query("SELECT * FROM ai_user_context WHERE user_id=$1", [req.user.id]);
     res.json({ context: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // SAVE / UPDATE ONBOARDING  ──  POST /api/ai/context/onboarding
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/onboarding", async (req, res) => {
+router.post("/onboarding", async (req, res, next) => {
   try {
     await upsertOnboarding(req.user.id, req.body);
 
@@ -96,14 +96,14 @@ router.post("/onboarding", async (req, res) => {
     const result = await pool.query("SELECT * FROM ai_onboarding_data WHERE user_id=$1", [req.user.id]);
     res.json({ onboarding: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // ACTIVITY LOG  ──  GET /api/ai/context/activity
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/activity", async (req, res) => {
+router.get("/activity", async (req, res, next) => {
   try {
     const { page = 1, limit = 50, type = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -130,14 +130,14 @@ router.get("/activity", async (req, res) => {
       pages: Math.ceil(parseInt(count.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // CONVERSATIONS  ──  GET /api/ai/context/conversations
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/conversations", async (req, res) => {
+router.get("/conversations", async (req, res, next) => {
   try {
     const { page = 1, limit = 20, bot_type = "" } = req.query;
     const offset  = (parseInt(page) - 1) * parseInt(limit);
@@ -165,12 +165,12 @@ router.get("/conversations", async (req, res) => {
       pages: Math.ceil(parseInt(count.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // CONVERSATION MESSAGES  ──  GET /api/ai/context/conversations/:id
-router.get("/conversations/:id", async (req, res) => {
+router.get("/conversations/:id", async (req, res, next) => {
   try {
     const conv = await pool.query(
       "SELECT * FROM admin_ai_conversations WHERE id=$1 AND user_id=$2",
@@ -185,12 +185,12 @@ router.get("/conversations/:id", async (req, res) => {
 
     res.json({ ...conv.rows[0], messages: messages.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // DELETE CONVERSATION  ──  DELETE /api/ai/context/conversations/:id
-router.delete("/conversations/:id", async (req, res) => {
+router.delete("/conversations/:id", async (req, res, next) => {
   try {
     const result = await pool.query(
       "DELETE FROM admin_ai_conversations WHERE id=$1 AND user_id=$2 RETURNING id",
@@ -199,14 +199,14 @@ router.delete("/conversations/:id", async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ message: "Conversation not found" });
     res.json({ message: "Conversation deleted" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // EXPORT ALL DATA  ──  GET /api/ai/context/export  (GDPR)
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/export", async (req, res) => {
+router.get("/export", async (req, res, next) => {
   try {
     const data = await exportUserData(req.user.id);
     trackActivity(req.user.id, "data_export_requested");
@@ -215,26 +215,26 @@ router.get("/export", async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename="ai-memory-${req.user.id}-${Date.now()}.json"`);
     res.json(data);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // DELETE ALL AI MEMORY  ──  DELETE /api/ai/context/memory  (GDPR)
 // ════════════════════════════════════════════════════════════════════════════
-router.delete("/memory", async (req, res) => {
+router.delete("/memory", async (req, res, next) => {
   try {
     await deleteAllMemory(req.user.id);
     res.json({ message: "All AI memory cleared for your account" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // ADMIN: VIEW ANY USER'S CONTEXT  ──  GET /api/ai/context/users/:userId
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/users/:userId", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/users/:userId", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const uid = parseInt(req.params.userId);
     const [ctx, onb, recentActivity] = await Promise.all([
@@ -256,14 +256,14 @@ router.get("/users/:userId", requireRole("superadmin", "manager"), async (req, r
       recent_activity: recentActivity.rows,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // ADMIN: LIST CONTEXT HEALTH  ──  GET /api/ai/context/admin/stats
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/admin/stats", requireRole("superadmin"), async (req, res) => {
+router.get("/admin/stats", requireRole("superadmin"), async (req, res, next) => {
   try {
     const [contextStats, activityStats, convStats] = await Promise.all([
       pool.query(`
@@ -295,12 +295,12 @@ router.get("/admin/stats", requireRole("superadmin"), async (req, res) => {
       conv_stats:      convStats.rows[0],
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // RENAME CONVERSATION  ──  PATCH /api/ai/context/conversations/:id
-router.patch("/conversations/:id", async (req, res) => {
+router.patch("/conversations/:id", async (req, res, next) => {
   try {
     const { title } = req.body;
     if (!title?.trim()) return res.status(400).json({ message: "title required" });
@@ -312,7 +312,7 @@ router.patch("/conversations/:id", async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ message: "Conversation not found" });
     res.json({ conversation: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 

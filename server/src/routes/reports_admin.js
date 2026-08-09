@@ -54,7 +54,7 @@ function truncFn(group_by) {
 // ════════════════════════════════════════════════════════════════════════════
 // SALES REPORT  ──  GET /api/admin/reports/sales
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/sales", async (req, res) => {
+router.get("/sales", async (req, res, next) => {
   try {
     const { from, to } = defaultDates(req.query);
     const group_by = req.query.group_by || "day";
@@ -175,14 +175,14 @@ router.get("/sales", async (req, res) => {
     });
   } catch (err) {
     console.error("GET /admin/reports/sales:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // FINANCE REPORT  ──  GET /api/admin/reports/finance
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/finance", async (req, res) => {
+router.get("/finance", async (req, res, next) => {
   try {
     const { from, to } = defaultDates(req.query);
     const group_by     = req.query.group_by || "month";
@@ -272,14 +272,14 @@ router.get("/finance", async (req, res) => {
     });
   } catch (err) {
     console.error("GET /admin/reports/finance:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // INVENTORY REPORT  ──  GET /api/admin/reports/inventory
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/inventory", async (req, res) => {
+router.get("/inventory", async (req, res, next) => {
   try {
     const { from, to } = defaultDates(req.query);
     const low_stock_threshold = parseInt(req.query.low_stock_threshold) || 10;
@@ -386,14 +386,14 @@ router.get("/inventory", async (req, res) => {
     });
   } catch (err) {
     console.error("GET /admin/reports/inventory:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // CUSTOMER REPORT  ──  GET /api/admin/reports/customers
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/customers", async (req, res) => {
+router.get("/customers", async (req, res, next) => {
   try {
     const { from, to } = defaultDates(req.query);
     const group_by = req.query.group_by || "month";
@@ -513,14 +513,14 @@ router.get("/customers", async (req, res) => {
     });
   } catch (err) {
     console.error("GET /admin/reports/customers:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // EXPENSE REPORT  ──  GET /api/admin/reports/expenses
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/expenses", async (req, res) => {
+router.get("/expenses", async (req, res, next) => {
   try {
     const { from, to } = defaultDates(req.query);
     const group_by = req.query.group_by || "month";
@@ -596,14 +596,14 @@ router.get("/expenses", async (req, res) => {
     });
   } catch (err) {
     console.error("GET /admin/reports/expenses:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // PURCHASE REPORT  ──  GET /api/admin/reports/purchases
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/purchases", async (req, res) => {
+router.get("/purchases", async (req, res, next) => {
   try {
     const { from, to } = defaultDates(req.query);
     const group_by = req.query.group_by || "month";
@@ -691,14 +691,14 @@ router.get("/purchases", async (req, res) => {
     });
   } catch (err) {
     console.error("GET /admin/reports/purchases:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // SUPPLIER REPORT  ──  GET /api/admin/reports/suppliers
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/suppliers", async (req, res) => {
+router.get("/suppliers", async (req, res, next) => {
   try {
     const { from, to } = defaultDates(req.query);
 
@@ -775,7 +775,7 @@ router.get("/suppliers", async (req, res) => {
     });
   } catch (err) {
     console.error("GET /admin/reports/suppliers:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 

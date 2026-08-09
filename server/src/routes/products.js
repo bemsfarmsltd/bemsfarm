@@ -19,7 +19,7 @@ router.get("/", getProducts);
 // Called by NavSearchBar component with ?q=...&limit=6
 // ================================================================
 
-router.get("/search", async (req, res) => {
+router.get("/search", async (req, res, next) => {
   try {
     const { q, limit = 8 } = req.query;
     if (!q || !q.trim()) {
@@ -52,7 +52,7 @@ router.get("/search", async (req, res) => {
     res.json({ products: result.rows });
   } catch (err) {
     console.error("Product search error:", err.message);
-    res.status(500).json({ message: "Search failed: " + err.message });
+    next(err);
   }
 });
 

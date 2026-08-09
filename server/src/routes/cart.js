@@ -48,7 +48,7 @@ async function resolveCustomer(req) {
 // or single-item shorthand:
 //   { session_id, product_id, quantity, notes? }
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/notify", async (req, res) => {
+router.post("/notify", async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -314,7 +314,7 @@ router.post("/notify", async (req, res) => {
     });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -324,7 +324,7 @@ router.post("/notify", async (req, res) => {
 // GET CART  ──  GET /api/cart
 // Returns the current active cart for the customer/session.
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", async (req, res) => {
+router.get("/", async (req, res, next) => {
   try {
     const customer  = await resolveCustomer(req);
     const session_id = req.query.session_id || req.headers["x-session-id"];
@@ -359,14 +359,14 @@ router.get("/", async (req, res) => {
 
     res.json({ cart, items: items.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // UPDATE ITEM QUANTITY  ──  PATCH /api/cart/items/:itemId
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/items/:itemId", async (req, res) => {
+router.patch("/items/:itemId", async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -405,7 +405,7 @@ router.patch("/items/:itemId", async (req, res) => {
     res.json({ message: "Cart updated" });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -414,7 +414,7 @@ router.patch("/items/:itemId", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // REMOVE ITEM  ──  DELETE /api/cart/items/:itemId
 // ════════════════════════════════════════════════════════════════════════════
-router.delete("/items/:itemId", async (req, res) => {
+router.delete("/items/:itemId", async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -438,7 +438,7 @@ router.delete("/items/:itemId", async (req, res) => {
     res.json({ message: "Item removed from cart" });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -447,7 +447,7 @@ router.delete("/items/:itemId", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // CLEAR CART  ──  DELETE /api/cart
 // ════════════════════════════════════════════════════════════════════════════
-router.delete("/", async (req, res) => {
+router.delete("/", async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -474,7 +474,7 @@ router.delete("/", async (req, res) => {
     res.json({ message: "Cart cleared" });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }

@@ -102,40 +102,40 @@ async function saveGroup(group, body, updatedBy) {
 // GET  /api/admin/settings/general
 // POST /api/admin/settings/general
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/general", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/general", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     res.json({ settings: await getGroup("general") });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/general", requireRole("superadmin", "manager"), async (req, res) => {
+router.post("/general", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     await saveGroup("general", req.body, req.user.id);
     res.json({ settings: await getGroup("general") });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // NOTIFICATION SETTINGS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/notifications", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/notifications", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     res.json({ settings: await getGroup("notifications") });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/notifications", requireRole("superadmin", "manager"), async (req, res) => {
+router.post("/notifications", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     await saveGroup("notifications", req.body, req.user.id);
     res.json({ settings: await getGroup("notifications") });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -144,7 +144,7 @@ router.post("/notifications", requireRole("superadmin", "manager"), async (req, 
 // GET  /api/admin/settings/payment
 // POST /api/admin/settings/payment/:gateway
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/payment", requireRole("superadmin"), async (req, res) => {
+router.get("/payment", requireRole("superadmin"), async (req, res, next) => {
   try {
     const gateways = await pool.query(
       "SELECT id, name, slug, is_live, is_enabled, webhook_url, updated_at FROM payment_gateways ORDER BY id"
@@ -152,11 +152,11 @@ router.get("/payment", requireRole("superadmin"), async (req, res) => {
     // Strip secret keys from GET response — never expose to frontend
     res.json({ gateways: gateways.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/payment/:slug", requireRole("superadmin"), async (req, res) => {
+router.post("/payment/:slug", requireRole("superadmin"), async (req, res, next) => {
   try {
     const { slug } = req.params;
     const { public_key, secret_key, webhook_url, is_live, is_enabled, name } = req.body;
@@ -178,7 +178,7 @@ router.post("/payment/:slug", requireRole("superadmin"), async (req, res) => {
     );
     res.json({ gateway: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -187,52 +187,52 @@ router.post("/payment/:slug", requireRole("superadmin"), async (req, res) => {
 // Frontend hits /settings/coupons which shows coupon management.
 // This just mirrors the list from /api/admin/coupons.
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/coupons", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.get("/coupons", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT * FROM coupons ORDER BY created_at DESC LIMIT 100`
     );
     res.json({ coupons: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // TAX SETTINGS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/tax", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/tax", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     res.json({ settings: await getGroup("tax") });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/tax", requireRole("superadmin", "manager"), async (req, res) => {
+router.post("/tax", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     await saveGroup("tax", req.body, req.user.id);
     res.json({ settings: await getGroup("tax") });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // CURRENCY SETTINGS  (uses `currencies` table)
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/currencies", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/currencies", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const result = await pool.query(
       "SELECT * FROM currencies ORDER BY code"
     );
     res.json({ currencies: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/currencies", requireRole("superadmin"), async (req, res) => {
+router.post("/currencies", requireRole("superadmin"), async (req, res, next) => {
   try {
     const { code, name, symbol, exchange_rate, is_default, is_enabled } = req.body;
     if (!code || !name) return res.status(400).json({ message: "code and name required" });
@@ -253,47 +253,47 @@ router.post("/currencies", requireRole("superadmin"), async (req, res) => {
     );
     res.json({ currency: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // POS SETTINGS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/pos", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/pos", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     res.json({ settings: await getGroup("pos") });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/pos", requireRole("superadmin", "manager"), async (req, res) => {
+router.post("/pos", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     await saveGroup("pos", req.body, req.user.id);
     res.json({ settings: await getGroup("pos") });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // INVOICE SETTINGS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/invoices", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/invoices", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     res.json({ settings: await getGroup("invoices") });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/invoices", requireRole("superadmin", "manager"), async (req, res) => {
+router.post("/invoices", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     await saveGroup("invoices", req.body, req.user.id);
     res.json({ settings: await getGroup("invoices") });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -304,7 +304,7 @@ router.post("/invoices", requireRole("superadmin", "manager"), async (req, res) 
 // PATCH /api/admin/settings/manager/:id   → update role / status
 // DELETE /api/admin/settings/manager/:id  → deactivate
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/manager", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/manager", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { page = 1, limit = 50 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -329,11 +329,11 @@ router.get("/manager", requireRole("superadmin", "manager"), async (req, res) =>
       pages:  Math.ceil(parseInt(count.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/manager", requireRole("superadmin"), async (req, res) => {
+router.post("/manager", requireRole("superadmin"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -364,13 +364,13 @@ router.post("/manager", requireRole("superadmin"), async (req, res) => {
     res.status(201).json({ user: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
 });
 
-router.patch("/manager/:id", requireRole("superadmin"), async (req, res) => {
+router.patch("/manager/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
     const allowed = ["role", "status", "store_id", "name"];
     const sets = []; const params = [];
@@ -393,11 +393,11 @@ router.patch("/manager/:id", requireRole("superadmin"), async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ message: "User not found" });
     res.json({ user: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.delete("/manager/:id", requireRole("superadmin"), async (req, res) => {
+router.delete("/manager/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
     if (parseInt(req.params.id) === req.user.id)
       return res.status(400).json({ message: "Cannot deactivate yourself" });
@@ -409,7 +409,7 @@ router.delete("/manager/:id", requireRole("superadmin"), async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ message: "User not found" });
     res.json({ message: `User "${result.rows[0].name}" deactivated` });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -417,7 +417,7 @@ router.delete("/manager/:id", requireRole("superadmin"), async (req, res) => {
 // ALL SETTINGS  (bulk GET for initial page load)
 // GET /api/admin/settings
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const result = await pool.query(
       "SELECT key, value, group_name FROM settings ORDER BY group_name, key"
@@ -429,7 +429,7 @@ router.get("/", requireRole("superadmin", "manager"), async (req, res) => {
     });
     res.json({ settings: grouped });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 

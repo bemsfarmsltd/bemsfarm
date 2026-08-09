@@ -97,7 +97,7 @@ async function syncSupplierBalance(client, supplierId) {
 // ════════════════════════════════════════════════════════════════════════════
 // PURCHASE ORDER LIST  ──  GET /api/admin/purchases
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
+router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search = "", status = "", payment_status = "", supplier_id = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -157,14 +157,14 @@ router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper"), as
     });
   } catch (err) {
     console.error("GET /admin/purchases:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // PURCHASE ORDER DETAIL  ──  GET /api/admin/purchases/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/:id", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
+router.get("/:id", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
     const po = await pool.query(`
       SELECT po.*,
@@ -199,14 +199,14 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "storekeeper"),
 
     res.json({ ...po.rows[0], items: items.rows, payments: payments.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // CREATE PURCHASE ORDER  ──  POST /api/admin/purchases
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.post("/", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -255,7 +255,7 @@ router.post("/", requireRole("superadmin", "manager", "admin"), async (req, res)
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("POST /admin/purchases:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -264,7 +264,7 @@ router.post("/", requireRole("superadmin", "manager", "admin"), async (req, res)
 // ════════════════════════════════════════════════════════════════════════════
 // UPDATE STATUS  ──  PATCH /api/admin/purchases/:id/status
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/:id/status", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.patch("/:id/status", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -291,7 +291,7 @@ router.patch("/:id/status", requireRole("superadmin", "manager", "admin"), async
     res.json({ message: `Purchase order ${status}` });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -301,7 +301,7 @@ router.patch("/:id/status", requireRole("superadmin", "manager", "admin"), async
 // RECEIVE STOCK  ──  POST /api/admin/purchases/:id/receive
 // Records received quantities and updates product.stock
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/:id/receive", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
+router.post("/:id/receive", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -367,7 +367,7 @@ router.post("/:id/receive", requireRole("superadmin", "manager", "admin", "store
     res.json({ message: `Stock received. Order status: ${newStatus}`, status: newStatus });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -376,7 +376,7 @@ router.post("/:id/receive", requireRole("superadmin", "manager", "admin", "store
 // ════════════════════════════════════════════════════════════════════════════
 // PURCHASE PAYMENTS  ──  GET /api/admin/purchases/payments
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/payments", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.get("/payments", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, supplier_id = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -411,14 +411,14 @@ router.get("/payments", requireRole("superadmin", "manager", "admin"), async (re
       pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // PURCHASE RETURNS  ──  GET /api/admin/purchases/returns
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, status = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -455,12 +455,12 @@ router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req
       pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // CREATE PURCHASE RETURN  ──  POST /api/admin/purchases/returns
-router.post("/returns", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.post("/returns", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -515,14 +515,14 @@ router.post("/returns", requireRole("superadmin", "manager", "admin"), async (re
     res.status(201).json({ return: ret, message: "Purchase return created" });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
 });
 
 // APPROVE RETURN  ──  PATCH /api/admin/purchases/returns/:id/approve
-router.patch("/returns/:id/approve", requireRole("superadmin", "manager"), async (req, res) => {
+router.patch("/returns/:id/approve", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { action } = req.body; // "approve" | "reject" | "refunded"
     const allowed = ["approved", "refunded", "cancelled"];
@@ -535,7 +535,7 @@ router.patch("/returns/:id/approve", requireRole("superadmin", "manager"), async
     if (!result.rows.length) return res.status(404).json({ message: "Return not found" });
     res.json({ return: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -543,7 +543,7 @@ router.patch("/returns/:id/approve", requireRole("superadmin", "manager"), async
 // FORM DATA  ──  GET /api/admin/purchases/form-data
 // Returns suppliers + products for dropdowns
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/form-data", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
+router.get("/form-data", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
     const [suppliers, products] = await Promise.all([
       pool.query("SELECT id, name, supplier_code, payment_terms FROM suppliers WHERE status='active' ORDER BY name"),
@@ -551,7 +551,7 @@ router.get("/form-data", requireRole("superadmin", "manager", "admin", "storekee
     ]);
     res.json({ suppliers: suppliers.rows, products: products.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 

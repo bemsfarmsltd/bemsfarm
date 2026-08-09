@@ -17,7 +17,7 @@ router.use((req, res, next) => {
 });
 
 // ── CATEGORIES ────────────────────────────────────────────────────────
-router.get("/categories", async (req, res) => {
+router.get("/categories", async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT c.*, 
@@ -26,11 +26,11 @@ router.get("/categories", async (req, res) => {
     );
     res.json({ categories: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/categories", async (req, res) => {
+router.post("/categories", async (req, res, next) => {
   try {
     const { name, code, description, status } = req.body;
     const result = await pool.query(
@@ -40,11 +40,11 @@ router.post("/categories", async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.put("/categories/:id", async (req, res) => {
+router.put("/categories/:id", async (req, res, next) => {
   try {
     const { name, code, description, status } = req.body;
     const result = await pool.query(
@@ -53,21 +53,21 @@ router.put("/categories/:id", async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.delete("/categories/:id", async (req, res) => {
+router.delete("/categories/:id", async (req, res, next) => {
   try {
     await pool.query(`DELETE FROM categories WHERE id=$1`, [req.params.id]);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── SUBCATEGORIES ─────────────────────────────────────────────────────
-router.get("/subcategories", async (req, res) => {
+router.get("/subcategories", async (req, res, next) => {
   try {
     const result = await pool.query(`
       SELECT s.*, c.name as category_name 
@@ -77,11 +77,11 @@ router.get("/subcategories", async (req, res) => {
     `);
     res.json({ subcategories: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/subcategories", async (req, res) => {
+router.post("/subcategories", async (req, res, next) => {
   try {
     const { category_id, name, code, description, status } = req.body;
     const result = await pool.query(
@@ -91,11 +91,11 @@ router.post("/subcategories", async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.put("/subcategories/:id", async (req, res) => {
+router.put("/subcategories/:id", async (req, res, next) => {
   try {
     const { category_id, name, code, description, status } = req.body;
     const result = await pool.query(
@@ -104,30 +104,30 @@ router.put("/subcategories/:id", async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.delete("/subcategories/:id", async (req, res) => {
+router.delete("/subcategories/:id", async (req, res, next) => {
   try {
     await pool.query(`DELETE FROM subcategories WHERE id=$1`, [req.params.id]);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── UNITS ─────────────────────────────────────────────────────────────
-router.get("/units", async (req, res) => {
+router.get("/units", async (req, res, next) => {
   try {
     const result = await pool.query(`SELECT * FROM units ORDER BY id DESC`);
     res.json({ units: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/units", async (req, res) => {
+router.post("/units", async (req, res, next) => {
   try {
     const { name, short, type, step, status } = req.body;
     const result = await pool.query(
@@ -137,11 +137,11 @@ router.post("/units", async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.put("/units/:id", async (req, res) => {
+router.put("/units/:id", async (req, res, next) => {
   try {
     const { name, short, type, step, status } = req.body;
     const result = await pool.query(
@@ -150,30 +150,30 @@ router.put("/units/:id", async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.delete("/units/:id", async (req, res) => {
+router.delete("/units/:id", async (req, res, next) => {
   try {
     await pool.query(`DELETE FROM units WHERE id=$1`, [req.params.id]);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── WARRANTIES ────────────────────────────────────────────────────────
-router.get("/warranties", async (req, res) => {
+router.get("/warranties", async (req, res, next) => {
   try {
     const result = await pool.query(`SELECT * FROM warranties ORDER BY id DESC`);
     res.json({ warranties: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/warranties", async (req, res) => {
+router.post("/warranties", async (req, res, next) => {
   try {
     const { name, duration, type, description, status } = req.body;
     const result = await pool.query(
@@ -183,11 +183,11 @@ router.post("/warranties", async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.put("/warranties/:id", async (req, res) => {
+router.put("/warranties/:id", async (req, res, next) => {
   try {
     const { name, duration, type, description, status } = req.body;
     const result = await pool.query(
@@ -196,16 +196,16 @@ router.put("/warranties/:id", async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.delete("/warranties/:id", async (req, res) => {
+router.delete("/warranties/:id", async (req, res, next) => {
   try {
     await pool.query(`DELETE FROM warranties WHERE id=$1`, [req.params.id]);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -224,7 +224,7 @@ function convertToCSV(headers, rows) {
 }
 
 // ── GET /api/admin/config/export ─────────────────────────────────────
-router.get("/export", async (req, res) => {
+router.get("/export", async (req, res, next) => {
   try {
     const { type } = req.query;
     let queryStr = "";
@@ -276,7 +276,7 @@ router.get("/export", async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename="${type}_export_${Date.now()}.csv"`);
     res.status(200).send(csvContent);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 

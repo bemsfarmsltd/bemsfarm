@@ -35,7 +35,7 @@ async function q1(sql, params = []) {
 }
 
 // ── OVERVIEW TAB ─────────────────────────────────────────────────
-router.get("/overview", async (req, res) => {
+router.get("/overview", async (req, res, next) => {
   try {
     const [
       revenueToday,
@@ -152,12 +152,12 @@ router.get("/overview", async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── SALES TAB ────────────────────────────────────────────────────
-router.get("/sales", async (req, res) => {
+router.get("/sales", async (req, res, next) => {
   try {
     const [
       todayStats,
@@ -270,12 +270,12 @@ router.get("/sales", async (req, res) => {
       recent_orders: recentOrders,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── FINANCE TAB ──────────────────────────────────────────────────
-router.get("/finance", async (req, res) => {
+router.get("/finance", async (req, res, next) => {
   try {
     const [
       monthIncome,
@@ -349,12 +349,12 @@ router.get("/finance", async (req, res) => {
       charts: { last_6_months: last6Months },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── INVENTORY TAB ────────────────────────────────────────────────
-router.get("/inventory", async (req, res) => {
+router.get("/inventory", async (req, res, next) => {
   try {
     const [
       totalSkus,
@@ -425,12 +425,12 @@ router.get("/inventory", async (req, res) => {
       charts: { value_by_category: valueByCategory },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── OPERATIONS TAB ───────────────────────────────────────────────
-router.get("/operations", async (req, res) => {
+router.get("/operations", async (req, res, next) => {
   try {
     const [
       activeDeliveries,
@@ -511,12 +511,12 @@ router.get("/operations", async (req, res) => {
       delivery_breakdown: breakdownMap,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── CUSTOMERS TAB ────────────────────────────────────────────────
-router.get("/customers", async (req, res) => {
+router.get("/customers", async (req, res, next) => {
   try {
     const [
       totalCustomers,
@@ -574,12 +574,12 @@ router.get("/customers", async (req, res) => {
       charts: { growth_last_6: growthLast6 },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── CHEF BEMS AI TAB ─────────────────────────────────────────────
-router.get("/ai", async (req, res) => {
+router.get("/ai", async (req, res, next) => {
   try {
     // Ensure admin_dietary_rules table exists
     await pool.query(`CREATE TABLE IF NOT EXISTS admin_dietary_rules (
@@ -649,7 +649,7 @@ router.get("/ai", async (req, res) => {
       conv_breakdown: breakdownMap,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 

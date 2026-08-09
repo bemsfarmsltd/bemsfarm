@@ -209,7 +209,7 @@ const DIETARY_RULES = {
 };
 
 // ── GET SMART RECOMMENDATIONS ────────────────────────────────
-router.post("/recommendations", async (req, res) => {
+router.post("/recommendations", async (req, res, next) => {
   try {
     console.log("🎯 Smart recommendations request:", req.body);
 
@@ -284,12 +284,12 @@ router.post("/recommendations", async (req, res) => {
     }
   } catch (err) {
     console.error("❌ Error:", err.message);
-    res.status(500).json({ message: "Error: " + err.message });
+    next(err);
   }
 });
 
 // ── PHASE 1: CO-PURCHASE RECOMMENDATIONS ─────────────────────
-router.post("/co-purchase", async (req, res) => {
+router.post("/co-purchase", async (req, res, next) => {
   try {
     const { product_id } = req.body;
 
@@ -340,7 +340,7 @@ router.post("/co-purchase", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Co-purchase error:", err.message);
-    res.status(500).json({ message: "Error: " + err.message });
+    next(err);
   }
 });
 
@@ -443,7 +443,7 @@ Use plain, common ingredient names (e.g. "tomatoes" not "2 medium tomatoes, dice
   return parsed;
 }
 
-router.post("/recipe-helper", async (req, res) => {
+router.post("/recipe-helper", async (req, res, next) => {
   try {
     const { recipe_name } = req.body;
 
@@ -518,7 +518,7 @@ router.post("/recipe-helper", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Recipe error:", err.message);
-    res.status(500).json({ message: "Error: " + err.message });
+    next(err);
   }
 });
 
@@ -559,7 +559,7 @@ async function callGemini(userMessage) {
   });
 }
 
-router.post("/chat", async (req, res) => {
+router.post("/chat", async (req, res, next) => {
   try {
     const { messages, session_id } = req.body;
 
@@ -632,7 +632,7 @@ router.post("/chat", async (req, res) => {
     }
   } catch (err) {
     console.error("❌ Chat error:", err.message);
-    res.status(500).json({ message: "Error: " + err.message });
+    next(err);
   }
 });
 
@@ -708,7 +708,7 @@ Which of these catalog products, if any, does the reply recommend or suggest the
   }
 }
 
-router.post("/chef-chat", async (req, res) => {
+router.post("/chef-chat", async (req, res, next) => {
   try {
     const { message, history = [], cartItems = [], session_id, userPreferences = {} } = req.body;
 
@@ -837,7 +837,7 @@ router.post("/chef-chat", async (req, res) => {
     }
   } catch (err) {
     console.error("❌ Chef chat error:", err.message);
-    res.status(500).json({ message: "Error: " + err.message });
+    next(err);
   }
 });
 
@@ -1015,7 +1015,7 @@ Keep ingredient names simple (e.g. "tomatoes", "pepper", "onion", "ugu", "beans"
   return JSON.parse(text.trim());
 }
 
-router.post("/visual-scan", async (req, res) => {
+router.post("/visual-scan", async (req, res, next) => {
   try {
     const { image } = req.body;
     if (!image) {
@@ -1064,7 +1064,7 @@ router.post("/visual-scan", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Visual scan error:", err.message);
-    res.status(500).json({ message: "Visual scan error: " + err.message });
+    next(err);
   }
 });
 

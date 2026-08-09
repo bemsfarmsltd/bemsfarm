@@ -9,7 +9,7 @@ const { protect } = require("../middleware/authMiddleware");
 
 router.use(protect);
 
-router.get("/", async (req, res) => {
+router.get("/", async (req, res, next) => {
   try {
     const result = await pool.query(
       "SELECT * FROM user_addresses WHERE user_id=$1 ORDER BY is_default DESC, created_at DESC",
@@ -17,11 +17,11 @@ router.get("/", async (req, res) => {
     );
     res.json({ addresses: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -48,13 +48,13 @@ router.post("/", async (req, res) => {
     res.status(201).json({ address: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
 });
 
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -98,13 +98,13 @@ router.patch("/:id", async (req, res) => {
     res.json({ address: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", async (req, res, next) => {
   try {
     const result = await pool.query(
       "DELETE FROM user_addresses WHERE id=$1 AND user_id=$2 RETURNING id",
@@ -115,7 +115,7 @@ router.delete("/:id", async (req, res) => {
     }
     res.json({ message: "Address deleted" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 

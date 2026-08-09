@@ -10,7 +10,7 @@ router.use(protect);
 const AI_ROLES = requireRole("superadmin","manager","kitchen_staff");
 
 // ─── CONVERSATIONS ────────────────────────────────────────────────────────────
-router.get("/conversations", AI_ROLES, async (req, res) => {
+router.get("/conversations", AI_ROLES, async (req, res, next) => {
   try {
     const { search = "", status, page = 1, limit = 20 } = req.query;
     const params = []; const where = [];
@@ -23,10 +23,10 @@ router.get("/conversations", AI_ROLES, async (req, res) => {
       pool.query(`SELECT COUNT(*) FROM ai_conversations ${clause}`, params),
     ]);
     res.json({ conversations: rows.rows, total: parseInt(cnt.rows[0].count), page: parseInt(page), pages: Math.ceil(parseInt(cnt.rows[0].count)/parseInt(limit)) });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.patch("/conversations/:id/status", requireRole("superadmin","manager"), async (req, res) => {
+router.patch("/conversations/:id/status", requireRole("superadmin","manager"), async (req, res, next) => {
   try {
     const { status } = req.body;
     const valid = ["pending","resolved","escalated"];
@@ -34,14 +34,14 @@ router.patch("/conversations/:id/status", requireRole("superadmin","manager"), a
     const result = await pool.query("UPDATE ai_conversations SET status=$1 WHERE id=$2 RETURNING *", [status, req.params.id]);
     if (!result.rows.length) return res.status(404).json({ message: "Not found" });
     res.json({ conversation: result.rows[0] });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.delete("/conversations/:id", requireRole("superadmin"), async (req, res) => {
+router.delete("/conversations/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
     await pool.query("DELETE FROM ai_conversations WHERE id=$1", [req.params.id]);
     res.json({ message: "Conversation deleted" });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
 // ─── DIETARY RULES ────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ const ENSURE_DIET = `CREATE TABLE IF NOT EXISTS admin_dietary_rules (
   tags VARCHAR(255), priority INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
 )`;
 
-router.get("/dietary-rules", AI_ROLES, async (req, res) => {
+router.get("/dietary-rules", AI_ROLES, async (req, res, next) => {
   try {
     await pool.query(ENSURE_DIET);
     const { search = "", page = 1, limit = 50 } = req.query;
@@ -63,10 +63,10 @@ router.get("/dietary-rules", AI_ROLES, async (req, res) => {
       pool.query(`SELECT COUNT(*) FROM admin_dietary_rules ${clause}`, params),
     ]);
     res.json({ rules: rows.rows, total: parseInt(cnt.rows[0].count) });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.post("/dietary-rules", requireRole("superadmin","manager"), async (req, res) => {
+router.post("/dietary-rules", requireRole("superadmin","manager"), async (req, res, next) => {
   try {
     await pool.query(ENSURE_DIET);
     const { condition, rule_text, tags, priority } = req.body;
@@ -79,10 +79,10 @@ router.post("/dietary-rules", requireRole("superadmin","manager"), async (req, r
       [condition.trim(), rule_text.trim(), tags||null, priority||0]
     );
     res.status(201).json({ rule: result.rows[0] });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.put("/dietary-rules/:id", requireRole("superadmin","manager"), async (req, res) => {
+router.put("/dietary-rules/:id", requireRole("superadmin","manager"), async (req, res, next) => {
   try {
     await pool.query(ENSURE_DIET);
     const { condition, rule_text, tags, priority } = req.body;
@@ -93,20 +93,20 @@ router.put("/dietary-rules/:id", requireRole("superadmin","manager"), async (req
     );
     if (!result.rows.length) return res.status(404).json({ message: "Rule not found" });
     res.json({ rule: result.rows[0] });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.delete("/dietary-rules/:id", requireRole("superadmin"), async (req, res) => {
+router.delete("/dietary-rules/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
     await pool.query(ENSURE_DIET);
     const result = await pool.query("DELETE FROM admin_dietary_rules WHERE id=$1 RETURNING id", [req.params.id]);
     if (!result.rows.length) return res.status(404).json({ message: "Rule not found" });
     res.json({ message: "Dietary rule deleted" });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
 // ─── MEAL ASSOCIATIONS ────────────────────────────────────────────────────────
-router.get("/meal-associations", AI_ROLES, async (req, res) => {
+router.get("/meal-associations", AI_ROLES, async (req, res, next) => {
   try {
     const { search = "", page = 1, limit = 50 } = req.query;
     const params = []; const where = [];
@@ -118,10 +118,10 @@ router.get("/meal-associations", AI_ROLES, async (req, res) => {
       pool.query(`SELECT COUNT(*) FROM product_associations ${clause}`, params),
     ]);
     res.json({ associations: rows.rows, total: parseInt(cnt.rows[0].count) });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.post("/meal-associations", requireRole("superadmin","manager","kitchen_staff"), async (req, res) => {
+router.post("/meal-associations", requireRole("superadmin","manager","kitchen_staff"), async (req, res, next) => {
   try {
     const { product_name, associated_product_name, association_type, strength, notes } = req.body;
     if (!product_name?.trim()) return res.status(400).json({ message: "Product name is required" });
@@ -131,10 +131,10 @@ router.post("/meal-associations", requireRole("superadmin","manager","kitchen_st
       [product_name.trim(), associated_product_name.trim(), association_type||"pairs_well_with", parseFloat(strength)||1.0, notes?.trim()||null]
     );
     res.status(201).json({ association: result.rows[0] });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.put("/meal-associations/:id", requireRole("superadmin","manager","kitchen_staff"), async (req, res) => {
+router.put("/meal-associations/:id", requireRole("superadmin","manager","kitchen_staff"), async (req, res, next) => {
   try {
     const { product_name, associated_product_name, association_type, strength, notes } = req.body;
     const result = await pool.query(
@@ -143,14 +143,14 @@ router.put("/meal-associations/:id", requireRole("superadmin","manager","kitchen
     );
     if (!result.rows.length) return res.status(404).json({ message: "Not found" });
     res.json({ association: result.rows[0] });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.delete("/meal-associations/:id", requireRole("superadmin","manager"), async (req, res) => {
+router.delete("/meal-associations/:id", requireRole("superadmin","manager"), async (req, res, next) => {
   try {
     await pool.query("DELETE FROM product_associations WHERE id=$1", [req.params.id]);
     res.json({ message: "Association deleted" });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
 // ─── SUBSTITUTIONS ────────────────────────────────────────────────────────────
@@ -160,7 +160,7 @@ const ENSURE_SUBS = `CREATE TABLE IF NOT EXISTS admin_substitutions (
   is_active BOOLEAN DEFAULT TRUE, created_by INTEGER, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
 )`;
 
-router.get("/substitutions", AI_ROLES, async (req, res) => {
+router.get("/substitutions", AI_ROLES, async (req, res, next) => {
   try {
     await pool.query(ENSURE_SUBS);
     const { search = "", page = 1, limit = 50 } = req.query;
@@ -173,10 +173,10 @@ router.get("/substitutions", AI_ROLES, async (req, res) => {
       pool.query(`SELECT COUNT(*) FROM admin_substitutions ${clause}`, params),
     ]);
     res.json({ substitutions: rows.rows, total: parseInt(cnt.rows[0].count) });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.post("/substitutions", requireRole("superadmin","manager","kitchen_staff"), async (req, res) => {
+router.post("/substitutions", requireRole("superadmin","manager","kitchen_staff"), async (req, res, next) => {
   try {
     await pool.query(ENSURE_SUBS);
     const { original_item, substitute_item, reason, dietary_tags, confidence } = req.body;
@@ -189,10 +189,10 @@ router.post("/substitutions", requireRole("superadmin","manager","kitchen_staff"
       [original_item.trim(), substitute_item.trim(), reason?.trim()||null, dietary_tags?.trim()||null, parseFloat(confidence||0.80), req.user.id]
     );
     res.status(201).json({ substitution: result.rows[0] });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.put("/substitutions/:id", requireRole("superadmin","manager","kitchen_staff"), async (req, res) => {
+router.put("/substitutions/:id", requireRole("superadmin","manager","kitchen_staff"), async (req, res, next) => {
   try {
     const { original_item, substitute_item, reason, dietary_tags, confidence, is_active } = req.body;
     const result = await pool.query(
@@ -201,14 +201,14 @@ router.put("/substitutions/:id", requireRole("superadmin","manager","kitchen_sta
     );
     if (!result.rows.length) return res.status(404).json({ message: "Not found" });
     res.json({ substitution: result.rows[0] });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.delete("/substitutions/:id", requireRole("superadmin","manager"), async (req, res) => {
+router.delete("/substitutions/:id", requireRole("superadmin","manager"), async (req, res, next) => {
   try {
     await pool.query("DELETE FROM admin_substitutions WHERE id=$1", [req.params.id]);
     res.json({ message: "Substitution deleted" });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
 // ─── RECOMMENDATIONS ─────────────────────────────────────────────────────────
@@ -218,7 +218,7 @@ const ENSURE_RECS = `CREATE TABLE IF NOT EXISTS admin_recommendations (
   is_active BOOLEAN DEFAULT TRUE, created_by INTEGER, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
 )`;
 
-router.get("/recommendations", AI_ROLES, async (req, res) => {
+router.get("/recommendations", AI_ROLES, async (req, res, next) => {
   try {
     await pool.query(ENSURE_RECS);
     const { search = "", page = 1, limit = 50 } = req.query;
@@ -231,10 +231,10 @@ router.get("/recommendations", AI_ROLES, async (req, res) => {
       pool.query(`SELECT COUNT(*) FROM admin_recommendations ${clause}`, params),
     ]);
     res.json({ recommendations: rows.rows, total: parseInt(cnt.rows[0].count) });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.post("/recommendations", requireRole("superadmin","manager"), async (req, res) => {
+router.post("/recommendations", requireRole("superadmin","manager"), async (req, res, next) => {
   try {
     await pool.query(ENSURE_RECS);
     const { title, trigger_condition, recommended_items, context_tags, priority } = req.body;
@@ -246,10 +246,10 @@ router.post("/recommendations", requireRole("superadmin","manager"), async (req,
       [title.trim(), trigger_condition.trim(), recommended_items.trim(), context_tags?.trim()||null, parseInt(priority||5), req.user.id]
     );
     res.status(201).json({ recommendation: result.rows[0] });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.put("/recommendations/:id", requireRole("superadmin","manager"), async (req, res) => {
+router.put("/recommendations/:id", requireRole("superadmin","manager"), async (req, res, next) => {
   try {
     const { title, trigger_condition, recommended_items, context_tags, priority, is_active } = req.body;
     const result = await pool.query(
@@ -258,14 +258,14 @@ router.put("/recommendations/:id", requireRole("superadmin","manager"), async (r
     );
     if (!result.rows.length) return res.status(404).json({ message: "Not found" });
     res.json({ recommendation: result.rows[0] });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
-router.delete("/recommendations/:id", requireRole("superadmin"), async (req, res) => {
+router.delete("/recommendations/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
     await pool.query("DELETE FROM admin_recommendations WHERE id=$1", [req.params.id]);
     res.json({ message: "Recommendation deleted" });
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) { next(err); }
 });
 
 module.exports = router;

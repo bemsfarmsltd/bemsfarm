@@ -9,7 +9,7 @@ const { protect, requireRole } = require("../middleware/authMiddleware");
 router.use(protect);
 
 // ── GET /api/admin/customers ──────────────────────────────────────
-router.get("/", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
+router.get("/", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
     const {
       page = 1,
@@ -102,7 +102,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant"), asy
     });
   } catch (err) {
     console.error("GET /admin/customers:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -111,7 +111,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant"), asy
 router.get(
   "/report",
   requireRole("superadmin", "manager", "accountant"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const {
         search   = "",
@@ -246,13 +246,13 @@ router.get(
       });
     } catch (err) {
       console.error("GET /admin/customers/report:", err.message);
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   },
 );
 
 // ── GET /api/admin/customers/:id/insights ─────────────────────────
-router.get("/:id/insights", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
+router.get("/:id/insights", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
     const customerId = req.params.id;
     const isCode = customerId.startsWith("CUS-");
@@ -370,7 +370,7 @@ Based on purchase history and a total spending of **₦${Number(customer.total_s
       res.json({ insights: fallbackInsights });
     }
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -380,7 +380,7 @@ Based on purchase history and a total spending of **₦${Number(customer.total_s
 // replaces ActivityLog.jsx's previously fully-hardcoded 25-row fixture.
 // Must be registered before GET /:id or Express treats "site-activity"
 // as an :id value.
-router.get("/site-activity", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/site-activity", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { type = "", search = "", date_from = "", date_to = "", limit = 100 } = req.query;
     const params = [];
@@ -430,12 +430,12 @@ router.get("/site-activity", requireRole("superadmin", "manager"), async (req, r
       type_counts: Object.fromEntries(typeCounts.rows.map((r) => [r.type, parseInt(r.count)])),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── GET /api/admin/customers/:id ──────────────────────────────────
-router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
+router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
     const isCode = req.params.id.startsWith("CUS-");
     const whereCol = isCode ? "c.customer_code" : "c.id";
@@ -517,7 +517,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant"), 
       activity: activity.rows,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -525,7 +525,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant"), 
 router.post(
   "/",
   requireRole("superadmin", "manager", "admin", "cashier"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -627,7 +627,7 @@ router.post(
         .json({ customer, message: "Customer registered successfully" });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -638,7 +638,7 @@ router.post(
 router.patch(
   "/:id/status",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { status } = req.body;
       await pool.query(
@@ -647,7 +647,7 @@ router.patch(
       );
       res.json({ message: "Status updated" });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   },
 );
@@ -656,7 +656,7 @@ router.patch(
 router.delete(
   "/:id",
   requireRole("superadmin", "manager"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       // Soft delete — anonymise PII
       await pool.query(
@@ -672,7 +672,7 @@ router.delete(
       );
       res.json({ message: "Customer removed" });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   },
 );
@@ -682,7 +682,7 @@ router.delete(
 router.post(
   "/:id/loyalty",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -765,7 +765,7 @@ router.post(
       res.json({ message: "Points updated", points_balance: newBalance });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -777,7 +777,7 @@ router.post(
 router.post(
   "/:id/wallet",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -850,7 +850,7 @@ router.post(
       res.json({ message: "Wallet updated", balance: newBalance, reference });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -858,7 +858,7 @@ router.post(
 );
 
 // ── GET /api/admin/customers/loyalty/activity ─────────────────────
-router.get("/loyalty/activity", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
+router.get("/loyalty/activity", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
     const { limit = 30, customer_id } = req.query;
     const params = [];
@@ -880,12 +880,12 @@ router.get("/loyalty/activity", requireRole("superadmin", "manager", "admin", "a
     );
     res.json({ activity: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── GET /api/admin/customers/wallet/activity ──────────────────────
-router.get("/wallet/activity", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
+router.get("/wallet/activity", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
     const { limit = 30, customer_id } = req.query;
     const params = [];
@@ -908,7 +908,7 @@ router.get("/wallet/activity", requireRole("superadmin", "manager", "admin", "ac
     );
     res.json({ activity: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 

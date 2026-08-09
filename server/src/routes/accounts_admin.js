@@ -174,7 +174,7 @@ async function postTransaction(client, { bankAccountId, type, sourceType, source
 // ════════════════════════════════════════════════════════════════════════════
 // FINANCIAL OVERVIEW  ──  GET /api/admin/accounts/overview
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/overview", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
+router.get("/overview", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
     const [
       monthIncome,
@@ -288,7 +288,7 @@ router.get("/overview", requireRole("superadmin", "manager", "admin", "accountan
     });
   } catch (err) {
     console.error("GET /admin/accounts/overview:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -303,7 +303,7 @@ router.delete("/bank-accounts/:id", requireRole("superadmin"), accountsControlle
 // ════════════════════════════════════════════════════════════════════════════
 // INCOME
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/income", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
+router.get("/income", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search = "", source = "", status = "", from = "", to = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -349,11 +349,11 @@ router.get("/income", requireRole("superadmin", "manager", "admin", "accountant"
       stats: stats.rows[0],
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/income", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.post("/income", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -377,13 +377,13 @@ router.post("/income", requireRole("superadmin", "manager", "admin"), async (req
     res.status(201).json({ income: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
 });
 
-router.patch("/income/:id", requireRole("superadmin", "manager"), async (req, res) => {
+router.patch("/income/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { description, amount, status, notes } = req.body;
     const result = await pool.query(
@@ -398,23 +398,23 @@ router.patch("/income/:id", requireRole("superadmin", "manager"), async (req, re
     if (!result.rows.length) return res.status(404).json({ message: "Income record not found" });
     res.json({ income: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.delete("/income/:id", requireRole("superadmin"), async (req, res) => {
+router.delete("/income/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
     await pool.query("UPDATE income SET status='reversed' WHERE id=$1", [req.params.id]);
     res.json({ message: "Income reversed" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // EXPENSES
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/expenses", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
+router.get("/expenses", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search = "", category = "", status = "", from = "", to = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -464,11 +464,11 @@ router.get("/expenses", requireRole("superadmin", "manager", "admin", "accountan
       stats: stats.rows[0],
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/expenses", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.post("/expenses", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -489,13 +489,13 @@ router.post("/expenses", requireRole("superadmin", "manager", "admin"), async (r
     res.status(201).json({ expense: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
 });
 
-router.patch("/expenses/:id", requireRole("superadmin", "manager"), async (req, res) => {
+router.patch("/expenses/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -536,25 +536,25 @@ router.patch("/expenses/:id", requireRole("superadmin", "manager"), async (req, 
     res.json({ expense: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
 });
 
-router.delete("/expenses/:id", requireRole("superadmin"), async (req, res) => {
+router.delete("/expenses/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
     await pool.query("UPDATE expenses SET status='rejected', updated_at=NOW() WHERE id=$1", [req.params.id]);
     res.json({ message: "Expense rejected" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // TRANSACTIONS  ──  GET /api/admin/accounts/transactions
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/transactions", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
+router.get("/transactions", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, type = "", bank_account_id = "", from = "", to = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -592,7 +592,7 @@ router.get("/transactions", requireRole("superadmin", "manager", "admin", "accou
       pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -605,7 +605,7 @@ router.post("/transfers", requireRole("superadmin", "manager"), accountsControll
 // ════════════════════════════════════════════════════════════════════════════
 // DRIVER COMMISSIONS  ──  GET /api/admin/accounts/commissions
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/commissions", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res) => {
+router.get("/commissions", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, status = "", driver_id = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -640,12 +640,12 @@ router.get("/commissions", requireRole("superadmin", "manager", "admin", "accoun
       pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // GENERATE COMMISSIONS  ──  POST /api/admin/accounts/commissions/generate
-router.post("/commissions/generate", requireRole("superadmin", "manager"), async (req, res) => {
+router.post("/commissions/generate", requireRole("superadmin", "manager"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -684,14 +684,14 @@ router.post("/commissions/generate", requireRole("superadmin", "manager"), async
     res.json({ message: `Commission records generated for ${generated} drivers`, period_from, period_to });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
 });
 
 // APPROVE / PAY COMMISSION  ──  PATCH /api/admin/accounts/commissions/:id
-router.patch("/commissions/:id", requireRole("superadmin", "manager"), async (req, res) => {
+router.patch("/commissions/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -729,7 +729,7 @@ router.patch("/commissions/:id", requireRole("superadmin", "manager"), async (re
     res.json({ commission: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }

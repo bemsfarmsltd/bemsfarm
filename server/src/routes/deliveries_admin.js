@@ -9,7 +9,7 @@ const { protect, requireRole } = require("../middleware/authMiddleware");
 router.use(protect);
 
 // ── GET /api/admin/deliveries/active ─────────────────────────────
-router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res) => {
+router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   try {
     const { search = "", status = "" } = req.query;
     const params = [];
@@ -79,12 +79,12 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
     res.json({ deliveries: rows.rows, stats: stats.rows[0] });
   } catch (err) {
     console.error("GET /admin/deliveries/active:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── GET /api/admin/deliveries/auto-log ───────────────────────────
-router.get("/auto-log", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res) => {
+router.get("/auto-log", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   try {
     const rows = await pool.query(`
       SELECT
@@ -116,7 +116,7 @@ router.get("/auto-log", requireRole("superadmin", "manager", "admin", "delivery_
     `);
     res.json({ log: rows.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -124,7 +124,7 @@ router.get("/auto-log", requireRole("superadmin", "manager", "admin", "delivery_
 router.patch(
   "/:id/status",
   requireRole("superadmin", "manager", "admin", "delivery_manager"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -193,7 +193,7 @@ router.patch(
       res.json({ message: "Delivery status updated" });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -204,7 +204,7 @@ router.patch(
 router.patch(
   "/:id/reassign",
   requireRole("superadmin", "manager", "admin", "delivery_manager"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -273,7 +273,7 @@ router.patch(
       res.json({ message: "Driver reassigned", driver: d });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -284,7 +284,7 @@ router.patch(
 router.patch(
   "/:id/attempt",
   requireRole("superadmin", "manager", "admin", "delivery_manager"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -327,7 +327,7 @@ router.patch(
       res.json({ message: "Attempt logged", attempts: newAttempts });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -335,7 +335,7 @@ router.patch(
 );
 
 // ── GET /api/admin/deliveries/drivers ────────────────────────────
-router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res) => {
+router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   try {
     const { search = "", status = "" } = req.query;
     const params = [];
@@ -389,7 +389,7 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
 
     res.json({ drivers: rows.rows, stats: stats.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -397,7 +397,7 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
 router.post(
   "/drivers",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const {
         name,
@@ -433,7 +433,7 @@ router.post(
 
       res.status(201).json({ driver: result.rows[0], message: "Driver added" });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   },
 );
@@ -442,7 +442,7 @@ router.post(
 router.patch(
   "/drivers/:id",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const {
         name,
@@ -479,7 +479,7 @@ router.patch(
       );
       res.json({ message: "Driver updated" });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   },
 );
@@ -488,7 +488,7 @@ router.patch(
 router.patch(
   "/drivers/:id/suspend",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { reason } = req.body;
       await pool.query(
@@ -497,7 +497,7 @@ router.patch(
       );
       res.json({ message: "Driver suspended" });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   },
 );
@@ -506,7 +506,7 @@ router.patch(
 router.patch(
   "/drivers/:id/activate",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       await pool.query(
         "UPDATE drivers SET status='active', notes=NULL, updated_at=NOW() WHERE id=$1",
@@ -514,13 +514,13 @@ router.patch(
       );
       res.json({ message: "Driver activated" });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   },
 );
 
 // ── GET /api/admin/delivery-zones ─────────────────────────────────
-router.get("/zones", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res) => {
+router.get("/zones", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   try {
     const rows = await pool.query(`
       SELECT
@@ -544,7 +544,7 @@ router.get("/zones", requireRole("superadmin", "manager", "admin", "delivery_man
 
     res.json({ zones: rows.rows, drivers: drivers.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -552,7 +552,7 @@ router.get("/zones", requireRole("superadmin", "manager", "admin", "delivery_man
 router.post(
   "/zones",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const {
         zone_name,
@@ -599,7 +599,7 @@ router.post(
 
       res.status(201).json({ zone, message: "Zone created" });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   },
 );
@@ -608,7 +608,7 @@ router.post(
 router.patch(
   "/zones/:id",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -665,7 +665,7 @@ router.patch(
       res.json({ message: "Zone updated" });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -676,7 +676,7 @@ router.patch(
 router.delete(
   "/zones/:id",
   requireRole("superadmin", "manager"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       await pool.query("UPDATE drivers SET zone_id=NULL WHERE zone_id=$1", [
         req.params.id,
@@ -686,13 +686,13 @@ router.delete(
       ]);
       res.json({ message: "Zone deleted" });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   },
 );
 
 // ── POST /api/admin/deliveries/notifications ──────────────────────
-router.post("/notifications", requireRole("superadmin", "manager"), async (req, res) => {
+router.post("/notifications", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { title, message, target, driver_ids = [] } = req.body;
     if (!title?.trim()) return res.status(400).json({ message: "Title is required" });
@@ -706,12 +706,12 @@ router.post("/notifications", requireRole("superadmin", "manager"), async (req, 
 
     res.status(201).json({ notification: result.rows[0], message: "Notification sent" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── GET /api/admin/deliveries/notifications ───────────────────────
-router.get("/notifications", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/notifications", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT dn.*, u.name AS sent_by_name
@@ -720,7 +720,7 @@ router.get("/notifications", requireRole("superadmin", "manager"), async (req, r
     );
     res.json({ notifications: result.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -728,7 +728,7 @@ router.get("/notifications", requireRole("superadmin", "manager"), async (req, r
 // No per-driver login exists yet (drivers aren't linked to a users row), so
 // this can't verify a driver is reporting only their own location — but it
 // must at least require staff auth instead of any authenticated account.
-router.post("/drivers/:id/location", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res) => {
+router.post("/drivers/:id/location", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   const { id } = req.params;
   const { latitude, longitude, heading = 0, speed = 0, accuracy = 0 } = req.body;
   if (latitude == null || longitude == null) {
@@ -746,7 +746,7 @@ router.post("/drivers/:id/location", requireRole("superadmin", "manager", "admin
     );
     res.json({ success: true, message: "Driver location updated successfully" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 

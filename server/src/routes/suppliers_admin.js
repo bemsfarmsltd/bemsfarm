@@ -62,7 +62,7 @@ async function nextSupplierCode(client) {
 // ════════════════════════════════════════════════════════════════════════════
 // SUPPLIER LIST  ──  GET /api/admin/suppliers
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.get("/", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search = "", category = "", status = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -112,14 +112,14 @@ router.get("/", requireRole("superadmin", "manager", "admin"), async (req, res) 
     });
   } catch (err) {
     console.error("GET /admin/suppliers:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // SUPPLIER DETAIL  ──  GET /api/admin/suppliers/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/:id", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.get("/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const result = await pool.query(
       "SELECT * FROM suppliers WHERE id=$1 OR supplier_code=$1",
@@ -162,14 +162,14 @@ router.get("/:id", requireRole("superadmin", "manager", "admin"), async (req, re
       returns: returns.rows,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // ADD SUPPLIER  ──  POST /api/admin/suppliers
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.post("/", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -202,7 +202,7 @@ router.post("/", requireRole("superadmin", "manager", "admin"), async (req, res)
     res.status(201).json({ supplier: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -211,7 +211,7 @@ router.post("/", requireRole("superadmin", "manager", "admin"), async (req, res)
 // ════════════════════════════════════════════════════════════════════════════
 // UPDATE SUPPLIER  ──  PATCH /api/admin/suppliers/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/:id", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.patch("/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const {
       name, contact_person, phone, email, address,
@@ -242,26 +242,26 @@ router.patch("/:id", requireRole("superadmin", "manager", "admin"), async (req, 
     if (!result.rows.length) return res.status(404).json({ message: "Supplier not found" });
     res.json({ supplier: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // DELETE / DEACTIVATE  ──  DELETE /api/admin/suppliers/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.delete("/:id", requireRole("superadmin", "manager"), async (req, res) => {
+router.delete("/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     await pool.query("UPDATE suppliers SET status='inactive', updated_at=NOW() WHERE id=$1", [req.params.id]);
     res.json({ message: "Supplier deactivated" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // SUPPLIER BALANCE  ──  GET /api/admin/suppliers/:id/balance
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/:id/balance", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.get("/:id/balance", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const supplier = await pool.query(
       "SELECT id, name, supplier_code, balance, total_purchases, total_paid, payment_terms FROM suppliers WHERE id=$1",
@@ -309,14 +309,14 @@ router.get("/:id/balance", requireRole("superadmin", "manager", "admin"), async 
       ageing: ageing.rows[0],
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // SUPPLIER PAYMENTS  ──  GET /api/admin/suppliers/payments (all)
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/payments/all", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.get("/payments/all", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, supplier_id = "", from = "", to = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -353,7 +353,7 @@ router.get("/payments/all", requireRole("superadmin", "manager", "admin"), async
       pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -361,7 +361,7 @@ router.get("/payments/all", requireRole("superadmin", "manager", "admin"), async
 router.post(
   "/:id/payments",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -420,7 +420,7 @@ router.post(
       res.status(201).json({ message: "Payment recorded", reference: ref });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }

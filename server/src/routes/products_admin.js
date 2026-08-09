@@ -54,7 +54,7 @@ async function syncToCatalogue(client, product) {
 
 // ── GET /api/admin/products ───────────────────────────────────────
 // Paginated product list with filters
-router.get("/", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.get("/", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const {
       page = 1,
@@ -130,13 +130,13 @@ router.get("/", requireRole("superadmin", "manager", "admin"), async (req, res) 
     });
   } catch (err) {
     console.error("GET /admin/products error:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── GET /api/admin/products/form-data ────────────────────────────
 // Returns categories, brands, units for dropdowns
-router.get("/form-data", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.get("/form-data", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const [categories, subCategories, units] = await Promise.all([
       pool.query(
@@ -156,12 +156,12 @@ router.get("/form-data", requireRole("superadmin", "manager", "admin"), async (r
       units: units.rows,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ── GET /api/admin/products/:id ───────────────────────────────────
-router.get("/:id", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.get("/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const result = await pool.query(
       `
@@ -190,7 +190,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin"), async (req, re
 
     res.json({ ...result.rows[0], images: images.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -198,7 +198,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin"), async (req, re
 router.post(
   "/",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -396,7 +396,7 @@ router.post(
     } catch (err) {
       await client.query("ROLLBACK");
       console.error("POST /admin/products error:", err.message);
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -410,7 +410,7 @@ router.post(
 router.post(
   "/bulk-import",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     const { type, rows } = req.body;
     if (!["products", "categories", "sub_categories"].includes(type)) {
       return res.status(400).json({ message: "Invalid import type" });
@@ -506,7 +506,7 @@ router.post(
 router.patch(
   "/:id",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -677,7 +677,7 @@ router.patch(
       res.json({ message: "Product updated" });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -688,7 +688,7 @@ router.patch(
 router.delete(
   "/:id",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       await pool.query(
         "UPDATE products SET status='archived', updated_at=NOW() WHERE id=$1",
@@ -707,7 +707,7 @@ router.delete(
 
       res.json({ message: "Product archived" });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   },
 );
@@ -716,7 +716,7 @@ router.delete(
 router.patch(
   "/:id/featured",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const result = await pool.query(
         "UPDATE products SET is_featured = NOT is_featured, updated_at=NOW() WHERE id=$1 RETURNING is_featured",
@@ -724,7 +724,7 @@ router.patch(
       );
       res.json({ is_featured: result.rows[0]?.is_featured });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   },
 );

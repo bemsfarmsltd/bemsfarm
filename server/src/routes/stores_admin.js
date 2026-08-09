@@ -15,7 +15,7 @@ router.use(protect);
 // ════════════════════════════════════════════════════════════════════════════
 // LIST STORES  ──  GET /api/admin/stores
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { status = "", search = "", page = 1, limit = 50 } = req.query;
     const params = [];
@@ -24,7 +24,7 @@ router.get("/", requireRole("superadmin", "manager"), async (req, res) => {
     if (status) { params.push(status);  where.push(`s.status = $${params.length}`); }
     if (search) {
       params.push(`%${search}%`);
-      where.push(`(s.name ILIKE $${params.length} OR s.address ILIKE $${params.length} OR s.city ILIKE $${params.length})`);
+      where.push(`(s.store_name ILIKE $${params.length} OR s.address ILIKE $${params.length} OR s.city ILIKE $${params.length})`);
     }
 
     const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -32,14 +32,20 @@ router.get("/", requireRole("superadmin", "manager"), async (req, res) => {
     params.push(parseInt(limit)); const limitIdx  = params.length;
     params.push(offset);          const offsetIdx = params.length;
 
+    // s.store_name/store_code aliased to name/code — the field names the
+    // admin UI expects. u.name AS manager_name intentionally shadows the
+    // stores table's own (unused) manager_name column with the joined
+    // user's actual name.
     const [rows, count] = await Promise.all([
       pool.query(
         `SELECT s.*,
+                s.store_name AS name,
+                s.store_code AS code,
                 u.name AS manager_name
          FROM stores s
          LEFT JOIN users u ON u.id = s.manager_id
          ${clause}
-         ORDER BY s.name
+         ORDER BY s.store_name
          LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
         params
       ),
@@ -53,17 +59,17 @@ router.get("/", requireRole("superadmin", "manager"), async (req, res) => {
       pages:  Math.ceil(parseInt(count.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // GET SINGLE STORE  ──  GET /api/admin/stores/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/:id", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT s.*, u.name AS manager_name
+      `SELECT s.*, s.store_name AS name, s.store_code AS code, u.name AS manager_name
        FROM stores s
        LEFT JOIN users u ON u.id = s.manager_id
        WHERE s.id = $1`,
@@ -72,24 +78,30 @@ router.get("/:id", requireRole("superadmin", "manager"), async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ message: "Store not found" });
     res.json({ store: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // CREATE STORE  ──  POST /api/admin/stores
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/", requireRole("superadmin", "manager"), async (req, res) => {
+router.post("/", requireRole("superadmin", "manager"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
     const {
-      name, address, city, state, country = "Nigeria",
-      phone, email, manager_id, opening_hours, notes, status = "active",
+      name, code, address, city, state, country = "Nigeria",
+      phone, email, manager_id, opening_hours, notes, status = "open",
     } = req.body;
 
     if (!name?.trim()) return res.status(400).json({ message: "Store name is required" });
+    if (!code?.trim()) return res.status(400).json({ message: "Store code is required" });
+
+    const dupCode = await client.query("SELECT id FROM stores WHERE store_code=$1", [code.trim().toUpperCase()]);
+    if (dupCode.rows.length) {
+      return res.status(400).json({ message: `Store code "${code.trim().toUpperCase()}" is already in use` });
+    }
 
     // Guard: ensure manager exists if provided
     if (manager_id) {
@@ -99,11 +111,11 @@ router.post("/", requireRole("superadmin", "manager"), async (req, res) => {
 
     const result = await client.query(
       `INSERT INTO stores
-         (name, address, city, state, country, phone, email, manager_id,
+         (store_code, store_name, address, city, state, country, phone, email, manager_id,
           opening_hours, notes, status, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW(),NOW())
-       RETURNING *`,
-      [name.trim(), address || null, city || null, state || null, country,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW(),NOW())
+       RETURNING *, store_name AS name, store_code AS code`,
+      [code.trim().toUpperCase(), name.trim(), address || null, city || null, state || null, country,
        phone || null, email || null, manager_id || null,
        opening_hours || null, notes || null, status]
     );
@@ -112,7 +124,7 @@ router.post("/", requireRole("superadmin", "manager"), async (req, res) => {
     res.status(201).json({ store: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -121,7 +133,7 @@ router.post("/", requireRole("superadmin", "manager"), async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // UPDATE STORE  ──  PATCH /api/admin/stores/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/:id", requireRole("superadmin", "manager"), async (req, res) => {
+router.patch("/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -129,15 +141,31 @@ router.patch("/:id", requireRole("superadmin", "manager"), async (req, res) => {
     const store = await client.query("SELECT id FROM stores WHERE id=$1", [req.params.id]);
     if (!store.rows.length) return res.status(404).json({ message: "Store not found" });
 
-    const allowed = ["name","address","city","state","country","phone","email",
-                     "manager_id","opening_hours","notes","status"];
+    // Maps the admin UI's field names to the real DB columns — `name`/`code`
+    // in the request body are stored as store_name/store_code.
+    const allowed = { name: "store_name", code: "store_code", address: "address", city: "city",
+      state: "state", country: "country", phone: "phone", email: "email",
+      manager_id: "manager_id", opening_hours: "opening_hours",
+      notes: "notes", status: "status" };
     const sets   = [];
     const params = [];
 
-    for (const field of allowed) {
+    if (req.body.code !== undefined) {
+      const newCode = String(req.body.code).trim().toUpperCase();
+      const dupCode = await client.query(
+        "SELECT id FROM stores WHERE store_code=$1 AND id!=$2",
+        [newCode, req.params.id],
+      );
+      if (dupCode.rows.length) {
+        return res.status(400).json({ message: `Store code "${newCode}" is already in use` });
+      }
+      req.body.code = newCode;
+    }
+
+    for (const [field, column] of Object.entries(allowed)) {
       if (req.body[field] !== undefined) {
         params.push(req.body[field]);
-        sets.push(`${field} = $${params.length}`);
+        sets.push(`${column} = $${params.length}`);
       }
     }
 
@@ -145,7 +173,7 @@ router.patch("/:id", requireRole("superadmin", "manager"), async (req, res) => {
 
     params.push(req.params.id);
     const result = await client.query(
-      `UPDATE stores SET ${sets.join(", ")}, updated_at=NOW() WHERE id=$${params.length} RETURNING *`,
+      `UPDATE stores SET ${sets.join(", ")}, updated_at=NOW() WHERE id=$${params.length} RETURNING *, store_name AS name, store_code AS code`,
       params
     );
 
@@ -153,7 +181,7 @@ router.patch("/:id", requireRole("superadmin", "manager"), async (req, res) => {
     res.json({ store: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -162,23 +190,23 @@ router.patch("/:id", requireRole("superadmin", "manager"), async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // DELETE STORE  ──  DELETE /api/admin/stores/:id  (soft delete)
 // ════════════════════════════════════════════════════════════════════════════
-router.delete("/:id", requireRole("superadmin"), async (req, res) => {
+router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
     const result = await pool.query(
-      "UPDATE stores SET status='inactive', updated_at=NOW() WHERE id=$1 RETURNING id, name",
+      "UPDATE stores SET status='inactive', updated_at=NOW() WHERE id=$1 RETURNING id, store_name AS name",
       [req.params.id]
     );
     if (!result.rows.length) return res.status(404).json({ message: "Store not found" });
     res.json({ message: `Store "${result.rows[0].name}" deactivated` });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // ASSIGN MANAGER  ──  POST /api/admin/stores/:id/manager
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/:id/manager", requireRole("superadmin"), async (req, res) => {
+router.post("/:id/manager", requireRole("superadmin"), async (req, res, next) => {
   try {
     const { manager_id } = req.body;
     if (!manager_id) return res.status(400).json({ message: "manager_id required" });
@@ -190,14 +218,14 @@ router.post("/:id/manager", requireRole("superadmin"), async (req, res) => {
     if (!result.rows.length) return res.status(404).json({ message: "Store not found" });
     res.json({ store: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // LIST STAFF FOR A STORE  ──  GET /api/admin/stores/:id/staff
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/:id/staff", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/:id/staff", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT id, employee_code, name, email, phone, role, department, status

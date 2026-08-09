@@ -48,7 +48,7 @@ router.use(protect);
 // (not just staff) can call it — order creation independently re-validates
 // and recomputes the discount server-side, this is a preview only.
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/validate", async (req, res) => {
+router.post("/validate", async (req, res, next) => {
   try {
     const { code, order_total = 0, customer_id } = req.body;
     if (!code) return res.status(400).json({ message: "code required" });
@@ -62,7 +62,7 @@ router.post("/validate", async (req, res) => {
       discount: Math.round(result.discount * 100) / 100,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -71,7 +71,7 @@ router.use(requireRole("superadmin", "manager", "admin"));
 // ════════════════════════════════════════════════════════════════════════════
 // LIST COUPONS  ──  GET /api/admin/coupons
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", async (req, res) => {
+router.get("/", async (req, res, next) => {
   try {
     const { status = "", search = "", page = 1, limit = 30 } = req.query;
     const params = [];
@@ -116,14 +116,14 @@ router.get("/", async (req, res) => {
       pages:   Math.ceil(parseInt(count.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // GET SINGLE COUPON  ──  GET /api/admin/coupons/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/:id", async (req, res) => {
+router.get("/:id", async (req, res, next) => {
   try {
     const [coupon, usages] = await Promise.all([
       pool.query("SELECT * FROM coupons WHERE id=$1", [req.params.id]),
@@ -140,14 +140,14 @@ router.get("/:id", async (req, res) => {
 
     res.json({ coupon: coupon.rows[0], usages: usages.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // CREATE COUPON  ──  POST /api/admin/coupons
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/", async (req, res) => {
+router.post("/", async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -186,7 +186,7 @@ router.post("/", async (req, res) => {
     res.status(201).json({ coupon: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -195,7 +195,7 @@ router.post("/", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // UPDATE COUPON  ──  PATCH /api/admin/coupons/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -226,7 +226,7 @@ router.patch("/:id", async (req, res) => {
     res.json({ coupon: result.rows[0] });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -235,7 +235,7 @@ router.patch("/:id", async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // TOGGLE ACTIVE  ──  PATCH /api/admin/coupons/:id/toggle
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/:id/toggle", async (req, res) => {
+router.patch("/:id/toggle", async (req, res, next) => {
   try {
     const result = await pool.query(
       "UPDATE coupons SET is_active=NOT is_active, updated_at=NOW() WHERE id=$1 RETURNING id, code, is_active",
@@ -245,7 +245,7 @@ router.patch("/:id/toggle", async (req, res) => {
     const { code, is_active } = result.rows[0];
     res.json({ message: `Coupon ${code} ${is_active ? "activated" : "deactivated"}`, coupon: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -253,7 +253,7 @@ router.patch("/:id/toggle", async (req, res) => {
 // DELETE COUPON  ──  DELETE /api/admin/coupons/:id
 // Only allowed if coupon has never been used.
 // ════════════════════════════════════════════════════════════════════════════
-router.delete("/:id", requireRole("superadmin"), async (req, res) => {
+router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
     const coupon = await pool.query("SELECT code, used_count FROM coupons WHERE id=$1", [req.params.id]);
     if (!coupon.rows.length) return res.status(404).json({ message: "Coupon not found" });
@@ -263,14 +263,14 @@ router.delete("/:id", requireRole("superadmin"), async (req, res) => {
     await pool.query("DELETE FROM coupons WHERE id=$1", [req.params.id]);
     res.json({ message: `Coupon "${coupon.rows[0].code}" deleted` });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // USAGE HISTORY  ──  GET /api/admin/coupons/usage
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/usage/all", async (req, res) => {
+router.get("/usage/all", async (req, res, next) => {
   try {
     const { page = 1, limit = 50 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -296,7 +296,7 @@ router.get("/usage/all", async (req, res) => {
       pages:  Math.ceil(parseInt(count.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 

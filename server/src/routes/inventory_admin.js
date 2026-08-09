@@ -112,7 +112,7 @@ async function applyStockChange(client, { productId, warehouseId, type, delta, r
 // ════════════════════════════════════════════════════════════════════════════
 // STOCK LIST  ──  GET /api/admin/inventory
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
+router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search = "", category = "", stock_status = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -182,14 +182,14 @@ router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper"), as
     });
   } catch (err) {
     console.error("GET /admin/inventory:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // STOCK ALERTS  ──  GET /api/admin/inventory/alerts
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
+router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
     const [lowStock, outOfStock, expiringSoon, expiringBatches] = await Promise.all([
       pool.query(`
@@ -247,14 +247,14 @@ router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // STOCK VALUATION  ──  GET /api/admin/inventory/valuation
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/valuation", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.get("/valuation", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const [totalValue, byCategory, topValueItems, movements30d] = await Promise.all([
       pool.query(`
@@ -311,14 +311,14 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin"), async (r
       movements_30d: movements30d.rows,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // MOVEMENT HISTORY  ──  GET /api/admin/inventory/movements
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/movements", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
+router.get("/movements", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, product_id = "", type = "", from = "", to = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -368,7 +368,7 @@ router.get("/movements", requireRole("superadmin", "manager", "admin", "storekee
       pages: Math.ceil(total / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -378,7 +378,7 @@ router.get("/movements", requireRole("superadmin", "manager", "admin", "storekee
 router.post(
   "/adjust",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -422,7 +422,7 @@ router.post(
       res.json({ message: "Stock adjusted", before_qty: beforeQty, after_qty: afterQty, delta });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -436,7 +436,7 @@ router.post(
 router.post(
   "/transfer",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -468,7 +468,7 @@ router.post(
       res.json({ message: "Transfer recorded", reference: ref, quantity: qty });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -478,7 +478,7 @@ router.post(
 // ════════════════════════════════════════════════════════════════════════════
 // WAREHOUSES
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/warehouses", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
+router.get("/warehouses", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
     const rows = await pool.query(`
       SELECT
@@ -492,11 +492,11 @@ router.get("/warehouses", requireRole("superadmin", "manager", "admin", "storeke
     `);
     res.json({ warehouses: rows.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/warehouses", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.post("/warehouses", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const { name, code, location, manager, capacity } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: "Warehouse name required" });
@@ -508,11 +508,11 @@ router.post("/warehouses", requireRole("superadmin", "manager", "admin"), async 
     );
     res.status(201).json({ warehouse: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.patch("/warehouses/:id", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.patch("/warehouses/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const { name, code, location, manager, capacity, status } = req.body;
     const result = await pool.query(
@@ -530,23 +530,23 @@ router.patch("/warehouses/:id", requireRole("superadmin", "manager", "admin"), a
     if (!result.rows.length) return res.status(404).json({ message: "Warehouse not found" });
     res.json({ warehouse: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.delete("/warehouses/:id", requireRole("superadmin"), async (req, res) => {
+router.delete("/warehouses/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
     await pool.query("UPDATE warehouses SET status='inactive', updated_at=NOW() WHERE id=$1", [req.params.id]);
     res.json({ message: "Warehouse deactivated" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // BATCH MANAGEMENT
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
+router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, product_id = "", status = "", expiring = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -586,11 +586,11 @@ router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeepe
       pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/batches", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
+router.post("/batches", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
     const { product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, manufactured_date, supplier_id, notes } = req.body;
     if (!product_id) return res.status(400).json({ message: "product_id required" });
@@ -604,11 +604,11 @@ router.post("/batches", requireRole("superadmin", "manager", "admin", "storekeep
     );
     res.status(201).json({ batch: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.patch("/batches/:id", requireRole("superadmin", "manager", "admin"), async (req, res) => {
+router.patch("/batches/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
     const { quantity, expiry_date, status, notes } = req.body;
     const result = await pool.query(
@@ -623,23 +623,23 @@ router.patch("/batches/:id", requireRole("superadmin", "manager", "admin"), asyn
     if (!result.rows.length) return res.status(404).json({ message: "Batch not found" });
     res.json({ batch: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.delete("/batches/:id", requireRole("superadmin", "manager"), async (req, res) => {
+router.delete("/batches/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     await pool.query("UPDATE batch_management SET status='recalled' WHERE id=$1", [req.params.id]);
     res.json({ message: "Batch recalled" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // LOST / DAMAGED ITEMS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/lost-items", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res) => {
+router.get("/lost-items", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, status = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -672,14 +672,14 @@ router.get("/lost-items", requireRole("superadmin", "manager", "admin", "storeke
 
     res.json({ items: rows.rows, total: parseInt(countRes.rows[0].count), page: parseInt(page), pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit)) });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 router.post(
   "/lost-items",
   requireRole("superadmin", "manager", "admin", "storekeeper"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -715,7 +715,7 @@ router.post(
       res.status(201).json({ message: "Lost item reported", id: result.rows[0].id, estimated_value: estValue });
     } catch (err) {
       await client.query("ROLLBACK");
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -725,7 +725,7 @@ router.post(
 router.patch(
   "/lost-items/:id/approve",
   requireRole("superadmin", "manager"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { action } = req.body; // "approve" | "reject"
       const status = action === "approve" ? "approved" : "rejected";
@@ -735,7 +735,7 @@ router.patch(
       );
       res.json({ message: `Lost item ${status}` });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   }
 );
@@ -744,7 +744,7 @@ router.patch(
 router.patch(
   "/products/:id/reorder",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { reorder_level } = req.body;
       if (reorder_level === undefined || isNaN(parseInt(reorder_level))) {
@@ -756,7 +756,7 @@ router.patch(
       );
       res.json({ message: "Reorder level updated successfully" });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   }
 );
@@ -765,7 +765,7 @@ router.patch(
 router.get(
   "/alerts/check",
   requireRole("superadmin", "manager", "admin", "storekeeper"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       // 1. Get low stock products
       const lowStockRes = await pool.query(
@@ -813,7 +813,7 @@ router.get(
         }
       });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   }
 );
@@ -822,12 +822,12 @@ router.get(
 router.delete(
   "/lost-items/:id",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       await pool.query("DELETE FROM lost_items WHERE id = $1", [req.params.id]);
       res.json({ success: true, message: "Lost item report deleted successfully" });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   }
 );

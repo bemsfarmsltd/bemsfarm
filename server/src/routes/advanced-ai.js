@@ -149,7 +149,7 @@ Respond with ONLY a JSON array of product names copied EXACTLY as they appear in
   return allProducts.filter((p) => validNames.includes(p.name));
 }
 
-router.post("/semantic-search", async (req, res) => {
+router.post("/semantic-search", async (req, res, next) => {
   try {
     const { query } = req.body;
     if (!query)
@@ -242,7 +242,7 @@ router.post("/semantic-search", async (req, res) => {
     });
   } catch (err) {
     console.error("Semantic search error:", err.message);
-    res.status(500).json({ message: "Search error: " + err.message });
+    next(err);
   }
 });
 
@@ -309,7 +309,7 @@ const SEASONALITY_MULTIPLIERS = {
   },
 };
 
-router.post("/dynamic-pricing", protect, requireRole("superadmin", "admin", "manager"), async (req, res) => {
+router.post("/dynamic-pricing", protect, requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     const { product_id } = req.body;
     const result = await pool.query(
@@ -391,7 +391,7 @@ router.post("/dynamic-pricing", protect, requireRole("superadmin", "admin", "man
     });
   } catch (err) {
     console.error("Dynamic pricing error:", err.message);
-    res.status(500).json({ message: "Pricing error: " + err.message });
+    next(err);
   }
 });
 
@@ -399,7 +399,7 @@ router.post("/dynamic-pricing", protect, requireRole("superadmin", "admin", "man
 // PHASE 5: FRAUD DETECTION
 // ═══════════════════════════════════════════════════════════════
 
-router.post("/fraud-check", protect, requireRole("superadmin", "admin", "manager"), async (req, res) => {
+router.post("/fraud-check", protect, requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     const { user_id, order_amount, payment_method, behavior_metrics } = req.body;
     const riskFactors = [];
@@ -494,7 +494,7 @@ router.post("/fraud-check", protect, requireRole("superadmin", "admin", "manager
     });
   } catch (err) {
     console.error("Fraud check error:", err.message);
-    res.status(500).json({ message: "Fraud check error: " + err.message });
+    next(err);
   }
 });
 
@@ -502,7 +502,7 @@ router.post("/fraud-check", protect, requireRole("superadmin", "admin", "manager
 // PHASE 6: DEMAND FORECASTING + INVENTORY ALERTS
 // ═══════════════════════════════════════════════════════════════
 
-router.get("/demand-forecast", protect, requireRole("superadmin", "admin", "manager"), async (req, res) => {
+router.get("/demand-forecast", protect, requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     const historical = await pool.query(`
       SELECT p.id, p.name,
@@ -565,11 +565,11 @@ router.get("/demand-forecast", protect, requireRole("superadmin", "admin", "mana
     res.json({ products: forecast, generated_at: new Date().toISOString() });
   } catch (err) {
     console.error("Demand forecast error:", err.message);
-    res.status(500).json({ message: "Forecast error: " + err.message });
+    next(err);
   }
 });
 
-router.get("/inventory-alerts", protect, requireRole("superadmin", "admin", "manager"), async (req, res) => {
+router.get("/inventory-alerts", protect, requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     const result = await pool.query(`
       SELECT id, name,
@@ -608,7 +608,7 @@ router.get("/inventory-alerts", protect, requireRole("superadmin", "admin", "man
     });
   } catch (err) {
     console.error("Inventory alert error:", err.message);
-    res.status(500).json({ message: "Alert error: " + err.message });
+    next(err);
   }
 });
 

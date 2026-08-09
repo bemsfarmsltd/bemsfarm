@@ -128,7 +128,7 @@ async function generateEmployeeCode(client) {
 // ════════════════════════════════════════════════════════════════════════════
 // STAFF LIST  ──  GET /api/admin/staff
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search = "", department = "", status = "", role = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -192,14 +192,14 @@ router.get("/", requireRole("superadmin", "manager"), async (req, res) => {
     });
   } catch (err) {
     console.error("GET /admin/staff:", err.message);
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // STAFF DETAIL  ──  GET /api/admin/staff/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/:id", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const result = await pool.query(`
       SELECT
@@ -249,7 +249,7 @@ router.get("/:id", requireRole("superadmin", "manager"), async (req, res) => {
       holidays: holidays.rows,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -260,7 +260,7 @@ router.get("/:id", requireRole("superadmin", "manager"), async (req, res) => {
 router.post(
   "/",
   requireRole("superadmin", "manager"),
-  async (req, res) => {
+  async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -321,7 +321,7 @@ router.post(
     } catch (err) {
       await client.query("ROLLBACK");
       console.error("POST /admin/staff:", err.message);
-      res.status(500).json({ message: err.message });
+      next(err);
     } finally {
       client.release();
     }
@@ -331,7 +331,7 @@ router.post(
 // ════════════════════════════════════════════════════════════════════════════
 // UPDATE STAFF  ──  PATCH /api/admin/staff/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/:id", requireRole("superadmin", "manager"), async (req, res) => {
+router.patch("/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -378,7 +378,7 @@ router.patch("/:id", requireRole("superadmin", "manager"), async (req, res) => {
     res.json({ message: "Staff member updated" });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -387,7 +387,7 @@ router.patch("/:id", requireRole("superadmin", "manager"), async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // STATUS CHANGE  ──  PATCH /api/admin/staff/:id/status
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/:id/status", requireRole("superadmin", "manager"), async (req, res) => {
+router.patch("/:id/status", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { status } = req.body;
     const allowed = ["active", "inactive", "suspended", "on_leave"];
@@ -403,14 +403,14 @@ router.patch("/:id/status", requireRole("superadmin", "manager"), async (req, re
 
     res.json({ message: `Staff member ${status}` });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // SOFT DELETE  ──  DELETE /api/admin/staff/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.delete("/:id", requireRole("superadmin"), async (req, res) => {
+router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -423,7 +423,7 @@ router.delete("/:id", requireRole("superadmin"), async (req, res) => {
     res.json({ message: "Staff member deactivated" });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
@@ -432,7 +432,7 @@ router.delete("/:id", requireRole("superadmin"), async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 // ATTENDANCE  ──  GET /api/admin/staff/attendance
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/attendance", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/attendance", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { date = new Date().toISOString().slice(0, 10), page = 1, limit = 50, staff_id = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -469,7 +469,7 @@ router.get("/attendance", requireRole("superadmin", "manager"), async (req, res)
 
     res.json({ attendance: rows.rows, summary: summary.rows[0], date });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
@@ -477,7 +477,7 @@ router.get("/attendance", requireRole("superadmin", "manager"), async (req, res)
 router.post(
   "/attendance/clock-in",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { staff_id, notes } = req.body;
       if (!staff_id) return res.status(400).json({ message: "staff_id required" });
@@ -500,7 +500,7 @@ router.post(
 
       res.json({ attendance: result.rows[0], message: "Clocked in successfully" });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   }
 );
@@ -509,7 +509,7 @@ router.post(
 router.post(
   "/attendance/clock-out",
   requireRole("superadmin", "manager", "admin"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { staff_id, notes } = req.body;
       if (!staff_id) return res.status(400).json({ message: "staff_id required" });
@@ -526,7 +526,7 @@ router.post(
       if (!result.rows.length) return res.status(400).json({ message: "No clock-in record found for today. Clock in first." });
       res.json({ attendance: result.rows[0], message: "Clocked out successfully" });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   }
 );
@@ -535,7 +535,7 @@ router.post(
 router.patch(
   "/attendance/:id",
   requireRole("superadmin", "manager"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const { status, clock_in, clock_out, notes } = req.body;
       const result = await pool.query(
@@ -550,13 +550,13 @@ router.patch(
       if (!result.rows.length) return res.status(404).json({ message: "Attendance record not found" });
       res.json({ attendance: result.rows[0] });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      next(err);
     }
   }
 );
 
 // MARK ABSENT (bulk) ── POST /api/admin/staff/attendance/mark-absent
-router.post("/attendance/mark-absent", requireRole("superadmin", "manager"), async (req, res) => {
+router.post("/attendance/mark-absent", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const today = new Date().toISOString().slice(0, 10);
     await pool.query(`
@@ -569,14 +569,14 @@ router.post("/attendance/mark-absent", requireRole("superadmin", "manager"), asy
     `, [today, req.user.id]);
     res.json({ message: "Absent records created for all unmarked active staff" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // SCHEDULE  ──  GET /api/admin/staff/schedule
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/schedule", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/schedule", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { week_start } = req.query;
     const start = week_start || new Date().toISOString().slice(0, 10);
@@ -595,11 +595,11 @@ router.get("/schedule", requireRole("superadmin", "manager"), async (req, res) =
 
     res.json({ schedule: rows.rows, week_start: start });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/schedule", requireRole("superadmin", "manager"), async (req, res) => {
+router.post("/schedule", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { staff_id, date, shift_type, shift_start, shift_end, notes } = req.body;
     if (!staff_id || !date) return res.status(400).json({ message: "staff_id and date required" });
@@ -617,23 +617,23 @@ router.post("/schedule", requireRole("superadmin", "manager"), async (req, res) 
     );
     res.status(201).json({ schedule: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.delete("/schedule/:id", requireRole("superadmin", "manager"), async (req, res) => {
+router.delete("/schedule/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     await pool.query("DELETE FROM staff_schedule WHERE id=$1", [req.params.id]);
     res.json({ message: "Schedule entry removed" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // HOLIDAYS / LEAVE  ──  GET /api/admin/staff/holidays
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/holidays", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/holidays", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { status = "", staff_id = "", page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -671,11 +671,11 @@ router.get("/holidays", requireRole("superadmin", "manager"), async (req, res) =
       pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit)),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/holidays", requireRole("superadmin", "manager"), async (req, res) => {
+router.post("/holidays", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { staff_id, type, start_date, end_date, reason, notes } = req.body;
     if (!staff_id)   return res.status(400).json({ message: "staff_id required" });
@@ -701,11 +701,11 @@ router.post("/holidays", requireRole("superadmin", "manager"), async (req, res) 
     );
     res.status(201).json({ holiday: result.rows[0], working_days: days });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.patch("/holidays/:id/approve", requireRole("superadmin", "manager"), async (req, res) => {
+router.patch("/holidays/:id/approve", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { action, notes } = req.body; // "approve" | "reject"
     if (!["approve", "reject"].includes(action)) return res.status(400).json({ message: "action must be approve or reject" });
@@ -736,14 +736,14 @@ router.patch("/holidays/:id/approve", requireRole("superadmin", "manager"), asyn
 
     res.json({ message: `Leave request ${status}`, holiday: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // PAYROLL  ──  GET /api/admin/staff/payroll
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/payroll", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/payroll", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const now   = new Date();
     const month = parseInt(req.query.month) || now.getMonth() + 1;
@@ -777,12 +777,12 @@ router.get("/payroll", requireRole("superadmin", "manager"), async (req, res) =>
 
     res.json({ payroll: rows.rows, summary: summary.rows[0], month, year });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // GENERATE PAYROLL  ──  POST /api/admin/staff/payroll/generate
-router.post("/payroll/generate", requireRole("superadmin", "manager"), async (req, res) => {
+router.post("/payroll/generate", requireRole("superadmin", "manager"), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -841,14 +841,14 @@ router.post("/payroll/generate", requireRole("superadmin", "manager"), async (re
     res.json({ message: `Payroll generated for ${generated} staff members`, month, year });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: err.message });
+    next(err);
   } finally {
     client.release();
   }
 });
 
 // APPROVE / MARK PAID  ──  PATCH /api/admin/staff/payroll/:id
-router.patch("/payroll/:id", requireRole("superadmin", "manager"), async (req, res) => {
+router.patch("/payroll/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const { status, payment_date, payment_ref, bonuses, deductions } = req.body;
     const allowed = ["draft", "approved", "paid"];
@@ -868,14 +868,14 @@ router.patch("/payroll/:id", requireRole("superadmin", "manager"), async (req, r
     if (!result.rows.length) return res.status(404).json({ message: "Payroll record not found" });
     res.json({ payroll: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // ROLES & PERMISSIONS  ──  GET /api/admin/staff/roles
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/roles", requireRole("superadmin", "manager"), async (req, res) => {
+router.get("/roles", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     const roles = await pool.query(`
       SELECT sr.*,
@@ -887,11 +887,11 @@ router.get("/roles", requireRole("superadmin", "manager"), async (req, res) => {
     `);
     res.json({ roles: roles.rows });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.post("/roles", requireRole("superadmin"), async (req, res) => {
+router.post("/roles", requireRole("superadmin"), async (req, res, next) => {
   try {
     const { name, description, permissions = [] } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: "Role name required" });
@@ -904,11 +904,11 @@ router.post("/roles", requireRole("superadmin"), async (req, res) => {
     res.status(201).json({ role: result.rows[0] });
   } catch (err) {
     if (err.code === "23505") return res.status(400).json({ message: "A role with that name already exists" });
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.patch("/roles/:id", requireRole("superadmin"), async (req, res) => {
+router.patch("/roles/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
     const { description, permissions } = req.body;
 
@@ -926,11 +926,11 @@ router.patch("/roles/:id", requireRole("superadmin"), async (req, res) => {
     );
     res.json({ role: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 
-router.delete("/roles/:id", requireRole("superadmin"), async (req, res) => {
+router.delete("/roles/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
     const cur = await pool.query("SELECT is_system FROM staff_roles WHERE id=$1", [req.params.id]);
     if (!cur.rows.length) return res.status(404).json({ message: "Role not found" });
@@ -939,7 +939,7 @@ router.delete("/roles/:id", requireRole("superadmin"), async (req, res) => {
     await pool.query("DELETE FROM staff_roles WHERE id=$1", [req.params.id]);
     res.json({ message: "Role deleted" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    next(err);
   }
 });
 

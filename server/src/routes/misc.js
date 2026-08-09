@@ -10,7 +10,7 @@ function generateReferralCode() {
 }
 
 // ── CONTACT FORM ──────────────────────────────────────────────
-router.post("/contact", async (req, res) => {
+router.post("/contact", async (req, res, next) => {
   const { name, email, phone, message } = req.body;
 
   if (!name?.trim() || !email?.trim() || !message?.trim()) {
@@ -47,7 +47,7 @@ router.post("/contact", async (req, res) => {
 });
 
 // ── SUBSCRIBE ─────────────────────────────────────────────────
-router.post("/subscribe", async (req, res) => {
+router.post("/subscribe", async (req, res, next) => {
   console.log("📧 Subscribe hit. Body:", req.body);
 
   const { email, referred_by } = req.body;
@@ -185,7 +185,7 @@ router.post("/subscribe", async (req, res) => {
 
   } catch (err) {
     console.error("❌ Subscribe DB error:", err.message);
-    res.status(500).json({ message: "Database error: " + err.message });
+    next(err);
   }
 });
 
@@ -198,7 +198,7 @@ router.post("/subscribe", async (req, res) => {
 // verified end-to-end earlier.
 router.post(
   "/webhooks/monnify",
-  async (req, res) => {
+  async (req, res, next) => {
     console.log("🔔 Monnify webhook received");
     const signature = req.headers["monnify-signature"];
 
@@ -382,7 +382,7 @@ router.post(
       } catch (dbErr) {
         console.error("Failed to write audit log:", dbErr.message);
       }
-      res.status(500).json({ message: "Webhook processing error: " + err.message });
+      next(err);
     }
   }
 );
