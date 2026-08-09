@@ -323,10 +323,10 @@ export default function HomePage() {
           </div>
 
           {/* Categories Tab selectors */}
-          <div className="flex justify-center gap-2 border-b border-gray-200/50 dark:border-neutral-800 pb-4 mb-8 overflow-x-auto hide-scrollbar">
+          <div className="flex justify-start md:justify-center gap-2 border-b border-gray-200/50 dark:border-neutral-800 pb-4 mb-8 overflow-x-auto hide-scrollbar">
             <button
               onClick={() => setActiveTab("All")}
-              className={`text-xs px-4 py-2 rounded-full font-bold border transition-colors ${
+              className={`whitespace-nowrap shrink-0 text-xs px-4 py-2 rounded-full font-bold border transition-colors ${
                 activeTab === "All"
                   ? "bg-[#2E7D32] border-[#2E7D32] text-white shadow-sm"
                   : "bg-white dark:bg-neutral-950 border-gray-100 dark:border-neutral-800 text-gray-500 dark:text-neutral-450 hover:border-gray-200 dark:hover:border-neutral-700"
@@ -338,7 +338,7 @@ export default function HomePage() {
               <button
                 key={cat.id}
                 onClick={() => setActiveTab(cat.name)}
-                className={`text-xs px-4 py-2 rounded-full font-bold border transition-colors white-space-nowrap ${
+                className={`whitespace-nowrap shrink-0 text-xs px-4 py-2 rounded-full font-bold border transition-colors ${
                   activeTab === cat.name
                     ? "bg-[#2E7D32] border-[#2E7D32] text-white shadow-sm"
                     : "bg-white dark:bg-neutral-950 border-gray-100 dark:border-neutral-800 text-gray-500 dark:text-neutral-450 hover:border-gray-200 dark:hover:border-neutral-700"
