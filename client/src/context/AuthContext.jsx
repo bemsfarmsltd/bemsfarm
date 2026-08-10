@@ -141,6 +141,17 @@ export function AuthProvider({ children }) {
     [_storeSession],
   );
 
+  // ── UPDATE USER  (merge a server response into the in-memory user,
+  // e.g. after ProfilePage saves — without this, the navbar/profile form
+  // would keep showing stale data until the next full page load) ───────
+  const updateUser = useCallback((patch) => {
+    setUser((prev) => {
+      const next = { ...prev, ...patch };
+      localStorage.setItem("user", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   // ── LOGOUT ───────────────────────────────────────────────────
   const logout = useCallback(() => {
     setUser(null);
@@ -161,6 +172,7 @@ export function AuthProvider({ children }) {
         register, // call as: await register(name, email, password)
         loginWithGoogle, // call as: await loginWithGoogle(credential)
         logout,
+        updateUser, // call as: updateUser({ name, phone, ... }) to merge a patch in
       }}
     >
       {loading ? (

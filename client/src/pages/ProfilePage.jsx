@@ -309,7 +309,7 @@ const PROFILE_CSS = `
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user, logout, isLoggedIn } = useAuth();
+  const { user, logout, isLoggedIn, updateUser } = useAuth();
   const { addToCart } = useCart();
   const fileInputRef = useRef(null);
 
@@ -343,44 +343,37 @@ export default function ProfilePage() {
     });
   };
 
-  // Avatar state
-  const [avatar, setAvatar] = useState(() => {
-    return localStorage.getItem("user_avatar") || DEFAULT_AVATAR;
+  // Avatar — sourced from the server (users.avatar_url), not localStorage.
+  const [avatar, setAvatar] = useState(DEFAULT_AVATAR);
+
+  // Profile fields — the server is the source of truth. Previously these
+  // only ever lived in localStorage (a global key, not even tied to the
+  // signed-in account), so a new browser, device, or cleared cache made
+  // "Save Changes" look like it silently reverted. Every field here now
+  // has a matching users table column and round-trips through the API.
+  const [fields, setFields] = useState({
+    firstName: "", lastName: "", email: "", phone: "",
+    gender: "Male", idNumber: "", taxId: "", taxCountry: "Nigeria", address: "",
   });
 
-  // Additional Profile Fields (Local Storage Persisted)
-  const [fields, setFields] = useState(() => {
-    try {
-      const stored = localStorage.getItem("user_profile_fields");
-      if (stored) return JSON.parse(stored);
-    } catch (e) {
-      console.error(e);
-    }
-    return {
-      firstName: user?.name?.split(" ")[0] || "",
-      lastName: user?.name?.split(" ")[1] || "",
-      email: user?.email || "",
-      phone: user?.phone || "",
-      gender: "Male",
-      idNumber: "1559 000 7788 8DER",
-      taxId: "",
-      taxCountry: "Nigeria",
-      address: user?.address || "",
-    };
-  });
-
-  // Keep fields synced with auth user on mount
+  // Sync from the authenticated user whenever it's (re)loaded — on mount,
+  // and again after a fresh login, so the form always reflects what's
+  // actually saved on the account rather than stale local state.
   useEffect(() => {
-    if (user) {
-      setFields((prev) => ({
-        ...prev,
-        firstName: prev.firstName || user.name?.split(" ")[0] || "",
-        lastName: prev.lastName || user.name?.split(" ")[1] || "",
-        email: prev.email || user.email || "",
-        phone: prev.phone || user.phone || "",
-        address: prev.address || user.address || "",
-      }));
-    }
+    if (!user) return;
+    const [firstName = "", ...rest] = (user.name || "").trim().split(" ");
+    setFields({
+      firstName,
+      lastName: rest.join(" "),
+      email: user.email || "",
+      phone: user.phone || "",
+      gender: user.gender || "Male",
+      idNumber: user.id_number || "",
+      taxId: user.tax_id || "",
+      taxCountry: user.tax_country || "Nigeria",
+      address: user.address || "",
+    });
+    setAvatar(user.avatar_url || DEFAULT_AVATAR);
   }, [user]);
 
   if (!isLoggedIn) {
@@ -429,30 +422,51 @@ export default function ProfilePage() {
     );
   }
 
+  const [avatarError, setAvatarError] = useState(null);
   const handleAvatarUpload = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatar(reader.result);
-        localStorage.setItem("user_avatar", reader.result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    setAvatarError(null);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      setAvatar(reader.result); // optimistic — reflect it immediately
+      try {
+        const res = await api.patch("/auth/avatar", { avatar_url: reader.result });
+        updateUser(res.data.user);
+      } catch (err) {
+        setAvatar(user?.avatar_url || DEFAULT_AVATAR); // roll back on failure
+        setAvatarError(err?.response?.data?.message || "Failed to save photo — try a smaller image");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDeleteAvatar = async () => {
+    setAvatar(DEFAULT_AVATAR);
+    setAvatarError(null);
+    try {
+      const res = await api.patch("/auth/avatar", { avatar_url: DEFAULT_AVATAR });
+      updateUser(res.data.user);
+    } catch (err) {
+      setAvatar(user?.avatar_url || DEFAULT_AVATAR);
+      setAvatarError(err?.response?.data?.message || "Failed to remove photo");
     }
   };
 
   const [saveError, setSaveError] = useState(null);
   const handleSaveFields = async () => {
-    localStorage.setItem("user_profile_fields", JSON.stringify(fields));
     setSaveError(null);
     try {
-      // name/phone are the fields that actually exist on the server — the
-      // rest (gender, tax info, etc.) stay local-only, there's nothing to
-      // sync them to.
-      await api.patch("/auth/profile", {
+      const res = await api.patch("/auth/profile", {
         name: `${fields.firstName} ${fields.lastName}`.trim(),
         phone: fields.phone,
+        gender: fields.gender,
+        id_number: fields.idNumber,
+        tax_id: fields.taxId,
+        tax_country: fields.taxCountry,
+        address: fields.address,
       });
+      updateUser(res.data.user);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -616,17 +630,12 @@ export default function ProfilePage() {
                       accept="image/*"
                       style={{ display: "none" }}
                     />
-                    <div style={{ display: "flex", gap: "10px" }}>
-                      <button className="p-upload-btn" onClick={() => fileInputRef.current?.click()}>Upload New</button>
-                      <button
-                        className="p-delete-btn"
-                        onClick={() => {
-                          setAvatar(DEFAULT_AVATAR);
-                          localStorage.removeItem("user_avatar");
-                        }}
-                      >
-                        Delete avatar
-                      </button>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      <div style={{ display: "flex", gap: "10px" }}>
+                        <button className="p-upload-btn" onClick={() => fileInputRef.current?.click()}>Upload New</button>
+                        <button className="p-delete-btn" onClick={handleDeleteAvatar}>Delete avatar</button>
+                      </div>
+                      {avatarError && <p style={{ color: "#EF4444", fontSize: "13px", margin: 0 }}>{avatarError}</p>}
                     </div>
                   </div>
 

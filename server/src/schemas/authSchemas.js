@@ -15,6 +15,17 @@ const login = z.object({
 const updateProfile = z.object({
   name: z.string({ error: "Name is required" }).trim().min(1, "Name is required"),
   phone: z.string().trim().optional(),
+  gender: z.string().trim().max(20).optional(),
+  id_number: z.string().trim().max(100).optional(),
+  tax_id: z.string().trim().max(100).optional(),
+  tax_country: z.string().trim().max(100).optional(),
+  address: z.string().trim().max(2000).optional(),
+});
+
+const updateAvatar = z.object({
+  // A data: URI from FileReader.readAsDataURL — capped well above what a
+  // reasonably-compressed profile photo needs, to keep the users row small.
+  avatar_url: z.string({ error: "Image data is required" }).trim().min(1).max(2_000_000, "Image is too large"),
 });
 
 const changePassword = z.object({
@@ -39,6 +50,7 @@ module.exports = {
   register,
   login,
   updateProfile,
+  updateAvatar,
   changePassword,
   forgotPassword,
   resetPassword,

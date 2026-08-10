@@ -232,7 +232,8 @@ router.get("/me", protect, async (req, res, next) => {
   try {
     // Fetch fresh user data from DB (don't rely on stale JWT payload)
     const result = await pool.query(
-      `SELECT id, name, email, phone, role, avatar_url, store_id, status
+      `SELECT id, name, email, phone, role, avatar_url, store_id, status,
+              gender, id_number, tax_id, tax_country, address
        FROM users WHERE id = $1`,
       [req.user.id],
     );
@@ -262,6 +263,11 @@ router.get("/me", protect, async (req, res, next) => {
         avatar_url: user.avatar_url || null,
         store_id: user.store_id || null,
         status: user.status,
+        gender: user.gender || "",
+        id_number: user.id_number || "",
+        tax_id: user.tax_id || "",
+        tax_country: user.tax_country || "",
+        address: user.address || "",
       },
     });
   } catch (err) {
@@ -270,14 +276,44 @@ router.get("/me", protect, async (req, res, next) => {
 });
 
 // ─────────────────────────────────────────────
-// UPDATE PROFILE  (name / phone — the fields that are real DB columns)
+// UPDATE PROFILE
 // ─────────────────────────────────────────────
 router.patch("/profile", protect, validate(authSchemas.updateProfile), async (req, res, next) => {
   try {
-    const { name, phone } = req.body;
+    const { name, phone, gender, id_number, tax_id, tax_country, address } = req.body;
     const result = await pool.query(
-      "UPDATE users SET name=$1, phone=$2, updated_at=NOW() WHERE id=$3 RETURNING id, name, email, phone",
-      [name.trim(), phone || null, req.user.id],
+      `UPDATE users SET
+         name=$1, phone=$2, gender=$3, id_number=$4, tax_id=$5, tax_country=$6, address=$7,
+         updated_at=NOW()
+       WHERE id=$8
+       RETURNING id, name, email, phone, gender, id_number, tax_id, tax_country, address`,
+      [
+        name.trim(),
+        phone || null,
+        gender || null,
+        id_number || null,
+        tax_id || null,
+        tax_country || null,
+        address || null,
+        req.user.id,
+      ],
+    );
+    res.json({ user: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─────────────────────────────────────────────
+// UPDATE AVATAR  (previously only ever saved to localStorage — never
+// actually persisted, despite avatar_url existing as a real column)
+// ─────────────────────────────────────────────
+router.patch("/avatar", protect, validate(authSchemas.updateAvatar), async (req, res, next) => {
+  try {
+    const { avatar_url } = req.body;
+    const result = await pool.query(
+      "UPDATE users SET avatar_url=$1, updated_at=NOW() WHERE id=$2 RETURNING id, avatar_url",
+      [avatar_url, req.user.id],
     );
     res.json({ user: result.rows[0] });
   } catch (err) {

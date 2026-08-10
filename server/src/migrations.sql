@@ -874,6 +874,19 @@ EXCEPTION WHEN duplicate_table OR duplicate_object THEN NULL;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_product_reviews_product ON product_reviews(product_id, created_at DESC);
 
+-- ── 26. CUSTOMER PROFILE FIELDS ───────────────────────────────────
+-- ProfilePage.jsx let a customer fill in gender/ID number/tax ID/tax
+-- country/address and click "Save Changes", but only name and phone
+-- actually exist as columns on `users` — everything else silently only
+-- ever went to localStorage. Any new browser, device, or cleared cache
+-- reverted the form to defaults, which read as "my saved info disappeared."
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS gender       VARCHAR(20),
+  ADD COLUMN IF NOT EXISTS id_number    VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS tax_id       VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS tax_country  VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS address      TEXT;
+
 -- ── 24. income.reference too short for Monnify transaction refs ──
 -- Found live: the webhook's income-ledger insert uses `INC-${transactionReference}`.
 -- Paystack references fit comfortably in VARCHAR(30); Monnify's format
