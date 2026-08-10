@@ -6,6 +6,8 @@ const { trackActivity } = require("../utils/aiContext");
 const { NAIRA_PER_UNIT } = require("../utils/currency");
 const { verifyMonnifyTransaction } = require("../utils/monnify");
 const { validateCoupon, recordCouponUsage } = require("../utils/coupons");
+const validate = require("../middleware/validate");
+const orderSchemas = require("../schemas/orderSchemas");
 
 // ─────────────────────────────────────────────
 // CONFIG
@@ -27,12 +29,8 @@ const DELIVERY_FEE = 500; // Naira — must match client/src/pages/CheckoutPage.
 // Prices/total are ALWAYS recomputed here from the products table.
 // Client-supplied price/total values are never trusted.
 // ─────────────────────────────────────────────
-router.post("/", protect, async (req, res, next) => {
+router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, next) => {
   const { items, payment_method, payment_ref, address, source, coupon_code } = req.body;
-
-  if (!items || !items.length) {
-    return res.status(400).json({ message: "No items in order" });
-  }
 
   const method = payment_method || "monnify";
   if (!VALID_PAYMENT_METHODS.includes(method)) {
@@ -325,16 +323,11 @@ router.patch(
   "/:id/status",
   protect,
   requireRole("superadmin", "admin", "manager", "delivery_manager"),
+  validate(orderSchemas.updateStatus(VALID_STATUSES)),
   async (req, res, next) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
-
-      if (!VALID_STATUSES.includes(status)) {
-        return res.status(400).json({
-          message: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}`,
-        });
-      }
 
       const result = await pool.query(
         `UPDATE orders
@@ -361,18 +354,12 @@ router.patch(
 // ─────────────────────────────────────────────
 // CANCEL ORDER
 // ─────────────────────────────────────────────
-router.patch("/:id/cancel", protect, async (req, res, next) => {
+router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (req, res, next) => {
   const client = await pool.connect();
 
   try {
     const { id } = req.params;
     const { reason } = req.body;
-
-    if (!reason || reason.trim().length < 3) {
-      return res.status(400).json({
-        message: "Cancellation reason is required",
-      });
-    }
 
     const order = await client.query(
       `SELECT * FROM orders WHERE id = $1 AND user_id = $2`,

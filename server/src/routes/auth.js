@@ -6,6 +6,8 @@ const pool = require("../db/pool");
 const { protect } = require("../middleware/authMiddleware");
 const { upsertContext, trackActivity } = require("../utils/aiContext");
 const { sendPasswordResetEmail } = require("../services/emailService");
+const validate = require("../middleware/validate");
+const authSchemas = require("../schemas/authSchemas");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -39,19 +41,9 @@ function generateRefreshToken(userId) {
 // ─────────────────────────────────────────────
 // REGISTER  (BemsFarms customer app)
 // ─────────────────────────────────────────────
-router.post("/register", async (req, res, next) => {
+router.post("/register", validate(authSchemas.register), async (req, res, next) => {
   try {
     const { name, email, password, phone } = req.body;
-    if (!name?.trim())
-      return res.status(400).json({ message: "Name is required" });
-    if (!email?.includes("@"))
-      return res.status(400).json({ message: "Valid email required" });
-    if (!phone?.trim())
-      return res.status(400).json({ message: "Phone number is required" });
-    if (!password || password.length < 6)
-      return res
-        .status(400)
-        .json({ message: "Password must be at least 6 characters" });
 
     const existing = await pool.query(
       "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
@@ -104,7 +96,7 @@ router.post("/register", async (req, res, next) => {
 // ─────────────────────────────────────────────
 // LOGIN
 // ─────────────────────────────────────────────
-router.post("/login", async (req, res, next) => {
+router.post("/login", validate(authSchemas.login), async (req, res, next) => {
   const clientIP = req.ip || req.connection?.remoteAddress || "unknown";
   const userAgent = req.headers["user-agent"] || "unknown";
   const origin =
@@ -120,11 +112,6 @@ router.post("/login", async (req, res, next) => {
 
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      console.log(`   ❌ FAILED — missing fields`);
-      return res.status(400).json({ message: "Email and password required" });
-    }
 
     console.log(`   Email: ${email.trim().toLowerCase()}`);
 
@@ -285,12 +272,9 @@ router.get("/me", protect, async (req, res, next) => {
 // ─────────────────────────────────────────────
 // UPDATE PROFILE  (name / phone — the fields that are real DB columns)
 // ─────────────────────────────────────────────
-router.patch("/profile", protect, async (req, res, next) => {
+router.patch("/profile", protect, validate(authSchemas.updateProfile), async (req, res, next) => {
   try {
     const { name, phone } = req.body;
-    if (!name?.trim()) {
-      return res.status(400).json({ message: "Name is required" });
-    }
     const result = await pool.query(
       "UPDATE users SET name=$1, phone=$2, updated_at=NOW() WHERE id=$3 RETURNING id, name, email, phone",
       [name.trim(), phone || null, req.user.id],
@@ -304,15 +288,9 @@ router.patch("/profile", protect, async (req, res, next) => {
 // ─────────────────────────────────────────────
 // CHANGE PASSWORD  (logged-in user, knows their current password)
 // ─────────────────────────────────────────────
-router.post("/change-password", protect, async (req, res, next) => {
+router.post("/change-password", protect, validate(authSchemas.changePassword), async (req, res, next) => {
   try {
     const { current_password, new_password } = req.body;
-    if (!current_password || !new_password) {
-      return res.status(400).json({ message: "Current and new password are required" });
-    }
-    if (new_password.length < 6) {
-      return res.status(400).json({ message: "New password must be at least 6 characters" });
-    }
 
     const result = await pool.query("SELECT password FROM users WHERE id=$1", [req.user.id]);
     if (!result.rows.length) {
@@ -391,10 +369,9 @@ router.post("/logout", protect, async (req, res, next) => {
 // ─────────────────────────────────────────────
 // FORGOT PASSWORD
 // ─────────────────────────────────────────────
-router.post("/forgot-password", async (req, res, next) => {
+router.post("/forgot-password", validate(authSchemas.forgotPassword), async (req, res, next) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ message: "Email required" });
 
     const result = await pool.query(
       "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
@@ -432,11 +409,9 @@ router.post("/forgot-password", async (req, res, next) => {
 // ─────────────────────────────────────────────
 // RESET PASSWORD
 // ─────────────────────────────────────────────
-router.post("/reset-password", async (req, res, next) => {
+router.post("/reset-password", validate(authSchemas.resetPassword), async (req, res, next) => {
   try {
     const { token, password } = req.body;
-    if (!token || !password)
-      return res.status(400).json({ message: "Token and password required" });
 
     let decoded;
     try {
@@ -474,11 +449,9 @@ router.post("/reset-password", async (req, res, next) => {
 // ─────────────────────────────────────────────
 const { OAuth2Client } = require("google-auth-library");
 
-router.post("/google", async (req, res, next) => {
+router.post("/google", validate(authSchemas.google), async (req, res, next) => {
   try {
     const { credential } = req.body;
-    if (!credential)
-      return res.status(400).json({ message: "Google credential required" });
 
     // ── GOOGLE TOKENINFO VERIFICATION ──
     // Query Google's tokeninfo endpoint to verify token signature and claims.

@@ -5,6 +5,8 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const validate = require("../middleware/validate");
+const orderAdminSchemas = require("../schemas/orderAdminSchemas");
 
 router.use(protect);
 
@@ -374,7 +376,7 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (r
 });
 
 // ── PATCH /api/admin/orders/invoices/:id/status ───────────────────────────
-router.patch("/invoices/:id/status", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+router.patch("/invoices/:id/status", requireRole("superadmin", "manager", "admin"), validate(orderAdminSchemas.invoiceStatus), async (req, res, next) => {
   try {
     const { status, notes } = req.body;
     await pool.query(
@@ -511,7 +513,7 @@ router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req
 });
 
 // ── PATCH /api/admin/orders/returns/:id/status ───────────────────────────
-router.patch("/returns/:id/status", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+router.patch("/returns/:id/status", requireRole("superadmin", "manager", "admin"), validate(orderAdminSchemas.returnStatus), async (req, res, next) => {
   try {
     const { status, description } = req.body;
     await pool.query(
@@ -726,16 +728,12 @@ router.patch(
 router.patch(
   "/:id/assign-driver",
   requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  validate(orderAdminSchemas.assignDriver),
   async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
       const { driver_id, reassign = false } = req.body;
-
-      if (!driver_id) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({ message: "driver_id required" });
-      }
 
       const order = await client.query("SELECT * FROM orders WHERE id=$1", [
         req.params.id,
@@ -841,16 +839,12 @@ router.patch(
 router.patch(
   "/:id/resolve-dispute",
   requireRole("superadmin", "manager", "admin"),
+  validate(orderAdminSchemas.resolveDispute),
   async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
       const { decision, notes, refund_amount } = req.body;
-
-      if (!decision) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({ message: "decision required" });
-      }
 
       const current = await client.query("SELECT status FROM orders WHERE id=$1", [req.params.id]);
       if (!current.rows.length) {

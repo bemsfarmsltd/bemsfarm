@@ -5,6 +5,8 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const validate = require("../middleware/validate");
+const paymentSchemas = require("../schemas/paymentSchemas");
 
 // Enforce auth for all admin payment endpoints
 router.use(protect);
@@ -123,12 +125,8 @@ router.get("/webhook-logs", requireRole("superadmin", "manager", "admin", "accou
 });
 
 // ── POST /api/admin/payments/reconcile-manual ───────────────────
-router.post("/reconcile-manual", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+router.post("/reconcile-manual", requireRole("superadmin", "manager", "admin", "accountant"), validate(paymentSchemas.reconcileManual), async (req, res, next) => {
   const { payment_ref, order_id } = req.body;
-
-  if (!payment_ref || !order_id) {
-    return res.status(400).json({ message: "payment_ref and order_id are required" });
-  }
 
   const client = await pool.connect();
   try {

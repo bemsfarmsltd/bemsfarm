@@ -17,10 +17,12 @@ const { protect, requireRole } = require("../middleware/authMiddleware");
 const { NAIRA_PER_UNIT } = require("../utils/currency");
 const { validateCoupon, recordCouponUsage } = require("../utils/coupons");
 const { getTaxSettings, computeTax } = require("../utils/taxSettings");
+const validate = require("../middleware/validate");
+const posSchemas = require("../schemas/posSchemas");
 
 router.use(protect);
 
-// ─── Sequence helper ────────────────────────────────────────────────────────
+// ─── Sequence helpers ───────────────────────────────────────────────────────
 async function nextPOSRef(client) {
   const r = await client.query(
     `SELECT COALESCE(MAX(CAST(REGEXP_REPLACE(order_ref,'POS-','') AS INTEGER)),1000)+1 AS next
@@ -29,10 +31,18 @@ async function nextPOSRef(client) {
   return `POS-${r.rows[0].next}`;
 }
 
+async function nextSessionRef(client) {
+  const r = await client.query(
+    `SELECT COALESCE(MAX(CAST(REGEXP_REPLACE(session_ref,'SESS-','') AS INTEGER)),1000)+1 AS next
+     FROM pos_sessions WHERE session_ref LIKE 'SESS-%'`
+  );
+  return `SESS-${r.rows[0].next}`;
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // OPEN SESSION  ──  POST /api/admin/pos/session/open
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/session/open", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
+router.post("/session/open", requireRole("superadmin","manager","admin","cashier"), validate(posSchemas.sessionOpen), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -47,13 +57,14 @@ router.post("/session/open", requireRole("superadmin","manager","admin","cashier
     }
 
     const { opening_cash = 0, store_id, terminal_id } = req.body;
+    const sessionRef = await nextSessionRef(client);
 
     const result = await client.query(
       `INSERT INTO pos_sessions
-         (cashier_id, store_id, terminal_id, opening_cash, status, opened_at, created_at)
-       VALUES ($1,$2,$3,$4,'open',NOW(),NOW())
+         (session_ref, cashier_id, store_id, terminal_id, opening_cash, status, opened_at, created_at)
+       VALUES ($1,$2,$3,$4,$5,'open',NOW(),NOW())
        RETURNING *`,
-      [req.user.id, store_id || null, terminal_id || null, parseFloat(opening_cash)]
+      [sessionRef, req.user.id, store_id || null, terminal_id || null, parseFloat(opening_cash)]
     );
 
     await client.query("COMMIT");
@@ -69,7 +80,7 @@ router.post("/session/open", requireRole("superadmin","manager","admin","cashier
 // ════════════════════════════════════════════════════════════════════════════
 // CLOSE SESSION  ──  POST /api/admin/pos/session/:id/close
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/session/:id/close", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
+router.post("/session/:id/close", requireRole("superadmin","manager","admin","cashier"), validate(posSchemas.sessionClose), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -136,7 +147,7 @@ router.post("/session/:id/close", requireRole("superadmin","manager","admin","ca
 router.get("/session/current", requireRole("superadmin", "manager", "admin", "cashier"), async (req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT ps.*, u.name AS cashier_name, s.name AS store_name
+      `SELECT ps.*, u.name AS cashier_name, s.store_name AS store_name
        FROM pos_sessions ps
        LEFT JOIN users u ON u.id = ps.cashier_id
        LEFT JOIN stores s ON s.id = ps.store_id
@@ -169,7 +180,7 @@ router.get("/sessions", requireRole("superadmin","manager","admin"), async (req,
 
     const [rows, count] = await Promise.all([
       pool.query(
-        `SELECT ps.*, u.name AS cashier_name, s.name AS store_name
+        `SELECT ps.*, u.name AS cashier_name, s.store_name AS store_name
          FROM pos_sessions ps
          LEFT JOIN users u ON u.id = ps.cashier_id
          LEFT JOIN stores s ON s.id = ps.store_id
@@ -196,7 +207,7 @@ router.get("/sessions", requireRole("superadmin","manager","admin"), async (req,
 // POS SALE  ──  POST /api/admin/pos/sale
 // Creates an order from the POS terminal.
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/sale", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
+router.post("/sale", requireRole("superadmin","manager","admin","cashier"), validate(posSchemas.sale), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -207,11 +218,6 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), asyn
       discount_amount = 0, coupon_code,
       notes, session_id, split_payments,
     } = req.body;
-
-    if (!items?.length) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({ message: "Items required" });
-    }
 
     // A split sale must actually carry its per-method breakdown, and that
     // breakdown must add up to the sale total — otherwise a sale can be
@@ -393,10 +399,9 @@ router.get("/held", requireRole("superadmin", "manager", "admin", "cashier"), as
   }
 });
 
-router.post("/held", requireRole("superadmin", "manager", "admin", "cashier"), async (req, res, next) => {
+router.post("/held", requireRole("superadmin", "manager", "admin", "cashier"), validate(posSchemas.heldOrder), async (req, res, next) => {
   try {
     const { label, items, session_id } = req.body;
-    if (!items?.length) return res.status(400).json({ message: "Items required" });
 
     const result = await pool.query(
       `INSERT INTO pos_held_orders (cashier_id, session_id, label, items, status, created_at)
@@ -443,12 +448,9 @@ const ENSURE_POS_TXN_TABLE = `
     created_at        TIMESTAMP DEFAULT NOW()
   )`;
 
-router.post("/verify-payment", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
+router.post("/verify-payment", requireRole("superadmin","manager","admin","cashier"), validate(posSchemas.verifyPayment), async (req, res, next) => {
   try {
     const { last_four, amount } = req.body;
-    if (!last_four || String(last_four).length !== 4) {
-      return res.status(400).json({ message: "Please provide exactly 4 digits" });
-    }
 
     await pool.query(ENSURE_POS_TXN_TABLE);
 
@@ -481,7 +483,7 @@ router.post("/verify-payment", requireRole("superadmin","manager","admin","cashi
 // ════════════════════════════════════════════════════════════════════════════
 // MARK TRANSACTION USED  ──  PATCH /api/admin/pos/verify-payment/:id/use
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/verify-payment/:id/use", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
+router.patch("/verify-payment/:id/use", requireRole("superadmin","manager","admin","cashier"), validate(posSchemas.markTransactionUsed), async (req, res, next) => {
   try {
     const { order_id } = req.body;
     await pool.query(
@@ -498,12 +500,9 @@ router.patch("/verify-payment/:id/use", requireRole("superadmin","manager","admi
 // RECORD TRANSACTION  ──  POST /api/admin/pos/transaction
 // Called by POS terminal integration or manually to log a payment record.
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/transaction", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
+router.post("/transaction", requireRole("superadmin","manager","admin","cashier"), validate(posSchemas.recordTransaction), async (req, res, next) => {
   try {
     const { transaction_id, amount, payment_method, payment_time, customer_name, terminal_id, session_id } = req.body;
-    if (!transaction_id || !amount) {
-      return res.status(400).json({ message: "transaction_id and amount are required" });
-    }
 
     await pool.query(ENSURE_POS_TXN_TABLE);
 
