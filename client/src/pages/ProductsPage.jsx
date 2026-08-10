@@ -514,7 +514,7 @@ export default function ProductsPage() {
               <img
                 src="https://res.cloudinary.com/dyzkjerez/image/upload/v1786166844/Gemini_Generated_Image_ez0fcxez0fcxez0f_atfxkk.png"
                 alt=""
-                style={{ width: "72px", height: "72px", marginBottom: "12px" }}
+                style={{ width: "72px", height: "72px", margin: "0 auto 12px", display: "block" }}
               />
               <h4 style={{ margin: "0 0 6px", fontFamily: "Syne, sans-serif", fontSize: "16px", fontWeight: 700 }}>No products found</h4>
               <p style={{ color: "#9CA3AF", fontSize: "13px", margin: "0 0 16px" }}>Try searching something else</p>

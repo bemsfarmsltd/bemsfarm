@@ -120,7 +120,7 @@ export default function CartPage() {
               alt=""
               animate={{ y: [0, -12, 0] }}
               transition={{ duration: 2.5, repeat: Infinity }}
-              style={{ width: "120px", height: "120px", marginBottom: "20px" }}
+              style={{ width: "120px", height: "120px", margin: "0 auto 20px", display: "block" }}
             />
             <h2
               style={{ fontSize: "22px", fontWeight: 800, marginBottom: "10px", fontFamily: "Syne, sans-serif" }}
