@@ -850,6 +850,30 @@ CREATE TABLE IF NOT EXISTS driver_locations (
 -- refund id string, now holds Monnify's refundReference instead.
 ALTER TABLE issues RENAME COLUMN paystack_refund_id TO monnify_refund_id;
 
+-- ── 25. PRODUCT REVIEWS ───────────────────────────────────────────
+-- ProductDetail.jsx's Reviews tab showed a hardcoded "150 reviews · 4.2/5"
+-- with no way to actually submit one. A product_reviews table already
+-- existed (customer_id → customers, order_id, title/body, status
+-- pending/approved/rejected) but had 0 rows and was never wired to any
+-- route — and customers has no user_id link back to the auth `users`
+-- table (elsewhere in the codebase customers are matched by fuzzy name
+-- lookup), so it couldn't identify a logged-in storefront reviewer.
+-- Amended rather than replaced, since a future admin moderation UI could
+-- still use title/order_id/status: added user_id, dropped the NOT NULL
+-- on customer_id, replaced the (product_id, customer_id, order_id)
+-- unique constraint with (product_id, user_id), and defaulted status to
+-- 'approved' since there's no moderation queue UI to ever flip it from
+-- 'pending'.
+ALTER TABLE product_reviews ALTER COLUMN customer_id DROP NOT NULL;
+ALTER TABLE product_reviews DROP CONSTRAINT IF EXISTS product_reviews_product_id_customer_id_order_id_key;
+ALTER TABLE product_reviews ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE product_reviews ALTER COLUMN status SET DEFAULT 'approved';
+DO $$ BEGIN
+  ALTER TABLE product_reviews ADD CONSTRAINT product_reviews_product_id_user_id_key UNIQUE (product_id, user_id);
+EXCEPTION WHEN duplicate_table OR duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_product_reviews_product ON product_reviews(product_id, created_at DESC);
+
 -- ── 24. income.reference too short for Monnify transaction refs ──
 -- Found live: the webhook's income-ledger insert uses `INC-${transactionReference}`.
 -- Paystack references fit comfortably in VARCHAR(30); Monnify's format

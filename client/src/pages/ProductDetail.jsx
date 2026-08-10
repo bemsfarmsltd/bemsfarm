@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import PageWrapper from "../components/layout/PageWrapper";
 import ProductCard, {
   getProductEmoji,
@@ -18,12 +19,24 @@ export default function ProductDetail() {
   const { isMobile, isTablet, isDesktop, isTabletAny, padding, gap, cols } =
     useResponsive();
   const { addToCart } = useCart();
+  const { user, isLoggedIn } = useAuth();
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [added, setAdded] = useState(false);
   const [activeTab, setActiveTab] = useState("description");
+
+  // Reviews
+  const [reviews, setReviews] = useState([]);
+  const [reviewStats, setReviewStats] = useState({ average: 0, count: 0 });
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [myReview, setMyReview] = useState(null);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewJustSubmitted, setReviewJustSubmitted] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -36,6 +49,47 @@ export default function ProductDetail() {
       .finally(() => setLoading(false));
     window.scrollTo(0, 0);
   }, [id]);
+
+  const loadReviews = () => {
+    setReviewsLoading(true);
+    api
+      .get(`/products/${id}/reviews`)
+      .then((res) => {
+        setReviews(res.data.reviews);
+        setReviewStats({ average: res.data.average, count: res.data.count });
+      })
+      .finally(() => setReviewsLoading(false));
+  };
+
+  useEffect(() => {
+    loadReviews();
+    if (isLoggedIn) {
+      api
+        .get(`/products/${id}/reviews/mine`)
+        .then((res) => {
+          if (res.data.review) {
+            setMyReview(res.data.review);
+            setSelectedRating(res.data.review.rating);
+            setReviewComment(res.data.review.comment || "");
+          }
+        })
+        .catch(() => {});
+    }
+  }, [id, isLoggedIn]);
+
+  const handleSubmitReview = () => {
+    if (!selectedRating) return;
+    setSubmittingReview(true);
+    api
+      .post(`/products/${id}/reviews`, { rating: selectedRating, comment: reviewComment.trim() || undefined })
+      .then((res) => {
+        setMyReview(res.data.review);
+        setReviewJustSubmitted(true);
+        setTimeout(() => setReviewJustSubmitted(false), 2500);
+        loadReviews();
+      })
+      .finally(() => setSubmittingReview(false));
+  };
 
   const handleAdd = () => {
     for (let i = 0; i < quantity; i++) addToCart(product);
@@ -271,7 +325,7 @@ export default function ProductDetail() {
                     key={i}
                     style={{
                       fontSize: "18px",
-                      color: i < 4 ? "#F57C00" : "#E8EAED",
+                      color: i < Math.round(reviewStats.average) ? "#F57C00" : "#E8EAED",
                     }}
                   >
                     ★
@@ -279,7 +333,9 @@ export default function ProductDetail() {
                 ))}
               </div>
               <span style={{ fontSize: "14px", color: "#9AA0A6" }}>
-                (150 reviews)
+                {reviewStats.count > 0
+                  ? `${reviewStats.average.toFixed(1)} (${reviewStats.count} review${reviewStats.count === 1 ? "" : "s"})`
+                  : "No reviews yet"}
               </span>
               <span
                 style={{ fontSize: "14px", color: "#2E7D32", fontWeight: 600 }}
@@ -695,24 +751,234 @@ export default function ProductDetail() {
             )}
             {activeTab === "reviews" && (
               <div>
+                {/* Summary */}
                 <div
-                  style={{ display: "flex", gap: "4px", marginBottom: "8px" }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    marginBottom: "24px",
+                  }}
                 >
-                  {[...Array(5)].map((_, i) => (
-                    <span
-                      key={i}
-                      style={{
-                        fontSize: "24px",
-                        color: i < 4 ? "#F57C00" : "#E8EAED",
-                      }}
-                    >
-                      ★
-                    </span>
-                  ))}
+                  <div style={{ display: "flex", gap: "4px" }}>
+                    {[...Array(5)].map((_, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          fontSize: "24px",
+                          color:
+                            i < Math.round(reviewStats.average)
+                              ? "#F57C00"
+                              : "#E8EAED",
+                        }}
+                      >
+                        ★
+                      </span>
+                    ))}
+                  </div>
+                  <p style={{ color: "#5F6368", margin: 0 }}>
+                    {reviewStats.count > 0
+                      ? `${reviewStats.average.toFixed(1)}/5 • ${reviewStats.count} review${reviewStats.count === 1 ? "" : "s"}`
+                      : "No reviews yet — be the first to leave one."}
+                  </p>
                 </div>
-                <p style={{ color: "#5F6368" }}>
-                  150 verified customer reviews • Average 4.2/5
-                </p>
+
+                {/* Write / update a review */}
+                <div
+                  style={{
+                    background: "#F8F9FA",
+                    borderRadius: "12px",
+                    padding: "20px",
+                    marginBottom: "28px",
+                  }}
+                >
+                  {isLoggedIn ? (
+                    <>
+                      <p
+                        style={{
+                          fontWeight: 700,
+                          color: "#202124",
+                          marginBottom: "10px",
+                          fontSize: "14px",
+                        }}
+                      >
+                        {myReview ? "Update your review" : "Write a review"}
+                      </p>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "4px",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span
+                            key={star}
+                            onClick={() => setSelectedRating(star)}
+                            onMouseEnter={() => setHoverRating(star)}
+                            onMouseLeave={() => setHoverRating(0)}
+                            role="button"
+                            aria-label={`Rate ${star} star${star === 1 ? "" : "s"}`}
+                            style={{
+                              fontSize: "28px",
+                              cursor: "pointer",
+                              color:
+                                star <= (hoverRating || selectedRating)
+                                  ? "#F57C00"
+                                  : "#E8EAED",
+                              transition: "color 0.15s",
+                              userSelect: "none",
+                            }}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+                      <textarea
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        placeholder="Share your thoughts about this product (optional)"
+                        rows={3}
+                        style={{
+                          width: "100%",
+                          border: "1px solid #E8EAED",
+                          borderRadius: "8px",
+                          padding: "10px 12px",
+                          fontSize: "14px",
+                          fontFamily: "inherit",
+                          resize: "vertical",
+                          marginBottom: "12px",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                        }}
+                      >
+                        <button
+                          onClick={handleSubmitReview}
+                          disabled={!selectedRating || submittingReview}
+                          style={{
+                            background: selectedRating ? "#2E7D32" : "#C8CDD1",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "8px",
+                            padding: "10px 20px",
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            cursor: selectedRating ? "pointer" : "not-allowed",
+                          }}
+                        >
+                          {submittingReview
+                            ? "Saving..."
+                            : myReview
+                              ? "Update review"
+                              : "Submit review"}
+                        </button>
+                        {reviewJustSubmitted && (
+                          <span
+                            style={{
+                              color: "#2E7D32",
+                              fontSize: "13px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            ✓ Thanks for your review!
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <p style={{ color: "#5F6368", fontSize: "14px", margin: 0 }}>
+                      <span
+                        onClick={() => navigate("/login")}
+                        style={{
+                          color: "#2E7D32",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Log in
+                      </span>{" "}
+                      to leave a review.
+                    </p>
+                  )}
+                </div>
+
+                {/* Review list */}
+                {reviewsLoading ? (
+                  <p style={{ color: "#9AA0A6", fontSize: "14px" }}>
+                    Loading reviews...
+                  </p>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "20px",
+                    }}
+                  >
+                    {reviews.map((r) => (
+                      <div
+                        key={r.id}
+                        style={{
+                          borderBottom: "1px solid #F1F3F4",
+                          paddingBottom: "16px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            marginBottom: "4px",
+                          }}
+                        >
+                          <div style={{ display: "flex", gap: "1px" }}>
+                            {[...Array(5)].map((_, i) => (
+                              <span
+                                key={i}
+                                style={{
+                                  fontSize: "14px",
+                                  color: i < r.rating ? "#F57C00" : "#E8EAED",
+                                }}
+                              >
+                                ★
+                              </span>
+                            ))}
+                          </div>
+                          <span
+                            style={{
+                              fontSize: "13px",
+                              fontWeight: 700,
+                              color: "#202124",
+                            }}
+                          >
+                            {r.reviewer_name}
+                          </span>
+                          <span style={{ fontSize: "12px", color: "#9AA0A6" }}>
+                            {new Date(r.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {r.comment && (
+                          <p
+                            style={{
+                              color: "#5F6368",
+                              fontSize: "14px",
+                              margin: 0,
+                              lineHeight: 1.6,
+                            }}
+                          >
+                            {r.comment}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {activeTab === "shipping" && (
