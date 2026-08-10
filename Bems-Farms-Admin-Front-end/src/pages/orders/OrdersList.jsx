@@ -17,7 +17,7 @@ const STATUS_CFG = {
   delivery_attempted:{ label:"Delivery Attempted", color:"#f97316", bg:"#ffedd5", icon:"ri-route-line"               },
   delivered:         { label:"Delivered",          color:"#22c55e", bg:"#dcfce7", icon:"ri-checkbox-circle-line"     },
   dispute:           { label:"Dispute",            color:"#ef4444", bg:"#fee2e2", icon:"ri-alert-line"               },
-  cancelled:         { label:"Cancelled",          color:"#6b7280", bg:"#f3f4f6", icon:"ri-close-circle-line"        },
+  cancelled:         { label:"Cancelled",          color:'var(--text-muted)', bg:"var(--border)", icon:"ri-close-circle-line"        },
 }
 
 const CHANNEL_CFG = {
@@ -44,22 +44,22 @@ const pipeIdx = (s) => {
   return (map[s]||0)-1
 }
 
-const inp  = { display:"block",width:"100%",padding:"9px 12px",border:"1.5px solid #e5e7eb",borderRadius:8,fontFamily:"Nunito,sans-serif",fontSize:13,outline:"none",background:"#fff",boxSizing:"border-box" }
+const inp  = { display:"block",width:"100%",padding:"9px 12px",border:"1.5px solid var(--border)",borderRadius:8,fontFamily:"Nunito,sans-serif",fontSize:13,outline:"none",background:'var(--bg-card)',boxSizing:"border-box" }
 const btnP = { display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",borderRadius:9,border:"none",background:"var(--orange-accent)",color:"#fff",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:13 }
-const btnL = { display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:9,border:"1.5px solid #e5e7eb",background:"#fff",color:"#374151",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:600,fontSize:13 }
-const TH   = { padding:"10px 16px",fontSize:11,fontWeight:700,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.06em",textAlign:"left",whiteSpace:"nowrap" }
-const TD   = { padding:"12px 16px",verticalAlign:"middle",borderBottom:"1px solid #f3f4f6",fontSize:13,color:"#111827" }
+const btnL = { display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:9,border:"1.5px solid var(--border)",background:'var(--bg-card)',color:'var(--text-secondary)',cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:600,fontSize:13 }
+const TH   = { padding:"10px 16px",fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:"uppercase",letterSpacing:"0.06em",textAlign:"left",whiteSpace:"nowrap" }
+const TD   = { padding:"12px 16px",verticalAlign:"middle",borderBottom:"1px solid var(--border)",fontSize:13,color:'var(--text-primary)' }
 // Was referenced in the dispute/reschedule/cancel modals below but never
 // defined anywhere in this file — opening any of those 3 modals threw
 // "ReferenceError: LBL is not defined" and crashed. Matches the style
 // already used inline for the process/pack modals' labels.
-const LBL  = { display:"block",fontSize:12,fontWeight:700,color:"#374151",marginBottom:6 }
+const LBL  = { display:"block",fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:6 }
 
 function Modal({ title, onClose, children, maxWidth=600, danger=false }) {
   return <>
     <div onClick={onClose} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1054 }}/>
     <div style={{ position:"fixed",inset:0,zIndex:1055,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
-      <div style={{ background:"#fff",borderRadius:14,width:"100%",maxWidth,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",maxHeight:"90vh",display:"flex",flexDirection:"column" }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:14,width:"100%",maxWidth,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",maxHeight:"90vh",display:"flex",flexDirection:"column" }}>
         <div style={{ background:danger?"#7f1d1d":"var(--orange-accent)",color:"#fff",padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
           <span style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15 }}>{title}</span>
           <button onClick={onClose} style={{ background:"none",border:"none",color:"rgba(255,255,255,0.8)",cursor:"pointer",fontSize:20,display:"flex",padding:4 }}><i className="ri-close-line"/></button>
@@ -204,7 +204,7 @@ export default function OrdersList() {
     return 'Fresh Tomatoes, Red Bell Pepper +2 more'
   }
 
-  const B = '#e5e7eb', S = '#6b7280'
+  const B = 'var(--border)', S = '#6b7280'
 
   return (
     <div style={{ fontFamily:"Nunito,sans-serif" }}>
@@ -233,7 +233,7 @@ export default function OrdersList() {
           { label:"Total Revenue",      value:fmt(stats.revenue||132600),       color:"#059669",icon:"ri-coins-line" },
         ].map(c=>(
           <div key={c.label}
-            style={{ background:"#fff",borderRadius:12,border:`1px solid ${B}`,borderLeft:`3px solid ${c.color}`,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
+            style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,borderLeft:`3px solid ${c.color}`,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
             <div style={{ width:40,height:40,borderRadius:8,background:`${c.color}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
               <i className={c.icon} style={{ fontSize:18,color:c.color }}/>
             </div>
@@ -246,10 +246,10 @@ export default function OrdersList() {
       </div>
 
       {/* Filter bar */}
-      <div style={{ background:"#fff",borderRadius:12,border:`1px solid ${B}`,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",marginBottom:16 }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",marginBottom:16 }}>
         <div style={{ padding:"12px 16px",display:"flex",flexWrap:"wrap",gap:10,alignItems:"center" }}>
           <div style={{ position:"relative",minWidth:240,flex:1 }}>
-            <i className="ri-search-line" style={{ position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#9ca3af",fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:'var(--text-light)',fontSize:15 }}/>
             <input style={{ ...inp,paddingLeft:32 }} placeholder="Order ref, name, phone..." value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }}/>
           </div>
           <select style={{ ...inp,width:"auto",minWidth:150 }} value={filterChannel} onChange={e=>{ setFilterChannel(e.target.value); setPage(1) }}>
@@ -274,11 +274,11 @@ export default function OrdersList() {
       </div>
 
       {/* Table */}
-      <div style={{ background:"#fff",borderRadius:12,border:`1px solid ${B}`,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",overflow:"hidden" }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",overflow:"hidden" }}>
         <div style={{ overflowX:"auto" }}>
           <table style={{ width:"100%",borderCollapse:"collapse" }}>
             <thead>
-              <tr style={{ background:"#f9fafb",borderBottom:`1px solid ${B}` }}>
+              <tr style={{ background:'var(--bg-subtle)',borderBottom:`1px solid ${B}` }}>
                 {["Order Ref","Date","Customer","Channel","Items","Total","Driver","Status","Actions"].map(h=>(
                   <th key={h} style={TH}>{h}</th>
                 ))}
@@ -287,11 +287,11 @@ export default function OrdersList() {
             <tbody>
               {loading&&[...Array(5)].map((_,i)=>(
                 <tr key={i}>{[...Array(9)].map((_,j)=>(
-                  <td key={j} style={TD}><div style={{ height:14,background:"#f3f4f6",borderRadius:4 }}/></td>
+                  <td key={j} style={TD}><div style={{ height:14,background:'var(--bg-muted)',borderRadius:4 }}/></td>
                 ))}</tr>
               ))}
               {!loading&&orders.length===0&&(
-                <tr><td colSpan={9} style={{ ...TD,textAlign:"center",padding:48,color:"#9ca3af" }}>
+                <tr><td colSpan={9} style={{ ...TD,textAlign:"center",padding:48,color:'var(--text-light)' }}>
                   <i className="ri-inbox-line" style={{ fontSize:36,display:"block",marginBottom:8 }}/>No orders found
                 </td></tr>
               )}
@@ -340,7 +340,7 @@ export default function OrdersList() {
                       {order.driver_name?<>
                         <div style={{ fontWeight:600 }}>{order.driver_name}</div>
                         <div style={{ fontSize:11,color:S }}>{order.driver_phone}</div>
-                      </>:<span style={{ color:"#9ca3af" }}>—</span>}
+                      </>:<span style={{ color:'var(--text-light)' }}>—</span>}
                     </td>
                     <td style={TD}>
                       <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:cfg.bg,color:cfg.color,borderRadius:4,padding:"4px 10px",fontSize:11,fontWeight:700 }}>
@@ -349,8 +349,8 @@ export default function OrdersList() {
                       {order.status==="delivery_attempted"&&<div style={{ fontSize:10,color:S,marginTop:2,fontWeight:600 }}>Attempt {order.attempts||1}/2</div>}
                     </td>
                     <td style={TD}>
-                      <div style={{ display:"inline-flex", border:`1px solid ${B}`, borderRadius:6, overflow:"hidden", background:"#fff" }}>
-                        <button title="View" onClick={()=>openModal("view",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#374151', cursor:'pointer', fontSize:14 }}><i className="ri-eye-line"/></button>
+                      <div style={{ display:"inline-flex", border:`1px solid ${B}`, borderRadius:6, overflow:"hidden", background:'var(--bg-card)' }}>
+                        <button title="View" onClick={()=>openModal("view",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'var(--text-secondary)', cursor:'pointer', fontSize:14 }}><i className="ri-eye-line"/></button>
                         {["paid","new_order","pending"].includes(order.status)&&(
                           <button title="Process" onClick={()=>openModal("process",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#3b82f6', cursor:'pointer', fontSize:14 }}><i className="ri-play-line"/></button>
                         )}
@@ -367,7 +367,7 @@ export default function OrdersList() {
                           <button title="Resolve" onClick={()=>openModal("dispute",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#ef4444', cursor:'pointer', fontSize:14 }}><i className="ri-shield-check-line"/></button>
                         )}
                         {order.status==="delivery_attempted"&&(
-                          <button title="Reschedule" onClick={()=>openModal("reschedule",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#374151', cursor:'pointer', fontSize:14 }}><i className="ri-calendar-line"/></button>
+                          <button title="Reschedule" onClick={()=>openModal("reschedule",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'var(--text-secondary)', cursor:'pointer', fontSize:14 }}><i className="ri-calendar-line"/></button>
                         )}
                         {["paid","new_order","pending","processing","packed_ready","packed","driver_assigned","assigned"].includes(order.status)&&(
                           <button title="Cancel" onClick={()=>openModal("cancel",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:isSuperAdmin?`1px solid ${B}`:'none', background:'none', color:'#ef4444', cursor:'pointer', fontSize:14 }}><i className="ri-close-circle-line"/></button>
@@ -413,7 +413,7 @@ export default function OrdersList() {
               <i className="ri-information-line" style={{ marginRight:6,color:"#0369a1" }}/>
               Moves the order into the <strong>picking queue</strong>.
             </div>
-            <label style={{ display:"block",fontSize:12,fontWeight:700,color:"#374151",marginBottom:6 }}>Assign Picking Staff</label>
+            <label style={{ display:"block",fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:6 }}>Assign Picking Staff</label>
             <input style={{ ...inp,marginBottom:20 }} placeholder="Staff name" value={pickingStaff} onChange={e=>setPickingStaff(e.target.value)}/>
             <div style={{ display:"flex",gap:10 }}>
               <button style={{ ...btnL,flex:1,justifyContent:"center" }} onClick={closeModal}>Cancel</button>
@@ -430,7 +430,7 @@ export default function OrdersList() {
               <i className="ri-archive-line" style={{ marginRight:6,color:"#15803d" }}/>
               Confirm all items have been picked, packed and labelled.
             </div>
-            <label style={{ display:"block",fontSize:12,fontWeight:700,color:"#374151",marginBottom:6 }}>Packed by</label>
+            <label style={{ display:"block",fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:6 }}>Packed by</label>
             <input style={{ ...inp,marginBottom:20 }} placeholder="Staff name" value={pickingStaff} onChange={e=>setPickingStaff(e.target.value)}/>
             <div style={{ display:"flex",gap:10 }}>
               <button style={{ ...btnL,flex:1,justifyContent:"center" }} onClick={closeModal}>Cancel</button>
@@ -449,12 +449,12 @@ export default function OrdersList() {
               </div>
             )}
             {drivers.length===0?(
-              <div style={{ textAlign:"center",color:"#6b7280",padding:"32px 0" }}>No active drivers found. Add drivers first.</div>
+              <div style={{ textAlign:"center",color:'var(--text-muted)',padding:"32px 0" }}>No active drivers found. Add drivers first.</div>
             ):(
               <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:16 }}>
                 {drivers.map(driver=>(
                   <div key={driver.id} onClick={()=>setAssignDriverId(String(driver.id))}
-                    style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",border:`1.5px solid ${Number(assignDriverId)===driver.id?"#8b5cf6":"#e5e7eb"}`,borderRadius:10,cursor:"pointer",background:Number(assignDriverId)===driver.id?"#ede9fe":"#fff" }}>
+                    style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",border:`1.5px solid ${Number(assignDriverId)===driver.id?"#8b5cf6":"var(--border)"}`,borderRadius:10,cursor:"pointer",background:Number(assignDriverId)===driver.id?"#ede9fe":"#fff" }}>
                     <div style={{ width:36,height:36,borderRadius:"50%",background:"#6366f1",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0 }}>
                       {(driver.name||"D").split(" ").map(n=>n[0]).join("")}
                     </div>
@@ -483,10 +483,10 @@ export default function OrdersList() {
                 { key:"full_refund",    label:"Full Refund",    desc:`Refund ${fmt(selected.total)} to customer`,    color:"#22c55e",icon:"ri-refund-2-line"           },
                 { key:"partial_refund", label:"Partial Refund", desc:"Specify refund amount",                        color:"#f59e0b",icon:"ri-money-dollar-circle-line"  },
                 { key:"replacement",    label:"Replacement",    desc:"Driver collects goods, replacement arranged.", color:"#f97316",icon:"ri-refresh-line"              },
-                { key:"reject",         label:"Reject Claim",   desc:"Customer receives written rejection reason.",  color:"#6b7280",icon:"ri-close-circle-line"         },
+                { key:"reject",         label:"Reject Claim",   desc:"Customer receives written rejection reason.",  color:'var(--text-muted)',icon:"ri-close-circle-line"         },
               ].map(d=>(
                 <div key={d.key} onClick={()=>setDisputeDecision(d.key)}
-                  style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",border:`1.5px solid ${disputeDecision===d.key?d.color:"#e5e7eb"}`,borderRadius:10,cursor:"pointer",background:disputeDecision===d.key?`${d.color}12`:"#fff" }}>
+                  style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",border:`1.5px solid ${disputeDecision===d.key?d.color:"var(--border)"}`,borderRadius:10,cursor:"pointer",background:disputeDecision===d.key?`${d.color}12`:"#fff" }}>
                   <div style={{ width:36,height:36,borderRadius:"50%",background:`${d.color}20`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
                     <i className={d.icon} style={{ fontSize:16,color:d.color }}/>
                   </div>
@@ -586,7 +586,7 @@ function OrderViewModal({ order, onClose, onProcess, onPack, onAssign, onDispute
 
   const o=detail||order, cfg=STATUS_CFG[o.status]||STATUS_CFG.pending, idx=pipeIdx(o.status)
   const btnP2={ display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,border:"none",background:"var(--orange-accent)",color:"#fff",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:13 }
-  const btnL2={ display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,border:"1.5px solid #e5e7eb",background:"#fff",color:"#374151",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:600,fontSize:13 }
+  const btnL2={ display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,border:"1.5px solid var(--border)",background:'var(--bg-card)',color:'var(--text-secondary)',cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:600,fontSize:13 }
 
   return <>
     {/* The modal's 2-column body (1fr 300px) and the customer/address info
@@ -601,7 +601,7 @@ function OrderViewModal({ order, onClose, onProcess, onPack, onAssign, onDispute
     `}</style>
     <div onClick={onClose} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:1054 }}/>
     <div style={{ position:"fixed",inset:0,zIndex:1055,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
-      <div style={{ background:"#fff",borderRadius:14,width:"100%",maxWidth:900,maxHeight:"90vh",boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",display:"flex",flexDirection:"column" }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:14,width:"100%",maxWidth:900,maxHeight:"90vh",boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",display:"flex",flexDirection:"column" }}>
         <div style={{ background:"var(--orange-accent)",color:"#fff",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
           <div>
             <div style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:16 }}>ORD-2026-{String(o.id).padStart(4, '0')}</div>
@@ -616,19 +616,19 @@ function OrderViewModal({ order, onClose, onProcess, onPack, onAssign, onDispute
         </div>
 
         {!["physical","pos","Physical Store (POS)"].includes(o.source)&&!["physical","pos","Physical Store (POS)"].includes(o.channel)&&!["dispute","cancelled"].includes(o.status)&&(
-          <div style={{ padding:"14px 24px",borderBottom:"1px solid #f3f4f6",background:"#f9fafb",flexShrink:0 }}>
+          <div style={{ padding:"14px 24px",borderBottom:"1px solid var(--border)",background:'var(--bg-subtle)',flexShrink:0 }}>
             <div style={{ display:"flex",alignItems:"center" }}>
               {PIPELINE.map((step,i)=>{
                 const c=STATUS_CFG[step],done=i<=idx,now=i===idx
                 return (
                   <div key={step} style={{ display:"flex",alignItems:"center",flex:1,minWidth:0 }}>
                     <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:4,flexShrink:0 }}>
-                      <div style={{ width:28,height:28,borderRadius:"50%",background:done?c.color:"#e5e7eb",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:now?`0 0 0 4px ${c.color}35`:"none" }}>
+                      <div style={{ width:28,height:28,borderRadius:"50%",background:done?c.color:"var(--border)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:now?`0 0 0 4px ${c.color}35`:"none" }}>
                         <i className={c.icon} style={{ color:done?"#fff":"#9ca3af",fontSize:11 }}/>
                       </div>
-                      <div style={{ fontSize:9,color:done?c.color:"#9ca3af",whiteSpace:"nowrap",fontWeight:now?700:400 }}>{c.label}</div>
+                      <div style={{ fontSize:9,color:done?c.color:'var(--text-light)',whiteSpace:"nowrap",fontWeight:now?700:400 }}>{c.label}</div>
                     </div>
-                    {i<PIPELINE.length-1&&<div style={{ flex:1,height:2,background:i<idx?"#22c55e":"#e5e7eb",borderRadius:1,margin:"0 4px",marginBottom:14 }}/>}
+                    {i<PIPELINE.length-1&&<div style={{ flex:1,height:2,background:i<idx?"#22c55e":"var(--border)",borderRadius:1,margin:"0 4px",marginBottom:14 }}/>}
                   </div>
                 )
               })}
@@ -638,84 +638,84 @@ function OrderViewModal({ order, onClose, onProcess, onPack, onAssign, onDispute
 
         <div style={{ overflowY:"auto",flex:1 }}>
           {loading?(
-            <div style={{ textAlign:"center",padding:48,color:"#6b7280" }}>
+            <div style={{ textAlign:"center",padding:48,color:'var(--text-muted)' }}>
               <i className="ri-loader-4-line" style={{ fontSize:32,display:"block",marginBottom:8 }}/>Loading order details...
             </div>
           ):(
             <div className="ord-modal-grid" style={{ padding:24,display:"grid",gridTemplateColumns:"1fr 300px",gap:24 }}>
               <div>
-                <div style={{ border:"1px solid #f3f4f6",borderRadius:10,padding:16,marginBottom:16 }}>
+                <div style={{ border:"1px solid var(--border)",borderRadius:10,padding:16,marginBottom:16 }}>
                   <div className="ord-info-grid" style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:16 }}>
                     <div>
-                      <div style={{ fontSize:11,color:"#6b7280",marginBottom:4 }}>Customer</div>
+                      <div style={{ fontSize:11,color:'var(--text-muted)',marginBottom:4 }}>Customer</div>
                       <div style={{ fontWeight:600 }}>{o.customer_name}</div>
                       <div style={{ fontSize:13 }}>{o.customer_phone}</div>
-                      <div style={{ fontSize:13,color:"#6b7280" }}>{o.customer_email}</div>
+                      <div style={{ fontSize:13,color:'var(--text-muted)' }}>{o.customer_email}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize:11,color:"#6b7280",marginBottom:4 }}>Delivery Address</div>
+                      <div style={{ fontSize:11,color:'var(--text-muted)',marginBottom:4 }}>Delivery Address</div>
                       <div style={{ fontSize:13 }}>{o.delivery_address||o.address||"—"}</div>
                     </div>
                     {o.driver_name&&<div style={{ gridColumn:"1/-1" }}>
-                      <div style={{ fontSize:11,color:"#6b7280",marginBottom:4 }}>Assigned Driver</div>
+                      <div style={{ fontSize:11,color:'var(--text-muted)',marginBottom:4 }}>Assigned Driver</div>
                       <div style={{ fontWeight:600,fontSize:13 }}>{o.driver_name} · {o.driver_phone}</div>
-                      <div style={{ fontSize:11,color:"#6b7280" }}>{o.driver_plate}</div>
+                      <div style={{ fontSize:11,color:'var(--text-muted)' }}>{o.driver_plate}</div>
                     </div>}
                     {o.notes&&<div style={{ gridColumn:"1/-1" }}>
-                      <div style={{ fontSize:11,color:"#6b7280",marginBottom:4 }}>Notes</div>
+                      <div style={{ fontSize:11,color:'var(--text-muted)',marginBottom:4 }}>Notes</div>
                       <div style={{ fontSize:13 }}>{o.notes}</div>
                     </div>}
                   </div>
                 </div>
-                <div style={{ border:"1px solid #f3f4f6",borderRadius:10,overflow:"hidden" }}>
-                  <div style={{ padding:"10px 16px",borderBottom:"1px solid #f3f4f6",fontWeight:600,fontSize:13 }}>Order Items</div>
+                <div style={{ border:"1px solid var(--border)",borderRadius:10,overflow:"hidden" }}>
+                  <div style={{ padding:"10px 16px",borderBottom:"1px solid var(--border)",fontWeight:600,fontSize:13 }}>Order Items</div>
                   {o.items?.length>0?<>
                     <table style={{ width:"100%",borderCollapse:"collapse" }}>
-                      <thead><tr style={{ background:"#f9fafb" }}>
-                        {["Product","Qty","Unit Price","Total"].map(h=><th key={h} style={{ ...({padding:"10px 16px",fontSize:11,fontWeight:700,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.06em",textAlign:h==="Total"?"right":"left",whiteSpace:"nowrap"}) }}>{h}</th>)}
+                      <thead><tr style={{ background:'var(--bg-subtle)' }}>
+                        {["Product","Qty","Unit Price","Total"].map(h=><th key={h} style={{ ...({padding:"10px 16px",fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:"uppercase",letterSpacing:"0.06em",textAlign:h==="Total"?"right":"left",whiteSpace:"nowrap"}) }}>{h}</th>)}
                       </tr></thead>
                       <tbody>
                         {o.items.map((item,i)=>(
                           <tr key={i}>
-                            <td style={{ padding:"12px 16px",borderBottom:"1px solid #f3f4f6",fontSize:13 }}>{item.name}</td>
-                            <td style={{ padding:"12px 16px",borderBottom:"1px solid #f3f4f6",fontSize:13 }}>{item.quantity}</td>
-                            <td style={{ padding:"12px 16px",borderBottom:"1px solid #f3f4f6",fontSize:13 }}>{fmt(item.unit_price||item.price)}</td>
-                            <td style={{ padding:"12px 16px",borderBottom:"1px solid #f3f4f6",fontSize:13,textAlign:"right",fontWeight:600 }}>{fmt(item.subtotal||item.quantity*(item.unit_price||item.price))}</td>
+                            <td style={{ padding:"12px 16px",borderBottom:"1px solid var(--border)",fontSize:13 }}>{item.name}</td>
+                            <td style={{ padding:"12px 16px",borderBottom:"1px solid var(--border)",fontSize:13 }}>{item.quantity}</td>
+                            <td style={{ padding:"12px 16px",borderBottom:"1px solid var(--border)",fontSize:13 }}>{fmt(item.unit_price||item.price)}</td>
+                            <td style={{ padding:"12px 16px",borderBottom:"1px solid var(--border)",fontSize:13,textAlign:"right",fontWeight:600 }}>{fmt(item.subtotal||item.quantity*(item.unit_price||item.price))}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                    <div style={{ padding:"10px 16px",borderTop:"1px solid #f3f4f6" }}>
+                    <div style={{ padding:"10px 16px",borderTop:"1px solid var(--border)" }}>
                       {[["Subtotal",fmt(o.subtotal)],["Delivery Fee",fmt(o.delivery_fee)]].map(([k,v])=>(
-                        <div key={k} style={{ display:"flex",justifyContent:"space-between",fontSize:13,color:"#6b7280",marginBottom:4 }}><span>{k}</span><span>{v}</span></div>
+                        <div key={k} style={{ display:"flex",justifyContent:"space-between",fontSize:13,color:'var(--text-muted)',marginBottom:4 }}><span>{k}</span><span>{v}</span></div>
                       ))}
-                      <div style={{ display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:700,borderTop:"1px solid #f3f4f6",paddingTop:8,marginTop:4 }}><span>Total</span><span>{fmt(o.total)}</span></div>
+                      <div style={{ display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:700,borderTop:"1px solid var(--border)",paddingTop:8,marginTop:4 }}><span>Total</span><span>{fmt(o.total)}</span></div>
                     </div>
-                  </>:<div style={{ padding:16,fontSize:13,color:"#6b7280" }}>No item details available</div>}
+                  </>:<div style={{ padding:16,fontSize:13,color:'var(--text-muted)' }}>No item details available</div>}
                 </div>
               </div>
               <div>
                 <div style={{ fontWeight:600,fontSize:13,marginBottom:12 }}>Order Timeline</div>
                 {(o.timeline||[]).length===0?(
-                  <div style={{ fontSize:13,color:"#6b7280" }}>No timeline events yet</div>
+                  <div style={{ fontSize:13,color:'var(--text-muted)' }}>No timeline events yet</div>
                 ):(
                   (o.timeline||[]).map((ev,i)=>{
                     const c=STATUS_CFG[ev.to_status]||STATUS_CFG.pending
                     return (
                       <div key={i} style={{ display:"flex",gap:12,marginBottom:16 }}>
-                        <div style={{ width:32,height:32,borderRadius:"50%",background:c?.bg||"#f3f4f6",border:`2px solid ${c?.color||"#d1d5db"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                        <div style={{ width:32,height:32,borderRadius:"50%",background:c?.bg||"var(--border)",border:`2px solid ${c?.color||"var(--border-strong)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
                           <i className={c?.icon||"ri-circle-line"} style={{ color:c?.color||"#6b7280",fontSize:11 }}/>
                         </div>
                         <div>
                           <div style={{ fontWeight:600,fontSize:13 }}>{c?.label||ev.to_status}</div>
-                          <div style={{ fontSize:10,color:"#6b7280" }}>{new Date(ev.created_at).toLocaleString("en-NG")}</div>
-                          {ev.notes&&<div style={{ fontSize:12,color:"#6b7280",marginTop:4 }}>{ev.notes}</div>}
+                          <div style={{ fontSize:10,color:'var(--text-muted)' }}>{new Date(ev.created_at).toLocaleString("en-NG")}</div>
+                          {ev.notes&&<div style={{ fontSize:12,color:'var(--text-muted)',marginTop:4 }}>{ev.notes}</div>}
                         </div>
                       </div>
                     )
                   })
                 )}
-                <div style={{ borderTop:"1px solid #f3f4f6",paddingTop:16,marginTop:8,display:"flex",flexDirection:"column",gap:8 }}>
+                <div style={{ borderTop:"1px solid var(--border)",paddingTop:16,marginTop:8,display:"flex",flexDirection:"column",gap:8 }}>
                   {["paid","new_order","pending"].includes(o.status)&&<button style={btnP2} onClick={onProcess}><i className="ri-play-circle-line"/>Process Order</button>}
                   {o.status==="processing"&&<button style={btnP2} onClick={onPack}><i className="ri-archive-line"/>Mark as Packed</button>}
                   {["packed_ready","packed"].includes(o.status)&&<button style={btnP2} onClick={()=>onAssign("initial")}><i className="ri-user-add-line"/>Assign Driver</button>}

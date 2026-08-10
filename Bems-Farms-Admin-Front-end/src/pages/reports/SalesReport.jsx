@@ -2,23 +2,23 @@ import { useState, useCallback } from 'react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const S = '#6b7280', B = '#e5e7eb'
-const TH = { padding:'10px 16px',fontSize:11,fontWeight:700,color:S,textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',background:'#f9fafb',whiteSpace:'nowrap' }
-const TD = { padding:'11px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
-const inp = { padding:'8px 12px',border:`1.5px solid ${B}`,borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',color:'#111827' }
+const S = '#6b7280', B = 'var(--border)'
+const TH = { padding:'10px 16px',fontSize:11,fontWeight:700,color:S,textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',background:'var(--bg-subtle)',whiteSpace:'nowrap' }
+const TD = { padding:'11px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
+const inp = { padding:'8px 12px',border:`1.5px solid ${B}`,borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',color:'var(--text-primary)' }
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 20px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
 
 function ngn(v) { return `₦${Number(v||0).toLocaleString()}` }
 
 function KpiCard({ label, value, icon, color, bg }) {
   return (
-    <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:20,display:'flex',alignItems:'center',gap:14 }}>
+    <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:20,display:'flex',alignItems:'center',gap:14 }}>
       <div style={{ width:44,height:44,borderRadius:12,background:bg,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
         <i className={icon} style={{ fontSize:22,color }}/>
       </div>
       <div>
         <div style={{ fontSize:11,color:S,fontWeight:600,marginBottom:2 }}>{label}</div>
-        <div style={{ fontSize:20,fontWeight:800,color:'#111827' }}>{value}</div>
+        <div style={{ fontSize:20,fontWeight:800,color:'var(--text-primary)' }}>{value}</div>
       </div>
     </div>
   )
@@ -49,12 +49,12 @@ export default function SalesReport() {
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
       <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'#111827' }}>Sales Report</div>
+        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Sales Report</div>
         <div style={{ fontSize:12,color:S,marginTop:2 }}>Analyse orders, revenue, and top-selling products.</div>
       </div>
 
       {/* Filters */}
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:'16px 20px',marginBottom:20,display:'flex',flexWrap:'wrap',gap:12,alignItems:'flex-end' }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:'16px 20px',marginBottom:20,display:'flex',flexWrap:'wrap',gap:12,alignItems:'flex-end' }}>
         <div>
           <div style={{ fontSize:11,fontWeight:700,color:S,marginBottom:4 }}>FROM DATE</div>
           <input type="date" style={inp} value={filters.from} onChange={e=>set('from',e.target.value)}/>
@@ -88,14 +88,14 @@ export default function SalesReport() {
 
       {/* Empty state */}
       {!data && !loading && (
-        <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
+        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
           <i className="ri-bar-chart-2-line" style={{ fontSize:40,display:'block',marginBottom:10 }}/>
           <div style={{ fontSize:14,fontWeight:600 }}>Select date range and click Generate Report</div>
         </div>
       )}
 
       {loading && (
-        <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
+        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
           <i className="ri-loader-4-line" style={{ fontSize:32,display:'block',marginBottom:8 }}/>Loading…
         </div>
       )}
@@ -112,7 +112,7 @@ export default function SalesReport() {
 
           {/* Breakdown Table */}
           {data.chart && data.chart.length > 0 && (
-            <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',marginBottom:20 }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',marginBottom:20 }}>
               <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>
                 {filters.group_by.charAt(0).toUpperCase()+filters.group_by.slice(1)}ly Breakdown
               </div>
@@ -135,7 +135,7 @@ export default function SalesReport() {
 
           {/* Top Products */}
           {data.top_products && data.top_products.length > 0 && (
-            <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
               <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>Top Products</div>
               <div style={{ overflowX:'auto' }}>
                 <table style={{ width:'100%',borderCollapse:'collapse' }}>

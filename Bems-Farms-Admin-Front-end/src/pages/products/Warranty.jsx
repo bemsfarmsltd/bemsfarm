@@ -16,12 +16,12 @@ const POLICY_TYPES = ['freshness','quality','shelf_life','seal']
 const BLANK_POLICY = { name:'', type:'freshness', days:3, products:0, description:'', status:'active' }
 
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
 const btnD = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:5 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'#f9fafb' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
+const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
+const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
+const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
 
 const CLAIM_STATUS_STYLE = {
   approved: { background:'#dcfce7',color:'#166534' },
@@ -115,7 +115,7 @@ export default function Warranty() {
   function approveClaim(id) { setClaims(p=>p.map(c=>c.id===id?{...c,status:'approved',resolution:'Approved by admin'}:c)) }
   function rejectClaim(id)  { setClaims(p=>p.map(c=>c.id===id?{...c,status:'rejected',resolution:'Rejected by admin'}:c)) }
 
-  const B = '#e5e7eb', S = '#6b7280'
+  const B = 'var(--border)', S = '#6b7280'
 
   const TABS = [
     { key:'policies', label:'Warranty Policies', count:policies.length },
@@ -126,7 +126,7 @@ export default function Warranty() {
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'#111827' }}>Warranty & Quality</div>
+          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Warranty & Quality</div>
           <div style={{ fontSize:12,color:S,marginTop:2 }}>Products → Warranty</div>
         </div>
         {tab==='policies'&&<button style={btnP} onClick={openAdd}><i className="ri-add-line"/>Add Policy</button>}
@@ -141,7 +141,7 @@ export default function Warranty() {
           { label:'Pending Claims', value:stats.pending,     icon:'ri-time-line',            color:'#f7b84b' },
           { label:'Approved',       value:stats.approved,    icon:'ri-check-double-line',    color:'#16a34a' },
         ].map(c=>(
-          <div key={c.label} style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,borderLeft:`4px solid ${c.color}`,padding:14,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'flex',alignItems:'center',gap:12 }}>
+          <div key={c.label} style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,borderLeft:`4px solid ${c.color}`,padding:14,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'flex',alignItems:'center',gap:12 }}>
             <div style={{ width:40,height:40,borderRadius:'50%',background:`${c.color}1a`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
               <i className={c.icon} style={{ fontSize:20,color:c.color }}/>
             </div>
@@ -154,7 +154,7 @@ export default function Warranty() {
       </div>
 
       {/* Table card */}
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
         <div style={{ padding:'0 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'flex-end',justifyContent:'space-between',flexWrap:'wrap',gap:0 }}>
           <div style={{ display:'flex' }}>
             {TABS.map(t=>(
@@ -197,7 +197,7 @@ export default function Warranty() {
                     </td>
                     <td style={TD}><span style={{ background:`${TYPE_COLOR[r.type]}1a`,color:TYPE_COLOR[r.type],borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600,textTransform:'capitalize' }}>{r.type.replace('_',' ')}</span></td>
                     <td style={{ ...TD,fontWeight:600 }}>{r.days} day{r.days>1?'s':''}</td>
-                    <td style={TD}><span style={{ background:'#f3f4f6',color:'#374151',borderRadius:20,padding:'2px 10px',fontSize:11,fontWeight:600 }}>{r.products}</span></td>
+                    <td style={TD}><span style={{ background:'var(--bg-muted)',color:'var(--text-secondary)',borderRadius:20,padding:'2px 10px',fontSize:11,fontWeight:600 }}>{r.products}</span></td>
                     <td style={TD}><span style={{ background:r.status==='active'?'#dcfce7':'#fee2e2',color:r.status==='active'?'#166534':'#991b1b',borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}>{r.status==='active'?'Active':'Inactive'}</span></td>
                     <td style={{ ...TD,color:S,fontSize:12 }}>{r.created}</td>
                     <td style={TD}>
@@ -226,10 +226,10 @@ export default function Warranty() {
                 )}
                 {filteredClaims.map(r=>(
                   <tr key={r.id}>
-                    <td style={TD}><code style={{ fontSize:11,background:'#f3f4f6',padding:'2px 6px',borderRadius:4,color:'#374151' }}>{r.order}</code></td>
+                    <td style={TD}><code style={{ fontSize:11,background:'var(--bg-muted)',padding:'2px 6px',borderRadius:4,color:'var(--text-secondary)' }}>{r.order}</code></td>
                     <td style={{ ...TD,fontWeight:600 }}>{r.customer}</td>
                     <td style={{ ...TD,color:S,fontSize:12 }}>{r.product}</td>
-                    <td style={{ ...TD,fontSize:11 }}><span style={{ background:'#f3f4f6',color:'#374151',borderRadius:20,padding:'2px 8px' }}>{r.policy}</span></td>
+                    <td style={{ ...TD,fontSize:11 }}><span style={{ background:'var(--bg-muted)',color:'var(--text-secondary)',borderRadius:20,padding:'2px 8px' }}>{r.policy}</span></td>
                     <td style={{ ...TD,color:S,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12 }}>{r.issue}</td>
                     <td style={TD}><span style={{ ...CLAIM_STATUS_STYLE[r.status],borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600,textTransform:'capitalize' }}>{r.status}</span></td>
                     <td style={{ ...TD,color:S,fontSize:12,whiteSpace:'nowrap' }}>{r.date}</td>
@@ -259,7 +259,7 @@ export default function Warranty() {
         <>
           <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:500,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:500,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                   <i className="ri-shield-check-line" style={{ fontSize:18 }}/>
@@ -310,7 +310,7 @@ export default function Warranty() {
         <>
           <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:500,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:500,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                   <i className="ri-file-list-3-line" style={{ fontSize:18 }}/>
@@ -323,19 +323,19 @@ export default function Warranty() {
                   ['Order', viewItem.order], ['Customer', viewItem.customer], ['Product', viewItem.product],
                   ['Policy', viewItem.policy], ['Date', viewItem.date],
                 ].map(([k,v])=>(
-                  <div key={k} style={{ display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid #f3f4f6`,fontSize:13 }}>
+                  <div key={k} style={{ display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid var(--border)`,fontSize:13 }}>
                     <span style={{ color:S,fontWeight:600 }}>{k}</span>
-                    <span style={{ color:'#111827',fontWeight:500 }}>{v}</span>
+                    <span style={{ color:'var(--text-primary)',fontWeight:500 }}>{v}</span>
                   </div>
                 ))}
                 <div style={{ marginTop:14 }}>
-                  <div style={{ fontSize:12,fontWeight:700,color:'#374151',marginBottom:6 }}>Issue Reported</div>
-                  <p style={{ fontSize:13,color:'#374151',background:'#f9fafb',borderRadius:8,padding:'10px 14px',margin:0,lineHeight:1.6 }}>{viewItem.issue}</p>
+                  <div style={{ fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:6 }}>Issue Reported</div>
+                  <p style={{ fontSize:13,color:'var(--text-secondary)',background:'var(--bg-subtle)',borderRadius:8,padding:'10px 14px',margin:0,lineHeight:1.6 }}>{viewItem.issue}</p>
                 </div>
                 {viewItem.resolution&&(
                   <div style={{ marginTop:12 }}>
-                    <div style={{ fontSize:12,fontWeight:700,color:'#374151',marginBottom:6 }}>Resolution</div>
-                    <p style={{ fontSize:13,color:'#374151',background:'#f0fdf4',borderRadius:8,padding:'10px 14px',margin:0 }}>{viewItem.resolution}</p>
+                    <div style={{ fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:6 }}>Resolution</div>
+                    <p style={{ fontSize:13,color:'var(--text-secondary)',background:'#f0fdf4',borderRadius:8,padding:'10px 14px',margin:0 }}>{viewItem.resolution}</p>
                   </div>
                 )}
                 <div style={{ marginTop:16,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
@@ -359,7 +359,7 @@ export default function Warranty() {
         <>
           <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                   <i className="ri-delete-bin-line" style={{ fontSize:18 }}/>
@@ -368,7 +368,7 @@ export default function Warranty() {
                 <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <div style={{ padding:24,textAlign:'center' }}>
-                <p style={{ color:S,fontSize:14,marginBottom:24 }}>Delete policy <strong style={{ color:'#111827' }}>{editItem.name}</strong>? Products using it will lose warranty coverage.</p>
+                <p style={{ color:S,fontSize:14,marginBottom:24 }}>Delete policy <strong style={{ color:'var(--text-primary)' }}>{editItem.name}</strong>? Products using it will lose warranty coverage.</p>
                 <div style={{ display:'flex',gap:10 }}>
                   <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
                   <button style={{ ...btnD,flex:1,justifyContent:'center' }} onClick={confirmDelete}>Delete</button>

@@ -64,11 +64,11 @@ const STATUS_STYLE = {
   processing: { background:'#e0f2fe',color:'#0369a1' },
 }
 
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
+const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'#f9fafb' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
+const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
 
 function downloadTemplate(typeKey) {
   const type = IMPORT_TYPES[typeKey]
@@ -198,7 +198,7 @@ export default function BulkImport() {
 
   const requiredMapped = typeConfig.fields.filter(f=>f.required).every(f=>mapping[f.key])
   const mappedCount    = Object.values(mapping).filter(Boolean).length
-  const B = '#e5e7eb', S = '#6b7280'
+  const B = 'var(--border)', S = '#6b7280'
 
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
@@ -265,7 +265,7 @@ export default function BulkImport() {
       </div>
 
       {/* Type selector */}
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:'14px 20px',marginBottom:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'flex',gap:10,flexWrap:'wrap' }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:'14px 20px',marginBottom:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'flex',gap:10,flexWrap:'wrap' }}>
         {Object.entries(IMPORT_TYPES).map(([key,cfg])=>(
           <button key={key} onClick={()=>handleTypeChange(key)}
             style={{ display:'inline-flex',alignItems:'center',gap:6,padding:'9px 16px',borderRadius:9,border:`2px solid ${activeType===key?cfg.color:B}`,background:activeType===key?cfg.color:'#fff',color:activeType===key?'#fff':'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13,transition:'all .15s' }}>
@@ -276,7 +276,7 @@ export default function BulkImport() {
 
       {/* Step 1: Upload */}
       {step===1&&(
-        <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
+        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
           <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
             <div style={{ display:'flex',alignItems:'center',gap:10 }}>
               <i className={typeConfig.icon} style={{ color:typeConfig.color,fontSize:20 }}/>
@@ -286,11 +286,11 @@ export default function BulkImport() {
           </div>
           <div style={{ padding:24 }}>
             {/* Field hints */}
-            <div style={{ background:'#f9fafb',border:`1px solid ${B}`,borderRadius:10,padding:'14px 18px',marginBottom:20 }}>
+            <div style={{ background:'var(--bg-subtle)',border:`1px solid ${B}`,borderRadius:10,padding:'14px 18px',marginBottom:20 }}>
               <div style={{ fontWeight:700,fontSize:13,marginBottom:10 }}>Required columns for {typeConfig.label}</div>
               <div style={{ display:'flex',flexWrap:'wrap',gap:8 }}>
                 {typeConfig.fields.map(f=>(
-                  <span key={f.key} style={{ background:f.required?'#1B4332':'#f3f4f6',color:f.required?'#fff':'#374151',borderRadius:20,padding:'3px 10px',fontSize:11,fontWeight:600 }}>
+                  <span key={f.key} style={{ background:f.required?'#1B4332':'var(--border)',color:f.required?'#fff':'#374151',borderRadius:20,padding:'3px 10px',fontSize:11,fontWeight:600 }}>
                     {f.label}{f.required?' *':''}
                   </span>
                 ))}
@@ -322,14 +322,14 @@ export default function BulkImport() {
 
       {/* Step 2: Column Mapping */}
       {step===2&&(
-        <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
+        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
           <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
             <div>
               <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:4 }}>
                 <i className="ri-git-merge-line" style={{ color:'#405189',fontSize:18 }}/>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>Map Your Columns</span>
               </div>
-              <div style={{ fontSize:12,color:S }}>File: <strong style={{ color:'#111827' }}>{uploadedFile?.name}</strong> · {fileHeaders.length} column{fileHeaders.length!==1?'s':''} detected · {mappedCount} mapped</div>
+              <div style={{ fontSize:12,color:S }}>File: <strong style={{ color:'var(--text-primary)' }}>{uploadedFile?.name}</strong> · {fileHeaders.length} column{fileHeaders.length!==1?'s':''} detected · {mappedCount} mapped</div>
             </div>
             <button style={btnL} onClick={resetUpload}><i className="ri-arrow-left-line"/>Change File</button>
           </div>
@@ -340,7 +340,7 @@ export default function BulkImport() {
               <div style={{ fontSize:11,fontWeight:700,color:S,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10 }}>Columns detected in your file</div>
               <div style={{ display:'flex',flexWrap:'wrap',gap:8 }}>
                 {fileHeaders.map(h=>(
-                  <span key={h} style={{ background:'#f9fafb',border:`1px solid ${B}`,borderRadius:20,padding:'3px 12px',fontSize:12,color:'#374151' }}>{h}</span>
+                  <span key={h} style={{ background:'var(--bg-subtle)',border:`1px solid ${B}`,borderRadius:20,padding:'3px 12px',fontSize:12,color:'var(--text-secondary)' }}>{h}</span>
                 ))}
               </div>
             </div>
@@ -350,7 +350,7 @@ export default function BulkImport() {
               <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:14 }}>
                 {typeConfig.fields.map(f=>(
                   <div key={f.key}>
-                    <label style={{ display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:5 }}>
+                    <label style={{ display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }}>
                       {f.label}{f.required&&<span style={{ color:'#f06548',marginLeft:4 }}>*</span>}
                     </label>
                     <select value={mapping[f.key]||''} onChange={e=>setMapping(p=>({...p,[f.key]:e.target.value}))}
@@ -388,7 +388,7 @@ export default function BulkImport() {
 
       {/* Step 3: Result */}
       {step===3&&importResult&&(
-        <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
+        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
           <div style={{ padding:'48px 24px',textAlign:'center' }}>
             <div style={{ fontSize:56 }}>{importResult.failed===0?'✅':importResult.imported===0?'❌':'⚠️'}</div>
             <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:18,marginTop:12,marginBottom:6 }}>
@@ -410,7 +410,7 @@ export default function BulkImport() {
       )}
 
       {/* Import History */}
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
         <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
           <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>Import History</span>
           <button style={btnP} onClick={()=>{ resetUpload(); window.scrollTo(0,0) }}><i className="ri-upload-line"/>Upload File</button>
@@ -433,7 +433,7 @@ export default function BulkImport() {
                         <span style={{ fontWeight:600 }}>{row.file}</span>
                       </div>
                     </td>
-                    <td style={TD}><span style={{ background:'#f3f4f6',color:'#374151',borderRadius:20,padding:'2px 10px',fontSize:11,fontWeight:500 }}>{cfg.label}</span></td>
+                    <td style={TD}><span style={{ background:'var(--bg-muted)',color:'var(--text-secondary)',borderRadius:20,padding:'2px 10px',fontSize:11,fontWeight:500 }}>{cfg.label}</span></td>
                     <td style={{ ...TD,color:S }}>{row.by}</td>
                     <td style={TD}>
                       <span style={{ ...STATUS_STYLE[row.status],borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600,textTransform:'capitalize' }}>{row.status}</span>
@@ -441,7 +441,7 @@ export default function BulkImport() {
                     <td style={{ ...TD,color:S,fontSize:12 }}>{row.date}</td>
                     <td style={TD}>
                       <div style={{ display:'flex',gap:4 }}>
-                        <button style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f9fafb',color:'#374151',cursor:'pointer' }}><i className="ri-eye-line"/></button>
+                        <button style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'var(--bg-subtle)',color:'var(--text-secondary)',cursor:'pointer' }}><i className="ri-eye-line"/></button>
                         <button onClick={()=>setHistory(p=>p.filter((_,idx)=>idx!==i))}
                           style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#fff0f0',color:'#f06548',cursor:'pointer' }}><i className="ri-delete-bin-line"/></button>
                       </div>

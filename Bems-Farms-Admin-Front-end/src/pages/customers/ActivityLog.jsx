@@ -42,8 +42,8 @@ function describe(a) {
   }
 }
 
-const inp = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid #e5e7eb', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'#111827', background:'#fff' }
-const card = { background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
+const inp = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
+const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
 
 function formatDate(d) {
   const today = new Date().toISOString().slice(0,10)
@@ -116,7 +116,7 @@ export default function ActivityLog() {
           <div key={k.label} style={{ ...card, padding:'14px 16px', display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
             <div>
               <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>{k.label}</div>
-              <div style={{ fontSize:18, fontWeight:800, color:'#111827', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{k.val}</div>
+              <div style={{ fontSize:18, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{k.val}</div>
             </div>
             <div style={{ width:38, height:38, borderRadius:9, background:k.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={k.icon} style={{ color:k.color, fontSize:18 }} />
@@ -129,12 +129,12 @@ export default function ActivityLog() {
       <div style={{ ...card, padding:'14px 16px', marginBottom:14 }}>
         <div className="grid-form-cols" style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto', gap:10, alignItems:'center' }}>
           <div style={{ position:'relative' }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:14 }} />
+            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, email, or reference…" style={{ ...inp, paddingLeft:32 }} />
           </div>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From" style={{ ...inp, width:'auto' }} />
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} title="To" style={{ ...inp, width:'auto' }} />
-          <button onClick={clearFilters} style={{ padding:'9px 14px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:12, fontFamily:'Nunito, sans-serif', fontWeight:600, color:'#374151', whiteSpace:'nowrap' }}>Clear</button>
+          <button onClick={clearFilters} style={{ padding:'9px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:12, fontFamily:'Nunito, sans-serif', fontWeight:600, color:'var(--text-secondary)', whiteSpace:'nowrap' }}>Clear</button>
         </div>
       </div>
 
@@ -156,13 +156,13 @@ export default function ActivityLog() {
 
       {/* Loading / empty states */}
       {loading && (
-        <div style={{ ...card, padding:'48px', textAlign:'center', color:'#9ca3af', fontSize:13 }}>
+        <div style={{ ...card, padding:'48px', textAlign:'center', color:'var(--text-light)', fontSize:13 }}>
           <i className="ri-loader-4-line" style={{ fontSize:32, display:'block', marginBottom:8 }} />
           Loading…
         </div>
       )}
       {!loading && activity.length===0 && (
-        <div style={{ ...card, padding:'48px', textAlign:'center', color:'#9ca3af', fontSize:13 }}>
+        <div style={{ ...card, padding:'48px', textAlign:'center', color:'var(--text-light)', fontSize:13 }}>
           <i className="ri-search-line" style={{ fontSize:32, display:'block', marginBottom:8 }} />
           No activity matches your filters.
         </div>
@@ -194,7 +194,7 @@ export default function ActivityLog() {
                           <span style={{ fontSize:12, fontWeight:700, color:'#1e293b' }}>{name}</span>
                           <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:50, background:tc.bg, color:tc.color }}>{tc.label}</span>
                         </div>
-                        <div style={{ fontSize:13, color:'#374151' }}>{describe(a)}</div>
+                        <div style={{ fontSize:13, color:'var(--text-secondary)' }}>{describe(a)}</div>
                         <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:3, flexWrap:'wrap' }}>
                           {a.entity_id && <span style={{ fontSize:10, color:'#94a3b8' }}>{a.entity_id}</span>}
                           {a.entity_id && <span style={{ fontSize:10, color:'#94a3b8' }}>·</span>}
@@ -212,7 +212,7 @@ export default function ActivityLog() {
       ))}
 
       {!loading && activity.length > 0 && (
-        <div style={{ textAlign:'center', color:'#9ca3af', fontSize:12, padding:'8px 0' }}>
+        <div style={{ textAlign:'center', color:'var(--text-light)', fontSize:12, padding:'8px 0' }}>
           Showing {activity.length} of {total} events
         </div>
       )}

@@ -3,10 +3,10 @@ import { useNavigate, useParams, Link, useLocation } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:5 }
+const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
 
 function NumericStepper({ value, onChange, min=0 }) {
   const handleMinus = () => {
@@ -88,8 +88,8 @@ function NumericStepper({ value, onChange, min=0 }) {
 
 function Card({ title, children, style={} }) {
   return (
-    <div style={{ background:'#fff',borderRadius:12,border:'1px solid #e5e7eb',overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20,...style }}>
-      <div style={{ padding:'14px 20px',borderBottom:'1px solid #f3f4f6',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,color:'#111827' }}>{title}</div>
+    <div style={{ background:'var(--bg-card)',borderRadius:12,border:'1px solid var(--border)',overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20,...style }}>
+      <div style={{ padding:'14px 20px',borderBottom:'1px solid var(--border)',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,color:'var(--text-primary)' }}>{title}</div>
       <div style={{ padding:20 }}>{children}</div>
     </div>
   )
@@ -192,12 +192,12 @@ export default function AddProduct() {
   }
 
   if (loadingRefs) return (
-    <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300,fontFamily:'Nunito,sans-serif',color:'#6b7280' }}>
+    <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300,fontFamily:'Nunito,sans-serif',color:'var(--text-muted)' }}>
       <i className="ri-loader-4-line" style={{ fontSize:36,display:'block',marginBottom:8,textAlign:'center' }}/>
     </div>
   )
 
-  const S = '#6b7280', B = '#e5e7eb'
+  const S = '#6b7280', B = 'var(--border)'
 
   const location = useLocation()
   const currentTab = location.pathname.includes('/import') ? 'import' : 'single'
@@ -341,7 +341,7 @@ export default function AddProduct() {
                 </div>
                 <div>
                   <label style={LBL}>Margin (%) — Auto</label>
-                  <input style={{ ...inp,background:'#f9fafb',color:margin?'#16a34a':'#6b7280',fontWeight:700 }} readOnly value={margin?`${margin}%`:'—'}/>
+                  <input style={{ ...inp,background:'var(--bg-subtle)',color:margin?'#16a34a':'#6b7280',fontWeight:700 }} readOnly value={margin?`${margin}%`:'—'}/>
                 </div>
               </div>
               <div style={{ display:'grid',gridTemplateColumns:'1.2fr 1.2fr 1fr',gap:16,alignItems:'center' }}>
@@ -354,10 +354,10 @@ export default function AddProduct() {
                   <NumericStepper value={formData.low_stock_threshold} onChange={v => set('low_stock_threshold', v)} />
                 </div>
                 <div style={{ display:'flex',flexDirection:'column',justifyContent:'center',height:'100%',paddingTop:18 }}>
-                  <label style={{ display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,fontWeight:600,color:'#374151' }}>
+                  <label style={{ display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,fontWeight:600,color:'var(--text-secondary)' }}>
                     <div onClick={()=>set('available_for_sale',!formData.available_for_sale)}
-                      style={{ width:40,height:22,borderRadius:20,background:formData.available_for_sale?'var(--orange-accent)':'#d1d5db',position:'relative',transition:'background .2s',cursor:'pointer',flexShrink:0 }}>
-                      <div style={{ position:'absolute',top:2,left:formData.available_for_sale?20:2,width:18,height:18,borderRadius:'50%',background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
+                      style={{ width:40,height:22,borderRadius:20,background:formData.available_for_sale?'var(--orange-accent)':'var(--border-strong)',position:'relative',transition:'background .2s',cursor:'pointer',flexShrink:0 }}>
+                      <div style={{ position:'absolute',top:2,left:formData.available_for_sale?20:2,width:18,height:18,borderRadius:'50%',background:'var(--bg-card)',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
                     </div>
                     Available for Sale
                   </label>
@@ -405,10 +405,10 @@ export default function AddProduct() {
                   </select>
                 </div>
                 <div style={{ display:'flex',alignItems:'flex-end',paddingBottom:2 }}>
-                  <label style={{ display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,fontWeight:600,color:'#374151' }}>
+                  <label style={{ display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,fontWeight:600,color:'var(--text-secondary)' }}>
                     <div onClick={()=>set('track_inventory',!formData.track_inventory)}
-                      style={{ width:40,height:22,borderRadius:20,background:formData.track_inventory?'var(--orange-accent)':'#d1d5db',position:'relative',transition:'background .2s',cursor:'pointer',flexShrink:0 }}>
-                      <div style={{ position:'absolute',top:2,left:formData.track_inventory?20:2,width:18,height:18,borderRadius:'50%',background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
+                      style={{ width:40,height:22,borderRadius:20,background:formData.track_inventory?'var(--orange-accent)':'var(--border-strong)',position:'relative',transition:'background .2s',cursor:'pointer',flexShrink:0 }}>
+                      <div style={{ position:'absolute',top:2,left:formData.track_inventory?20:2,width:18,height:18,borderRadius:'50%',background:'var(--bg-card)',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
                     </div>
                     Track Inventory
                   </label>

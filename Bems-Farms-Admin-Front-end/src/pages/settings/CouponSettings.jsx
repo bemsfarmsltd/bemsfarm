@@ -15,19 +15,19 @@ const NAV = [
   { label:'Notifications',to:'/settings/notifications'  },
 ]
 
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:5 }
+const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
 const btnD = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'#f9fafb' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
-const B = '#e5e7eb', S = '#6b7280'
+const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
+const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
+const B = 'var(--border)', S = '#6b7280'
 
 function Toggle({ value, onChange }) {
   return (
-    <div onClick={onChange} style={{ width:40,height:22,borderRadius:20,background:value?'#1B4332':'#d1d5db',position:'relative',cursor:'pointer',flexShrink:0,transition:'background .2s' }}>
-      <div style={{ position:'absolute',top:2,left:value?20:2,width:18,height:18,borderRadius:'50%',background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
+    <div onClick={onChange} style={{ width:40,height:22,borderRadius:20,background:value?'#1B4332':'var(--border-strong)',position:'relative',cursor:'pointer',flexShrink:0,transition:'background .2s' }}>
+      <div style={{ position:'absolute',top:2,left:value?20:2,width:18,height:18,borderRadius:'50%',background:'var(--bg-card)',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
     </div>
   )
 }
@@ -51,7 +51,7 @@ function genCode(name) { return name.trim().toUpperCase().replace(/[^A-Z0-9]/g,'
 
 function couponStatus(c) {
   const now = new Date().toISOString().slice(0,10)
-  if (!c.is_active) return { label:'Inactive', bg:'#f3f4f6', color:S }
+  if (!c.is_active) return { label:'Inactive', bg:'var(--border)', color:S }
   if (c.end_date && c.end_date < now) return { label:'Expired', bg:'#fee2e2', color:'#991b1b' }
   if (c.start_date && c.start_date > now) return { label:'Upcoming', bg:'#e0f2fe', color:'#0369a1' }
   return { label:'Active', bg:'#dcfce7', color:'#166534' }
@@ -129,12 +129,12 @@ export default function CouponSettings() {
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
       <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'#111827' }}>Settings</div>
+        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Settings</div>
         <div style={{ fontSize:12,color:S,marginTop:2 }}>Manage store preferences and system configurations.</div>
       </div>
       <SettingsNav/>
 
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
         <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
           <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>Coupon List</span>
           <div style={{ display:'flex',gap:10,alignItems:'center' }}>
@@ -168,14 +168,14 @@ export default function CouponSettings() {
                       <td style={{ ...TD,color:S,fontSize:12 }}>{c.type==='percentage'?'Percentage':'Fixed'}</td>
                       <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{c.type==='percentage'?`${c.value}%`:`₦${Number(c.value).toLocaleString()}`}</td>
                       <td style={{ ...TD,color:S }}>₦{Number(c.min_order||0).toLocaleString()}</td>
-                      <td style={TD}><span style={{ background:'#f3f4f6',color:'#374151',borderRadius:20,padding:'2px 8px',fontSize:11,fontWeight:600 }}>{c.used_count||0}/{c.usage_limit||'∞'}</span></td>
+                      <td style={TD}><span style={{ background:'var(--bg-muted)',color:'var(--text-secondary)',borderRadius:20,padding:'2px 8px',fontSize:11,fontWeight:600 }}>{c.used_count||0}/{c.usage_limit||'∞'}</span></td>
                       <td style={TD}><span style={{ background:st.bg,color:st.color,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}>{st.label}</span></td>
                       <td style={{ ...TD,fontSize:11,color:S,whiteSpace:'nowrap' }}>{c.start_date||'—'} → {c.end_date||'—'}</td>
                       <td style={TD}><Toggle value={c.is_active} onChange={()=>handleToggle(c)}/></td>
                       <td style={TD}>
                         <div style={{ display:'flex',gap:4 }}>
                           <button onClick={()=>openEdit(c)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0f4ff',color:'#405189',cursor:'pointer' }}><i className="ri-pencil-line"/></button>
-                          <button onClick={()=>setDeleteItem(c)} disabled={(c.used_count||0)>0} title={(c.used_count||0)>0?'Cannot delete used coupon':''} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:(c.used_count||0)>0?'#f9fafb':'#fff0f0',color:(c.used_count||0)>0?'#d1d5db':'#f06548',cursor:(c.used_count||0)>0?'not-allowed':'pointer' }}><i className="ri-delete-bin-line"/></button>
+                          <button onClick={()=>setDeleteItem(c)} disabled={(c.used_count||0)>0} title={(c.used_count||0)>0?'Cannot delete used coupon':''} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:(c.used_count||0)>0?'#f9fafb':'#fff0f0',color:(c.used_count||0)>0?'var(--border-strong)':'#f06548',cursor:(c.used_count||0)>0?'not-allowed':'pointer' }}><i className="ri-delete-bin-line"/></button>
                         </div>
                       </td>
                     </tr>
@@ -200,7 +200,7 @@ export default function CouponSettings() {
         <>
           <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:580,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'90vh',display:'flex',flexDirection:'column' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:580,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'90vh',display:'flex',flexDirection:'column' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10,flexShrink:0 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                   <i className="ri-coupon-3-line" style={{ fontSize:18 }}/>
@@ -283,14 +283,14 @@ export default function CouponSettings() {
         <>
           <div onClick={()=>setDeleteItem(null)} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <i className="ri-delete-bin-line" style={{ fontSize:22 }}/>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Delete Coupon?</span>
                 <button onClick={()=>setDeleteItem(null)} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <div style={{ padding:24,textAlign:'center' }}>
-                <p style={{ color:S,fontSize:14,marginBottom:24 }}>Delete coupon <strong style={{ color:'#111827' }}>{deleteItem.code}</strong>? This cannot be undone.</p>
+                <p style={{ color:S,fontSize:14,marginBottom:24 }}>Delete coupon <strong style={{ color:'var(--text-primary)' }}>{deleteItem.code}</strong>? This cannot be undone.</p>
                 <div style={{ display:'flex',gap:10 }}>
                   <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={()=>setDeleteItem(null)}>Cancel</button>
                   <button style={{ ...btnD,flex:1,justifyContent:'center' }} onClick={handleDelete} disabled={saving}>{saving?'Deleting…':'Delete'}</button>

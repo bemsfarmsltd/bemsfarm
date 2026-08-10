@@ -8,7 +8,7 @@ export default function Unauthorized() {
   const meta      = user ? ROLE_META[user.role] : null
 
   return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#f8fafc', fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'var(--bg-subtle)', fontFamily:'Nunito, sans-serif' }}>
       <div style={{ textAlign:'center', maxWidth:480, padding:'0 24px' }}>
 
         {/* Icon */}
@@ -17,10 +17,10 @@ export default function Unauthorized() {
         </div>
 
         {/* Heading */}
-        <div style={{ fontFamily:'Syne, sans-serif', fontWeight:800, fontSize:26, color:'#111827', marginBottom:10 }}>
+        <div style={{ fontFamily:'Syne, sans-serif', fontWeight:800, fontSize:26, color:'var(--text-primary)', marginBottom:10 }}>
           Access Restricted
         </div>
-        <p style={{ fontSize:15, color:'#6b7280', marginBottom:24 }}>
+        <p style={{ fontSize:15, color:'var(--text-muted)', marginBottom:24 }}>
           You don't have permission to view this page.
         </p>
 
@@ -34,14 +34,14 @@ export default function Unauthorized() {
           </div>
         )}
 
-        <p style={{ fontSize:13, color:'#6b7280', marginBottom:36, lineHeight:1.7 }}>
-          Your current role <strong style={{ color:'#374151' }}>({meta?.label ?? user?.role})</strong> does not have access to this section.
+        <p style={{ fontSize:13, color:'var(--text-muted)', marginBottom:36, lineHeight:1.7 }}>
+          Your current role <strong style={{ color:'var(--text-secondary)' }}>({meta?.label ?? user?.role})</strong> does not have access to this section.
           Contact your administrator if you believe this is a mistake.
         </p>
 
         {/* Actions */}
         <div style={{ display:'flex', gap:12, justifyContent:'center' }}>
-          <button onClick={() => navigate(-1)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'10px 20px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>
+          <button onClick={() => navigate(-1)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'10px 20px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>
             <i className="ri-arrow-left-line" />Go Back
           </button>
           <button onClick={() => navigate('/dashboard')} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'10px 20px', borderRadius:9, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>

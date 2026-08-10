@@ -5,11 +5,11 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 
 const inp = {
-  width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid #e5e7eb',
+  width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)',
   fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box',
-  color:'#111827', background:'#fff',
+  color:'var(--text-primary)', background:'var(--bg-card)',
 }
-const lbl = { display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:5 }
+const lbl = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
 
 const btn = (bg, color, border) => ({
   display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px',
@@ -38,7 +38,7 @@ const TYPE_CFG = {
 function Spinner({ size = 32, inline = false }) {
   return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding: inline ? 0 : 48 }}>
-      <div style={{ width:size, height:size, border:'3px solid #e5e7eb', borderTopColor:'#1B4332', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
+      <div style={{ width:size, height:size, border:'3px solid var(--border)', borderTopColor:'#1B4332', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
@@ -49,10 +49,10 @@ function Modal({ open, onClose, title, danger, children }) {
   return (
     <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)' }} />
-      <div style={{ position:'relative', background:'#fff', borderRadius:14, padding:'24px 28px', width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.25)', zIndex:1 }}>
+      <div style={{ position:'relative', background:'var(--bg-card)', borderRadius:14, padding:'24px 28px', width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.25)', zIndex:1 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
           <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:danger?'#dc2626':'#111827', fontFamily:'Syne, sans-serif' }}>{title}</h3>
-          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:20, padding:2, display:'flex', alignItems:'center' }}>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:20, padding:2, display:'flex', alignItems:'center' }}>
             <i className="ri-close-line" />
           </button>
         </div>
@@ -93,7 +93,7 @@ function AssocForm({ form, setForm }) {
             style={{ flex:1 }} />
           <span style={{ fontSize:13, fontWeight:700, color:'#1B4332', minWidth:40 }}>{parseFloat(form.strength).toFixed(1)}</span>
         </div>
-        <div style={{ fontSize:11, color:'#9ca3af', marginTop:4 }}>0.0 = weak association, 2.0 = very strong</div>
+        <div style={{ fontSize:11, color:'var(--text-light)', marginTop:4 }}>0.0 = weak association, 2.0 = very strong</div>
       </div>
       <div>
         <label style={lbl}>Notes</label>
@@ -223,13 +223,13 @@ export default function MealAssociations() {
           { label:'Association Types',  value:kpi.types,  icon:'ri-price-tag-3-line',   bg:'#fdf4ff', color:'#7e22ce' },
           { label:'Strong Links (≥1.5)',value:kpi.strong, icon:'ri-star-line',           bg:'#fef9c3', color:'#713f12' },
         ].map(k => (
-          <div key={k.label} style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', padding:'16px 20px', display:'flex', alignItems:'center', gap:14, boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div key={k.label} style={{ background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', padding:'16px 20px', display:'flex', alignItems:'center', gap:14, boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
             <div style={{ width:44, height:44, borderRadius:10, background:k.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={k.icon} style={{ fontSize:20, color:k.color }} />
             </div>
             <div>
-              <div style={{ fontSize:22, fontWeight:800, color:'#111827', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{k.value}</div>
-              <div style={{ fontSize:11, color:'#6b7280', marginTop:2 }}>{k.label}</div>
+              <div style={{ fontSize:22, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{k.value}</div>
+              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{k.label}</div>
             </div>
           </div>
         ))}
@@ -238,7 +238,7 @@ export default function MealAssociations() {
       {/* Filter Bar */}
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20, flexWrap:'wrap' }}>
         <div style={{ position:'relative', flex:1, minWidth:240 }}>
-          <i className="ri-search-line" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:14 }} />
+          <i className="ri-search-line" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
           <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search product names or association type..."
             style={{ ...inp, paddingLeft:34 }} />
         </div>
@@ -252,12 +252,12 @@ export default function MealAssociations() {
       </div>
 
       {/* Table */}
-      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', overflow:'hidden' }}>
+      <div style={{ background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', overflow:'hidden' }}>
         <table style={{ width:'100%', borderCollapse:'collapse' }}>
           <thead>
-            <tr style={{ borderBottom:'1px solid #f3f4f6', background:'#f8fafc' }}>
+            <tr style={{ borderBottom:'1px solid var(--border)', background:'var(--bg-subtle)' }}>
               {['Product','Associated Product','Type','Strength','Notes','Created','Actions'].map(h => (
-                <th key={h} style={{ padding:'11px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', fontFamily:'Nunito, sans-serif', whiteSpace:'nowrap' }}>{h}</th>
+                <th key={h} style={{ padding:'11px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', fontFamily:'Nunito, sans-serif', whiteSpace:'nowrap' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -266,7 +266,7 @@ export default function MealAssociations() {
               <tr><td colSpan={7}><Spinner /></td></tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign:'center', padding:'48px 0', color:'#9ca3af' }}>
+                <td colSpan={7} style={{ textAlign:'center', padding:'48px 0', color:'var(--text-light)' }}>
                   <i className="ri-links-line" style={{ fontSize:36, display:'block', marginBottom:8 }} />
                   <div>No meal associations found. {search && 'Try a different search.'}</div>
                   {!search && <button onClick={() => { setForm({...BLANK}); setAddModal(true) }} style={{ ...btn('#1B4332','#fff'), marginTop:12 }}><i className="ri-add-line" />Add First Association</button>}
@@ -278,10 +278,10 @@ export default function MealAssociations() {
               const strColor = strength >= 1.5 ? '#15803d' : strength >= 0.8 ? '#b45309' : '#dc2626'
               return (
                 <tr key={a.id} style={{ borderBottom:'1px solid #f9fafb', background: i%2===0 ? '#fff' : '#fafafa' }}>
-                  <td style={{ padding:'12px 16px', fontSize:13, fontWeight:700, color:'#111827', fontFamily:'Nunito, sans-serif' }}>
+                  <td style={{ padding:'12px 16px', fontSize:13, fontWeight:700, color:'var(--text-primary)', fontFamily:'Nunito, sans-serif' }}>
                     {a.product_name}
                   </td>
-                  <td style={{ padding:'12px 16px', fontSize:13, color:'#374151', fontFamily:'Nunito, sans-serif' }}>
+                  <td style={{ padding:'12px 16px', fontSize:13, color:'var(--text-secondary)', fontFamily:'Nunito, sans-serif' }}>
                     {a.associated_product_name}
                   </td>
                   <td style={{ padding:'12px 16px' }}>
@@ -291,20 +291,20 @@ export default function MealAssociations() {
                   </td>
                   <td style={{ padding:'12px 16px' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <div style={{ width:56, height:5, background:'#e5e7eb', borderRadius:999, overflow:'hidden' }}>
+                      <div style={{ width:56, height:5, background:'var(--border)', borderRadius:999, overflow:'hidden' }}>
                         <div style={{ height:'100%', width:`${Math.min(100, (strength/2)*100)}%`, background:strColor, borderRadius:999 }} />
                       </div>
                       <span style={{ fontSize:11, fontWeight:700, color:strColor }}>{strength.toFixed(1)}</span>
                     </div>
                   </td>
-                  <td style={{ padding:'12px 16px', fontSize:12, color:'#6b7280', fontFamily:'Nunito, sans-serif', maxWidth:200 }}>
+                  <td style={{ padding:'12px 16px', fontSize:12, color:'var(--text-muted)', fontFamily:'Nunito, sans-serif', maxWidth:200 }}>
                     {a.notes ? (
                       <div style={{ overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
                         {a.notes}
                       </div>
-                    ) : <span style={{ color:'#d1d5db' }}>—</span>}
+                    ) : <span style={{ color:'var(--border-strong)' }}>—</span>}
                   </td>
-                  <td style={{ padding:'12px 16px', fontSize:11, color:'#9ca3af', whiteSpace:'nowrap' }}>
+                  <td style={{ padding:'12px 16px', fontSize:11, color:'var(--text-light)', whiteSpace:'nowrap' }}>
                     {a.created_at ? new Date(a.created_at).toLocaleDateString() : '—'}
                   </td>
                   <td style={{ padding:'12px 16px' }}>
@@ -352,7 +352,7 @@ export default function MealAssociations() {
       <Modal open={!!deleteModal} onClose={() => setDeleteModal(null)} title="Delete Association" danger>
         {deleteModal && (
           <>
-            <p style={{ fontSize:13, color:'#374151', marginBottom:20, lineHeight:1.6 }}>
+            <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:20, lineHeight:1.6 }}>
               Are you sure you want to delete the association between <strong>"{deleteModal.product_name}"</strong> and <strong>"{deleteModal.associated_product_name}"</strong>? This action cannot be undone.
             </p>
             <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>

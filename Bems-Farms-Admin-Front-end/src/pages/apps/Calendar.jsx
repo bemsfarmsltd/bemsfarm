@@ -19,12 +19,12 @@ const CHIP_COLORS = [
 
 const inputStyle = {
   width: '100%', padding: '8px 12px', borderRadius: 8,
-  border: '1px solid #d1d5db', fontSize: 13,
+  border: '1px solid var(--border-strong)', fontSize: 13,
   fontFamily: 'Nunito, sans-serif', outline: 'none',
   boxSizing: 'border-box',
 }
 
-const labelStyle = { fontSize: 12, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 4 }
+const labelStyle = { fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }
 
 const btnBase = {
   display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -114,7 +114,7 @@ export default function Calendar() {
 
       {/* Calendar */}
       <div style={{
-        background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb',
+        background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)',
         boxShadow: '0 1px 4px rgba(0,0,0,0.05)', padding: 20,
       }}>
         <div ref={calendarEl} />
@@ -132,14 +132,14 @@ export default function Calendar() {
           />
           <div style={{
             position: 'relative', width: '100%', maxWidth: 560,
-            background: '#fff', borderRadius: 14, boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            background: 'var(--bg-card)', borderRadius: 14, boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
             padding: 28, margin: '0 16px',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne, sans-serif' }}>Add Event</span>
               <button
                 onClick={() => setShowModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 20, lineHeight: 1 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: 20, lineHeight: 1 }}
               >
                 <i className="ri-close-line" />
               </button>
@@ -156,21 +156,21 @@ export default function Calendar() {
                   <div>
                     <label style={labelStyle}>Start Date *</label>
                     <div style={{ position: 'relative' }}>
-                      <i className="ri-calendar-check-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14 }} />
+                      <i className="ri-calendar-check-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 14 }} />
                       <input type="date" style={{ ...inputStyle, paddingLeft: 30 }} value={form.start} onChange={e => set('start', e.target.value)} required />
                     </div>
                   </div>
                   <div>
                     <label style={labelStyle}>End Date</label>
                     <div style={{ position: 'relative' }}>
-                      <i className="ri-calendar-check-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14 }} />
+                      <i className="ri-calendar-check-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 14 }} />
                       <input type="date" style={{ ...inputStyle, paddingLeft: 30 }} value={form.end} onChange={e => set('end', e.target.value)} />
                     </div>
                   </div>
                   <div>
                     <label style={labelStyle}>Time</label>
                     <div style={{ position: 'relative' }}>
-                      <i className="ri-time-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14 }} />
+                      <i className="ri-time-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 14 }} />
                       <input type="time" style={{ ...inputStyle, paddingLeft: 30 }} value={form.time} onChange={e => set('time', e.target.value)} />
                     </div>
                   </div>
@@ -186,7 +186,7 @@ export default function Calendar() {
                         onClick={() => set('color', c.value)}
                         style={{
                           width: 30, height: 30, borderRadius: '50%',
-                          background: c.value, border: form.color === c.value ? '3px solid #111827' : '2px solid #e5e7eb',
+                          background: c.value, border: form.color === c.value ? '3px solid #111827' : '2px solid var(--border)',
                           cursor: 'pointer',
                         }}
                         title={c.label}
@@ -202,7 +202,7 @@ export default function Calendar() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{ ...btnBase, background: '#f3f4f6', color: '#374151' }}>
+                <button type="button" onClick={() => setShowModal(false)} style={{ ...btnBase, background: 'var(--bg-muted)', color: 'var(--text-secondary)' }}>
                   Cancel
                 </button>
                 <button type="submit" style={{ ...btnBase, background: '#1B4332', color: '#fff' }}>

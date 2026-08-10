@@ -17,11 +17,11 @@ const ORDER_STATUS = {
   processing:       { label:'Processing',      bg:'#eff6ff', color:'#2563eb', border:'#bfdbfe' },
   out_for_delivery: { label:'Out for Delivery',bg:'#fffbeb', color:'#d97706', border:'#fde68a' },
   cancelled:        { label:'Cancelled',       bg:'#fef2f2', color:'#dc2626', border:'#fecaca' },
-  pending:          { label:'Pending',         bg:'#fafafa', color:'#6b7280', border:'#e5e7eb' },
+  pending:          { label:'Pending',         bg:'#fafafa', color:'var(--text-muted)', border:'var(--border)' },
 }
 const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec4899','#f97316']
 
-const card = { background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
+const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
 
 function Spinner() {
   return <span style={{ width:28, height:28, border:'3px solid #d1fae5', borderTopColor:'#1B4332', borderRadius:'50%', animation:'spin 0.7s linear infinite', display:'inline-block' }} />
@@ -75,7 +75,7 @@ export default function CustomerDetail() {
   if (error) return (
     <div style={{ fontFamily:'Nunito, sans-serif' }}>
       <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:10, padding:'12px 16px', color:'#dc2626', fontSize:13, marginBottom:16 }}>{error}</div>
-      <Link to="/customers" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 14px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', textDecoration:'none', fontSize:13, fontWeight:600 }}>← Back</Link>
+      <Link to="/customers" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', textDecoration:'none', fontSize:13, fontWeight:600 }}>← Back</Link>
     </div>
   )
 
@@ -130,7 +130,7 @@ export default function CustomerDetail() {
             </div>
 
             {/* Points progress */}
-            <div style={{ background:'#f8fafc', borderRadius:10, padding:14, marginBottom:16, textAlign:'left' }}>
+            <div style={{ background:'var(--bg-subtle)', borderRadius:10, padding:14, marginBottom:16, textAlign:'left' }}>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
                 <span style={{ fontSize:11, color:'#64748b' }}>{c.tier}</span>
                 {tc.next ? <span style={{ fontSize:11, color:tc.color }}>{tc.next}</span> : <span style={{ fontSize:11, color:'#7c3aed' }}>Max Tier ✓</span>}
@@ -149,7 +149,7 @@ export default function CustomerDetail() {
               </a>
             )}
             {c.email && (
-              <a href={`mailto:${c.email}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'8px', borderRadius:8, border:'1.5px solid #e5e7eb', color:'#374151', textDecoration:'none', fontSize:12, fontWeight:600 }}>
+              <a href={`mailto:${c.email}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'8px', borderRadius:8, border:'1.5px solid var(--border)', color:'var(--text-secondary)', textDecoration:'none', fontSize:12, fontWeight:600 }}>
                 <i className="ri-mail-line" />Send Email
               </a>
             )}
@@ -164,7 +164,7 @@ export default function CustomerDetail() {
                 { label:'Loyalty Pts',  val:fmtPts(c.points),   color:'#8b5cf6' },
                 { label:'Wallet',       val:fmt(c.wallet_balance), color:'#f59e0b' },
               ].map(s => (
-                <div key={s.label} style={{ background:'#f8fafc', borderRadius:8, padding:'10px 12px' }}>
+                <div key={s.label} style={{ background:'var(--bg-subtle)', borderRadius:8, padding:'10px 12px' }}>
                   <div style={{ fontSize:10, color:'#94a3b8', marginBottom:2 }}>{s.label}</div>
                   <div style={{ fontSize:13, fontWeight:700, color:s.color }}>{s.val}</div>
                 </div>
@@ -174,7 +174,7 @@ export default function CustomerDetail() {
 
           {/* Contact info */}
           <div style={card}>
-            <div style={{ padding:'12px 16px', borderBottom:'1px solid #f3f4f6', fontSize:13, fontWeight:700, color:'#374151' }}>Contact & Delivery</div>
+            <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', fontSize:13, fontWeight:700, color:'var(--text-secondary)' }}>Contact & Delivery</div>
             <div style={{ padding:'4px 0' }}>
               {[
                 { icon:'ri-phone-line',    label:'Phone',  val:c.phone,  href:`tel:${c.phone}` },
@@ -188,7 +188,7 @@ export default function CustomerDetail() {
                     <div style={{ fontSize:10, color:'#94a3b8', marginBottom:2 }}>{r.label}</div>
                     {r.href
                       ? <a href={r.href} style={{ fontSize:12, color:'#3b82f6', textDecoration:'none' }}>{r.val}</a>
-                      : <div style={{ fontSize:12, color:'#374151' }}>{r.val}</div>
+                      : <div style={{ fontSize:12, color:'var(--text-secondary)' }}>{r.val}</div>
                     }
                   </div>
                 </div>
@@ -198,7 +198,7 @@ export default function CustomerDetail() {
                   <i className="ri-home-3-line" style={{ color:'#94a3b8', fontSize:14, marginTop:2, flexShrink:0 }} />
                   <div>
                     <div style={{ fontSize:10, color:'#94a3b8', marginBottom:2 }}>{addr.label||'Address'}{addr.is_default?' (Default)':''}</div>
-                    <div style={{ fontSize:12, color:'#374151' }}>{addr.full_address}</div>
+                    <div style={{ fontSize:12, color:'var(--text-secondary)' }}>{addr.full_address}</div>
                   </div>
                 </div>
               ))}
@@ -209,7 +209,7 @@ export default function CustomerDetail() {
         {/* Right content */}
         <div style={card}>
           {/* Tabs */}
-          <div style={{ padding:'0 16px', borderBottom:'1px solid #e5e7eb', display:'flex', gap:4 }}>
+          <div style={{ padding:'0 16px', borderBottom:'1px solid var(--border)', display:'flex', gap:4 }}>
             {TABS.map(t => (
               <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'14px 14px 12px', border:'none', background:'none', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight: activeTab===t.id ? 700 : 500, color: activeTab===t.id ? '#1B4332' : '#64748b', borderBottom: `2px solid ${activeTab===t.id ? '#1B4332' : 'transparent'}`, marginBottom:-1 }}>
                 <i className={t.icon} />
@@ -228,7 +228,7 @@ export default function CustomerDetail() {
               {(c.orders||[]).map((o,i) => {
                 const sc = ORDER_STATUS[o.status] || ORDER_STATUS.pending
                 return (
-                  <div key={o.id} style={{ display:'flex', alignItems:'flex-start', gap:14, padding:'16px 20px', borderBottom: i<(c.orders.length-1)?'1px solid #f3f4f6':'none' }}>
+                  <div key={o.id} style={{ display:'flex', alignItems:'flex-start', gap:14, padding:'16px 20px', borderBottom: i<(c.orders.length-1)?'1px solid var(--border)':'none' }}>
                     <div style={{ width:40, height:40, borderRadius:'50%', background:'#f0fdf4', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                       <i className="ri-shopping-bag-line" style={{ color:'#22c55e', fontSize:16 }} />
                     </div>
@@ -237,7 +237,7 @@ export default function CustomerDetail() {
                         <Link to={`/orders/${o.id}`} style={{ fontWeight:700, fontSize:14, color:'#1B4332', textDecoration:'none' }}>{o.id}</Link>
                         <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:50, background:sc.bg, color:sc.color, border:`1px solid ${sc.border}` }}>{sc.label}</span>
                       </div>
-                      {o.items_summary && <div style={{ fontSize:12, color:'#6b7280', marginBottom:4 }}>{o.items_summary}</div>}
+                      {o.items_summary && <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:4 }}>{o.items_summary}</div>}
                       <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                         <span style={{ fontSize:11, color:'#94a3b8' }}>{new Date(o.created_at).toLocaleDateString('en-NG')}</span>
                         <span style={{ fontSize:13, fontWeight:700, color:'#16a34a' }}>{fmt(o.total)}</span>
@@ -252,7 +252,7 @@ export default function CustomerDetail() {
           {/* Loyalty Points */}
           {activeTab==='points' && (
             <div>
-              <div style={{ padding:'16px 20px', borderBottom:'1px solid #f3f4f6', background:'#f8fafc' }}>
+              <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', background:'var(--bg-subtle)' }}>
                 <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:10 }}>
                   {[
                     { label:'Current Balance', val:fmtPts(c.points), color:'#8b5cf6', big:true },
@@ -260,14 +260,14 @@ export default function CustomerDetail() {
                     { label:'Points to Next',  val:tc.next?fmtPts(ptsToNext):'Max tier ✓', color:tc.next?'#f59e0b':'#22c55e' },
                     { label:'Rate',            val:'100 pts = ₦400',  color:'#64748b'          },
                   ].map(s => (
-                    <div key={s.label} style={{ background:'#fff', borderRadius:8, padding:12, border:'1px solid #e2e8f0' }}>
+                    <div key={s.label} style={{ background:'var(--bg-card)', borderRadius:8, padding:12, border:'1px solid #e2e8f0' }}>
                       <div style={{ fontSize:10, color:'#94a3b8', marginBottom:4 }}>{s.label}</div>
                       <div style={{ fontSize:s.big?18:14, fontWeight:700, color:s.color }}>{s.val}</div>
                     </div>
                   ))}
                 </div>
               </div>
-              <div style={{ padding:'12px 20px', borderBottom:'1px solid #f3f4f6', fontSize:13, fontWeight:700, color:'#374151' }}>Points History</div>
+              <div style={{ padding:'12px 20px', borderBottom:'1px solid var(--border)', fontSize:13, fontWeight:700, color:'var(--text-secondary)' }}>Points History</div>
               {(c.loyalty||[]).length===0
                 ? <div style={{ textAlign:'center', padding:'32px 0', color:'#94a3b8', fontSize:13 }}>No loyalty transactions yet</div>
                 : (c.loyalty||[]).map((p,i) => (
@@ -304,8 +304,8 @@ export default function CustomerDetail() {
                   { icon:'ri-shopping-bag-line',  label:'Last order',      val:c.last_order_at ? new Date(c.last_order_at).toLocaleDateString('en-NG') : '—', color:'#f59e0b' },
                   { icon:'ri-shield-check-line',  label:'Account status',  val:c.status==='active'?'Active ✓':'Inactive', color:c.status==='active'?'#22c55e':'#ef4444' },
                 ].map(r => (
-                  <div key={r.label} style={{ display:'flex', alignItems:'center', gap:12, padding:12, borderRadius:10, background:'#f8fafc' }}>
-                    <div style={{ width:36, height:36, borderRadius:8, background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <div key={r.label} style={{ display:'flex', alignItems:'center', gap:12, padding:12, borderRadius:10, background:'var(--bg-subtle)' }}>
+                    <div style={{ width:36, height:36, borderRadius:8, background:'var(--bg-card)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                       <i className={r.icon} style={{ color:r.color, fontSize:16 }} />
                     </div>
                     <div>
@@ -317,7 +317,7 @@ export default function CustomerDetail() {
               </div>
               {(c.activity||[]).length > 0 && (
                 <div>
-                  <div style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'#374151' }}>Recent Activity</div>
+                  <div style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--text-secondary)' }}>Recent Activity</div>
                   {c.activity.map((a,i) => (
                     <div key={i} style={{ display:'flex', gap:12, padding:'10px 0', borderBottom: i<(c.activity.length-1)?'1px solid #f9fafb':'none' }}>
                       <i className="ri-history-line" style={{ color:'#94a3b8', fontSize:14, marginTop:2 }} />
@@ -341,10 +341,10 @@ export default function CustomerDetail() {
                     <i className="ri-sparkling-2-line animate-pulse" />
                     <span>Bems Farms AI is analyzing purchase history and generating strategic recommendations...</span>
                   </div>
-                  <div style={{ background:'#f3f4f6', height:16, width:'90%', borderRadius:4 }} />
-                  <div style={{ background:'#f3f4f6', height:16, width:'85%', borderRadius:4 }} />
-                  <div style={{ background:'#f3f4f6', height:16, width:'95%', borderRadius:4 }} />
-                  <div style={{ background:'#f3f4f6', height:16, width:'60%', borderRadius:4 }} />
+                  <div style={{ background:'var(--bg-muted)', height:16, width:'90%', borderRadius:4 }} />
+                  <div style={{ background:'var(--bg-muted)', height:16, width:'85%', borderRadius:4 }} />
+                  <div style={{ background:'var(--bg-muted)', height:16, width:'95%', borderRadius:4 }} />
+                  <div style={{ background:'var(--bg-muted)', height:16, width:'60%', borderRadius:4 }} />
                 </div>
               )}
               {insightsError && (
@@ -354,8 +354,8 @@ export default function CustomerDetail() {
                 </div>
               )}
               {insights && (
-                <div style={{ color:'#374151', fontSize:13, lineHeight:1.6 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:6, color:'var(--orange-accent)', fontWeight:700, fontSize:14, marginBottom:16, paddingBottom:8, borderBottom:'1px solid #f3f4f6' }}>
+                <div style={{ color:'var(--text-secondary)', fontSize:13, lineHeight:1.6 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, color:'var(--orange-accent)', fontWeight:700, fontSize:14, marginBottom:16, paddingBottom:8, borderBottom:'1px solid var(--border)' }}>
                     <i className="ri-sparkling-2-line" />
                     <span>AI Customer Success Insights</span>
                   </div>

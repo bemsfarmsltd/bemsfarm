@@ -10,10 +10,10 @@ const STATUS_CFG = {
 }
 
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
-const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
-const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid #f3f4f6', fontSize:13, color:'#111827' }
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid #e5e7eb', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'#fff', color:'#111827', boxSizing:'border-box' }
+const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
+const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
+const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text-primary)' }
+const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
 
 export default function StockList() {
   const navigate = useNavigate()
@@ -75,7 +75,7 @@ export default function StockList() {
     return date.toISOString().slice(0, 10)
   }
 
-  const B = '#e5e7eb', S = '#6b7280'
+  const B = 'var(--border)', S = '#6b7280'
 
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
@@ -99,7 +99,7 @@ export default function StockList() {
           { label:'Low Stock',    value:totals.low, icon:'ri-alert-line', color:'#f7b84b', valueColor:'#f59e0b' },
           { label:'Out of Stock', value:totals.out, icon:'ri-close-circle-line', color:'#f06548', valueColor:'#ef4444' },
         ].map(c => (
-          <div key={c.label} style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+          <div key={c.label} style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
             <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={c.icon} style={{ fontSize:20, color:c.color }}/>
             </div>
@@ -112,10 +112,10 @@ export default function StockList() {
       </div>
 
       {/* Table card */}
-      <div style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
+      <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
         <div style={{ padding:'16px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <div style={{ position:'relative', flex:1, minWidth:200 }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:15 }}/>
             <input style={{ ...inp, paddingLeft:32 }} placeholder="Search product, SKU..." value={search} onChange={e => setSearch(e.target.value)}/>
           </div>
           <select style={{ ...inp, width:'auto', minWidth:140 }} value={stockStatus} onChange={e => setStockStatus(e.target.value)}>
@@ -130,7 +130,7 @@ export default function StockList() {
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'Nunito,sans-serif' }}>
             <thead>
-              <tr style={{ background:'#f9fafb', borderBottom:`1px solid ${B}` }}>
+              <tr style={{ background:'var(--bg-subtle)', borderBottom:`1px solid ${B}` }}>
                 <th style={TH}>
                   <input type="checkbox" checked={selected.length === products.length && products.length > 0} onChange={toggleAll} style={{ cursor:'pointer' }}/>
                 </th>
@@ -145,7 +145,7 @@ export default function StockList() {
                   <div className="spinner-border spinner-border-sm text-primary me-2"/>Loading...
                 </td></tr>
               ) : products.length === 0 ? (
-                <tr><td colSpan={10} style={{ ...TD, textAlign:'center', padding:40, color:'#9ca3af' }}>
+                <tr><td colSpan={10} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
                   <i className="ri-box-3-line" style={{ fontSize:32, display:'block', marginBottom:8 }}/>No products found
                 </td></tr>
               ) : products.map(p => {
@@ -165,7 +165,7 @@ export default function StockList() {
                       <span style={{ fontSize:12, color:'#d53f8c', fontWeight:600, fontFamily:'var(--font-mono, monospace)' }}>{p.sku}</span>
                     </td>
                     <td style={TD}>
-                      <span style={{ background:'#f9fafb', color:'#374151', border:`1px solid ${B}`, borderRadius:4, padding:'3px 10px', fontSize:11, fontWeight:600 }}>
+                      <span style={{ background:'var(--bg-subtle)', color:'var(--text-secondary)', border:`1px solid ${B}`, borderRadius:4, padding:'3px 10px', fontSize:11, fontWeight:600 }}>
                         {p.category_name || '—'}
                       </span>
                     </td>
@@ -196,7 +196,7 @@ export default function StockList() {
               <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===1?0.4:1 }}>
                 <i className="ri-arrow-left-s-line"/>Prev
               </button>
-              <span style={{ display:'flex', alignItems:'center', fontSize:12, color:'#374151', fontWeight:600 }}>Page {page} / {meta.pages}</span>
+              <span style={{ display:'flex', alignItems:'center', fontSize:12, color:'var(--text-secondary)', fontWeight:600 }}>Page {page} / {meta.pages}</span>
               <button onClick={() => setPage(p => Math.min(meta.pages,p+1))} disabled={page===meta.pages} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===meta.pages?0.4:1 }}>
                 Next<i className="ri-arrow-right-s-line"/>
               </button>

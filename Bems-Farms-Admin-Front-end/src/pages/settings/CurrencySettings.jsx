@@ -15,13 +15,13 @@ const NAV = [
   { label:'Notifications',to:'/settings/notifications'  },
 ]
 
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:5 }
+const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'#f9fafb' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
-const B = '#e5e7eb', S = '#6b7280'
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
+const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
+const B = 'var(--border)', S = '#6b7280'
 
 function SettingsNav() {
   const { pathname } = useLocation()
@@ -83,12 +83,12 @@ export default function CurrencySettings() {
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
       <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'#111827' }}>Settings</div>
+        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Settings</div>
         <div style={{ fontSize:12,color:S,marginTop:2 }}>Manage store preferences and system configurations.</div>
       </div>
       <SettingsNav/>
 
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
         <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
           <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>Currencies</span>
           <div style={{ display:'flex',gap:10,alignItems:'center' }}>
@@ -120,7 +120,7 @@ export default function CurrencySettings() {
                         {c.name}
                       </div>
                     </td>
-                    <td style={TD}><code style={{ background:'#f3f4f6',padding:'2px 8px',borderRadius:4,fontSize:12,fontWeight:700 }}>{c.code}</code></td>
+                    <td style={TD}><code style={{ background:'var(--bg-muted)',padding:'2px 8px',borderRadius:4,fontSize:12,fontWeight:700 }}>{c.code}</code></td>
                     <td style={{ ...TD,fontWeight:700,fontSize:16 }}>{c.symbol}</td>
                     <td style={TD}>
                       {c.is_default
@@ -132,7 +132,7 @@ export default function CurrencySettings() {
                       {c.is_default && <span style={{ background:'#dcfce7',color:'#166534',borderRadius:50,padding:'3px 8px',fontSize:10,fontWeight:700 }}>DEFAULT</span>}
                     </td>
                     <td style={TD}>
-                      <span style={{ background:c.is_active?'#dcfce7':'#f3f4f6',color:c.is_active?'#166534':S,borderRadius:50,padding:'3px 8px',fontSize:11,fontWeight:600 }}>
+                      <span style={{ background:c.is_active?'#dcfce7':'var(--border)',color:c.is_active?'#166534':S,borderRadius:50,padding:'3px 8px',fontSize:11,fontWeight:600 }}>
                         {c.is_active?'Active':'Inactive'}
                       </span>
                     </td>
@@ -157,7 +157,7 @@ export default function CurrencySettings() {
         <>
           <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:460,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:460,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                   <i className="ri-money-dollar-circle-line" style={{ fontSize:18 }}/>

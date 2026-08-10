@@ -111,7 +111,7 @@ const STATUS_CFG = {
 const fmt = n => `₦${Number(n).toLocaleString()}`
 
 function driverIcon(driver, status) {
-  const cfg   = STATUS_CFG[status] || { label: status || 'Pending', color:'#9ca3af', bg:'#f3f4f6', pulse:false }
+  const cfg   = STATUS_CFG[status] || { label: status || 'Pending', color:'var(--text-light)', bg:'var(--border)', pulse:false }
   const pulse = cfg.pulse ? `<span style="position:absolute;inset:-6px;border-radius:50%;border:2.5px solid ${driver.color};animation:pulse-ring 1.5s ease-out infinite;opacity:0.8;background:rgba(59,130,246,0.15)"></span>` : ''
   return L.divIcon({
     className:'', iconSize:[36,36], iconAnchor:[18,18], popupAnchor:[0,-20],
@@ -298,29 +298,29 @@ export default function DeliveryMap() {
       {/* Page Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12, flexShrink:0 }}>
         <div>
-          <div style={{ fontFamily:'Syne, sans-serif', fontWeight:700, fontSize:18, color:'#111827' }}>Live Delivery Map</div>
-          <div style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>
-            <span style={{ color:'#9ca3af' }}>Deliveries</span>
-            <i className="ri-arrow-right-s-line" style={{ margin:'0 4px', color:'#d1d5db' }} />
-            <span style={{ color:'#374151', fontWeight:600 }}>Live Map</span>
+          <div style={{ fontFamily:'Syne, sans-serif', fontWeight:700, fontSize:18, color:'var(--text-primary)' }}>Live Delivery Map</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
+            <span style={{ color:'var(--text-light)' }}>Deliveries</span>
+            <i className="ri-arrow-right-s-line" style={{ margin:'0 4px', color:'var(--border-strong)' }} />
+            <span style={{ color:'var(--text-secondary)', fontWeight:600 }}>Live Map</span>
           </div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:50, background:'#dcfce7', color:'#16a34a' }}>
             <i className="ri-checkbox-blank-circle-fill" style={{ fontSize:7 }} />Live
           </span>
-          <span style={{ fontSize:12, color:'#6b7280' }}>{deliveries.length} active deliveries</span>
+          <span style={{ fontSize:12, color:'var(--text-muted)' }}>{deliveries.length} active deliveries</span>
         </div>
       </div>
 
       {/* Map + Side Panel */}
-      <div className="grid-sidebar-split" style={{ flex:1, display:'grid', gridTemplateColumns:'320px 1fr', borderRadius:12, overflow:'hidden', border:'1px solid #e5e7eb', minHeight:0 }}>
+      <div className="grid-sidebar-split" style={{ flex:1, display:'grid', gridTemplateColumns:'320px 1fr', borderRadius:12, overflow:'hidden', border:'1px solid var(--border)', minHeight:0 }}>
 
         {/* Side panel */}
-        <div style={{ overflowY:'auto', background:'#fcfcfc', borderRight:'1px solid #e5e7eb' }}>
-          <div style={{ padding:'16px 14px', borderBottom:'1px solid #e5e7eb', display:'flex', alignItems:'center', gap:8, background:'#fff' }}>
-            <i className="ri-list-check" style={{ color:'#9ca3af', fontSize:16 }} />
-            <span style={{ fontWeight:700, fontSize:14, color:'#374151' }}>Active Deliveries</span>
+        <div style={{ overflowY:'auto', background:'#fcfcfc', borderRight:'1px solid var(--border)' }}>
+          <div style={{ padding:'16px 14px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8, background:'var(--bg-card)' }}>
+            <i className="ri-list-check" style={{ color:'var(--text-light)', fontSize:16 }} />
+            <span style={{ fontWeight:700, fontSize:14, color:'var(--text-secondary)' }}>Active Deliveries</span>
             <span style={{ marginLeft:'auto', fontSize:11, fontWeight:700, width:20, height:20, borderRadius:'50%', background:'var(--orange-accent)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center' }}>
               {deliveries.length}
             </span>
@@ -328,32 +328,32 @@ export default function DeliveryMap() {
 
           <div style={{ padding:'10px' }}>
             {deliveries.map(del => {
-              const cfg      = STATUS_CFG[del.status] || { label: del.status || 'Pending', color:'#9ca3af', bg:'#f3f4f6', pulse:false }
+              const cfg      = STATUS_CFG[del.status] || { label: del.status || 'Pending', color:'var(--text-light)', bg:'var(--border)', pulse:false }
               const isActive = selected?.id===del.id
               return (
-                <div key={del.id} onClick={() => handleSelect(del)} style={{ background:'#fff', border:`1px solid ${isActive?del.driver.color:'#e5e7eb'}`, borderRadius:10, padding:'14px', marginBottom:10, cursor:'pointer', boxShadow:isActive?'0 4px 12px rgba(0,0,0,0.06)':'0 1px 3px rgba(0,0,0,0.02)', borderLeft:`4.5px solid ${del.driver.color}`, transition:'all 0.2s' }}>
+                <div key={del.id} onClick={() => handleSelect(del)} style={{ background:'var(--bg-card)', border:`1px solid ${isActive?del.driver.color:'var(--border)'}`, borderRadius:10, padding:'14px', marginBottom:10, cursor:'pointer', boxShadow:isActive?'0 4px 12px rgba(0,0,0,0.06)':'0 1px 3px rgba(0,0,0,0.02)', borderLeft:`4.5px solid ${del.driver.color}`, transition:'all 0.2s' }}>
                   {/* Top row */}
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
                     <div style={{ width:28, height:28, borderRadius:'50%', background:del.driver.color+'20', color:del.driver.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>
                       {del.driver.initials}
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:700, fontSize:12, color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{del.driver.name}</div>
-                      <div style={{ fontSize:10, color:'#9ca3af' }}>{del.driver.bike}</div>
+                      <div style={{ fontWeight:700, fontSize:12, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{del.driver.name}</div>
+                      <div style={{ fontSize:10, color:'var(--text-light)' }}>{del.driver.bike}</div>
                     </div>
                     <span style={{ fontSize:9, fontWeight:700, padding:'2.5px 8px', borderRadius:50, background:cfg.bg, color:cfg.color, flexShrink:0 }}>{cfg.label}</span>
                   </div>
                   {/* Customer */}
                   <div style={{ display:'flex', alignItems:'flex-start', gap:6, marginBottom:4 }}>
-                    <i className="ri-user-line" style={{ color:'#9ca3af', fontSize:12, marginTop:1, flexShrink:0 }} />
+                    <i className="ri-user-line" style={{ color:'var(--text-light)', fontSize:12, marginTop:1, flexShrink:0 }} />
                     <span style={{ fontSize:12, fontWeight:600, color:'#475569' }}>{del.customer.name}</span>
                   </div>
                   <div style={{ display:'flex', alignItems:'flex-start', gap:6, marginBottom:8 }}>
-                    <i className="ri-map-pin-line" style={{ color:'#9ca3af', fontSize:12, marginTop:1, flexShrink:0 }} />
-                    <span style={{ fontSize:11, color:'#6b7280', lineHeight:1.3 }}>{del.customer.address}</span>
+                    <i className="ri-map-pin-line" style={{ color:'var(--text-light)', fontSize:12, marginTop:1, flexShrink:0 }} />
+                    <span style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.3 }}>{del.customer.address}</span>
                   </div>
                   {/* Footer info row */}
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', borderTop:'1px solid #f3f4f6', paddingTop:8 }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', borderTop:'1px solid var(--border)', paddingTop:8 }}>
                     <span style={{ fontWeight:700, fontSize:13, color:'#ef4444' }}>{fmt(del.total)}</span>
                     <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                       {del.status === 'delivery_attempted' && (
@@ -362,7 +362,7 @@ export default function DeliveryMap() {
                         </span>
                       )}
                       {del.eta && del.eta !== '—' && (
-                        <span style={{ fontSize:11, color:'#6b7280', display:'inline-flex', alignItems:'center', gap:3 }}>
+                        <span style={{ fontSize:11, color:'var(--text-muted)', display:'inline-flex', alignItems:'center', gap:3 }}>
                           <i className="ri-time-line" /> {del.eta}
                         </span>
                       )}
@@ -377,8 +377,8 @@ export default function DeliveryMap() {
           </div>
 
           {/* Legend */}
-          <div style={{ padding:'14px', borderTop:'1px solid #e5e7eb', background:'#f8fafc' }}>
-            <div style={{ fontWeight:700, fontSize:11, color:'#9ca3af', marginBottom:10 }}>MAP LEGEND</div>
+          <div style={{ padding:'14px', borderTop:'1px solid var(--border)', background:'var(--bg-subtle)' }}>
+            <div style={{ fontWeight:700, fontSize:11, color:'var(--text-light)', marginBottom:10 }}>MAP LEGEND</div>
             <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
               {[
                 { color:'#1B4332', label:'Bems Farms HQ' },
@@ -388,7 +388,7 @@ export default function DeliveryMap() {
                 { color:'#8b5cf6', label:'Driver (Unassigned/Other)' },
                 { color:'dashed', label:'Delivery Path' },
               ].map((item,i) => (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:8, fontSize:11, color:'#374151' }}>
+                <div key={i} style={{ display:'flex', alignItems:'center', gap:8, fontSize:11, color:'var(--text-secondary)' }}>
                   {item.color === 'dashed'
                     ? <div style={{ width:16, height:2, borderTop:'2px dashed #9ca3af', flexShrink:0 }} />
                     : <div style={{ width:12, height:12, borderRadius:'50%', background:item.color, flexShrink:0, border:'1.5px solid #fff', boxShadow:'0 1px 3px rgba(0,0,0,0.15)' }} />
@@ -412,7 +412,7 @@ export default function DeliveryMap() {
               <Popup>
                 <div style={{ padding:'12px 14px', minWidth:200, fontFamily:'Nunito, sans-serif' }}>
                   <div style={{ fontWeight:700, marginBottom:4, fontSize:13 }}>🏪 Bems Farms Headquarters</div>
-                  <div style={{ color:'#6b7280', fontSize:12 }}>Dispatch Warehouse · Deliveries depart here</div>
+                  <div style={{ color:'var(--text-muted)', fontSize:12 }}>Dispatch Warehouse · Deliveries depart here</div>
                   <div style={{ marginTop:8, fontSize:12 }}><i className="ri-map-pin-line" style={{ marginRight:4 }} />Lagos Island, Lagos</div>
                 </div>
               </Popup>
@@ -430,7 +430,7 @@ export default function DeliveryMap() {
             )}
 
             {deliveries.map(del => {
-              const cfg = STATUS_CFG[del.status] || { label: del.status || 'Pending', color:'#9ca3af', bg:'#f3f4f6', pulse:false }
+              const cfg = STATUS_CFG[del.status] || { label: del.status || 'Pending', color:'var(--text-light)', bg:'var(--border)', pulse:false }
               return (
                 <div key={del.id}>
                   <Polyline positions={[STORE_POS, del.driverPos, del.customerPos]} pathOptions={{ color:del.driver.color, weight:2.5, dashArray:'6,6', opacity:0.8 }} />
@@ -447,16 +447,16 @@ export default function DeliveryMap() {
                         <div style={{ padding:'10px 14px' }}>
                           <div style={{ fontSize:13, fontWeight:600, marginBottom:5 }}>{del.orderId}</div>
                           <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:4 }}>
-                            <i className="ri-user-line" style={{ color:'#9ca3af', fontSize:11 }} />
+                            <i className="ri-user-line" style={{ color:'var(--text-light)', fontSize:11 }} />
                             <span style={{ fontSize:12 }}>{del.customer.name}</span>
                           </div>
                           <div style={{ display:'flex', alignItems:'flex-start', gap:4, marginBottom:8 }}>
-                            <i className="ri-map-pin-line" style={{ color:'#9ca3af', fontSize:11, marginTop:2 }} />
-                            <span style={{ color:'#6b7280', fontSize:11 }}>{del.customer.address}</span>
+                            <i className="ri-map-pin-line" style={{ color:'var(--text-light)', fontSize:11, marginTop:2 }} />
+                            <span style={{ color:'var(--text-muted)', fontSize:11 }}>{del.customer.address}</span>
                           </div>
                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                             <span style={{ fontWeight:700, fontSize:13 }}>{fmt(del.total)}</span>
-                            {del.eta && <span style={{ fontSize:12, color:'#6b7280' }}><i className="ri-time-line" style={{ marginRight:3 }} />{del.eta}</span>}
+                            {del.eta && <span style={{ fontSize:12, color:'var(--text-muted)' }}><i className="ri-time-line" style={{ marginRight:3 }} />{del.eta}</span>}
                             {del.attempts>0 && <span style={{ background:'#ffedd5', color:'#f97316', fontSize:9, padding:'2px 6px', borderRadius:4 }}>Attempt {del.attempts}/2</span>}
                           </div>
                         </div>
@@ -474,15 +474,15 @@ export default function DeliveryMap() {
                           </div>
                           <div>
                             <div style={{ fontWeight:600, fontSize:13 }}>{del.customer.name}</div>
-                            <div style={{ color:'#9ca3af', fontSize:10 }}>{del.customer.phone}</div>
+                            <div style={{ color:'var(--text-light)', fontSize:10 }}>{del.customer.phone}</div>
                           </div>
                         </div>
                         <div style={{ display:'flex', alignItems:'flex-start', gap:4, marginBottom:8 }}>
                           <i className="ri-map-pin-fill" style={{ color:del.driver.color, fontSize:11, marginTop:2, flexShrink:0 }} />
                           <span style={{ fontSize:13 }}>{del.customer.address}</span>
                         </div>
-                        <div style={{ borderTop:'1px solid #e5e7eb', paddingTop:8, display:'flex', justifyContent:'space-between' }}>
-                          <span style={{ fontSize:12, color:'#6b7280' }}>{del.orderId}</span>
+                        <div style={{ borderTop:'1px solid var(--border)', paddingTop:8, display:'flex', justifyContent:'space-between' }}>
+                          <span style={{ fontSize:12, color:'var(--text-muted)' }}>{del.orderId}</span>
                           <span style={{ fontSize:13, fontWeight:700 }}>{fmt(del.total)}</span>
                         </div>
                       </div>
@@ -495,23 +495,23 @@ export default function DeliveryMap() {
 
           {/* selected driver floating detail card */}
           {selected && (
-            <div style={{ position:'absolute', bottom:20, right:16, zIndex:1000, background:'#fff', borderRadius:10, boxShadow:'0 4px 20px rgba(0,0,0,0.15)', padding:'12px 16px', maxWidth:280, borderLeft:`4px solid ${selected.driver.color}` }}>
+            <div style={{ position:'absolute', bottom:20, right:16, zIndex:1000, background:'var(--bg-card)', borderRadius:10, boxShadow:'0 4px 20px rgba(0,0,0,0.15)', padding:'12px 16px', maxWidth:280, borderLeft:`4px solid ${selected.driver.color}` }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
                 <div style={{ width:30, height:30, borderRadius:'50%', background:selected.driver.color, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, flexShrink:0 }}>
                   {selected.driver.initials}
                 </div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontWeight:600, fontSize:13 }}>{selected.driver.name}</div>
-                  <div style={{ fontSize:10, color:'#6b7280' }}>{(STATUS_CFG[selected.status] || {label: selected.status || 'Pending'}).label}</div>
+                  <div style={{ fontSize:10, color:'var(--text-muted)' }}>{(STATUS_CFG[selected.status] || {label: selected.status || 'Pending'}).label}</div>
                 </div>
-                <button onClick={() => { setSelected(null); setFlyTarget(null) }} style={{ width:24, height:24, borderRadius:'50%', border:'1px solid #e5e7eb', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#9ca3af' }}>
+                <button onClick={() => { setSelected(null); setFlyTarget(null) }} style={{ width:24, height:24, borderRadius:'50%', border:'1px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-light)' }}>
                   <i className="ri-close-line" style={{ fontSize:12 }} />
                 </button>
               </div>
               <div style={{ fontSize:12 }}>
                 <div><strong>Order:</strong> {selected.orderId}</div>
                 <div><strong>Customer:</strong> {selected.customer.name}</div>
-                <div style={{ color:'#6b7280' }}>{selected.customer.address}</div>
+                <div style={{ color:'var(--text-muted)' }}>{selected.customer.address}</div>
                 {selected.eta && selected.eta!=='—' && <div style={{ marginTop:4, color:'#3b82f6' }}><i className="ri-time-line" style={{ marginRight:4 }} />{selected.eta} remaining</div>}
               </div>
               <a href={`tel:${selected.driver.phone}`} style={{ display:'block', marginTop:10, padding:'7px', borderRadius:8, border:'none', background:'#22c55e', color:'#fff', fontSize:11, fontWeight:700, textAlign:'center', textDecoration:'none' }}>

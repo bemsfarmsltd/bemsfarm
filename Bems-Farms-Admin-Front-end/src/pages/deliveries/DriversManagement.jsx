@@ -6,24 +6,24 @@ import PageHeader from '../../components/ui/PageHeader'
 const STATUS_CFG = {
   active:      { label:'Active',      color:'#22c55e', bg:'#dcfce7', icon:'ri-checkbox-circle-line' },
   on_delivery: { label:'On Delivery', color:'#3b82f6', bg:'#dbeafe', icon:'ri-truck-line'           },
-  off_duty:    { label:'Off Duty',    color:'#6b7280', bg:'#f3f4f6', icon:'ri-moon-line'             },
+  off_duty:    { label:'Off Duty',    color:'var(--text-muted)', bg:'var(--border)', icon:'ri-moon-line'             },
   suspended:   { label:'Suspended',  color:'#ef4444', bg:'#fee2e2', icon:'ri-forbid-line'           },
 }
 const VEHICLE_TYPES = ['Motorcycle','Bicycle','Car','Van']
 const fmt = n => `₦${Number(n||0).toLocaleString('en-NG')}`
 
-const card = { background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
-const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid #e5e7eb', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'#111827', background:'#fff' }
-const lbl  = { display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:5 }
+const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
+const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
+const lbl  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
 
-const TH = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap', background:'#f8fafc', borderBottom:'1px solid #e5e7eb' }}>{children}</th>
+const TH = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap', background:'var(--bg-subtle)', borderBottom:'1px solid var(--border)' }}>{children}</th>
 const TD = ({ children, style }) => <td style={{ padding:'10px 12px', fontSize:13, borderBottom:'1px solid #f9fafb', verticalAlign:'middle', ...style }}>{children}</td>
 
 function StarRating({ rating }) {
   return (
     <span>
       {[1,2,3,4,5].map(i => (
-        <i key={i} className={i<=Math.round(rating||0)?'ri-star-fill':'ri-star-line'} style={{ fontSize:12, color:i<=Math.round(rating||0)?'#d97706':'#d1d5db' }} />
+        <i key={i} className={i<=Math.round(rating||0)?'ri-star-fill':'ri-star-line'} style={{ fontSize:12, color:i<=Math.round(rating||0)?'#d97706':'var(--border-strong)' }} />
       ))}
       <span style={{ marginLeft:4, fontSize:12, fontWeight:600 }}>{Number(rating||0).toFixed(1)}</span>
     </span>
@@ -32,7 +32,7 @@ function StarRating({ rating }) {
 
 function ModalShell({ title, onClose, children, maxWidth=460 }) {
   return (
-    <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth, maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
+    <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth, maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
       <div style={{ background:'#1B4332', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
         <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif' }}>{title}</span>
         <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
@@ -164,7 +164,7 @@ export default function DriversManagement() {
           { label:'Total Drivers',    value:parseInt(stats.total||0),       color:'#6366f1', icon:'ri-group-line',           filter:'all'         },
           { label:'On Delivery',      value:parseInt(stats.on_delivery||0), color:'#3b82f6', icon:'ri-truck-line',           filter:'on_delivery' },
           { label:'Active / Standby', value:parseInt(stats.active||0),      color:'#22c55e', icon:'ri-checkbox-circle-line', filter:'active'      },
-          { label:'Off Duty',         value:parseInt(stats.off_duty||0),    color:'#6b7280', icon:'ri-moon-line',            filter:'off_duty'    },
+          { label:'Off Duty',         value:parseInt(stats.off_duty||0),    color:'var(--text-muted)', icon:'ri-moon-line',            filter:'off_duty'    },
           { label:'Suspended',        value:parseInt(stats.suspended||0),   color:'#ef4444', icon:'ri-forbid-line',          filter:'suspended'   },
         ].map(c => (
           <div key={c.label} onClick={() => setFilterStatus(c.filter)} style={{ ...card, padding:'14px 16px', display:'flex', alignItems:'center', gap:14, cursor:'pointer', borderLeft:`3px solid ${c.color}` }}>
@@ -173,7 +173,7 @@ export default function DriversManagement() {
             </div>
             <div>
               <div style={{ fontSize:11, color:'#64748b' }}>{c.label}</div>
-              <div style={{ fontSize:20, fontWeight:800, color:'#111827', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{c.value}</div>
+              <div style={{ fontSize:20, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{c.value}</div>
             </div>
           </div>
         ))}
@@ -183,17 +183,17 @@ export default function DriversManagement() {
       <div style={{ ...card, marginBottom:16 }}>
         <div style={{ padding:'10px 14px', display:'flex', flexWrap:'wrap', gap:10, alignItems:'center' }}>
           <div style={{ position:'relative', maxWidth:280, flex:1 }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:14 }} />
+            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name, phone, zone…" style={{ ...inp, paddingLeft:32 }} />
           </div>
           {filterStatus!=='all' && (
-            <button onClick={() => setFilterStatus('all')} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'7px 12px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:12, fontFamily:'Nunito, sans-serif', color:'#374151' }}>
+            <button onClick={() => setFilterStatus('all')} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'7px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:12, fontFamily:'Nunito, sans-serif', color:'var(--text-secondary)' }}>
               <i className="ri-close-line" />Clear
             </button>
           )}
-          <div style={{ marginLeft:'auto', fontSize:12, color:'#6b7280' }}>{filtered.length} driver{filtered.length!==1?'s':''}</div>
+          <div style={{ marginLeft:'auto', fontSize:12, color:'var(--text-muted)' }}>{filtered.length} driver{filtered.length!==1?'s':''}</div>
         </div>
-        <div style={{ borderTop:'1px solid #e5e7eb', overflowX:'auto' }}>
+        <div style={{ borderTop:'1px solid var(--border)', overflowX:'auto' }}>
           <div style={{ display:'flex', whiteSpace:'nowrap' }}>
             {[{ key:'all', label:'All Drivers' }, ...Object.entries(STATUS_CFG).map(([k,v])=>({ key:k, label:v.label }))].map(t => (
               <button key={t.key} onClick={() => setFilterStatus(t.key)} style={{ padding:'10px 16px', border:'none', borderBottom:filterStatus===t.key?'2px solid #1B4332':'2px solid transparent', background:'transparent', color:filterStatus===t.key?'#1B4332':'#6b7280', fontWeight:filterStatus===t.key?700:400, fontSize:12, cursor:'pointer', fontFamily:'Nunito, sans-serif', whiteSpace:'nowrap' }}>
@@ -216,7 +216,7 @@ export default function DriversManagement() {
                 <tr key={i}>{[...Array(10)].map((_,j) => <TD key={j}><div style={{ height:14, background:'#f0f0f0', borderRadius:4 }} /></TD>)}</tr>
               ))}
               {!loading && filtered.length===0 && (
-                <tr><td colSpan={10} style={{ textAlign:'center', color:'#9ca3af', padding:'48px 0', fontSize:13 }}>No drivers found</td></tr>
+                <tr><td colSpan={10} style={{ textAlign:'center', color:'var(--text-light)', padding:'48px 0', fontSize:13 }}>No drivers found</td></tr>
               )}
               {!loading && filtered.map(driver => {
                 const cfg = STATUS_CFG[driver.status] || STATUS_CFG.off_duty
@@ -230,18 +230,18 @@ export default function DriversManagement() {
                         </div>
                         <div>
                           <div style={{ fontWeight:600 }}>{driver.name}</div>
-                          <div style={{ fontSize:11, color:'#9ca3af' }}>Since {driver.joined_at?new Date(driver.joined_at).toLocaleDateString('en-NG'):'—'}</div>
+                          <div style={{ fontSize:11, color:'var(--text-light)' }}>Since {driver.joined_at?new Date(driver.joined_at).toLocaleDateString('en-NG'):'—'}</div>
                         </div>
                       </div>
                     </TD>
                     <TD>
                       <div style={{ fontSize:13 }}>{driver.phone}</div>
-                      <div style={{ fontSize:11, color:'#9ca3af' }}>{driver.email||'—'}</div>
+                      <div style={{ fontSize:11, color:'var(--text-light)' }}>{driver.email||'—'}</div>
                     </TD>
                     <TD style={{ fontSize:13 }}>{driver.zone||'—'}</TD>
                     <TD>
                       <div style={{ fontSize:13 }}>{driver.vehicle_type||'—'}</div>
-                      <div style={{ fontSize:11, color:'#9ca3af' }}>{driver.vehicle_plate||'—'}</div>
+                      <div style={{ fontSize:11, color:'var(--text-light)' }}>{driver.vehicle_plate||'—'}</div>
                     </TD>
                     <TD style={{ fontWeight:600 }}>{driver.total_deliveries||0}</TD>
                     <TD><StarRating rating={driver.rating||0} /></TD>
@@ -251,11 +251,11 @@ export default function DriversManagement() {
                       <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:50, background:cfg.bg, color:cfg.color }}>
                         <i className={cfg.icon} />{cfg.label}
                       </span>
-                      {driver.current_order && <div style={{ fontSize:10, color:'#9ca3af' }}>{driver.current_order}</div>}
+                      {driver.current_order && <div style={{ fontSize:10, color:'var(--text-light)' }}>{driver.current_order}</div>}
                     </TD>
                     <TD>
                       <div style={{ display:'flex', gap:5 }}>
-                        <button onClick={() => openModal('profile',driver)} title="Profile" style={{ width:30, height:30, borderRadius:7, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#374151' }}>
+                        <button onClick={() => openModal('profile',driver)} title="Profile" style={{ width:30, height:30, borderRadius:7, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-secondary)' }}>
                           <i className="ri-eye-line" style={{ fontSize:13 }} />
                         </button>
                         <button onClick={() => openModal('edit',driver)} title="Edit" style={{ width:30, height:30, borderRadius:7, border:'none', background:'#eff6ff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#3b82f6' }}>
@@ -288,7 +288,7 @@ export default function DriversManagement() {
                   <div style={{ display:'flex', gap:8 }}>
                     {['all','selected'].map(t => (
                       <button key={t} onClick={() => setNotifyForm(f => ({...f, target:t, selectedDriverIds:[]}))}
-                        style={{ flex:1, padding:'8px 12px', borderRadius:8, border:`2px solid ${notifyForm.target===t?'#1B4332':'#e5e7eb'}`, background:notifyForm.target===t?'#1B4332':'transparent', color:notifyForm.target===t?'#fff':'#374151', cursor:'pointer', fontWeight:700, fontSize:12, fontFamily:'Nunito,sans-serif' }}>
+                        style={{ flex:1, padding:'8px 12px', borderRadius:8, border:`2px solid ${notifyForm.target===t?'#1B4332':'var(--border)'}`, background:notifyForm.target===t?'#1B4332':'transparent', color:notifyForm.target===t?'#fff':'#374151', cursor:'pointer', fontWeight:700, fontSize:12, fontFamily:'Nunito,sans-serif' }}>
                         <i className={t==='all'?'ri-broadcast-line':'ri-user-search-line'} style={{ marginRight:5 }}/>
                         {t==='all'?'All Drivers':'Selected Drivers'}
                       </button>
@@ -297,18 +297,18 @@ export default function DriversManagement() {
                 </div>
 
                 {notifyForm.target === 'selected' && (
-                  <div style={{ marginBottom:16, maxHeight:180, overflowY:'auto', border:'1.5px solid #e5e7eb', borderRadius:8, padding:8 }}>
+                  <div style={{ marginBottom:16, maxHeight:180, overflowY:'auto', border:'1.5px solid var(--border)', borderRadius:8, padding:8 }}>
                     {drivers.filter(d => d.status !== 'suspended').map(d => (
                       <label key={d.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 8px', cursor:'pointer', borderRadius:6, background:notifyForm.selectedDriverIds.includes(d.id)?'#f0fdf4':'transparent' }}>
                         <input type="checkbox" checked={notifyForm.selectedDriverIds.includes(d.id)}
                           onChange={e => setNotifyForm(f => ({ ...f, selectedDriverIds: e.target.checked ? [...f.selectedDriverIds, d.id] : f.selectedDriverIds.filter(id => id !== d.id) }))}
                           style={{ width:16, height:16, accentColor:'#1B4332' }}/>
                         <span style={{ fontSize:13, fontWeight:600 }}>{d.name}</span>
-                        <span style={{ fontSize:11, color:STATUS_CFG[d.status]?.color||'#6b7280', background:STATUS_CFG[d.status]?.bg||'#f3f4f6', padding:'1px 7px', borderRadius:50 }}>{STATUS_CFG[d.status]?.label||d.status}</span>
-                        {d.phone && <span style={{ fontSize:11, color:'#6b7280', marginLeft:'auto' }}>{d.phone}</span>}
+                        <span style={{ fontSize:11, color:STATUS_CFG[d.status]?.color||'#6b7280', background:STATUS_CFG[d.status]?.bg||'var(--border)', padding:'1px 7px', borderRadius:50 }}>{STATUS_CFG[d.status]?.label||d.status}</span>
+                        {d.phone && <span style={{ fontSize:11, color:'var(--text-muted)', marginLeft:'auto' }}>{d.phone}</span>}
                       </label>
                     ))}
-                    {!drivers.length && <div style={{ textAlign:'center', color:'#6b7280', fontSize:12, padding:12 }}>No drivers available</div>}
+                    {!drivers.length && <div style={{ textAlign:'center', color:'var(--text-muted)', fontSize:12, padding:12 }}>No drivers available</div>}
                   </div>
                 )}
 
@@ -322,28 +322,28 @@ export default function DriversManagement() {
                 </div>
 
                 <div style={{ display:'flex', gap:10, marginBottom:24 }}>
-                  <button onClick={() => setActiveModal(null)} style={{ flex:1, padding:'9px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'Nunito,sans-serif', color:'#374151' }}>Cancel</button>
+                  <button onClick={() => setActiveModal(null)} style={{ flex:1, padding:'9px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'Nunito,sans-serif', color:'var(--text-secondary)' }}>Cancel</button>
                   <button onClick={submitNotification} disabled={notifySubmitting} style={{ flex:2, padding:'9px', borderRadius:8, border:'none', background:'#F57C00', color:'#fff', cursor:notifySubmitting?'not-allowed':'pointer', fontSize:13, fontWeight:700, fontFamily:'Nunito,sans-serif', opacity:notifySubmitting?0.7:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
                     {notifySubmitting ? <><i className="ri-loader-4-line"/>Sending…</> : <><i className="ri-send-plane-line"/>Send Notification</>}
                   </button>
                 </div>
 
                 {/* Notification History */}
-                <div style={{ borderTop:'1px solid #e5e7eb', paddingTop:16 }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.05em' }}>Recent Notifications</div>
+                <div style={{ borderTop:'1px solid var(--border)', paddingTop:16 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:10, textTransform:'uppercase', letterSpacing:'0.05em' }}>Recent Notifications</div>
                   {notifyHistoryLoading ? (
-                    <div style={{ textAlign:'center', color:'#6b7280', fontSize:12, padding:12 }}>Loading…</div>
+                    <div style={{ textAlign:'center', color:'var(--text-muted)', fontSize:12, padding:12 }}>Loading…</div>
                   ) : notifyHistory.length === 0 ? (
-                    <div style={{ textAlign:'center', color:'#6b7280', fontSize:12, padding:12 }}>No notifications sent yet</div>
+                    <div style={{ textAlign:'center', color:'var(--text-muted)', fontSize:12, padding:12 }}>No notifications sent yet</div>
                   ) : notifyHistory.slice(0,8).map(n => (
-                    <div key={n.id} style={{ padding:'8px 10px', borderRadius:6, background:'#f8fafc', border:'1px solid #f1f5f9', marginBottom:6 }}>
+                    <div key={n.id} style={{ padding:'8px 10px', borderRadius:6, background:'var(--bg-subtle)', border:'1px solid #f1f5f9', marginBottom:6 }}>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8 }}>
                         <div>
-                          <div style={{ fontSize:13, fontWeight:600, color:'#111827' }}>{n.title}</div>
-                          <div style={{ fontSize:11, color:'#6b7280', marginTop:2, lineHeight:1.4 }}>{n.message?.slice(0,80)}{n.message?.length>80?'…':''}</div>
+                          <div style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)' }}>{n.title}</div>
+                          <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2, lineHeight:1.4 }}>{n.message?.slice(0,80)}{n.message?.length>80?'…':''}</div>
                         </div>
                         <div style={{ textAlign:'right', flexShrink:0 }}>
-                          <div style={{ fontSize:10, color:'#6b7280' }}>{new Date(n.created_at).toLocaleString('en-NG',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                          <div style={{ fontSize:10, color:'var(--text-muted)' }}>{new Date(n.created_at).toLocaleString('en-NG',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
                           <div style={{ fontSize:10, fontWeight:600, color:'#1B4332', marginTop:2 }}>{n.target==='all'?'All Drivers':`${n.driver_ids?.length||0} Driver(s)`}</div>
                         </div>
                       </div>
@@ -367,20 +367,20 @@ export default function DriversManagement() {
             return (
               <ModalShell title={selected.name} onClose={closeModal} maxWidth={560}>
                 <div style={{ overflowY:'auto' }}>
-                  <div style={{ padding:'16px 20px', background:'#f8fafc', borderBottom:'1px solid #e5e7eb', display:'flex', alignItems:'center', gap:14 }}>
+                  <div style={{ padding:'16px 20px', background:'var(--bg-subtle)', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:14 }}>
                     <div style={{ width:56, height:56, borderRadius:'50%', background:cfg.color+'30', border:`2px solid ${cfg.color}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, color:cfg.color, flexShrink:0 }}>
                       {selected.name.split(' ').map(n=>n[0]).join('')}
                     </div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontWeight:700, fontSize:15 }}>{selected.name}</div>
-                      <div style={{ fontSize:12, color:'#6b7280' }}>{selected.phone} · {selected.zone||'No zone'}</div>
-                      <div style={{ fontSize:12, color:'#6b7280' }}>{selected.vehicle_type} · {selected.vehicle_plate||'—'}</div>
+                      <div style={{ fontSize:12, color:'var(--text-muted)' }}>{selected.phone} · {selected.zone||'No zone'}</div>
+                      <div style={{ fontSize:12, color:'var(--text-muted)' }}>{selected.vehicle_type} · {selected.vehicle_plate||'—'}</div>
                     </div>
                     <div>
                       <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:50, background:cfg.bg, color:cfg.color }}>
                         <i className={cfg.icon} />{cfg.label}
                       </span>
-                      {selected.current_order && <div style={{ fontSize:10, color:'#9ca3af', marginTop:4 }}>Active: {selected.current_order}</div>}
+                      {selected.current_order && <div style={{ fontSize:10, color:'var(--text-light)', marginTop:4 }}>Active: {selected.current_order}</div>}
                     </div>
                   </div>
                   <div style={{ padding:20 }}>
@@ -390,9 +390,9 @@ export default function DriversManagement() {
                         { label:'Rating', value:<StarRating rating={selected.rating||0} />, color:'#f59e0b' },
                         { label:'Total Earnings', value:fmt(selected.earnings||0), color:'#10b981' },
                       ].map(k => (
-                        <div key={k.label} style={{ border:'1px solid #e5e7eb', borderRadius:8, padding:'12px', textAlign:'center' }}>
+                        <div key={k.label} style={{ border:'1px solid var(--border)', borderRadius:8, padding:'12px', textAlign:'center' }}>
                           <div style={{ fontWeight:700, fontSize:16, color:k.color }}>{k.value}</div>
-                          <div style={{ fontSize:11, color:'#9ca3af' }}>{k.label}</div>
+                          <div style={{ fontSize:11, color:'var(--text-light)' }}>{k.label}</div>
                         </div>
                       ))}
                     </div>
@@ -413,7 +413,7 @@ export default function DriversManagement() {
                             <i className="ri-forbid-line" />Suspend
                           </button>
                       }
-                      <button onClick={closeModal} style={{ marginLeft:'auto', padding:'8px 14px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:12 }}>Close</button>
+                      <button onClick={closeModal} style={{ marginLeft:'auto', padding:'8px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:12 }}>Close</button>
                     </div>
                   </div>
                 </div>
@@ -461,7 +461,7 @@ export default function DriversManagement() {
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:10, marginTop:20 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
+                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
                   <button onClick={saveDriver} disabled={!form.name||!form.phone||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:(!form.name||!form.phone||submitting)?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13, opacity:(!form.name||!form.phone||submitting)?0.6:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
                     <i className={isEditing?'ri-save-line':'ri-add-line'} />
                     {submitting?'Saving…':isEditing?'Save Changes':'Add Driver'}
@@ -473,7 +473,7 @@ export default function DriversManagement() {
 
           {/* SUSPEND */}
           {activeModal==='suspend' && selected && (
-            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:420 }}>
+            <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth:420 }}>
               <div style={{ background:'#7f1d1d', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif', display:'flex', alignItems:'center', gap:8 }}>
                   <i className="ri-forbid-line" />Suspend Driver
@@ -490,7 +490,7 @@ export default function DriversManagement() {
                   <textarea rows={3} placeholder="e.g. Multiple complaints, delivery fraud…" value={suspendNote} onChange={e=>setSuspendNote(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
                 </div>
                 <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
+                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
                   <button onClick={suspendDriver} disabled={!suspendNote||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:(!suspendNote||submitting)?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13, opacity:(!suspendNote||submitting)?0.6:1 }}>
                     {submitting?'Suspending…':'Suspend Driver'}
                   </button>

@@ -13,15 +13,15 @@ const TIERS = [
   { val:'Platinum', icon:'ri-vip-crown-2-fill',   color:'#7c3aed', bg:'#f5f3ff', border:'#ddd6fe', desc:'10,000+ pts — VIP'             },
 ]
 
-const card = { background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.05)', marginBottom:16 }
-const inp = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid #e5e7eb', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'#111827', background:'#fff' }
-const lbl = { display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:5 }
+const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)', marginBottom:16 }
+const inp = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
+const lbl = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
 
 function CardHeader({ icon, color, title }) {
   return (
-    <div style={{ padding:'12px 16px', borderBottom:'1px solid #e5e7eb', display:'flex', alignItems:'center', gap:8 }}>
+    <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8 }}>
       <i className={icon} style={{ color, fontSize:16 }} />
-      <span style={{ fontWeight:700, fontSize:14, color:'#111827' }}>{title}</span>
+      <span style={{ fontWeight:700, fontSize:14, color:'var(--text-primary)' }}>{title}</span>
     </div>
   )
 }
@@ -72,7 +72,7 @@ export default function AddCustomer() {
         title="Add New Customer"
         subtitle="Register a new customer to the Bems Farms platform"
         actions={
-          <Link to="/customers" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 14px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', textDecoration:'none', fontSize:13, fontWeight:600 }}>
+          <Link to="/customers" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', textDecoration:'none', fontSize:13, fontWeight:600 }}>
             <i className="ri-arrow-left-line" />Back
           </Link>
         }
@@ -97,12 +97,12 @@ export default function AddCustomer() {
                 <div>
                   <label style={lbl}>Phone Number <span style={{ color:'#dc2626' }}>*</span></label>
                   <div style={{ display:'flex', gap:0 }}>
-                    <span style={{ padding:'9px 10px', borderRadius:'8px 0 0 8px', border:'1.5px solid #e5e7eb', borderRight:'none', background:'#f1f5f9', fontSize:13, color:'#374151', flexShrink:0 }}>+234</span>
+                    <span style={{ padding:'9px 10px', borderRadius:'8px 0 0 8px', border:'1.5px solid var(--border)', borderRight:'none', background:'#f1f5f9', fontSize:13, color:'var(--text-secondary)', flexShrink:0 }}>+234</span>
                     <input value={form.phone} onChange={e => fld('phone', e.target.value.replace(/\D/g,''))} maxLength={11} placeholder="08031234567" style={{ ...inp, borderRadius:'0 8px 8px 0', flex:1 }} required />
                   </div>
                 </div>
                 <div>
-                  <label style={lbl}>Email Address <span style={{ color:'#9ca3af', fontWeight:400 }}>(optional)</span></label>
+                  <label style={lbl}>Email Address <span style={{ color:'var(--text-light)', fontWeight:400 }}>(optional)</span></label>
                   <input type="email" value={form.email} onChange={e => fld('email', e.target.value)} placeholder="customer@email.com" style={inp} />
                 </div>
               </div>
@@ -153,7 +153,7 @@ export default function AddCustomer() {
                     { key:'sms_alerts',         label:'Send SMS order updates & delivery alerts' },
                     { key:'marketing_consent',   label:'Marketing consent — promotions & newsletters' },
                   ].map(opt => (
-                    <label key={opt.key} style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', fontSize:13, color:'#374151' }}>
+                    <label key={opt.key} style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', fontSize:13, color:'var(--text-secondary)' }}>
                       <input type="checkbox" checked={form[opt.key]} onChange={e => fld(opt.key, e.target.checked)} style={{ accentColor:'#1B4332', width:16, height:16, cursor:'pointer' }} />
                       {opt.label}
                     </label>
@@ -183,8 +183,8 @@ export default function AddCustomer() {
                       <div key={t.val} onClick={() => fld('tier', t.val)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:9, border:`1.5px solid ${form.tier===t.val?t.color:'#e2e8f0'}`, background: form.tier===t.val?t.bg:'#fff', cursor:'pointer', transition:'all 0.12s' }}>
                         <i className={t.icon} style={{ color:t.color, fontSize:16, flexShrink:0 }} />
                         <div style={{ flex:1 }}>
-                          <div style={{ fontSize:12, fontWeight:700, color: form.tier===t.val?t.color:'#374151' }}>{t.val}</div>
-                          <div style={{ fontSize:10, color:'#9ca3af' }}>{t.desc}</div>
+                          <div style={{ fontSize:12, fontWeight:700, color: form.tier===t.val?t.color:'var(--text-secondary)' }}>{t.val}</div>
+                          <div style={{ fontSize:10, color:'var(--text-light)' }}>{t.desc}</div>
                         </div>
                         {form.tier===t.val && <i className="ri-check-line" style={{ color:t.color, flexShrink:0 }} />}
                       </div>
@@ -204,11 +204,11 @@ export default function AddCustomer() {
                   <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
                     <div style={{ width:40, height:40, borderRadius:'50%', background:'#3b82f6', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:14, flexShrink:0 }}>{previewIni}</div>
                     <div>
-                      <div style={{ fontWeight:700, fontSize:14, color:'#111827' }}>{previewName||'—'}</div>
+                      <div style={{ fontWeight:700, fontSize:14, color:'var(--text-primary)' }}>{previewName||'—'}</div>
                       <div style={{ fontSize:11, color:'#94a3b8' }}>{form.phone||'—'}</div>
                     </div>
                   </div>
-                  {form.zone && <div style={{ fontSize:11, color:'#6b7280', display:'flex', alignItems:'center', gap:4 }}><i className="ri-map-pin-line" />{form.zone}</div>}
+                  {form.zone && <div style={{ fontSize:11, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4 }}><i className="ri-map-pin-line" />{form.zone}</div>}
                 </div>
               </div>
             )}
@@ -219,7 +219,7 @@ export default function AddCustomer() {
                 <i className="ri-user-add-line" />
                 {saving ? 'Registering…' : 'Register Customer'}
               </button>
-              <Link to="/customers" style={{ display:'block', textAlign:'center', padding:'10px', borderRadius:10, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', textDecoration:'none', fontSize:13, fontWeight:600 }}>Cancel</Link>
+              <Link to="/customers" style={{ display:'block', textAlign:'center', padding:'10px', borderRadius:10, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', textDecoration:'none', fontSize:13, fontWeight:600 }}>Cancel</Link>
             </div>
           </div>
         </div>

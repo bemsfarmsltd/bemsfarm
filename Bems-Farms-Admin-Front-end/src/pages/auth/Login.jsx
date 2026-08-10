@@ -35,9 +35,9 @@ const ROLE_ACCESS = {
 
 const inputStyle = {
   width: '100%', padding: '10px 14px', borderRadius: 10,
-  border: '1.5px solid #e5e7eb', fontSize: 14,
+  border: '1.5px solid var(--border)', fontSize: 14,
   fontFamily: 'Nunito, sans-serif', outline: 'none',
-  background: '#fff', color: '#111827', boxSizing: 'border-box',
+  background: 'var(--bg-card)', color: 'var(--text-primary)', boxSizing: 'border-box',
   transition: 'border-color 0.15s',
 }
 
@@ -85,7 +85,7 @@ export default function Login() {
       {/* ── Left: Login Form ── */}
       <div style={{
         width: '100%', maxWidth: 480, flexShrink: 0,
-        background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '40px 24px',
       }}>
         <div style={{ width: '100%', maxWidth: 400 }}>
@@ -99,14 +99,14 @@ export default function Login() {
           <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1B4332', fontFamily: 'Syne, sans-serif', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
             Welcome Back!
           </h1>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 28px' }}>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 28px' }}>
             Sign in to your Bems Farms admin portal
           </p>
 
           {/* Form */}
           <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 6 }} htmlFor="emailInput">
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }} htmlFor="emailInput">
                 Email Address
               </label>
               <input
@@ -121,7 +121,7 @@ export default function Login() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 6 }} htmlFor="passwordInput">
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }} htmlFor="passwordInput">
                 Password
               </label>
               <div style={{ position: 'relative' }}>
@@ -139,7 +139,7 @@ export default function Login() {
                   onClick={() => setShowPw(v => !v)}
                   style={{
                     position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 2, lineHeight: 1,
+                    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', padding: 2, lineHeight: 1,
                   }}
                 >
                   <i className={showPw ? 'ri-eye-off-line' : 'ri-eye-line'} style={{ fontSize: 18 }} />
@@ -148,7 +148,7 @@ export default function Login() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#374151' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
                 <input type="checkbox" style={{ accentColor: '#1B4332', width: 16, height: 16 }} />
                 Remember me
               </label>
@@ -177,11 +177,11 @@ export default function Login() {
           {import.meta.env.DEV && (
             <div style={{ marginTop: 28 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-                <span style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                <span style={{ fontSize: 10, color: 'var(--text-light)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>
                   Dev — Quick Sign In
                 </span>
-                <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -198,7 +198,7 @@ export default function Login() {
                         display: 'flex', alignItems: 'center', gap: 8, minWidth: 0,
                         padding: '8px 10px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                         background: isActive ? m.bg : '#fff',
-                        border: `1.5px solid ${isActive ? m.color : '#e5e7eb'}`,
+                        border: `1.5px solid ${isActive ? m.color : 'var(--border)'}`,
                         transition: 'all 0.12s',
                         fontFamily: 'Nunito, sans-serif',
                       }}
@@ -211,7 +211,7 @@ export default function Login() {
                       </div>
                       <div style={{ overflow: 'hidden', minWidth: 0 }}>
                         <div style={{ fontSize: 12, fontWeight: 700, color: m.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.label}</div>
-                        <div style={{ fontSize: 10, color: '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.description}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-light)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.description}</div>
                       </div>
                     </button>
                   )

@@ -4,11 +4,11 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:5 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'#f9fafb' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
+const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
+const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
 
 function BarcodeDisplay({ value, type }) {
   const BAR_W = 1.5
@@ -245,10 +245,10 @@ export default function Barcode() {
     toast.success('Barcodes generated successfully!')
   }
 
-  const B = '#e5e7eb', S = '#6b7280'
+  const B = 'var(--border)', S = '#6b7280'
 
   if (loading) return (
-    <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300,fontFamily:'Nunito,sans-serif',color:'#6b7280' }}>
+    <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300,fontFamily:'Nunito,sans-serif',color:'var(--text-muted)' }}>
       <i className="ri-loader-4-line" style={{ fontSize:36,display:'block',marginBottom:8,textAlign:'center' }}/>
     </div>
   )
@@ -268,7 +268,7 @@ export default function Barcode() {
       </div>
 
       {/* Main card */}
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:24 }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:24 }}>
         <div style={{ marginBottom:20 }}>
           <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:16,color:'var(--text-primary)' }}>Print Barcodes</div>
           <div style={{ fontSize:12,color:S,marginTop:2 }}>Generate, customize and print product barcodes with advanced options</div>
@@ -277,7 +277,7 @@ export default function Barcode() {
         {/* Product Selection Area */}
         <div className="grid-sidebar-split" style={{ display:'grid',gridTemplateColumns:'1fr 280px',gap:24,marginBottom:24 }}>
           {/* Left Selection */}
-          <div style={{ border:`1.5px solid ${B}`,borderRadius:12,padding:20,background:'#fff' }}>
+          <div style={{ border:`1.5px solid ${B}`,borderRadius:12,padding:20,background:'var(--bg-card)' }}>
             <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,color:'var(--text-primary)',marginBottom:14 }}>Product Selection</div>
             
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16 }}>
@@ -320,7 +320,7 @@ export default function Barcode() {
                   top: '100%',
                   left: 0,
                   right: 0,
-                  background: '#fff',
+                  background: 'var(--bg-card)',
                   border: `1px solid ${B}`,
                   borderRadius: 8,
                   boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
@@ -339,7 +339,7 @@ export default function Barcode() {
                         style={{
                           padding: '10px 14px',
                           cursor: 'pointer',
-                          borderBottom: `1px solid #f3f4f6`,
+                          borderBottom: `1px solid var(--border)`,
                           fontSize: 13,
                           transition: 'background 0.1s'
                         }}
@@ -397,7 +397,7 @@ export default function Barcode() {
                         </div>
                       </div>
                     </td>
-                    <td style={TD}><code style={{ fontSize:11,background:'#f3f4f6',padding:'2px 6px',borderRadius:4,color:'#374151' }}>{p.sku}</code></td>
+                    <td style={TD}><code style={{ fontSize:11,background:'var(--bg-muted)',padding:'2px 6px',borderRadius:4,color:'var(--text-secondary)' }}>{p.sku}</code></td>
                     <td style={{ ...TD,fontWeight:600 }}>₦{p.price.toLocaleString()}</td>
                     <td style={TD}>
                       <TableStepper value={p.quantity} onChange={q => handleUpdateQty(p.id, q)} />

@@ -3,11 +3,11 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
 const STATUS_CFG = {
-  draft:     { label:'Draft',     color:'#6b7280', bg:'#f3f4f6', icon:'ri-draft-line'          },
+  draft:     { label:'Draft',     color:'var(--text-muted)', bg:'var(--border)', icon:'ri-draft-line'          },
   sent:      { label:'Sent',      color:'#3b82f6', bg:'#dbeafe', icon:'ri-send-plane-line'      },
   paid:      { label:'Paid',      color:'#22c55e', bg:'#dcfce7', icon:'ri-checkbox-circle-line' },
   overdue:   { label:'Overdue',   color:'#ef4444', bg:'#fee2e2', icon:'ri-error-warning-line'   },
-  cancelled: { label:'Cancelled', color:'#9ca3af', bg:'#f3f4f6', icon:'ri-close-circle-line'    },
+  cancelled: { label:'Cancelled', color:'var(--text-light)', bg:'var(--border)', icon:'ri-close-circle-line'    },
 }
 
 const CHANNEL_CFG = {
@@ -24,18 +24,18 @@ const fmt       = (n) => `₦${Number(n||0).toLocaleString("en-NG")}`
 const calcSub   = (items) => items.reduce((s,i)=>s+i.total,0)
 const calcTotal = (items,fee,disc) => calcSub(items)+Number(fee||0)-Number(disc||0)
 
-const inp  = { display:'block',width:'100%',padding:'9px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
+const inp  = { display:'block',width:'100%',padding:'9px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:6 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:6 }
+const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap' }
+const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
 
 function Modal({ title, onClose, children, maxWidth=600 }) {
   return <>
     <div onClick={onClose} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1054 }}/>
     <div style={{ position:'fixed',inset:0,zIndex:1055,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-      <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth,boxShadow:'0 8px 40px rgba(0,0,0,0.18)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth,boxShadow:'0 8px 40px rgba(0,0,0,0.18)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
         <div style={{ background:'var(--orange-accent)',color:'#fff',padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0 }}>
           <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:15 }}>{title}</span>
           <button onClick={onClose} style={{ background:'none',border:'none',color:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:20,display:'flex',padding:4 }}><i className="ri-close-line"/></button>
@@ -183,7 +183,7 @@ export default function Receipts() {
     { key:'cancelled', label:'Cancelled' },
   ]
 
-  const B = '#e5e7eb', S = '#6b7280'
+  const B = 'var(--border)', S = '#6b7280'
 
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
@@ -210,7 +210,7 @@ export default function Receipts() {
           { label:'Outstanding Value', value:fmt(stats.outstanding_value),        color:'#f7b84b',icon:'ri-time-line',                filter:'overdue' },
         ].map(c=>(
           <div key={c.label} onClick={()=>c.filter&&setFilterStatus(c.filter)}
-            style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,borderLeft:`3px solid ${c.color}`,padding:'14px 16px',display:'flex',alignItems:'center',gap:10,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',cursor:c.filter?'pointer':'default' }}>
+            style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,borderLeft:`3px solid ${c.color}`,padding:'14px 16px',display:'flex',alignItems:'center',gap:10,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',cursor:c.filter?'pointer':'default' }}>
             <div style={{ width:38,height:38,borderRadius:8,background:`${c.color}18`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
               <i className={c.icon} style={{ fontSize:17,color:c.color }}/>
             </div>
@@ -223,10 +223,10 @@ export default function Receipts() {
       </div>
 
       {/* Filter bar */}
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',marginBottom:16 }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',marginBottom:16 }}>
         <div style={{ padding:'12px 16px',display:'flex',flexWrap:'wrap',gap:10,alignItems:'center' }}>
           <div style={{ position:'relative',minWidth:260,flex:1 }}>
-            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'#9ca3af',fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text-light)',fontSize:15 }}/>
             <input style={{ ...inp,paddingLeft:32 }} placeholder="Receipt ref, customer, order..." value={search} onChange={e=>setSearch(e.target.value)}/>
           </div>
           {filterStatus!=='all'&&(
@@ -252,11 +252,11 @@ export default function Receipts() {
       </div>
 
       {/* Table */}
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',overflow:'hidden' }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',overflow:'hidden' }}>
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%',borderCollapse:'collapse' }}>
             <thead>
-              <tr style={{ background:'#f9fafb',borderBottom:`1px solid ${B}` }}>
+              <tr style={{ background:'var(--bg-subtle)',borderBottom:`1px solid ${B}` }}>
                 {['Receipt Ref','Customer','Channel','Date Issued','Due Date','Amount','Payment','Status','Actions'].map(h=>(
                   <th key={h} style={TH}>{h}</th>
                 ))}
@@ -265,11 +265,11 @@ export default function Receipts() {
             <tbody>
               {loading && [...Array(5)].map((_,i)=>(
                 <tr key={i}>{[...Array(9)].map((_,j)=>(
-                  <td key={j} style={TD}><div style={{ height:14,background:'#f3f4f6',borderRadius:4 }}/></td>
+                  <td key={j} style={TD}><div style={{ height:14,background:'var(--bg-muted)',borderRadius:4 }}/></td>
                 ))}</tr>
               ))}
               {!loading && filtered.length===0&&(
-                <tr><td colSpan={9} style={{ ...TD,textAlign:'center',padding:48,color:'#9ca3af' }}>
+                <tr><td colSpan={9} style={{ ...TD,textAlign:'center',padding:48,color:'var(--text-light)' }}>
                   <i className="ri-file-list-3-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>No receipts found
                 </td></tr>
               )}
@@ -324,8 +324,8 @@ export default function Receipts() {
                       {inv.status === 'paid' && <div style={{ fontSize:10,color:S,marginTop:2,fontWeight:600 }}>{new Date(inv.paid_at || inv.updated_at || Date.now()).toISOString().slice(0, 10)}</div>}
                     </td>
                     <td style={TD}>
-                      <div style={{ display:'inline-flex', border:`1px solid ${B}`, borderRadius:6, overflow:'hidden', background:'#fff' }}>
-                        <button title="View" onClick={()=>openModal('view',inv)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#374151', cursor:'pointer', fontSize:14 }}><i className="ri-eye-line"/></button>
+                      <div style={{ display:'inline-flex', border:`1px solid ${B}`, borderRadius:6, overflow:'hidden', background:'var(--bg-card)' }}>
+                        <button title="View" onClick={()=>openModal('view',inv)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'var(--text-secondary)', cursor:'pointer', fontSize:14 }}><i className="ri-eye-line"/></button>
                         {inv.status==='draft'&&(
                           <button title="Send Receipt" onClick={()=>openModal('send',inv)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'#3b82f6', cursor:'pointer', fontSize:14 }}><i className="ri-send-plane-line"/></button>
                         )}
@@ -360,7 +360,7 @@ export default function Receipts() {
             <>
               <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1054 }}/>
               <div style={{ position:'fixed',inset:0,zIndex:1055,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-                <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:720,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 8px 40px rgba(0,0,0,0.18)' }}>
+                <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:720,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 8px 40px rgba(0,0,0,0.18)' }}>
                   {/* Receipt header band */}
                   <div style={{ background:'var(--orange-accent)',color:'#fff',borderRadius:'14px 14px 0 0',padding:'24px 32px' }}>
                     <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between' }}>
@@ -380,10 +380,10 @@ export default function Receipts() {
                     {/* Meta */}
                     <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:24,marginBottom:24 }}>
                       <div>
-                        <div style={{ fontSize:11,color:'#6b7280',marginBottom:6 }}>Billed To</div>
+                        <div style={{ fontSize:11,color:'var(--text-muted)',marginBottom:6 }}>Billed To</div>
                         <div style={{ fontWeight:600 }}>{selected.customer_name || 'Walk-in'}</div>
                         <div style={{ fontSize:13 }}>{selected.customer_phone || ''}</div>
-                        <div style={{ fontSize:13,color:'#6b7280' }}>{selected.customer_email || ''}</div>
+                        <div style={{ fontSize:13,color:'var(--text-muted)' }}>{selected.customer_email || ''}</div>
                       </div>
                       <div>
                         {[
@@ -395,14 +395,14 @@ export default function Receipts() {
                         ].filter(Boolean).map((row,i)=>(
                           row[1]===null ? (
                             <div key={i} style={{ display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:13 }}>
-                              <span style={{ color:'#6b7280' }}>Channel</span>
+                              <span style={{ color:'var(--text-muted)' }}>Channel</span>
                               <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:`${chCfg.color}18`,color:chCfg.color,borderRadius:50,padding:'2px 8px',fontSize:11,fontWeight:600 }}>
                                 <i className={chCfg.icon}/>{chCfg.label}
                               </span>
                             </div>
                           ) : (
                             <div key={i} style={{ display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:13 }}>
-                              <span style={{ color:'#6b7280' }}>{row[0]}</span>
+                              <span style={{ color:'var(--text-muted)' }}>{row[0]}</span>
                               <span style={{ fontWeight:600,color:row[2] }}>{row[1]}</span>
                             </div>
                           )
@@ -411,9 +411,9 @@ export default function Receipts() {
                     </div>
 
                     {/* Line items */}
-                    <table style={{ width:'100%',borderCollapse:'collapse',border:'1px solid #e5e7eb',borderRadius:8,overflow:'hidden',marginBottom:16 }}>
+                    <table style={{ width:'100%',borderCollapse:'collapse',border:'1px solid var(--border)',borderRadius:8,overflow:'hidden',marginBottom:16 }}>
                       <thead>
-                        <tr style={{ background:'#f8fafc' }}>
+                        <tr style={{ background:'var(--bg-subtle)' }}>
                           {['Product','Qty','Unit Price','Total'].map((h,i)=>(
                             <th key={h} style={{ ...TH,textAlign:i>1?'right':'left' }}>{h}</th>
                           ))}
@@ -438,10 +438,10 @@ export default function Receipts() {
                     {/* Totals */}
                     <div style={{ display:'flex',justifyContent:'flex-end',marginBottom:16 }}>
                       <div style={{ minWidth:240 }}>
-                        <div style={{ display:'flex',justifyContent:'space-between',padding:'6px 0',fontSize:13,color:'#6b7280' }}><span>Subtotal</span><span>{fmt(sub)}</span></div>
-                        {fee>0&&<div style={{ display:'flex',justifyContent:'space-between',padding:'6px 0',fontSize:13,color:'#6b7280' }}><span>Delivery Fee</span><span>{fmt(fee)}</span></div>}
+                        <div style={{ display:'flex',justifyContent:'space-between',padding:'6px 0',fontSize:13,color:'var(--text-muted)' }}><span>Subtotal</span><span>{fmt(sub)}</span></div>
+                        {fee>0&&<div style={{ display:'flex',justifyContent:'space-between',padding:'6px 0',fontSize:13,color:'var(--text-muted)' }}><span>Delivery Fee</span><span>{fmt(fee)}</span></div>}
                         {disc>0&&<div style={{ display:'flex',justifyContent:'space-between',padding:'6px 0',fontSize:13,color:'#16a34a' }}><span>Discount</span><span>-{fmt(disc)}</span></div>}
-                        <div style={{ display:'flex',justifyContent:'space-between',padding:'10px 0',fontSize:16,fontWeight:700,borderTop:'1px solid #e5e7eb',marginTop:4 }}><span>Total</span><span>{fmt(total)}</span></div>
+                        <div style={{ display:'flex',justifyContent:'space-between',padding:'10px 0',fontSize:16,fontWeight:700,borderTop:'1px solid var(--border)',marginTop:4 }}><span>Total</span><span>{fmt(total)}</span></div>
                       </div>
                     </div>
 
@@ -451,7 +451,7 @@ export default function Receipts() {
                       </div>
                     )}
 
-                    <div style={{ borderTop:'1px solid #f3f4f6',paddingTop:16,display:'flex',gap:10,flexWrap:'wrap' }}>
+                    <div style={{ borderTop:'1px solid var(--border)',paddingTop:16,display:'flex',gap:10,flexWrap:'wrap' }}>
                       {selected.status==='draft'&&<button style={btnP} onClick={()=>{ closeModal(); setTimeout(()=>openModal('send',selected),100) }}><i className="ri-send-plane-line"/>Send Receipt</button>}
                       {['sent','overdue'].includes(selected.status)&&<button style={btnP} onClick={()=>{ closeModal(); setTimeout(()=>openModal('markpaid',selected),100) }}><i className="ri-checkbox-circle-line"/>Mark as Paid</button>}
                       {!['paid','cancelled'].includes(selected.status)&&<button style={{ ...btnL,color:'#991b1b',borderColor:'#fca5a5' }} onClick={()=>{ closeModal(); setTimeout(()=>openModal('cancel',selected),100) }}><i className="ri-close-circle-line"/>Cancel Receipt</button>}
@@ -502,7 +502,7 @@ export default function Receipts() {
                 <input type="number" style={inp} placeholder="Qty" min={0} value={item.qty} onChange={e=>updateItem(idx,'qty',e.target.value)}/>
                 <input style={inp} placeholder="Unit" value={item.unit} onChange={e=>updateItem(idx,'unit',e.target.value)}/>
                 <input type="number" style={inp} placeholder="Price" value={item.price} onChange={e=>updateItem(idx,'price',e.target.value)}/>
-                <span style={{ fontSize:13,fontWeight:600,color:'#374151',whiteSpace:'nowrap' }}>{fmt(item.total)}</span>
+                <span style={{ fontSize:13,fontWeight:600,color:'var(--text-secondary)',whiteSpace:'nowrap' }}>{fmt(item.total)}</span>
                 {form.items.length>1&&<button onClick={()=>removeItem(idx)} style={{ background:'#fee2e2',border:'none',borderRadius:6,padding:'8px',cursor:'pointer',color:'#991b1b',fontSize:14 }}><i className="ri-delete-bin-line"/></button>}
               </div>
             ))}
@@ -519,9 +519,9 @@ export default function Receipts() {
               <div style={{ gridColumn:'span 2' }}><label style={LBL}>Notes</label><input style={inp} placeholder="Optional notes..." value={form.notes} onChange={e=>setField('notes',e.target.value)}/></div>
             </div>
 
-            <div style={{ background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:8,padding:'12px 16px',textAlign:'right',marginBottom:20 }}>
-              <div style={{ fontSize:12,color:'#6b7280' }}>Subtotal: {fmt(calcSub(form.items))}</div>
-              {Number(form.deliveryFee)>0&&<div style={{ fontSize:12,color:'#6b7280' }}>+ Delivery: {fmt(form.deliveryFee)}</div>}
+            <div style={{ background:'var(--bg-subtle)',border:'1px solid var(--border)',borderRadius:8,padding:'12px 16px',textAlign:'right',marginBottom:20 }}>
+              <div style={{ fontSize:12,color:'var(--text-muted)' }}>Subtotal: {fmt(calcSub(form.items))}</div>
+              {Number(form.deliveryFee)>0&&<div style={{ fontSize:12,color:'var(--text-muted)' }}>+ Delivery: {fmt(form.deliveryFee)}</div>}
               {Number(form.discount)>0&&<div style={{ fontSize:12,color:'#16a34a' }}>- Discount: {fmt(form.discount)}</div>}
               <div style={{ fontSize:15,fontWeight:700,marginTop:4 }}>Total: {fmt(formTotal)}</div>
             </div>
@@ -541,10 +541,10 @@ export default function Receipts() {
               <i className="ri-information-line" style={{ marginRight:6,color:'#0369a1' }}/>
               This will mark the receipt as <strong>Sent</strong>. The customer will receive a notification.
             </div>
-            <div style={{ border:'1px solid #e5e7eb',borderRadius:10,padding:14,marginBottom:20,fontSize:13 }}>
+            <div style={{ border:'1px solid var(--border)',borderRadius:10,padding:14,marginBottom:20,fontSize:13 }}>
               <div style={{ fontWeight:600 }}>{selected.invoice_ref || `INV-2026-${String(selected.id).padStart(4, '0')}`}</div>
-              <div style={{ color:'#6b7280' }}>{selected.customer_name || 'Walk-in'} · {fmt(selected.amount)}</div>
-              <div style={{ color:'#6b7280' }}>Due: {selected.due_date ? new Date(selected.due_date).toISOString().slice(0, 10) : ''} · {selected.payment_method || 'Monnify'}</div>
+              <div style={{ color:'var(--text-muted)' }}>{selected.customer_name || 'Walk-in'} · {fmt(selected.amount)}</div>
+              <div style={{ color:'var(--text-muted)' }}>Due: {selected.due_date ? new Date(selected.due_date).toISOString().slice(0, 10) : ''} · {selected.payment_method || 'Monnify'}</div>
             </div>
             <div style={{ display:'flex',gap:10 }}>
               <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
@@ -556,9 +556,9 @@ export default function Receipts() {
         {/* MARK PAID */}
         {activeModal==='markpaid'&&selected&&(
           <Modal title="Mark as Paid" onClose={closeModal} maxWidth={420}>
-            <div style={{ border:'1px solid #e5e7eb',borderRadius:10,padding:14,marginBottom:16,fontSize:13 }}>
+            <div style={{ border:'1px solid var(--border)',borderRadius:10,padding:14,marginBottom:16,fontSize:13 }}>
               <div style={{ fontWeight:600 }}>{selected.invoice_ref || `INV-2026-${String(selected.id).padStart(4, '0')}`}</div>
-              <div style={{ color:'#6b7280' }}>{selected.customer_name || 'Walk-in'}</div>
+              <div style={{ color:'var(--text-muted)' }}>{selected.customer_name || 'Walk-in'}</div>
               <div style={{ fontSize:16,fontWeight:700,marginTop:4 }}>{fmt(selected.amount)}</div>
             </div>
             <label style={LBL}>Payment Reference / Transaction ID (optional)</label>

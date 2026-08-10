@@ -60,7 +60,7 @@ export default function Landing() {
   }, [])
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif', color:'#1f2937', overflowX:'hidden' }}>
+    <div style={{ fontFamily:'Nunito, sans-serif', color:'var(--text-primary)', overflowX:'hidden' }}>
 
       {/* ── NAVBAR ── */}
       <nav style={{
@@ -167,18 +167,18 @@ export default function Landing() {
       </section>
 
       {/* ── FEATURE CARDS (overlap hero) ── */}
-      <section id="features" style={{ background:'#f8fafc', paddingBottom:80 }}>
+      <section id="features" style={{ background:'var(--bg-subtle)', paddingBottom:80 }}>
         <div style={{ maxWidth:1200, margin:'0 auto', padding:'0 24px' }}>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:24, marginTop:-56, position:'relative', zIndex:10 }}>
             {FEATURES.map(f => (
-              <div key={f.title} style={{ background:'#fff', borderRadius:16, padding:28, boxShadow:'0 4px 24px rgba(0,0,0,0.10)', textAlign:'center', border:'1px solid #f3f4f6', transition:'transform 0.25s, box-shadow 0.25s', cursor:'default' }}
+              <div key={f.title} style={{ background:'var(--bg-card)', borderRadius:16, padding:28, boxShadow:'0 4px 24px rgba(0,0,0,0.10)', textAlign:'center', border:'1px solid var(--border)', transition:'transform 0.25s, box-shadow 0.25s', cursor:'default' }}
                 onMouseEnter={e => { e.currentTarget.style.transform='translateY(-6px)'; e.currentTarget.style.boxShadow='0 12px 40px rgba(0,0,0,0.14)' }}
                 onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 24px rgba(0,0,0,0.10)' }}>
                 <div style={{ width:56, height:56, borderRadius:14, background:`${f.color}18`, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px' }}>
                   <i className={f.icon} style={{ fontSize:26, color:f.color }}/>
                 </div>
-                <h3 style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:16, color:'#111827', marginBottom:10 }}>{f.title}</h3>
-                <p style={{ fontSize:13, color:'#6b7280', lineHeight:1.7, marginBottom:16 }}>{f.desc}</p>
+                <h3 style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:16, color:'var(--text-primary)', marginBottom:10 }}>{f.title}</h3>
+                <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7, marginBottom:16 }}>{f.desc}</p>
                 <a href="#services" style={{ fontSize:13, fontWeight:700, color:f.color, textDecoration:'none', display:'inline-flex', alignItems:'center', gap:4 }}>
                   Learn More <i className="ri-arrow-right-line"/>
                 </a>
@@ -189,7 +189,7 @@ export default function Landing() {
       </section>
 
       {/* ── ABOUT ── */}
-      <section id="about-us" style={{ background:'#fff', padding:'80px 24px' }}>
+      <section id="about-us" style={{ background:'var(--bg-card)', padding:'80px 24px' }}>
         <div style={{ maxWidth:1200, margin:'0 auto' }}>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }}>
 
@@ -205,18 +205,18 @@ export default function Landing() {
               ].map(({ icon, color, bg, label }) => (
                 <div key={label} style={{ background:bg, borderRadius:14, padding:'20px 12px', textAlign:'center' }}>
                   <i className={icon} style={{ fontSize:30, color, display:'block', marginBottom:8 }}/>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#374151' }}>{label}</div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'var(--text-secondary)' }}>{label}</div>
                 </div>
               ))}
             </div>
 
             {/* Text */}
             <div>
-              <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(24px, 3vw, 38px)', color:'#111827', lineHeight:1.25, marginBottom:20 }}>
+              <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(24px, 3vw, 38px)', color:'var(--text-primary)', lineHeight:1.25, marginBottom:20 }}>
                 Everything You Need to Run{' '}
                 <span style={{ color:'#1B4332' }}>Bems Farms Smarter</span>
               </h2>
-              <p style={{ fontSize:16, color:'#6b7280', lineHeight:1.8, marginBottom:32, paddingBottom:32, borderBottom:'1px solid #f3f4f6' }}>
+              <p style={{ fontSize:16, color:'var(--text-muted)', lineHeight:1.8, marginBottom:32, paddingBottom:32, borderBottom:'1px solid var(--border)' }}>
                 Bems Farms Admin is a complete farm-to-table management system — from fast billing at the counter
                 to real-time inventory tracking, Chef Bems AI-powered insights, delivery routing, and a loyalty
                 programme that keeps customers coming back for more.
@@ -228,7 +228,7 @@ export default function Landing() {
                 ].map(s => (
                   <div key={s.stat}>
                     <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:32, color:'#1B4332', marginBottom:8 }}>{s.stat}</div>
-                    <p style={{ fontSize:14, color:'#6b7280', lineHeight:1.65 }}>{s.desc}</p>
+                    <p style={{ fontSize:14, color:'var(--text-muted)', lineHeight:1.65 }}>{s.desc}</p>
                   </div>
                 ))}
               </div>
@@ -260,31 +260,31 @@ export default function Landing() {
       </section>
 
       {/* ── SERVICES ── */}
-      <section id="services" style={{ background:'#f8fafc', padding:'80px 24px' }}>
+      <section id="services" style={{ background:'var(--bg-subtle)', padding:'80px 24px' }}>
         <div style={{ maxWidth:1200, margin:'0 auto' }}>
           {/* Section heading */}
           <div style={{ textAlign:'center', marginBottom:56 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:16, marginBottom:12 }}>
-              <div style={{ height:1, width:48, background:'#e5e7eb' }}/>
-              <span style={{ fontSize:12, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.1em' }}>Our Modules</span>
-              <div style={{ height:1, width:48, background:'#e5e7eb' }}/>
+              <div style={{ height:1, width:48, background:'var(--border)' }}/>
+              <span style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Our Modules</span>
+              <div style={{ height:1, width:48, background:'var(--border)' }}/>
             </div>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(24px, 3vw, 36px)', color:'#111827' }}>
+            <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(24px, 3vw, 36px)', color:'var(--text-primary)' }}>
               Everything Bems Farms Needs
             </h2>
           </div>
 
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(300px, 1fr))', gap:24 }}>
             {SERVICES.map(s => (
-              <div key={s.title} style={{ background:'#fff', borderRadius:16, padding:28, border:'1px solid #f3f4f6', boxShadow:'0 1px 6px rgba(0,0,0,0.06)', display:'flex', gap:18, transition:'transform 0.25s, box-shadow 0.25s' }}
+              <div key={s.title} style={{ background:'var(--bg-card)', borderRadius:16, padding:28, border:'1px solid var(--border)', boxShadow:'0 1px 6px rgba(0,0,0,0.06)', display:'flex', gap:18, transition:'transform 0.25s, box-shadow 0.25s' }}
                 onMouseEnter={e => { e.currentTarget.style.transform='translateY(-4px)'; e.currentTarget.style.boxShadow='0 8px 30px rgba(0,0,0,0.10)' }}
                 onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 1px 6px rgba(0,0,0,0.06)' }}>
                 <div style={{ width:48, height:48, borderRadius:12, background:`${s.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <i className={s.icon} style={{ fontSize:22, color:s.color }}/>
                 </div>
                 <div>
-                  <h3 style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15, color:'#111827', marginBottom:8 }}>{s.title}</h3>
-                  <p style={{ fontSize:13, color:'#6b7280', lineHeight:1.7, margin:0 }}>{s.desc}</p>
+                  <h3 style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15, color:'var(--text-primary)', marginBottom:8 }}>{s.title}</h3>
+                  <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7, margin:0 }}>{s.desc}</p>
                 </div>
               </div>
             ))}
@@ -293,15 +293,15 @@ export default function Landing() {
       </section>
 
       {/* ── WHY CHOOSE US ── */}
-      <section id="why-us" style={{ background:'#fff', padding:'80px 24px' }}>
+      <section id="why-us" style={{ background:'var(--bg-card)', padding:'80px 24px' }}>
         <div style={{ maxWidth:1100, margin:'0 auto' }}>
-          <div style={{ background:'#f8fafc', borderRadius:20, padding:'52px 52px', display:'grid', gridTemplateColumns:'1fr auto', gap:48, alignItems:'center' }}>
+          <div style={{ background:'var(--bg-subtle)', borderRadius:20, padding:'52px 52px', display:'grid', gridTemplateColumns:'1fr auto', gap:48, alignItems:'center' }}>
             <div>
               <div style={{ fontSize:12, fontWeight:700, color:'#1B4332', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>Why Choose Bems Farms Admin</div>
-              <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(22px, 3vw, 34px)', color:'#111827', lineHeight:1.25, marginBottom:20 }}>
+              <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(22px, 3vw, 34px)', color:'var(--text-primary)', lineHeight:1.25, marginBottom:20 }}>
                 Built for Fresh Produce —<br/>Not Generic Retail
               </h2>
-              <p style={{ fontSize:15, color:'#6b7280', lineHeight:1.8, marginBottom:28, maxWidth:520 }}>
+              <p style={{ fontSize:15, color:'var(--text-muted)', lineHeight:1.8, marginBottom:28, maxWidth:520 }}>
                 Most POS systems ignore perishables, expiry tracking, and farm-to-door logistics.
                 Bems Farms Admin was designed from the ground up for a fresh food business —
                 FEFO inventory, delivery zone management, Chef AI, and loyalty all in one place.
@@ -313,14 +313,14 @@ export default function Landing() {
               </button>
             </div>
 
-            <div style={{ background:'#fff', borderRadius:14, padding:'24px 28px', border:'1px solid #f3f4f6', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', minWidth:280 }}>
+            <div style={{ background:'var(--bg-card)', borderRadius:14, padding:'24px 28px', border:'1px solid var(--border)', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', minWidth:280 }}>
               <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
                 {WHY_LIST.map(item => (
                   <div key={item} style={{ display:'flex', alignItems:'center', gap:12 }}>
                     <div style={{ width:26, height:26, borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                       <i className="ri-check-line" style={{ fontSize:13, color:'#1B4332' }}/>
                     </div>
-                    <span style={{ fontSize:13, color:'#374151', fontWeight:600 }}>{item}</span>
+                    <span style={{ fontSize:13, color:'var(--text-secondary)', fontWeight:600 }}>{item}</span>
                   </div>
                 ))}
               </div>
@@ -330,15 +330,15 @@ export default function Landing() {
       </section>
 
       {/* ── FAQ ── */}
-      <section id="faq" style={{ background:'#f8fafc', padding:'80px 24px' }}>
+      <section id="faq" style={{ background:'var(--bg-subtle)', padding:'80px 24px' }}>
         <div style={{ maxWidth:760, margin:'0 auto' }}>
           <div style={{ textAlign:'center', marginBottom:52 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:16, marginBottom:12 }}>
-              <div style={{ height:1, width:48, background:'#e5e7eb' }}/>
-              <span style={{ fontSize:12, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.1em' }}>FAQ</span>
-              <div style={{ height:1, width:48, background:'#e5e7eb' }}/>
+              <div style={{ height:1, width:48, background:'var(--border)' }}/>
+              <span style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.1em' }}>FAQ</span>
+              <div style={{ height:1, width:48, background:'var(--border)' }}/>
             </div>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(22px, 3vw, 34px)', color:'#111827' }}>
+            <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(22px, 3vw, 34px)', color:'var(--text-primary)' }}>
               Frequently Asked Questions
             </h2>
           </div>
@@ -347,16 +347,16 @@ export default function Landing() {
             {FAQS.map(({ q, a }, i) => {
               const open = openFaq === i
               return (
-                <div key={i} style={{ background:'#fff', borderRadius:12, border:`1px solid ${open ? '#bbf7d0' : '#e5e7eb'}`, overflow:'hidden', transition:'border-color 0.2s' }}>
+                <div key={i} style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${open ? '#bbf7d0' : 'var(--border)'}`, overflow:'hidden', transition:'border-color 0.2s' }}>
                   <button onClick={() => setOpenFaq(open ? null : i)}
                     style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'18px 22px', background:'none', border:'none', cursor:'pointer', fontFamily:'Nunito,sans-serif', textAlign:'left' }}>
-                    <span style={{ fontSize:15, fontWeight:700, color:'#111827', lineHeight:1.4 }}>{q}</span>
-                    <div style={{ width:28, height:28, borderRadius:'50%', background: open ? '#1B4332' : '#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'background 0.2s' }}>
+                    <span style={{ fontSize:15, fontWeight:700, color:'var(--text-primary)', lineHeight:1.4 }}>{q}</span>
+                    <div style={{ width:28, height:28, borderRadius:'50%', background: open ? '#1B4332' : 'var(--border)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'background 0.2s' }}>
                       <i className={open ? 'ri-subtract-line' : 'ri-add-line'} style={{ fontSize:14, color: open ? '#fff' : '#6b7280' }}/>
                     </div>
                   </button>
                   {open && (
-                    <div style={{ padding:'0 22px 20px', fontSize:14, color:'#6b7280', lineHeight:1.8 }}>{a}</div>
+                    <div style={{ padding:'0 22px 20px', fontSize:14, color:'var(--text-muted)', lineHeight:1.8 }}>{a}</div>
                   )}
                 </div>
               )
@@ -375,7 +375,7 @@ export default function Landing() {
             Sign in to the admin portal and start managing orders, inventory, and deliveries today.
           </p>
           <div style={{ display:'flex', gap:14, justifyContent:'center', flexWrap:'wrap' }}>
-            <button onClick={() => navigate('/login')} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 32px', background:'#fff', color:'#1B4332', border:'none', borderRadius:10, fontFamily:'Nunito,sans-serif', fontWeight:800, fontSize:15, cursor:'pointer', transition:'transform 0.2s' }}
+            <button onClick={() => navigate('/login')} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 32px', background:'var(--bg-card)', color:'#1B4332', border:'none', borderRadius:10, fontFamily:'Nunito,sans-serif', fontWeight:800, fontSize:15, cursor:'pointer', transition:'transform 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.transform='translateY(-2px)'}
               onMouseLeave={e => e.currentTarget.style.transform=''}>
               <i className="ri-login-box-line"/>Sign In to Admin

@@ -21,13 +21,13 @@ const IMPORT_FIELDS = [
 
 const BLANK = { name:'', category_id:'', code:'', status:'active', showPOS:true }
 
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:5 }
+const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
 const btnD = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'#f9fafb' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
+const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
+const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
 
 export default function SubCategories() {
   const [items, setItems]               = useState([])
@@ -126,7 +126,7 @@ export default function SubCategories() {
     setItems(p=>[...p,...newItems]); closeModal()
   }
 
-  const B = '#e5e7eb', S = '#6b7280'
+  const B = 'var(--border)', S = '#6b7280'
 
   const STAT_CARDS = [
     { label:'Total Sub-Categories', value:stats.total,    icon:'ri-price-tag-2-line',     color:'#405189', filter:'all'      },
@@ -139,7 +139,7 @@ export default function SubCategories() {
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'#111827' }}>Sub-Categories</div>
+          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Sub-Categories</div>
           <div style={{ fontSize:12,color:S,marginTop:2 }}>Products → Sub-Categories</div>
         </div>
       </div>
@@ -148,7 +148,7 @@ export default function SubCategories() {
       <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:24 }}>
         {STAT_CARDS.map(c=>(
           <div key={c.label} onClick={()=>setFilterStatus(c.filter)}
-            style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,borderLeft:`4px solid ${c.color}`,padding:16,cursor:'pointer',boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'flex',alignItems:'center',gap:14 }}>
+            style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,borderLeft:`4px solid ${c.color}`,padding:16,cursor:'pointer',boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'flex',alignItems:'center',gap:14 }}>
             <div style={{ width:44,height:44,borderRadius:'50%',background:`${c.color}1a`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
               <i className={c.icon} style={{ fontSize:22,color:c.color }}/>
             </div>
@@ -161,7 +161,7 @@ export default function SubCategories() {
       </div>
 
       {/* Table card */}
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
         <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap' }}>
           <div style={{ position:'relative',flex:'1 1 220px' }}>
             <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:15,pointerEvents:'none' }}/>
@@ -194,16 +194,16 @@ export default function SubCategories() {
               {filtered.map(r=>(
                 <tr key={r.id}>
                   <td style={{ ...TD,fontWeight:600 }}>{r.name}</td>
-                  <td style={TD}><span style={{ background:'#f3f4f6',color:'#374151',borderRadius:20,padding:'2px 10px',fontSize:11,fontWeight:500 }}>{r.category_name || '—'}</span></td>
-                  <td style={TD}><code style={{ fontSize:11,background:'#f3f4f6',padding:'2px 6px',borderRadius:4,color:'#374151' }}>{r.code}</code></td>
+                  <td style={TD}><span style={{ background:'var(--bg-muted)',color:'var(--text-secondary)',borderRadius:20,padding:'2px 10px',fontSize:11,fontWeight:500 }}>{r.category_name || '—'}</span></td>
+                  <td style={TD}><code style={{ fontSize:11,background:'var(--bg-muted)',padding:'2px 6px',borderRadius:4,color:'var(--text-secondary)' }}>{r.code}</code></td>
                   <td style={TD}>
                     {r.showPOS
                       ? <span style={{ background:'#dcfce7',color:'#166534',borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}><i className="ri-checkbox-circle-line"/> Yes</span>
-                      : <span style={{ background:'#f3f4f6',color:S,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}>No</span>
+                      : <span style={{ background:'var(--bg-muted)',color:S,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}>No</span>
                     }
                   </td>
                   <td style={TD}>
-                    <span style={{ background:r.status==='active'?'#dcfce7':'#f3f4f6',color:r.status==='active'?'#166534':S,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}>
+                    <span style={{ background:r.status==='active'?'#dcfce7':'var(--border)',color:r.status==='active'?'#166534':S,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}>
                       {r.status==='active'?'Active':'Inactive'}
                     </span>
                   </td>
@@ -229,7 +229,7 @@ export default function SubCategories() {
         <>
           <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:480,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:480,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                   <i className="ri-price-tag-2-line" style={{ fontSize:18 }}/>
@@ -251,7 +251,7 @@ export default function SubCategories() {
                 </div>
                 <div style={{ marginBottom:14 }}>
                   <label style={LBL}>Code <span style={{ fontSize:11,fontWeight:400,color:S }}>(auto-generated)</span></label>
-                  <input style={{ ...inp,background:'#f9fafb',color:S }} readOnly value={form.code} placeholder="Select category and enter name"/>
+                  <input style={{ ...inp,background:'var(--bg-subtle)',color:S }} readOnly value={form.code} placeholder="Select category and enter name"/>
                 </div>
                 <div style={{ marginBottom:14 }}>
                   <label style={LBL}>Status</label>
@@ -263,8 +263,8 @@ export default function SubCategories() {
                 <div style={{ marginBottom:24, display:'flex',alignItems:'center',gap:10 }}>
                   <label style={{ ...LBL,marginBottom:0 }}>Show on POS</label>
                   <div onClick={()=>setForm(f=>({...f,showPOS:!f.showPOS}))}
-                    style={{ width:40,height:22,borderRadius:20,background:form.showPOS?'#1B4332':'#d1d5db',position:'relative',transition:'background .2s',cursor:'pointer',flexShrink:0 }}>
-                    <div style={{ position:'absolute',top:2,left:form.showPOS?20:2,width:18,height:18,borderRadius:'50%',background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
+                    style={{ width:40,height:22,borderRadius:20,background:form.showPOS?'#1B4332':'var(--border-strong)',position:'relative',transition:'background .2s',cursor:'pointer',flexShrink:0 }}>
+                    <div style={{ position:'absolute',top:2,left:form.showPOS?20:2,width:18,height:18,borderRadius:'50%',background:'var(--bg-card)',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
                   </div>
                 </div>
                 <div style={{ display:'flex',gap:10 }}>
@@ -282,7 +282,7 @@ export default function SubCategories() {
         <>
           <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                   <i className="ri-delete-bin-line" style={{ fontSize:18 }}/>
@@ -291,7 +291,7 @@ export default function SubCategories() {
                 <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <div style={{ padding:24,textAlign:'center' }}>
-                <p style={{ color:S,fontSize:14,marginBottom:24 }}><strong style={{ color:'#111827' }}>{editItem?.name}</strong></p>
+                <p style={{ color:S,fontSize:14,marginBottom:24 }}><strong style={{ color:'var(--text-primary)' }}>{editItem?.name}</strong></p>
                 <div style={{ display:'flex',gap:10 }}>
                   <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
                   <button style={{ ...btnD,flex:1,justifyContent:'center' }} onClick={confirmDelete}>Delete</button>

@@ -110,21 +110,21 @@ const LOG_STATUS_CFG = {
   driver_assigned:  { label:'In Progress', color:'#3b82f6', bg:'#dbeafe' },
   out_for_delivery: { label:'In Progress', color:'#3b82f6', bg:'#dbeafe' },
   delivered:        { label:'Delivered',   color:'#22c55e', bg:'#dcfce7' },
-  cancelled:        { label:'Cancelled',   color:'#6b7280', bg:'#f3f4f6' },
+  cancelled:        { label:'Cancelled',   color:'var(--text-muted)', bg:'var(--border)' },
   dispute:          { label:'Dispute',     color:'#ef4444', bg:'#fee2e2' },
 }
 
 const fmt = n => `₦${Number(n||0).toLocaleString('en-NG')}`
-const card = { background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
-const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid #e5e7eb', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'#111827', background:'#fff' }
-const lbl  = { display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:5 }
+const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
+const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
+const lbl  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
 
-const TH = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap', background:'#f8fafc', borderBottom:'1px solid #e5e7eb' }}>{children}</th>
+const TH = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap', background:'var(--bg-subtle)', borderBottom:'1px solid var(--border)' }}>{children}</th>
 const TD = ({ children, style }) => <td style={{ padding:'10px 12px', fontSize:13, borderBottom:'1px solid #f9fafb', verticalAlign:'middle', ...style }}>{children}</td>
 
 function ModalShell({ title, onClose, children, maxWidth=460, headerBg='#1B4332' }) {
   return (
-    <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth, maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
+    <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth, maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
       <div style={{ background:headerBg, borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
         <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif' }}>{title}</span>
         <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
@@ -251,7 +251,7 @@ export default function ActiveDeliveries() {
   return (
     <div style={{ fontFamily:'Nunito, sans-serif' }}>
       <PageHeader title="Active Deliveries" subtitle="Live delivery tracking" actions={
-        <button onClick={load} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600, color:'#374151' }}>
+        <button onClick={load} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600, color:'var(--text-secondary)' }}>
           <i className="ri-refresh-line" />Refresh
         </button>
       } />
@@ -264,7 +264,7 @@ export default function ActiveDeliveries() {
         ].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:'none', background: activeTab===t.key?'#1B4332':'transparent', color: activeTab===t.key?'#fff':'#6b7280', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>
             <i className={t.icon} />{t.label}
-            <span style={{ fontSize:10, fontWeight:700, padding:'1px 7px', borderRadius:50, background: activeTab===t.key?'rgba(255,255,255,0.25)':'#e5e7eb', color: activeTab===t.key?'#fff':'#374151' }}>{t.count}</span>
+            <span style={{ fontSize:10, fontWeight:700, padding:'1px 7px', borderRadius:50, background: activeTab===t.key?'rgba(255,255,255,0.25)':'var(--border)', color: activeTab===t.key?'#fff':'#374151' }}>{t.count}</span>
           </button>
         ))}
       </div>
@@ -287,23 +287,23 @@ export default function ActiveDeliveries() {
                     <tr key={i}>{[...Array(9)].map((_,j) => <TD key={j}><div style={{ height:14, background:'#f0f0f0', borderRadius:4 }} /></TD>)}</tr>
                   ))}
                   {!loading && autoLog.length===0 && (
-                    <tr><td colSpan={9} style={{ textAlign:'center', color:'#9ca3af', padding:'32px 0', fontSize:13 }}>No auto-assignment records yet</td></tr>
+                    <tr><td colSpan={9} style={{ textAlign:'center', color:'var(--text-light)', padding:'32px 0', fontSize:13 }}>No auto-assignment records yet</td></tr>
                   )}
                   {!loading && autoLog.map(log => {
                     const conf = CONFIDENCE_CFG[log.confidence_score] || CONFIDENCE_CFG.Medium
-                    const sc   = LOG_STATUS_CFG[log.order_status] || { label:log.order_status, color:'#6b7280', bg:'#f3f4f6' }
+                    const sc   = LOG_STATUS_CFG[log.order_status] || { label:log.order_status, color:'var(--text-muted)', bg:'var(--border)' }
                     return (
                       <tr key={log.id}>
                         <TD><span style={{ fontWeight:600, fontSize:12 }}>{log.id}</span></TD>
                         <TD>
                           <div style={{ fontSize:12 }}>{new Date(log.created_at).toLocaleDateString('en-NG')}</div>
-                          <div style={{ fontSize:11, color:'#9ca3af' }}>{new Date(log.created_at).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})}</div>
+                          <div style={{ fontSize:11, color:'var(--text-light)' }}>{new Date(log.created_at).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})}</div>
                         </TD>
                         <TD>
                           <div style={{ fontWeight:600, fontSize:12, color:'#3b82f6' }}>{log.order_id}</div>
-                          <div style={{ fontSize:11, color:'#9ca3af' }}>{log.customer_name}</div>
+                          <div style={{ fontSize:11, color:'var(--text-light)' }}>{log.customer_name}</div>
                         </TD>
-                        <TD style={{ fontSize:12 }}><i className="ri-map-pin-line" style={{ color:'#9ca3af', marginRight:4 }} />{log.zone||'—'}</TD>
+                        <TD style={{ fontSize:12 }}><i className="ri-map-pin-line" style={{ color:'var(--text-light)', marginRight:4 }} />{log.zone||'—'}</TD>
                         <TD>
                           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                             <div style={{ width:28, height:28, borderRadius:'50%', background:'#dbeafe', color:'#3b82f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>
@@ -311,15 +311,15 @@ export default function ActiveDeliveries() {
                             </div>
                             <div>
                               <div style={{ fontWeight:600, fontSize:12 }}>{log.driver_name||'—'}</div>
-                              <div style={{ fontSize:10, color:'#9ca3af' }}>{log.driver_plate}</div>
+                              <div style={{ fontSize:10, color:'var(--text-light)' }}>{log.driver_plate}</div>
                             </div>
                           </div>
                         </TD>
-                        <TD style={{ color:'#6b7280', fontSize:11, maxWidth:200 }}>{log.matching_rule||'Zone match'}</TD>
+                        <TD style={{ color:'var(--text-muted)', fontSize:11, maxWidth:200 }}>{log.matching_rule||'Zone match'}</TD>
                         <TD>{pill(conf.bg, conf.color, null, log.confidence_score||'Medium')}</TD>
                         <TD>
                           {log.overridden_by_name
-                            ? <div><span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:50, background:'#fef3c7', color:'#d97706' }}><i className="ri-edit-line" />Overridden</span><div style={{ fontSize:10, color:'#9ca3af', marginTop:2 }}>{log.overridden_by_name}</div></div>
+                            ? <div><span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:50, background:'#fef3c7', color:'#d97706' }}><i className="ri-edit-line" />Overridden</span><div style={{ fontSize:10, color:'var(--text-light)', marginTop:2 }}>{log.overridden_by_name}</div></div>
                             : <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:50, background:'#dcfce7', color:'#16a34a' }}><i className="ri-checkbox-circle-line" />No override</span>
                           }
                         </TD>
@@ -351,7 +351,7 @@ export default function ActiveDeliveries() {
                 </div>
                 <div>
                   <div style={{ fontSize:11, color:'#64748b' }}>{c.label}</div>
-                  <div style={{ fontSize:22, fontWeight:800, color:'#111827', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{c.value}</div>
+                  <div style={{ fontSize:22, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{c.value}</div>
                 </div>
               </div>
             ))}
@@ -361,11 +361,11 @@ export default function ActiveDeliveries() {
           <div style={{ ...card, marginBottom:16 }}>
             <div style={{ padding:'10px 14px', display:'flex', flexWrap:'wrap', gap:10, alignItems:'center' }}>
               <div style={{ position:'relative', maxWidth:280, flex:1 }}>
-                <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:14 }} />
+                <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Delivery ref, order, customer, driver…" style={{ ...inp, paddingLeft:32 }} />
               </div>
               {filterStatus!=='all' && (
-                <button onClick={() => setFilterStatus('all')} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'7px 12px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:12, fontFamily:'Nunito, sans-serif', color:'#374151' }}>
+                <button onClick={() => setFilterStatus('all')} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'7px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:12, fontFamily:'Nunito, sans-serif', color:'var(--text-secondary)' }}>
                   <i className="ri-close-line" />Clear
                 </button>
               )}
@@ -373,10 +373,10 @@ export default function ActiveDeliveries() {
                 <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:50, background:'#dcfce7', color:'#16a34a' }}>
                   <i className="ri-checkbox-blank-circle-fill" style={{ fontSize:7 }} />Live
                 </span>
-                <span style={{ fontSize:12, color:'#6b7280' }}>{filtered.length} active</span>
+                <span style={{ fontSize:12, color:'var(--text-muted)' }}>{filtered.length} active</span>
               </div>
             </div>
-            <div style={{ borderTop:'1px solid #e5e7eb', overflowX:'auto' }}>
+            <div style={{ borderTop:'1px solid var(--border)', overflowX:'auto' }}>
               <div style={{ display:'flex', whiteSpace:'nowrap' }}>
                 {[
                   { key:'all',                label:'All Active'          },
@@ -404,7 +404,7 @@ export default function ActiveDeliveries() {
           )}
 
           {!loading && filtered.length===0 && (
-            <div style={{ ...card, padding:'48px', textAlign:'center', color:'#9ca3af' }}>
+            <div style={{ ...card, padding:'48px', textAlign:'center', color:'var(--text-light)' }}>
               <i className="ri-truck-line" style={{ fontSize:36, display:'block', marginBottom:8 }} />
               <div style={{ fontSize:13 }}>No active deliveries{filterStatus!=='all'?' matching this filter':''}</div>
             </div>
@@ -425,7 +425,7 @@ export default function ActiveDeliveries() {
                     <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
                       <div>
                         <div style={{ fontWeight:700, fontSize:13 }}>{del.delivery_ref}</div>
-                        <div style={{ fontSize:11, color:'#9ca3af' }}><i className="ri-link" style={{ marginRight:3 }} />{del.order_id}</div>
+                        <div style={{ fontSize:11, color:'var(--text-light)' }}><i className="ri-link" style={{ marginRight:3 }} />{del.order_id}</div>
                       </div>
                       {pill(cfg.bg, cfg.color, cfg.icon, cfg.label)}
                     </div>
@@ -437,25 +437,25 @@ export default function ActiveDeliveries() {
                       </div>
                       <div style={{ flex:1 }}>
                         <div style={{ fontWeight:600, fontSize:13 }}>{del.customer_name}</div>
-                        <div style={{ fontSize:11, color:'#6b7280' }}>{del.customer_phone}</div>
-                        <div style={{ fontSize:11, color:'#6b7280' }}><i className="ri-map-pin-line" style={{ marginRight:3 }} />{del.delivery_address||'—'}</div>
+                        <div style={{ fontSize:11, color:'var(--text-muted)' }}>{del.customer_phone}</div>
+                        <div style={{ fontSize:11, color:'var(--text-muted)' }}><i className="ri-map-pin-line" style={{ marginRight:3 }} />{del.delivery_address||'—'}</div>
                       </div>
                       {del.customer_phone && (
-                        <a href={`tel:${del.customer_phone}`} style={{ width:32, height:32, borderRadius:'50%', border:'1.5px solid #e5e7eb', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', color:'#374151', flexShrink:0 }}>
+                        <a href={`tel:${del.customer_phone}`} style={{ width:32, height:32, borderRadius:'50%', border:'1.5px solid var(--border)', background:'var(--bg-card)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-secondary)', flexShrink:0 }}>
                           <i className="ri-phone-line" style={{ fontSize:13 }} />
                         </a>
                       )}
                     </div>
 
                     {/* Items */}
-                    <div style={{ borderRadius:8, background:'#f8fafc', padding:'10px 12px', fontSize:12 }}>
+                    <div style={{ borderRadius:8, background:'var(--bg-subtle)', padding:'10px 12px', fontSize:12 }}>
                       {items.slice(0,3).map((item,i) => (
                         <div key={i} style={{ display:'flex', justifyContent:'space-between' }}>
-                          <span>{item.name}</span><span style={{ color:'#6b7280' }}>{item.qty}</span>
+                          <span>{item.name}</span><span style={{ color:'var(--text-muted)' }}>{item.qty}</span>
                         </div>
                       ))}
-                      {items.length>3 && <div style={{ color:'#9ca3af' }}>+{items.length-3} more</div>}
-                      <div style={{ borderTop:'1px solid #e5e7eb', marginTop:6, paddingTop:6, fontWeight:700, display:'flex', justifyContent:'space-between' }}>
+                      {items.length>3 && <div style={{ color:'var(--text-light)' }}>+{items.length-3} more</div>}
+                      <div style={{ borderTop:'1px solid var(--border)', marginTop:6, paddingTop:6, fontWeight:700, display:'flex', justifyContent:'space-between' }}>
                         <span>Total</span><span>{fmt(del.order_total)}</span>
                       </div>
                     </div>
@@ -468,10 +468,10 @@ export default function ActiveDeliveries() {
                         </div>
                         <div style={{ flex:1 }}>
                           <div style={{ fontWeight:600, fontSize:12 }}>{del.driver_name}</div>
-                          <div style={{ fontSize:11, color:'#6b7280' }}>{del.driver_phone} · {del.driver_plate}</div>
+                          <div style={{ fontSize:11, color:'var(--text-muted)' }}>{del.driver_phone} · {del.driver_plate}</div>
                         </div>
                         {del.driver_phone && (
-                          <a href={`tel:${del.driver_phone}`} style={{ padding:'4px 9px', borderRadius:7, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', fontSize:11, display:'inline-flex', alignItems:'center' }}>
+                          <a href={`tel:${del.driver_phone}`} style={{ padding:'4px 9px', borderRadius:7, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', fontSize:11, display:'inline-flex', alignItems:'center' }}>
                             <i className="ri-phone-line" />
                           </a>
                         )}
@@ -485,8 +485,8 @@ export default function ActiveDeliveries() {
                         { label:'ETA', val:del.eta_minutes?`~${del.eta_minutes} min`:'—', color:cfg.color },
                         ...(del.attempts||0)>0?[{ label:'ATTEMPTS', val:`${del.attempts}/2`, color:'#dc2626' }]:[],
                       ].map(box => (
-                        <div key={box.label} style={{ flex:1, border:'1px solid #e5e7eb', borderRadius:8, padding:'8px 10px', textAlign:'center', fontSize:12 }}>
-                          <div style={{ fontSize:10, color:'#9ca3af' }}>{box.label}</div>
+                        <div key={box.label} style={{ flex:1, border:'1px solid var(--border)', borderRadius:8, padding:'8px 10px', textAlign:'center', fontSize:12 }}>
+                          <div style={{ fontSize:10, color:'var(--text-light)' }}>{box.label}</div>
                           <div style={{ fontWeight:700, color:box.color||'#111827' }}>{box.val}</div>
                         </div>
                       ))}
@@ -494,7 +494,7 @@ export default function ActiveDeliveries() {
 
                     {/* Status info text */}
                     {del.status_text && (
-                      <div style={{ padding:'10px 12px', background:'#f8fafc', borderRadius:8, borderLeft:'3px solid var(--orange-accent)', fontSize:11, color:'#475569', marginTop:8 }}>
+                      <div style={{ padding:'10px 12px', background:'var(--bg-subtle)', borderRadius:8, borderLeft:'3px solid var(--orange-accent)', fontSize:11, color:'#475569', marginTop:8 }}>
                         {del.status_text}
                       </div>
                     )}
@@ -514,7 +514,7 @@ export default function ActiveDeliveries() {
 
                     {/* Actions */}
                     <div style={{ display:'flex', gap:8, marginTop:'auto', flexWrap:'wrap' }}>
-                      <button onClick={() => openModal('view', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:11, fontFamily:'Nunito, sans-serif', fontWeight:600, color:'#374151' }}>
+                      <button onClick={() => openModal('view', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:11, fontFamily:'Nunito, sans-serif', fontWeight:600, color:'var(--text-secondary)' }}>
                         <i className="ri-eye-line" />Details
                       </button>
                       {isEnRoute && <>
@@ -526,7 +526,7 @@ export default function ActiveDeliveries() {
                         </button>
                       </>}
                       {isAssigned && (
-                        <button onClick={() => openModal('reassign', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--orange-accent)', background:'#fff', color:'var(--orange-accent)', cursor:'pointer', fontSize:11, fontFamily:'Nunito, sans-serif', fontWeight:700, flex:1, justifyContent:'center' }}>
+                        <button onClick={() => openModal('reassign', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--orange-accent)', background:'var(--bg-card)', color:'var(--orange-accent)', cursor:'pointer', fontSize:11, fontFamily:'Nunito, sans-serif', fontWeight:700, flex:1, justifyContent:'center' }}>
                           <i className="ri-user-follow-line" />Reassign Driver
                         </button>
                       )}
@@ -559,21 +559,21 @@ export default function ActiveDeliveries() {
             <ModalShell title={selected.delivery_ref} onClose={closeModal} maxWidth={520}>
               <div style={{ padding:24, display:'flex', flexDirection:'column', gap:16, overflowY:'auto' }}>
                 <div>
-                  <div style={{ fontSize:11, color:'#6b7280', marginBottom:4, fontWeight:700, textTransform:'uppercase' }}>Customer</div>
+                  <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4, fontWeight:700, textTransform:'uppercase' }}>Customer</div>
                   <div style={{ fontWeight:600 }}>{selected.customer_name}</div>
                   <div style={{ fontSize:13 }}>{selected.customer_phone}</div>
-                  <div style={{ fontSize:12, color:'#6b7280' }}><i className="ri-map-pin-line" style={{ marginRight:4 }} />{selected.delivery_address||'—'}</div>
+                  <div style={{ fontSize:12, color:'var(--text-muted)' }}><i className="ri-map-pin-line" style={{ marginRight:4 }} />{selected.delivery_address||'—'}</div>
                 </div>
                 {selected.driver_name && (
                   <div>
-                    <div style={{ fontSize:11, color:'#6b7280', marginBottom:6, fontWeight:700, textTransform:'uppercase' }}>Driver</div>
-                    <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', border:'1px solid #e5e7eb', borderRadius:8 }}>
+                    <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:6, fontWeight:700, textTransform:'uppercase' }}>Driver</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', border:'1px solid var(--border)', borderRadius:8 }}>
                       <div style={{ width:36, height:36, borderRadius:'50%', background:'#dbeafe', color:'#3b82f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, flexShrink:0 }}>
                         {selected.driver_name.split(' ').map(n=>n[0]).join('')}
                       </div>
                       <div style={{ flex:1 }}>
                         <div style={{ fontWeight:600 }}>{selected.driver_name}</div>
-                        <div style={{ fontSize:12, color:'#6b7280' }}>{selected.driver_phone} · {selected.driver_plate}</div>
+                        <div style={{ fontSize:12, color:'var(--text-muted)' }}>{selected.driver_phone} · {selected.driver_plate}</div>
                       </div>
                       <a href={`tel:${selected.driver_phone}`} style={{ padding:'6px 12px', borderRadius:8, border:'none', background:'#22c55e', color:'#fff', fontSize:12, fontWeight:700, display:'inline-flex', alignItems:'center', gap:5, textDecoration:'none' }}>
                         <i className="ri-phone-line" />Call
@@ -581,11 +581,11 @@ export default function ActiveDeliveries() {
                     </div>
                   </div>
                 )}
-                <div style={{ display:'flex', gap:10, paddingTop:16, borderTop:'1px solid #e5e7eb' }}>
+                <div style={{ display:'flex', gap:10, paddingTop:16, borderTop:'1px solid var(--border)' }}>
                   <button onClick={() => { closeModal(); setTimeout(() => openModal('reassign', selected), 100) }} style={{ flex:1, padding:'9px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
                     <i className="ri-user-add-line" />Reassign Driver
                   </button>
-                  <button onClick={closeModal} style={{ padding:'9px 16px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Close</button>
+                  <button onClick={closeModal} style={{ padding:'9px 16px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Close</button>
                 </div>
               </div>
             </ModalShell>
@@ -595,26 +595,26 @@ export default function ActiveDeliveries() {
           {activeModal==='reassign' && (
             <ModalShell title="Reassign Driver" onClose={closeModal} maxWidth={460}>
               <div style={{ padding:24, overflowY:'auto' }}>
-                <div style={{ padding:'10px 12px', borderRadius:8, background:'#f8fafc', border:'1px solid #e5e7eb', fontSize:12, color:'#374151', marginBottom:16 }}>
+                <div style={{ padding:'10px 12px', borderRadius:8, background:'var(--bg-subtle)', border:'1px solid var(--border)', fontSize:12, color:'var(--text-secondary)', marginBottom:16 }}>
                   <strong>{selected.delivery_ref}</strong> · {selected.customer_name} · {selected.delivery_address}
                 </div>
-                {selected.driver_name && <div style={{ fontSize:12, color:'#6b7280', marginBottom:10 }}>Current: <strong>{selected.driver_name}</strong></div>}
+                {selected.driver_name && <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:10 }}>Current: <strong>{selected.driver_name}</strong></div>}
                 <label style={lbl}>Select Replacement Driver</label>
                 {drivers.filter(d=>d.id!==selected.driver_id).map(driver => (
-                  <div key={driver.id} onClick={() => setReassignDriverId(String(driver.id))} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px', border:`1.5px solid ${Number(reassignDriverId)===driver.id?'#8b5cf6':'#e5e7eb'}`, borderRadius:8, marginBottom:8, cursor:'pointer', background:Number(reassignDriverId)===driver.id?'#ede9fe':'#fff' }}>
+                  <div key={driver.id} onClick={() => setReassignDriverId(String(driver.id))} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px', border:`1.5px solid ${Number(reassignDriverId)===driver.id?'#8b5cf6':'var(--border)'}`, borderRadius:8, marginBottom:8, cursor:'pointer', background:Number(reassignDriverId)===driver.id?'#ede9fe':'#fff' }}>
                     <div style={{ width:36, height:36, borderRadius:'50%', background:'#dbeafe', color:'#3b82f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>
                       {driver.name.split(' ').map(n=>n[0]).join('')}
                     </div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontWeight:600, fontSize:13 }}>{driver.name}</div>
-                      <div style={{ fontSize:11, color:'#6b7280' }}>{driver.phone} · {driver.zone}</div>
+                      <div style={{ fontSize:11, color:'var(--text-muted)' }}>{driver.phone} · {driver.zone}</div>
                     </div>
                     {Number(reassignDriverId)===driver.id && <i className="ri-checkbox-circle-fill" style={{ color:'#8b5cf6', fontSize:18 }} />}
                   </div>
                 ))}
-                {drivers.length===0 && <div style={{ textAlign:'center', color:'#9ca3af', padding:'24px 0', fontSize:13 }}>No available drivers</div>}
+                {drivers.length===0 && <div style={{ textAlign:'center', color:'var(--text-light)', padding:'24px 0', fontSize:13 }}>No available drivers</div>}
                 <div style={{ display:'flex', gap:10, marginTop:16 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
+                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
                   <button onClick={reassignDriver} disabled={!reassignDriverId||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:(!reassignDriverId||submitting)?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13, opacity:(!reassignDriverId||submitting)?0.6:1 }}>
                     {submitting?'Reassigning…':'Reassign & Notify'}
                   </button>
@@ -637,7 +637,7 @@ export default function ActiveDeliveries() {
                   <textarea rows={3} placeholder="e.g. No response after calling twice." value={attemptNote} onChange={e=>setAttemptNote(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
                 </div>
                 <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
+                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
                   <button onClick={markAttempted} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>
                     {submitting?'Saving…':'Confirm Attempted'}
                   </button>
@@ -654,7 +654,7 @@ export default function ActiveDeliveries() {
                   Confirming delivery for <strong>{selected.customer_name}</strong> by <strong>{selected.driver_name||'driver'}</strong>.
                 </div>
                 <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
+                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
                   <button onClick={markDelivered} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#22c55e', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>
                     {submitting?'Saving…':'Mark as Delivered'}
                   </button>
@@ -667,7 +667,7 @@ export default function ActiveDeliveries() {
           {activeModal==='scheduleRetry' && (
             <ModalShell title="Schedule New Delivery Attempt" onClose={closeModal} maxWidth={500}>
               <div style={{ padding:24 }}>
-                <div style={{ fontSize:12, color:'#6b7280', marginBottom:16 }}>{selected.order_id} · {selected.customer_name}</div>
+                <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>{selected.order_id} · {selected.customer_name}</div>
                 <div style={{ padding:'10px 14px', borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1d4ed8', fontSize:12, marginBottom:16 }}>
                   <i className="ri-information-line" style={{ marginRight:5 }} />
                   Scheduling a retry moves this delivery back to <strong>Awaiting Pickup</strong>. <strong>Max 2 attempts total.</strong>
@@ -677,7 +677,7 @@ export default function ActiveDeliveries() {
                   <textarea rows={3} placeholder="e.g. Customer confirmed available after 5pm. Called and verified." value={retryNote} onChange={e=>setRetryNote(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
                 </div>
                 <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
+                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
                   <button onClick={scheduleRetry} disabled={!retryNote||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', cursor:(!retryNote||submitting)?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13, opacity:(!retryNote||submitting)?0.6:1 }}>
                     {submitting?'Saving…':'Confirm — Schedule Retry'}
                   </button>
@@ -688,7 +688,7 @@ export default function ActiveDeliveries() {
 
           {/* CANCEL & RETURN */}
           {activeModal==='cancelReturn' && (
-            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:520 }}>
+            <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth:520 }}>
               <div style={{ background:'#7f1d1d', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                   <div>
@@ -712,11 +712,11 @@ export default function ActiveDeliveries() {
                         <strong>Maximum 2 attempts reached.</strong> Order must be cancelled.
                       </div>
                     )}
-                    <div style={{ border:'1px solid #e5e7eb', borderRadius:8, padding:'14px 16px', background:'#f8fafc', fontSize:12, marginBottom:20 }}>
-                      <div style={{ fontWeight:700, fontSize:11, color:'#6b7280', marginBottom:10, textTransform:'uppercase' }}>This cancellation will trigger:</div>
+                    <div style={{ border:'1px solid var(--border)', borderRadius:8, padding:'14px 16px', background:'var(--bg-subtle)', fontSize:12, marginBottom:20 }}>
+                      <div style={{ fontWeight:700, fontSize:11, color:'var(--text-muted)', marginBottom:10, textTransform:'uppercase' }}>This cancellation will trigger:</div>
                       {['Refund via Monnify to customer','Driver instructed to return goods to store','Admin checks goods back in','Stock quantities restored'].map((s,i) => (
                         <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'4px 0' }}>
-                          <i className="ri-arrow-right-s-line" style={{ color:'#9ca3af' }} /><span>{s}</span>
+                          <i className="ri-arrow-right-s-line" style={{ color:'var(--text-light)' }} /><span>{s}</span>
                         </div>
                       ))}
                     </div>
@@ -725,7 +725,7 @@ export default function ActiveDeliveries() {
                       <textarea rows={3} placeholder="Why is this being cancelled?" value={cancelReason} onChange={e=>setCancelReason(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
                     </div>
                     <div style={{ display:'flex', gap:10 }}>
-                      <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Go Back</button>
+                      <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Go Back</button>
                       <button disabled={!cancelReason} onClick={() => setCancelStep(2)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:!cancelReason?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13, opacity:!cancelReason?0.6:1 }}>
                         Next — Return Goods to Store
                       </button>
@@ -739,7 +739,7 @@ export default function ActiveDeliveries() {
                         <i className="ri-store-2-fill" style={{ fontSize:24, color:'#3b82f6' }} />
                       </div>
                       <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>Instruct Driver to Return Goods</div>
-                      <div style={{ fontSize:13, color:'#6b7280' }}>
+                      <div style={{ fontSize:13, color:'var(--text-muted)' }}>
                         Call <strong>{selected.driver_name||'the driver'}</strong> ({selected.driver_phone||'—'}) and instruct them to return all goods to store.
                       </div>
                     </div>
@@ -748,7 +748,7 @@ export default function ActiveDeliveries() {
                       Driver returning goods from: <strong>{selected.delivery_address||'—'}</strong>
                     </div>
                     <div style={{ display:'flex', gap:10 }}>
-                      <button onClick={() => setCancelStep(1)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Back</button>
+                      <button onClick={() => setCancelStep(1)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Back</button>
                       <button onClick={() => setCancelStep(3)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>
                         Driver Contacted — Next
                       </button>
@@ -764,7 +764,7 @@ export default function ActiveDeliveries() {
                       <div style={{ fontWeight:700, fontSize:16 }}>Confirm Goods Received & Stock Restored</div>
                     </div>
                     <div style={{ display:'flex', gap:10 }}>
-                      <button onClick={() => setCancelStep(2)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Back</button>
+                      <button onClick={() => setCancelStep(2)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Back</button>
                       <button onClick={cancelAndReturn} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>
                         {submitting?'Cancelling…':'Confirm — Cancel Order & Restore Stock'}
                       </button>

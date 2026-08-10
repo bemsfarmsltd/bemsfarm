@@ -2,23 +2,23 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:5 }
+const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
 const btnD = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'#f9fafb' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
-const B = '#e5e7eb', S = '#6b7280'
+const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
+const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
+const B = 'var(--border)', S = '#6b7280'
 
 function statusBadge(status) {
   const map = {
     active:   { color:'#166534', bg:'#dcfce7' },
-    inactive: { color:'#6b7280', bg:'#f3f4f6' },
+    inactive: { color:'var(--text-muted)', bg:'var(--border)' },
     closed:   { color:'#991b1b', bg:'#fee2e2' },
   }
   const key = (status||'').toLowerCase()
-  const style = map[key] || { color:S, bg:'#f3f4f6' }
+  const style = map[key] || { color:S, bg:'var(--border)' }
   return (
     <span style={{ background:style.bg,color:style.color,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600,textTransform:'capitalize' }}>
       {status||'—'}
@@ -125,11 +125,11 @@ export default function StoreList() {
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
       <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'#111827' }}>Stores</div>
+        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Stores</div>
         <div style={{ fontSize:12,color:S,marginTop:2 }}>Manage all store branches, locations, and staff.</div>
       </div>
 
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
         <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
           <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>All Stores</span>
           <div style={{ display:'flex',gap:10,alignItems:'center' }}>
@@ -158,11 +158,11 @@ export default function StoreList() {
                 {stores.map(s=>(
                   <tr key={s.id}>
                     <td style={{ ...TD,fontWeight:600 }}>{s.name}</td>
-                    <td style={TD}><code style={{ background:'#f3f4f6',padding:'2px 8px',borderRadius:4,fontSize:11,fontWeight:700 }}>{s.code||'—'}</code></td>
+                    <td style={TD}><code style={{ background:'var(--bg-muted)',padding:'2px 8px',borderRadius:4,fontSize:11,fontWeight:700 }}>{s.code||'—'}</code></td>
                     <td style={{ ...TD,color:S }}>{[s.city,s.state].filter(Boolean).join(', ')||'—'}</td>
                     <td style={{ ...TD,color:S,fontSize:12 }}>{s.phone||'—'}</td>
                     <td style={{ ...TD,color:S,fontSize:12 }}>{s.email||'—'}</td>
-                    <td style={{ ...TD,fontSize:12,color:S }}>{s.manager_name||<span style={{ color:'#d1d5db' }}>Unassigned</span>}</td>
+                    <td style={{ ...TD,fontSize:12,color:S }}>{s.manager_name||<span style={{ color:'var(--border-strong)' }}>Unassigned</span>}</td>
                     <td style={TD}>{statusBadge(s.status)}</td>
                     <td style={TD}>
                       <div style={{ display:'flex',gap:4 }}>
@@ -192,7 +192,7 @@ export default function StoreList() {
         <>
           <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:560,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:560,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10,flexShrink:0 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                   <i className="ri-store-2-line" style={{ fontSize:18 }}/>
@@ -254,7 +254,7 @@ export default function StoreList() {
         <>
           <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:560,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:560,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10,flexShrink:0 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                   <i className="ri-edit-box-line" style={{ fontSize:18 }}/>
@@ -316,7 +316,7 @@ export default function StoreList() {
         <>
           <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:580,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:580,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10,flexShrink:0 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                   <i className="ri-store-2-line" style={{ fontSize:18 }}/>
@@ -326,8 +326,8 @@ export default function StoreList() {
               </div>
               <div style={{ padding:24,overflowY:'auto' }}>
                 {/* Store Details */}
-                <div style={{ background:'#f9fafb',borderRadius:10,padding:16,marginBottom:20 }}>
-                  <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,marginBottom:12,color:'#111827' }}>Store Details</div>
+                <div style={{ background:'var(--bg-subtle)',borderRadius:10,padding:16,marginBottom:20 }}>
+                  <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,marginBottom:12,color:'var(--text-primary)' }}>Store Details</div>
                   <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
                     {[
                       { label:'Code',    value:viewData.store.code },
@@ -341,7 +341,7 @@ export default function StoreList() {
                     ].map(f=>(
                       <div key={f.label}>
                         <div style={{ fontSize:10,fontWeight:700,color:S,textTransform:'uppercase',marginBottom:2 }}>{f.label}</div>
-                        <div style={{ fontSize:13,color:'#111827',fontWeight:600 }}>{f.value||'—'}</div>
+                        <div style={{ fontSize:13,color:'var(--text-primary)',fontWeight:600 }}>{f.value||'—'}</div>
                       </div>
                     ))}
                   </div>
@@ -349,7 +349,7 @@ export default function StoreList() {
 
                 {/* Staff List */}
                 <div>
-                  <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,marginBottom:12,color:'#111827' }}>
+                  <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,marginBottom:12,color:'var(--text-primary)' }}>
                     Staff Members {!viewLoading && <span style={{ fontSize:12,color:S,fontWeight:400 }}>({viewData.staff.length})</span>}
                   </div>
                   {viewLoading ? (
@@ -368,7 +368,7 @@ export default function StoreList() {
                             <td style={{ ...TD,color:S,fontSize:12 }}>{m.email}</td>
                             <td style={{ ...TD,fontSize:12,textTransform:'capitalize' }}>{m.role}</td>
                             <td style={TD}>
-                              <span style={{ background:m.status==='active'?'#dcfce7':'#f3f4f6',color:m.status==='active'?'#166534':S,borderRadius:50,padding:'2px 8px',fontSize:11,fontWeight:600,textTransform:'capitalize' }}>
+                              <span style={{ background:m.status==='active'?'#dcfce7':'var(--border)',color:m.status==='active'?'#166534':S,borderRadius:50,padding:'2px 8px',fontSize:11,fontWeight:600,textTransform:'capitalize' }}>
                                 {m.status}
                               </span>
                             </td>
@@ -393,7 +393,7 @@ export default function StoreList() {
         <>
           <div onClick={()=>setDeleteItem(null)} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <i className="ri-delete-bin-line" style={{ fontSize:22 }}/>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Delete Store?</span>
@@ -401,7 +401,7 @@ export default function StoreList() {
               </div>
               <div style={{ padding:24,textAlign:'center' }}>
                 <p style={{ color:S,fontSize:14,marginBottom:24 }}>
-                  Delete <strong style={{ color:'#111827' }}>{deleteItem.name}</strong>? This action cannot be undone.
+                  Delete <strong style={{ color:'var(--text-primary)' }}>{deleteItem.name}</strong>? This action cannot be undone.
                 </p>
                 <div style={{ display:'flex',gap:10 }}>
                   <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={()=>setDeleteItem(null)}>Cancel</button>

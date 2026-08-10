@@ -5,8 +5,8 @@ import toast from 'react-hot-toast'
 
 const CAT_COLORS = ['#405189','#0ab39c','#f7b84b','#f06548','#299cdb','#845ec2','#ff9671','#4b8bbe']
 
-const TH = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
-const TD = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid #f3f4f6', fontSize:13, color:'#111827' }
+const TH = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
+const TD = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text-primary)' }
 
 export default function StockValuation() {
   const navigate = useNavigate()
@@ -65,10 +65,10 @@ export default function StockValuation() {
     ? Math.round((totals.profit / totals.retailValue) * 100)
     : 0
 
-  const B = '#e5e7eb', S = '#6b7280'
+  const B = 'var(--border)', S = '#6b7280'
 
   if (loading) return (
-    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'Nunito,sans-serif', color:'#6b7280' }}>
+    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'Nunito,sans-serif', color:'var(--text-muted)' }}>
       <i className="ri-loader-4-line" style={{ fontSize:36, display:'block', marginBottom:8, textAlign:'center' }}/>
     </div>
   )
@@ -95,7 +95,7 @@ export default function StockValuation() {
           { label:'Potential Profit', value:`₦${totals.profit.toLocaleString()}`, subText:'If all stock sold', icon:'ri-line-chart-line', color:'#299cdb', valueColor:'#299cdb' },
           { label:'Avg Gross Margin', value:`${avgMargin}%`, subText:'Across all products', icon:'ri-percent-line', color:'#f7b84b', valueColor:'#f7b84b' },
         ].map(c => (
-          <div key={c.label} style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+          <div key={c.label} style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
             <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={c.icon} style={{ fontSize:20, color:c.color }}/>
             </div>
@@ -109,12 +109,12 @@ export default function StockValuation() {
       </div>
 
       {/* Valuation by Category */}
-      <div style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', padding:24, marginBottom:24 }}>
+      <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', padding:24, marginBottom:24 }}>
         <div style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, marginBottom:16, color:'var(--text-primary)' }}>Valuation by Category</div>
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
-              <tr style={{ background:'#f9fafb', borderBottom:`1px solid ${B}` }}>
+              <tr style={{ background:'var(--bg-subtle)', borderBottom:`1px solid ${B}` }}>
                 {['Category','Products','Total Qty','Cost Value','Retail Value','% of Total'].map(h => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
@@ -135,7 +135,7 @@ export default function StockValuation() {
                   <td style={{ ...TD, fontWeight:600 }}>₦{c.retailVal.toLocaleString()}</td>
                   <td style={TD}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ height:6, background:'#f3f4f6', borderRadius:50, overflow:'hidden', flex:1, minWidth:100 }}>
+                      <div style={{ height:6, background:'var(--bg-muted)', borderRadius:50, overflow:'hidden', flex:1, minWidth:100 }}>
                         <div style={{ height:'100%', width:`${c.pct}%`, background:c.color, borderRadius:50 }}/>
                       </div>
                       <span style={{ fontSize:11, color:S, width:26, textAlign:'right' }}>{c.pct}%</span>
@@ -149,10 +149,10 @@ export default function StockValuation() {
       </div>
 
       {/* Product-Level Valuation */}
-      <div style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
+      <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
         <div style={{ padding:'16px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, color:'var(--text-primary)' }}>Product-Level Valuation</div>
-          <span style={{ background:'#f3f4f6', color:S, fontSize:11, padding:'3px 10px', borderRadius:50, fontWeight:600 }}>
+          <span style={{ background:'var(--bg-muted)', color:S, fontSize:11, padding:'3px 10px', borderRadius:50, fontWeight:600 }}>
             {products.length} product{products.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -160,7 +160,7 @@ export default function StockValuation() {
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
-              <tr style={{ background:'#f9fafb', borderBottom:`1px solid ${B}` }}>
+              <tr style={{ background:'var(--bg-subtle)', borderBottom:`1px solid ${B}` }}>
                 {['Product','SKU','Category','Qty','Unit Cost','Sell Price','Cost Value','Retail Value','Potential Profit'].map(h => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
@@ -168,7 +168,7 @@ export default function StockValuation() {
             </thead>
             <tbody>
               {enriched.length === 0 ? (
-                <tr><td colSpan={9} style={{ ...TD, textAlign:'center', padding:40, color:'#9ca3af' }}>
+                <tr><td colSpan={9} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
                   <i className="ri-bar-chart-line" style={{ fontSize:32, display:'block', marginBottom:8 }}/>No products found
                 </td></tr>
               ) : enriched.map(p => (
@@ -180,7 +180,7 @@ export default function StockValuation() {
                     <span style={{ fontSize:12, color:'#d53f8c', fontWeight:600, fontFamily:'var(--font-mono, monospace)' }}>{p.sku}</span>
                   </td>
                   <td style={TD}>
-                    <span style={{ background:'#f9fafb', color:'#374151', border:`1px solid ${B}`, borderRadius:4, padding:'3px 10px', fontSize:11, fontWeight:600 }}>
+                    <span style={{ background:'var(--bg-subtle)', color:'var(--text-secondary)', border:`1px solid ${B}`, borderRadius:4, padding:'3px 10px', fontSize:11, fontWeight:600 }}>
                       {p.category_name || '—'}
                     </span>
                   </td>
@@ -194,7 +194,7 @@ export default function StockValuation() {
               ))}
             </tbody>
             <tfoot>
-              <tr style={{ background:'#f9fafb', borderTop:`2px solid ${B}` }}>
+              <tr style={{ background:'var(--bg-subtle)', borderTop:`2px solid ${B}` }}>
                 <td colSpan={6} style={{ ...TD, fontWeight:700, fontSize:12 }}>Total</td>
                 <td style={{ ...TD, fontWeight:700 }}>₦{totals.costValue.toLocaleString()}</td>
                 <td style={{ ...TD, fontWeight:700 }}>₦{totals.retailValue.toLocaleString()}</td>

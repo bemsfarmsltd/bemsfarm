@@ -3,18 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid #e5e7eb', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'#fff', color:'#111827', boxSizing:'border-box' }
+const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
 const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'var(--orange-accent)', color:'#fff', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:13 }
-const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
-const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
-const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid #f3f4f6', fontSize:13, color:'#111827' }
-const LBL  = { display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }
+const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
+const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
+const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text-primary)' }
+const LBL  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:6 }
 
 function Modal({ title, onClose, children }) {
   return <>
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1054 }}/>
     <div style={{ position:'fixed', inset:0, zIndex:1055, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:640, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', overflow:'hidden', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
+      <div style={{ background:'var(--bg-card)', borderRadius:14, width:'100%', maxWidth:640, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', overflow:'hidden', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
         <div style={{ background:'var(--orange-accent)', color:'#fff', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
           <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15 }}>{title}</span>
           <button onClick={onClose} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.8)', cursor:'pointer', fontSize:20, display:'flex', padding:4 }}><i className="ri-close-line"/></button>
@@ -131,7 +131,7 @@ export default function StockTransfer() {
     return date.toISOString().slice(0, 10)
   }
 
-  const B = '#e5e7eb', S = '#6b7280'
+  const B = 'var(--border)', S = '#6b7280'
 
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
@@ -153,7 +153,7 @@ export default function StockTransfer() {
           { label:'Total Transfers', value:statValues.total,     icon:'ri-file-text-line', color:'#405189', valueColor:'var(--text-primary)' },
           { label:'Completed',       value:statValues.completed, icon:'ri-checkbox-circle-line', color:'#0ab39c', valueColor:'#0ab39c' },
         ].map(c => (
-          <div key={c.label} style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+          <div key={c.label} style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
             <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={c.icon} style={{ fontSize:20, color:c.color }}/>
             </div>
@@ -166,10 +166,10 @@ export default function StockTransfer() {
       </div>
 
       {/* Table card */}
-      <div style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
+      <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
         <div style={{ padding:'16px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <div style={{ position:'relative', flex:1, minWidth:220 }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:15 }}/>
             <input style={{ ...inp, paddingLeft:32 }} placeholder="Search reference, product, w..." value={search} onChange={e => setSearch(e.target.value)}/>
           </div>
           <button style={btnP} onClick={openForm}><i className="ri-add-line"/>New Transfer</button>
@@ -178,7 +178,7 @@ export default function StockTransfer() {
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'Nunito,sans-serif' }}>
             <thead>
-              <tr style={{ background:'#f9fafb', borderBottom:`1px solid ${B}` }}>
+              <tr style={{ background:'var(--bg-subtle)', borderBottom:`1px solid ${B}` }}>
                 {['Ref No','Date','From','To','Products','Total Qty','Status','Notes'].map(h => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
@@ -190,7 +190,7 @@ export default function StockTransfer() {
                   <div className="spinner-border spinner-border-sm text-primary me-2"/>Loading...
                 </td></tr>
               ) : movements.length === 0 ? (
-                <tr><td colSpan={8} style={{ ...TD, textAlign:'center', padding:40, color:'#9ca3af' }}>
+                <tr><td colSpan={8} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
                   <i className="ri-swap-box-line" style={{ fontSize:32, display:'block', marginBottom:8 }}/>No transfers found
                 </td></tr>
               ) : movements.map(m => {
@@ -205,7 +205,7 @@ export default function StockTransfer() {
                     <td style={{ ...TD, color:'#b45309', fontWeight:600 }}>{refNo}</td>
                     <td style={TD}><span style={{ color:S }}>{formatDate(m.created_at)}</span></td>
                     <td style={TD}>
-                      <span style={{ background:'#f3f4f6', color:'#374151', borderRadius:4, padding:'3px 8px', fontSize:11, fontWeight:600, display:'inline-flex', alignItems:'center', gap:4 }}>
+                      <span style={{ background:'var(--bg-muted)', color:'var(--text-secondary)', borderRadius:4, padding:'3px 8px', fontSize:11, fontWeight:600, display:'inline-flex', alignItems:'center', gap:4 }}>
                         <i className="ri-store-2-line"/>{source}
                       </span>
                     </td>
@@ -237,7 +237,7 @@ export default function StockTransfer() {
               <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===1?0.4:1 }}>
                 <i className="ri-arrow-left-s-line"/>Prev
               </button>
-              <span style={{ display:'flex', alignItems:'center', fontSize:12, color:'#374151', fontWeight:600 }}>Page {page} / {meta.pages}</span>
+              <span style={{ display:'flex', alignItems:'center', fontSize:12, color:'var(--text-secondary)', fontWeight:600 }}>Page {page} / {meta.pages}</span>
               <button onClick={() => setPage(p => Math.min(meta.pages,p+1))} disabled={page===meta.pages} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===meta.pages?0.4:1 }}>
                 Next<i className="ri-arrow-right-s-line"/>
               </button>

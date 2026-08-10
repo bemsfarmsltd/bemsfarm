@@ -5,11 +5,11 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 
 const inp = {
-  width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid #e5e7eb',
+  width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)',
   fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box',
-  color:'#111827', background:'#fff',
+  color:'var(--text-primary)', background:'var(--bg-card)',
 }
-const lbl = { display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:5 }
+const lbl = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
 
 const btn = (bg, color, border) => ({
   display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px',
@@ -20,7 +20,7 @@ const btn = (bg, color, border) => ({
 function Spinner({ size = 32, inline = false }) {
   return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding: inline ? 0 : 48 }}>
-      <div style={{ width:size, height:size, border:'3px solid #e5e7eb', borderTopColor:'#1B4332', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
+      <div style={{ width:size, height:size, border:'3px solid var(--border)', borderTopColor:'#1B4332', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
@@ -31,10 +31,10 @@ function Modal({ open, onClose, title, danger, children }) {
   return (
     <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)' }} />
-      <div style={{ position:'relative', background:'#fff', borderRadius:14, padding:'24px 28px', width:'100%', maxWidth:600, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.25)', zIndex:1 }}>
+      <div style={{ position:'relative', background:'var(--bg-card)', borderRadius:14, padding:'24px 28px', width:'100%', maxWidth:600, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.25)', zIndex:1 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
           <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:danger?'#dc2626':'#111827', fontFamily:'Syne, sans-serif' }}>{title}</h3>
-          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#6b7280', fontSize:20, padding:2, display:'flex', alignItems:'center' }}>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:20, padding:2, display:'flex', alignItems:'center' }}>
             <i className="ri-close-line" />
           </button>
         </div>
@@ -47,8 +47,8 @@ function Modal({ open, onClose, title, danger, children }) {
 function Toggle({ checked, onChange }) {
   return (
     <div onClick={onChange} role="switch" aria-checked={checked}
-      style={{ width:38, height:21, borderRadius:50, cursor:'pointer', flexShrink:0, position:'relative', transition:'background 0.2s', background: checked ? '#1B4332' : '#d1d5db' }}>
-      <div style={{ position:'absolute', width:17, height:17, borderRadius:'50%', background:'#fff', top:2, left: checked ? 19 : 2, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.25)' }} />
+      style={{ width:38, height:21, borderRadius:50, cursor:'pointer', flexShrink:0, position:'relative', transition:'background 0.2s', background: checked ? '#1B4332' : 'var(--border-strong)' }}>
+      <div style={{ position:'absolute', width:17, height:17, borderRadius:'50%', background:'var(--bg-card)', top:2, left: checked ? 19 : 2, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.25)' }} />
     </div>
   )
 }
@@ -68,33 +68,33 @@ function RecForm({ form, setForm }) {
         <label style={lbl}>Trigger Condition <span style={{ color:'#dc2626' }}>*</span></label>
         <textarea value={form.trigger_condition} onChange={e => setForm(f => ({...f, trigger_condition:e.target.value}))} rows={3}
           placeholder="When should this recommendation trigger? (e.g. customer mentions bodybuilding, gym, or high protein needs)" style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
-        <div style={{ fontSize:11, color:'#9ca3af', marginTop:4 }}>Describe the customer intent or context that triggers this recommendation</div>
+        <div style={{ fontSize:11, color:'var(--text-light)', marginTop:4 }}>Describe the customer intent or context that triggers this recommendation</div>
       </div>
       <div>
         <label style={lbl}>Recommended Items <span style={{ color:'#dc2626' }}>*</span></label>
         <textarea value={form.recommended_items} onChange={e => setForm(f => ({...f, recommended_items:e.target.value}))} rows={4}
           placeholder="List the items to recommend, e.g.: Grilled Chicken Breast (35g protein), Grilled Tilapia (28g protein), Beans Porridge (18g plant protein)" style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
-        <div style={{ fontSize:11, color:'#9ca3af', marginTop:4 }}>What should Chef Bems AI suggest when this condition is triggered?</div>
+        <div style={{ fontSize:11, color:'var(--text-light)', marginTop:4 }}>What should Chef Bems AI suggest when this condition is triggered?</div>
       </div>
       <div>
         <label style={lbl}>Context Tags</label>
         <input value={form.context_tags} onChange={e => setForm(f => ({...f, context_tags:e.target.value}))} placeholder="e.g. high-protein, gym, bodybuilding, post-workout" style={inp} />
-        <div style={{ fontSize:11, color:'#9ca3af', marginTop:4 }}>Comma-separated tags for AI matching context</div>
+        <div style={{ fontSize:11, color:'var(--text-light)', marginTop:4 }}>Comma-separated tags for AI matching context</div>
       </div>
       <div>
-        <label style={lbl}>Priority — {priority} <span style={{ fontSize:11, color:'#9ca3af' }}>(1 = highest, 10 = lowest)</span></label>
+        <label style={lbl}>Priority — {priority} <span style={{ fontSize:11, color:'var(--text-light)' }}>(1 = highest, 10 = lowest)</span></label>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <span style={{ fontSize:11, color:'#9ca3af', width:10 }}>1</span>
+          <span style={{ fontSize:11, color:'var(--text-light)', width:10 }}>1</span>
           <input type="range" min={1} max={10} step={1} value={priority}
             onChange={e => setForm(f => ({...f, priority:parseInt(e.target.value)}))}
             style={{ flex:1 }} />
-          <span style={{ fontSize:11, color:'#9ca3af', width:16 }}>10</span>
+          <span style={{ fontSize:11, color:'var(--text-light)', width:16 }}>10</span>
           <span style={{ fontSize:13, fontWeight:800, color:priColor, minWidth:20, textAlign:'center' }}>{priority}</span>
         </div>
       </div>
       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
         <Toggle checked={!!form.is_active} onChange={() => setForm(f => ({...f, is_active:!f.is_active}))} />
-        <span style={{ fontSize:13, color:'#374151', fontWeight:600 }}>
+        <span style={{ fontSize:13, color:'var(--text-secondary)', fontWeight:600 }}>
           {form.is_active ? 'Active — Chef Bems AI will use this recommendation' : 'Inactive — recommendation is disabled'}
         </span>
       </div>
@@ -236,13 +236,13 @@ export default function Recommendation() {
           { label:'Active',                value:kpi.active,  icon:'ri-checkbox-circle-line', bg:'#f0fdf4', color:'#15803d' },
           { label:'High Priority (1-3)',   value:kpi.highPri, icon:'ri-alarm-warning-line',   bg:'#fef2f2', color:'#dc2626' },
         ].map(k => (
-          <div key={k.label} style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', padding:'16px 20px', display:'flex', alignItems:'center', gap:14, boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div key={k.label} style={{ background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', padding:'16px 20px', display:'flex', alignItems:'center', gap:14, boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
             <div style={{ width:44, height:44, borderRadius:10, background:k.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={k.icon} style={{ fontSize:20, color:k.color }} />
             </div>
             <div>
-              <div style={{ fontSize:22, fontWeight:800, color:'#111827', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{k.value}</div>
-              <div style={{ fontSize:11, color:'#6b7280', marginTop:2 }}>{k.label}</div>
+              <div style={{ fontSize:22, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{k.value}</div>
+              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{k.label}</div>
             </div>
           </div>
         ))}
@@ -251,7 +251,7 @@ export default function Recommendation() {
       {/* Filter Bar */}
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
         <div style={{ position:'relative', flex:1 }}>
-          <i className="ri-search-line" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:14 }} />
+          <i className="ri-search-line" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
           <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search title, trigger condition, or recommended items..."
             style={{ ...inp, paddingLeft:34 }} />
         </div>
@@ -261,12 +261,12 @@ export default function Recommendation() {
       </div>
 
       {/* Table */}
-      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', overflow:'hidden' }}>
+      <div style={{ background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', overflow:'hidden' }}>
         <table style={{ width:'100%', borderCollapse:'collapse' }}>
           <thead>
-            <tr style={{ borderBottom:'1px solid #f3f4f6', background:'#f8fafc' }}>
+            <tr style={{ borderBottom:'1px solid var(--border)', background:'var(--bg-subtle)' }}>
               {['Title','Trigger Condition','Recommended Items','Priority','Active','Actions'].map(h => (
-                <th key={h} style={{ padding:'11px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', fontFamily:'Nunito, sans-serif', whiteSpace:'nowrap' }}>{h}</th>
+                <th key={h} style={{ padding:'11px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', fontFamily:'Nunito, sans-serif', whiteSpace:'nowrap' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -275,7 +275,7 @@ export default function Recommendation() {
               <tr><td colSpan={6}><Spinner /></td></tr>
             ) : recs.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign:'center', padding:'48px 0', color:'#9ca3af' }}>
+                <td colSpan={6} style={{ textAlign:'center', padding:'48px 0', color:'var(--text-light)' }}>
                   <i className="ri-thumb-up-line" style={{ fontSize:36, display:'block', marginBottom:8 }} />
                   <div>No recommendations found. {search ? 'Try a different search.' : 'Add your first AI recommendation rule.'}</div>
                   {!search && <button onClick={() => { setForm({...BLANK}); setAddModal(true) }} style={{ ...btn('#1B4332','#fff'), marginTop:12 }}><i className="ri-add-line" />Add First Recommendation</button>}
@@ -287,7 +287,7 @@ export default function Recommendation() {
               return (
                 <tr key={r.id} style={{ borderBottom:'1px solid #f9fafb', background: i%2===0 ? '#fff' : '#fafafa' }}>
                   <td style={{ padding:'12px 16px', fontFamily:'Nunito, sans-serif', minWidth:160 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color:'#111827', marginBottom:2 }}>{r.title}</div>
+                    <div style={{ fontWeight:700, fontSize:13, color:'var(--text-primary)', marginBottom:2 }}>{r.title}</div>
                     {r.context_tags && (
                       <div style={{ display:'flex', flexWrap:'wrap', gap:3, marginTop:4 }}>
                         {r.context_tags.split(',').slice(0,2).map(t => t.trim()).filter(Boolean).map(t => (
@@ -296,12 +296,12 @@ export default function Recommendation() {
                       </div>
                     )}
                   </td>
-                  <td style={{ padding:'12px 16px', fontSize:12, color:'#374151', fontFamily:'Nunito, sans-serif', maxWidth:200 }}>
+                  <td style={{ padding:'12px 16px', fontSize:12, color:'var(--text-secondary)', fontFamily:'Nunito, sans-serif', maxWidth:200 }}>
                     <div style={{ overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', lineHeight:1.5 }}>
                       {r.trigger_condition}
                     </div>
                   </td>
-                  <td style={{ padding:'12px 16px', fontSize:12, color:'#374151', fontFamily:'Nunito, sans-serif', maxWidth:200 }}>
+                  <td style={{ padding:'12px 16px', fontSize:12, color:'var(--text-secondary)', fontFamily:'Nunito, sans-serif', maxWidth:200 }}>
                     <div style={{ overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', lineHeight:1.5 }}>
                       {r.recommended_items}
                     </div>
@@ -347,16 +347,16 @@ export default function Recommendation() {
                 </span>
               </div>
               <div>
-                <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Trigger Condition</div>
-                <div style={{ background:'#f8fafc', border:'1px solid #e5e7eb', borderRadius:8, padding:'12px', fontSize:13, color:'#374151', lineHeight:1.6 }}>{viewModal.trigger_condition}</div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-light)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Trigger Condition</div>
+                <div style={{ background:'var(--bg-subtle)', border:'1px solid var(--border)', borderRadius:8, padding:'12px', fontSize:13, color:'var(--text-secondary)', lineHeight:1.6 }}>{viewModal.trigger_condition}</div>
               </div>
               <div>
-                <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Recommended Items</div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--text-light)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Recommended Items</div>
                 <div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:8, padding:'12px', fontSize:13, color:'#166534', lineHeight:1.7, whiteSpace:'pre-line' }}>{viewModal.recommended_items}</div>
               </div>
               {viewModal.context_tags && (
                 <div>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Context Tags</div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'var(--text-light)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Context Tags</div>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
                     {viewModal.context_tags.split(',').map(t => t.trim()).filter(Boolean).map(t => (
                       <span key={t} style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:50, background:'#ede9fe', color:'#5b21b6' }}>{t}</span>
@@ -364,7 +364,7 @@ export default function Recommendation() {
                   </div>
                 </div>
               )}
-              <div style={{ fontSize:11, color:'#9ca3af' }}>
+              <div style={{ fontSize:11, color:'var(--text-light)' }}>
                 Created: {viewModal.created_at ? new Date(viewModal.created_at).toLocaleString() : '—'}
               </div>
               <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
@@ -403,7 +403,7 @@ export default function Recommendation() {
       <Modal open={!!deleteModal} onClose={() => setDeleteModal(null)} title="Delete Recommendation" danger>
         {deleteModal && (
           <>
-            <p style={{ fontSize:13, color:'#374151', marginBottom:20, lineHeight:1.6 }}>
+            <p style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:20, lineHeight:1.6 }}>
               Are you sure you want to delete <strong>"{deleteModal.title}"</strong>? Chef Bems AI will no longer use this recommendation rule.
             </p>
             <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>

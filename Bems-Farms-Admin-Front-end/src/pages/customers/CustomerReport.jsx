@@ -17,10 +17,10 @@ const AVATAR_COLORS = [
 ]
 
 // ─── Shared style atoms ────────────────────────────────────────────────────────
-const B   = '#e5e7eb'
+const B   = 'var(--border)'
 const S   = '#6b7280'
 const card = {
-  background: '#fff',
+  background: 'var(--bg-card)',
   borderRadius: 12,
   border: `1px solid ${B}`,
   boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
@@ -32,8 +32,8 @@ const inp = {
   fontFamily: 'Nunito, sans-serif',
   fontSize: 13,
   outline: 'none',
-  background: '#fff',
-  color: '#111827',
+  background: 'var(--bg-card)',
+  color: 'var(--text-primary)',
 }
 
 const TH = ({ children, right }) => (
@@ -45,7 +45,7 @@ const TH = ({ children, right }) => (
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
     whiteSpace: 'nowrap',
-    background: '#f8fafc',
+    background: 'var(--bg-subtle)',
     borderBottom: `1px solid ${B}`,
     textAlign: right ? 'right' : 'left',
   }}>
@@ -59,7 +59,7 @@ const TD = ({ children, style }) => (
     fontSize: 13,
     borderBottom: '1px solid #f9fafb',
     verticalAlign: 'middle',
-    color: '#111827',
+    color: 'var(--text-primary)',
     ...style,
   }}>
     {children}
@@ -88,7 +88,7 @@ function StatCard({ label, value, icon, color, bg, sub }) {
       </div>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 11, color: S, fontWeight: 600, marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: '#111827', fontFamily: 'Syne, sans-serif', lineHeight: 1.1 }}>{value}</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', lineHeight: 1.1 }}>{value}</div>
         {sub && <div style={{ fontSize: 10, color: S, marginTop: 2 }}>{sub}</div>}
       </div>
     </div>
@@ -108,8 +108,8 @@ function SegmentCard({ label, count, total, icon, color, bg, desc }) {
           {pct}%
         </span>
       </div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: '#111827', fontFamily: 'Syne, sans-serif' }}>{fmtN(count)}</div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginTop: 2 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>{fmtN(count)}</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginTop: 2 }}>{label}</div>
       <div style={{ fontSize: 11, color: S, marginTop: 4 }}>{desc}</div>
     </div>
   )
@@ -267,7 +267,7 @@ export default function CustomerReport() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => handleExport('CSV')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: `1.5px solid ${B}`, background: '#fff', color: '#374151', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Nunito, sans-serif' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: `1.5px solid ${B}`, background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Nunito, sans-serif' }}
             >
               <i className="ri-file-text-line" style={{ color: '#0ab39c' }} /> Export CSV
             </button>
@@ -348,7 +348,7 @@ export default function CustomerReport() {
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: S, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Search</div>
             <div style={{ position: 'relative' }}>
-              <i className="ri-search-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14, pointerEvents: 'none' }} />
+              <i className="ri-search-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 14, pointerEvents: 'none' }} />
               <input
                 type="text"
                 value={search}
@@ -357,7 +357,7 @@ export default function CustomerReport() {
                 style={{ ...inp, paddingLeft: 32, width: '100%', boxSizing: 'border-box' }}
               />
               {search && (
-                <button onClick={() => { setSearch(''); setPage(1) }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', padding: 0, fontSize: 16 }}>
+                <button onClick={() => { setSearch(''); setPage(1) }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', display: 'flex', alignItems: 'center', padding: 0, fontSize: 16 }}>
                   <i className="ri-close-line" />
                 </button>
               )}
@@ -384,13 +384,13 @@ export default function CustomerReport() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => handleExport('CSV')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: `1.5px solid ${B}`, background: '#fff', color: '#374151', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Nunito, sans-serif', whiteSpace: 'nowrap' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: `1.5px solid ${B}`, background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Nunito, sans-serif', whiteSpace: 'nowrap' }}
             >
               <i className="ri-download-line" style={{ color: '#0ab39c' }} /> CSV
             </button>
             <button
               onClick={() => handleExport('PDF')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: `1.5px solid ${B}`, background: '#fff', color: '#374151', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Nunito, sans-serif', whiteSpace: 'nowrap' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: `1.5px solid ${B}`, background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Nunito, sans-serif', whiteSpace: 'nowrap' }}
             >
               <i className="ri-file-pdf-line" style={{ color: '#f06548' }} /> PDF
             </button>
@@ -403,7 +403,7 @@ export default function CustomerReport() {
         {/* Table header bar */}
         <div style={{ padding: '14px 18px', borderBottom: `1px solid ${B}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#111827', fontFamily: 'Syne, sans-serif' }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>
               Top Customers
             </span>
             <span style={{ fontSize: 12, color: S, marginLeft: 10 }}>
@@ -444,11 +444,11 @@ export default function CustomerReport() {
 
               {!loading && customers.length === 0 && (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '56px 0', color: '#9ca3af', fontSize: 13 }}>
-                    <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                      <i className="ri-user-search-line" style={{ fontSize: 26, color: '#d1d5db' }} />
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '56px 0', color: 'var(--text-light)', fontSize: 13 }}>
+                    <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--bg-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                      <i className="ri-user-search-line" style={{ fontSize: 26, color: 'var(--border-strong)' }} />
                     </div>
-                    <div style={{ fontWeight: 600, color: '#374151', marginBottom: 4 }}>No customers found</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>No customers found</div>
                     <div style={{ fontSize: 12 }}>Try adjusting your filters or search query.</div>
                   </td>
                 </tr>
@@ -460,7 +460,7 @@ export default function CustomerReport() {
                 return (
                   <tr
                     key={c.id}
-                    style={{ background: '#fff', transition: 'background 0.15s' }}
+                    style={{ background: 'var(--bg-card)', transition: 'background 0.15s' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
                     onMouseLeave={e => e.currentTarget.style.background = '#fff'}
                   >
@@ -494,7 +494,7 @@ export default function CustomerReport() {
 
                     {/* Contact */}
                     <TD>
-                      <div style={{ fontSize: 12, color: '#374151' }}>{c.email || '—'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{c.email || '—'}</div>
                       <div style={{ fontSize: 11, color: '#94a3b8' }}>{c.phone || '—'}</div>
                     </TD>
 
@@ -517,7 +517,7 @@ export default function CustomerReport() {
                     <TD style={{ color: S, fontSize: 12, whiteSpace: 'nowrap' }}>
                       {c.last_purchase
                         ? new Date(c.last_purchase).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' })
-                        : <span style={{ color: '#d1d5db' }}>Never</span>
+                        : <span style={{ color: 'var(--border-strong)' }}>Never</span>
                       }
                     </TD>
 
@@ -561,7 +561,7 @@ export default function CustomerReport() {
         {/* Growth Chart */}
         <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: `1px solid ${B}` }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#111827', fontFamily: 'Syne, sans-serif' }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>
               Customer Growth
             </span>
           </div>
@@ -616,7 +616,7 @@ export default function CustomerReport() {
         {/* Customer Segments */}
         <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: `1px solid ${B}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#111827', fontFamily: 'Syne, sans-serif' }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>
               Customer Segments
             </span>
             <span style={{ fontSize: 11, color: S }}>{fmtN(stats.total)} total</span>
@@ -695,8 +695,8 @@ export default function CustomerReport() {
               <div key={seg.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
                 <span style={{ color: S }}>{seg.label}</span>
-                <span style={{ fontWeight: 700, color: '#374151' }}>{fmtN(segments[seg.key])}</span>
-                <span style={{ color: '#d1d5db' }}>·</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-secondary)' }}>{fmtN(segments[seg.key])}</span>
+                <span style={{ color: 'var(--border-strong)' }}>·</span>
                 <span style={{ color: S }}>{stats.total > 0 ? ((segments[seg.key] / stats.total) * 100).toFixed(1) : '0.0'}%</span>
               </div>
             ))}

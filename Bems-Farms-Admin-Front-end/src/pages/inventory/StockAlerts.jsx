@@ -8,12 +8,12 @@ const SEV_CFG = {
   low:          { label:'Low Stock',    bg:'#fef9c3', color:'#854d0e', icon:'ri-alert-fill',         border:'#f7b84b' },
 }
 
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid #e5e7eb', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'#fff', color:'#111827', boxSizing:'border-box' }
+const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
 const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:13 }
-const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
-const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
-const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid #f3f4f6', fontSize:13, color:'#111827' }
-const LBL  = { display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }
+const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
+const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
+const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text-primary)' }
+const LBL  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:6 }
 
 function getSeverity(item) {
   if (item.stock_quantity === 0) return 'out_of_stock'
@@ -89,8 +89,8 @@ export default function StockAlerts() {
       {/* Page header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24, flexWrap:'wrap', gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:22, color:'#111827' }}>Low Stock Alerts</div>
-          <div style={{ fontSize:12, color:'#6b7280', marginTop:2 }}>Inventory / Low Stock Alerts</div>
+          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:22, color:'var(--text-primary)' }}>Low Stock Alerts</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Inventory / Low Stock Alerts</div>
         </div>
       </div>
 
@@ -111,23 +111,23 @@ export default function StockAlerts() {
           { label:'Low Stock',    value:stats.low,      icon:'ri-subtract-line',      color:'#f7b84b', filter:'low'          },
         ].map(c => (
           <div key={c.label} onClick={() => setSev(c.filter)}
-            style={{ background:'#fff', borderRadius:12, border:'1px solid #f3f4f6', borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, cursor:'pointer', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+            style={{ background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, cursor:'pointer', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
             <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={c.icon} style={{ fontSize:20, color:c.color }}/>
             </div>
             <div>
               <div style={{ fontSize:22, fontWeight:800, color:c.color }}>{c.value}</div>
-              <div style={{ fontSize:11, color:'#6b7280' }}>{c.label}</div>
+              <div style={{ fontSize:11, color:'var(--text-muted)' }}>{c.label}</div>
             </div>
           </div>
         ))}
       </div>
 
       {/* Alert table card */}
-      <div style={{ background:'#fff', borderRadius:12, border:'1px solid #f3f4f6', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
-        <div style={{ padding:'16px 20px', borderBottom:'1px solid #f3f4f6', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+      <div style={{ background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
+        <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <div style={{ position:'relative', flex:1, minWidth:200 }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:15 }}/>
             <input style={{ ...inp, paddingLeft:32 }} placeholder="Search product, SKU…" value={search} onChange={e => setSearch(e.target.value)}/>
           </div>
           <select style={{ ...inp, width:'auto', minWidth:140 }} value={filterSev} onChange={e => setSev(e.target.value)}>
@@ -141,7 +141,7 @@ export default function StockAlerts() {
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'Nunito,sans-serif' }}>
             <thead>
-              <tr style={{ background:'#f9fafb', borderBottom:'1px solid #e5e7eb' }}>
+              <tr style={{ background:'var(--bg-subtle)', borderBottom:'1px solid var(--border)' }}>
                 {['Product','SKU','Category','Warehouse','Current Stock','Reorder Level','Shortage','Severity','Action'].map(h => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
@@ -153,7 +153,7 @@ export default function StockAlerts() {
                   <div className="spinner-border spinner-border-sm text-primary me-2"/>Loading...
                 </td></tr>
               ) : visible.length === 0 ? (
-                <tr><td colSpan={9} style={{ ...TD, textAlign:'center', padding:40, color:'#9ca3af' }}>
+                <tr><td colSpan={9} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
                   <i className="ri-checkbox-circle-line" style={{ fontSize:32, display:'block', marginBottom:8, color:'#0ab39c' }}/>
                   {alerts.length === 0 ? 'No alerts — all products well stocked!' : 'No alerts match your filters.'}
                 </td></tr>
@@ -167,13 +167,13 @@ export default function StockAlerts() {
                     <td style={TD}>
                       <div style={{ fontWeight:600 }}>{a.name}</div>
                     </td>
-                    <td style={TD}><code style={{ fontSize:12, background:'#f3f4f6', padding:'2px 6px', borderRadius:4 }}>{a.sku}</code></td>
-                    <td style={TD}><span style={{ background:'#f9fafb', color:'#374151', border:'1px solid #e5e7eb', borderRadius:50, padding:'3px 10px', fontSize:11, fontWeight:600 }}>{a.category_name || '—'}</span></td>
+                    <td style={TD}><code style={{ fontSize:12, background:'var(--bg-muted)', padding:'2px 6px', borderRadius:4 }}>{a.sku}</code></td>
+                    <td style={TD}><span style={{ background:'var(--bg-subtle)', color:'var(--text-secondary)', border:'1px solid var(--border)', borderRadius:50, padding:'3px 10px', fontSize:11, fontWeight:600 }}>{a.category_name || '—'}</span></td>
                     <td style={TD}>{a.warehouse_name || '—'}</td>
                     <td style={TD}><span style={{ fontWeight:700, color: a.stock_quantity === 0 ? '#f06548' : '#f7b84b' }}>{a.stock_quantity}</span></td>
                     <td style={TD}>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <span style={{ color:'#6b7280' }}>{a.reorder_level}</span>
+                        <span style={{ color:'var(--text-muted)' }}>{a.reorder_level}</span>
                         <button onClick={() => openReorder(a)} title="Edit reorder level" style={{ width:22, height:22, borderRadius:5, border:'none', background:'#dbeafe', color:'#1d4ed8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 }}>
                           <i className="ri-pencil-line"/>
                         </button>
@@ -196,7 +196,7 @@ export default function StockAlerts() {
             </tbody>
           </table>
         </div>
-        <div style={{ padding:'12px 20px', fontSize:12, color:'#6b7280', borderTop:'1px solid #f3f4f6' }}>
+        <div style={{ padding:'12px 20px', fontSize:12, color:'var(--text-muted)', borderTop:'1px solid var(--border)' }}>
           Showing {visible.length} of {stats.total} alerts
         </div>
       </div>
@@ -205,9 +205,9 @@ export default function StockAlerts() {
       {editReorder && <>
         <div onClick={closeReorder} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1054 }}/>
         <div style={{ position:'fixed', inset:0, zIndex:1055, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-          <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:360, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', padding:28 }}>
+          <div style={{ background:'var(--bg-card)', borderRadius:14, width:'100%', maxWidth:360, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', padding:28 }}>
             <div style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:16, marginBottom:4 }}>Update Reorder Level</div>
-            <div style={{ fontSize:13, color:'#6b7280', marginBottom:20 }}>Set the minimum quantity that triggers a reorder alert.</div>
+            <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:20 }}>Set the minimum quantity that triggers a reorder alert.</div>
             <form onSubmit={saveReorder}>
               <div style={{ marginBottom:20 }}>
                 <label style={LBL}>New Reorder Level <span style={{ color:'#dc2626' }}>*</span></label>

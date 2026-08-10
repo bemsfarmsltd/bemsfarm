@@ -14,13 +14,13 @@ const REASONS = [
 ]
 
 const REASON_CFG = {
-  'Expiry Date Passed':   { icon:'ri-time-line',          color:'#6b7280' },
+  'Expiry Date Passed':   { icon:'ri-time-line',          color:'var(--text-muted)' },
   'Spoilage / Rotting':   { icon:'ri-leaf-line',         color:'#10b981' },
   'Pest Damage':          { icon:'ri-bug-line',          color:'#f59e0b' },
   'Physical Damage':      { icon:'ri-hammer-line',        color:'#ef4444' },
   'Theft':                { icon:'ri-spy-line',           color:'#3b82f6' },
   'Miscount':             { icon:'ri-calculator-line',    color:'#8b5cf6' },
-  'Other':                { icon:'ri-more-line',          color:'#6b7280' },
+  'Other':                { icon:'ri-more-line',          color:'var(--text-muted)' },
 }
 
 const MOCK_LOST_ITEMS = [
@@ -110,18 +110,18 @@ const MOCK_LOST_ITEMS = [
   }
 ]
 
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid #e5e7eb', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'#fff', color:'#111827', boxSizing:'border-box' }
+const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
 const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'var(--orange-accent)', color:'#fff', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:13 }
-const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
-const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
-const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid #f3f4f6', fontSize:13, color:'#111827' }
-const LBL  = { display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }
+const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
+const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
+const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text-primary)' }
+const LBL  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:6 }
 
 function Modal({ title, onClose, maxWidth, children }) {
   return <>
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1054 }}/>
     <div style={{ position:'fixed', inset:0, zIndex:1055, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:maxWidth||640, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', overflow:'hidden', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
+      <div style={{ background:'var(--bg-card)', borderRadius:14, width:'100%', maxWidth:maxWidth||640, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', overflow:'hidden', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
         <div style={{ background:'var(--orange-accent)', color:'#fff', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
           <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15 }}>{title}</span>
           <button onClick={onClose} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.8)', cursor:'pointer', fontSize:20, display:'flex', padding:4 }}><i className="ri-close-line"/></button>
@@ -290,10 +290,10 @@ export default function LostItems() {
     return date.toISOString().slice(0, 10)
   }
 
-  const B = '#e5e7eb', S = '#6b7280'
+  const B = 'var(--border)', S = '#6b7280'
 
   if (loading) return (
-    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'Nunito,sans-serif', color:'#6b7280' }}>
+    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'Nunito,sans-serif', color:'var(--text-muted)' }}>
       <i className="ri-loader-4-line" style={{ fontSize:36, display:'block', marginBottom:8, textAlign:'center' }}/>
     </div>
   )
@@ -328,7 +328,7 @@ export default function LostItems() {
           { label:'Under Investigation',   value:totals.investigation, icon:'ri-search-line', color:'#299cdb', valueColor:'#299cdb' },
           { label:'Confirmed Value Lost',  value:totals.confirmedLoss, icon:'ri-coins-line', color:'#ef4444', valueColor:'#ef4444' },
         ].map(c => (
-          <div key={c.label} style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+          <div key={c.label} style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
             <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={c.icon} style={{ fontSize:20, color:c.color }}/>
             </div>
@@ -341,10 +341,10 @@ export default function LostItems() {
       </div>
 
       {/* Table card */}
-      <div style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
+      <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
         <div style={{ padding:'16px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <div style={{ position:'relative', flex:1, minWidth:200 }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:15 }}/>
             <input style={{ ...inp, paddingLeft:32 }} placeholder="Search product, reason, ref..." value={search} onChange={e => setSearch(e.target.value)}/>
           </div>
           <select style={{ ...inp, width:'auto', minWidth:140 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
@@ -359,7 +359,7 @@ export default function LostItems() {
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'Nunito,sans-serif' }}>
             <thead>
-              <tr style={{ background:'#f9fafb', borderBottom:`1px solid ${B}` }}>
+              <tr style={{ background:'var(--bg-subtle)', borderBottom:`1px solid ${B}` }}>
                 {['Ref No','Date','Product','Qty Lost','Total Loss','Reason','Warehouse','Reported By','Investigator', 'Status', 'Action'].map(h => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
@@ -367,7 +367,7 @@ export default function LostItems() {
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={11} style={{ ...TD, textAlign:'center', padding:40, color:'#9ca3af' }}>
+                <tr><td colSpan={11} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
                   <i className="ri-shield-check-line" style={{ fontSize:32, display:'block', marginBottom:8, color:'#0ab39c' }}/>No lost item reports found
                 </td></tr>
               ) : filtered.map(r => {
@@ -379,13 +379,13 @@ export default function LostItems() {
                   <tr key={r.id}
                     onMouseEnter={e => e.currentTarget.style.background='#fafafa'}
                     onMouseLeave={e => e.currentTarget.style.background=''}
-                    style={{ background: '#fff' }}>
+                    style={{ background: 'var(--bg-card)' }}>
                     <td style={{ ...TD, borderLeft:`3px solid ${sc.border}`, color:'#f06548', fontWeight:700 }}>
                       {refNo}
                     </td>
                     <td style={TD}><span style={{ color:S }}>{formatDate(r.created_at)}</span></td>
                     <td style={TD}>
-                      <div style={{ fontWeight:700, color:'#111827' }}>{r.product_name}</div>
+                      <div style={{ fontWeight:700, color:'var(--text-primary)' }}>{r.product_name}</div>
                       <div style={{ fontSize:11, color:S, fontWeight:400 }}>{r.category_name || 'Product'}</div>
                     </td>
                     <td style={TD}>
@@ -402,7 +402,7 @@ export default function LostItems() {
                       </span>
                     </td>
                     <td style={TD}>
-                      <span style={{ background:'#f3f4f6', color:'#374151', borderRadius:4, padding:'3px 8px', fontSize:11, fontWeight:600 }}>
+                      <span style={{ background:'var(--bg-muted)', color:'var(--text-secondary)', borderRadius:4, padding:'3px 8px', fontSize:11, fontWeight:600 }}>
                         {r.warehouse_name || 'Main Store'}
                       </span>
                     </td>
@@ -450,7 +450,7 @@ export default function LostItems() {
               <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===1?0.4:1 }}>
                 <i className="ri-arrow-left-s-line"/>Prev
               </button>
-              <span style={{ display:'flex', alignItems:'center', fontSize:12, color:'#374151', fontWeight:600 }}>Page {page} / {meta.pages}</span>
+              <span style={{ display:'flex', alignItems:'center', fontSize:12, color:'var(--text-secondary)', fontWeight:600 }}>Page {page} / {meta.pages}</span>
               <button onClick={() => setPage(p => Math.min(meta.pages,p+1))} disabled={page===meta.pages} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===meta.pages?0.4:1 }}>
                 Next<i className="ri-arrow-right-s-line"/>
               </button>
@@ -528,15 +528,15 @@ export default function LostItems() {
                 { label:'Reported By',value: viewItem.reported_by_name || '—' },
                 { label:'Est. Value', value: viewItem.estimated_value ? `₦${Number(viewItem.estimated_value).toLocaleString()}` : '—' },
               ].map(s => (
-                <div key={s.label} style={{ background:'#f9fafb', borderRadius:8, padding:'10px 14px', border:'1px solid #f3f4f6' }}>
-                  <div style={{ fontSize:11, color:'#9ca3af', fontWeight:600, marginBottom:4 }}>{s.label}</div>
-                  <div style={{ fontWeight:700, fontSize:13, color:'#111827' }}>{s.value}</div>
+                <div key={s.label} style={{ background:'var(--bg-subtle)', borderRadius:8, padding:'10px 14px', border:'1px solid var(--border)' }}>
+                  <div style={{ fontSize:11, color:'var(--text-light)', fontWeight:600, marginBottom:4 }}>{s.label}</div>
+                  <div style={{ fontWeight:700, fontSize:13, color:'var(--text-primary)' }}>{s.value}</div>
                 </div>
               ))}
             </div>
             {viewItem.notes && (
-              <div style={{ background:'#fef9f9', border:'1px solid #fecaca', borderRadius:10, padding:'12px 14px', fontSize:13, color:'#6b7280', lineHeight:1.6 }}>
-                <strong style={{ color:'#374151' }}>Notes: </strong>{viewItem.notes}
+              <div style={{ background:'#fef9f9', border:'1px solid #fecaca', borderRadius:10, padding:'12px 14px', fontSize:13, color:'var(--text-muted)', lineHeight:1.6 }}>
+                <strong style={{ color:'var(--text-secondary)' }}>Notes: </strong>{viewItem.notes}
               </div>
             )}
             <div style={{ marginTop:16 }}>

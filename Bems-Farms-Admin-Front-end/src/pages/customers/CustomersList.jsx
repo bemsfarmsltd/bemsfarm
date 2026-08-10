@@ -22,14 +22,14 @@ const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec489
 
 function Toggle({ checked, onChange }) {
   return (
-    <div onClick={onChange} style={{ width:36, height:20, borderRadius:50, cursor:'pointer', flexShrink:0, position:'relative', transition:'background 0.2s', background: checked ? '#1B4332' : '#d1d5db' }}>
-      <div style={{ position:'absolute', width:16, height:16, borderRadius:'50%', background:'#fff', top:2, left: checked ? 18 : 2, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.25)' }} />
+    <div onClick={onChange} style={{ width:36, height:20, borderRadius:50, cursor:'pointer', flexShrink:0, position:'relative', transition:'background 0.2s', background: checked ? '#1B4332' : 'var(--border-strong)' }}>
+      <div style={{ position:'absolute', width:16, height:16, borderRadius:'50%', background:'var(--bg-card)', top:2, left: checked ? 18 : 2, transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.25)' }} />
     </div>
   )
 }
 
-const card = { background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
-const TH   = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap', background:'#f8fafc', borderBottom:'1px solid #e5e7eb' }}>{children}</th>
+const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
+const TH   = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap', background:'var(--bg-subtle)', borderBottom:'1px solid var(--border)' }}>{children}</th>
 const TD   = ({ children, style }) => <td style={{ padding:'10px 12px', fontSize:13, borderBottom:'1px solid #f9fafb', verticalAlign:'middle', ...style }}>{children}</td>
 
 export default function CustomersList() {
@@ -104,7 +104,7 @@ export default function CustomersList() {
           <div key={k.label} style={{ ...card, padding:'14px 16px', display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
             <div>
               <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>{k.label}</div>
-              <div style={{ fontSize:18, fontWeight:800, color:'#111827', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{k.val}</div>
+              <div style={{ fontSize:18, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{k.val}</div>
             </div>
             <div style={{ width:38, height:38, borderRadius:9, background:k.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={k.icon} style={{ color:k.color, fontSize:18 }} />
@@ -138,11 +138,11 @@ export default function CustomersList() {
       {/* Search */}
       <div style={{ ...card, padding:'10px 14px', marginBottom:14 }}>
         <div style={{ position:'relative', display:'flex', alignItems:'center' }}>
-          <i className="ri-search-line" style={{ position:'absolute', left:10, color:'#9ca3af', fontSize:14 }} />
+          <i className="ri-search-line" style={{ position:'absolute', left:10, color:'var(--text-light)', fontSize:14 }} />
           <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search by name, phone, email, area or ID…"
-            style={{ width:'100%', padding:'8px 36px', borderRadius:8, border:'1.5px solid #e5e7eb', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', background:'#f9fafb', boxSizing:'border-box' }} />
+            style={{ width:'100%', padding:'8px 36px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', background:'var(--bg-subtle)', boxSizing:'border-box' }} />
           {search && (
-            <button onClick={() => setSearch('')} style={{ position:'absolute', right:10, background:'none', border:'none', cursor:'pointer', color:'#9ca3af', padding:0, fontSize:18, display:'flex', alignItems:'center' }}>
+            <button onClick={() => setSearch('')} style={{ position:'absolute', right:10, background:'none', border:'none', cursor:'pointer', color:'var(--text-light)', padding:0, fontSize:18, display:'flex', alignItems:'center' }}>
               <i className="ri-close-line" />
             </button>
           )}
@@ -151,8 +151,8 @@ export default function CustomersList() {
 
       {/* Table */}
       <div style={card}>
-        <div style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <span style={{ fontSize:13, color:'#374151' }}>{total} customer{total!==1?'s':''}</span>
+        <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <span style={{ fontSize:13, color:'var(--text-secondary)' }}>{total} customer{total!==1?'s':''}</span>
         </div>
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
@@ -167,7 +167,7 @@ export default function CustomersList() {
               ))}
 
               {!loading && customers.length===0 && (
-                <tr><td colSpan={10} style={{ textAlign:'center', padding:'48px 0', color:'#9ca3af', fontSize:13, borderBottom:'none' }}>
+                <tr><td colSpan={10} style={{ textAlign:'center', padding:'48px 0', color:'var(--text-light)', fontSize:13, borderBottom:'none' }}>
                   <i className="ri-user-search-line" style={{ fontSize:28, display:'block', marginBottom:8 }} />
                   No customers found. <Link to="/customers/add">Add the first one →</Link>
                 </td></tr>
@@ -177,7 +177,7 @@ export default function CustomersList() {
                 const tc = TIER_CFG[c.tier] || TIER_CFG.Bronze
                 const sc = STATUS_CFG[c.status] || STATUS_CFG.inactive
                 return (
-                  <tr key={c.id} style={{ background:'#fff' }}>
+                  <tr key={c.id} style={{ background:'var(--bg-card)' }}>
                     <TD>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                         <div style={{ width:36, height:36, borderRadius:'50%', background:AVATAR_COLORS[i%AVATAR_COLORS.length], color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:12, flexShrink:0 }}>{ini(c.name)}</div>
@@ -225,11 +225,11 @@ export default function CustomersList() {
         </div>
 
         {pages > 1 && (
-          <div style={{ padding:'12px 16px', borderTop:'1px solid #e5e7eb', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <span style={{ fontSize:12, color:'#6b7280' }}>Showing {(page-1)*20+1}–{Math.min(page*20,total)} of {total}</span>
+          <div style={{ padding:'12px 16px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span style={{ fontSize:12, color:'var(--text-muted)' }}>Showing {(page-1)*20+1}–{Math.min(page*20,total)} of {total}</span>
             <div style={{ display:'flex', gap:6 }}>
-              <button disabled={page===1} onClick={() => setPage(p=>p-1)} style={{ padding:'5px 12px', borderRadius:7, border:'1.5px solid #e5e7eb', background: page===1?'#f9fafb':'#fff', color: page===1?'#9ca3af':'#374151', fontSize:12, cursor: page===1?'default':'pointer', fontFamily:'Nunito, sans-serif' }}>‹ Prev</button>
-              <button disabled={page>=pages} onClick={() => setPage(p=>p+1)} style={{ padding:'5px 12px', borderRadius:7, border:'1.5px solid #e5e7eb', background: page>=pages?'#f9fafb':'#fff', color: page>=pages?'#9ca3af':'#374151', fontSize:12, cursor: page>=pages?'default':'pointer', fontFamily:'Nunito, sans-serif' }}>Next ›</button>
+              <button disabled={page===1} onClick={() => setPage(p=>p-1)} style={{ padding:'5px 12px', borderRadius:7, border:'1.5px solid var(--border)', background: page===1?'#f9fafb':'#fff', color: page===1?'#9ca3af':'#374151', fontSize:12, cursor: page===1?'default':'pointer', fontFamily:'Nunito, sans-serif' }}>‹ Prev</button>
+              <button disabled={page>=pages} onClick={() => setPage(p=>p+1)} style={{ padding:'5px 12px', borderRadius:7, border:'1.5px solid var(--border)', background: page>=pages?'#f9fafb':'#fff', color: page>=pages?'#9ca3af':'#374151', fontSize:12, cursor: page>=pages?'default':'pointer', fontFamily:'Nunito, sans-serif' }}>Next ›</button>
             </div>
           </div>
         )}
@@ -238,7 +238,7 @@ export default function CustomersList() {
       {/* Delete Modal */}
       {deleteModal && selected && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={() => setDeleteModal(false)}>
-          <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:420 }} onClick={e => e.stopPropagation()}>
+          <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth:420 }} onClick={e => e.stopPropagation()}>
             <div style={{ background:'#1B4332', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif' }}>Remove Customer</span>
               <button onClick={() => setDeleteModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
@@ -248,9 +248,9 @@ export default function CustomersList() {
                 <i className="ri-user-unfollow-line" style={{ color:'#ef4444', fontSize:24 }} />
               </div>
               <div style={{ fontWeight:700, fontSize:15, marginBottom:6 }}>Remove {selected.name}?</div>
-              <div style={{ color:'#6b7280', fontSize:13, marginBottom:24 }}>Customer data will be anonymised. This cannot be undone.</div>
+              <div style={{ color:'var(--text-muted)', fontSize:13, marginBottom:24 }}>Customer data will be anonymised. This cannot be undone.</div>
               <div style={{ display:'flex', gap:10 }}>
-                <button onClick={() => setDeleteModal(false)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600 }}>Cancel</button>
+                <button onClick={() => setDeleteModal(false)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600 }}>Cancel</button>
                 <button onClick={deleteCustomer} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:700 }}>Yes, Remove</button>
               </div>
             </div>

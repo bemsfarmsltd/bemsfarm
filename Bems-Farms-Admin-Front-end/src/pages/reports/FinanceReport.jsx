@@ -2,10 +2,10 @@ import { useState, useCallback } from 'react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const S = '#6b7280', B = '#e5e7eb'
-const TH = { padding:'10px 16px',fontSize:11,fontWeight:700,color:S,textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',background:'#f9fafb',whiteSpace:'nowrap' }
-const TD = { padding:'11px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
-const inp = { padding:'8px 12px',border:`1.5px solid ${B}`,borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',color:'#111827' }
+const S = '#6b7280', B = 'var(--border)'
+const TH = { padding:'10px 16px',fontSize:11,fontWeight:700,color:S,textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',background:'var(--bg-subtle)',whiteSpace:'nowrap' }
+const TD = { padding:'11px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
+const inp = { padding:'8px 12px',border:`1.5px solid ${B}`,borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',color:'var(--text-primary)' }
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 20px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
 
 function ngn(v) { return `₦${Number(v||0).toLocaleString()}` }
@@ -33,12 +33,12 @@ export default function FinanceReport() {
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
       <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'#111827' }}>Finance Report</div>
+        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Finance Report</div>
         <div style={{ fontSize:12,color:S,marginTop:2 }}>Income vs expenses, net profit, and bank balances.</div>
       </div>
 
       {/* Filters */}
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:'16px 20px',marginBottom:20,display:'flex',flexWrap:'wrap',gap:12,alignItems:'flex-end' }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:'16px 20px',marginBottom:20,display:'flex',flexWrap:'wrap',gap:12,alignItems:'flex-end' }}>
         <div>
           <div style={{ fontSize:11,fontWeight:700,color:S,marginBottom:4 }}>FROM DATE</div>
           <input type="date" style={inp} value={filters.from} onChange={e=>setFilters(f=>({...f,from:e.target.value}))}/>
@@ -53,14 +53,14 @@ export default function FinanceReport() {
       </div>
 
       {!data && !loading && (
-        <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
+        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
           <i className="ri-funds-line" style={{ fontSize:40,display:'block',marginBottom:10 }}/>
           <div style={{ fontSize:14,fontWeight:600 }}>Select a date range and click Generate Report</div>
         </div>
       )}
 
       {loading && (
-        <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
+        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
           <i className="ri-loader-4-line" style={{ fontSize:32,display:'block',marginBottom:8 }}/>Loading…
         </div>
       )}
@@ -74,7 +74,7 @@ export default function FinanceReport() {
               { label:'Total Expenses',value:ngn(data.expenses?.total), color:'#991b1b', bg:'#fee2e2', icon:'ri-arrow-down-circle-line' },
               { label:'Net Profit',    value:ngn(data.net_profit),       color:data.net_profit>=0?'#166534':'#991b1b', bg:data.net_profit>=0?'#dcfce7':'#fee2e2', icon:'ri-line-chart-line' },
             ].map(k=>(
-              <div key={k.label} style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:20,display:'flex',alignItems:'center',gap:14 }}>
+              <div key={k.label} style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:20,display:'flex',alignItems:'center',gap:14 }}>
                 <div style={{ width:44,height:44,borderRadius:12,background:k.bg,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
                   <i className={k.icon} style={{ fontSize:22,color:k.color }}/>
                 </div>
@@ -89,7 +89,7 @@ export default function FinanceReport() {
           <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16 }}>
             {/* Income by category */}
             {data.income?.by_category?.length > 0 && (
-              <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
+              <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
                 <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,color:'#166534' }}>Income by Category</div>
                 <table style={{ width:'100%',borderCollapse:'collapse' }}>
                   <thead><tr>{['Category','Amount'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
@@ -107,7 +107,7 @@ export default function FinanceReport() {
 
             {/* Expenses by category */}
             {data.expenses?.by_category?.length > 0 && (
-              <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
+              <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
                 <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,color:'#991b1b' }}>Expenses by Category</div>
                 <table style={{ width:'100%',borderCollapse:'collapse' }}>
                   <thead><tr>{['Category','Amount'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
@@ -126,7 +126,7 @@ export default function FinanceReport() {
 
           {/* Bank Balances */}
           {data.bank_balances?.length > 0 && (
-            <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
               <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>Bank Balances</div>
               <table style={{ width:'100%',borderCollapse:'collapse' }}>
                 <thead><tr>{['Bank','Balance'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>

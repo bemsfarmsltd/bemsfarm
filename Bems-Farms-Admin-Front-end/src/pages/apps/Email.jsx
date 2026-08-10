@@ -31,13 +31,13 @@ const EMAILS = [
 
 const inputStyle = {
   width: '100%', padding: '8px 12px', borderRadius: 8,
-  border: '1px solid #d1d5db', fontSize: 13,
+  border: '1px solid var(--border-strong)', fontSize: 13,
   fontFamily: 'Nunito, sans-serif', outline: 'none',
   boxSizing: 'border-box',
 }
 
 const card = {
-  background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb',
+  background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)',
   boxShadow: '0 1px 4px rgba(0,0,0,0.05)', overflow: 'hidden',
 }
 
@@ -52,10 +52,10 @@ function Modal({ open, onClose, title, children, maxWidth = 560 }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
-      <div style={{ position: 'relative', width: '100%', maxWidth, background: '#fff', borderRadius: 14, boxShadow: '0 8px 32px rgba(0,0,0,0.18)', padding: 28, margin: '0 16px' }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth, background: 'var(--bg-card)', borderRadius: 14, boxShadow: '0 8px 32px rgba(0,0,0,0.18)', padding: 28, margin: '0 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne, sans-serif' }}>{title}</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 20 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: 20 }}>
             <i className="ri-close-line" />
           </button>
         </div>
@@ -125,8 +125,8 @@ export default function Email() {
 
         {/* ── Sidebar ── */}
         <div style={{ ...card, height: 'fit-content' }}>
-          <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#9ca3af', marginBottom: 8 }}>FOLDERS</div>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-light)', marginBottom: 8 }}>FOLDERS</div>
             {FOLDERS.map(f => (
               <button
                 key={f.key}
@@ -144,7 +144,7 @@ export default function Email() {
                 <i className={f.icon} style={{ fontSize: 16, flexShrink: 0 }} />
                 <span style={{ flex: 1, textAlign: 'left' }}>{f.label}</span>
                 {f.count > 0 && (
-                  <span style={{ fontSize: 10, fontWeight: 700, background: folder === f.key ? '#1B4332' : '#e5e7eb', color: folder === f.key ? '#fff' : '#374151', padding: '1px 6px', borderRadius: 50 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, background: folder === f.key ? '#1B4332' : 'var(--border)', color: folder === f.key ? '#fff' : '#374151', padding: '1px 6px', borderRadius: 50 }}>
                     {f.count}
                   </span>
                 )}
@@ -154,7 +154,7 @@ export default function Email() {
 
           <div style={{ padding: '14px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#9ca3af' }}>LABELS</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-light)' }}>LABELS</div>
               <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1B4332' }}><i className="ri-add-line" style={{ fontSize: 14 }} /></button>
             </div>
             {LABELS.map(l => (
@@ -163,8 +163,8 @@ export default function Email() {
                 onMouseLeave={e => e.currentTarget.style.background = 'none'}
               >
                 <i className="ri-checkbox-blank-circle-fill" style={{ color: l.color, fontSize: 10 }} />
-                <span style={{ flex: 1, fontSize: 13, color: '#374151' }}>{l.label}</span>
-                <span style={{ fontSize: 11, color: '#9ca3af' }}>{l.count}</span>
+                <span style={{ flex: 1, fontSize: 13, color: 'var(--text-secondary)' }}>{l.label}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-light)' }}>{l.count}</span>
               </div>
             ))}
           </div>
@@ -176,12 +176,12 @@ export default function Email() {
           {/* Email list */}
           <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
             {/* List toolbar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid #f3f4f6' }}>
-              <span style={{ fontWeight: 700, fontSize: 14, flex: 1, color: '#111827' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontWeight: 700, fontSize: 14, flex: 1, color: 'var(--text-primary)' }}>
                 {FOLDERS.find(f2 => f2.key === folder)?.label}
-                <span style={{ fontWeight: 400, fontSize: 12, color: '#9ca3af', marginLeft: 6 }}>{folderEmails.length} messages</span>
+                <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-light)', marginLeft: 6 }}>{folderEmails.length} messages</span>
               </span>
-              <button onClick={() => setSearchOpen(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 4 }}>
+              <button onClick={() => setSearchOpen(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
                 <i className="ri-search-line" style={{ fontSize: 16 }} />
               </button>
               {checked.length > 0 && (
@@ -193,9 +193,9 @@ export default function Email() {
 
             {/* Search bar */}
             {searchOpen && (
-              <div style={{ padding: '8px 16px', borderBottom: '1px solid #f3f4f6' }}>
+              <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ position: 'relative' }}>
-                  <i className="ri-search-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14 }} />
+                  <i className="ri-search-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 14 }} />
                   <input
                     autoFocus
                     value={search}
@@ -210,7 +210,7 @@ export default function Email() {
             {/* Emails */}
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {folderEmails.length === 0 && (
-                <div style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
+                <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-light)' }}>
                   <i className="ri-inbox-line" style={{ fontSize: 40, display: 'block', marginBottom: 8 }} />
                   <div style={{ fontSize: 13 }}>No emails in {folder}</div>
                 </div>
@@ -248,16 +248,16 @@ export default function Email() {
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                      <span style={{ fontWeight: email.read ? 500 : 700, fontSize: 13, color: '#111827' }}>{email.from}</span>
-                      <span style={{ fontSize: 11, color: '#9ca3af', flexShrink: 0, marginLeft: 8 }}>{email.time}</span>
+                      <span style={{ fontWeight: email.read ? 500 : 700, fontSize: 13, color: 'var(--text-primary)' }}>{email.from}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-light)', flexShrink: 0, marginLeft: 8 }}>{email.time}</span>
                     </div>
-                    <div style={{ fontWeight: email.read ? 400 : 600, fontSize: 12, color: '#374151', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.subject}</div>
-                    <div style={{ fontSize: 11, color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.preview}</div>
+                    <div style={{ fontWeight: email.read ? 400 : 600, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.subject}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-light)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email.preview}</div>
                   </div>
 
                   <button
                     onClick={e => { e.stopPropagation(); toggleStar(email.id) }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: email.starred ? '#F57C00' : '#d1d5db', padding: 4, flexShrink: 0 }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: email.starred ? '#F57C00' : 'var(--border-strong)', padding: 4, flexShrink: 0 }}
                   >
                     <i className={email.starred ? 'ri-star-fill' : 'ri-star-line'} style={{ fontSize: 15 }} />
                   </button>
@@ -270,21 +270,21 @@ export default function Email() {
           {selected && (
             <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
               {/* Detail toolbar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid #f3f4f6' }}>
-                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 4 }} title="Back">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }} title="Back">
                   <i className="ri-arrow-left-line" style={{ fontSize: 18 }} />
                 </button>
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 4 }} title="Archive">
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }} title="Archive">
                   <i className="ri-archive-line" style={{ fontSize: 18 }} />
                 </button>
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 4 }} title="Mark spam">
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }} title="Mark spam">
                   <i className="ri-spam-2-line" style={{ fontSize: 18 }} />
                 </button>
                 <div style={{ flex: 1 }} />
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 4 }} title="Reply">
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }} title="Reply">
                   <i className="ri-reply-line" style={{ fontSize: 18 }} />
                 </button>
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 4 }} title="Snooze">
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }} title="Snooze">
                   <i className="ri-time-line" style={{ fontSize: 18 }} />
                 </button>
                 <button onClick={() => setDelModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 4 }} title="Delete">
@@ -294,44 +294,44 @@ export default function Email() {
 
               {/* Email body */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#111827', marginBottom: 16 }}>{selected.subject}</h2>
+                <h2 style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'var(--text-primary)', marginBottom: 16 }}>{selected.subject}</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                   <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#1B433218', color: '#1B4332', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16 }}>
                     {selected.from.charAt(0)}
                   </div>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: '#111827' }}>{selected.from}</div>
-                    <div style={{ fontSize: 12, color: '#9ca3af' }}>{selected.email}</div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{selected.from}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-light)' }}>{selected.email}</div>
                   </div>
-                  <div style={{ marginLeft: 'auto', fontSize: 12, color: '#9ca3af' }}>{selected.time}</div>
+                  <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-light)' }}>{selected.time}</div>
                 </div>
-                <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.75, whiteSpace: 'pre-line', paddingBottom: 24 }}>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.75, whiteSpace: 'pre-line', paddingBottom: 24 }}>
                   {selected.body}
                 </div>
               </div>
 
               {/* Quick reply */}
-              <div style={{ borderTop: '1px solid #f3f4f6', padding: 16 }}>
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid #f3f4f6' }}>
-                    <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 600 }}>To:</span>
-                    <input defaultValue={selected.email} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 12, fontFamily: 'Nunito, sans-serif', color: '#374151' }} />
+              <div style={{ borderTop: '1px solid var(--border)', padding: 16 }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-light)', fontWeight: 600 }}>To:</span>
+                    <input defaultValue={selected.email} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 12, fontFamily: 'Nunito, sans-serif', color: 'var(--text-secondary)' }} />
                   </div>
                   <textarea
                     placeholder="Type your reply..."
                     rows={3}
                     style={{ width: '100%', border: 'none', outline: 'none', padding: '10px 12px', fontSize: 12, fontFamily: 'Nunito, sans-serif', resize: 'none', boxSizing: 'border-box' }}
                   />
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderTop: '1px solid #f3f4f6' }}>
-                    <label style={{ cursor: 'pointer', color: '#9ca3af' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
+                    <label style={{ cursor: 'pointer', color: 'var(--text-light)' }}>
                       <i className="ri-image-line" style={{ fontSize: 16 }} />
                       <input type="file" style={{ display: 'none' }} />
                     </label>
-                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
+                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}>
                       <i className="ri-links-line" style={{ fontSize: 16 }} />
                     </button>
                     <div style={{ flex: 1 }} />
-                    <button style={{ ...btnBase, padding: '6px 14px', background: '#f3f4f6', color: '#374151', fontSize: 12 }}>Draft</button>
+                    <button style={{ ...btnBase, padding: '6px 14px', background: 'var(--bg-muted)', color: 'var(--text-secondary)', fontSize: 12 }}>Draft</button>
                     <button style={{ ...btnBase, padding: '6px 14px', background: '#1B4332', color: '#fff', fontSize: 12 }}>
                       <i className="ri-send-plane-2-line" />
                       Send
@@ -347,13 +347,13 @@ export default function Email() {
       {/* Compose Modal */}
       <Modal open={compose} onClose={() => setCompose(false)} title="New Message" maxWidth={600}>
         <form onSubmit={sendCompose} style={{ display: 'grid', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #f3f4f6', paddingBottom: 12 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', width: 32 }}>To:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-light)', width: 32 }}>To:</span>
             <input style={{ ...inputStyle, border: 'none', padding: '4px 0' }} placeholder="recipient@email.com" value={compForm.to} onChange={e => setCompForm(f => ({ ...f, to: e.target.value }))} required />
             <span style={{ fontSize: 12, color: '#1B4332', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Cc</span>
             <span style={{ fontSize: 12, color: '#1B4332', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Bcc</span>
           </div>
-          <div style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: 12 }}>
+          <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
             <input style={{ ...inputStyle, border: 'none', padding: '4px 0' }} placeholder="Subject" value={compForm.subject} onChange={e => setCompForm(f => ({ ...f, subject: e.target.value }))} />
           </div>
           <textarea
@@ -364,15 +364,15 @@ export default function Email() {
             style={{ ...inputStyle, resize: 'vertical', padding: '10px 12px' }}
           />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-            <label style={{ cursor: 'pointer', color: '#9ca3af' }}>
+            <label style={{ cursor: 'pointer', color: 'var(--text-light)' }}>
               <i className="ri-image-line" style={{ fontSize: 18 }} />
               <input type="file" style={{ display: 'none' }} />
             </label>
-            <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
+            <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}>
               <i className="ri-links-line" style={{ fontSize: 18 }} />
             </button>
             <div style={{ flex: 1 }} />
-            <button type="button" onClick={() => setCompose(false)} style={{ ...btnBase, padding: '7px 16px', background: '#f3f4f6', color: '#374151' }}>Draft</button>
+            <button type="button" onClick={() => setCompose(false)} style={{ ...btnBase, padding: '7px 16px', background: 'var(--bg-muted)', color: 'var(--text-secondary)' }}>Draft</button>
             <button type="submit" style={{ ...btnBase, padding: '7px 16px', background: '#1B4332', color: '#fff' }}>
               <i className="ri-send-plane-2-line" />
               Send Now
@@ -387,9 +387,9 @@ export default function Email() {
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
             <i className="ri-delete-bin-6-line" style={{ fontSize: 26, color: '#dc2626' }} />
           </div>
-          <p style={{ fontSize: 14, color: '#374151', marginBottom: 24 }}>Are you sure you want to delete this email? This action cannot be undone.</p>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24 }}>Are you sure you want to delete this email? This action cannot be undone.</p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
-            <button onClick={() => setDelModal(false)} style={{ ...btnBase, background: '#f3f4f6', color: '#374151', padding: '8px 20px' }}>Cancel</button>
+            <button onClick={() => setDelModal(false)} style={{ ...btnBase, background: 'var(--bg-muted)', color: 'var(--text-secondary)', padding: '8px 20px' }}>Cancel</button>
             <button onClick={deleteSelected} style={{ ...btnBase, background: '#dc2626', color: '#fff', padding: '8px 20px' }}>Delete</button>
           </div>
         </div>

@@ -2,10 +2,10 @@ import { useState, useCallback } from 'react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const S = '#6b7280', B = '#e5e7eb'
-const TH = { padding:'10px 16px',fontSize:11,fontWeight:700,color:S,textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',background:'#f9fafb',whiteSpace:'nowrap' }
-const TD = { padding:'11px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
-const inp = { padding:'8px 12px',border:`1.5px solid ${B}`,borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',color:'#111827' }
+const S = '#6b7280', B = 'var(--border)'
+const TH = { padding:'10px 16px',fontSize:11,fontWeight:700,color:S,textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',background:'var(--bg-subtle)',whiteSpace:'nowrap' }
+const TD = { padding:'11px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
+const inp = { padding:'8px 12px',border:`1.5px solid ${B}`,borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',color:'var(--text-primary)' }
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 20px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
 
 function ngn(v) { return `₦${Number(v||0).toLocaleString()}` }
@@ -18,7 +18,7 @@ function paymentStatusBadge(status) {
     overdue:  { bg:'#fee2e2', color:'#991b1b' },
   }
   const key = (status||'').toLowerCase()
-  const style = map[key] || { bg:'#f3f4f6', color:S }
+  const style = map[key] || { bg:'var(--border)', color:S }
   return (
     <span style={{ background:style.bg,color:style.color,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600,textTransform:'capitalize' }}>
       {status||'—'}
@@ -51,12 +51,12 @@ export default function SupplierReport() {
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
       <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'#111827' }}>Supplier Report</div>
+        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Supplier Report</div>
         <div style={{ fontSize:12,color:S,marginTop:2 }}>View total purchases, outstanding balances, and payment status per supplier.</div>
       </div>
 
       {/* Filters */}
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:'16px 20px',marginBottom:20,display:'flex',flexWrap:'wrap',gap:12,alignItems:'flex-end' }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:'16px 20px',marginBottom:20,display:'flex',flexWrap:'wrap',gap:12,alignItems:'flex-end' }}>
         <div>
           <div style={{ fontSize:11,fontWeight:700,color:S,marginBottom:4 }}>FROM DATE</div>
           <input type="date" style={inp} value={filters.from} onChange={e=>set('from',e.target.value)}/>
@@ -72,14 +72,14 @@ export default function SupplierReport() {
 
       {/* Empty state */}
       {!data && !loading && (
-        <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
+        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
           <i className="ri-truck-line" style={{ fontSize:40,display:'block',marginBottom:10 }}/>
           <div style={{ fontSize:14,fontWeight:600 }}>Select a date range and click Generate Report</div>
         </div>
       )}
 
       {loading && (
-        <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
+        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
           <i className="ri-loader-4-line" style={{ fontSize:32,display:'block',marginBottom:8 }}/>Loading…
         </div>
       )}
@@ -89,12 +89,12 @@ export default function SupplierReport() {
           {/* Summary count badge */}
           {data.suppliers && data.suppliers.length > 0 && (
             <div style={{ marginBottom:14,fontSize:13,color:S }}>
-              Showing <strong style={{ color:'#111827' }}>{data.suppliers.length}</strong> supplier{data.suppliers.length!==1?'s':''} for selected period.
+              Showing <strong style={{ color:'var(--text-primary)' }}>{data.suppliers.length}</strong> supplier{data.suppliers.length!==1?'s':''} for selected period.
             </div>
           )}
 
           {/* Supplier Table */}
-          <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
+          <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
             <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>
               Supplier Summary
             </div>
@@ -127,15 +127,15 @@ export default function SupplierReport() {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr style={{ background:'#f9fafb' }}>
-                      <td colSpan={2} style={{ ...TD,fontWeight:700,color:'#111827',borderTop:'2px solid #e5e7eb' }}>TOTAL</td>
-                      <td style={{ ...TD,fontWeight:700,color:'#1B4332',borderTop:'2px solid #e5e7eb' }}>
+                    <tr style={{ background:'var(--bg-subtle)' }}>
+                      <td colSpan={2} style={{ ...TD,fontWeight:700,color:'var(--text-primary)',borderTop:'2px solid var(--border)' }}>TOTAL</td>
+                      <td style={{ ...TD,fontWeight:700,color:'#1B4332',borderTop:'2px solid var(--border)' }}>
                         {ngn(data.suppliers.reduce((acc,s)=>acc+Number(s.total_purchased||0),0))}
                       </td>
-                      <td style={{ ...TD,fontWeight:700,color:'#991b1b',borderTop:'2px solid #e5e7eb' }}>
+                      <td style={{ ...TD,fontWeight:700,color:'#991b1b',borderTop:'2px solid var(--border)' }}>
                         {ngn(data.suppliers.reduce((acc,s)=>acc+Number(s.balance_due||0),0))}
                       </td>
-                      <td style={{ ...TD,borderTop:'2px solid #e5e7eb' }}/>
+                      <td style={{ ...TD,borderTop:'2px solid var(--border)' }}/>
                     </tr>
                   </tfoot>
                 </table>

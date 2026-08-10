@@ -19,11 +19,11 @@ const HISTORY = [
 ]
 
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:5 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'#f9fafb' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid #f3f4f6',fontSize:13,color:'#111827' }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
+const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
+const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
 
 export default function BulkExport() {
   const [selectedType, setSelectedType]     = useState('products')
@@ -90,12 +90,12 @@ export default function BulkExport() {
     }
   }
 
-  const B = '#e5e7eb', S = '#6b7280'
+  const B = 'var(--border)', S = '#6b7280'
 
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
       <div style={{ marginBottom:24 }}>
-        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'#111827' }}>Bulk Export</div>
+        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Bulk Export</div>
         <div style={{ fontSize:12,color:S,marginTop:2 }}>Products → Bulk Export</div>
       </div>
 
@@ -103,14 +103,14 @@ export default function BulkExport() {
         {/* Left: config */}
         <div>
           {/* Export Type */}
-          <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16 }}>
+          <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16 }}>
             <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13 }}>What to export?</div>
             <div className="grid-stats-auto" style={{ padding:20,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10 }}>
               {EXPORT_TYPES.map(t=>(
                 <button key={t.key} onClick={()=>handleTypeChange(t.key)}
                   style={{ display:'flex',flexDirection:'column',alignItems:'flex-start',gap:6,padding:14,borderRadius:10,border:`2px solid ${selectedType===t.key?t.color:B}`,background:selectedType===t.key?`${t.color}0d`:'#fff',cursor:'pointer',textAlign:'left',transition:'all .15s' }}>
                   <i className={t.icon} style={{ fontSize:20,color:t.color }}/>
-                  <span style={{ fontWeight:700,fontSize:12,color:'#111827' }}>{t.label}</span>
+                  <span style={{ fontWeight:700,fontSize:12,color:'var(--text-primary)' }}>{t.label}</span>
                   <span style={{ fontSize:11,color:S }}>{typeConfig?.fields.length} fields</span>
                 </button>
               ))}
@@ -118,7 +118,7 @@ export default function BulkExport() {
           </div>
 
           {/* Field selection */}
-          <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16 }}>
+          <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16 }}>
             <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
               <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13 }}>Select Fields ({fields.length}/{typeConfig.fields.length})</span>
               <div style={{ display:'flex',gap:8 }}>
@@ -129,7 +129,7 @@ export default function BulkExport() {
             <div style={{ padding:16,display:'flex',flexWrap:'wrap',gap:8 }}>
               {typeConfig.fields.map(f=>(
                 <button key={f} onClick={()=>toggleField(f)}
-                  style={{ display:'inline-flex',alignItems:'center',gap:5,padding:'5px 12px',borderRadius:20,border:`1.5px solid ${fields.includes(f)?typeConfig.color:B}`,background:fields.includes(f)?`${typeConfig.color}12`:'#fff',color:fields.includes(f)?typeConfig.color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontSize:12,fontWeight:600 }}>
+                  style={{ display:'inline-flex',alignItems:'center',gap:5,padding:'5px 12px',borderRadius:20,border:`1.5px solid ${fields.includes(f)?typeConfig.color:B}`,background:fields.includes(f)?`${typeConfig.color}12`:'#fff',color:fields.includes(f)?typeConfig.color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontSize:12,fontWeight:600 }}>
                   {fields.includes(f)&&<i className="ri-check-line" style={{ fontSize:11 }}/>}
                   {f}
                 </button>
@@ -138,7 +138,7 @@ export default function BulkExport() {
           </div>
 
           {/* Filters */}
-          <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
+          <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
             <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13 }}>Filter Data</div>
             <div style={{ padding:20,display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14 }}>
               <div>
@@ -163,14 +163,14 @@ export default function BulkExport() {
 
         {/* Right: format + download */}
         <div style={{ position:'sticky',top:80 }}>
-          <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16 }}>
+          <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16 }}>
             <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13 }}>Export Format</div>
             <div style={{ padding:16,display:'flex',flexDirection:'column',gap:8 }}>
               {FORMATS.map(fmt=>(
                 <label key={fmt} style={{ display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:10,border:`2px solid ${selectedFormat===fmt?'#1B4332':B}`,background:selectedFormat===fmt?'#f0fdf4':'#fff',cursor:'pointer' }}>
                   <input type="radio" checked={selectedFormat===fmt} onChange={()=>setSelectedFormat(fmt)} style={{ accentColor:'#1B4332' }}/>
                   <div>
-                    <div style={{ fontWeight:700,fontSize:13,color:'#111827' }}>{fmt}</div>
+                    <div style={{ fontWeight:700,fontSize:13,color:'var(--text-primary)' }}>{fmt}</div>
                     <div style={{ fontSize:11,color:S }}>
                       {fmt==='CSV'?'Comma-separated, universal':fmt==='XLSX'?'Excel format with formatting':'Print-ready document'}
                     </div>
@@ -183,7 +183,7 @@ export default function BulkExport() {
           {/* Summary */}
           <div style={{ background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:12,padding:16,marginBottom:14 }}>
             <div style={{ fontWeight:700,fontSize:13,color:'#166534',marginBottom:8 }}>Export Summary</div>
-            <div style={{ fontSize:12,color:'#374151',display:'flex',flexDirection:'column',gap:5 }}>
+            <div style={{ fontSize:12,color:'var(--text-secondary)',display:'flex',flexDirection:'column',gap:5 }}>
               <div style={{ display:'flex',justifyContent:'space-between' }}><span style={{ color:S }}>Type</span><span style={{ fontWeight:600 }}>{typeConfig?.label}</span></div>
               <div style={{ display:'flex',justifyContent:'space-between' }}><span style={{ color:S }}>Format</span><span style={{ fontWeight:600 }}>{selectedFormat}</span></div>
               <div style={{ display:'flex',justifyContent:'space-between' }}><span style={{ color:S }}>Fields</span><span style={{ fontWeight:600 }}>{fields.length} selected</span></div>
@@ -198,7 +198,7 @@ export default function BulkExport() {
       </div>
 
       {/* Export History */}
-      <div style={{ background:'#fff',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginTop:20 }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginTop:20 }}>
         <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13 }}>Export History</div>
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%',borderCollapse:'collapse' }}>
@@ -218,8 +218,8 @@ export default function BulkExport() {
                         <span style={{ fontWeight:600,fontSize:12 }}>{row.file}</span>
                       </div>
                     </td>
-                    <td style={TD}><span style={{ background:'#f3f4f6',color:'#374151',borderRadius:20,padding:'2px 8px',fontSize:11,fontWeight:500 }}>{cfg.label}</span></td>
-                    <td style={TD}><code style={{ fontSize:11,background:'#f3f4f6',padding:'2px 6px',borderRadius:4,color:'#374151' }}>{row.format}</code></td>
+                    <td style={TD}><span style={{ background:'var(--bg-muted)',color:'var(--text-secondary)',borderRadius:20,padding:'2px 8px',fontSize:11,fontWeight:500 }}>{cfg.label}</span></td>
+                    <td style={TD}><code style={{ fontSize:11,background:'var(--bg-muted)',padding:'2px 6px',borderRadius:4,color:'var(--text-secondary)' }}>{row.format}</code></td>
                     <td style={{ ...TD,color:S }}>{row.rows}</td>
                     <td style={{ ...TD,color:S }}>{row.by}</td>
                     <td style={{ ...TD,color:S,fontSize:12 }}>{row.date}</td>

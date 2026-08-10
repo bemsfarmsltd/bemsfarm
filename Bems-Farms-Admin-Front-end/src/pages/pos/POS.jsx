@@ -105,10 +105,10 @@ const fmt = n => '₦' + Math.round(n).toLocaleString()
 const genOrderId = () => 'BF-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-5)
 const POS_RETURN_REASONS = ['Damaged on delivery','Wrong item sent','Quality below standard','Spoiled / Already expired','Item missing from order','Incorrect quantity','Customer changed mind','Packaging damaged']
 
-const inp = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid #e5e7eb',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'#fff',boxSizing:'border-box',color:'#111827' }
-const LBL = { display:'block',fontSize:12,fontWeight:700,color:'#374151',marginBottom:4 }
+const inp = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const LBL = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:4 }
 const btnP = { display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#0ab39c',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 16px',borderRadius:9,border:'1.5px solid #e5e7eb',background:'#fff',color:'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 16px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
 const btnD = { display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
 
 function Overlay({ onClick }) {
@@ -117,7 +117,7 @@ function Overlay({ onClick }) {
 function ModalBox({ children, maxWidth=460, style={} }) {
   return (
     <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-      <div style={{ background:'#fff',borderRadius:14,width:'100%',maxWidth,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column',...style }}>
+      <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column',...style }}>
         {children}
       </div>
     </div>
@@ -424,12 +424,12 @@ export default function POS() {
   function clearVerification() { setTxnLastFour(''); setTxnVerifyStatus('idle'); setTxnVerifiedData(null); setTxnMatches([]) }
   function deleteHeldOrder(idx) { setHeldOrders(prev => prev.filter((_,i) => i !== idx)); setDeleteHoldIdx(null) }
 
-  const B = '#e5e7eb'   // border
+  const B = 'var(--border)'   // border
   const S = '#6b7280'   // secondary text
   const BG2 = '#f9fafb' // secondary bg
 
   return (
-    <div style={{ height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden', background:'#f3f4f6', fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--bg-muted)', fontFamily:'Nunito,sans-serif' }}>
       <style>{`
         /* The topbar packs logo + search + clock + exit + avatar into one
            row — on narrow screens there isn't room for all of it, so drop
@@ -445,7 +445,7 @@ export default function POS() {
       `}</style>
 
       {/* TOPBAR */}
-      <header style={{ height:58, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', zIndex:200, background:'#fff', borderBottom:`1px solid ${B}` }}>
+      <header style={{ height:58, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', zIndex:200, background:'var(--bg-card)', borderBottom:`1px solid ${B}` }}>
         <div style={{ flex:'0 0 auto', display:'flex', alignItems:'center', gap:8, fontWeight:800, fontSize:15, color:'#0ab39c', whiteSpace:'nowrap' }}>
           <span style={{ fontSize:24 }}>🌾</span>
           <span style={{ lineHeight:1.2 }}>Bems Farms<br/><span style={{ fontSize:9, fontWeight:500, color:S, letterSpacing:1 }}>POINT OF SALE</span></span>
@@ -454,7 +454,7 @@ export default function POS() {
           <i className="ri-search-line" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#0ab39c', fontSize:15, pointerEvents:'none' }}/>
           <input id="scan-field" ref={scanInputRef} type="text" placeholder="Search products  ·  or scan / type barcode + Enter" autoComplete="off"
             value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => { if (e.key==='Enter'&&search.trim()) handleBarcodeScan(search) }}
-            style={{ width:'100%', height:38, paddingLeft:38, paddingRight:96, border:'2px solid #0ab39c', borderRadius:8, fontSize:13, background:'#fff', color:'#111827', outline:'none', boxShadow:'0 0 0 3px rgba(10,179,156,.1)', boxSizing:'border-box' }}/>
+            style={{ width:'100%', height:38, paddingLeft:38, paddingRight:96, border:'2px solid #0ab39c', borderRadius:8, fontSize:13, background:'var(--bg-card)', color:'var(--text-primary)', outline:'none', boxShadow:'0 0 0 3px rgba(10,179,156,.1)', boxSizing:'border-box' }}/>
           {search
             ? <button onClick={() => setSearch('')} style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:S, fontSize:16 }}>✕</button>
             : <span className="pos-scanner-ready" style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', fontSize:9, color:'#0ab39c', fontWeight:700, letterSpacing:.5, pointerEvents:'none', whiteSpace:'nowrap' }}>SCANNER READY</span>
@@ -466,12 +466,12 @@ export default function POS() {
             <div style={{ fontSize:10 }}>{now.toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'})}</div>
           </div>
           {heldOrders.length > 0 && (
-            <button onClick={() => setActiveModal('heldOrders')} style={{ position:'relative', fontSize:11, padding:'4px 12px', borderRadius:8, border:'2px solid #f7b84b', background:'#f7b84b', color:'#111827', cursor:'pointer', fontWeight:700 }}>
+            <button onClick={() => setActiveModal('heldOrders')} style={{ position:'relative', fontSize:11, padding:'4px 12px', borderRadius:8, border:'2px solid #f7b84b', background:'#f7b84b', color:'var(--text-primary)', cursor:'pointer', fontWeight:700 }}>
               ⏸️ {heldOrders.length} Held
               <span style={{ position:'absolute', top:-7, right:-7, width:16, height:16, borderRadius:'50%', background:'#f06548', color:'#fff', fontSize:9, fontWeight:800, display:'flex', alignItems:'center', justifyContent:'center' }}>{heldOrders.length}</span>
             </button>
           )}
-          <Link to="/dashboard" style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'5px 12px', borderRadius:8, border:`1.5px solid ${B}`, background:'#fff', color:'#374151', textDecoration:'none', fontSize:12, fontWeight:600 }}>
+          <Link to="/dashboard" style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'5px 12px', borderRadius:8, border:`1.5px solid ${B}`, background:'var(--bg-card)', color:'var(--text-secondary)', textDecoration:'none', fontSize:12, fontWeight:600 }}>
             <i className="ri-dashboard-2-line"/><span className="pos-exit-label">Exit</span>
           </Link>
           <div style={{ width:32, height:32, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:12 }}>
@@ -484,7 +484,7 @@ export default function POS() {
       <div className="pos-body" style={{ flex:1, display:'flex', overflow:'hidden' }}>
 
         {/* LEFT: Products */}
-        <div className="pos-left" style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', borderRight:`1px solid ${B}`, background:'#fff' }}>
+        <div className="pos-left" style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', borderRight:`1px solid ${B}`, background:'var(--bg-card)' }}>
 
           {/* Quick action cards */}
           <div style={{ padding:'10px 16px', borderBottom:`1px solid ${B}`, background:BG2, flexShrink:0, display:'flex', gap:10 }}>
@@ -494,12 +494,12 @@ export default function POS() {
               { label:'Goods Return',   sub:'Process a customer return & refund',    icon:'ri-arrow-go-back-line', color:'#f06548', badge: returnLogs.length||null, onClick:()=>{ setReturnForm(f=>({...f,product:PRODUCTS[0],unitPrice:PRODUCTS[0].price,qty:1,customer:'Walk-in',phone:'',notes:'',condition:'resalable',refundMethod:'Cash',reason:POS_RETURN_REASONS[0]})); setReturnStep(1); setReturnSuccess(null); setActiveModal('return') } },
             ].map(c => (
               <button key={c.label} onClick={c.onClick}
-                style={{ flex:1, display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:14, border:`1px solid ${c.color}28`, background:'#fff', cursor:'pointer', textAlign:'left', boxShadow:`0 2px 8px ${c.color}18` }}>
+                style={{ flex:1, display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:14, border:`1px solid ${c.color}28`, background:'var(--bg-card)', cursor:'pointer', textAlign:'left', boxShadow:`0 2px 8px ${c.color}18` }}>
                 <div style={{ width:44, height:44, borderRadius:12, background:`linear-gradient(135deg,${c.color},${c.color}bb)`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:`0 4px 12px ${c.color}44` }}>
                   <i className={c.icon} style={{ fontSize:22, color:'#fff' }}/>
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontWeight:700, fontSize:13, color:'#111827', letterSpacing:.2 }}>{c.label}</div>
+                  <div style={{ fontWeight:700, fontSize:13, color:'var(--text-primary)', letterSpacing:.2 }}>{c.label}</div>
                   <div style={{ fontSize:11, color:S, marginTop:2 }}>{c.sub}</div>
                 </div>
                 {c.badge
@@ -534,7 +534,7 @@ export default function POS() {
                     const color = catColor(p.category_id); const low=p.stock>0&&p.stock<=5; const out=p.stock===0; const inCart=cart.find(i=>i.id===p.id)
                     return (
                       <button key={p.id} onClick={() => !out && addProductToCart(p)} disabled={out}
-                        style={{ border: inCart?`2px solid ${color}`:`1px solid ${B}`, borderRadius:10, padding:12, background:'#fff', cursor:out?'not-allowed':'pointer', opacity:out?.45:1, textAlign:'left', position:'relative', boxShadow: inCart?`0 0 0 3px ${color}25`:'0 1px 3px rgba(0,0,0,.06)' }}>
+                        style={{ border: inCart?`2px solid ${color}`:`1px solid ${B}`, borderRadius:10, padding:12, background:'var(--bg-card)', cursor:out?'not-allowed':'pointer', opacity:out?.45:1, textAlign:'left', position:'relative', boxShadow: inCart?`0 0 0 3px ${color}25`:'0 1px 3px rgba(0,0,0,.06)' }}>
                         {inCart && <div style={{ position:'absolute', top:-7, right:-7, width:20, height:20, borderRadius:'50%', background:color, color:'#fff', fontSize:10, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{inCart.qty}</div>}
                         {low&&!out&&<div style={{ position:'absolute', top:6, left:6, fontSize:8, fontWeight:700, color:'#f7b84b', textTransform:'uppercase' }}>Low</div>}
                         <div style={{ height:64, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:8, background:`${color}18`, overflow:'hidden', marginBottom:8 }}>
@@ -557,20 +557,20 @@ export default function POS() {
         </div>
 
         {/* RIGHT: Order Panel */}
-        <div className="pos-right" style={{ width:500, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', background:'#fff' }}>
+        <div className="pos-right" style={{ width:500, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--bg-card)' }}>
 
           {/* Held orders strip */}
           {heldOrders.length > 0 && (
             <div style={{ padding:'8px 12px', background:'linear-gradient(90deg,#f7b84b18,#f7b84b08)', borderBottom:'2px solid #f7b84b50', display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
               <button onClick={() => setActiveModal('heldOrders')}
                 style={{ display:'flex', alignItems:'center', gap:6, background:'none', border:'none', cursor:'pointer', padding:0, flexShrink:0 }}>
-                <span style={{ width:26, height:26, borderRadius:'50%', background:'#f7b84b', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#111827' }}>⏸</span>
+                <span style={{ width:26, height:26, borderRadius:'50%', background:'#f7b84b', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'var(--text-primary)' }}>⏸</span>
                 <span style={{ fontSize:11, color:'#92400e', fontWeight:800 }}>{heldOrders.length} HELD</span>
               </button>
               <div style={{ flex:1, display:'flex', gap:6, overflowX:'auto', scrollbarWidth:'none' }}>
                 {heldOrders.map((h,i) => (
                   <button key={i} onClick={() => recallOrder(i)}
-                    style={{ fontSize:10, padding:'3px 10px', borderRadius:10, border:'1.5px solid #f7b84b80', background:'#fff', cursor:'pointer', color:'#111827', whiteSpace:'nowrap', fontWeight:600, flexShrink:0 }}>
+                    style={{ fontSize:10, padding:'3px 10px', borderRadius:10, border:'1.5px solid #f7b84b80', background:'var(--bg-card)', cursor:'pointer', color:'var(--text-primary)', whiteSpace:'nowrap', fontWeight:600, flexShrink:0 }}>
                     {h.ref||`#${i+1}`} · {h.customer?.name?.split(' ')[0]||'Walk-in'} · {fmt(h.cart.reduce((s,ci)=>s+ci.price*ci.qty,0))}
                   </button>
                 ))}
@@ -658,7 +658,7 @@ export default function POS() {
                         <div style={{ display:'flex', alignItems:'center', gap:4, flexShrink:0 }}>
                           <button onClick={() => updateQty(item.id, item.qty-1)} style={{ width:22, height:22, borderRadius:'50%', border:`1px solid ${B}`, background:'transparent', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
                           <input type="number" min="1" value={item.qty} onChange={e => updateQty(item.id, parseInt(e.target.value)||1)}
-                            style={{ width:36, height:24, textAlign:'center', border:`1px solid ${B}`, borderRadius:4, fontSize:12, fontWeight:700, background:'#fff', color:'#111827', outline:'none' }}/>
+                            style={{ width:36, height:24, textAlign:'center', border:`1px solid ${B}`, borderRadius:4, fontSize:12, fontWeight:700, background:'var(--bg-card)', color:'var(--text-primary)', outline:'none' }}/>
                           <button onClick={() => updateQty(item.id, item.qty+1)} style={{ width:22, height:22, borderRadius:'50%', border:`1px solid ${B}`, background:'transparent', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
                         </div>
                         <div style={{ minWidth:60, textAlign:'right', flexShrink:0 }}>
@@ -703,7 +703,7 @@ export default function POS() {
                 onChange={e => { const v=e.target.value.replace(/\D/g,'').slice(0,4); setTxnLastFour(v); if(txnVerifyStatus!=='idle'){setTxnVerifyStatus('idle');setTxnVerifiedData(null);setTxnMatches([])} }}
                 onKeyDown={e => e.key==='Enter' && txnLastFour.length===4 && verifyTransaction()}
                 style={{ ...inp, height:32, flex:1, letterSpacing:6, textAlign:'center', fontWeight:700, fontSize:14,
-                  borderColor: txnVerifyStatus==='found'?'#0ab39c':txnVerifyStatus==='notfound'||txnVerifyStatus==='error'?'#f06548':'#e5e7eb',
+                  borderColor: txnVerifyStatus==='found'?'#0ab39c':txnVerifyStatus==='notfound'||txnVerifyStatus==='error'?'#f06548':'var(--border)',
                   background: txnVerifyStatus==='found'?'#f0fdf4':txnVerifyStatus==='notfound'||txnVerifyStatus==='error'?'#fef2f2':'#fff' }}
               />
               <button
@@ -736,7 +736,7 @@ export default function POS() {
                 </div>
                 {txnMatches.map(t => (
                   <div key={t.id} onClick={() => selectVerifiedTxn(t)}
-                    style={{ padding:'6px 10px', background:'#fff', border:'1.5px solid #e5e7eb', borderRadius:6, cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                    style={{ padding:'6px 10px', background:'var(--bg-card)', border:'1.5px solid var(--border)', borderRadius:6, cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
                     <div>
                       <div style={{ fontWeight:700, fontSize:12 }}>{t.transaction_id}</div>
                       <div style={{ fontSize:10, color:S }}>{new Date(t.payment_time).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})} · {t.payment_method||'—'}</div>
@@ -764,8 +764,8 @@ export default function POS() {
                     ['Status', txnVerifiedData.status],
                   ].filter(Boolean).map(([k,v]) => (
                     <div key={k} style={{ display:'flex', gap:4 }}>
-                      <span style={{ color:'#6b7280' }}>{k}:</span>
-                      <span style={{ fontWeight:600, color:'#111827' }}>{v}</span>
+                      <span style={{ color:'var(--text-muted)' }}>{k}:</span>
+                      <span style={{ fontWeight:600, color:'var(--text-primary)' }}>{v}</span>
                     </div>
                   ))}
                 </div>
@@ -829,7 +829,7 @@ export default function POS() {
                     <i className={m.icon} style={{ fontSize:20, color:m.color }}/>
                   </div>
                   <div style={{ textAlign:'center' }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:'#111827', lineHeight:1.2 }}>{m.label}</div>
+                    <div style={{ fontSize:11, fontWeight:700, color:'var(--text-primary)', lineHeight:1.2 }}>{m.label}</div>
                     <div style={{ fontSize:9, color:S, marginTop:2 }}>{m.sub}</div>
                   </div>
                 </button>
@@ -844,7 +844,7 @@ export default function POS() {
           </div>
 
           {/* Quick actions bar */}
-          <div style={{ display:'flex', borderTop:`1px solid ${B}`, background:'#fff' }}>
+          <div style={{ display:'flex', borderTop:`1px solid ${B}`, background:'var(--bg-card)' }}>
             {[
               { label:'Hold',    icon:'ri-pause-circle-line',   color:'#0ab39c', modal:'hold'     },
               { label:'Receipts', icon:'ri-file-text-line',      color:'#f06548', modal:'invoice'  },
@@ -879,7 +879,7 @@ export default function POS() {
                 <span style={{ background:'#0ab39c', color:'#fff', display:'flex', alignItems:'center', padding:'0 16px', fontSize:20 }}><i className="ri-barcode-line"/></span>
                 <input ref={scanModalInputRef} type="text" placeholder="Scan barcode or type SKU + Enter…" value={scanCode} autoFocus autoComplete="off"
                   onChange={e => setScanCode(e.target.value)} onKeyDown={e => { if (e.key==='Enter') scannerAddProduct(scanCode) }}
-                  style={{ flex:1, border:'none', outline:'none', padding:'10px 14px', fontSize:15, fontWeight:500, fontFamily:'Nunito,sans-serif', color:'#111827' }}/>
+                  style={{ flex:1, border:'none', outline:'none', padding:'10px 14px', fontSize:15, fontWeight:500, fontFamily:'Nunito,sans-serif', color:'var(--text-primary)' }}/>
                 <button onClick={() => scannerAddProduct(scanCode)} style={{ ...btnP, borderRadius:0, padding:'0 20px' }}><i className="ri-add-line"/>Add</button>
               </div>
             </div>
@@ -896,9 +896,9 @@ export default function POS() {
                           <div style={{ fontSize:12, color:S, marginTop:2 }}>{item.sku} · {fmt(item.price)} per {item.unit}</div>
                         </div>
                         <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-                          <button onClick={() => scannerUpdateQty(item.id,item.qty-1)} style={{ width:36, height:36, borderRadius:8, border:`1px solid ${B}`, background:'#fff', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
+                          <button onClick={() => scannerUpdateQty(item.id,item.qty-1)} style={{ width:36, height:36, borderRadius:8, border:`1px solid ${B}`, background:'var(--bg-card)', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
                           <span style={{ minWidth:32, textAlign:'center', fontWeight:800, fontSize:17 }}>{item.qty}</span>
-                          <button onClick={() => scannerUpdateQty(item.id,item.qty+1)} style={{ width:36, height:36, borderRadius:8, border:`1px solid ${B}`, background:'#fff', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+                          <button onClick={() => scannerUpdateQty(item.id,item.qty+1)} style={{ width:36, height:36, borderRadius:8, border:`1px solid ${B}`, background:'var(--bg-card)', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
                         </div>
                         <div style={{ minWidth:100, textAlign:'right', fontWeight:800, fontSize:16, flexShrink:0 }}>{fmt(item.price*item.qty)}</div>
                         <button onClick={() => scannerUpdateQty(item.id,0)} style={{ background:'none', border:'none', cursor:'pointer', color:'#f06548', fontSize:20, flexShrink:0 }}><i className="ri-delete-bin-6-line"/></button>
@@ -927,7 +927,7 @@ export default function POS() {
       {activeModal==='online' && (
         <ModalBox maxWidth={820} style={{ maxHeight:'90vh' }}>
           <MHead title="Online Orders" onClose={closeModal} color="linear-gradient(135deg,#405189,#0ab39c)" icon="📥"/>
-          <div style={{ display:'flex', borderBottom:`1px solid ${B}`, background:'#fff', flexShrink:0 }}>
+          <div style={{ display:'flex', borderBottom:`1px solid ${B}`, background:'var(--bg-card)', flexShrink:0 }}>
             {[
               { key:'all',        label:'All Orders',   count:onlineOrders.length },
               { key:'new',        label:'🔴 New',        count:onlineOrders.filter(o=>o.status==='new').length },
@@ -958,7 +958,7 @@ export default function POS() {
                         <span style={{ fontSize:11, color:S }}><i className={ch.icon}/> {ch.label}</span>
                       </div>
                       <div style={{ fontSize:13, marginTop:3 }}><span style={{ fontWeight:600 }}>{order.customer}</span><span style={{ color:S, marginLeft:8 }}>{order.phone}</span></div>
-                      <div style={{ fontSize:11, color:S, marginTop:2 }}>🕐 {order.time} · {order.items.reduce((s,i)=>s+i.qty,0)} items · <strong style={{ color:'#111827' }}>{fmt(orderTotal)}</strong></div>
+                      <div style={{ fontSize:11, color:S, marginTop:2 }}>🕐 {order.time} · {order.items.reduce((s,i)=>s+i.qty,0)} items · <strong style={{ color:'var(--text-primary)' }}>{fmt(orderTotal)}</strong></div>
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
                       <button onClick={() => setExpandedOrder(isExpanded?null:order.id)} style={{ ...btnL, padding:'5px 10px', fontSize:13 }}><i className={isExpanded?'ri-eye-off-line':'ri-eye-line'}/></button>
@@ -1001,10 +1001,10 @@ export default function POS() {
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10, fontSize:13 }}><span style={{ color:S }}>Total Payable</span><span style={{ fontWeight:700, fontSize:17 }}>{fmt(total)}</span></div>
             <div style={{ display:'flex', justifyContent:'space-between', marginBottom:20, fontSize:13 }}><span style={{ color:S }}>Payment Method</span><span style={{ background:'#dcfce7', color:'#166534', borderRadius:50, padding:'2px 10px', fontSize:11, fontWeight:600 }}>Cash</span></div>
             <label style={LBL}>Cash Received</label>
-            <div style={{ display:'flex', border:`1.5px solid #e5e7eb`, borderRadius:8, overflow:'hidden', marginBottom:12 }}>
+            <div style={{ display:'flex', border:`1.5px solid var(--border)`, borderRadius:8, overflow:'hidden', marginBottom:12 }}>
               <span style={{ background:BG2, padding:'0 12px', display:'flex', alignItems:'center', fontSize:15, color:S, borderRight:`1px solid ${B}` }}>₦</span>
               <input type="number" placeholder="0.00" value={cashReceived} onChange={e => setCashReceived(e.target.value)} autoFocus
-                style={{ flex:1, border:'none', outline:'none', padding:'9px 12px', fontSize:14, fontFamily:'Nunito,sans-serif', color:'#111827' }}/>
+                style={{ flex:1, border:'none', outline:'none', padding:'9px 12px', fontSize:14, fontFamily:'Nunito,sans-serif', color:'var(--text-primary)' }}/>
             </div>
             <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:20 }}>
               {[500,1000,2000,5000].map(a=><button key={a} onClick={()=>setCashReceived(String(a))} style={{ ...btnL, flex:1 }}>{fmt(a)}</button>)}
@@ -1038,7 +1038,7 @@ export default function POS() {
             </div>
             <div style={{ background:'rgba(64,81,137,.08)', border:'1px solid rgba(64,81,137,.2)', borderRadius:10, padding:'12px 16px', marginBottom:20, display:'flex', alignItems:'center', gap:12 }}>
               <i className="ri-bank-card-2-line" style={{ fontSize:28, color:'#405189', flexShrink:0 }}/>
-              <div style={{ fontSize:12, color:S, lineHeight:1.6 }}>Process <strong style={{ color:'#111827' }}>{fmt(total)}</strong> on the external POS terminal.<br/>Once confirmed, click <strong style={{ color:'#405189' }}>Confirm Payment</strong> below.</div>
+              <div style={{ fontSize:12, color:S, lineHeight:1.6 }}>Process <strong style={{ color:'var(--text-primary)' }}>{fmt(total)}</strong> on the external POS terminal.<br/>Once confirmed, click <strong style={{ color:'#405189' }}>Confirm Payment</strong> below.</div>
             </div>
             <label style={LBL}>Card Type <span style={{ fontWeight:400, color:S }}>(optional)</span></label>
             <div style={{ display:'flex', gap:8, marginBottom:24 }}>
@@ -1178,7 +1178,7 @@ export default function POS() {
       {/* RECEIPTS PREVIEW */}
       {activeModal==='invoice' && (
         <ModalBox maxWidth={680}>
-          <div style={{ background:'#fff', padding:'14px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', flexWrap:'wrap', gap:12, flexShrink:0 }}>
+          <div style={{ background:'var(--bg-card)', padding:'14px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', flexWrap:'wrap', gap:12, flexShrink:0 }}>
             <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15, flex:1 }}>Receipt Preview</span>
             <div style={{ display:'flex', gap:8 }}>
               {[['ri-file-pdf-2-line','PDF'],['ri-mail-line','Email'],['ri-printer-line','Print']].map(([icon,label])=>(
@@ -1260,7 +1260,7 @@ export default function POS() {
           <MHead title="Billing History" onClose={closeModal} color="#299cdb"/>
           <div style={{ padding:24, overflowY:'auto' }}>
             <div style={{ position:'relative', marginBottom:16 }}>
-              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:15 }}/>
+              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:15 }}/>
               <input style={{ ...inp, paddingLeft:34 }} placeholder="Search receipts…"/>
             </div>
             <div style={{ overflowX:'auto' }}>
@@ -1275,17 +1275,17 @@ export default function POS() {
                 <tbody>
                   {HISTORY_MOCK.map(h=>(
                     <tr key={h.inv}>
-                      <td style={{ padding:'12px 12px', fontSize:13, color:'#0ab39c', fontWeight:600, borderBottom:`1px solid #f3f4f6` }}>{h.inv}</td>
-                      <td style={{ padding:'12px 12px', fontSize:13, borderBottom:`1px solid #f3f4f6` }}>{h.cust}</td>
-                      <td style={{ padding:'12px 12px', fontSize:13, borderBottom:`1px solid #f3f4f6` }}>{h.method}</td>
-                      <td style={{ padding:'12px 12px', fontSize:12, color:S, borderBottom:`1px solid #f3f4f6`, whiteSpace:'nowrap' }}>
+                      <td style={{ padding:'12px 12px', fontSize:13, color:'#0ab39c', fontWeight:600, borderBottom:`1px solid var(--border)` }}>{h.inv}</td>
+                      <td style={{ padding:'12px 12px', fontSize:13, borderBottom:`1px solid var(--border)` }}>{h.cust}</td>
+                      <td style={{ padding:'12px 12px', fontSize:13, borderBottom:`1px solid var(--border)` }}>{h.method}</td>
+                      <td style={{ padding:'12px 12px', fontSize:12, color:S, borderBottom:`1px solid var(--border)`, whiteSpace:'nowrap' }}>
                         {new Date().toLocaleDateString('en-NG',{day:'numeric',month:'short'})} <span style={{ marginLeft:6 }}>{h.time}</span>
                       </td>
-                      <td style={{ padding:'12px 12px', fontSize:13, fontWeight:600, borderBottom:`1px solid #f3f4f6` }}>{fmt(h.amount)}</td>
-                      <td style={{ padding:'12px 12px', borderBottom:`1px solid #f3f4f6` }}>
+                      <td style={{ padding:'12px 12px', fontSize:13, fontWeight:600, borderBottom:`1px solid var(--border)` }}>{fmt(h.amount)}</td>
+                      <td style={{ padding:'12px 12px', borderBottom:`1px solid var(--border)` }}>
                         <div style={{ display:'flex', gap:4 }}>
-                          <button style={{ background:BG2, border:`1px solid ${B}`, borderRadius:6, padding:'4px 8px', cursor:'pointer', fontSize:13, color:'#374151' }}><i className="ri-eye-line"/></button>
-                          <button style={{ background:BG2, border:`1px solid ${B}`, borderRadius:6, padding:'4px 8px', cursor:'pointer', fontSize:13, color:'#374151' }}><i className="ri-printer-line"/></button>
+                          <button style={{ background:BG2, border:`1px solid ${B}`, borderRadius:6, padding:'4px 8px', cursor:'pointer', fontSize:13, color:'var(--text-secondary)' }}><i className="ri-eye-line"/></button>
+                          <button style={{ background:BG2, border:`1px solid ${B}`, borderRadius:6, padding:'4px 8px', cursor:'pointer', fontSize:13, color:'var(--text-secondary)' }}><i className="ri-printer-line"/></button>
                           <button style={{ background:'#fee2e2', border:'none', borderRadius:6, padding:'4px 8px', cursor:'pointer', fontSize:13, color:'#991b1b' }}><i className="ri-delete-bin-5-line"/></button>
                         </div>
                       </td>
@@ -1301,7 +1301,7 @@ export default function POS() {
       {/* PAYMENT SUCCESS */}
       {activeModal==='success' && successData && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:900, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-          <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:380, boxShadow:'0 24px 48px rgba(0,0,0,.3)' }}>
+          <div style={{ background:'var(--bg-card)', borderRadius:16, width:'100%', maxWidth:380, boxShadow:'0 24px 48px rgba(0,0,0,.3)' }}>
             <div style={{ padding:'32px 24px', textAlign:'center' }}>
               <div style={{ width:80, height:80, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:36 }}>✅</div>
               <h5 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:20, marginBottom:8 }}>Payment Successful!</h5>
@@ -1310,7 +1310,7 @@ export default function POS() {
                 <small style={{ color:S }}>Amount</small>
                 <h4 style={{ fontWeight:800, fontSize:24, margin:'4px 0', color:'#0ab39c' }}>{fmt(successData.total)}</h4>
                 <small style={{ color:S }}>
-                  {successData.paidAt.toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'})} · Bill ID: <span style={{ fontWeight:600, color:'#111827' }}>{successData.orderId}</span>
+                  {successData.paidAt.toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'})} · Bill ID: <span style={{ fontWeight:600, color:'var(--text-primary)' }}>{successData.orderId}</span>
                 </small>
               </div>
               <div style={{ background:BG2, borderRadius:8, padding:'12px 16px', marginBottom:20, fontSize:12, textAlign:'left' }}>
@@ -1348,7 +1348,7 @@ export default function POS() {
         }
         if (returnSuccess) return (
           <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:820, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-            <div style={{ background:'#fff', borderRadius:16, maxWidth:360, width:'100%', padding:32, textAlign:'center', boxShadow:'0 24px 48px rgba(0,0,0,.3)' }}>
+            <div style={{ background:'var(--bg-card)', borderRadius:16, maxWidth:360, width:'100%', padding:32, textAlign:'center', boxShadow:'0 24px 48px rgba(0,0,0,.3)' }}>
               <div style={{ width:72, height:72, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:32 }}>✅</div>
               <h6 style={{ fontWeight:700, marginBottom:4, fontSize:16 }}>Return Processed</h6>
               <div style={{ color:S, marginBottom:16, fontSize:13 }}>{returnSuccess.ref}</div>
@@ -1363,7 +1363,7 @@ export default function POS() {
         )
         return (
           <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:820, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-            <div style={{ background:'#fff', borderRadius:16, maxWidth:600, width:'100%', boxShadow:'0 24px 48px rgba(0,0,0,.3)', overflow:'hidden', maxHeight:'92vh', display:'flex', flexDirection:'column' }}>
+            <div style={{ background:'var(--bg-card)', borderRadius:16, maxWidth:600, width:'100%', boxShadow:'0 24px 48px rgba(0,0,0,.3)', overflow:'hidden', maxHeight:'92vh', display:'flex', flexDirection:'column' }}>
               <div style={{ padding:'14px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', justifyContent:'space-between', background:BG2, flexShrink:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#f06548,#e04b2f)', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -1469,7 +1469,7 @@ export default function POS() {
                       <div style={{ display:'flex', gap:8 }}>
                         {['Cash','Wallet Credit'].map(m=>(
                           <button key={m} onClick={()=>setReturnForm(f=>({...f,refundMethod:m}))}
-                            style={{ flex:1, padding:'8px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:12, background:returnForm.refundMethod===m?'#f06548':'#f3f4f6', color:returnForm.refundMethod===m?'#fff':'#374151' }}>
+                            style={{ flex:1, padding:'8px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:12, background:returnForm.refundMethod===m?'#f06548':'var(--border)', color:returnForm.refundMethod===m?'#fff':'#374151' }}>
                             {m==='Cash'?'💵':'👛'} {m}
                           </button>
                         ))}
@@ -1532,7 +1532,7 @@ export default function POS() {
                     {/* Info */}
                     <div style={{ flex:1, overflow:'hidden' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:4 }}>
-                        <span style={{ fontWeight:700, fontSize:14, color:'#111827' }}>{h.ref||h.orderId}</span>
+                        <span style={{ fontWeight:700, fontSize:14, color:'var(--text-primary)' }}>{h.ref||h.orderId}</span>
                         {h.customer && (
                           <span style={{ fontSize:11, padding:'2px 8px', borderRadius:20, background:'#0ab39c18', color:'#0ab39c', fontWeight:600 }}>
                             👤 {h.customer.name}
@@ -1548,7 +1548,7 @@ export default function POS() {
                       {/* Items preview chips */}
                       <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
                         {h.cart.slice(0,5).map(item => (
-                          <span key={item.id} style={{ fontSize:10, padding:'2px 7px', background:BG2, borderRadius:4, border:`1px solid ${B}`, color:'#374151' }}>
+                          <span key={item.id} style={{ fontSize:10, padding:'2px 7px', background:BG2, borderRadius:4, border:`1px solid ${B}`, color:'var(--text-secondary)' }}>
                             {item.icon || '🌿'} {item.name.split(' ').slice(0,2).join(' ')} ×{item.qty}
                           </span>
                         ))}
@@ -1615,7 +1615,7 @@ export default function POS() {
         */
         @media (max-width: 900px) {
           .pos-body  { flex-direction: column !important; overflow-y: auto !important; }
-          .pos-left  { border-right: none !important; border-bottom: 1px solid #e5e7eb; min-height: 280px; }
+          .pos-left  { border-right: none !important; border-bottom: 1px solid var(--border); min-height: 280px; }
           .pos-right { width: 100% !important; flex-shrink: 1 !important; }
         }
       `}</style>

@@ -17,11 +17,11 @@ const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec489
 
 const HIST_TYPE = { earned:'earn', bonus:'admin', referral:'admin', redeemed:'redeem', deducted:'admin' }
 
-const card = { background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
-const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid #e5e7eb', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'#111827', background:'#fff' }
-const lbl  = { display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:5 }
+const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
+const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
+const lbl  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
 
-const TH = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap', background:'#f8fafc', borderBottom:'1px solid #e5e7eb' }}>{children}</th>
+const TH = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap', background:'var(--bg-subtle)', borderBottom:'1px solid var(--border)' }}>{children}</th>
 const TD = ({ children, style }) => <td style={{ padding:'10px 12px', fontSize:13, borderBottom:'1px solid #f9fafb', verticalAlign:'middle', ...style }}>{children}</td>
 
 export default function LoyaltyPoints() {
@@ -102,7 +102,7 @@ export default function LoyaltyPoints() {
       />
 
       {loading ? (
-        <div style={{ textAlign:'center', padding:60, color:'#6b7280' }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
+        <div style={{ textAlign:'center', padding:60, color:'var(--text-muted)' }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
       ) : (
       <>
       {/* Tier Cards */}
@@ -112,14 +112,14 @@ export default function LoyaltyPoints() {
           const totalInTier = data.filter(c=>c.tier===tier).reduce((s,c)=>s+c.points,0)
           const isActive    = filterTier===tier
           return (
-            <div key={tier} onClick={() => setTier(filterTier===tier?'all':tier)} style={{ ...card, padding:'16px', cursor:'pointer', border:`2px solid ${isActive?cfg.color:'#e5e7eb'}`, transition:'border-color 0.15s' }}>
+            <div key={tier} onClick={() => setTier(filterTier===tier?'all':tier)} style={{ ...card, padding:'16px', cursor:'pointer', border:`2px solid ${isActive?cfg.color:'var(--border)'}`, transition:'border-color 0.15s' }}>
               <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
                 <div style={{ width:36, height:36, borderRadius:8, background:cfg.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <i className={cfg.icon} style={{ color:cfg.color, fontSize:18 }} />
                 </div>
                 <span style={{ fontWeight:700, fontSize:14, color:cfg.color }}>{tier}</span>
               </div>
-              <div style={{ fontSize:22, fontWeight:800, color:'#111827', fontFamily:'Syne, sans-serif', lineHeight:1, marginBottom:4 }}>{count}</div>
+              <div style={{ fontSize:22, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1, marginBottom:4 }}>{count}</div>
               <div style={{ fontSize:11, color:'#64748b' }}>customers · {fmtPts(totalInTier)} total</div>
               <div style={{ fontSize:10, color:'#94a3b8', marginTop:4 }}>
                 Min: {fmtPts(cfg.min)}{cfg.next?` → ${cfg.next} at ${fmtPts(TIER_CFG[cfg.next].min)}`:'(max tier)'}
@@ -135,15 +135,15 @@ export default function LoyaltyPoints() {
           {/* Search */}
           <div style={{ ...card, padding:'10px 14px', marginBottom:12 }}>
             <div style={{ position:'relative' }}>
-              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:14 }} />
+              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customers…" style={{ ...inp, paddingLeft:32 }} />
             </div>
           </div>
 
           <div style={card}>
-            <div style={{ padding:'10px 14px', borderBottom:'1px solid #e5e7eb', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <span style={{ fontSize:13, color:'#374151' }}>{filtered.length} customer{filtered.length!==1?'s':''}</span>
-              <span style={{ fontSize:12, color:'#6b7280' }}>Total in system: <strong>{fmtPts(totalPts)}</strong></span>
+            <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <span style={{ fontSize:13, color:'var(--text-secondary)' }}>{filtered.length} customer{filtered.length!==1?'s':''}</span>
+              <span style={{ fontSize:12, color:'var(--text-muted)' }}>Total in system: <strong>{fmtPts(totalPts)}</strong></span>
             </div>
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
@@ -163,7 +163,7 @@ export default function LoyaltyPoints() {
                           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                             <div style={{ width:36, height:36, borderRadius:'50%', background:AVATAR_COLORS[i%AVATAR_COLORS.length], color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:12, flexShrink:0 }}>{ini(c.name)}</div>
                             <div>
-                              <div style={{ fontWeight:600, fontSize:13, color:'#111827' }}>{c.name}</div>
+                              <div style={{ fontWeight:600, fontSize:13, color:'var(--text-primary)' }}>{c.name}</div>
                               <div style={{ fontSize:11, color:'#94a3b8' }}>{c.id}</div>
                             </div>
                           </div>
@@ -179,14 +179,14 @@ export default function LoyaltyPoints() {
                             <div style={{ width:`${pctToNext}%`, height:'100%', background:tc.color, borderRadius:3 }} />
                           </div>
                         </TD>
-                        <TD style={{ color:'#6b7280', fontSize:12 }}>{fmtPts(c.lifetime)}</TD>
-                        <TD style={{ color:'#6b7280', fontSize:12 }}>{c.lastEarned}</TD>
+                        <TD style={{ color:'var(--text-muted)', fontSize:12 }}>{fmtPts(c.lifetime)}</TD>
+                        <TD style={{ color:'var(--text-muted)', fontSize:12 }}>{c.lastEarned}</TD>
                         <TD>
                           <div style={{ display:'flex', gap:5 }}>
                             <button onClick={() => { setSelected(c); setModal('award'); setPts(''); setReason('') }} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:7, border:'none', background:'#f0fdf4', color:'#16a34a', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'Nunito, sans-serif' }}>
                               <i className="ri-add-line" />Award
                             </button>
-                            <button onClick={() => { setSelected(c); setModal('deduct'); setPts(''); setReason('') }} disabled={c.points===0} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:7, border:'1.5px solid #fecaca', background:'#fff', color:'#dc2626', fontSize:11, fontWeight:700, cursor: c.points===0?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', opacity: c.points===0?0.5:1 }}>
+                            <button onClick={() => { setSelected(c); setModal('deduct'); setPts(''); setReason('') }} disabled={c.points===0} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:7, border:'1.5px solid #fecaca', background:'var(--bg-card)', color:'#dc2626', fontSize:11, fontWeight:700, cursor: c.points===0?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', opacity: c.points===0?0.5:1 }}>
                               <i className="ri-subtract-line" />Deduct
                             </button>
                           </div>
@@ -202,7 +202,7 @@ export default function LoyaltyPoints() {
 
         {/* Right — Points Activity */}
         <div style={card}>
-          <div style={{ padding:'12px 16px', borderBottom:'1px solid #e5e7eb', fontWeight:700, fontSize:14, color:'#111827' }}>Points Activity</div>
+          <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', fontWeight:700, fontSize:14, color:'var(--text-primary)' }}>Points Activity</div>
           <div>
             {history.length === 0 && (
               <div style={{ padding:'30px 16px', textAlign:'center', color:'#94a3b8', fontSize:13 }}>No activity yet</div>
@@ -213,7 +213,7 @@ export default function LoyaltyPoints() {
                   <i className={h.type==='earn'?'ri-add-line':h.type==='redeem'?'ri-subtract-line':'ri-admin-line'} style={{ fontSize:13, color:h.type==='earn'?'#22c55e':h.type==='redeem'?'#ef4444':'#8b5cf6' }} />
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:12, fontWeight:500, color:'#111827' }}>{h.customer}</div>
+                  <div style={{ fontSize:12, fontWeight:500, color:'var(--text-primary)' }}>{h.customer}</div>
                   <div style={{ fontSize:10, color:'#94a3b8', marginTop:2, lineHeight:1.4 }}>{h.desc}</div>
                   <div style={{ fontSize:10, color:'#94a3b8' }}>{h.date}</div>
                 </div>
@@ -229,13 +229,13 @@ export default function LoyaltyPoints() {
       {/* Award / Deduct Modal */}
       {modal && selected && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={closeModal}>
-          <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:440, boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth:440, boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
             <div style={{ background:'#1B4332', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif' }}>{modal==='award'?'Award Points':'Deduct Points'}</span>
               <button onClick={closeModal} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding:24 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, background:'#f8fafc', marginBottom:20 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, background:'var(--bg-subtle)', marginBottom:20 }}>
                 <div style={{ width:44, height:44, borderRadius:'50%', background:AVATAR_COLORS[data.findIndex(c=>c.id===selected.id)%AVATAR_COLORS.length], color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:15, flexShrink:0 }}>{ini(selected.name)}</div>
                 <div>
                   <div style={{ fontWeight:700, fontSize:14 }}>{selected.name}</div>
@@ -243,7 +243,7 @@ export default function LoyaltyPoints() {
                     <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:50, background:TIER_CFG[selected.tier].bg, color:TIER_CFG[selected.tier].color, border:`1px solid ${TIER_CFG[selected.tier].border}` }}>
                       <i className={`${TIER_CFG[selected.tier].icon} `} />{selected.tier}
                     </span>
-                    <span style={{ fontSize:11, color:'#6b7280' }}>Current: <strong>{fmtPts(selected.points)}</strong></span>
+                    <span style={{ fontSize:11, color:'var(--text-muted)' }}>Current: <strong>{fmtPts(selected.points)}</strong></span>
                   </div>
                 </div>
               </div>
@@ -260,7 +260,7 @@ export default function LoyaltyPoints() {
                 <textarea rows={2} placeholder={modal==='award'?'e.g. Referral bonus, Birthday reward…':'e.g. Points reversal, Error correction…'} value={reason} onChange={e => setReason(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
               </div>
               <div style={{ display:'flex', gap:10 }}>
-                <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600 }}>Cancel</button>
+                <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600 }}>Cancel</button>
                 <button disabled={!pts||parseInt(pts)<1||saving} onClick={() => processPoints(modal)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background: modal==='award'?'#16a34a':'#dc2626', color:'#fff', cursor: (!pts||parseInt(pts)<1||saving)?'not-allowed':'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:700, opacity: (!pts||parseInt(pts)<1||saving)?0.6:1 }}>
                   {saving ? 'Saving…' : `${modal==='award'?'Award':'Deduct'} ${pts?fmtPts(pts):'Points'}`}
                 </button>

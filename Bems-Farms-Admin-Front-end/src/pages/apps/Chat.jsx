@@ -8,7 +8,7 @@ const CONTACTS = [
   { id: 4, name: 'Gbenga Adesanya',  initials: 'GA', online: true,  unread: 0, last: 'Meeting confirmed for tomorrow.',          color: '#7c3aed' },
   { id: 5, name: 'Ifeoma Okafor',    initials: 'IO', online: false, unread: 0, last: 'Thanks for the update!',                  color: '#0d9488' },
   { id: 6, name: 'Kehinde Adeyemi',  initials: 'KA', online: true,  unread: 1, last: 'Please send the invoice.',                color: '#dc2626' },
-  { id: 7, name: 'Ngozi Nwosu',      initials: 'NN', online: true,  unread: 0, last: 'All orders have been packed.',            color: '#6b7280' },
+  { id: 7, name: 'Ngozi Nwosu',      initials: 'NN', online: true,  unread: 0, last: 'All orders have been packed.',            color: 'var(--text-muted)' },
   { id: 8, name: 'Tunde Fashola',    initials: 'TF', online: false, unread: 0, last: 'See you at the staff meeting.',           color: '#b45309' },
 ]
 
@@ -76,7 +76,7 @@ export default function Chat() {
     setText('')
   }
 
-  const card = { background: '#fff', borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', overflow: 'hidden' }
+  const card = { background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', overflow: 'hidden' }
 
   return (
     <div style={{ fontFamily: 'Nunito, sans-serif' }}>
@@ -87,16 +87,16 @@ export default function Chat() {
         {/* ── Contact List ── */}
         <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
           {/* Search */}
-          <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6' }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
             <div style={{ position: 'relative' }}>
-              <i className="ri-search-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: 14 }} />
+              <i className="ri-search-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 14 }} />
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search contacts..."
                 style={{
                   width: '100%', padding: '8px 12px 8px 32px', borderRadius: 8,
-                  border: '1px solid #e5e7eb', fontSize: 13, outline: 'none',
+                  border: '1px solid var(--border)', fontSize: 13, outline: 'none',
                   fontFamily: 'Nunito, sans-serif', boxSizing: 'border-box',
                 }}
               />
@@ -104,7 +104,7 @@ export default function Chat() {
           </div>
 
           {/* Sort + New */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: '1px solid #f3f4f6' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
             <div ref={sortRef} style={{ position: 'relative' }}>
               <button
                 onClick={() => setShowSort(v => !v)}
@@ -113,7 +113,7 @@ export default function Chat() {
                 {sort} <i className="ri-arrow-down-s-line" />
               </button>
               {showSort && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 20, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', minWidth: 140, padding: '4px 0' }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 20, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', minWidth: 140, padding: '4px 0' }}>
                   {['Latest First', 'Weekly', 'Monthly'].map(o => (
                     <button key={o} onClick={() => { setSort(o); setShowSort(false) }} style={{ display: 'block', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12, fontFamily: 'Nunito, sans-serif', color: o === sort ? '#1B4332' : '#374151', fontWeight: o === sort ? 700 : 400 }}>
                       {o}
@@ -133,7 +133,7 @@ export default function Chat() {
           {/* Contact items */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {filtered.length === 0
-              ? <div style={{ textAlign: 'center', padding: 24, color: '#9ca3af', fontSize: 13 }}>No contacts found</div>
+              ? <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-light)', fontSize: 13 }}>No contacts found</div>
               : filtered.map(c => (
                   <button
                     key={c.id}
@@ -151,13 +151,13 @@ export default function Chat() {
                       <span style={{
                         position: 'absolute', bottom: 1, right: 1,
                         width: 9, height: 9, borderRadius: '50%',
-                        background: c.online ? '#22c55e' : '#d1d5db',
+                        background: c.online ? '#22c55e' : 'var(--border-strong)',
                         border: '2px solid #fff',
                       }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: '#111827' }}>{c.name}</div>
-                      <div style={{ fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.last}</div>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{c.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-light)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.last}</div>
                     </div>
                     {c.unread > 0 && (
                       <span style={{ background: '#dc2626', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 50, flexShrink: 0 }}>{c.unread}</span>
@@ -171,29 +171,29 @@ export default function Chat() {
         {/* ── Chat Panel ── */}
         <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
           {/* Toolbar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: '1px solid #f3f4f6', background: '#fff' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
             <Avatar contact={active} size={40} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{active.name}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{active.name}</div>
               <div style={{ fontSize: 11, color: active.online ? '#22c55e' : '#9ca3af' }}>
                 {active.online ? 'Online' : 'Offline'}
               </div>
             </div>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 6 }} title="Voice call">
+            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 6 }} title="Voice call">
               <i className="ri-phone-line" style={{ fontSize: 18 }} />
             </button>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 6 }} title="Video call">
+            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 6 }} title="Video call">
               <i className="ri-vidicon-line" style={{ fontSize: 18 }} />
             </button>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 6 }} title="Search">
+            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 6 }} title="Search">
               <i className="ri-search-line" style={{ fontSize: 18 }} />
             </button>
           </div>
 
           {/* Messages */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, background: '#f9fafb' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--bg-subtle)' }}>
             {currentMsgs.length === 0 && (
-              <div style={{ margin: 'auto', textAlign: 'center', color: '#9ca3af' }}>
+              <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-light)' }}>
                 <i className="ri-chat-3-line" style={{ fontSize: 40, display: 'block', marginBottom: 8 }} />
                 <div style={{ fontSize: 13 }}>No messages yet. Say hi!</div>
               </div>
@@ -213,7 +213,7 @@ export default function Chat() {
                   }}>
                     {msg.text}
                   </div>
-                  <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3, textAlign: msg.from === 'me' ? 'right' : 'left' }}>{msg.time}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-light)', marginTop: 3, textAlign: msg.from === 'me' ? 'right' : 'left' }}>{msg.time}</div>
                 </div>
               </div>
             ))}
@@ -221,9 +221,9 @@ export default function Chat() {
           </div>
 
           {/* Input */}
-          <div style={{ padding: '12px 16px', borderTop: '1px solid #f3f4f6', background: '#fff' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: 12 }}>
-              <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 4 }}>
+          <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 12 }}>
+              <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', padding: 4 }}>
                 <i className="ri-emotion-line" style={{ fontSize: 18 }} />
               </button>
               <input
@@ -233,7 +233,7 @@ export default function Chat() {
                 placeholder="Type a message..."
                 style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13, fontFamily: 'Nunito, sans-serif', background: 'none' }}
               />
-              <label style={{ cursor: 'pointer', color: '#9ca3af', padding: 4 }}>
+              <label style={{ cursor: 'pointer', color: 'var(--text-light)', padding: 4 }}>
                 <i className="ri-image-line" style={{ fontSize: 18 }} />
                 <input type="file" style={{ display: 'none' }} />
               </label>

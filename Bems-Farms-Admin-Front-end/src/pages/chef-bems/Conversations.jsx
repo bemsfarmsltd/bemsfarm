@@ -42,7 +42,7 @@ const btnStyle = (bg, color, border) => ({
 function Spinner({ size = 32 }) {
   return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:40 }}>
-      <div style={{ width:size, height:size, border:'3px solid #e5e7eb', borderTopColor:'#1B4332', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
+      <div style={{ width:size, height:size, border:'3px solid var(--border)', borderTopColor:'#1B4332', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
@@ -193,15 +193,15 @@ export default function Conversations() {
       )}
 
       {/* Chat shell */}
-      <div className="grid-sidebar-split" style={{ display:'grid', gridTemplateColumns:'300px 1fr', background:'#fff', borderRadius:12, border:'1px solid #e5e7eb', boxShadow:'0 1px 4px rgba(0,0,0,0.05)', minHeight:580, overflow:'hidden' }}>
+      <div className="grid-sidebar-split" style={{ display:'grid', gridTemplateColumns:'300px 1fr', background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)', minHeight:580, overflow:'hidden' }}>
 
         {/* Left panel */}
-        <div style={{ display:'flex', flexDirection:'column', borderRight:'1px solid #f3f4f6' }}>
-          <div style={{ padding:'12px 14px', borderBottom:'1px solid #f3f4f6' }}>
+        <div style={{ display:'flex', flexDirection:'column', borderRight:'1px solid var(--border)' }}>
+          <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border)' }}>
             <div style={{ position:'relative', marginBottom:8 }}>
-              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:14 }} />
+              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
               <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search customer, session, message..."
-                style={{ width:'100%', padding:'7px 10px 7px 30px', borderRadius:8, border:'1px solid #e5e7eb', fontSize:12, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box' }} />
+                style={{ width:'100%', padding:'7px 10px 7px 30px', borderRadius:8, border:'1px solid var(--border)', fontSize:12, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box' }} />
             </div>
             <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
               {[{key:'all',label:`All (${total})`},{key:'pending',label:'Pending'},{key:'resolved',label:'Resolved'},{key:'escalated',label:'Escalated'}].map(f => (
@@ -216,7 +216,7 @@ export default function Conversations() {
             {loading ? (
               <Spinner size={24} />
             ) : convos.length === 0 ? (
-              <div style={{ textAlign:'center', padding:'32px 16px', color:'#9ca3af' }}>
+              <div style={{ textAlign:'center', padding:'32px 16px', color:'var(--text-light)' }}>
                 <i className="ri-chat-3-line" style={{ fontSize:32, display:'block', marginBottom:6 }} />
                 <div style={{ fontSize:12 }}>No conversations found</div>
               </div>
@@ -236,8 +236,8 @@ export default function Conversations() {
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2 }}>
-                        <span style={{ fontWeight:600, fontSize:12, color:'#111827' }}>{displayName}</span>
-                        <span style={{ fontSize:10, color:'#9ca3af' }}>{displayTime}</span>
+                        <span style={{ fontWeight:600, fontSize:12, color:'var(--text-primary)' }}>{displayName}</span>
+                        <span style={{ fontSize:10, color:'var(--text-light)' }}>{displayTime}</span>
                       </div>
                       <p style={{ fontSize:11, color:'#64748b', margin:'0 0 4px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                         {lastMsg ? (
@@ -255,11 +255,11 @@ export default function Conversations() {
 
             {/* Pagination */}
             {pages > 1 && (
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'12px 8px', borderTop:'1px solid #f3f4f6' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'12px 8px', borderTop:'1px solid var(--border)' }}>
                 <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1} style={{ ...btnStyle('#f1f5f9','#374151'), padding:'4px 8px', opacity:page===1?0.4:1 }}>
                   <i className="ri-arrow-left-s-line" />
                 </button>
-                <span style={{ fontSize:11, color:'#6b7280' }}>{page}/{pages}</span>
+                <span style={{ fontSize:11, color:'var(--text-muted)' }}>{page}/{pages}</span>
                 <button onClick={() => setPage(p => Math.min(pages,p+1))} disabled={page===pages} style={{ ...btnStyle('#f1f5f9','#374151'), padding:'4px 8px', opacity:page===pages?0.4:1 }}>
                   <i className="ri-arrow-right-s-line" />
                 </button>
@@ -285,12 +285,12 @@ export default function Conversations() {
           return (
             <div style={{ display:'flex', flexDirection:'column' }}>
               {/* Header */}
-              <div style={{ padding:'12px 16px', borderBottom:'1px solid #f3f4f6', background:'#f8fafc', display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', background:'var(--bg-subtle)', display:'flex', alignItems:'center', gap:12 }}>
                 <div style={{ width:40, height:40, borderRadius:'50%', background:AVATAR_COLORS[(idx >= 0 ? idx : 0)%AVATAR_COLORS.length], color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:13, flexShrink:0 }}>
                   {ini(displayName)}
                 </div>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:700, fontSize:14, color:'#111827' }}>
+                  <div style={{ fontWeight:700, fontSize:14, color:'var(--text-primary)' }}>
                     {displayName}
                     <span style={{ fontWeight:400, fontSize:11, color:'#94a3b8', marginLeft:8 }}>#{selConvo.id}</span>
                   </div>
@@ -311,11 +311,11 @@ export default function Conversations() {
               </div>
 
               {/* Messages */}
-              <div style={{ flex:1, overflowY:'auto', padding:20, display:'flex', flexDirection:'column', gap:14, background:'#f8fafc' }}>
+              <div style={{ flex:1, overflowY:'auto', padding:20, display:'flex', flexDirection:'column', gap:14, background:'var(--bg-subtle)' }}>
                 {msgs.length === 0 ? (
-                  <div style={{ textAlign:'center', color:'#9ca3af', padding:'24px 0' }}>
+                  <div style={{ textAlign:'center', color:'var(--text-light)', padding:'24px 0' }}>
                     {selConvo.user_message ? (
-                      <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:12, padding:'10px 14px', fontSize:13, color:'#1e293b', textAlign:'left', maxWidth:'68%' }}>
+                      <div style={{ background:'var(--bg-card)', border:'1px solid #e2e8f0', borderRadius:12, padding:'10px 14px', fontSize:13, color:'#1e293b', textAlign:'left', maxWidth:'68%' }}>
                         {selConvo.user_message}
                       </div>
                     ) : (
@@ -371,7 +371,7 @@ export default function Conversations() {
               </div>
 
               {/* Action bar */}
-              <div style={{ padding:'12px 16px', borderTop:'1px solid #f3f4f6', background:'#fff', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+              <div style={{ padding:'12px 16px', borderTop:'1px solid var(--border)', background:'var(--bg-card)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
                 <span style={{ fontSize:12, color:'#64748b' }}>
                   <i className="ri-information-line" style={{ marginRight:4 }} />
                   Replies are handled automatically by Chef Bems AI via n8n.
@@ -393,7 +393,7 @@ export default function Conversations() {
                     </button>
                   )}
                   {selConvo.status === 'resolved' && (
-                    <button onClick={() => changeStatus(selConvo.id, 'pending')} disabled={actionLoading} style={btnStyle('#f1f5f9','#374151','1.5px solid #e5e7eb')}>
+                    <button onClick={() => changeStatus(selConvo.id, 'pending')} disabled={actionLoading} style={btnStyle('#f1f5f9','#374151','1.5px solid var(--border)')}>
                       <i className="ri-refresh-line" />Reopen
                     </button>
                   )}
@@ -407,7 +407,7 @@ export default function Conversations() {
             </div>
           )
         })() : (
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', flex:1, color:'#9ca3af' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', flex:1, color:'var(--text-light)' }}>
             <div style={{ textAlign:'center' }}>
               <i className="ri-chat-3-line" style={{ fontSize:40, display:'block', marginBottom:8 }} />
               <div style={{ fontSize:13 }}>{loading ? 'Loading conversations…' : 'Select a conversation to view'}</div>

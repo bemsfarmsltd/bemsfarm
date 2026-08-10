@@ -5,18 +5,18 @@ import toast from 'react-hot-toast'
 
 const REASONS = ['Physical Count Correction','Spoilage/Damage','Expiry Write-off','Theft/Loss','System Error Correction','Quality Rejection','Production Use','Promotional Giveaway','Other']
 
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid #e5e7eb', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'#fff', color:'#111827', boxSizing:'border-box' }
+const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
 const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'var(--orange-accent)', color:'#fff', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:13 }
-const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid #e5e7eb', background:'#fff', color:'#374151', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
-const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
-const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid #f3f4f6', fontSize:13, color:'#111827' }
-const LBL  = { display:'block', fontSize:12, fontWeight:700, color:'#374151', marginBottom:6 }
+const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
+const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
+const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text-primary)' }
+const LBL  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:6 }
 
 function Modal({ title, onClose, children }) {
   return <>
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1054 }}/>
     <div style={{ position:'fixed', inset:0, zIndex:1055, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div style={{ background:'#fff', borderRadius:14, width:'100%', maxWidth:640, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', overflow:'hidden', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
+      <div style={{ background:'var(--bg-card)', borderRadius:14, width:'100%', maxWidth:640, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', overflow:'hidden', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
         <div style={{ background:'var(--orange-accent)', color:'#fff', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
           <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15 }}>{title}</span>
           <button onClick={onClose} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.8)', cursor:'pointer', fontSize:20, display:'flex', padding:4 }}><i className="ri-close-line"/></button>
@@ -142,7 +142,7 @@ export default function StockAdjustment() {
     const notes = m.notes || ''
     if (notes.includes('+Addition')) return { label:'+Addition', bg:'#dcfce7', color:'#166534' }
     if (notes.includes('-Deduction')) return { label:'-Deduction', bg:'#fee2e2', color:'#991b1b' }
-    return { label:'Adjustment', bg:'#f3f4f6', color:'#374151' }
+    return { label:'Adjustment', bg:'var(--border)', color:'var(--text-secondary)' }
   }
 
   function extractReason(m) {
@@ -151,7 +151,7 @@ export default function StockAdjustment() {
     return match ? match[1] : notes
   }
 
-  const B = '#e5e7eb', S = '#6b7280'
+  const B = 'var(--border)', S = '#6b7280'
 
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
@@ -174,7 +174,7 @@ export default function StockAdjustment() {
           { label:'Units Added',       value:statValues.added, icon:'ri-add-circle-line', color:'#0ab39c', valueColor:'#0ab39c' },
           { label:'Units Deducted',    value:statValues.deducted, icon:'ri-indeterminate-circle-line', color:'#f06548', valueColor:'#f06548' },
         ].map(c => (
-          <div key={c.label} style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+          <div key={c.label} style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
             <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={c.icon} style={{ fontSize:20, color:c.color }}/>
             </div>
@@ -187,10 +187,10 @@ export default function StockAdjustment() {
       </div>
 
       {/* Table card */}
-      <div style={{ background:'#fff', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
+      <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
         <div style={{ padding:'16px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <div style={{ position:'relative', flex:1, minWidth:200 }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#9ca3af', fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:15 }}/>
             <input style={{ ...inp, paddingLeft:32 }} placeholder="Search product, ref..." value={search} onChange={e => setSearch(e.target.value)}/>
           </div>
           <select style={{ ...inp, width:'auto', minWidth:140 }} value={filterType} onChange={e => setFilterType(e.target.value)}>
@@ -204,7 +204,7 @@ export default function StockAdjustment() {
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'Nunito,sans-serif' }}>
             <thead>
-              <tr style={{ background:'#f9fafb', borderBottom:`1px solid ${B}` }}>
+              <tr style={{ background:'var(--bg-subtle)', borderBottom:`1px solid ${B}` }}>
                 {['Ref No','Product','Type','Date','Warehouse','Before','Adjusted','After','Reason','Staff'].map(h => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
@@ -216,7 +216,7 @@ export default function StockAdjustment() {
                   <div className="spinner-border spinner-border-sm text-primary me-2"/>Loading...
                 </td></tr>
               ) : filteredMovements.length === 0 ? (
-                <tr><td colSpan={10} style={{ ...TD, textAlign:'center', padding:40, color:'#9ca3af' }}>
+                <tr><td colSpan={10} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
                   <i className="ri-equalizer-line" style={{ fontSize:32, display:'block', marginBottom:8 }}/>No adjustments found
                 </td></tr>
               ) : filteredMovements.map(m => {
@@ -239,7 +239,7 @@ export default function StockAdjustment() {
                     </td>
                     <td style={TD}><span style={{ color:S }}>{formatDate(m.created_at)}</span></td>
                     <td style={TD}>
-                      <span style={{ background:'#f3f4f6', color:'#374151', borderRadius:4, padding:'3px 8px', fontSize:11, fontWeight:600 }}>
+                      <span style={{ background:'var(--bg-muted)', color:'var(--text-secondary)', borderRadius:4, padding:'3px 8px', fontSize:11, fontWeight:600 }}>
                         {m.warehouse_name || 'Main Store'}
                       </span>
                     </td>
@@ -267,7 +267,7 @@ export default function StockAdjustment() {
               <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===1?0.4:1 }}>
                 <i className="ri-arrow-left-s-line"/>Prev
               </button>
-              <span style={{ display:'flex', alignItems:'center', fontSize:12, color:'#374151', fontWeight:600 }}>Page {page} / {meta.pages}</span>
+              <span style={{ display:'flex', alignItems:'center', fontSize:12, color:'var(--text-secondary)', fontWeight:600 }}>Page {page} / {meta.pages}</span>
               <button onClick={() => setPage(p => Math.min(meta.pages,p+1))} disabled={page===meta.pages} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===meta.pages?0.4:1 }}>
                 Next<i className="ri-arrow-right-s-line"/>
               </button>
@@ -303,9 +303,9 @@ export default function StockAdjustment() {
                   { val:'add',      label:'+ Addition (increase stock)',  color:'#0ab39c' },
                   { val:'subtract', label:'- Deduction (decrease stock)', color:'#f06548' },
                 ].map(opt => (
-                  <label key={opt.val} style={{ flex:1, display:'flex', alignItems:'center', gap:8, cursor:'pointer', background: adjType === opt.val ? `${opt.color}12` : '#f9fafb', border:`1.5px solid ${adjType === opt.val ? opt.color : '#e5e7eb'}`, borderRadius:8, padding:'10px 14px', fontSize:13 }}>
+                  <label key={opt.val} style={{ flex:1, display:'flex', alignItems:'center', gap:8, cursor:'pointer', background: adjType === opt.val ? `${opt.color}12` : '#f9fafb', border:`1.5px solid ${adjType === opt.val ? opt.color : 'var(--border)'}`, borderRadius:8, padding:'10px 14px', fontSize:13 }}>
                     <input type="radio" name="adjType" value={opt.val} checked={adjType === opt.val} onChange={() => setAdjType(opt.val)} style={{ accentColor: opt.color }}/>
-                    <span style={{ fontWeight:600, color: adjType === opt.val ? opt.color : '#374151' }}>{opt.label}</span>
+                    <span style={{ fontWeight:600, color: adjType === opt.val ? opt.color : 'var(--text-secondary)' }}>{opt.label}</span>
                   </label>
                 ))}
               </div>
@@ -316,7 +316,7 @@ export default function StockAdjustment() {
                 <input type="number" style={inp} min="1" required value={form.quantity} onChange={e => setForm(f=>({...f,quantity:e.target.value}))}/>
               </div>
               <div>
-                <label style={LBL}>Unit Cost (₦) <span style={{ fontSize:10, fontWeight:400, color:'#9ca3af' }}>optional</span></label>
+                <label style={LBL}>Unit Cost (₦) <span style={{ fontSize:10, fontWeight:400, color:'var(--text-light)' }}>optional</span></label>
                 <input type="number" style={inp} min="0" value={form.unit_cost} onChange={e => setForm(f=>({...f,unit_cost:e.target.value}))}/>
               </div>
             </div>
