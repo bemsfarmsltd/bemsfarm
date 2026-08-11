@@ -27,7 +27,7 @@ router.post("/contact", async (req, res, next) => {
       [name.trim(), email.trim().toLowerCase(), phone?.trim() || null, message.trim()]
     );
 
-    const supportEmail = process.env.SUPPORT_EMAIL || "support@bemsfarms.com";
+    const supportEmail = process.env.SUPPORT_EMAIL || "info@bemsfarms.com";
     sendMail({
       to: supportEmail,
       subject: `New contact message from ${name.trim()}`,

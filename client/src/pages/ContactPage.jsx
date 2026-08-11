@@ -66,14 +66,9 @@ export default function ContactPage() {
       lines: [
         { text: "We reply within 24 hours", type: "info" },
         {
-          text: "hello@bemsfarm.ng",
+          text: "info@bemsfarms.com",
           type: "email",
-          value: "hello@bemsfarm.ng",
-        },
-        {
-          text: "support@bemsfarm.ng",
-          type: "email",
-          value: "support@bemsfarm.ng",
+          value: "info@bemsfarms.com",
         },
       ],
     },

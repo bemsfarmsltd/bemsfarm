@@ -68,7 +68,7 @@ const footer = `
   </div>
   <div style="background: #1B4332; padding: 24px 40px; border-radius: 0 0 16px 16px; text-align: center;">
     <p style="color: rgba(255,255,255,0.7); margin: 0; font-size: 13px;">
-      © 2026 BemsFarms | Lagos, Nigeria | <a href="mailto:hello@bemsfarms.ng" style="color: #52B788;">hello@bemsfarms.ng</a>
+      © 2026 BemsFarms | Lagos, Nigeria | <a href="mailto:info@bemsfarms.com" style="color: #52B788;">info@bemsfarms.com</a>
     </p>
   </div>
 `;

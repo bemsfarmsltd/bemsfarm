@@ -104,7 +104,7 @@ export default function GeneralSettings() {
               <input style={inp} value={form.shop_name} onChange={e=>set('shop_name',e.target.value)} placeholder="Bems Farms"/>
             </Row>
             <Row label="Shop Email" desc="Receives system alerts and notifications.">
-              <input type="email" style={inp} value={form.shop_email} onChange={e=>set('shop_email',e.target.value)} placeholder="contact@bemsfarms.ng"/>
+              <input type="email" style={inp} value={form.shop_email} onChange={e=>set('shop_email',e.target.value)} placeholder="info@bemsfarms.com"/>
             </Row>
             <Row label="Shop Phone" desc="Used for customer support communication.">
               <input style={inp} value={form.shop_phone} onChange={e=>set('shop_phone',e.target.value)} placeholder="+234 802 345 6789"/>

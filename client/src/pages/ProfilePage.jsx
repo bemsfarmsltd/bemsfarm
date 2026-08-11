@@ -963,7 +963,7 @@ export default function ProfilePage() {
                       <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}>✓ Returns accepted within 7 days of delivery</p>
                       <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}>✓ Items must be in original packaging and condition</p>
                       <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}>✓ Refund will be processed in 3-5 business days</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0" }}>✓ Contact support@bemsfarm.ng for assistance</p>
+                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0" }}>✓ Contact info@bemsfarms.com for assistance</p>
                     </div>
                   </div>
                 </motion.div>

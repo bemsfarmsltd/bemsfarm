@@ -228,7 +228,7 @@ export default function LandingPage() {
                     <motion.video
                       key="hero-video"
                       ref={videoRef}
-                      src="https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_640/v1785505349/Create_a_Video_of_the_characte_xfqkn8.mp4"
+                      src="https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_640/v1786466897/Create_a_Video_of_the_characte_2_yl5caf.mp4"
                       autoPlay
                       muted={isMuted}
                       playsInline
@@ -614,7 +614,7 @@ export default function LandingPage() {
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-primary">✉️</span>
-                <span>support@bemsfarms.com</span>
+                <a href="mailto:info@bemsfarms.com" className="hover:text-primary transition-colors">info@bemsfarms.com</a>
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-primary">📞</span>

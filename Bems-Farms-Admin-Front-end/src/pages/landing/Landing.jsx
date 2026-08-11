@@ -380,7 +380,7 @@ export default function Landing() {
               onMouseLeave={e => e.currentTarget.style.transform=''}>
               <i className="ri-login-box-line"/>Sign In to Admin
             </button>
-            <a href="mailto:hello@bemsfarms.com" style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 32px', background:'transparent', color:'#fff', border:'1.5px solid rgba(255,255,255,0.4)', borderRadius:10, fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:15, textDecoration:'none', transition:'border-color 0.2s, background 0.2s' }}
+            <a href="mailto:info@bemsfarms.com" style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 32px', background:'transparent', color:'#fff', border:'1.5px solid rgba(255,255,255,0.4)', borderRadius:10, fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:15, textDecoration:'none', transition:'border-color 0.2s, background 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.8)'; e.currentTarget.style.background='rgba(255,255,255,0.08)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.4)'; e.currentTarget.style.background='transparent' }}>
               <i className="ri-mail-line"/>Contact Us
@@ -397,7 +397,7 @@ export default function Landing() {
               { href:'#home',     label:'Home'     },
               { href:'#features', label:'Features' },
               { href:'#services', label:'Services' },
-              { href:'mailto:hello@bemsfarms.com', label:'Contact' },
+              { href:'mailto:info@bemsfarms.com', label:'Contact' },
             ].map(n => (
               <a key={n.href} href={n.href} style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.55)', textDecoration:'none', transition:'color 0.2s' }}
                 onMouseEnter={e => e.target.style.color='rgba(255,255,255,0.9)'}
