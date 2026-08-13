@@ -186,7 +186,7 @@ export default function HomePage() {
               {/* Hero Left Content */}
               <div className="lg:col-span-6 text-center lg:text-left flex flex-col items-center lg:items-start">
                 <h1 className="uppercase text-[38px] md:text-[54px] lg:text-[62px] leading-[1.08] font-extrabold mb-6 font-display tracking-tight">
-                  <span className="text-white">From Food Bar</span>
+                  <span className="text-white">From Food Barn</span>
                   <br />
                   <span className="text-[#FFC876]">to Your Door</span>
                 </h1>
