@@ -56,8 +56,7 @@ export default function SupplierPayments() {
     if (!form.supplier_id) { toast.error('Please select a supplier'); return }
     setSaving(true)
     try {
-      const { supplier_id, date, ...rest } = form
-      await api.post(`/admin/suppliers/${supplier_id}/payments`, { ...rest, payment_date: date })
+      await api.post('/admin/suppliers/payments', form)
       toast.success('Payment recorded successfully')
       setShowAdd(false)
       setForm({ supplier_id: '', amount: '', payment_method: 'bank_transfer', reference: '', date: '', notes: '' })
@@ -140,7 +139,7 @@ export default function SupplierPayments() {
                   <tr><td colSpan={6} className="text-center text-muted py-5">No payments found.</td></tr>
                 ) : payments.map(p => (
                   <tr key={p.id}>
-                    <td>{p.payment_date ? new Date(p.payment_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                    <td>{p.date ? new Date(p.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
                     <td className="fw-medium">{p.supplier_name || '—'}</td>
                     <td className="fw-medium text-success">{fmt(p.amount)}</td>
                     <td>{p.payment_method ? p.payment_method.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '—'}</td>

@@ -115,11 +115,18 @@ const router   = express.Router();
 const bcrypt   = require("bcryptjs");
 const pool     = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const validate = require("../middleware/validate");
+const staffAdminSchemas = require("../schemas/staffAdminSchemas");
 
 router.use(protect);
 
 // ── HELPER: generate employee code ──────────────────────────────────────────
+// pg_advisory_xact_lock serializes concurrent callers (auto-released at
+// COMMIT/ROLLBACK) so two requests can't both read the same COUNT before
+// either commits — staff.employee_code has no UNIQUE constraint, so without
+// this the race silently produces duplicate codes rather than erroring.
 async function generateEmployeeCode(client) {
+  await client.query("SELECT pg_advisory_xact_lock(hashtext('staff_employee_code'))");
   const row = await client.query("SELECT COUNT(*) FROM staff");
   const n   = parseInt(row.rows[0].count) + 1;
   return `EMP-${String(n).padStart(3, "0")}`;
@@ -260,6 +267,7 @@ router.get("/:id", requireRole("superadmin", "manager"), async (req, res, next) 
 router.post(
   "/",
   requireRole("superadmin", "manager"),
+  validate(staffAdminSchemas.createStaff),
   async (req, res, next) => {
     const client = await pool.connect();
     try {
@@ -267,21 +275,19 @@ router.post(
 
       const {
         name, email, phone, password,
-        department, role, shift = "morning",
+        department, role, shift,
         basic_salary, hire_date,
         bank_name, account_number, account_name,
         emergency_contact, emergency_phone,
         address, notes,
-        system_role = "cashier",
+        system_role,
       } = req.body;
 
-      if (!name?.trim())    return res.status(400).json({ message: "Name is required" });
-      if (!email?.includes("@")) return res.status(400).json({ message: "Valid email required" });
-      if (!department)      return res.status(400).json({ message: "Department is required" });
-      if (!role)            return res.status(400).json({ message: "Role/position is required" });
-
       const existing = await client.query("SELECT id FROM users WHERE LOWER(email)=LOWER($1)", [email]);
-      if (existing.rows.length) return res.status(400).json({ message: "Email already in use" });
+      if (existing.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Email already in use" });
+      }
 
       const tempPassword = password || `Bems@${Math.floor(1000 + Math.random() * 9000)}`;
       const hash = await bcrypt.hash(tempPassword, 12);
@@ -295,15 +301,22 @@ router.post(
 
       const code = await generateEmployeeCode(client);
 
+      // staff.employee_id (NOT NULL, UNIQUE) and staff.name (NOT NULL) are
+      // real columns distinct from users.id/users.name — reuse the same
+      // generated code for employee_id/employee_code and copy identity
+      // fields onto staff directly, matching what the rest of this file's
+      // queries already assume exist there.
       const staffRes = await client.query(
         `INSERT INTO staff
-           (user_id, employee_code, department, role, shift, basic_salary, hire_date,
+           (user_id, employee_id, employee_code, name, email, phone, system_role,
+            department, role, shift, basic_salary, hire_date,
             bank_name, account_number, account_name,
             emergency_contact, emergency_phone, address, notes, status, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'active',NOW(),NOW())
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,'active',NOW(),NOW())
          RETURNING *`,
         [
-          user.id, code, department, role, shift,
+          user.id, code, code, name.trim(), email.toLowerCase().trim(), phone || null, system_role,
+          department, role, shift,
           basic_salary ? parseFloat(basic_salary) : null,
           hire_date || null,
           bank_name || null, account_number || null, account_name || null,
@@ -331,7 +344,7 @@ router.post(
 // ════════════════════════════════════════════════════════════════════════════
 // UPDATE STAFF  ──  PATCH /api/admin/staff/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
+router.patch("/:id", requireRole("superadmin", "manager"), validate(staffAdminSchemas.updateStaff), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -343,7 +356,10 @@ router.patch("/:id", requireRole("superadmin", "manager"), async (req, res, next
     } = req.body;
 
     const cur = await client.query("SELECT user_id FROM staff WHERE id=$1", [req.params.id]);
-    if (!cur.rows.length) return res.status(404).json({ message: "Staff member not found" });
+    if (!cur.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Staff member not found" });
+    }
 
     if (name || phone) {
       await client.query(
@@ -387,11 +403,9 @@ router.patch("/:id", requireRole("superadmin", "manager"), async (req, res, next
 // ════════════════════════════════════════════════════════════════════════════
 // STATUS CHANGE  ──  PATCH /api/admin/staff/:id/status
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/:id/status", requireRole("superadmin", "manager"), async (req, res, next) => {
+router.patch("/:id/status", requireRole("superadmin", "manager"), validate(staffAdminSchemas.staffStatus), async (req, res, next) => {
   try {
     const { status } = req.body;
-    const allowed = ["active", "inactive", "suspended", "on_leave"];
-    if (!allowed.includes(status)) return res.status(400).json({ message: `status must be one of: ${allowed.join(", ")}` });
 
     const cur = await pool.query("SELECT user_id FROM staff WHERE id=$1", [req.params.id]);
     if (!cur.rows.length) return res.status(404).json({ message: "Staff member not found" });
@@ -415,7 +429,10 @@ router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
     await client.query("BEGIN");
     const cur = await client.query("SELECT user_id FROM staff WHERE id=$1", [req.params.id]);
-    if (!cur.rows.length) return res.status(404).json({ message: "Staff member not found" });
+    if (!cur.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Staff member not found" });
+    }
 
     await client.query("UPDATE staff SET status='inactive', updated_at=NOW() WHERE id=$1", [req.params.id]);
     await client.query("UPDATE users SET status='inactive' WHERE id=$1", [cur.rows[0].user_id]);

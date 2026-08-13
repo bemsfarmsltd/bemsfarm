@@ -352,6 +352,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState(params.get("search") || "");
   const [activeCat, setActiveCat] = useState(params.get("category") || "All");
   const [sort, setSort] = useState("featured");
@@ -365,13 +366,23 @@ export default function ProductsPage() {
     }
   });
 
-  useEffect(() => {
+  const loadData = () => {
+    setLoading(true);
+    setError(null);
     Promise.all([api.get("/products"), api.get("/categories")])
       .then(([p, c]) => {
         setProducts(p.data.products);
         setCategories(c.data.categories);
       })
+      .catch((err) => {
+        console.error("Failed to load products:", err);
+        setError(err.response?.data?.message || "Failed to load products");
+      })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -478,6 +489,43 @@ export default function ProductsPage() {
               <option value="name">Alphabetical</option>
             </select>
           </div>
+
+          {error && (
+            <div
+              style={{
+                backgroundColor: "#FEF2F2",
+                border: "1px solid #FECACA",
+                borderRadius: "14px",
+                padding: "16px 20px",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "20px",
+              }}
+            >
+              <span style={{ fontSize: "20px" }}>⚠️</span>
+              <div>
+                <p style={{ fontWeight: 700, color: "#DC2626", margin: "0 0 4px" }}>Failed to load products</p>
+                <p style={{ fontSize: "13px", color: "#DC2626", margin: 0 }}>{error}</p>
+              </div>
+              <button
+                onClick={loadData}
+                style={{
+                  marginLeft: "auto",
+                  padding: "8px 16px",
+                  backgroundColor: "#DC2626",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: "13px",
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
           {loading ? (
             <div className="bp-products-grid">

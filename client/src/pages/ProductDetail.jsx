@@ -27,6 +27,23 @@ export default function ProductDetail() {
   const [added, setAdded] = useState(false);
   const [activeTab, setActiveTab] = useState("description");
 
+  // Favorites -- same localStorage pattern used on ProductsPage.jsx
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("favorites") || "{}");
+    } catch {
+      return {};
+    }
+  });
+  const toggleFavorite = () => {
+    setFavorites((prev) => {
+      const updated = { ...prev, [id]: !prev[id] };
+      localStorage.setItem("favorites", JSON.stringify(updated));
+      return updated;
+    });
+  };
+  const isFavorite = !!favorites[id];
+
   // Reviews
   const [reviews, setReviews] = useState([]);
   const [reviewStats, setReviewStats] = useState({ average: 0, count: 0 });
@@ -257,28 +274,6 @@ export default function ProductDetail() {
                 </div>
               )}
             </motion.div>
-            {/* Thumbnail strip */}
-            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-              {["main", "alt1", "alt2", "alt3"].map((v, i) => (
-                <div
-                  key={v}
-                  style={{
-                    width: "72px",
-                    height: "72px",
-                    borderRadius: "12px",
-                    backgroundColor: getProductBg(product.name),
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "28px",
-                    border: `2px solid ${i === 0 ? "#2E7D32" : "#E8EAED"}`,
-                    cursor: "pointer",
-                  }}
-                >
-                  {getProductEmoji(product.name)}
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* Right — Info */}
@@ -612,20 +607,23 @@ export default function ProductDetail() {
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.9 }}
+                onClick={toggleFavorite}
+                aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
                 style={{
                   width: "52px",
                   height: "52px",
                   borderRadius: "12px",
-                  border: "2px solid #E8EAED",
+                  border: isFavorite ? "2px solid #F57C00" : "2px solid #E8EAED",
                   backgroundColor: "white",
                   cursor: "pointer",
                   fontSize: "22px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  color: isFavorite ? "#F57C00" : "inherit",
                 }}
               >
-                ♡
+                {isFavorite ? "♥" : "♡"}
               </motion.button>
             </div>
 

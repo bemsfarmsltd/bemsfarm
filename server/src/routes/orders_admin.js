@@ -7,6 +7,7 @@ const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const orderAdminSchemas = require("../schemas/orderAdminSchemas");
+const emailService = require("../services/emailService");
 
 router.use(protect);
 
@@ -37,15 +38,17 @@ async function logTrackingEvent(
   triggeredBy,
   triggeredById,
 ) {
+  // order_tracking_events has no delivery_id column — the real columns are
+  // actor_type/actor_id (not triggered_by/triggered_by_id). deliveryId is
+  // accepted for call-site compatibility but has nowhere to be stored.
   await client.query(
     `
     INSERT INTO order_tracking_events
-      (order_id, delivery_id, event_type, description, triggered_by, triggered_by_id, created_at)
-    VALUES ($1,$2,$3,$4,$5,$6,NOW())
+      (order_id, event_type, description, actor_type, actor_id, created_at)
+    VALUES ($1,$2,$3,$4,$5,NOW())
   `,
     [
       orderId,
-      deliveryId || null,
       eventType,
       description,
       triggeredBy || "admin",
@@ -173,8 +176,10 @@ router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
       "SELECT id, status FROM orders WHERE id=$1",
       [req.params.id]
     );
-    if (!order.rows.length)
+    if (!order.rows.length) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ message: "Order not found" });
+    }
 
     // Remove child rows before deleting the parent
     await client.query("DELETE FROM order_items WHERE order_id=$1", [req.params.id]);
@@ -398,7 +403,9 @@ router.post("/returns", requireRole("superadmin", "manager", "admin"), async (re
     const {
       ordRef,
       customer,
+      customer_id: customerIdInput,
       product,
+      product_id: productIdInput,
       qty,
       unitPrice,
       reason,
@@ -406,26 +413,43 @@ router.post("/returns", requireRole("superadmin", "manager", "admin"), async (re
       refundMethod = "Bank Transfer"
     } = req.body;
 
-    if (!customer) {
-      return res.status(400).json({ message: "Customer name is required" });
+    if (!customerIdInput && !customer) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Customer is required" });
     }
-    if (!product) {
-      return res.status(400).json({ message: "Product name is required" });
+    if (!productIdInput && !product) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Product is required" });
     }
     if (!qty || parseInt(qty) <= 0) {
+      await client.query("ROLLBACK");
       return res.status(400).json({ message: "Quantity must be greater than 0" });
     }
 
-    // 1. Resolve customer_id
-    const custRes = await client.query("SELECT id FROM customers WHERE name = $1 LIMIT 1", [customer]);
-    const customer_id = custRes.rows[0]?.id || null;
+    // 1. Resolve customer_id — the admin UI now sends a real customer_id
+    // directly (picked from the actual customers table); the name-based
+    // lookup below only exists for older/manual callers that still send a
+    // bare name, and uses a trimmed, case-insensitive match rather than an
+    // exact string, since two customers can share a name / differ by case.
+    let customer_id = customerIdInput ? parseInt(customerIdInput) : null;
+    if (!customer_id && customer) {
+      const custRes = await client.query(
+        "SELECT id FROM customers WHERE LOWER(REGEXP_REPLACE(TRIM(name), '\\s+', ' ', 'g')) = LOWER(REGEXP_REPLACE(TRIM($1), '\\s+', ' ', 'g')) LIMIT 1",
+        [customer]
+      );
+      customer_id = custRes.rows[0]?.id || null;
+    }
 
-    // 2. Resolve product_id
-    const prodRes = await client.query("SELECT id FROM products WHERE name = $1 LIMIT 1", [product]);
-    const product_id = prodRes.rows[0]?.id || null;
+    // 2. Resolve product_id — same real-id-first pattern as customer_id.
+    let product_id = productIdInput ? parseInt(productIdInput) : null;
+    if (!product_id && product) {
+      const prodRes = await client.query("SELECT id FROM products WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1", [product]);
+      product_id = prodRes.rows[0]?.id || null;
+    }
 
     if (!product_id) {
-      return res.status(400).json({ message: `Product "${product}" not found in catalog` });
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: `Product "${product || productIdInput}" not found in catalog` });
     }
 
     const calculatedRefund = parseFloat(qty) * parseFloat(unitPrice || 0);
@@ -689,7 +713,6 @@ router.patch(
           "admin",
           req.user.id,
         );
-        const emailService = require("../services/emailService");
       }
 
       await client.query("COMMIT");
@@ -938,7 +961,7 @@ router.patch(
         req.params.id,
         null,
         "cancelled",
-        `Order cancelled. Reason: ${reason || "No reason given"}. Refund triggered.`,
+        `Order cancelled. Reason: ${reason || "No reason given"}.`,
         "admin",
         req.user.id,
       );

@@ -23,7 +23,13 @@ const posSchemas = require("../schemas/posSchemas");
 router.use(protect);
 
 // ─── Sequence helpers ───────────────────────────────────────────────────────
+// pg_advisory_xact_lock serializes concurrent callers within the same
+// generator (auto-released at COMMIT/ROLLBACK) so two requests reading
+// "next" at the same instant can't both compute the same ref before either
+// commits — closes a real race under concurrency (e.g. two cashiers opening
+// a session at once) without needing a retry loop or schema change.
 async function nextPOSRef(client) {
+  await client.query("SELECT pg_advisory_xact_lock(hashtext('pos_order_ref'))");
   const r = await client.query(
     `SELECT COALESCE(MAX(CAST(REGEXP_REPLACE(order_ref,'POS-','') AS INTEGER)),1000)+1 AS next
      FROM orders WHERE order_ref LIKE 'POS-%'`
@@ -32,6 +38,7 @@ async function nextPOSRef(client) {
 }
 
 async function nextSessionRef(client) {
+  await client.query("SELECT pg_advisory_xact_lock(hashtext('pos_session_ref'))");
   const r = await client.query(
     `SELECT COALESCE(MAX(CAST(REGEXP_REPLACE(session_ref,'SESS-','') AS INTEGER)),1000)+1 AS next
      FROM pos_sessions WHERE session_ref LIKE 'SESS-%'`
@@ -53,6 +60,7 @@ router.post("/session/open", requireRole("superadmin","manager","admin","cashier
       [req.user.id]
     );
     if (open.rows.length) {
+      await client.query("ROLLBACK");
       return res.status(400).json({ message: "You already have an open POS session", session_id: open.rows[0].id });
     }
 
@@ -88,8 +96,14 @@ router.post("/session/:id/close", requireRole("superadmin","manager","admin","ca
     const session = await client.query(
       "SELECT * FROM pos_sessions WHERE id=$1", [req.params.id]
     );
-    if (!session.rows.length) return res.status(404).json({ message: "Session not found" });
-    if (session.rows[0].status !== "open") return res.status(400).json({ message: "Session is already closed" });
+    if (!session.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Session not found" });
+    }
+    if (session.rows[0].status !== "open") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Session is already closed" });
+    }
 
     // Calculate session totals from orders
     const totals = await client.query(
@@ -432,27 +446,11 @@ router.delete("/held/:id", requireRole("superadmin", "manager", "admin", "cashie
 // Match a payment by last 4 digits of transaction ID + optional amount.
 // Only searches transactions from the last 24 hours that haven't been used.
 // ════════════════════════════════════════════════════════════════════════════
-const ENSURE_POS_TXN_TABLE = `
-  CREATE TABLE IF NOT EXISTS pos_transactions (
-    id                SERIAL PRIMARY KEY,
-    transaction_id    VARCHAR(100) UNIQUE NOT NULL,
-    last_four         CHAR(4)       NOT NULL,
-    amount            DECIMAL(12,2) NOT NULL,
-    payment_method    VARCHAR(50),
-    status            VARCHAR(30)   NOT NULL DEFAULT 'successful',
-    payment_time      TIMESTAMP     NOT NULL DEFAULT NOW(),
-    customer_name     VARCHAR(255),
-    terminal_id       VARCHAR(100),
-    used_for_order_id INTEGER,
-    session_id        INTEGER,
-    created_at        TIMESTAMP DEFAULT NOW()
-  )`;
+// pos_transactions is created once in migrations.sql (#28), not per-request.
 
 router.post("/verify-payment", requireRole("superadmin","manager","admin","cashier"), validate(posSchemas.verifyPayment), async (req, res, next) => {
   try {
     const { last_four, amount } = req.body;
-
-    await pool.query(ENSURE_POS_TXN_TABLE);
 
     const params = [String(last_four)];
     const conditions = [
@@ -503,8 +501,6 @@ router.patch("/verify-payment/:id/use", requireRole("superadmin","manager","admi
 router.post("/transaction", requireRole("superadmin","manager","admin","cashier"), validate(posSchemas.recordTransaction), async (req, res, next) => {
   try {
     const { transaction_id, amount, payment_method, payment_time, customer_name, terminal_id, session_id } = req.body;
-
-    await pool.query(ENSURE_POS_TXN_TABLE);
 
     const last_four = String(transaction_id).slice(-4);
     const result = await pool.query(

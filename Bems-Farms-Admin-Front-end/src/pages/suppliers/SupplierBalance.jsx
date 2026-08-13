@@ -23,9 +23,9 @@ export default function SupplierBalance() {
   const fetchBalances = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await api.get('/admin/suppliers/balance')
+      const res = await api.get('/admin/suppliers', { params: { limit: 500 } })
       setBalances(res.data.suppliers || [])
-      setTotalPayable(res.data.total_payable || 0)
+      setTotalPayable(res.data.stats?.total_outstanding || 0)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load balance data')
     } finally {
@@ -52,7 +52,8 @@ export default function SupplierBalance() {
     e.preventDefault()
     setSaving(true)
     try {
-      await api.post('/admin/suppliers/payments', paymentForm)
+      const { supplier_id, date, ...rest } = paymentForm
+      await api.post(`/admin/suppliers/${supplier_id}/payments`, { ...rest, payment_date: date })
       toast.success('Payment recorded successfully')
       setShowPayment(false)
       fetchBalances()
@@ -113,7 +114,7 @@ export default function SupplierBalance() {
               </div>
               <div>
                 <p className="text-muted mb-1 small">Suppliers with Outstanding</p>
-                <h4 className="mb-0">{balances.filter(s => Number(s.balance_due) > 0).length}</h4>
+                <h4 className="mb-0">{balances.filter(s => Number(s.balance) > 0).length}</h4>
               </div>
             </div>
           </div>
@@ -165,16 +166,16 @@ export default function SupplierBalance() {
                 ) : filtered.map((s, i) => (
                   <tr key={s.id || i}>
                     <td className="fw-medium">{s.name}</td>
-                    <td>{fmt(s.total_purchased)}</td>
-                    <td>{fmt(s.amount_paid)}</td>
+                    <td>{fmt(s.total_purchases)}</td>
+                    <td>{fmt(s.total_paid)}</td>
                     <td>
-                      {Number(s.balance_due) > 0
-                        ? <span className="fw-bold text-danger">{fmt(s.balance_due)}</span>
-                        : <span className="text-success">{fmt(s.balance_due)}</span>
+                      {Number(s.balance) > 0
+                        ? <span className="fw-bold text-danger">{fmt(s.balance)}</span>
+                        : <span className="text-success">{fmt(s.balance)}</span>
                       }
                     </td>
                     <td>
-                      {Number(s.balance_due) > 0 && (
+                      {Number(s.balance) > 0 && (
                         <button
                           className="btn btn-sm btn-outline-primary"
                           onClick={() => openPaymentModal(s)}
@@ -188,9 +189,9 @@ export default function SupplierBalance() {
                 {!loading && filtered.length > 0 && (
                   <tr className="bg-light fw-bold">
                     <td>Total</td>
-                    <td>{fmt(filtered.reduce((a, s) => a + Number(s.total_purchased || 0), 0))}</td>
-                    <td>{fmt(filtered.reduce((a, s) => a + Number(s.amount_paid || 0), 0))}</td>
-                    <td className="text-danger">{fmt(filtered.reduce((a, s) => a + Number(s.balance_due || 0), 0))}</td>
+                    <td>{fmt(filtered.reduce((a, s) => a + Number(s.total_purchases || 0), 0))}</td>
+                    <td>{fmt(filtered.reduce((a, s) => a + Number(s.total_paid || 0), 0))}</td>
+                    <td className="text-danger">{fmt(filtered.reduce((a, s) => a + Number(s.balance || 0), 0))}</td>
                     <td></td>
                   </tr>
                 )}
@@ -214,7 +215,7 @@ export default function SupplierBalance() {
                   <div className="row g-3">
                     <div className="col-12">
                       <p className="text-muted small mb-0">Balance Due</p>
-                      <h5 className="text-danger">{fmt(paymentSupplier?.balance_due)}</h5>
+                      <h5 className="text-danger">{fmt(paymentSupplier?.balance)}</h5>
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Amount (₦) <span className="text-danger">*</span></label>

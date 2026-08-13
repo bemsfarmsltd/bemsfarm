@@ -92,7 +92,12 @@ class AccountsRepository {
     return res.rows[0];
   }
 
+  // pg_advisory_xact_lock serializes concurrent callers using the same
+  // prefix (auto-released at COMMIT/ROLLBACK) so two requests can't both
+  // read the same COUNT before either commits — otherwise two concurrent
+  // transfers/etc. can silently end up with the same generated reference.
   async generateReference(client, prefix, table, refCol = "reference") {
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`ref_${prefix}`]);
     const row = await client.query(`SELECT COUNT(*) FROM ${table}`);
     const n = parseInt(row.rows[0].count) + 1;
     return `${prefix}-${String(n).padStart(4, "0")}`;

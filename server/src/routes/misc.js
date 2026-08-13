@@ -41,8 +41,7 @@ router.post("/contact", async (req, res, next) => {
 
     res.json({ success: true, message: "Message sent! We'll get back to you within 24 hours." });
   } catch (err) {
-    console.error("❌ Contact form DB error:", err.message);
-    res.status(500).json({ message: "Failed to send message. Please try again." });
+    next(err);
   }
 });
 

@@ -162,48 +162,6 @@ router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper"), as
 });
 
 // ════════════════════════════════════════════════════════════════════════════
-// PURCHASE ORDER DETAIL  ──  GET /api/admin/purchases/:id
-// ════════════════════════════════════════════════════════════════════════════
-router.get("/:id", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
-  try {
-    const po = await pool.query(`
-      SELECT po.*,
-        s.name AS supplier_name, s.supplier_code, s.phone AS supplier_phone,
-        s.bank_name AS supplier_bank, s.account_number AS supplier_account,
-        u.name AS created_by_name,
-        a.name AS approved_by_name
-      FROM purchase_orders po
-      LEFT JOIN suppliers s ON po.supplier_id = s.id
-      LEFT JOIN users u ON po.created_by = u.id
-      LEFT JOIN users a ON po.approved_by = a.id
-      WHERE po.id = $1
-    `, [req.params.id]);
-
-    if (!po.rows.length) return res.status(404).json({ message: "Purchase order not found" });
-
-    const items = await pool.query(`
-      SELECT poi.*, p.name AS current_product_name, p.sku, p.image_url
-      FROM purchase_order_items poi
-      LEFT JOIN products p ON poi.product_id = p.id
-      WHERE poi.purchase_order_id = $1
-      ORDER BY poi.id
-    `, [req.params.id]);
-
-    const payments = await pool.query(`
-      SELECT sp.reference, sp.amount, sp.payment_method, sp.payment_date, ba.bank_name
-      FROM supplier_payments sp
-      LEFT JOIN bank_accounts ba ON sp.bank_account_id = ba.id
-      WHERE sp.purchase_order_id = $1
-      ORDER BY sp.payment_date DESC
-    `, [req.params.id]);
-
-    res.json({ ...po.rows[0], items: items.rows, payments: payments.rows });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// ════════════════════════════════════════════════════════════════════════════
 // CREATE PURCHASE ORDER  ──  POST /api/admin/purchases
 // ════════════════════════════════════════════════════════════════════════════
 router.post("/", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
@@ -550,6 +508,84 @@ router.get("/form-data", requireRole("superadmin", "manager", "admin", "storekee
       pool.query("SELECT id, name, sku, COALESCE(cost_price, unit_price, price, 0) AS unit_cost FROM products WHERE status='active' ORDER BY name"),
     ]);
     res.json({ suppliers: suppliers.rows, products: products.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// PURCHASE RETURN DETAIL  ──  GET /api/admin/purchases/returns/:id
+// (registered here, after every literal-path route, so it can't shadow them)
+// ════════════════════════════════════════════════════════════════════════════
+router.get("/returns/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+  try {
+    const ret = await pool.query(`
+      SELECT pr.*, s.name AS supplier_name, po.reference AS po_reference,
+        u.name AS created_by_name, a.name AS approved_by_name
+      FROM purchase_returns pr
+      LEFT JOIN suppliers      s  ON pr.supplier_id      = s.id
+      LEFT JOIN purchase_orders po ON pr.purchase_order_id = po.id
+      LEFT JOIN users u ON pr.created_by  = u.id
+      LEFT JOIN users a ON pr.approved_by = a.id
+      WHERE pr.id = $1
+    `, [req.params.id]);
+
+    if (!ret.rows.length) return res.status(404).json({ message: "Return not found" });
+
+    const items = await pool.query(
+      "SELECT * FROM purchase_return_items WHERE purchase_return_id=$1 ORDER BY id",
+      [req.params.id]
+    );
+
+    res.json({ ...ret.rows[0], items: items.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// PURCHASE ORDER DETAIL  ──  GET /api/admin/purchases/:id
+// Registered last among GET routes — /:id is a single-dynamic-segment
+// pattern that would otherwise shadow every literal single-segment route
+// above it (/payments, /returns, /form-data) since Express matches routes
+// in registration order. This was live-broken: GET /admin/purchases/returns
+// (the list the frontend actually calls) was hitting this PO-lookup handler
+// instead, with id="returns", and 500ing on the integer id comparison.
+// ════════════════════════════════════════════════════════════════════════════
+router.get("/:id", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
+  try {
+    const po = await pool.query(`
+      SELECT po.*,
+        s.name AS supplier_name, s.supplier_code, s.phone AS supplier_phone,
+        s.bank_name AS supplier_bank, s.account_number AS supplier_account,
+        u.name AS created_by_name,
+        a.name AS approved_by_name
+      FROM purchase_orders po
+      LEFT JOIN suppliers s ON po.supplier_id = s.id
+      LEFT JOIN users u ON po.created_by = u.id
+      LEFT JOIN users a ON po.approved_by = a.id
+      WHERE po.id = $1
+    `, [req.params.id]);
+
+    if (!po.rows.length) return res.status(404).json({ message: "Purchase order not found" });
+
+    const items = await pool.query(`
+      SELECT poi.*, p.name AS current_product_name, p.sku, p.image_url
+      FROM purchase_order_items poi
+      LEFT JOIN products p ON poi.product_id = p.id
+      WHERE poi.purchase_order_id = $1
+      ORDER BY poi.id
+    `, [req.params.id]);
+
+    const payments = await pool.query(`
+      SELECT sp.reference, sp.amount, sp.payment_method, sp.payment_date, ba.bank_name
+      FROM supplier_payments sp
+      LEFT JOIN bank_accounts ba ON sp.bank_account_id = ba.id
+      WHERE sp.purchase_order_id = $1
+      ORDER BY sp.payment_date DESC
+    `, [req.params.id]);
+
+    res.json({ ...po.rows[0], items: items.rows, payments: payments.rows });
   } catch (err) {
     next(err);
   }

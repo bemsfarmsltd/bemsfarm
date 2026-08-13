@@ -91,7 +91,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await register(form.name, form.email, form.password, form.phone);
+      await register(form.name, form.email, form.password, form.phone, selectedTags);
       navigate("/onboarding");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed. Try again.");

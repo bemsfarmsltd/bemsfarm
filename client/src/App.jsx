@@ -23,6 +23,7 @@ import ChefBemsPage from "./pages/ChefBemsPage";
 import DynamicPricingPage from "./pages/DynamicPricingPage";
 import FraudDetectionPage from "./pages/FraudDetectionPage";
 import DemandForecastingPage from "./pages/DemandForecastingPage";
+import NotFoundPage from "./pages/NotFoundPage";
 
 const P = ({ children }) => <ProtectedRoute>{children}</ProtectedRoute>;
 
@@ -190,6 +191,9 @@ function App() {
           element={<Navigate to="/chef-chat" replace />}
         />
         <Route path="/deals" element={<Navigate to="/chef-chat" replace />} />
+
+        {/* Catch-all — must stay last */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );

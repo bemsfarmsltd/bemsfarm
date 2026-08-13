@@ -20,7 +20,7 @@ async function ensureReturnItemsTable(client) {
 const VALID_REASONS    = ["damaged", "wrong_item", "quality", "changed_mind", "other"];
 const VALID_CONDITIONS = ["reusable", "damaged", "partial_goods"];
 
-const submitReturn = async (req, res) => {
+const submitReturn = async (req, res, next) => {
   const client = await pool.connect();
   try {
     const { order_id, reason, description, items } = req.body;
@@ -99,13 +99,13 @@ const submitReturn = async (req, res) => {
     });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ message: "Return submission failed: " + err.message });
+    next(err);
   } finally {
     client.release();
   }
 };
 
-const getUserReturns = async (req, res) => {
+const getUserReturns = async (req, res, next) => {
   try {
     const returns = await pool.query(
       `SELECT r.* FROM returns r WHERE r.user_id=$1 ORDER BY r.created_at DESC`,
@@ -129,11 +129,11 @@ const getUserReturns = async (req, res) => {
     const list = returns.rows.map((r) => ({ ...r, items: itemsMap[r.id] || [] }));
     res.json({ returns: list });
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch returns" });
+    next(err);
   }
 };
 
-const getAllReturns = async (req, res) => {
+const getAllReturns = async (req, res, next) => {
   try {
     const returns = await pool.query(
       `SELECT r.*, u.name AS customer_name, u.email AS customer_email
@@ -159,11 +159,11 @@ const getAllReturns = async (req, res) => {
     const list = returns.rows.map((r) => ({ ...r, items: itemsMap[r.id] || [] }));
     res.json({ returns: list });
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch returns" });
+    next(err);
   }
 };
 
-const updateReturn = async (req, res) => {
+const updateReturn = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, resolution } = req.body;
@@ -173,7 +173,7 @@ const updateReturn = async (req, res) => {
     );
     res.json({ message: "Return updated" });
   } catch (err) {
-    res.status(500).json({ message: "Update failed" });
+    next(err);
   }
 };
 

@@ -638,7 +638,7 @@ export default function OrdersPage() {
                             )}
 
                             <button className="op-secondary-btn" onClick={() => navigate(`/orders/${order.id}`)}>
-                              Archive Order
+                              View Details
                             </button>
                           </div>
                         </div>

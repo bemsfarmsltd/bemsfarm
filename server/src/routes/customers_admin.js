@@ -548,22 +548,28 @@ router.post(
       } = req.body;
 
       const fullName = name || `${first_name || ""} ${last_name || ""}`.trim();
-      if (!fullName)
+      if (!fullName) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Customer name required" });
-      if (!phone)
+      }
+      if (!phone) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Phone number required" });
+      }
 
       // Check duplicate phone
       const exists = await client.query(
         "SELECT id FROM customers WHERE phone=$1",
         [phone],
       );
-      if (exists.rows.length)
+      if (exists.rows.length) {
+        await client.query("ROLLBACK");
         return res
           .status(400)
           .json({
             message: "A customer with this phone number already exists",
           });
+      }
 
       // Generate customer code
       const countRow = await client.query("SELECT COUNT(*) FROM customers");

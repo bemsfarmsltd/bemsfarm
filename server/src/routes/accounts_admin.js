@@ -129,11 +129,17 @@ const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const accountsController = require("../controllers/accountsController");
+const validate = require("../middleware/validate");
+const accountsAdminSchemas = require("../schemas/accountsAdminSchemas");
 
 router.use(protect);
 
 // ── HELPERS ─────────────────────────────────────────────────────────────────
+// pg_advisory_xact_lock serializes concurrent callers using the same prefix
+// (auto-released at COMMIT/ROLLBACK) — same fix as accountsRepository.js's
+// generateReference, which has the identical race.
 async function nextRef(client, prefix, table, refCol = "reference") {
+  await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`ref_${prefix}`]);
   const row = await client.query(`SELECT COUNT(*) FROM ${table}`);
   const n   = parseInt(row.rows[0].count) + 1;
   return `${prefix}-${String(n).padStart(4, "0")}`;
@@ -174,7 +180,7 @@ async function postTransaction(client, { bankAccountId, type, sourceType, source
 // ════════════════════════════════════════════════════════════════════════════
 // FINANCIAL OVERVIEW  ──  GET /api/admin/accounts/overview
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/overview", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+router.get("/overview", requireRole("superadmin", "manager", "accountant"), async (req, res, next) => {
   try {
     const [
       monthIncome,
@@ -295,7 +301,7 @@ router.get("/overview", requireRole("superadmin", "manager", "admin", "accountan
 // ════════════════════════════════════════════════════════════════════════════
 // BANK ACCOUNTS
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/bank-accounts", requireRole("superadmin", "manager", "admin", "accountant"), accountsController.getBankAccounts);
+router.get("/bank-accounts", requireRole("superadmin", "manager", "accountant"), accountsController.getBankAccounts);
 router.post("/bank-accounts", requireRole("superadmin", "manager"), accountsController.createBankAccount);
 router.patch("/bank-accounts/:id", requireRole("superadmin", "manager"), accountsController.updateBankAccount);
 router.delete("/bank-accounts/:id", requireRole("superadmin"), accountsController.deactivateBankAccount);
@@ -303,7 +309,7 @@ router.delete("/bank-accounts/:id", requireRole("superadmin"), accountsControlle
 // ════════════════════════════════════════════════════════════════════════════
 // INCOME
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/income", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+router.get("/income", requireRole("superadmin", "manager", "accountant"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search = "", source = "", status = "", from = "", to = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -353,20 +359,18 @@ router.get("/income", requireRole("superadmin", "manager", "admin", "accountant"
   }
 });
 
-router.post("/income", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+router.post("/income", requireRole("superadmin", "manager"), validate(accountsAdminSchemas.createIncome), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
-    const { source, category, description, amount, date, payment_method, bank_account_id, order_id, notes, status = "completed" } = req.body;
-    if (!source)      { await client.query("ROLLBACK"); return res.status(400).json({ message: "source required" }); }
-    if (!amount || parseFloat(amount) <= 0) { await client.query("ROLLBACK"); return res.status(400).json({ message: "amount must be > 0" }); }
+    const { source, source_type, category, description, amount, date, payment_method, bank_account_id, order_id, notes, status } = req.body;
 
     const ref    = await nextRef(client, "INC", "income");
     const result = await client.query(
-      `INSERT INTO income (reference, source, category, description, amount, date, payment_method, bank_account_id, order_id, notes, status, created_by, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW()) RETURNING *`,
-      [ref, source, category||null, description||null, parseFloat(amount), date||new Date().toISOString().slice(0,10), payment_method||null, bank_account_id?parseInt(bank_account_id):null, order_id||null, notes||null, status, req.user.id]
+      `INSERT INTO income (reference, source, source_type, category, description, amount, date, payment_method, bank_account_id, order_id, notes, status, created_by, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW()) RETURNING *`,
+      [ref, source, source_type, category||null, description||null, parseFloat(amount), date||new Date().toISOString().slice(0,10), payment_method||null, bank_account_id?parseInt(bank_account_id):null, order_id||null, notes||null, status, req.user.id]
     );
 
     if (status === "completed" && bank_account_id) {
@@ -383,7 +387,7 @@ router.post("/income", requireRole("superadmin", "manager", "admin"), async (req
   }
 });
 
-router.patch("/income/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
+router.patch("/income/:id", requireRole("superadmin", "manager"), validate(accountsAdminSchemas.updateIncome), async (req, res, next) => {
   try {
     const { description, amount, status, notes } = req.body;
     const result = await pool.query(
@@ -414,7 +418,7 @@ router.delete("/income/:id", requireRole("superadmin"), async (req, res, next) =
 // ════════════════════════════════════════════════════════════════════════════
 // EXPENSES
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/expenses", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+router.get("/expenses", requireRole("superadmin", "manager", "accountant"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, search = "", category = "", status = "", from = "", to = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -468,15 +472,12 @@ router.get("/expenses", requireRole("superadmin", "manager", "admin", "accountan
   }
 });
 
-router.post("/expenses", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+router.post("/expenses", requireRole("superadmin", "manager"), validate(accountsAdminSchemas.createExpense), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
     const { category, description, supplier_name, amount, date, due_date, payment_method, bank_account_id, receipt_url, notes } = req.body;
-    if (!category)    { await client.query("ROLLBACK"); return res.status(400).json({ message: "category required" }); }
-    if (!description) { await client.query("ROLLBACK"); return res.status(400).json({ message: "description required" }); }
-    if (!amount || parseFloat(amount) <= 0) { await client.query("ROLLBACK"); return res.status(400).json({ message: "amount must be > 0" }); }
 
     const ref    = await nextRef(client, "EXP", "expenses");
     const result = await client.query(
@@ -495,7 +496,7 @@ router.post("/expenses", requireRole("superadmin", "manager", "admin"), async (r
   }
 });
 
-router.patch("/expenses/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
+router.patch("/expenses/:id", requireRole("superadmin", "manager"), validate(accountsAdminSchemas.updateExpense), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -554,7 +555,7 @@ router.delete("/expenses/:id", requireRole("superadmin"), async (req, res, next)
 // ════════════════════════════════════════════════════════════════════════════
 // TRANSACTIONS  ──  GET /api/admin/accounts/transactions
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/transactions", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+router.get("/transactions", requireRole("superadmin", "manager", "accountant"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, type = "", bank_account_id = "", from = "", to = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -599,13 +600,13 @@ router.get("/transactions", requireRole("superadmin", "manager", "admin", "accou
 // ════════════════════════════════════════════════════════════════════════════
 // MONEY TRANSFER  ──  GET + POST /api/admin/accounts/transfers
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/transfers", requireRole("superadmin", "manager", "admin", "accountant"), accountsController.getMoneyTransfers);
+router.get("/transfers", requireRole("superadmin", "manager", "accountant"), accountsController.getMoneyTransfers);
 router.post("/transfers", requireRole("superadmin", "manager"), accountsController.createMoneyTransfer);
 
 // ════════════════════════════════════════════════════════════════════════════
 // DRIVER COMMISSIONS  ──  GET /api/admin/accounts/commissions
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/commissions", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+router.get("/commissions", requireRole("superadmin", "manager", "accountant"), async (req, res, next) => {
   try {
     const { page = 1, limit = 20, status = "", driver_id = "" } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);

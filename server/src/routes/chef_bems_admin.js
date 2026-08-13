@@ -45,14 +45,10 @@ router.delete("/conversations/:id", requireRole("superadmin"), async (req, res, 
 });
 
 // ─── DIETARY RULES ────────────────────────────────────────────────────────────
-const ENSURE_DIET = `CREATE TABLE IF NOT EXISTS admin_dietary_rules (
-  id SERIAL PRIMARY KEY, condition VARCHAR(255) UNIQUE NOT NULL, rule_text TEXT NOT NULL,
-  tags VARCHAR(255), priority INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
-)`;
+// admin_dietary_rules is created once in migrations.sql (#28), not per-request.
 
 router.get("/dietary-rules", AI_ROLES, async (req, res, next) => {
   try {
-    await pool.query(ENSURE_DIET);
     const { search = "", page = 1, limit = 50 } = req.query;
     const params = []; const where = [];
     if (search) { params.push(`%${search}%`); where.push(`(condition ILIKE $${params.length} OR rule_text ILIKE $${params.length} OR tags ILIKE $${params.length})`); }
@@ -68,7 +64,6 @@ router.get("/dietary-rules", AI_ROLES, async (req, res, next) => {
 
 router.post("/dietary-rules", requireRole("superadmin","manager"), async (req, res, next) => {
   try {
-    await pool.query(ENSURE_DIET);
     const { condition, rule_text, tags, priority } = req.body;
     if (!condition?.trim()) return res.status(400).json({ message: "Condition is required" });
     if (!rule_text?.trim()) return res.status(400).json({ message: "Rule text is required" });
@@ -84,7 +79,6 @@ router.post("/dietary-rules", requireRole("superadmin","manager"), async (req, r
 
 router.put("/dietary-rules/:id", requireRole("superadmin","manager"), async (req, res, next) => {
   try {
-    await pool.query(ENSURE_DIET);
     const { condition, rule_text, tags, priority } = req.body;
     if (!condition?.trim()) return res.status(400).json({ message: "Condition is required" });
     const result = await pool.query(
@@ -98,7 +92,6 @@ router.put("/dietary-rules/:id", requireRole("superadmin","manager"), async (req
 
 router.delete("/dietary-rules/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
-    await pool.query(ENSURE_DIET);
     const result = await pool.query("DELETE FROM admin_dietary_rules WHERE id=$1 RETURNING id", [req.params.id]);
     if (!result.rows.length) return res.status(404).json({ message: "Rule not found" });
     res.json({ message: "Dietary rule deleted" });
@@ -154,15 +147,10 @@ router.delete("/meal-associations/:id", requireRole("superadmin","manager"), asy
 });
 
 // ─── SUBSTITUTIONS ────────────────────────────────────────────────────────────
-const ENSURE_SUBS = `CREATE TABLE IF NOT EXISTS admin_substitutions (
-  id SERIAL PRIMARY KEY, original_item VARCHAR(255) NOT NULL, substitute_item VARCHAR(255) NOT NULL,
-  reason TEXT, dietary_tags TEXT, confidence DECIMAL(3,2) DEFAULT 0.80,
-  is_active BOOLEAN DEFAULT TRUE, created_by INTEGER, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
-)`;
+// admin_substitutions is created once in migrations.sql (#28), not per-request.
 
 router.get("/substitutions", AI_ROLES, async (req, res, next) => {
   try {
-    await pool.query(ENSURE_SUBS);
     const { search = "", page = 1, limit = 50 } = req.query;
     const params = []; const where = [];
     if (search) { params.push(`%${search}%`); where.push(`(original_item ILIKE $${params.length} OR substitute_item ILIKE $${params.length} OR dietary_tags ILIKE $${params.length})`); }
@@ -178,7 +166,6 @@ router.get("/substitutions", AI_ROLES, async (req, res, next) => {
 
 router.post("/substitutions", requireRole("superadmin","manager","kitchen_staff"), async (req, res, next) => {
   try {
-    await pool.query(ENSURE_SUBS);
     const { original_item, substitute_item, reason, dietary_tags, confidence } = req.body;
     if (!original_item?.trim()) return res.status(400).json({ message: "Original item is required" });
     if (!substitute_item?.trim()) return res.status(400).json({ message: "Substitute item is required" });
@@ -212,15 +199,10 @@ router.delete("/substitutions/:id", requireRole("superadmin","manager"), async (
 });
 
 // ─── RECOMMENDATIONS ─────────────────────────────────────────────────────────
-const ENSURE_RECS = `CREATE TABLE IF NOT EXISTS admin_recommendations (
-  id SERIAL PRIMARY KEY, title VARCHAR(255) NOT NULL, trigger_condition TEXT NOT NULL,
-  recommended_items TEXT NOT NULL, context_tags TEXT, priority INTEGER DEFAULT 5,
-  is_active BOOLEAN DEFAULT TRUE, created_by INTEGER, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
-)`;
+// admin_recommendations is created once in migrations.sql (#28), not per-request.
 
 router.get("/recommendations", AI_ROLES, async (req, res, next) => {
   try {
-    await pool.query(ENSURE_RECS);
     const { search = "", page = 1, limit = 50 } = req.query;
     const params = []; const where = [];
     if (search) { params.push(`%${search}%`); where.push(`(title ILIKE $${params.length} OR trigger_condition ILIKE $${params.length} OR recommended_items ILIKE $${params.length})`); }
@@ -236,7 +218,6 @@ router.get("/recommendations", AI_ROLES, async (req, res, next) => {
 
 router.post("/recommendations", requireRole("superadmin","manager"), async (req, res, next) => {
   try {
-    await pool.query(ENSURE_RECS);
     const { title, trigger_condition, recommended_items, context_tags, priority } = req.body;
     if (!title?.trim()) return res.status(400).json({ message: "Title is required" });
     if (!trigger_condition?.trim()) return res.status(400).json({ message: "Trigger condition is required" });

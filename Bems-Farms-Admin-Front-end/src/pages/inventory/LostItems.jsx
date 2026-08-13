@@ -23,93 +23,6 @@ const REASON_CFG = {
   'Other':                { icon:'ri-more-line',          color:'var(--text-muted)' },
 }
 
-const MOCK_LOST_ITEMS = [
-  {
-    id: 1,
-    created_at: '2026-06-10',
-    product_name: 'Fresh Tomatoes',
-    category_name: 'Vegetables',
-    quantity: 12,
-    unit: 'kg',
-    estimated_value: 9600,
-    reason: 'Spoilage / Rotting',
-    warehouse_name: 'Main Store',
-    reported_by_name: 'Emeka Adeola',
-    approved_by_name: 'Ngozi Bello',
-    status: 'confirmed'
-  },
-  {
-    id: 2,
-    created_at: '2026-06-12',
-    product_name: 'Fresh Milk (1L)',
-    category_name: 'Dairy & Eggs',
-    quantity: 5,
-    unit: 'bottle',
-    estimated_value: 4500,
-    reason: 'Expiry Date Passed',
-    warehouse_name: 'Cold Room',
-    reported_by_name: 'Ngozi Bello',
-    approved_by_name: 'Admin',
-    status: 'confirmed'
-  },
-  {
-    id: 3,
-    created_at: '2026-06-15',
-    product_name: 'Palm Oil (25L)',
-    category_name: 'Grains & Carbs',
-    quantity: 6,
-    unit: 'crate',
-    estimated_value: 108000,
-    reason: 'Expiry Date Passed',
-    warehouse_name: 'Main Store',
-    reported_by_name: 'Admin',
-    approved_by_name: 'Admin',
-    status: 'confirmed'
-  },
-  {
-    id: 4,
-    created_at: '2026-06-18',
-    product_name: 'Chicken (Whole)',
-    category_name: 'Meat',
-    quantity: 3,
-    unit: 'kg',
-    estimated_value: 8400,
-    reason: 'Spoilage / Rotting',
-    warehouse_name: 'Cold Room',
-    reported_by_name: 'Emeka Adeola',
-    approved_by_name: 'Emeka Adeola',
-    status: 'confirmed'
-  },
-  {
-    id: 5,
-    created_at: '2026-06-21',
-    product_name: 'Grains & Carbs',
-    category_name: 'Grains & Carbs',
-    quantity: 2,
-    unit: 'pack',
-    estimated_value: 2200,
-    reason: 'Pest Damage',
-    warehouse_name: 'Dry store',
-    reported_by_name: 'Tunde Okaloi',
-    approved_by_name: 'Tunde Okaloi',
-    status: 'investigating'
-  },
-  {
-    id: 6,
-    created_at: '2026-06-24',
-    product_name: 'Fresh Pepper',
-    category_name: 'Vegetables',
-    quantity: 4,
-    unit: 'kg',
-    estimated_value: 2800,
-    reason: 'Physical Damage',
-    warehouse_name: 'Main Store',
-    reported_by_name: 'Ngozi Bello',
-    approved_by_name: null,
-    status: 'pending'
-  }
-]
-
 const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
 const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'var(--orange-accent)', color:'#fff', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:13 }
 const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
@@ -148,26 +61,23 @@ export default function LostItems() {
   const [form,       setForm]     = useState(BLANK_FORM)
   const [saving,     setSaving]   = useState(false)
   const [filterStatus, setFilterStatus] = useState('')
+  const [error, setError] = useState(null)
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const params = { page, limit:20 }
       const res = await api.get('/admin/inventory/lost-items', { params })
-      const dbItems = res.data.items || []
-      if (dbItems.length === 0 && page === 1 && !search && !filterStatus) {
-        setItems(MOCK_LOST_ITEMS)
-        setMeta({ total: MOCK_LOST_ITEMS.length, pages: 1 })
-      } else {
-        setItems(dbItems)
-        setMeta({ total: res.data.total || 0, pages: res.data.pages || 1 })
-      }
-    } catch (err) { 
-      toast.error(err.response?.data?.message || 'Failed to load lost items') 
-      setItems(MOCK_LOST_ITEMS)
-      setMeta({ total: MOCK_LOST_ITEMS.length, pages: 1 })
-    } finally { 
-      setLoading(false) 
+      setItems(res.data.items || [])
+      setMeta({ total: res.data.total || 0, pages: res.data.pages || 1 })
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load lost items')
+      setError(err.response?.data?.message || 'Failed to load lost items')
+      setItems([])
+      setMeta({ total: 0, pages: 1 })
+    } finally {
+      setLoading(false)
     }
   }, [page, search, filterStatus])
 
@@ -366,7 +276,15 @@ export default function LostItems() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {error ? (
+                <tr><td colSpan={11} style={{ ...TD, textAlign:'center', padding:40, color:'#f06548' }}>
+                  <i className="ri-error-warning-line" style={{ fontSize:32, display:'block', marginBottom:8 }}/>
+                  {error}
+                  <div style={{ marginTop:12 }}>
+                    <button style={btnL} onClick={fetchItems}>Retry</button>
+                  </div>
+                </td></tr>
+              ) : filtered.length === 0 ? (
                 <tr><td colSpan={11} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
                   <i className="ri-shield-check-line" style={{ fontSize:32, display:'block', marginBottom:8, color:'#0ab39c' }}/>No lost item reports found
                 </td></tr>

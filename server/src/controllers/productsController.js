@@ -5,47 +5,62 @@ const pool = require("../db/pool");
 // GET /api/products
 // GET /api/products?category=rice-grains
 // GET /api/products?search=garri
-const getProducts = async (req, res) => {
+const getProducts = async (req, res, next) => {
   try {
     const { category, search } = req.query;
+    // Default limit is generous enough to return the whole catalog as-is
+    // today (existing client pages don't paginate yet) while still capping
+    // response size and accepting page/limit once a client asks for them.
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 200));
+    const offset = (page - 1) * limit;
 
-    let query = `
-      SELECT p.*, c.name as category_name
-      FROM products p
-      LEFT JOIN categories c ON p.category_id = c.id
-      WHERE 1=1
-    `;
+    let where = "WHERE 1=1";
     const params = [];
 
     // Filter by category
     if (category) {
       params.push(category);
-      query += ` AND c.name = $${params.length}`;
+      where += ` AND c.name = $${params.length}`;
     }
 
     // Search by name
     if (search) {
       params.push(`%${search}%`);
-      query += ` AND p.name ILIKE $${params.length}`;
+      where += ` AND p.name ILIKE $${params.length}`;
     }
 
-    query += ` ORDER BY p.is_featured DESC, p.id ASC`;
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM products p LEFT JOIN categories c ON p.category_id = c.id ${where}`,
+      params,
+    );
+    const total = parseInt(countResult.rows[0].count);
 
-    const result = await pool.query(query, params);
+    const result = await pool.query(
+      `SELECT p.*, c.name as category_name
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       ${where}
+       ORDER BY p.is_featured DESC, p.id ASC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, limit, offset],
+    );
 
     res.json({
       products: result.rows,
       count: result.rows.length,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error("getProducts error:", error.message);
-    res.status(500).json({ message: "Server error fetching products" });
+    next(error);
   }
 };
 
 // ─── GET SINGLE PRODUCT ────────────────────────────────────────
 // GET /api/products/:id
-const getProductById = async (req, res) => {
+const getProductById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -74,14 +89,13 @@ const getProductById = async (req, res) => {
       related: related.rows,
     });
   } catch (error) {
-    console.error("getProductById error:", error.message);
-    res.status(500).json({ message: "Server error fetching product" });
+    next(error);
   }
 };
 
 // ─── GET FEATURED PRODUCTS ─────────────────────────────────────
 // GET /api/products/featured
-const getFeaturedProducts = async (req, res) => {
+const getFeaturedProducts = async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT p.*, c.name as category_name 
@@ -93,8 +107,7 @@ const getFeaturedProducts = async (req, res) => {
 
     res.json({ products: result.rows });
   } catch (error) {
-    console.error("getFeaturedProducts error:", error.message);
-    res.status(500).json({ message: "Server error" });
+    next(error);
   }
 };
 

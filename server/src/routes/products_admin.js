@@ -235,10 +235,14 @@ router.post(
         image_4_url,
       } = req.body;
 
-      if (!name?.trim())
+      if (!name?.trim()) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Product name required" });
-      if (!image_url?.trim())
+      }
+      if (!image_url?.trim()) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Main Product Image URL is required" });
+      }
 
       // unit_price/cost_price/stock/low_stock_threshold/tax_rate are typed
       // as numbers by the DB but arrive as arbitrary JSON here — a garbage
@@ -246,18 +250,23 @@ router.post(
       // which would otherwise silently store NaN or a negative price/stock.
       const parsedUnitPrice = parseFloat(unit_price);
       if (unit_price === undefined || unit_price === "" || isNaN(parsedUnitPrice) || parsedUnitPrice < 0) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Unit price must be a number that isn't negative" });
       }
       if (cost_price !== undefined && cost_price !== "" && (isNaN(parseFloat(cost_price)) || parseFloat(cost_price) < 0)) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Cost price must be a number that isn't negative" });
       }
       if (isNaN(parseInt(stock_quantity)) || parseInt(stock_quantity) < 0) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Stock quantity must be a whole number that isn't negative" });
       }
       if (isNaN(parseInt(low_stock_threshold)) || parseInt(low_stock_threshold) < 0) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Low stock threshold must be a whole number that isn't negative" });
       }
       if (tax_rate !== undefined && tax_rate !== "" && (isNaN(parseFloat(tax_rate)) || parseFloat(tax_rate) < 0)) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Tax rate must be a number that isn't negative" });
       }
 
@@ -267,6 +276,7 @@ router.post(
           [barcode.trim()]
         );
         if (barcodeCheck.rows.length) {
+          await client.query("ROLLBACK");
           return res.status(400).json({
             message: `Barcode "${barcode.trim()}" is already assigned to product "${barcodeCheck.rows[0].name}"`
           });
@@ -291,8 +301,10 @@ router.post(
         "SELECT id FROM products WHERE sku=$1",
         [sku],
       );
-      if (skuCheck.rows.length)
+      if (skuCheck.rows.length) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: `SKU "${sku}" already exists` });
+      }
 
       // Calculate margin
       const margin =
@@ -515,8 +527,10 @@ router.patch(
         "SELECT * FROM products WHERE id=$1",
         [req.params.id],
       );
-      if (!existing.rows.length)
+      if (!existing.rows.length) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ message: "Product not found" });
+      }
 
       const p = existing.rows[0];
       const {
@@ -546,24 +560,30 @@ router.patch(
       } = req.body;
 
       if (image_url !== undefined && (!image_url || !image_url.trim())) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Main Product Image URL is required" });
       }
 
       // Only fields actually present in the PATCH body are validated —
       // COALESCE below keeps anything omitted at its existing value.
       if (unit_price !== undefined && unit_price !== "" && (isNaN(parseFloat(unit_price)) || parseFloat(unit_price) < 0)) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Unit price must be a number that isn't negative" });
       }
       if (cost_price !== undefined && cost_price !== "" && (isNaN(parseFloat(cost_price)) || parseFloat(cost_price) < 0)) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Cost price must be a number that isn't negative" });
       }
       if (stock_quantity !== undefined && (isNaN(parseInt(stock_quantity)) || parseInt(stock_quantity) < 0)) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Stock quantity must be a whole number that isn't negative" });
       }
       if (low_stock_threshold !== undefined && (isNaN(parseInt(low_stock_threshold)) || parseInt(low_stock_threshold) < 0)) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Low stock threshold must be a whole number that isn't negative" });
       }
       if (tax_rate !== undefined && tax_rate !== "" && (isNaN(parseFloat(tax_rate)) || parseFloat(tax_rate) < 0)) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: "Tax rate must be a number that isn't negative" });
       }
 
@@ -573,6 +593,7 @@ router.patch(
           [barcode.trim(), req.params.id]
         );
         if (barcodeCheck.rows.length) {
+          await client.query("ROLLBACK");
           return res.status(400).json({
             message: `Barcode "${barcode.trim()}" is already assigned to product "${barcodeCheck.rows[0].name}"`
           });

@@ -1,12 +1,44 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { NAIRA_PER_UNIT } from "../utils/currency";
 
 const CartContext = createContext();
 
+const CART_KEY = "bems_cart";
+const COUPON_KEY = "bems_cart_coupon";
+
+function loadCart() {
+  try {
+    const raw = localStorage.getItem(CART_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function loadCoupon() {
+  try {
+    const raw = localStorage.getItem(COUPON_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function CartProvider({ children }) {
-  const [cart, setCart] = useState({});
+  const [cart, setCart] = useState(loadCart);
   const [products, setProducts] = useState([]);
-  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discount, type, value }
+  const [appliedCoupon, setAppliedCoupon] = useState(loadCoupon); // { code, discount, type, value }
+
+  // Persist across refresh/tab-close — a customer who accidentally reloads
+  // shouldn't lose everything they'd added.
+  useEffect(() => {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  }, [cart]);
+
+  useEffect(() => {
+    if (appliedCoupon) localStorage.setItem(COUPON_KEY, JSON.stringify(appliedCoupon));
+    else localStorage.removeItem(COUPON_KEY);
+  }, [appliedCoupon]);
 
   const addToCart = (product) => {
     setCart((prev) => ({

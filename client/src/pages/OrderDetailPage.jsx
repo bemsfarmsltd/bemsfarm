@@ -446,7 +446,7 @@ export default function OrderDetailPage() {
 
   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
   const items = order.items || order.order_items || [];
-  const total = Number(order.total || order.total || 0);
+  const total = Number(order.total || 0);
   const date = new Date(order.created_at || order.createdAt);
 
   // Check if eligible for return (delivered within last 7 days)
@@ -720,7 +720,7 @@ export default function OrderDetailPage() {
                   </div>
                   <div style={{ color: "#9CA3AF", fontSize: 13 }}>
                     Qty: {item.quantity} · ₦
-                    {Number(item.price || item.unit || 0).toLocaleString()} each
+                    {Number(item.price || item.unit_price || 0).toLocaleString()} each
                   </div>
                 </div>
                 <div
@@ -907,7 +907,7 @@ export default function OrderDetailPage() {
           )}
 
           <Link
-            to="/shop"
+            to="/products"
             style={{
               padding: "12px 24px",
               borderRadius: 12,

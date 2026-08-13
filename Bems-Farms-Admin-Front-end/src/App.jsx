@@ -3,7 +3,7 @@ import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import Layout from './components/layout/Layout'
 import {
-  ALL_ROLES, ADMIN_ONLY, FINANCE_ROLES, DELIVERY_ROLES,
+  FINANCE_ROLES, DELIVERY_ROLES,
   POS_ROLES, ORDER_ROLES, CUSTOMER_ROLES, PRODUCT_ROLES,
   REPORT_ROLES, AI_ROLES, STAFF_ROLES, SETTINGS_ROLES,
 } from './lib/roles'

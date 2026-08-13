@@ -2,8 +2,6 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const PRODUCTS = ['Basmati Rice (5kg)','Fresh Tomatoes','Palm Oil (25L)','Catfish (Smoked)','Fresh Pepper','Chicken (Whole)','Fresh Yam','Cassava Flour','Fresh Milk (1L)','Plantain (Bunch)','Fresh Eggs (Crate)','Goat Meat (1kg)']
-const CUSTOMERS = ['Mrs. Adaeze Okafor','Chioma Eze','Bayo Farms Ltd','Eko Catering Services','Mama Cee Restaurant','Sunshine Bakery','Mr. Emeka Nwosu','Funke Abiodun','Chidi Catering Ltd','Walk-in Customer']
 const STAFF = ['Admin','Emeka Adeola','Ngozi Bello','Tunde Okafor','Chike Nwosu']
 const RETURN_REASONS = ['Damaged on delivery','Wrong item sent','Quality below standard','Spoiled / Already expired','Item missing from order','Customer changed mind','Incorrect quantity','Packaging damaged']
 const REFUND_METHODS = ['Cash','Wallet Credit','Bank Transfer']
@@ -66,6 +64,17 @@ export default function Refunds() {
   const [selected,setSelected]         = useState(null)
   const [processTab,setProcessTab]     = useState('inspect')
   const [loading, setLoading]          = useState(true)
+  const [customerOptions,setCustomerOptions] = useState([])
+  const [productOptions,setProductOptions]   = useState([])
+
+  useEffect(() => {
+    api.get('/admin/customers', { params: { limit: 500 } })
+      .then(res => setCustomerOptions(res.data.customers || []))
+      .catch(() => toast.error('Failed to load customers'))
+    api.get('/admin/products', { params: { limit: 500 } })
+      .then(res => setProductOptions(res.data.products || []))
+      .catch(() => toast.error('Failed to load products'))
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -78,7 +87,7 @@ export default function Refunds() {
 
   useEffect(() => { load() }, [load])
 
-  const [logForm,setLogForm] = useState({ ref:'',date:'',ordRef:'',customer:CUSTOMERS[0],phone:'',product:PRODUCTS[0],qty:1,unit:'kg',unitPrice:0,reason:RETURN_REASONS[0],notes:'' })
+  const [logForm,setLogForm] = useState({ ref:'',date:'',ordRef:'',customer_id:'',phone:'',product_id:'',qty:1,unit:'kg',unitPrice:0,reason:RETURN_REASONS[0],notes:'' })
   const [procForm,setProcForm] = useState({ condition:'resalable',goodsAction:'back_to_stock',resalableQty:0,writeOffQty:0,inspectionNotes:'',processedBy:STAFF[0],refundAmount:0,refundMethod:REFUND_METHODS[0],refundRef:'' })
 
   const filtered = useMemo(()=>records.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),[records])
@@ -91,7 +100,7 @@ export default function Refunds() {
   }),[records])
 
   function openLog() {
-    setLogForm({ ref:nextRef(records), date:new Date().toISOString().slice(0,10), ordRef:'', customer:CUSTOMERS[0], phone:'', product:PRODUCTS[0], qty:1, unit:'kg', unitPrice:0, reason:RETURN_REASONS[0], notes:'' })
+    setLogForm({ ref:nextRef(records), date:new Date().toISOString().slice(0,10), ordRef:'', customer_id:'', phone:'', product_id:'', qty:1, unit:'kg', unitPrice:0, reason:RETURN_REASONS[0], notes:'' })
     setActiveModal('log')
   }
 
@@ -256,16 +265,18 @@ export default function Refunds() {
               </div>
               <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12 }}>
                 <div><label style={LBL}>Customer *</label>
-                  <select style={inp} required value={logForm.customer} onChange={e=>setLogForm(f=>({...f,customer:e.target.value}))}>
-                    {CUSTOMERS.map(c=><option key={c}>{c}</option>)}
+                  <select style={inp} required value={logForm.customer_id} onChange={e=>setLogForm(f=>({...f,customer_id:e.target.value}))}>
+                    <option value="">Select a customer…</option>
+                    {customerOptions.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div><label style={LBL}>Customer Phone</label><input style={inp} placeholder="0800 000 0000" value={logForm.phone} onChange={e=>setLogForm(f=>({...f,phone:e.target.value}))}/></div>
               </div>
               <div style={{ display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',gap:12,marginBottom:12 }}>
                 <div><label style={LBL}>Product Returned *</label>
-                  <select style={inp} required value={logForm.product} onChange={e=>setLogForm(f=>({...f,product:e.target.value}))}>
-                    {PRODUCTS.map(p=><option key={p}>{p}</option>)}
+                  <select style={inp} required value={logForm.product_id} onChange={e=>setLogForm(f=>({...f,product_id:e.target.value}))}>
+                    <option value="">Select a product…</option>
+                    {productOptions.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
                 <div><label style={LBL}>Qty *</label><input type="number" style={inp} min="1" required value={logForm.qty} onChange={e=>setLogForm(f=>({...f,qty:Number(e.target.value)}))}/></div>

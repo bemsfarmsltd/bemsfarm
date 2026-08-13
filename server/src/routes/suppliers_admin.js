@@ -49,11 +49,18 @@ const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const validate = require("../middleware/validate");
+const supplierAdminSchemas = require("../schemas/supplierAdminSchemas");
 
 router.use(protect);
 
 // ── HELPER: auto-generate supplier code ─────────────────────────────────────
+// pg_advisory_xact_lock serializes concurrent callers (auto-released at
+// COMMIT/ROLLBACK) so two requests can't both read the same COUNT before
+// either commits — closes a race that would otherwise collide with
+// suppliers.supplier_code's UNIQUE constraint under concurrency.
 async function nextSupplierCode(client) {
+  await client.query("SELECT pg_advisory_xact_lock(hashtext('supplier_code'))");
   const row = await client.query("SELECT COUNT(*) FROM suppliers");
   const n   = parseInt(row.rows[0].count) + 1;
   return `SUP-${String(n).padStart(3, "0")}`;
@@ -169,7 +176,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin"), async (req, re
 // ════════════════════════════════════════════════════════════════════════════
 // ADD SUPPLIER  ──  POST /api/admin/suppliers
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+router.post("/", requireRole("superadmin", "manager", "admin"), validate(supplierAdminSchemas.createSupplier), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -181,11 +188,12 @@ router.post("/", requireRole("superadmin", "manager", "admin"), async (req, res,
       tax_id, notes,
     } = req.body;
 
-    if (!name?.trim()) return res.status(400).json({ message: "Supplier name required" });
-
     if (phone) {
       const dup = await client.query("SELECT id FROM suppliers WHERE phone=$1", [phone]);
-      if (dup.rows.length) return res.status(400).json({ message: "A supplier with this phone already exists" });
+      if (dup.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "A supplier with this phone already exists" });
+      }
     }
 
     const code   = await nextSupplierCode(client);
@@ -211,7 +219,7 @@ router.post("/", requireRole("superadmin", "manager", "admin"), async (req, res,
 // ════════════════════════════════════════════════════════════════════════════
 // UPDATE SUPPLIER  ──  PATCH /api/admin/suppliers/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+router.patch("/:id", requireRole("superadmin", "manager", "admin"), validate(supplierAdminSchemas.updateSupplier), async (req, res, next) => {
   try {
     const {
       name, contact_person, phone, email, address,
@@ -361,16 +369,19 @@ router.get("/payments/all", requireRole("superadmin", "manager", "admin"), async
 router.post(
   "/:id/payments",
   requireRole("superadmin", "manager", "admin"),
+  validate(supplierAdminSchemas.recordPayment),
   async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
       const { amount, payment_method, bank_account_id, purchase_order_id, payment_date, notes } = req.body;
-      if (!amount || parseFloat(amount) <= 0) return res.status(400).json({ message: "amount must be > 0" });
 
       const suppRow = await client.query("SELECT * FROM suppliers WHERE id=$1 FOR UPDATE", [req.params.id]);
-      if (!suppRow.rows.length) return res.status(404).json({ message: "Supplier not found" });
+      if (!suppRow.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Supplier not found" });
+      }
 
       const ref    = `SPAY-${Date.now()}`;
       const txDate = payment_date || new Date().toISOString().slice(0, 10);

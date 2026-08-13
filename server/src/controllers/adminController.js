@@ -3,7 +3,7 @@ const pool = require("../db/pool");
 const { NAIRA_PER_UNIT } = require("../utils/currency");
 
 // ── GET DASHBOARD STATS ──────────────────────────────────────
-const getStats = async (req, res) => {
+const getStats = async (req, res, next) => {
   try {
     console.log("📊 Fetching admin stats");
 
@@ -102,13 +102,12 @@ const getStats = async (req, res) => {
       dailyRevenue: dailyRevenueRes.rows,
     });
   } catch (err) {
-    console.error("❌ Stats error:", err.message);
-    res.status(500).json({ message: "Failed to fetch stats: " + err.message });
+    next(err);
   }
 };
 
 // ── GET SUBSCRIBERS ──────────────────────────────────────────
-const getSubscribers = async (req, res) => {
+const getSubscribers = async (req, res, next) => {
   try {
     console.log("📧 Fetching subscribers");
 
@@ -123,10 +122,7 @@ const getSubscribers = async (req, res) => {
     console.log("✅ Found", result.rows.length, "subscribers");
     res.json({ subscribers: result.rows || [], count: result.rows.length });
   } catch (err) {
-    console.error("❌ Error:", err.message);
-    res
-      .status(500)
-      .json({ message: "Failed to fetch subscribers: " + err.message });
+    next(err);
   }
 };
 

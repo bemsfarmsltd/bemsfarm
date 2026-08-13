@@ -193,7 +193,7 @@ export default function Footer() {
             {["Privacy", "Terms", "Support"].map((item) => (
               <a
                 key={item}
-                href="#"
+                href="/contact"
                 style={{
                   color: "rgba(255,255,255,0.35)",
                   fontSize: "13px",

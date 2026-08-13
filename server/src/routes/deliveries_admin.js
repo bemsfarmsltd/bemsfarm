@@ -5,6 +5,8 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const validate = require("../middleware/validate");
+const deliveryAdminSchemas = require("../schemas/deliveryAdminSchemas");
 
 router.use(protect);
 
@@ -124,6 +126,7 @@ router.get("/auto-log", requireRole("superadmin", "manager", "admin", "delivery_
 router.patch(
   "/:id/status",
   requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  validate(deliveryAdminSchemas.updateStatus),
   async (req, res, next) => {
     const client = await pool.connect();
     try {
@@ -177,12 +180,11 @@ router.patch(
       await client.query(
         `
       INSERT INTO order_tracking_events
-        (order_id, delivery_id, event_type, description, triggered_by, triggered_by_id, created_at)
-      VALUES ($1,$2,$3,$4,'admin',$5,NOW())
+        (order_id, event_type, description, actor_type, actor_id, created_at)
+      VALUES ($1,$2,$3,'admin',$4,NOW())
     `,
         [
           del.rows[0].order_id,
-          req.params.id,
           status,
           notes || status,
           req.user.id,
@@ -204,15 +206,12 @@ router.patch(
 router.patch(
   "/:id/reassign",
   requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  validate(deliveryAdminSchemas.reassign),
   async (req, res, next) => {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
       const { driver_id, note } = req.body;
-      if (!driver_id) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({ message: "driver_id required" });
-      }
 
       const del = await client.query("SELECT * FROM deliveries WHERE id=$1", [
         req.params.id,
@@ -258,12 +257,11 @@ router.patch(
       await client.query(
         `
       INSERT INTO order_tracking_events
-        (order_id, delivery_id, event_type, description, triggered_by, triggered_by_id, created_at)
-      VALUES ($1,$2,'driver_assigned',$3,'admin',$4,NOW())
+        (order_id, event_type, description, actor_type, actor_id, created_at)
+      VALUES ($1,'driver_assigned',$2,'admin',$3,NOW())
     `,
         [
           del.rows[0].order_id,
-          req.params.id,
           `Driver reassigned to: ${d.name} (${d.vehicle_plate}). ${note || ""}`,
           req.user.id,
         ],
@@ -284,6 +282,7 @@ router.patch(
 router.patch(
   "/:id/attempt",
   requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  validate(deliveryAdminSchemas.attempt),
   async (req, res, next) => {
     const client = await pool.connect();
     try {
@@ -311,12 +310,11 @@ router.patch(
       await client.query(
         `
       INSERT INTO order_tracking_events
-        (order_id, delivery_id, event_type, description, triggered_by, triggered_by_id, created_at)
-      VALUES ($1,$2,'delivery_attempted',$3,'admin',$4,NOW())
+        (order_id, event_type, description, actor_type, actor_id, created_at)
+      VALUES ($1,'delivery_attempted',$2,'admin',$3,NOW())
     `,
         [
           del.rows[0].order_id,
-          req.params.id,
           notes ||
             `Delivery attempted. Customer unavailable. Attempt ${newAttempts}/2.`,
           req.user.id,

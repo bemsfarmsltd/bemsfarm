@@ -340,17 +340,24 @@ router.post("/manager", requireRole("superadmin"), async (req, res, next) => {
     const bcrypt = require("bcryptjs");
     const { name, email, password, role, store_id } = req.body;
 
-    if (!name || !email || !password || !role)
+    if (!name || !email || !password || !role) {
+      await client.query("ROLLBACK");
       return res.status(400).json({ message: "name, email, password, role required" });
+    }
 
     const validRoles = ["manager","admin","cashier","storekeeper","delivery_manager"];
-    if (!validRoles.includes(role))
+    if (!validRoles.includes(role)) {
+      await client.query("ROLLBACK");
       return res.status(400).json({ message: `Invalid role. Allowed: ${validRoles.join(", ")}` });
+    }
 
     const exists = await client.query(
       "SELECT id FROM users WHERE LOWER(email)=LOWER($1)", [email]
     );
-    if (exists.rows.length) return res.status(400).json({ message: "Email already in use" });
+    if (exists.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Email already in use" });
+    }
 
     const hash = await bcrypt.hash(password, 12);
     const result = await client.query(

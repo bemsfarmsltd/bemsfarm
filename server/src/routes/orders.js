@@ -129,7 +129,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     let appliedCoupon = null;
     let couponDiscount = 0;
     if (coupon_code) {
-      const couponResult = await validateCoupon(client, { code: coupon_code, subtotal, customerId: null });
+      const couponResult = await validateCoupon(client, { code: coupon_code, subtotal, userId: req.user.id });
       if (!couponResult.ok) {
         await client.query("ROLLBACK");
         return res.status(400).json({ message: couponResult.message });
@@ -189,7 +189,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     }
 
     if (appliedCoupon) {
-      await recordCouponUsage(client, { coupon: appliedCoupon, discount: couponDiscount, customerId: null, orderId });
+      await recordCouponUsage(client, { coupon: appliedCoupon, discount: couponDiscount, userId: req.user.id, orderId });
     }
 
     // Monnify's webhook can arrive before this order row exists (it fires the

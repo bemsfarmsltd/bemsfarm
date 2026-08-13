@@ -385,6 +385,7 @@ export default function Sidebar({ mobileOpen = false }) {
               {is('superadmin', 'manager') && <li><SideLink to="/products/variants">Variants</SideLink></li>}
               {is('superadmin', 'manager') && <li><SideLink to="/products/barcode">Barcode</SideLink></li>}
               {is('superadmin', 'manager') && <li><SideLink to="/products/export">Bulk Export</SideLink></li>}
+              {is('superadmin', 'manager') && <li><SideLink to="/products/import">Bulk Import</SideLink></li>}
             </CollapseMenu>
           )}
 
@@ -479,6 +480,8 @@ export default function Sidebar({ mobileOpen = false }) {
               <li><SideLink to="/reports/sales">Sales Report</SideLink></li>
               {is('superadmin', 'manager') && <li><SideLink to="/reports/inventory">Inventory Report</SideLink></li>}
               {is('superadmin', 'manager') && <li><SideLink to="/reports/customers">Customer Report</SideLink></li>}
+              {is('superadmin', 'manager') && <li><SideLink to="/reports/purchases">Purchase Report</SideLink></li>}
+              {is('superadmin', 'manager') && <li><SideLink to="/reports/suppliers">Supplier Report</SideLink></li>}
               <li><SideLink to="/reports/expenses">Expense Report</SideLink></li>
               <li><SideLink to="/reports/finance">Finance Report</SideLink></li>
             </CollapseMenu>

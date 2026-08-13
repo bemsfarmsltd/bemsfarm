@@ -38,6 +38,8 @@ const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { validateCoupon } = require("../utils/coupons");
+const validate = require("../middleware/validate");
+const couponAdminSchemas = require("../schemas/couponAdminSchemas");
 
 router.use(protect);
 
@@ -128,9 +130,11 @@ router.get("/:id", async (req, res, next) => {
     const [coupon, usages] = await Promise.all([
       pool.query("SELECT * FROM coupons WHERE id=$1", [req.params.id]),
       pool.query(
-        `SELECT cu.*, c.name AS customer_name
+        `SELECT cu.*, COALESCE(c.name, u.name) AS customer_name,
+                CASE WHEN cu.customer_id IS NOT NULL THEN 'pos' ELSE 'web' END AS channel
          FROM coupon_usages cu
          LEFT JOIN customers c ON c.id = cu.customer_id
+         LEFT JOIN users u ON u.id = cu.user_id
          WHERE cu.coupon_id=$1
          ORDER BY cu.used_at DESC LIMIT 50`,
         [req.params.id]
@@ -147,21 +151,16 @@ router.get("/:id", async (req, res, next) => {
 // ════════════════════════════════════════════════════════════════════════════
 // CREATE COUPON  ──  POST /api/admin/coupons
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/", async (req, res, next) => {
+router.post("/", validate(couponAdminSchemas.createCoupon), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
     const {
-      code, description, type = "percentage", value,
-      min_order = 0, max_discount, usage_limit, per_user_limit = 1,
-      applicable_to = "all", start_date, end_date, is_active = true,
+      code, description, type, value,
+      min_order, max_discount, usage_limit, per_user_limit,
+      applicable_to, start_date, end_date, is_active,
     } = req.body;
-
-    if (!code?.trim()) { await client.query("ROLLBACK"); return res.status(400).json({ message: "Coupon code is required" }); }
-    if (!value || parseFloat(value) <= 0) { await client.query("ROLLBACK"); return res.status(400).json({ message: "Discount value must be > 0" }); }
-    if (!["percentage", "fixed"].includes(type)) { await client.query("ROLLBACK"); return res.status(400).json({ message: "type must be percentage or fixed" }); }
-    if (type === "percentage" && parseFloat(value) > 100) { await client.query("ROLLBACK"); return res.status(400).json({ message: "Percentage cannot exceed 100" }); }
 
     const duplicate = await client.query("SELECT id FROM coupons WHERE UPPER(code)=UPPER($1)", [code.trim()]);
     if (duplicate.rows.length) { await client.query("ROLLBACK"); return res.status(400).json({ message: "Coupon code already exists" }); }
@@ -195,7 +194,7 @@ router.post("/", async (req, res, next) => {
 // ════════════════════════════════════════════════════════════════════════════
 // UPDATE COUPON  ──  PATCH /api/admin/coupons/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/:id", async (req, res, next) => {
+router.patch("/:id", validate(couponAdminSchemas.updateCoupon), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -278,10 +277,12 @@ router.get("/usage/all", async (req, res, next) => {
     const [rows, count] = await Promise.all([
       pool.query(
         `SELECT cu.*, c.code AS coupon_code, c.type AS coupon_type,
-                cs.name AS customer_name
+                COALESCE(cs.name, u.name) AS customer_name,
+                CASE WHEN cu.customer_id IS NOT NULL THEN 'pos' ELSE 'web' END AS channel
          FROM coupon_usages cu
          JOIN coupons c ON c.id = cu.coupon_id
          LEFT JOIN customers cs ON cs.id = cu.customer_id
+         LEFT JOIN users u ON u.id = cu.user_id
          ORDER BY cu.used_at DESC
          LIMIT $1 OFFSET $2`,
         [parseInt(limit), offset]

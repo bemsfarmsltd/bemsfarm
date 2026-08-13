@@ -72,10 +72,15 @@ export default function PurchaseReturns() {
     setLoadingPO(true)
     try {
       const res = await api.get(`/admin/purchases/${poId}`)
-      setSelectedPO(res.data.order || { id: poId })
+      setSelectedPO(res.data || { id: poId })
       const items = res.data.items || []
       setPoItems(items)
-      setReturnItems(items.map(item => ({ item_id: item.id, product_name: item.product_name, quantity: '', reason: '' })))
+      setReturnItems(items.map(item => ({
+        product_id: item.product_id,
+        product_name: item.product_name,
+        unit_cost: item.unit_cost,
+        quantity: '',
+      })))
     } catch {
       toast.error('Failed to load PO items')
     } finally {
@@ -98,11 +103,12 @@ export default function PurchaseReturns() {
       await api.post('/admin/purchases/returns', {
         purchase_order_id: selectedPO.id,
         items: validItems.map(i => ({
-          item_id: i.item_id,
+          product_id: i.product_id,
+          product_name: i.product_name,
+          unit_cost: i.unit_cost,
           quantity: Number(i.quantity),
-          reason: i.reason,
         })),
-        notes: addNotes,
+        reason: addNotes,
       })
       toast.success('Return created successfully')
       setShowAdd(false)
@@ -161,7 +167,7 @@ export default function PurchaseReturns() {
                   <th className="fw-medium text-muted">Return Date</th>
                   <th className="fw-medium text-muted">Total Amount</th>
                   <th className="fw-medium text-muted">Status</th>
-                  <th className="fw-medium text-muted">Notes</th>
+                  <th className="fw-medium text-muted">Reason</th>
                   <th className="fw-medium text-muted">Actions</th>
                 </tr>
               </thead>
@@ -177,10 +183,10 @@ export default function PurchaseReturns() {
                     <td className="fw-medium">{r.reference || `#RET-${r.id}`}</td>
                     <td>{r.purchase_order_id ? `#PO-${r.purchase_order_id}` : '—'}</td>
                     <td>{r.supplier_name || '—'}</td>
-                    <td>{r.return_date ? new Date(r.return_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
-                    <td>{fmt(r.total_amount)}</td>
+                    <td>{r.created_at ? new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                    <td>{fmt(r.total_value)}</td>
                     <td><ReturnStatusBadge status={r.status} /></td>
-                    <td className="text-wrap" style={{ maxWidth: 180 }}>{r.notes || '—'}</td>
+                    <td className="text-wrap" style={{ maxWidth: 180 }}>{r.reason || '—'}</td>
                     <td>
                       <button className="btn btn-sub-primary size-8 btn-icon" title="View" onClick={() => openView(r)}>
                         <i className="ri-eye-line"></i>
@@ -242,16 +248,16 @@ export default function PurchaseReturns() {
                   </div>
                   <div className="col-md-6">
                     <p className="mb-1 text-muted small">Return Date</p>
-                    <p className="fw-medium mb-0">{viewReturn.return_date ? new Date(viewReturn.return_date).toLocaleDateString('en-GB') : '—'}</p>
+                    <p className="fw-medium mb-0">{viewReturn.created_at ? new Date(viewReturn.created_at).toLocaleDateString('en-GB') : '—'}</p>
                   </div>
                   <div className="col-md-6">
                     <p className="mb-1 text-muted small">Total Amount</p>
-                    <p className="fw-bold mb-0 text-danger">{fmt(viewReturn.total_amount)}</p>
+                    <p className="fw-bold mb-0 text-danger">{fmt(viewReturn.total_value)}</p>
                   </div>
-                  {viewReturn.notes && (
+                  {viewReturn.reason && (
                     <div className="col-12">
-                      <p className="mb-1 text-muted small">Notes</p>
-                      <p className="mb-0">{viewReturn.notes}</p>
+                      <p className="mb-1 text-muted small">Reason</p>
+                      <p className="mb-0">{viewReturn.reason}</p>
                     </div>
                   )}
                 </div>
@@ -268,7 +274,8 @@ export default function PurchaseReturns() {
                         <tr>
                           <th>Product</th>
                           <th>Quantity</th>
-                          <th>Reason</th>
+                          <th>Unit Cost</th>
+                          <th>Subtotal</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -276,7 +283,8 @@ export default function PurchaseReturns() {
                           <tr key={item.id || i}>
                             <td>{item.product_name || '—'}</td>
                             <td>{item.quantity}</td>
-                            <td>{item.reason || '—'}</td>
+                            <td>{fmt(item.unit_cost)}</td>
+                            <td>{fmt(item.subtotal)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -330,7 +338,7 @@ export default function PurchaseReturns() {
                             <tr>
                               <th>Product</th>
                               <th style={{ width: 100 }}>Return Qty</th>
-                              <th>Reason</th>
+                              <th style={{ width: 120 }}>Unit Cost</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -347,15 +355,7 @@ export default function PurchaseReturns() {
                                     onChange={e => updateReturnItem(i, 'quantity', e.target.value)}
                                   />
                                 </td>
-                                <td>
-                                  <input
-                                    type="text"
-                                    className="form-control form-control-sm"
-                                    placeholder="Reason for return"
-                                    value={item.reason}
-                                    onChange={e => updateReturnItem(i, 'reason', e.target.value)}
-                                  />
-                                </td>
+                                <td>{fmt(item.unit_cost)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -365,11 +365,11 @@ export default function PurchaseReturns() {
                   )}
 
                   <div>
-                    <label className="form-label">Notes</label>
+                    <label className="form-label">Reason for Return</label>
                     <textarea
                       className="form-control"
                       rows="3"
-                      placeholder="Notes about this return..."
+                      placeholder="Why are these items being returned?"
                       value={addNotes}
                       onChange={e => setAddNotes(e.target.value)}
                     />

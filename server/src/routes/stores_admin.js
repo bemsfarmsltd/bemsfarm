@@ -9,6 +9,8 @@ const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const validate = require("../middleware/validate");
+const storeAdminSchemas = require("../schemas/storeAdminSchemas");
 
 router.use(protect);
 
@@ -85,28 +87,29 @@ router.get("/:id", requireRole("superadmin", "manager"), async (req, res, next) 
 // ════════════════════════════════════════════════════════════════════════════
 // CREATE STORE  ──  POST /api/admin/stores
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/", requireRole("superadmin", "manager"), async (req, res, next) => {
+router.post("/", requireRole("superadmin", "manager"), validate(storeAdminSchemas.createStore), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
     const {
-      name, code, address, city, state, country = "Nigeria",
-      phone, email, manager_id, opening_hours, notes, status = "open",
+      name, code, address, city, state, country,
+      phone, email, manager_id, opening_hours, notes, status,
     } = req.body;
-
-    if (!name?.trim()) return res.status(400).json({ message: "Store name is required" });
-    if (!code?.trim()) return res.status(400).json({ message: "Store code is required" });
 
     const dupCode = await client.query("SELECT id FROM stores WHERE store_code=$1", [code.trim().toUpperCase()]);
     if (dupCode.rows.length) {
+      await client.query("ROLLBACK");
       return res.status(400).json({ message: `Store code "${code.trim().toUpperCase()}" is already in use` });
     }
 
     // Guard: ensure manager exists if provided
     if (manager_id) {
       const mgr = await client.query("SELECT id FROM users WHERE id=$1", [manager_id]);
-      if (!mgr.rows.length) return res.status(400).json({ message: "Manager user not found" });
+      if (!mgr.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Manager user not found" });
+      }
     }
 
     const result = await client.query(
@@ -133,13 +136,16 @@ router.post("/", requireRole("superadmin", "manager"), async (req, res, next) =>
 // ════════════════════════════════════════════════════════════════════════════
 // UPDATE STORE  ──  PATCH /api/admin/stores/:id
 // ════════════════════════════════════════════════════════════════════════════
-router.patch("/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
+router.patch("/:id", requireRole("superadmin", "manager"), validate(storeAdminSchemas.updateStore), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
     const store = await client.query("SELECT id FROM stores WHERE id=$1", [req.params.id]);
-    if (!store.rows.length) return res.status(404).json({ message: "Store not found" });
+    if (!store.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Store not found" });
+    }
 
     // Maps the admin UI's field names to the real DB columns — `name`/`code`
     // in the request body are stored as store_name/store_code.
@@ -157,6 +163,7 @@ router.patch("/:id", requireRole("superadmin", "manager"), async (req, res, next
         [newCode, req.params.id],
       );
       if (dupCode.rows.length) {
+        await client.query("ROLLBACK");
         return res.status(400).json({ message: `Store code "${newCode}" is already in use` });
       }
       req.body.code = newCode;
@@ -169,7 +176,10 @@ router.patch("/:id", requireRole("superadmin", "manager"), async (req, res, next
       }
     }
 
-    if (!sets.length) return res.status(400).json({ message: "No fields to update" });
+    if (!sets.length) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "No fields to update" });
+    }
 
     params.push(req.params.id);
     const result = await client.query(
@@ -206,10 +216,9 @@ router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
 // ════════════════════════════════════════════════════════════════════════════
 // ASSIGN MANAGER  ──  POST /api/admin/stores/:id/manager
 // ════════════════════════════════════════════════════════════════════════════
-router.post("/:id/manager", requireRole("superadmin"), async (req, res, next) => {
+router.post("/:id/manager", requireRole("superadmin"), validate(storeAdminSchemas.assignManager), async (req, res, next) => {
   try {
     const { manager_id } = req.body;
-    if (!manager_id) return res.status(400).json({ message: "manager_id required" });
 
     const result = await pool.query(
       "UPDATE stores SET manager_id=$1, updated_at=NOW() WHERE id=$2 RETURNING *",

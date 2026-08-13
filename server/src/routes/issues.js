@@ -102,7 +102,7 @@ const activitiesSubquery = `
 `;
 
 // ─── POST /api/issues — Customer reports an issue ─────────────────────────────
-router.post("/", protect, async (req, res) => {
+router.post("/", protect, async (req, res, next) => {
   const { order_id, type, title, description, photo_urls } = req.body;
   const user_id = req.user.id;
 
@@ -138,13 +138,12 @@ router.post("/", protect, async (req, res) => {
       .status(201)
       .json({ message: "Issue reported successfully", issue });
   } catch (err) {
-    console.error("Create issue error:", err.message);
-    return res.status(500).json({ message: "Failed to create issue" });
+    next(err);
   }
 });
 
 // ─── GET /api/issues — Customer gets their issues ─────────────────────────────
-router.get("/", protect, async (req, res) => {
+router.get("/", protect, async (req, res, next) => {
   try {
     await ensureIssueTables();
 
@@ -157,8 +156,7 @@ router.get("/", protect, async (req, res) => {
     );
     return res.json({ issues: result.rows });
   } catch (err) {
-    console.error("Get issues error:", err.message);
-    return res.status(500).json({ message: "Failed to fetch issues" });
+    next(err);
   }
 });
 
@@ -167,7 +165,7 @@ router.get(
   "/admin",
   protect,
   requireRole(...STAFF_ROLES),
-  async (req, res) => {
+  async (req, res, next) => {
     const { status, type, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
@@ -214,14 +212,13 @@ router.get(
         limit: parseInt(limit),
       });
     } catch (err) {
-      console.error("Admin get issues error:", err.message);
-      return res.status(500).json({ message: "Failed to fetch issues" });
+      next(err);
     }
   },
 );
 
 // ─── GET /api/issues/:id — Get single issue with full activity log ───────────
-router.get("/:id", protect, async (req, res) => {
+router.get("/:id", protect, async (req, res, next) => {
   const { id } = req.params;
   try {
     await ensureIssueTables();
@@ -250,8 +247,7 @@ router.get("/:id", protect, async (req, res) => {
 
     return res.json({ issue });
   } catch (err) {
-    console.error("Get issue error:", err.message);
-    return res.status(500).json({ message: "Failed to fetch issue" });
+    next(err);
   }
 });
 
@@ -260,7 +256,7 @@ router.patch(
   "/:id/status",
   protect,
   requireRole(...STAFF_ROLES),
-  async (req, res) => {
+  async (req, res, next) => {
     const { id } = req.params;
     const { status, admin_notes, resolution, refund_amount } = req.body;
 
@@ -372,8 +368,7 @@ router.patch(
         issue: updated.rows[0],
       });
     } catch (err) {
-      console.error("Update issue status error:", err.message);
-      return res.status(500).json({ message: "Failed to update issue" });
+      next(err);
     }
   },
 );
@@ -383,7 +378,7 @@ router.post(
   "/:id/note",
   protect,
   requireRole(...STAFF_ROLES),
-  async (req, res) => {
+  async (req, res, next) => {
     const { id } = req.params;
     const { note } = req.body;
 
@@ -401,8 +396,7 @@ router.post(
 
       return res.json({ message: "Note added" });
     } catch (err) {
-      console.error("Add note error:", err.message);
-      return res.status(500).json({ message: "Failed to add note" });
+      next(err);
     }
   },
 );

@@ -581,11 +581,7 @@ router.get("/customers", async (req, res, next) => {
 // ── CHEF BEMS AI TAB ─────────────────────────────────────────────
 router.get("/ai", async (req, res, next) => {
   try {
-    // Ensure admin_dietary_rules table exists
-    await pool.query(`CREATE TABLE IF NOT EXISTS admin_dietary_rules (
-      id SERIAL PRIMARY KEY, condition VARCHAR(255) UNIQUE NOT NULL, rule_text TEXT NOT NULL,
-      tags VARCHAR(255), priority INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
-    )`);
+    // admin_dietary_rules is created once in migrations.sql (#28), not per-request.
 
     const [
       convToday,

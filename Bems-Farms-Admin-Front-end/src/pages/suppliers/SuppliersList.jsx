@@ -69,7 +69,7 @@ export default function SuppliersList() {
     setViewPayments([])
     setViewPaymentsLoading(true)
     try {
-      const res = await api.get(`/admin/suppliers/${supplier.id}/payments`)
+      const res = await api.get('/admin/suppliers/payments/all', { params: { supplier_id: supplier.id } })
       setViewPayments(res.data.payments || [])
     } catch {
       // non-fatal
@@ -275,7 +275,7 @@ export default function SuppliersList() {
                     <td>{s.phone || '—'}</td>
                     <td>{s.city || '—'}</td>
                     <td>{s.category || '—'}</td>
-                    <td className={Number(s.balance_due) > 0 ? 'text-danger fw-medium' : ''}>{fmt(s.balance_due)}</td>
+                    <td className={Number(s.balance) > 0 ? 'text-danger fw-medium' : ''}>{fmt(s.balance)}</td>
                     <td><StatusBadge status={s.status} /></td>
                     <td>
                       <div className="d-flex gap-2">
@@ -362,11 +362,11 @@ export default function SuppliersList() {
                     <p className="mb-1 text-muted small">Credit Limit</p><p className="fw-medium">{fmt(viewSupplier.credit_limit)}</p>
                   </div>
                   <div className="col-md-4">
-                    <p className="mb-1 text-muted small">Total Purchased</p><p className="fw-medium">{fmt(viewSupplier.total_purchased)}</p>
+                    <p className="mb-1 text-muted small">Total Purchased</p><p className="fw-medium">{fmt(viewSupplier.total_purchases)}</p>
                   </div>
                   <div className="col-md-4">
                     <p className="mb-1 text-muted small">Balance Due</p>
-                    <p className={`fw-medium ${Number(viewSupplier.balance_due) > 0 ? 'text-danger' : 'text-success'}`}>{fmt(viewSupplier.balance_due)}</p>
+                    <p className={`fw-medium ${Number(viewSupplier.balance) > 0 ? 'text-danger' : 'text-success'}`}>{fmt(viewSupplier.balance)}</p>
                   </div>
                   <div className="col-md-4">
                     <p className="mb-1 text-muted small">Status</p><StatusBadge status={viewSupplier.status} />

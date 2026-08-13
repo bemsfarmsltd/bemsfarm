@@ -896,3 +896,54 @@ ALTER TABLE users
 -- record the ledger entry (order still confirmed correctly — this only
 -- broke the accounting-side income row). Widened with headroom.
 ALTER TABLE income ALTER COLUMN reference TYPE VARCHAR(64);
+
+-- ── 27. COUPON USAGES — WEBSITE CUSTOMERS ────────────────────────
+-- Same users/customers split as PRODUCT REVIEWS (#25): coupon_usages.customer_id
+-- FKs to `customers`, but website checkout only has a `users.id` (from the JWT),
+-- and there's no reliable users.id -> customers.id link. orders.js was passing
+-- customerId: null to both validateCoupon and recordCouponUsage as a result —
+-- a "one per customer" coupon could be reused without limit on the website, and
+-- coupon_usages never recorded a single web-channel redemption. Mirrors the
+-- reviews fix: added user_id, dropped the NOT NULL on customer_id so a
+-- website-only redemption (user_id set, customer_id null) can still be logged.
+ALTER TABLE coupon_usages ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id);
+ALTER TABLE coupon_usages ALTER COLUMN customer_id DROP NOT NULL;
+
+-- ── 28. AI/POS TABLES CREATED PER-REQUEST INSTEAD OF ONCE ────────
+-- chef_bems_admin.js, dashboard.js, and pos_admin.js each ran their own
+-- CREATE TABLE IF NOT EXISTS on every GET/POST/PUT/DELETE to these features
+-- (dietary-rules, substitutions, recommendations, POS verify-payment) — DDL
+-- takes catalog locks and re-running it on every request adds needless
+-- overhead/contention, worst of all on the payment verification hot path.
+-- Moved here once; the per-request calls are removed from the route files.
+CREATE TABLE IF NOT EXISTS admin_dietary_rules (
+  id SERIAL PRIMARY KEY, condition VARCHAR(255) UNIQUE NOT NULL, rule_text TEXT NOT NULL,
+  tags VARCHAR(255), priority INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS admin_substitutions (
+  id SERIAL PRIMARY KEY, original_item VARCHAR(255) NOT NULL, substitute_item VARCHAR(255) NOT NULL,
+  reason TEXT, dietary_tags TEXT, confidence DECIMAL(3,2) DEFAULT 0.80,
+  is_active BOOLEAN DEFAULT TRUE, created_by INTEGER, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS admin_recommendations (
+  id SERIAL PRIMARY KEY, title VARCHAR(255) NOT NULL, trigger_condition TEXT NOT NULL,
+  recommended_items TEXT NOT NULL, context_tags TEXT, priority INTEGER DEFAULT 5,
+  is_active BOOLEAN DEFAULT TRUE, created_by INTEGER, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS pos_transactions (
+  id                SERIAL PRIMARY KEY,
+  transaction_id    VARCHAR(100) UNIQUE NOT NULL,
+  last_four         CHAR(4)       NOT NULL,
+  amount            DECIMAL(12,2) NOT NULL,
+  payment_method    VARCHAR(50),
+  status            VARCHAR(30)   NOT NULL DEFAULT 'successful',
+  payment_time      TIMESTAMP     NOT NULL DEFAULT NOW(),
+  customer_name     VARCHAR(255),
+  terminal_id       VARCHAR(100),
+  used_for_order_id INTEGER,
+  session_id        INTEGER,
+  created_at        TIMESTAMP DEFAULT NOW()
+);

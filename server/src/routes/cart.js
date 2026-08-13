@@ -61,6 +61,7 @@ router.post("/notify", async (req, res, next) => {
       items = [{ product_id: req.body.product_id, quantity: req.body.quantity || 1, notes: req.body.notes }];
     }
     if (!items?.length) {
+      await client.query("ROLLBACK");
       return res.status(400).json({ message: "No items provided" });
     }
 
@@ -187,10 +188,11 @@ router.post("/notify", async (req, res, next) => {
           const priceInNaira = parseFloat(catalogueRow.unit_price || 0);
           const priceInUsd = priceInNaira / NAIRA_PER_UNIT;
 
+          const stockQty = catalogueRow.stock_qty || 100;
           const insertRes = await client.query(
-            `INSERT INTO products 
-               (name, price, unit_price, unit, description, sku, status, stock, category_id, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, 'active', $7, $8, NOW(), NOW())
+            `INSERT INTO products
+               (name, price, unit_price, unit, description, sku, status, stock, stock_quantity, category_id, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, 'active', $7, $7, $8, NOW(), NOW())
              RETURNING id, name, price, unit_price, image_url, status`,
             [
               catalogueRow.product_name,
@@ -199,7 +201,7 @@ router.post("/notify", async (req, res, next) => {
               catalogueRow.selling_unit || "1 kg",
               `Farm fresh ingredient sourced by Chef Bems AI.`,
               catalogueRow.sku,
-              catalogueRow.stock_qty || 100,
+              stockQty,
               categoryId
             ]
           );
@@ -272,15 +274,25 @@ router.post("/notify", async (req, res, next) => {
       ),
     ]);
 
+    await client.query("COMMIT");
+
     // ── Update ai_conversations for super admin monitoring ────────────────────
+    // Non-critical side effect — runs after COMMIT, on the pool (not the
+    // now-released transactional client), so a failure here can never abort
+    // or silently discard the cart save that already succeeded above. (It
+    // used to run inside the transaction and swallow its own errors via
+    // console.warn — but since Postgres treats COMMIT on an already-aborted
+    // transaction as an implicit rollback with no client-visible error, a
+    // failure here was silently discarding the entire cart/product save
+    // while the API still reported success.)
     try {
       const cartSnapshotJson = JSON.stringify(cartItems.rows);
-      const activeConv = await client.query(
+      const activeConv = await pool.query(
         `SELECT id FROM ai_conversations WHERE session_id = $1 LIMIT 1`,
         [session_id]
       );
       if (activeConv.rows.length) {
-        await client.query(
+        await pool.query(
           `UPDATE ai_conversations
            SET cart_snapshot = $1,
                last_message_at = NOW()
@@ -288,10 +300,10 @@ router.post("/notify", async (req, res, next) => {
           [cartSnapshotJson, session_id]
         );
       } else {
-        await client.query(
-          `INSERT INTO ai_conversations 
+        await pool.query(
+          `INSERT INTO ai_conversations
              (session_id, channel, customer_id, cart_snapshot, status, started_at, last_message_at)
-           VALUES ($1, 'web', $2, $3, 'pending', NOW(), NOW())`,
+           VALUES ($1, 'web', $2, $3, 'active', NOW(), NOW())`,
           [session_id, customer_id || null, cartSnapshotJson]
         );
       }
@@ -299,8 +311,6 @@ router.post("/notify", async (req, res, next) => {
     } catch (convErr) {
       console.warn("⚠️ Failed to update ai_conversations snapshot:", convErr.message);
     }
-
-    await client.query("COMMIT");
 
     res.json({
       success:     true,
@@ -372,12 +382,18 @@ router.patch("/items/:itemId", async (req, res, next) => {
     await client.query("BEGIN");
 
     const { quantity } = req.body;
-    if (quantity === undefined) return res.status(400).json({ message: "quantity required" });
+    if (quantity === undefined) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "quantity required" });
+    }
 
     const item = await client.query(
       "SELECT * FROM customer_cart_items WHERE id=$1", [req.params.itemId]
     );
-    if (!item.rows.length) return res.status(404).json({ message: "Item not found" });
+    if (!item.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Item not found" });
+    }
 
     if (parseInt(quantity) <= 0) {
       // Remove item
@@ -422,7 +438,10 @@ router.delete("/items/:itemId", async (req, res, next) => {
     const item = await client.query(
       "DELETE FROM customer_cart_items WHERE id=$1 RETURNING *", [req.params.itemId]
     );
-    if (!item.rows.length) return res.status(404).json({ message: "Item not found" });
+    if (!item.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Item not found" });
+    }
 
     const cartId = item.rows[0].cart_id;
     await client.query(
@@ -462,7 +481,10 @@ router.delete("/", async (req, res, next) => {
        LIMIT 1`,
       [customer_id, session_id]
     );
-    if (!cart.rows.length) return res.status(404).json({ message: "No active cart" });
+    if (!cart.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "No active cart" });
+    }
 
     await client.query("DELETE FROM customer_cart_items WHERE cart_id=$1", [cart.rows[0].id]);
     await client.query(

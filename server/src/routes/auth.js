@@ -43,7 +43,7 @@ function generateRefreshToken(userId) {
 // ─────────────────────────────────────────────
 router.post("/register", validate(authSchemas.register), async (req, res, next) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, phone, preferences } = req.body;
 
     const existing = await pool.query(
       "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
@@ -84,6 +84,7 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
       role:         user.role,
       registered_at: new Date().toISOString(),
       last_login:   new Date().toISOString(),
+      raw_context:  preferences?.length ? { preferences } : undefined,
     });
     trackActivity(user.id, "registered", { ip: req.ip });
 
@@ -387,7 +388,7 @@ router.post("/refresh", async (req, res, next) => {
 
     res.json({ token: newAccess });
   } catch (err) {
-    res.status(401).json({ message: "Refresh failed: " + err.message });
+    next(err);
   }
 });
 
@@ -552,10 +553,7 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
       },
     });
   } catch (err) {
-    console.error("❌ Google auth error:", err.message);
-    res
-      .status(500)
-      .json({ message: "Google authentication failed: " + err.message });
+    next(err);
   }
 });
 
