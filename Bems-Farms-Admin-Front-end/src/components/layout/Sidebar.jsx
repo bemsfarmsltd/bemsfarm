@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { NavLink, Link, useLocation } from 'react-router-dom'
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { ROLE_META } from '../../lib/roles'
 
@@ -168,6 +168,14 @@ function CollapseMenu({ icon, label, badge, children, paths = [] }) {
 function ProfileFooter({ user, roleMeta, initials, showSettings }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleSignOut = () => {
+    setOpen(false)
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   useEffect(() => {
     const handler = e => {
@@ -243,14 +251,15 @@ function ProfileFooter({ user, roleMeta, initials, showSettings }) {
           bottom: 'calc(100% + 8px)',
           left: 0,
           right: 0,
-          background: '#fff',
+          background: 'var(--bg-card)',
           borderRadius: 10,
           boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
           overflow: 'hidden',
           zIndex: 200,
+          border: '1px solid var(--border)',
         }}>
-          <div style={{ padding: '10px 14px 8px', borderBottom: '1px solid #f0f0f0' }}>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Signed in as</div>
+          <div style={{ padding: '10px 14px 8px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Signed in as</div>
             {roleMeta && (
               <span style={{
                 background: roleMeta.bg,
@@ -272,8 +281,30 @@ function ProfileFooter({ user, roleMeta, initials, showSettings }) {
             {showSettings && (
               <MenuLink to="/settings/general" icon="ri-settings-3-line" onClick={() => setOpen(false)}>Settings</MenuLink>
             )}
-            <div style={{ borderTop: '1px solid #f0f0f0', margin: '4px 0' }} />
-            <MenuLink to="/login" icon="ri-logout-box-r-line" danger onClick={() => setOpen(false)}>Sign Out</MenuLink>
+            <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+            <button
+              onClick={handleSignOut}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                width: '100%',
+                padding: '7px 14px',
+                fontSize: 13,
+                color: '#ef4444',
+                background: 'none',
+                border: 'none',
+                fontWeight: 500,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <i className="ri-logout-box-r-line" style={{ fontSize: 15, color: '#ef4444' }} />
+              Sign Out
+            </button>
           </div>
         </div>
       )}
@@ -292,14 +323,14 @@ function MenuLink({ to, icon, children, danger, onClick }) {
         gap: 8,
         padding: '7px 14px',
         fontSize: 13,
-        color: danger ? '#ef4444' : '#111827',
+        color: danger ? '#ef4444' : 'var(--text-primary)',
         textDecoration: 'none',
         fontWeight: 500,
       }}
-      onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
     >
-      <i className={icon} style={{ fontSize: 15, color: danger ? '#ef4444' : '#6b7280' }} />
+      <i className={icon} style={{ fontSize: 15, color: danger ? '#ef4444' : 'var(--text-secondary)' }} />
       {children}
     </Link>
   )
@@ -321,6 +352,9 @@ export default function Sidebar({ mobileOpen = false }) {
   const showDelivery  = is('superadmin', 'manager', 'delivery_manager')
   const showCustomers = is('superadmin', 'manager', 'cashier')
   const showStaff     = is('superadmin', 'manager')
+  const showPurchase  = is('superadmin', 'manager')
+  const showSuppliers = is('superadmin', 'manager')
+  const showStores    = is('superadmin', 'manager')
   const showFinance   = is('superadmin', 'manager', 'accountant')
   const showReports   = is('superadmin', 'manager', 'accountant')
   const showChefAI    = is('superadmin', 'manager', 'kitchen_staff')
@@ -402,6 +436,27 @@ export default function Sidebar({ mobileOpen = false }) {
             </CollapseMenu>
           )}
 
+          {/* PROCUREMENT */}
+          {(showPurchase || showSuppliers) && <SectionLabel>Procurement</SectionLabel>}
+
+          {showPurchase && (
+            <CollapseMenu icon="ri-shopping-basket-2-line" label="Purchases" paths={['/purchase']}>
+              <li><SideLink to="/purchase">All Purchase Orders</SideLink></li>
+              <li><SideLink to="/purchase/add">New Purchase Order</SideLink></li>
+              <li><SideLink to="/purchase/payments">Payments</SideLink></li>
+              <li><SideLink to="/purchase/returns">Returns</SideLink></li>
+            </CollapseMenu>
+          )}
+
+          {showSuppliers && (
+            <CollapseMenu icon="ri-truck-line" label="Suppliers" paths={['/suppliers']}>
+              <li><SideLink to="/suppliers">All Suppliers</SideLink></li>
+              <li><SideLink to="/suppliers/add">Add Supplier</SideLink></li>
+              <li><SideLink to="/suppliers/balance">Supplier Balances</SideLink></li>
+              <li><SideLink to="/suppliers/payments">Payments</SideLink></li>
+            </CollapseMenu>
+          )}
+
           {/* SALES */}
           {showOrders && <SectionLabel>Sales</SectionLabel>}
 
@@ -418,7 +473,9 @@ export default function Sidebar({ mobileOpen = false }) {
           )}
 
           {/* OPERATIONS */}
-          {(showDelivery || showCustomers || showStaff) && <SectionLabel>Operations</SectionLabel>}
+          {(showDelivery || showCustomers || showStaff || showStores) && <SectionLabel>Operations</SectionLabel>}
+
+          {showStores && <NavItem to="/stores" icon="ri-store-3-line">Stores</NavItem>}
 
           {showDelivery && (
             <CollapseMenu icon="ri-bike-line" label="Deliveries" paths={['/deliveries']}>

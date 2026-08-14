@@ -2,12 +2,16 @@ const { z } = require("zod");
 
 const createSupplier = z.object({
   name: z.string().trim().min(1, "Supplier name required").max(255),
+  company: z.string().trim().max(255).optional(),
   contact_person: z.string().trim().max(255).optional(),
   phone: z.string().trim().max(20).optional(),
   email: z.email().optional().or(z.literal("")),
   address: z.string().trim().max(500).optional(),
+  city: z.string().trim().max(100).optional(),
+  state: z.string().trim().max(100).optional(),
   category: z.string().trim().max(100).default("produce"),
   payment_terms: z.coerce.number().int().min(0).default(30),
+  credit_limit: z.coerce.number().min(0).optional(),
   bank_name: z.string().trim().max(100).optional(),
   account_number: z.string().trim().max(30).optional(),
   account_name: z.string().trim().max(255).optional(),
@@ -17,12 +21,16 @@ const createSupplier = z.object({
 
 const updateSupplier = z.object({
   name: z.string().trim().min(1).max(255).optional(),
+  company: z.string().trim().max(255).optional(),
   contact_person: z.string().trim().max(255).optional(),
   phone: z.string().trim().max(20).optional(),
   email: z.email().optional().or(z.literal("")),
   address: z.string().trim().max(500).optional(),
+  city: z.string().trim().max(100).optional(),
+  state: z.string().trim().max(100).optional(),
   category: z.string().trim().max(100).optional(),
   payment_terms: z.coerce.number().int().min(0).optional(),
+  credit_limit: z.coerce.number().min(0).optional(),
   bank_name: z.string().trim().max(100).optional(),
   account_number: z.string().trim().max(30).optional(),
   account_name: z.string().trim().max(255).optional(),

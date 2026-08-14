@@ -5,6 +5,7 @@ import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import { getDeliveryFee } from "../utils/delivery";
 
 const STATES = [
   "Abia",
@@ -88,7 +89,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState(null);
   const [monnifyLoaded, setMonnifyLoaded] = useState(false);
 
-  const DELIVERY = 500;
+  const DELIVERY = getDeliveryFee(cartSubtotal);
   const discount = appliedCoupon?.discount || 0;
   const total = cartSubtotal + DELIVERY - discount;
 
@@ -113,7 +114,10 @@ export default function CheckoutPage() {
     const { fullName, email, phone, address, city } = form;
     if (!fullName.trim()) return "Full name is required";
     if (!email.trim()) return "Email is required";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Enter a valid email address";
     if (!phone.trim()) return "Phone number is required";
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (phoneDigits.length < 10 || phoneDigits.length > 14) return "Enter a valid phone number";
     if (!address.trim()) return "Street address is required";
     if (!city.trim()) return "City is required";
     return null;

@@ -333,9 +333,13 @@ export default function ProductDetail() {
                   : "No reviews yet"}
               </span>
               <span
-                style={{ fontSize: "14px", color: "#2E7D32", fontWeight: 600 }}
+                style={{
+                  fontSize: "14px",
+                  color: product.stock_quantity === 0 ? "#DC2626" : "#2E7D32",
+                  fontWeight: 600,
+                }}
               >
-                | In Stock ✓
+                {product.stock_quantity === 0 ? "| Out of Stock" : "| In Stock ✓"}
               </span>
             </div>
 
@@ -357,7 +361,7 @@ export default function ProductDetail() {
 
             {/* Stock Status Badge */}
             <div style={{ marginBottom: "16px" }}>
-              {product.stock === 0 ? (
+              {product.stock_quantity === 0 ? (
                 <div
                   style={{
                     display: "inline-flex",
@@ -386,7 +390,7 @@ export default function ProductDetail() {
                     Out of Stock
                   </span>
                 </div>
-              ) : product.stock !== null && product.stock <= 10 ? (
+              ) : product.stock_quantity !== null && product.stock_quantity <= 10 ? (
                 <div
                   style={{
                     display: "inline-flex",
@@ -413,7 +417,7 @@ export default function ProductDetail() {
                       fontSize: "13px",
                     }}
                   >
-                    ⚡ Only {product.stock} left!
+                    ⚡ Only {product.stock_quantity} left!
                   </span>
                 </div>
               ) : (
@@ -443,16 +447,16 @@ export default function ProductDetail() {
                     }}
                   >
                     In Stock
-                    {product.stock ? ` (${product.stock} available)` : ""}
+                    {product.stock_quantity ? ` (${product.stock_quantity} available)` : ""}
                   </span>
                 </div>
               )}
             </div>
 
             {/* Stock bar */}
-            {product.stock !== null &&
-              product.stock > 0 &&
-              product.stock <= 50 && (
+            {product.stock_quantity !== null &&
+              product.stock_quantity > 0 &&
+              product.stock_quantity <= 50 && (
                 <div style={{ marginBottom: "20px" }}>
                   <div
                     style={{
@@ -468,10 +472,10 @@ export default function ProductDetail() {
                       style={{
                         fontSize: "12px",
                         fontWeight: 600,
-                        color: product.stock <= 10 ? "#EF4444" : "#F59E0B",
+                        color: product.stock_quantity <= 10 ? "#EF4444" : "#F59E0B",
                       }}
                     >
-                      {product.stock} remaining
+                      {product.stock_quantity} remaining
                     </span>
                   </div>
                   <div
@@ -485,11 +489,11 @@ export default function ProductDetail() {
                     <div
                       style={{
                         height: "100%",
-                        width: `${Math.min(100, (product.stock / 50) * 100)}%`,
+                        width: `${Math.min(100, (product.stock_quantity / 50) * 100)}%`,
                         backgroundColor:
-                          product.stock <= 10
+                          product.stock_quantity <= 10
                             ? "#EF4444"
-                            : product.stock <= 25
+                            : product.stock_quantity <= 25
                               ? "#F59E0B"
                               : "#10B981",
                         borderRadius: "3px",
@@ -577,18 +581,18 @@ export default function ProductDetail() {
                 </motion.button>
               </div>
               <motion.button
-                disabled={product.stock === 0}
+                disabled={product.stock_quantity === 0}
                 onClick={handleAdd}
                 style={{
                   flex: 1,
                   backgroundColor:
-                    product.stock === 0
+                    product.stock_quantity === 0
                       ? "#9AA0A6"
                       : added
                         ? "#2E7D32"
                         : "#F57C00",
-                  cursor: product.stock === 0 ? "not-allowed" : "pointer",
-                  opacity: product.stock === 0 ? 0.6 : 1,
+                  cursor: product.stock_quantity === 0 ? "not-allowed" : "pointer",
+                  opacity: product.stock_quantity === 0 ? 0.6 : 1,
                   color: "white",
                   border: "none",
                   borderRadius: "12px",
@@ -599,7 +603,7 @@ export default function ProductDetail() {
                   transition: "background-color 0.2s",
                 }}
               >
-                {product.stock === 0
+                {product.stock_quantity === 0
                   ? "Out of Stock"
                   : added
                     ? "✓ Added to Cart!"

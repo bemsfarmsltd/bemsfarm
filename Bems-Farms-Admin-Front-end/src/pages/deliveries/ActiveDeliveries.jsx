@@ -3,96 +3,6 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 
-const MOCK_DELIVERIES = [
-  {
-    id: 42,
-    delivery_ref: 'DEL-2026-0042',
-    order_id: 'ORD-2026-0138',
-    status: 'out_for_delivery',
-    customer_name: 'Kemi Balogun',
-    customer_phone: '08167891234',
-    delivery_address: '18 Surulere, Lagos',
-    order_total: 16100,
-    driver_name: 'Emeka Okafor',
-    driver_phone: '08045678901',
-    driver_plate: 'LAG-567-CD',
-    dispatched_at_str: '—',
-    eta_minutes: 15,
-    attempts: 0,
-    items: [
-      { name: 'Fresh Tomatoes', qty: '3 kg' },
-      { name: 'Red Bell Pepper', qty: '2 kg' }
-    ]
-  },
-  {
-    id: 41,
-    delivery_ref: 'DEL-2026-0041',
-    order_id: 'ORD-2026-0139',
-    status: 'assigned',
-    customer_name: 'Seun Adesanya',
-    customer_phone: '09012341234',
-    delivery_address: '5 Victoria Island, Lagos',
-    order_total: 14200,
-    driver_name: 'Tunde Adeyemi',
-    driver_phone: '09021234567',
-    driver_plate: 'LAG-234-AB',
-    dispatched_at_str: '17:20',
-    eta_minutes: null,
-    attempts: 0,
-    status_text: 'Driver notified. Awaiting pickup confirmation.',
-    items: [
-      { name: 'Ginger', qty: '1 kg' },
-      { name: 'Garlic', qty: '1 kg' },
-      { name: 'Sweet Corn', qty: '6 cobs' }
-    ]
-  },
-  {
-    id: 40,
-    delivery_ref: 'DEL-2026-0040',
-    order_id: 'ORD-2026-0137',
-    status: 'delivery_attempted',
-    customer_name: 'Tobi Adekunle',
-    customer_phone: '07056781234',
-    delivery_address: '3 Ojota Estate, Lagos',
-    order_total: 12400,
-    driver_name: 'Bola Akinwale',
-    driver_phone: '08056789012',
-    driver_plate: 'LAG-890-EF',
-    dispatched_at_str: '—',
-    eta_minutes: null,
-    attempts: 1,
-    warning_title: 'Admin Action Required',
-    warning_text: 'Driver tapped CUSTOMER UNAVAILABLE. Push + SMS sent. 15-min timer expired. Attempt 1 of 2.',
-    items: [
-      { name: 'Plantain', qty: '4 hands' },
-      { name: 'Ugwu', qty: '3 bunches' }
-    ]
-  },
-  {
-    id: 39,
-    delivery_ref: 'DEL-2026-0039',
-    order_id: 'ORD-2026-0141',
-    status: 'assigned',
-    customer_name: 'Adaeze Nwosu',
-    customer_phone: '07098765432',
-    delivery_address: '7 Lekki Phase 1, Lagos',
-    order_total: 48100,
-    driver_name: 'Femi Adeleye',
-    driver_phone: '08078901234',
-    driver_plate: 'LAG-456-IJ',
-    dispatched_at_str: '—',
-    eta_minutes: null,
-    attempts: 0,
-    status_text: 'Order packed. Driver assigned. Awaiting pickup.',
-    items: [
-      { name: 'Fresh Tomatoes', qty: '8 kg' },
-      { name: 'Red Bell Pepper', qty: '4 kg' },
-      { name: 'Spinach', qty: '2 bunches' },
-      { name: 'Onions', qty: '1 bag' }
-    ]
-  }
-]
-
 const STATUS_CFG = {
   assigned:           { label:'Awaiting Pickup',     color:'#06b6d4', bg:'#cffafe', icon:'ri-user-location-line' },
   driver_assigned:    { label:'Awaiting Pickup',     color:'#06b6d4', bg:'#cffafe', icon:'ri-user-location-line' },
@@ -161,49 +71,12 @@ export default function ActiveDeliveries() {
         api.get('/admin/deliveries/drivers', { params:{ status:'active,on_delivery' } }),
       ])
       
-      const dbDeliveries = liveRes.data.deliveries || []
-      const dbAutoLog = logRes.data.log || []
-      
-      if (dbDeliveries.length === 0 && !search && filterStatus === 'all') {
-        setDeliveries(MOCK_DELIVERIES)
-        setStats({
-          total: MOCK_DELIVERIES.length,
-          en_route: MOCK_DELIVERIES.filter(d => d.status === 'out_for_delivery').length,
-          awaiting: MOCK_DELIVERIES.filter(d => d.status === 'assigned').length,
-          attempted: MOCK_DELIVERIES.filter(d => d.status === 'delivery_attempted').length
-        })
-      } else {
-        setDeliveries(dbDeliveries)
-        setStats(liveRes.data.stats || {})
-      }
-
-      if (dbAutoLog.length === 0) {
-        setAutoLog([...Array(9)].map((_, i) => ({
-          id: 1009 - i,
-          created_at: new Date(Date.now() - i * 60000 * 30),
-          order_id: `ORD-2026-01${37 + (i % 5)}`,
-          customer_name: ['Adaeze Nwosu', 'Tobi Adekunle', 'Seun Adesanya', 'Kemi Balogun', 'Emeka Okafor'][i % 5],
-          zone: 'Surulere',
-          driver_name: 'Emeka Okafor',
-          driver_plate: 'LAG-567-CD',
-          matching_rule: 'Zone match',
-          confidence_score: i % 3 === 0 ? 'High' : 'Medium',
-          order_status: 'delivered'
-        })))
-      } else {
-        setAutoLog(dbAutoLog)
-      }
-
+      setDeliveries(liveRes.data.deliveries || [])
+      setStats(liveRes.data.stats || {})
+      setAutoLog(logRes.data.log || [])
       setDrivers((driversRes.data.drivers||[]).filter(d => !['suspended','off_duty'].includes(d.status)))
     } catch {
       toast.error('Failed to load deliveries')
-      setDeliveries(MOCK_DELIVERIES)
-      setStats({
-        total: MOCK_DELIVERIES.length,
-        en_route: MOCK_DELIVERIES.filter(d => d.status === 'out_for_delivery').length,
-        awaiting: MOCK_DELIVERIES.filter(d => d.status === 'assigned').length,
-        attempted: MOCK_DELIVERIES.filter(d => d.status === 'delivery_attempted').length
-      })
     } finally { setLoading(false) }
   }, [search, filterStatus])
 

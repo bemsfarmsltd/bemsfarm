@@ -281,15 +281,27 @@ router.get("/me", protect, async (req, res, next) => {
 // ─────────────────────────────────────────────
 router.patch("/profile", protect, validate(authSchemas.updateProfile), async (req, res, next) => {
   try {
-    const { name, phone, gender, id_number, tax_id, tax_country, address } = req.body;
+    const { name, email, phone, gender, id_number, tax_id, tax_country, address } = req.body;
+
+    if (email) {
+      const dup = await pool.query(
+        "SELECT id FROM users WHERE LOWER(email)=LOWER($1) AND id != $2",
+        [email, req.user.id],
+      );
+      if (dup.rows.length) {
+        return res.status(400).json({ message: "That email is already in use by another account" });
+      }
+    }
+
     const result = await pool.query(
       `UPDATE users SET
-         name=$1, phone=$2, gender=$3, id_number=$4, tax_id=$5, tax_country=$6, address=$7,
+         name=$1, email=COALESCE($2, email), phone=$3, gender=$4, id_number=$5, tax_id=$6, tax_country=$7, address=$8,
          updated_at=NOW()
-       WHERE id=$8
+       WHERE id=$9
        RETURNING id, name, email, phone, gender, id_number, tax_id, tax_country, address`,
       [
         name.trim(),
+        email ? email.trim().toLowerCase() : null,
         phone || null,
         gender || null,
         id_number || null,

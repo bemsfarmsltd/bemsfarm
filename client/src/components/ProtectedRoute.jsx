@@ -2,17 +2,31 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 
-export default function ProtectedRoute({ children }) {
-  const { isLoggedIn } = useAuth();
+// Roles that exist on staff accounts (users.role) sharing this same auth
+// system with the storefront — kept in sync with the admin app's
+// lib/roles.js ROLES enum. "user" (the default customer role) is
+// deliberately excluded from this list.
+const STAFF_ROLES = ["superadmin", "manager", "accountant", "delivery_manager", "cashier", "kitchen_staff"];
+
+export default function ProtectedRoute({ children, allowedRoles }) {
+  const { isLoggedIn, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const roleAllowed = !allowedRoles || (user && allowedRoles.includes(user.role));
 
   useEffect(() => {
     if (!isLoggedIn) {
       navigate("/login", { state: { from: location.pathname } });
+    } else if (!roleAllowed) {
+      // Bounce silently rather than showing an "unauthorized" page —
+      // no need to confirm to a customer that internal tooling exists here.
+      navigate("/home", { replace: true });
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, roleAllowed]);
 
-  if (!isLoggedIn) return null;
+  if (!isLoggedIn || !roleAllowed) return null;
   return children;
 }
+
+export { STAFF_ROLES };

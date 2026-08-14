@@ -110,7 +110,7 @@ export default function AddPurchase() {
         })),
       })
       toast.success('Purchase order created successfully')
-      navigate('/purchase/list')
+      navigate('/purchase')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create purchase order')
     } finally {
@@ -295,7 +295,7 @@ export default function AddPurchase() {
               <button
                 type="button"
                 className="btn btn-light"
-                onClick={() => navigate('/purchase/list')}
+                onClick={() => navigate('/purchase')}
               >
                 Cancel
               </button>

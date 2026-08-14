@@ -13,96 +13,6 @@ L.Icon.Default.mergeOptions({
 
 const STORE_POS = [6.4553, 3.3862] // Bems Farms HQ (Lagos Island)
 
-const MOCK_DELIVERIES = [
-  {
-    id: 42,
-    delivery_ref: 'DEL-2026-0042',
-    order_id: 'ORD-2026-0138',
-    status: 'out_for_delivery',
-    customer_name: 'Kemi Balogun',
-    customer_phone: '08167891234',
-    delivery_address: '18 Surulere, Lagos',
-    order_total: 16100,
-    driver_name: 'Emeka Okafor',
-    driver_phone: '08045678901',
-    driver_plate: 'LAG-567-CD',
-    dispatched_at_str: '—',
-    eta_minutes: 18,
-    attempts: 0,
-    items: [
-      { name: 'Fresh Tomatoes', qty: '3 kg' },
-      { name: 'Red Bell Pepper', qty: '2 kg' }
-    ]
-  },
-  {
-    id: 41,
-    delivery_ref: 'DEL-2026-0041',
-    order_id: 'ORD-2026-0139',
-    status: 'assigned',
-    customer_name: 'Seun Adesanya',
-    customer_phone: '09012341234',
-    delivery_address: '5 Ikeja GRA, Lagos',
-    order_total: 14200,
-    driver_name: 'Tunde Adeyemi',
-    driver_phone: '09021234567',
-    driver_plate: 'LAG-234-AB',
-    dispatched_at_str: '17:20',
-    eta_minutes: null,
-    attempts: 0,
-    status_text: 'Driver notified. Awaiting pickup confirmation.',
-    items: [
-      { name: 'Ginger', qty: '1 kg' },
-      { name: 'Garlic', qty: '1 kg' },
-      { name: 'Sweet Corn', qty: '6 cobs' }
-    ]
-  },
-  {
-    id: 40,
-    delivery_ref: 'DEL-2026-0040',
-    order_id: 'ORD-2026-0137',
-    status: 'delivery_attempted',
-    customer_name: 'Tobi Adekunle',
-    customer_phone: '07056781234',
-    delivery_address: '3 Ojota Estate, Lagos',
-    order_total: 12400,
-    driver_name: 'Bola Akinwale',
-    driver_phone: '08056789012',
-    driver_plate: 'LAG-890-EF',
-    dispatched_at_str: '—',
-    eta_minutes: null,
-    attempts: 1,
-    warning_title: 'Admin Action Required',
-    warning_text: 'Driver tapped CUSTOMER UNAVAILABLE. Push + SMS sent. 15-min timer expired. Attempt 1 of 2.',
-    items: [
-      { name: 'Plantain', qty: '4 hands' },
-      { name: 'Ugwu', qty: '3 bunches' }
-    ]
-  },
-  {
-    id: 39,
-    delivery_ref: 'DEL-2026-0039',
-    order_id: 'ORD-2026-0141',
-    status: 'assigned',
-    customer_name: 'Adaeze Nwosu',
-    customer_phone: '07098765432',
-    delivery_address: '7 Lekki Phase 1, Lagos',
-    order_total: 48100,
-    driver_name: 'Femi Adeleye',
-    driver_phone: '08078901234',
-    driver_plate: 'LAG-456-IJ',
-    dispatched_at_str: '—',
-    eta_minutes: null,
-    attempts: 0,
-    status_text: 'Order packed. Driver assigned. Awaiting pickup.',
-    items: [
-      { name: 'Fresh Tomatoes', qty: '8 kg' },
-      { name: 'Red Bell Pepper', qty: '4 kg' },
-      { name: 'Spinach', qty: '2 bunches' },
-      { name: 'Onions', qty: '1 bag' }
-    ]
-  }
-]
-
 const STATUS_CFG = {
   assigned:           { label:'Awaiting Pickup', color:'#06b6d4', bg:'#cffafe', pulse:false },
   shipped:            { label:'En Route',        color:'#3b82f6', bg:'#dbeafe', pulse:true  },
@@ -149,7 +59,6 @@ function FlyToDriver({ pos }) {
 export default function DeliveryMap() {
   const [selected, setSelected]     = useState(null)
   const [flyTarget, setFlyTarget]   = useState(null)
-  const [tick, setTick]             = useState(0)
   const [userPos, setUserPos]       = useState(null)
 
   const [dbDeliveries, setDbDeliveries] = useState([])
@@ -180,32 +89,11 @@ export default function DeliveryMap() {
       }
     }
     fetchActive()
-    const id = setInterval(() => { setTick(t=>t+1); fetchActive() }, 8000)
+    const id = setInterval(fetchActive, 8000)
     return () => clearInterval(id)
   }, [])
 
-  // Simulate updating location in the backend database
-  useEffect(() => {
-    if (dbDeliveries.length === 0) {
-      MOCK_DELIVERIES.forEach(async (d) => {
-        if (d.status === 'out_for_delivery') {
-          let customerPos = [6.5059, 3.3619] // Surulere
-          const pct = 0.2 + ((tick % 15) / 15) * 0.6
-          const dPos = [STORE_POS[0] + (customerPos[0] - STORE_POS[0]) * pct, STORE_POS[1] + (customerPos[1] - STORE_POS[1]) * pct]
-          try {
-            await api.post(`/admin/deliveries/drivers/${d.id}/location`, {
-              latitude: dPos[0],
-              longitude: dPos[1],
-              heading: 45,
-              speed: 35
-            })
-          } catch { /* ignore simulation failures */ }
-        }
-      })
-    }
-  }, [tick, dbDeliveries])
-
-  const deliveries = dbDeliveries.length > 0 ? dbDeliveries.map((d, i) => {
+  const deliveries = dbDeliveries.map((d, i) => {
     const customerPos = d.driver_lat ? [Number(d.driver_lat), Number(d.driver_lng)] : [STORE_POS[0] + 0.015, STORE_POS[1] + 0.015]
     const driverPos = d.driver_lat ? [Number(d.driver_lat), Number(d.driver_lng)] : STORE_POS
     const colors = ['#3b82f6', '#06b6d4', '#f97316', '#8b5cf6']
@@ -233,54 +121,6 @@ export default function DeliveryMap() {
         address: d.delivery_address || 'Address',
         phone: d.customer_phone || '--'
       }
-    }
-  }) : MOCK_DELIVERIES.map((d) => {
-    let customerPos = [STORE_POS[0] + 0.01, STORE_POS[1] + 0.01]
-    if (d.delivery_address.includes('Surulere')) customerPos = [6.5059, 3.3619]
-    else if (d.delivery_address.includes('Ikeja')) customerPos = [6.6018, 3.3515]
-    else if (d.delivery_address.includes('Ojota')) customerPos = [6.5780, 3.3740]
-    else if (d.delivery_address.includes('Lekki')) customerPos = [6.4281, 3.4219]
-
-    let driverPos = STORE_POS
-    if (d.status === 'out_for_delivery') {
-      const pct = 0.2 + ((tick % 15) / 15) * 0.6
-      driverPos = [STORE_POS[0] + (customerPos[0] - STORE_POS[0]) * pct, STORE_POS[1] + (customerPos[1] - STORE_POS[1]) * pct]
-    } else if (d.status === 'delivery_attempted') {
-      driverPos = [STORE_POS[0] + (customerPos[0] - STORE_POS[0]) * 0.95, STORE_POS[1] + (customerPos[1] - STORE_POS[1]) * 0.95]
-    }
-
-    const colorsMap = {
-      'Emeka Okafor': '#3b82f6',
-      'Tunde Adeyemi': '#06b6d4',
-      'Bola Akinwale': '#f97316',
-      'Femi Adeleye': '#8b5cf6'
-    }
-    const color = colorsMap[d.driver_name] || '#3b82f6'
-    const initials = d.driver_name.split(' ').map(n=>n[0]).join('').slice(0,2)
-
-    return {
-      id: d.id,
-      status: d.status === 'out_for_delivery' ? 'shipped' : d.status,
-      orderId: d.order_id,
-      driverPos,
-      customerPos,
-      total: d.order_total,
-      attempts: d.attempts,
-      items: `${d.items.length} items`,
-      driver: {
-        name: d.driver_name,
-        bike: d.driver_plate,
-        phone: d.driver_phone,
-        color,
-        initials
-      },
-      customer: {
-        name: d.customer_name,
-        address: d.delivery_address,
-        phone: d.customer_phone
-      },
-      status_text: d.status_text,
-      eta: d.eta_minutes ? `~${d.eta_minutes} min` : null
     }
   })
 
@@ -327,6 +167,12 @@ export default function DeliveryMap() {
           </div>
 
           <div style={{ padding:'10px' }}>
+            {!loading && deliveries.length===0 && (
+              <div style={{ padding:'32px 16px', textAlign:'center', color:'var(--text-light)', fontSize:12 }}>
+                <i className="ri-truck-line" style={{ fontSize:28, display:'block', marginBottom:8 }} />
+                No active deliveries right now
+              </div>
+            )}
             {deliveries.map(del => {
               const cfg      = STATUS_CFG[del.status] || { label: del.status || 'Pending', color:'var(--text-light)', bg:'var(--border)', pulse:false }
               const isActive = selected?.id===del.id

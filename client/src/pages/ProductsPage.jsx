@@ -636,12 +636,17 @@ export default function ProductsPage() {
                     </div>
 
                     {/* Product Image */}
-                    <div style={{ height: "120px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px", overflow: "hidden", borderRadius: "12px" }}>
+                    <div style={{ height: "120px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px", overflow: "hidden", borderRadius: "12px", position: "relative" }}>
                       <img
                         src={getProductImage(product)}
                         alt={product.name}
-                        style={{ height: "100%", width: "100%", objectFit: "cover" }}
+                        style={{ height: "100%", width: "100%", objectFit: "cover", filter: Number(product.stock_quantity) === 0 ? "grayscale(60%)" : "none", opacity: Number(product.stock_quantity) === 0 ? 0.6 : 1 }}
                       />
+                      {Number(product.stock_quantity) === 0 && (
+                        <span style={{ position: "absolute", top: "8px", left: "8px", background: "#EF4444", color: "white", fontSize: "10px", fontWeight: 700, padding: "3px 9px", borderRadius: "50px" }}>
+                          Out of Stock
+                        </span>
+                      )}
                     </div>
 
                     {/* Category & Title */}
@@ -650,11 +655,24 @@ export default function ProductsPage() {
                       {product.name}
                     </h4>
 
-                    {/* Gold Rating Stars */}
-                    <div style={{ display: "flex", gap: "2px", marginBottom: "8px" }}>
-                      {[...Array(5)].map((_, idx) => (
-                        <i key={idx} className="ri-star-fill" style={{ color: "#F57C00", fontSize: "11px" }} />
-                      ))}
+                    {/* Rating — real average from approved reviews */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px", marginBottom: "8px", minHeight: "13px" }}>
+                      {Number(product.review_count) > 0 ? (
+                        <>
+                          <div style={{ display: "flex", gap: "2px" }}>
+                            {[...Array(5)].map((_, idx) => (
+                              <i
+                                key={idx}
+                                className={idx < Math.round(Number(product.avg_rating)) ? "ri-star-fill" : "ri-star-line"}
+                                style={{ color: "#F57C00", fontSize: "11px" }}
+                              />
+                            ))}
+                          </div>
+                          <span style={{ fontSize: "10px", color: "#9CA3AF" }}>({product.review_count})</span>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: "10px", color: "#9CA3AF" }}>No reviews yet</span>
+                      )}
                     </div>
 
                     {/* Footer Row */}
@@ -667,9 +685,10 @@ export default function ProductsPage() {
                       </div>
 
                       <button
-                        onClick={(e) => { e.stopPropagation(); addToCart(product); }}
+                        disabled={Number(product.stock_quantity) === 0}
+                        onClick={(e) => { e.stopPropagation(); if (Number(product.stock_quantity) === 0) return; addToCart(product); }}
                         style={{
-                          background: "#F57C00",
+                          background: Number(product.stock_quantity) === 0 ? "#D1D5DB" : "#F57C00",
                           border: "none",
                           borderRadius: "10px",
                           width: "32px",
@@ -678,9 +697,9 @@ export default function ProductsPage() {
                           alignItems: "center",
                           justifyContent: "center",
                           color: "white",
-                          cursor: "pointer",
+                          cursor: Number(product.stock_quantity) === 0 ? "not-allowed" : "pointer",
                           fontSize: "18px",
-                          boxShadow: "0 2px 6px rgba(245,124,0,0.2)",
+                          boxShadow: Number(product.stock_quantity) === 0 ? "none" : "0 2px 6px rgba(245,124,0,0.2)",
                           padding: 0,
                           marginLeft: "auto"
                         }}

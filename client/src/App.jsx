@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import ProtectedRoute from "./components/ProtectedRoute";
+import ProtectedRoute, { STAFF_ROLES } from "./components/ProtectedRoute";
 
 import ComingSoonPage from "./pages/ComingSoonPage";
 import LandingPage from "./pages/LandingPage";
@@ -26,6 +26,9 @@ import DemandForecastingPage from "./pages/DemandForecastingPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const P = ({ children }) => <ProtectedRoute>{children}</ProtectedRoute>;
+// Internal/staff-only tooling — same auth system as the storefront, but a
+// plain customer (role "user") must never be able to reach these.
+const Staff = ({ children }) => <ProtectedRoute allowedRoles={STAFF_ROLES}>{children}</ProtectedRoute>;
 
 function App() {
   return (
@@ -139,9 +142,9 @@ function App() {
         <Route
           path="/admin"
           element={
-            <P>
+            <Staff>
               <AdminPage />
-            </P>
+            </Staff>
           }
         />
         <Route
@@ -155,25 +158,25 @@ function App() {
         <Route
           path="/dynamic-pricing"
           element={
-            <P>
+            <Staff>
               <DynamicPricingPage />
-            </P>
+            </Staff>
           }
         />
         <Route
           path="/fraud-detection"
           element={
-            <P>
+            <Staff>
               <FraudDetectionPage />
-            </P>
+            </Staff>
           }
         />
         <Route
           path="/demand-forecasting"
           element={
-            <P>
+            <Staff>
               <DemandForecastingPage />
-            </P>
+            </Staff>
           }
         />
 

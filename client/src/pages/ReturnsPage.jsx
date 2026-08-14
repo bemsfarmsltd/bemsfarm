@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import api from "../services/api";
@@ -57,6 +57,7 @@ const stepTitle = {
 
 export default function ReturnsPage() {
   const navigate  = useNavigate();
+  const location  = useLocation();
   const [orders, setOrders]               = useState([]);
   const [myReturns, setMyReturns]         = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -74,6 +75,15 @@ export default function ReturnsPage() {
     );
     api.get("/orders/returns").then((r) => setMyReturns(r.data.returns));
   }, []);
+
+  // Arriving from an order's "Request Return" button — auto-select that
+  // order once the (delivered-only) orders list has loaded.
+  useEffect(() => {
+    const orderId = location.state?.orderId;
+    if (!orderId || !orders.length) return;
+    const match = orders.find((o) => o.id === orderId);
+    if (match) selectOrder(match);
+  }, [orders, location.state]);
 
   // Initialise returnItems when an order is selected
   function selectOrder(order) {

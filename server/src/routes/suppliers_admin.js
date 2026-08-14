@@ -182,8 +182,8 @@ router.post("/", requireRole("superadmin", "manager", "admin"), validate(supplie
     await client.query("BEGIN");
 
     const {
-      name, contact_person, phone, email, address,
-      category, payment_terms,
+      name, company, contact_person, phone, email, address, city, state,
+      category, payment_terms, credit_limit,
       bank_name, account_number, account_name,
       tax_id, notes,
     } = req.body;
@@ -199,11 +199,12 @@ router.post("/", requireRole("superadmin", "manager", "admin"), validate(supplie
     const code   = await nextSupplierCode(client);
     const result = await client.query(
       `INSERT INTO suppliers
-         (supplier_code, name, contact_person, phone, email, address, category, payment_terms,
+         (supplier_code, name, company, contact_person, phone, email, address, city, state,
+          category, payment_terms, credit_limit,
           bank_name, account_number, account_name, tax_id, notes, status, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'active',NOW(),NOW())
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'active',NOW(),NOW())
        RETURNING *`,
-      [code, name.trim(), contact_person||null, phone||null, email||null, address||null, category||"produce", parseInt(payment_terms)||30, bank_name||null, account_number||null, account_name||null, tax_id||null, notes||null]
+      [code, name.trim(), company||null, contact_person||null, phone||null, email||null, address||null, city||null, state||null, category||"produce", parseInt(payment_terms)||30, credit_limit!=null?parseFloat(credit_limit):null, bank_name||null, account_number||null, account_name||null, tax_id||null, notes||null]
     );
 
     await client.query("COMMIT");
@@ -222,8 +223,8 @@ router.post("/", requireRole("superadmin", "manager", "admin"), validate(supplie
 router.patch("/:id", requireRole("superadmin", "manager", "admin"), validate(supplierAdminSchemas.updateSupplier), async (req, res, next) => {
   try {
     const {
-      name, contact_person, phone, email, address,
-      category, payment_terms,
+      name, company, contact_person, phone, email, address, city, state,
+      category, payment_terms, credit_limit,
       bank_name, account_number, account_name,
       tax_id, notes, status,
     } = req.body;
@@ -231,21 +232,25 @@ router.patch("/:id", requireRole("superadmin", "manager", "admin"), validate(sup
     const result = await pool.query(
       `UPDATE suppliers SET
          name            = COALESCE($1, name),
-         contact_person  = COALESCE($2, contact_person),
-         phone           = COALESCE($3, phone),
-         email           = COALESCE($4, email),
-         address         = COALESCE($5, address),
-         category        = COALESCE($6, category),
-         payment_terms   = COALESCE($7, payment_terms),
-         bank_name       = COALESCE($8, bank_name),
-         account_number  = COALESCE($9, account_number),
-         account_name    = COALESCE($10, account_name),
-         tax_id          = COALESCE($11, tax_id),
-         notes           = COALESCE($12, notes),
-         status          = COALESCE($13, status),
+         company         = COALESCE($2, company),
+         contact_person  = COALESCE($3, contact_person),
+         phone           = COALESCE($4, phone),
+         email           = COALESCE($5, email),
+         address         = COALESCE($6, address),
+         city            = COALESCE($7, city),
+         state           = COALESCE($8, state),
+         category        = COALESCE($9, category),
+         payment_terms   = COALESCE($10, payment_terms),
+         credit_limit    = COALESCE($11, credit_limit),
+         bank_name       = COALESCE($12, bank_name),
+         account_number  = COALESCE($13, account_number),
+         account_name    = COALESCE($14, account_name),
+         tax_id          = COALESCE($15, tax_id),
+         notes           = COALESCE($16, notes),
+         status          = COALESCE($17, status),
          updated_at      = NOW()
-       WHERE id = $14 RETURNING *`,
-      [name||null, contact_person||null, phone||null, email||null, address||null, category||null, payment_terms?parseInt(payment_terms):null, bank_name||null, account_number||null, account_name||null, tax_id||null, notes||null, status||null, req.params.id]
+       WHERE id = $18 RETURNING *`,
+      [name||null, company||null, contact_person||null, phone||null, email||null, address||null, city||null, state||null, category||null, payment_terms?parseInt(payment_terms):null, credit_limit!=null?parseFloat(credit_limit):null, bank_name||null, account_number||null, account_name||null, tax_id||null, notes||null, status||null, req.params.id]
     );
     if (!result.rows.length) return res.status(404).json({ message: "Supplier not found" });
     res.json({ supplier: result.rows[0] });

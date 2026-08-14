@@ -22,7 +22,7 @@ export default function AddSupplier() {
     try {
       await api.post('/admin/suppliers', form)
       toast.success('Supplier added successfully')
-      navigate('/suppliers/list')
+      navigate('/suppliers')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to add supplier')
     } finally {
@@ -182,7 +182,7 @@ export default function AddSupplier() {
                     <button
                       type="button"
                       className="btn btn-outline-light border"
-                      onClick={() => navigate('/suppliers/list')}
+                      onClick={() => navigate('/suppliers')}
                     >
                       Cancel
                     </button>

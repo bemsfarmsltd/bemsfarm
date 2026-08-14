@@ -13,9 +13,13 @@ export function ThemeProvider({ children }) {
     }
   })
 
-  // Apply data-theme attribute synchronously before first paint
+  // Apply data-theme attribute synchronously before first paint.
+  // data-bs-theme rides along so Bootstrap-styled pages (Purchase,
+  // Suppliers) pick up Bootstrap 5's own dark-mode palette instead of
+  // staying stuck on white cards against this app's dark background.
   useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
+    document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light')
   }, [isDark])
 
   // Listen to OS theme preference changes (only when user hasn't saved a preference)
@@ -35,6 +39,7 @@ export function ThemeProvider({ children }) {
       // Add transition class, then apply theme, remove class after animation
       document.documentElement.classList.add('theme-transitioning')
       document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light')
+      document.documentElement.setAttribute('data-bs-theme', next ? 'dark' : 'light')
       try { localStorage.setItem('bems_theme', next ? 'dark' : 'light') } catch {}
       setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 300)
       return next

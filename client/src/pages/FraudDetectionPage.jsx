@@ -47,7 +47,6 @@ export default function FraudDetectionPage() {
         user_id: parseInt(userId),
         order_amount: parseInt(orderAmount),
         payment_method: paymentMethod,
-        ip_address: "192.168.1.1", // In real app, get actual IP
       });
       console.log("✅ Fraud check complete:", response.data);
       setFraudCheck(response.data);

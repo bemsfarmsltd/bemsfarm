@@ -6,6 +6,7 @@ import PageWrapper from "../components/layout/PageWrapper";
 import { getProductEmoji, getProductBg } from "../components/ui/ProductCard";
 import api from "../services/api";
 import { NAIRA_PER_UNIT } from "../utils/currency";
+import { getDeliveryFee } from "../utils/delivery";
 
 /*
   ── RESPONSIVE STRATEGY ──────────────────────────────────────
@@ -57,7 +58,7 @@ const CART_CSS = `
 export default function CartPage() {
   const navigate = useNavigate();
   const { cartItems, cartSubtotal, updateQuantity, removeFromCart, appliedCoupon, setAppliedCoupon } = useCart();
-  const delivery = cartSubtotal > 15000 ? 0 : 1500;
+  const delivery = getDeliveryFee(cartSubtotal);
   const discount = appliedCoupon?.discount || 0;
   const total = cartSubtotal + delivery - discount;
   const [coupon, setCoupon] = useState("");

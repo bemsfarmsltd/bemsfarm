@@ -8,6 +8,7 @@ const { verifyMonnifyTransaction } = require("../utils/monnify");
 const { validateCoupon, recordCouponUsage } = require("../utils/coupons");
 const validate = require("../middleware/validate");
 const orderSchemas = require("../schemas/orderSchemas");
+const { submitReturn, getUserReturns } = require("../controllers/returnsController");
 
 // ─────────────────────────────────────────────
 // CONFIG
@@ -22,7 +23,17 @@ const VALID_STATUSES = [
 ];
 
 const VALID_PAYMENT_METHODS = ["monnify", "cod"];
-const DELIVERY_FEE = 500; // Naira — must match client/src/pages/CheckoutPage.jsx DELIVERY
+
+// Must mirror client/src/utils/delivery.js exactly — Cart and Checkout used
+// to disagree (Cart: free above ₦15,000, Checkout: flat ₦500), and this
+// value is also what a Monnify payment is checked against, so any mismatch
+// here means a customer paying the amount they were shown gets rejected
+// with "amount does not match order total".
+const FREE_DELIVERY_THRESHOLD = 15000;
+const STANDARD_DELIVERY_FEE = 1500;
+function getDeliveryFee(subtotal) {
+  return subtotal > FREE_DELIVERY_THRESHOLD ? 0 : STANDARD_DELIVERY_FEE;
+}
 
 // ─────────────────────────────────────────────
 // CREATE ORDER
@@ -138,7 +149,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
       couponDiscount = couponResult.discount;
     }
 
-    const total = subtotal - couponDiscount + DELIVERY_FEE;
+    const total = subtotal - couponDiscount + getDeliveryFee(subtotal);
 
     // Reconcile: the amount actually paid via Monnify must match the
     // server-computed total (protects against a tampered client-side amount).
@@ -275,6 +286,13 @@ router.get("/", protect, async (req, res, next) => {
     next(err);
   }
 });
+
+// ─────────────────────────────────────────────
+// RETURNS — must be registered before GET/POST "/:id" below, or
+// Express would match "/returns" as :id="returns" first.
+// ─────────────────────────────────────────────
+router.get("/returns", protect, getUserReturns);
+router.post("/returns", protect, submitReturn);
 
 // ─────────────────────────────────────────────
 // GET SINGLE ORDER

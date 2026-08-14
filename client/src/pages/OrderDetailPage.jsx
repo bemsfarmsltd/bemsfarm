@@ -75,333 +75,12 @@ function StatusBadge({ status }) {
   );
 }
 
-// ─── Return Request Modal ─────────────────────────────────────────────────────
-function ReturnModal({ order, onClose, onSubmitted }) {
-  const [reason, setReason] = useState("");
-  const [description, setDescription] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-
-  const REASONS = [
-    "Item damaged on arrival",
-    "Wrong item delivered",
-    "Item not as described",
-    "Quality not satisfactory",
-    "Ordered by mistake",
-    "Other",
-  ];
-
-  const handleSubmit = async () => {
-    if (!reason) return alert("Please select a reason for your return.");
-    setLoading(true);
-    try {
-      // POST /api/returns  — your existing returns endpoint
-      await fetch("/api/returns", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          order_id: order.id,
-          reason,
-          description,
-        }),
-      });
-      setSuccess(true);
-      setTimeout(() => {
-        onSubmitted();
-        onClose();
-      }, 2000);
-    } catch (err) {
-      alert("Failed to submit return request. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1000,
-        background: "rgba(0,0,0,0.5)",
-        backdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-      }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 24,
-          padding: "32px",
-          maxWidth: 480,
-          width: "100%",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.25)",
-          animation: "slideUp 0.3s ease",
-        }}
-      >
-        {success ? (
-          <div style={{ textAlign: "center", padding: "20px 0" }}>
-            <div
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: "50%",
-                background: "#D1FAE5",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 20px",
-                fontSize: 36,
-              }}
-            >
-              ✓
-            </div>
-            <h3
-              style={{
-                color: "#065F46",
-                fontSize: 20,
-                fontWeight: 800,
-                margin: "0 0 8px",
-              }}
-            >
-              Return Request Submitted!
-            </h3>
-            <p style={{ color: "#6B7280", fontSize: 15 }}>
-              We'll review your request and process it within 3-5 business days.
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Header */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                marginBottom: 24,
-              }}
-            >
-              <div>
-                <h2
-                  style={{
-                    fontSize: 20,
-                    fontWeight: 900,
-                    color: "#0D1117",
-                    margin: "0 0 4px",
-                  }}
-                >
-                  Request a Return
-                </h2>
-                <p style={{ color: "#6B7280", fontSize: 14, margin: 0 }}>
-                  Order #{String(order.id).toUpperCase().slice(-10)}
-                </p>
-              </div>
-              <button
-                onClick={onClose}
-                style={{
-                  background: "#F3F4F6",
-                  border: "none",
-                  borderRadius: 10,
-                  width: 36,
-                  height: 36,
-                  cursor: "pointer",
-                  fontSize: 18,
-                  color: "#6B7280",
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Policy reminder */}
-            <div
-              style={{
-                background: "#F0FDF4",
-                border: "1px solid #BBF7D0",
-                borderRadius: 14,
-                padding: "14px 16px",
-                marginBottom: 24,
-                fontSize: 13,
-                color: "#166534",
-                lineHeight: 1.6,
-              }}
-            >
-              <strong>Return Policy:</strong> Items accepted within 7 days of
-              delivery. Must be in original condition (except damaged items).
-              Refund processed in 3-5 business days.
-            </div>
-
-            {/* Reason */}
-            <div style={{ marginBottom: 16 }}>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "#374151",
-                  marginBottom: 10,
-                }}
-              >
-                Reason for Return *
-              </label>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {REASONS.map((r) => (
-                  <label
-                    key={r}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "10px 14px",
-                      borderRadius: 10,
-                      cursor: "pointer",
-                      border: `2px solid ${reason === r ? "#2E7D32" : "#E5E7EB"}`,
-                      background: reason === r ? "#F0FDF4" : "#fff",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="return-reason"
-                      value={r}
-                      checked={reason === r}
-                      onChange={() => setReason(r)}
-                      style={{ accentColor: "#2E7D32" }}
-                    />
-                    <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: reason === r ? 700 : 400,
-                        color: reason === r ? "#166534" : "#374151",
-                      }}
-                    >
-                      {r}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {/* Description */}
-            <div style={{ marginBottom: 24 }}>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "#374151",
-                  marginBottom: 8,
-                }}
-              >
-                Additional Details (optional)
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Tell us more about the issue..."
-                rows={3}
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  border: "2px solid #E5E7EB",
-                  borderRadius: 12,
-                  fontSize: 14,
-                  outline: "none",
-                  resize: "vertical",
-                  boxSizing: "border-box",
-                  fontFamily: "inherit",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#2E7D32")}
-                onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
-              />
-            </div>
-
-            {/* Buttons */}
-            <div style={{ display: "flex", gap: 12 }}>
-              <button
-                onClick={onClose}
-                style={{
-                  flex: 1,
-                  padding: "13px",
-                  borderRadius: 12,
-                  border: "2px solid #E5E7EB",
-                  background: "#fff",
-                  color: "#374151",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={loading || !reason}
-                style={{
-                  flex: 1,
-                  padding: "13px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: loading || !reason ? "#9CA3AF" : "#DC2626",
-                  color: "#fff",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  cursor: loading || !reason ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  transition: "all 0.2s",
-                }}
-              >
-                {loading ? (
-                  <span
-                    style={{
-                      display: "inline-block",
-                      width: 16,
-                      height: 16,
-                      border: "2px solid rgba(255,255,255,0.4)",
-                      borderTopColor: "#fff",
-                      borderRadius: "50%",
-                      animation: "spin 0.7s linear infinite",
-                    }}
-                  />
-                ) : (
-                  "Submit Return Request"
-                )}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-
-      <style>{`
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
-    </div>
-  );
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function OrderDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showReturnModal, setShowReturnModal] = useState(false);
-  const [returnSubmitted, setReturnSubmitted] = useState(false);
 
   useEffect(() => {
     ordersAPI
@@ -455,8 +134,7 @@ export default function OrderDetailPage() {
   );
   const daysSinceUpdate =
     (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
-  const canReturn =
-    order.status === "delivered" && daysSinceUpdate <= 7 && !returnSubmitted;
+  const canReturn = order.status === "delivered" && daysSinceUpdate <= 7;
   const canCancel = order.status === "pending";
 
   const handleCancel = async () => {
@@ -827,7 +505,7 @@ export default function OrderDetailPage() {
           {/* Return button — only for delivered orders within 7 days */}
           {canReturn && (
             <button
-              onClick={() => setShowReturnModal(true)}
+              onClick={() => navigate("/returns", { state: { orderId: order.id } })}
               style={{
                 padding: "12px 24px",
                 borderRadius: 12,
@@ -871,27 +549,8 @@ export default function OrderDetailPage() {
             </button>
           )}
 
-          {/* Return submitted confirmation */}
-          {returnSubmitted && (
-            <div
-              style={{
-                padding: "12px 20px",
-                borderRadius: 12,
-                background: "#D1FAE5",
-                color: "#065F46",
-                fontWeight: 700,
-                fontSize: 14,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              ✓ Return request submitted
-            </div>
-          )}
-
           {/* Return ineligible notice */}
-          {order.status === "delivered" && !canReturn && !returnSubmitted && (
+          {order.status === "delivered" && !canReturn && (
             <div
               style={{
                 padding: "12px 20px",
@@ -925,15 +584,6 @@ export default function OrderDetailPage() {
           </Link>
         </div>
       </div>
-
-      {/* Return modal */}
-      {showReturnModal && (
-        <ReturnModal
-          order={order}
-          onClose={() => setShowReturnModal(false)}
-          onSubmitted={() => setReturnSubmitted(true)}
-        />
-      )}
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }

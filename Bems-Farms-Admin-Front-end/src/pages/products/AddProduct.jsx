@@ -421,28 +421,28 @@ export default function AddProduct() {
           <div style={{ position:'sticky',top:80 }}>
             <Card title="Product Images & Media">
               <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-                {/* Drag and drop uploader mockup */}
+                {/* Main image — set by URL; there's no file-upload backend
+                    in this app, so this stays an honest URL field rather
+                    than a drag-and-drop zone that doesn't actually work. */}
                 <div style={{
-                  border: '2px dashed var(--border)',
+                  border: '1.5px solid var(--border)',
                   borderRadius: 12,
-                  padding: '24px 16px',
+                  padding: '16px',
                   textAlign: 'center',
                   background: 'var(--bg-subtle)',
-                  cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: 8,
                 }}>
-                  <i className="ri-upload-cloud-2-line" style={{ fontSize: 32, color: 'var(--text-light)' }} />
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>Drag &amp; Drop images here or click to upload</div>
+                  <i className="ri-image-line" style={{ fontSize: 32, color: 'var(--text-light)' }} />
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>Main Product Image</div>
                   <input
                     type="url"
-                    placeholder="Or paste Main Image URL here..."
+                    placeholder="Paste image URL here..."
                     value={formData.image_url}
                     onChange={e => set('image_url', e.target.value)}
                     required
-                    onClick={e => e.stopPropagation()}
                     style={{
                       ...inp,
                       marginTop: 8,

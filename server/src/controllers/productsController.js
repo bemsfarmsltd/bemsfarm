@@ -37,9 +37,15 @@ const getProducts = async (req, res, next) => {
     const total = parseInt(countResult.rows[0].count);
 
     const result = await pool.query(
-      `SELECT p.*, c.name as category_name
+      `SELECT p.*, c.name as category_name,
+              COALESCE(pr.avg_rating, 0) AS avg_rating,
+              COALESCE(pr.review_count, 0) AS review_count
        FROM products p
        LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN (
+         SELECT product_id, AVG(rating) AS avg_rating, COUNT(*) AS review_count
+         FROM product_reviews WHERE status = 'approved' GROUP BY product_id
+       ) pr ON pr.product_id = p.id
        ${where}
        ORDER BY p.is_featured DESC, p.id ASC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,

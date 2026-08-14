@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
@@ -33,7 +33,10 @@ export default function ProductsList() {
   const [pages, setPages]       = useState(1)
   const [page, setPage]         = useState(1)
   const [loading, setLoading]   = useState(true)
-  const [search, setSearch]     = useState('')
+  const [searchParams] = useSearchParams()
+  // Picked up once on mount so the topbar's "search products" box has
+  // somewhere real to land instead of being purely decorative.
+  const [search, setSearch]     = useState(() => searchParams.get('search') || '')
   const [category, setCategory] = useState('')
   const [status, setStatus]     = useState('')
   const [stock, setStock]       = useState('')

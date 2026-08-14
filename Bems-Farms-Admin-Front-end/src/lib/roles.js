@@ -51,8 +51,14 @@ export const STAFF_ROLES = ['superadmin', 'manager']
 /** Can access settings */
 export const SETTINGS_ROLES = ['superadmin', 'manager']
 
-/** Multi-store — superadmin only */
-export const MULTISTORE_ROLES = ['superadmin']
+/** Multi-store — matches stores_admin.js (superadmin + manager can view/create/edit; delete & manager-assign are superadmin-only at the route level) */
+export const MULTISTORE_ROLES = ['superadmin', 'manager']
+
+/** Can manage purchase orders — matches purchases_admin.js */
+export const PURCHASE_ROLES = ['superadmin', 'manager']
+
+/** Can manage suppliers — matches suppliers_admin.js */
+export const SUPPLIER_ROLES = ['superadmin', 'manager']
 
 // ── UI Labels & Colors ─────────────────────────────────────────────
 export const ROLE_META = {

@@ -3,104 +3,35 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../lib/api'
 
-const CATEGORIES = [
-  { id:'all',        label:'All Items',     emoji:'🛒' },
-  { id:'meals',      label:'Meals',         emoji:'🍲' },
-  { id:'seafood',    label:'Seafood',       emoji:'🐟' },
-  { id:'meat',       label:'Meat',          emoji:'🥩' },
-  { id:'grains',     label:'Grains & Carbs',emoji:'🌾' },
-  { id:'vegetables', label:'Vegetables',    emoji:'🥬' },
-  { id:'dairy',      label:'Dairy & Eggs',  emoji:'🥛' },
-  { id:'beverages',  label:'Beverages',     emoji:'🥤' },
-  { id:'farm',       label:'Fresh Farm',    emoji:'🌱' },
-]
-const CAT_COLORS = {
-  meals:'#0ab39c', seafood:'#299cdb', meat:'#f06548',
-  grains:'#f7b84b', vegetables:'#4ade80', dairy:'#a78bfa',
-  beverages:'#38bdf8', farm:'#22c55e', all:'#405189',
-}
-const PRODUCTS = [
-  { id:1,  barcode:'BF-MEAL-001', sku:'MEAL-001', name:'Jollof Rice Box',         cat:'meals',      price:3500, icon:'🍚', stock:24, unit:'pack'   },
-  { id:2,  barcode:'BF-MEAL-002', sku:'MEAL-002', name:'Egusi Soup (Medium Pot)', cat:'meals',      price:2800, icon:'🫕', stock:18, unit:'pot'    },
-  { id:3,  barcode:'BF-MEAL-003', sku:'MEAL-003', name:'Fried Rice & Chicken',    cat:'meals',      price:4200, icon:'🍗', stock:15, unit:'pack'   },
-  { id:4,  barcode:'BF-MEAL-004', sku:'MEAL-004', name:'Pounded Yam + Egusi',     cat:'meals',      price:3800, icon:'🍽️', stock:12, unit:'plate'  },
-  { id:5,  barcode:'BF-MEAL-005', sku:'MEAL-005', name:'Pepper Soup (Goat)',      cat:'meals',      price:5000, icon:'🍜', stock:8,  unit:'bowl'   },
-  { id:6,  barcode:'BF-MEAL-006', sku:'MEAL-006', name:'Ofada Rice + Stew',       cat:'meals',      price:3200, icon:'🍛', stock:20, unit:'pack'   },
-  { id:7,  barcode:'BF-MEAL-007', sku:'MEAL-007', name:'Banga Soup',              cat:'meals',      price:3200, icon:'🥣', stock:10, unit:'pot'    },
-  { id:8,  barcode:'BF-MEAL-008', sku:'MEAL-008', name:'Afang Soup',              cat:'meals',      price:3500, icon:'🥗', stock:14, unit:'pot'    },
-  { id:9,  barcode:'BF-FSH-001',  sku:'FSH-001',  name:'Fresh Tilapia (1 kg)',    cat:'seafood',    price:3000, icon:'🐟', stock:30, unit:'kg'     },
-  { id:10, barcode:'BF-FSH-002',  sku:'FSH-002',  name:'Catfish (1 kg)',          cat:'seafood',    price:3500, icon:'🐠', stock:25, unit:'kg'     },
-  { id:11, barcode:'BF-FSH-003',  sku:'FSH-003',  name:'Smoked Mackerel',         cat:'seafood',    price:1800, icon:'🐡', stock:40, unit:'piece'  },
-  { id:12, barcode:'BF-FSH-004',  sku:'FSH-004',  name:'Dried Stockfish',         cat:'seafood',    price:2500, icon:'🦈', stock:35, unit:'piece'  },
-  { id:13, barcode:'BF-FSH-005',  sku:'FSH-005',  name:'Tiger Prawns (500 g)',    cat:'seafood',    price:4500, icon:'🦐', stock:20, unit:'pack'   },
-  { id:14, barcode:'BF-FSH-006',  sku:'FSH-006',  name:'Crayfish (200 g)',        cat:'seafood',    price:1500, icon:'🦞', stock:50, unit:'pack'   },
-  { id:15, barcode:'BF-MT-001',   sku:'MT-001',   name:'Goat Meat (1 kg)',        cat:'meat',       price:5500, icon:'🥩', stock:22, unit:'kg'     },
-  { id:16, barcode:'BF-MT-002',   sku:'MT-002',   name:'Chicken (1 kg)',          cat:'meat',       price:3800, icon:'🍗', stock:28, unit:'kg'     },
-  { id:17, barcode:'BF-MT-003',   sku:'MT-003',   name:'Beef (1 kg)',             cat:'meat',       price:5000, icon:'🥓', stock:18, unit:'kg'     },
-  { id:18, barcode:'BF-MT-004',   sku:'MT-004',   name:'Turkey (1 kg)',           cat:'meat',       price:4500, icon:'🦃', stock:12, unit:'kg'     },
-  { id:19, barcode:'BF-GRN-001',  sku:'GRN-001',  name:'Rice (5 kg bag)',         cat:'grains',     price:6500, icon:'🌾', stock:60, unit:'bag'    },
-  { id:20, barcode:'BF-GRN-002',  sku:'GRN-002',  name:'Beans (2 kg)',            cat:'grains',     price:2200, icon:'🫘', stock:45, unit:'bag'    },
-  { id:21, barcode:'BF-GRN-003',  sku:'GRN-003',  name:'Yam (1 tuber)',           cat:'grains',     price:1500, icon:'🍠', stock:35, unit:'tuber'  },
-  { id:22, barcode:'BF-GRN-004',  sku:'GRN-004',  name:'Plantain (bunch)',        cat:'grains',     price:1200, icon:'🍌', stock:40, unit:'bunch'  },
-  { id:23, barcode:'BF-GRN-005',  sku:'GRN-005',  name:'Semolina (1 kg)',         cat:'grains',     price:1200, icon:'🫙', stock:55, unit:'kg'     },
-  { id:24, barcode:'BF-VEG-001',  sku:'VEG-001',  name:'Tomatoes (1 kg)',         cat:'vegetables', price:800,  icon:'🍅', stock:3,  unit:'kg'     },
-  { id:25, barcode:'BF-VEG-002',  sku:'VEG-002',  name:'Spinach / Efo Tete',     cat:'vegetables', price:500,  icon:'🥬', stock:2,  unit:'bunch'  },
-  { id:26, barcode:'BF-VEG-003',  sku:'VEG-003',  name:'Ugu / Pumpkin Leaf',     cat:'vegetables', price:600,  icon:'🌿', stock:15, unit:'bunch'  },
-  { id:27, barcode:'BF-VEG-004',  sku:'VEG-004',  name:'Scotch Bonnet (500 g)',  cat:'vegetables', price:700,  icon:'🌶️', stock:20, unit:'pack'   },
-  { id:28, barcode:'BF-VEG-005',  sku:'VEG-005',  name:'Onions (1 kg)',          cat:'vegetables', price:600,  icon:'🧅', stock:30, unit:'kg'     },
-  { id:29, barcode:'BF-EGG-001',  sku:'EGG-001',  name:'Organic Eggs (crate/30)',cat:'dairy',      price:6000, icon:'🥚', stock:6,  unit:'crate'  },
-  { id:30, barcode:'BF-DRY-001',  sku:'DRY-001',  name:'Fresh Whole Milk (1 L)', cat:'dairy',      price:1500, icon:'🥛', stock:18, unit:'litre'  },
-  { id:31, barcode:'BF-DRY-002',  sku:'DRY-002',  name:'Greek Yogurt (500 g)',   cat:'dairy',      price:2500, icon:'🍦', stock:12, unit:'pack'   },
-  { id:32, barcode:'BF-DRY-003',  sku:'DRY-003',  name:'Butter (250 g)',         cat:'dairy',      price:2000, icon:'🧈', stock:20, unit:'pack'   },
-  { id:33, barcode:'BF-BEV-001',  sku:'BEV-001',  name:'Zobo Drink (1 L)',       cat:'beverages',  price:800,  icon:'🧃', stock:30, unit:'bottle' },
-  { id:34, barcode:'BF-BEV-002',  sku:'BEV-002',  name:'Kunu (500 ml)',          cat:'beverages',  price:600,  icon:'🥤', stock:25, unit:'bottle' },
-  { id:35, barcode:'BF-BEV-003',  sku:'BEV-003',  name:'Bottled Water (1.5 L)',  cat:'beverages',  price:400,  icon:'💧', stock:100,unit:'bottle' },
-  { id:36, barcode:'BF-BEV-004',  sku:'BEV-004',  name:'Tigernut Milk (500 ml)', cat:'beverages',  price:1200, icon:'🍶', stock:15, unit:'bottle' },
-  { id:37, barcode:'BF-BEV-005',  sku:'BEV-005',  name:'Fresh Orange Juice (500ml)',cat:'beverages',price:1200,icon:'🍊', stock:20, unit:'bottle' },
-  { id:38, barcode:'BF-FRM-001',  sku:'FRM-001',  name:'Ginger (250 g)',         cat:'farm',       price:400,  icon:'🫚', stock:40, unit:'pack'   },
-  { id:39, barcode:'BF-FRM-002',  sku:'FRM-002',  name:'Garlic (5 bulbs)',       cat:'farm',       price:600,  icon:'🧄', stock:35, unit:'pack'   },
-  { id:40, barcode:'BF-FRM-003',  sku:'FRM-003',  name:'Sweet Potatoes (1 kg)',  cat:'farm',       price:700,  icon:'🍠', stock:28, unit:'kg'     },
-  { id:41, barcode:'BF-FRM-004',  sku:'FRM-004',  name:'Cassava (1 kg)',         cat:'farm',       price:500,  icon:'🪴', stock:50, unit:'kg'     },
-  { id:42, barcode:'BF-FRM-005',  sku:'FRM-005',  name:'Fresh Herb Bundle',      cat:'farm',       price:600,  icon:'🌱', stock:20, unit:'bunch'  },
-]
-const BY_BARCODE = {}; const BY_SKU = {}
-PRODUCTS.forEach(p => { BY_BARCODE[p.barcode] = p; BY_SKU[p.sku] = p })
-
-const MOCK_CUSTOMERS = [
-  { id:1, name:'Amara Obi',     phone:'0810 000 1234', tier:'Platinum', points:2450, wallet:5000,  orders:24 },
-  { id:2, name:'Tunde Adeyemi', phone:'0802 345 6789', tier:'Gold',     points:1200, wallet:1200,  orders:12 },
-  { id:3, name:'Mrs. Okonkwo',  phone:'0706 789 0123', tier:'Platinum', points:3800, wallet:8500,  orders:38 },
-  { id:4, name:'Kemi Balogun',  phone:'0817 234 5678', tier:'Silver',   points:620,  wallet:0,     orders:4  },
-  { id:5, name:'Seun Abiodun',  phone:'0803 456 7890', tier:'Gold',     points:1700, wallet:3000,  orders:17 },
-]
-const HISTORY_MOCK = [
-  { inv:'BF-INV-1023', cust:'Walk-in',       method:'Cash',     time:'10:45 AM', amount:3500  },
-  { inv:'BF-INV-1024', cust:'Amara Obi',     method:'Card/POS', time:'11:10 AM', amount:14200 },
-  { inv:'BF-INV-1025', cust:'Mrs. Okonkwo',  method:'Card/POS', time:'12:05 PM', amount:8750  },
-  { inv:'BF-INV-1026', cust:'Walk-in',       method:'Cash',     time:'01:20 PM', amount:2400  },
-  { inv:'BF-INV-1027', cust:'Tunde Adeyemi', method:'Card/POS', time:'02:05 PM', amount:6600  },
-  { inv:'BF-INV-1028', cust:'Kemi Balogun',  method:'Card/POS', time:'02:40 PM', amount:5100  },
-]
-const ONLINE_ORDERS = [
-  { id:'ORD-WEB-4421', channel:'website',   customer:'Amara Obi',       phone:'0810 000 1234', time:'09:14 AM', status:'new',        note:'Please pack neatly, delivery by 12pm', items:[{productId:1,qty:2},{productId:35,qty:4},{productId:9,qty:1}] },
-  { id:'ORD-WA-4422',  channel:'whatsapp',  customer:'Mrs. Okonkwo',    phone:'0706 789 0123', time:'10:02 AM', status:'new',        note:'',                                     items:[{productId:2,qty:1},{productId:4,qty:1},{productId:33,qty:2}] },
-  { id:'ORD-IG-4423',  channel:'instagram', customer:'Kemi Balogun',    phone:'0817 234 5678', time:'10:45 AM', status:'pending',    note:'Call before dispatch',                 items:[{productId:16,qty:2},{productId:19,qty:1},{productId:28,qty:1}] },
-  { id:'ORD-WEB-4424', channel:'website',   customer:'Tunde Adeyemi',   phone:'0802 345 6789', time:'11:30 AM', status:'pending',    note:'',                                     items:[{productId:13,qty:2},{productId:15,qty:1},{productId:37,qty:3}] },
-  { id:'ORD-WA-4425',  channel:'whatsapp',  customer:'Seun Abiodun',    phone:'0803 456 7890', time:'12:10 PM', status:'new',        note:'Add extra pepper please',              items:[{productId:3,qty:3},{productId:33,qty:6}] },
-  { id:'ORD-PHN-4426', channel:'phone',     customer:'Walk-in Pickup',  phone:'—',             time:'12:55 PM', status:'processing', note:'Paid online, just for pickup',         items:[{productId:5,qty:1},{productId:22,qty:2},{productId:35,qty:2}] },
-]
 const CHANNEL_META = {
   website:   { label:'Website',   icon:'ri-global-line',    color:'#405189' },
   whatsapp:  { label:'WhatsApp',  icon:'ri-whatsapp-line',  color:'#25d366' },
   instagram: { label:'Instagram', icon:'ri-instagram-line', color:'#e1306c' },
   phone:     { label:'Phone',     icon:'ri-phone-line',     color:'#f7b84b' },
 }
+// Real orders carry whatever free-text `source` the order was placed with
+// (e.g. "Web App", "ai_chef") rather than the fixed channel keys above —
+// map known ones to a nice badge and fall back gracefully for the rest.
+function channelMeta(channel) {
+  const key = (channel || '').toLowerCase()
+  if (key.includes('whatsapp'))  return CHANNEL_META.whatsapp
+  if (key.includes('instagram')) return CHANNEL_META.instagram
+  if (key.includes('phone'))     return CHANNEL_META.phone
+  if (key.includes('ai') || key.includes('chef')) return { label:'Chef Bems AI', icon:'ri-robot-2-line', color:'#a78bfa' }
+  return { label: channel || 'Web App', icon:'ri-global-line', color:'#405189' }
+}
+// Real order.status values (see server/src/routes/orders_admin.js) don't
+// map 1:1 to the New/Pending/Processing tabs below — bucket them.
+function onlineStatusBucket(status) {
+  if (['processing','packed_ready','being_packed','driver_assigned'].includes(status)) return 'processing'
+  if (['confirmed','paid'].includes(status)) return 'pending'
+  return 'new'
+}
 const STATUS_META = {
   new:        { label:'New',        color:'#0ab39c', bg:'rgba(10,179,156,.12)'  },
   pending:    { label:'Pending',    color:'#f7b84b', bg:'rgba(247,184,75,.12)'  },
   processing: { label:'Processing', color:'#299cdb', bg:'rgba(41,156,219,.12)'  },
 }
-const TIER_COLOR = { Platinum:'#a78bfa', Gold:'#f7b84b', Silver:'#94a3b8', Bronze:'#f97316' }
 const fmt = n => '₦' + Math.round(n).toLocaleString()
 const genOrderId = () => 'BF-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-5)
 const POS_RETURN_REASONS = ['Damaged on delivery','Wrong item sent','Quality below standard','Spoiled / Already expired','Item missing from order','Incorrect quantity','Customer changed mind','Packaging damaged']
@@ -141,13 +72,21 @@ export default function POS() {
   const [toast, setToast]                 = useState(null)
   const [toastTimer, setToastTimer]       = useState(null)
 
-  const [onlineOrders, setOnlineOrders]   = useState(ONLINE_ORDERS)
+  const [onlineOrders, setOnlineOrders]   = useState([])
   const [onlineFilter, setOnlineFilter]   = useState('all')
   const [expandedOrder, setExpandedOrder] = useState(null)
+  const [orderDetails, setOrderDetails]   = useState({}) // id -> { items, loading }
+  const [loadingOrderId, setLoadingOrderId] = useState(null)
 
   const [customer, setCustomer]           = useState(null)
   const [custSearch, setCustSearch]       = useState('')
+  const [custResults, setCustResults]     = useState([])
+  const [custSearching, setCustSearching] = useState(false)
   const [showCustPanel, setShowCustPanel] = useState(false)
+
+  const [receipts, setReceipts]           = useState([])
+  const [receiptsLoading, setReceiptsLoading] = useState(false)
+  const [receiptSearch, setReceiptSearch] = useState('')
 
   const [cart, setCart]                   = useState([])
   const [discountPct, setDiscountPct]     = useState(0)
@@ -176,7 +115,7 @@ export default function POS() {
   const [payLaterDate, setPayLaterDate]   = useState('')
   const [successData, setSuccessData]     = useState(null)
 
-  const [returnForm, setReturnForm] = useState({ customer:'Walk-in', phone:'', product:PRODUCTS[0], qty:1, unitPrice:PRODUCTS[0].price, reason:POS_RETURN_REASONS[0], notes:'', condition:'resalable', refundMethod:'Cash' })
+  const [returnForm, setReturnForm] = useState({ customer:'Walk-in', phone:'', product:null, qty:1, unitPrice:0, reason:POS_RETURN_REASONS[0], notes:'', condition:'resalable', refundMethod:'Cash' })
   const [returnStep, setReturnStep]       = useState(1)
   const [returnLogs, setReturnLogs]       = useState([])
   const [returnSuccess, setReturnSuccess] = useState(null)
@@ -200,6 +139,51 @@ export default function POS() {
       .finally(() => setCatalogLoading(false))
   }, [])
 
+  // Barcode/SKU lookup for Goods Return — built from the real catalog so
+  // refunds price off actual inventory, not the hardcoded PRODUCTS demo data.
+  const catalogByBarcode = useMemo(() => {
+    const map = {}
+    catalog.forEach(p => { if (p.barcode) map[p.barcode.toUpperCase()] = p })
+    return map
+  }, [catalog])
+  const catalogBySku = useMemo(() => {
+    const map = {}
+    catalog.forEach(p => { if (p.sku) map[p.sku.toUpperCase()] = p })
+    return map
+  }, [catalog])
+
+  // Real "online orders" — actionable, non-POS orders still awaiting fulfilment.
+  function refreshOnlineOrders() {
+    api.get('/admin/orders', { params: { limit: 50 } })
+      .then(({ data }) => {
+        const actionable = (data.orders || []).filter(o =>
+          !['pos', 'physical store (pos)'].includes((o.channel || '').toLowerCase()) &&
+          !['delivered', 'completed', 'out_for_delivery', 'delivery_attempted', 'dispute', 'cancelled'].includes(o.status)
+        )
+        setOnlineOrders(actionable)
+      })
+      .catch(() => {})
+  }
+  useEffect(() => { refreshOnlineOrders() }, [])
+
+  // Fetch full item detail for one online order on demand (list endpoint only
+  // returns item_count, not the items themselves) and cache it.
+  function loadOrderDetail(id) {
+    if (orderDetails[id] && !orderDetails[id].error) return Promise.resolve(orderDetails[id])
+    setOrderDetails(prev => ({ ...prev, [id]: { loading: true } }))
+    return api.get(`/admin/orders/${id}`)
+      .then(({ data }) => {
+        const detail = { loading: false, items: data.items || [], customer_id: data.customer_id }
+        setOrderDetails(prev => ({ ...prev, [id]: detail }))
+        return detail
+      })
+      .catch(() => {
+        const detail = { loading: false, items: [], error: true }
+        setOrderDetails(prev => ({ ...prev, [id]: detail }))
+        return detail
+      })
+  }
+
   // Real tax config from Settings → Tax — the backend applies the same
   // rules at sale time, so this preview matches what actually gets charged.
   const [taxSettings, setTaxSettings] = useState({ enabled: false, rate: 0, inclusive: false })
@@ -213,6 +197,32 @@ export default function POS() {
       })
     }).catch(() => {})
   }, [])
+
+  // Live customer lookup for the "attach customer" panel — debounced.
+  useEffect(() => {
+    if (!showCustPanel) return
+    setCustSearching(true)
+    const t = setTimeout(() => {
+      api.get('/admin/pos/customers', { params: { q: custSearch, limit: 20 } })
+        .then(({ data }) => setCustResults(data.customers || []))
+        .catch(() => setCustResults([]))
+        .finally(() => setCustSearching(false))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [custSearch, showCustPanel])
+
+  // Real completed POS sales for the Billing History tab — fetched on open.
+  useEffect(() => {
+    if (activeModal !== 'history') return
+    setReceiptsLoading(true)
+    const t = setTimeout(() => {
+      api.get('/admin/pos/receipts', { params: { search: receiptSearch, limit: 50 } })
+        .then(({ data }) => setReceipts(data.receipts || []))
+        .catch(() => setReceipts([]))
+        .finally(() => setReceiptsLoading(false))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [activeModal, receiptSearch])
 
   const categories = useMemo(() => {
     const seen = new Map()
@@ -306,16 +316,20 @@ export default function POS() {
     setScanCart([]); setTimeout(() => setActiveModal('cash'), 50)
   }
 
-  function loadOnlineOrderToCart(order) {
+  async function loadOnlineOrderToCart(order) {
+    setLoadingOrderId(order.id)
+    const detail = await loadOrderDetail(order.id)
+    setLoadingOrderId(null)
+    if (detail.error) { showToast('Could not load order details', 'error', '⚠️'); return }
     let loaded = 0
-    order.items.forEach(({ productId, qty }) => {
-      const product = PRODUCTS.find(p => p.id === productId)
+    detail.items.forEach(item => {
+      const product = catalog.find(p => p.id === item.product_id)
       if (!product) return
+      const qty = item.quantity
       setCart(prev => { const ex = prev.find(i => i.id === product.id); if (ex) return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + qty } : i); return [...prev, { ...product, qty, note: '' }] })
       loaded++
     })
-    const matched = MOCK_CUSTOMERS.find(c => c.name === order.customer)
-    if (matched) setCustomer(matched)
+    if (detail.customer_id) setCustomer({ id: detail.customer_id, name: order.customer_name, phone: order.customer_phone, points: 0 })
     setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, status:'processing' } : o))
     showToast(`${loaded} item(s) from ${order.id} loaded to cart`, 'success', '📥'); closeModal()
   }
@@ -394,10 +408,6 @@ export default function POS() {
     if (search.trim()) { const q = search.toLowerCase(); list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q) || p.barcode?.toLowerCase().includes(q)) }
     return list
   }, [catalog, activeCategory, search])
-
-  const filteredCustomers = custSearch.trim()
-    ? MOCK_CUSTOMERS.filter(c => c.name.toLowerCase().includes(custSearch.toLowerCase()) || c.phone.includes(custSearch))
-    : MOCK_CUSTOMERS
 
   const [now, setNow] = useState(new Date())
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 10000); return () => clearInterval(t) }, [])
@@ -490,8 +500,11 @@ export default function POS() {
           <div style={{ padding:'10px 16px', borderBottom:`1px solid ${B}`, background:BG2, flexShrink:0, display:'flex', gap:10 }}>
             {[
               { label:'Scan Basket',    sub:'Scan barcodes to build order',         icon:'ri-barcode-line',       color:'#0ab39c', badge: scanCart.length||null,  onClick:()=>{ setScanCart([]); setScanCode(''); setActiveModal('scanner') } },
-              { label:'Online Orders',  sub:'Import incoming orders to cart',        icon:'ri-shopping-bag-3-line',color:'#405189', badge: onlineOrders.filter(o=>o.status==='new').length||null, badgeLabel:'new', onClick:()=>setActiveModal('online') },
-              { label:'Goods Return',   sub:'Process a customer return & refund',    icon:'ri-arrow-go-back-line', color:'#f06548', badge: returnLogs.length||null, onClick:()=>{ setReturnForm(f=>({...f,product:PRODUCTS[0],unitPrice:PRODUCTS[0].price,qty:1,customer:'Walk-in',phone:'',notes:'',condition:'resalable',refundMethod:'Cash',reason:POS_RETURN_REASONS[0]})); setReturnStep(1); setReturnSuccess(null); setActiveModal('return') } },
+              { label:'Online Orders',  sub:'Import incoming orders to cart',        icon:'ri-shopping-bag-3-line',color:'#405189', badge: onlineOrders.filter(o=>onlineStatusBucket(o.status)==='new').length||null, badgeLabel:'new', onClick:()=>{ refreshOnlineOrders(); setActiveModal('online') } },
+              { label:'Goods Return',   sub:'Process a customer return & refund',    icon:'ri-arrow-go-back-line', color:'#f06548', badge: returnLogs.length||null, onClick:()=>{
+                  if (!catalog.length) { showToast('Product catalog still loading — try again in a moment', 'error', '⏳'); return }
+                  setReturnForm(f=>({...f,product:null,unitPrice:0,qty:1,customer:'Walk-in',phone:'',notes:'',condition:'resalable',refundMethod:'Cash',reason:POS_RETURN_REASONS[0]})); setReturnStep(1); setReturnSuccess(null); setActiveModal('return')
+                } },
             ].map(c => (
               <button key={c.label} onClick={c.onClick}
                 style={{ flex:1, display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:14, border:`1px solid ${c.color}28`, background:'var(--bg-card)', cursor:'pointer', textAlign:'left', boxShadow:`0 2px 8px ${c.color}18` }}>
@@ -600,36 +613,33 @@ export default function POS() {
           {/* Customer panel */}
           {showCustPanel && (
             <div style={{ padding:12, borderBottom:`1px solid ${B}`, background:BG2 }}>
-              <input type="text" placeholder="Search return cart…" value={custSearch} onChange={e => setCustSearch(e.target.value)}
+              <input type="text" placeholder="Search by name, phone or email…" value={custSearch} onChange={e => setCustSearch(e.target.value)}
                 style={{ ...inp, height:32, padding:'0 10px', marginBottom:8 }}/>
               <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:140, overflowY:'auto' }}>
-                {filteredCustomers.map(c => (
+                {custSearching && <div style={{ fontSize:11, color:S, padding:'6px 10px' }}>Searching…</div>}
+                {!custSearching && custResults.length===0 && <div style={{ fontSize:11, color:S, padding:'6px 10px' }}>No customers found</div>}
+                {custResults.map(c => (
                   <button key={c.id} onClick={() => { setCustomer(c); setShowCustPanel(false); setCustSearch('') }}
                     style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px', border: customer?.id===c.id?'1.5px solid #0ab39c':`1px solid ${B}`, borderRadius:8, background: customer?.id===c.id?'#0ab39c10':'#fff', cursor:'pointer', textAlign:'left' }}>
                     <div><div style={{ fontSize:12, fontWeight:600 }}>{c.name}</div><div style={{ fontSize:10, color:S }}>{c.phone}</div></div>
-                    <div style={{ textAlign:'right' }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:TIER_COLOR[c.tier] }}>{c.tier}</div>
-                      <div style={{ fontSize:9, color:S }}>{c.points.toLocaleString()} pts</div>
-                    </div>
+                    <div style={{ fontSize:9, color:S }}>{(c.loyalty_points||0).toLocaleString()} pts</div>
                   </button>
                 ))}
               </div>
-              {customer && <button onClick={() => { setCustomer(null); setShowCustPanel(false) }} style={{ width:'100%', marginTop:6, padding:'4px 0', fontSize:11, border:'1px solid #f06548', borderRadius:6, background:'transparent', cursor:'pointer', color:'#f06548' }}>Remove Return Cart</button>}
+              {customer && <button onClick={() => { setCustomer(null); setShowCustPanel(false) }} style={{ width:'100%', marginTop:6, padding:'4px 0', fontSize:11, border:'1px solid #f06548', borderRadius:6, background:'transparent', cursor:'pointer', color:'#f06548' }}>Remove Customer</button>}
             </div>
           )}
 
           {/* Customer bar */}
           {customer && !showCustPanel && (
             <div style={{ padding:'8px 14px', background:'#0ab39c10', borderBottom:'1px solid #0ab39c30', display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ width:32, height:32, borderRadius:'50%', background:TIER_COLOR[customer.tier], display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:11, flexShrink:0 }}>
+              <div style={{ width:32, height:32, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:11, flexShrink:0 }}>
                 {customer.name.split(' ').map(n=>n[0]).join('')}
               </div>
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:12, fontWeight:700 }}>{customer.name}</div>
                 <div style={{ fontSize:10, color:S }}>
-                  <span style={{ color:TIER_COLOR[customer.tier], fontWeight:600 }}>{customer.tier}</span>
-                  {' · '}{customer.points.toLocaleString()} pts
-                  {' · '}<span style={{ color:'#0ab39c' }}>Wallet {fmt(customer.wallet)}</span>
+                  {(customer.loyalty_points ?? customer.points ?? 0).toLocaleString()} loyalty pts
                 </div>
               </div>
             </div>
@@ -930,9 +940,9 @@ export default function POS() {
           <div style={{ display:'flex', borderBottom:`1px solid ${B}`, background:'var(--bg-card)', flexShrink:0 }}>
             {[
               { key:'all',        label:'All Orders',   count:onlineOrders.length },
-              { key:'new',        label:'🔴 New',        count:onlineOrders.filter(o=>o.status==='new').length },
-              { key:'pending',    label:'🟡 Pending',    count:onlineOrders.filter(o=>o.status==='pending').length },
-              { key:'processing', label:'🔵 Processing', count:onlineOrders.filter(o=>o.status==='processing').length },
+              { key:'new',        label:'🔴 New',        count:onlineOrders.filter(o=>onlineStatusBucket(o.status)==='new').length },
+              { key:'pending',    label:'🟡 Pending',    count:onlineOrders.filter(o=>onlineStatusBucket(o.status)==='pending').length },
+              { key:'processing', label:'🔵 Processing', count:onlineOrders.filter(o=>onlineStatusBucket(o.status)==='processing').length },
             ].map(tab => (
               <button key={tab.key} onClick={() => setOnlineFilter(tab.key)}
                 style={{ flex:1, padding:'12px 8px', border:'none', borderBottom: onlineFilter===tab.key?'3px solid #405189':'3px solid transparent', background:'transparent', fontWeight:onlineFilter===tab.key?700:500, fontSize:13, color:onlineFilter===tab.key?'#405189':S, cursor:'pointer' }}>
@@ -941,10 +951,13 @@ export default function POS() {
             ))}
           </div>
           <div style={{ overflowY:'auto', flex:1 }}>
-            {onlineOrders.filter(o=>onlineFilter==='all'||o.status===onlineFilter).map(order => {
-              const ch=CHANNEL_META[order.channel], st=STATUS_META[order.status]
-              const orderTotal=order.items.reduce((s,{productId,qty})=>{ const p=PRODUCTS.find(x=>x.id===productId); return s+(p?p.price*qty:0) },0)
+            {onlineOrders.length===0 && (
+              <div style={{ padding:40, textAlign:'center', color:S, fontSize:13 }}>No online orders awaiting fulfilment</div>
+            )}
+            {onlineOrders.filter(o=>onlineFilter==='all'||onlineStatusBucket(o.status)===onlineFilter).map(order => {
+              const ch=channelMeta(order.channel), st=STATUS_META[onlineStatusBucket(order.status)]
               const isExpanded=expandedOrder===order.id
+              const detail=orderDetails[order.id]
               return (
                 <div key={order.id} style={{ borderBottom:`1px solid ${B}`, padding:'16px 20px' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:14 }}>
@@ -957,33 +970,35 @@ export default function POS() {
                         <span style={{ fontSize:11, padding:'2px 10px', borderRadius:20, background:st.bg, color:st.color, fontWeight:700 }}>{st.label}</span>
                         <span style={{ fontSize:11, color:S }}><i className={ch.icon}/> {ch.label}</span>
                       </div>
-                      <div style={{ fontSize:13, marginTop:3 }}><span style={{ fontWeight:600 }}>{order.customer}</span><span style={{ color:S, marginLeft:8 }}>{order.phone}</span></div>
-                      <div style={{ fontSize:11, color:S, marginTop:2 }}>🕐 {order.time} · {order.items.reduce((s,i)=>s+i.qty,0)} items · <strong style={{ color:'var(--text-primary)' }}>{fmt(orderTotal)}</strong></div>
+                      <div style={{ fontSize:13, marginTop:3 }}><span style={{ fontWeight:600 }}>{order.customer_name}</span><span style={{ color:S, marginLeft:8 }}>{order.customer_phone}</span></div>
+                      <div style={{ fontSize:11, color:S, marginTop:2 }}>🕐 {new Date(order.created_at).toLocaleTimeString('en-NG',{hour:'numeric',minute:'2-digit'})} · {order.item_count} item{order.item_count!==1?'s':''} · <strong style={{ color:'var(--text-primary)' }}>{fmt(order.total)}</strong></div>
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-                      <button onClick={() => setExpandedOrder(isExpanded?null:order.id)} style={{ ...btnL, padding:'5px 10px', fontSize:13 }}><i className={isExpanded?'ri-eye-off-line':'ri-eye-line'}/></button>
+                      <button onClick={() => { const next=isExpanded?null:order.id; setExpandedOrder(next); if (next) loadOrderDetail(order.id) }} style={{ ...btnL, padding:'5px 10px', fontSize:13 }}><i className={isExpanded?'ri-eye-off-line':'ri-eye-line'}/></button>
                       {order.status!=='processing'
-                        ? <button onClick={() => loadOnlineOrderToCart(order)} style={{ ...btnP, padding:'6px 14px', fontSize:12, whiteSpace:'nowrap' }}><i className="ri-shopping-cart-2-line"/>Load to Cart</button>
+                        ? <button onClick={() => loadOnlineOrderToCart(order)} disabled={loadingOrderId===order.id} style={{ ...btnP, padding:'6px 14px', fontSize:12, whiteSpace:'nowrap', opacity:loadingOrderId===order.id?0.6:1 }}><i className="ri-shopping-cart-2-line"/>{loadingOrderId===order.id?'Loading…':'Load to Cart'}</button>
                         : <span style={{ fontSize:11, color:'#299cdb', fontWeight:600 }}><i className="ri-check-double-line"/> Loaded</span>
                       }
                     </div>
                   </div>
                   {isExpanded && (
                     <div style={{ marginTop:12, background:BG2, borderRadius:10, overflow:'hidden', border:`1px solid ${B}` }}>
-                      {order.note && <div style={{ padding:'8px 14px', background:'#f7b84b18', borderBottom:`1px solid ${B}`, fontSize:12, color:'#8b6914' }}><i className="ri-sticky-note-line"/> <strong>Note:</strong> {order.note}</div>}
-                      {order.items.map(({productId,qty}) => {
-                        const p=PRODUCTS.find(x=>x.id===productId); if (!p) return null
-                        const color=CAT_COLORS[p.cat]||'#0ab39c'
-                        return (
-                          <div key={productId} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderBottom:`1px solid ${B}` }}>
-                            <div style={{ width:34, height:34, borderRadius:8, background:`${color}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>{p.icon}</div>
-                            <div style={{ flex:1, fontSize:13, fontWeight:500 }}>{p.name}</div>
-                            <div style={{ fontSize:12, color:S }}>× {qty}</div>
-                            <div style={{ fontSize:13, fontWeight:700, minWidth:80, textAlign:'right' }}>{fmt(p.price*qty)}</div>
-                          </div>
-                        )
-                      })}
-                      <div style={{ display:'flex', justifyContent:'flex-end', padding:'10px 14px', fontWeight:800, fontSize:14 }}>Total: <span style={{ color:'#0ab39c', marginLeft:8 }}>{fmt(orderTotal)}</span></div>
+                      {order.notes && <div style={{ padding:'8px 14px', background:'#f7b84b18', borderBottom:`1px solid ${B}`, fontSize:12, color:'#8b6914' }}><i className="ri-sticky-note-line"/> <strong>Note:</strong> {order.notes}</div>}
+                      {!detail || detail.loading
+                        ? <div style={{ padding:14, fontSize:12, color:S }}>Loading items…</div>
+                        : detail.error
+                          ? <div style={{ padding:14, fontSize:12, color:'#f06548' }}>Could not load items</div>
+                          : <>
+                              {detail.items.map(item => (
+                                <div key={item.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderBottom:`1px solid ${B}` }}>
+                                  <div style={{ flex:1, fontSize:13, fontWeight:500 }}>{item.name}</div>
+                                  <div style={{ fontSize:12, color:S }}>× {item.quantity}</div>
+                                  <div style={{ fontSize:13, fontWeight:700, minWidth:80, textAlign:'right' }}>{fmt(item.subtotal)}</div>
+                                </div>
+                              ))}
+                              <div style={{ display:'flex', justifyContent:'flex-end', padding:'10px 14px', fontWeight:800, fontSize:14 }}>Total: <span style={{ color:'#0ab39c', marginLeft:8 }}>{fmt(order.total)}</span></div>
+                            </>
+                      }
                     </div>
                   )}
                 </div>
@@ -1261,7 +1276,7 @@ export default function POS() {
           <div style={{ padding:24, overflowY:'auto' }}>
             <div style={{ position:'relative', marginBottom:16 }}>
               <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:15 }}/>
-              <input style={{ ...inp, paddingLeft:34 }} placeholder="Search receipts…"/>
+              <input style={{ ...inp, paddingLeft:34 }} placeholder="Search receipts…" value={receiptSearch} onChange={e=>setReceiptSearch(e.target.value)}/>
             </div>
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
@@ -1273,20 +1288,25 @@ export default function POS() {
                   </tr>
                 </thead>
                 <tbody>
-                  {HISTORY_MOCK.map(h=>(
-                    <tr key={h.inv}>
-                      <td style={{ padding:'12px 12px', fontSize:13, color:'#0ab39c', fontWeight:600, borderBottom:`1px solid var(--border)` }}>{h.inv}</td>
-                      <td style={{ padding:'12px 12px', fontSize:13, borderBottom:`1px solid var(--border)` }}>{h.cust}</td>
-                      <td style={{ padding:'12px 12px', fontSize:13, borderBottom:`1px solid var(--border)` }}>{h.method}</td>
+                  {receiptsLoading && (
+                    <tr><td colSpan={6} style={{ padding:20, textAlign:'center', fontSize:13, color:S }}>Loading…</td></tr>
+                  )}
+                  {!receiptsLoading && receipts.length===0 && (
+                    <tr><td colSpan={6} style={{ padding:20, textAlign:'center', fontSize:13, color:S }}>No receipts found</td></tr>
+                  )}
+                  {!receiptsLoading && receipts.map(h=>(
+                    <tr key={h.id}>
+                      <td style={{ padding:'12px 12px', fontSize:13, color:'#0ab39c', fontWeight:600, borderBottom:`1px solid var(--border)` }}>{h.receipt_number}</td>
+                      <td style={{ padding:'12px 12px', fontSize:13, borderBottom:`1px solid var(--border)` }}>{h.customer_name || 'Walk-in'}</td>
+                      <td style={{ padding:'12px 12px', fontSize:13, borderBottom:`1px solid var(--border)` }}>{h.payment_method}</td>
                       <td style={{ padding:'12px 12px', fontSize:12, color:S, borderBottom:`1px solid var(--border)`, whiteSpace:'nowrap' }}>
-                        {new Date().toLocaleDateString('en-NG',{day:'numeric',month:'short'})} <span style={{ marginLeft:6 }}>{h.time}</span>
+                        {new Date(h.paid_at).toLocaleDateString('en-NG',{day:'numeric',month:'short'})} <span style={{ marginLeft:6 }}>{new Date(h.paid_at).toLocaleTimeString('en-NG',{hour:'numeric',minute:'2-digit'})}</span>
                       </td>
-                      <td style={{ padding:'12px 12px', fontSize:13, fontWeight:600, borderBottom:`1px solid var(--border)` }}>{fmt(h.amount)}</td>
+                      <td style={{ padding:'12px 12px', fontSize:13, fontWeight:600, borderBottom:`1px solid var(--border)` }}>{fmt(h.total)}</td>
                       <td style={{ padding:'12px 12px', borderBottom:`1px solid var(--border)` }}>
                         <div style={{ display:'flex', gap:4 }}>
                           <button style={{ background:BG2, border:`1px solid ${B}`, borderRadius:6, padding:'4px 8px', cursor:'pointer', fontSize:13, color:'var(--text-secondary)' }}><i className="ri-eye-line"/></button>
                           <button style={{ background:BG2, border:`1px solid ${B}`, borderRadius:6, padding:'4px 8px', cursor:'pointer', fontSize:13, color:'var(--text-secondary)' }}><i className="ri-printer-line"/></button>
-                          <button style={{ background:'#fee2e2', border:'none', borderRadius:6, padding:'4px 8px', cursor:'pointer', fontSize:13, color:'#991b1b' }}><i className="ri-delete-bin-5-line"/></button>
                         </div>
                       </td>
                     </tr>
@@ -1398,8 +1418,8 @@ export default function POS() {
                           onKeyDown={e => {
                             if (e.key==='Enter') {
                               const code=e.target.value.trim().toUpperCase()
-                              const found=BY_BARCODE[code]||BY_BARCODE['BF-'+code]||BY_SKU[code]
-                              if (found) { setReturnForm(f=>({...f,product:found,unitPrice:found.price})); showToast(`${found.name} selected`,'success',found.icon); e.target.value='' }
+                              const found=catalogByBarcode[code]||catalogByBarcode['BF-'+code]||catalogBySku[code]
+                              if (found) { setReturnForm(f=>({...f,product:found,unitPrice:found.price})); showToast(`${found.name} selected`,'success','📦'); e.target.value='' }
                               else showToast('Product not found: '+code,'error','❌')
                             }
                           }}/>
@@ -1408,7 +1428,7 @@ export default function POS() {
                     </div>
                     {returnForm.product && (
                       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:8, background:'rgba(240,101,72,.08)', border:'1px solid rgba(240,101,72,.25)' }}>
-                        <span style={{ fontSize:28 }}>{returnForm.product.icon}</span>
+                        <i className="ri-shopping-bag-3-line" style={{ fontSize:22, color:'#f06548' }}/>
                         <div style={{ flex:1 }}>
                           <div style={{ fontWeight:700, fontSize:13 }}>{returnForm.product.name}</div>
                           <div style={{ fontSize:11, color:S }}>{returnForm.product.sku} · ₦{returnForm.product.price.toLocaleString()} / {returnForm.product.unit}</div>
@@ -1418,8 +1438,9 @@ export default function POS() {
                     )}
                     <div>
                       <label style={LBL}>Product Being Returned *</label>
-                      <select style={inp} value={returnForm.product.id} onChange={e=>{ const p=PRODUCTS.find(p=>p.id===Number(e.target.value)); setReturnForm(f=>({...f,product:p,unitPrice:p.price})) }}>
-                        {PRODUCTS.map(p=><option key={p.id} value={p.id}>{p.icon} {p.name} — ₦{p.price.toLocaleString()} / {p.unit}</option>)}
+                      <select style={inp} value={returnForm.product?.id||''} onChange={e=>{ const p=catalog.find(p=>p.id===Number(e.target.value)); setReturnForm(f=>({...f,product:p,unitPrice:p.price})) }}>
+                        <option value="" disabled>Select a product…</option>
+                        {catalog.map(p=><option key={p.id} value={p.id}>{p.name} — ₦{p.price.toLocaleString()} / {p.unit}</option>)}
                       </select>
                     </div>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
@@ -1443,7 +1464,7 @@ export default function POS() {
                 {returnStep===2 && (
                   <>
                     <div style={{ background:BG2, border:`1px solid ${B}`, borderRadius:8, padding:14, marginBottom:20, fontSize:13 }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}><span style={{ color:S }}>Product</span><span style={{ fontWeight:600 }}>{returnForm.product.icon} {returnForm.product.name}</span></div>
+                      <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}><span style={{ color:S }}>Product</span><span style={{ fontWeight:600 }}>{returnForm.product.name}</span></div>
                       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}><span style={{ color:S }}>Qty · Reason</span><span>{returnForm.qty} {returnForm.product.unit} · {returnForm.reason}</span></div>
                       <div style={{ display:'flex', justifyContent:'space-between' }}><span style={{ color:S }}>Refund Value</span><span style={{ fontWeight:700, color:'#f06548' }}>₦{retTotal.toLocaleString()}</span></div>
                     </div>

@@ -134,7 +134,7 @@ const QUICK_ACTIONS = [
   { label: 'Add Customer', icon: 'ri-user-add-line',          to: '/customers',       bg: '#6b7280', text: '#fff' },
   { label: 'POS Terminal', icon: 'ri-store-2-line',           to: '/pos',             bg: '#111827', text: '#fff' },
   { label: 'Add Staff',    icon: 'ri-team-line',              to: '/staff/add',       bg: '#7c3aed', text: '#fff' },
-  { label: 'Sales Report', icon: 'ri-bar-chart-grouped-line', to: '/reports/sales',   bg: '#fff',    text: '#1B4332', border: '1.5px solid #1B4332' },
+  { label: 'Sales Report', icon: 'ri-bar-chart-grouped-line', to: '/reports/sales',   bg: 'var(--bg-card)', text: '#1B4332', border: '1.5px solid #1B4332' },
 ]
 
 function OverviewTab({ data, isDark }) {
@@ -267,11 +267,11 @@ function OverviewTab({ data, isDark }) {
                       <Td>{o.items}</Td>
                       <Td style={{ fontWeight: 700 }}>{fmtCurrency(o.total)}</Td>
                       <Td><Badge label={o.status} color={statusColor(o.status)} /></Td>
-                      <Td style={{ color: '#9ca3af', fontSize: 11 }}>{new Date(o.created_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}</Td>
+                      <Td style={{ color: 'var(--text-light)', fontSize: 11 }}>{new Date(o.created_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}</Td>
                     </Tr>
                   ))}
                   {recent_orders.length === 0 && (
-                    <Tr><Td colSpan={6} style={{ textAlign: 'center', color: '#9ca3af', padding: '24px' }}>No orders today yet</Td></Tr>
+                    <Tr><Td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-light)', padding: '24px' }}>No orders today yet</Td></Tr>
                   )}
                 </Tbody>
               </Table>
@@ -355,8 +355,8 @@ function SalesTab({ data, isDark }) {
         left={
           <Card>
             <CardBody>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 2 }}>Revenue Last 6 Months</div>
-              <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12 }}>Monthly totals</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>Revenue Last 6 Months</div>
+              <div style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 12 }}>Monthly totals</div>
               <div ref={revMonthRef} />
             </CardBody>
           </Card>
@@ -364,8 +364,8 @@ function SalesTab({ data, isDark }) {
         right={
           <Card>
             <CardBody>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 2 }}>Revenue by Category</div>
-              <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12 }}>This month</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>Revenue by Category</div>
+              <div style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 12 }}>This month</div>
               <div ref={categoryRef} />
             </CardBody>
           </Card>
@@ -376,8 +376,8 @@ function SalesTab({ data, isDark }) {
         left={
           <Card>
             <CardBody>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 2 }}>By Payment Method</div>
-              <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12 }}>This month</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>By Payment Method</div>
+              <div style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 12 }}>This month</div>
               <div ref={paymentRef} />
             </CardBody>
           </Card>
@@ -385,8 +385,8 @@ function SalesTab({ data, isDark }) {
         right={
           <Card>
             <CardBody>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 2 }}>By Order Source</div>
-              <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12 }}>This month</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>By Order Source</div>
+              <div style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 12 }}>This month</div>
               <div ref={sourceRef} />
             </CardBody>
           </Card>
@@ -404,17 +404,17 @@ function SalesTab({ data, isDark }) {
             <Tbody>
               {top_products.map((p, i) => (
                 <Tr key={p.sku || i}>
-                  <Td style={{ fontWeight: 700, color: '#9ca3af' }}>{i + 1}</Td>
+                  <Td style={{ fontWeight: 700, color: 'var(--text-light)' }}>{i + 1}</Td>
                   <Td>
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
-                    <div style={{ fontSize: 10, color: '#9ca3af' }}>{p.sku}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-light)' }}>{p.sku}</div>
                   </Td>
                   <Td style={{ fontWeight: 700 }}>{fmt(p.sold)}</Td>
                   <Td style={{ fontWeight: 700, color: '#166534' }}>{fmtCurrency(p.revenue)}</Td>
                 </Tr>
               ))}
               {top_products.length === 0 && (
-                <Tr><Td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>No sales data yet</Td></Tr>
+                <Tr><Td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-light)', padding: 24 }}>No sales data yet</Td></Tr>
               )}
             </Tbody>
           </Table>
@@ -437,11 +437,11 @@ function SalesTab({ data, isDark }) {
                   <Td>{o.items}</Td>
                   <Td style={{ fontWeight: 700 }}>{fmtCurrency(o.total)}</Td>
                   <Td><Badge label={o.status} color={statusColor(o.status)} /></Td>
-                  <Td style={{ color: '#9ca3af', fontSize: 11 }}>{new Date(o.created_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}</Td>
+                  <Td style={{ color: 'var(--text-light)', fontSize: 11 }}>{new Date(o.created_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}</Td>
                 </Tr>
               ))}
               {recent_orders.length === 0 && (
-                <Tr><Td colSpan={6} style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>No orders yet</Td></Tr>
+                <Tr><Td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-light)', padding: 24 }}>No orders yet</Td></Tr>
               )}
             </Tbody>
           </Table>
@@ -485,8 +485,8 @@ function FinanceTab({ data, isDark }) {
 
       <Card style={{ marginBottom: 20 }}>
         <CardBody>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 2 }}>Income vs Expenses</div>
-          <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12 }}>Last 6 months</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>Income vs Expenses</div>
+          <div style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 12 }}>Last 6 months</div>
           <div ref={incomeRef} />
         </CardBody>
       </Card>
@@ -506,12 +506,12 @@ function FinanceTab({ data, isDark }) {
                     <Tr key={i}>
                       <Td style={{ fontWeight: 600, fontSize: 13 }}>{a.account_name}</Td>
                       <Td style={{ fontSize: 13 }}>{a.bank_name}</Td>
-                      <Td><span style={{ fontSize: 11, background: '#f3f4f6', color: '#374151', padding: '2px 7px', borderRadius: 50, fontWeight: 600 }}>{a.account_type}</span></Td>
+                      <Td><span style={{ fontSize: 11, background: 'var(--bg-muted)', color: 'var(--text-secondary)', padding: '2px 7px', borderRadius: 50, fontWeight: 600 }}>{a.account_type}</span></Td>
                       <Td style={{ fontWeight: 700, color: '#166534' }}>{fmtCurrency(a.balance)}</Td>
                     </Tr>
                   ))}
                   {bank_accounts.length === 0 && (
-                    <Tr><Td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>No bank accounts yet</Td></Tr>
+                    <Tr><Td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-light)', padding: 24 }}>No bank accounts yet</Td></Tr>
                   )}
                 </Tbody>
               </Table>
@@ -537,7 +537,7 @@ function FinanceTab({ data, isDark }) {
                     </Tr>
                   ))}
                   {supplier_dues.length === 0 && (
-                    <Tr><Td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>No pending dues</Td></Tr>
+                    <Tr><Td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-light)', padding: 24 }}>No pending dues</Td></Tr>
                   )}
                 </Tbody>
               </Table>
@@ -593,9 +593,9 @@ function InventoryTab({ data, isDark }) {
             </CardHeader>
             <CardBody flush>
               {low_stock_items.length === 0
-                ? <div style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>No low stock items 🎉</div>
+                ? <div style={{ textAlign: 'center', color: 'var(--text-light)', padding: 24 }}>No low stock items 🎉</div>
                 : low_stock_items.map((item, i) => (
-                    <div key={item.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px', borderBottom: i < low_stock_items.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                    <div key={item.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px', borderBottom: i < low_stock_items.length - 1 ? '1px solid var(--border)' : 'none' }}>
                       <div style={{ width: 34, height: 34, borderRadius: 8, background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <i className="ri-archive-stack-line" style={{ fontSize: 16 }} />
                       </div>
@@ -604,10 +604,10 @@ function InventoryTab({ data, isDark }) {
                           <span style={{ fontWeight: 600, fontSize: 13 }}>{item.name}</span>
                           <Badge label="Low Stock" color="red" />
                         </div>
-                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{item.sku}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-light)' }}>{item.sku}</div>
                         <div style={{ fontSize: 12 }}>
                           <span style={{ color: '#dc2626', fontWeight: 700 }}>{item.qty} units</span>
-                          <span style={{ color: '#9ca3af' }}> · reorder at {item.reorder_qty}</span>
+                          <span style={{ color: 'var(--text-light)' }}> · reorder at {item.reorder_qty}</span>
                         </div>
                       </div>
                     </div>
@@ -630,15 +630,15 @@ function InventoryTab({ data, isDark }) {
               {inventory_list.map((item, i) => (
                 <Tr key={i}>
                   <Td style={{ fontWeight: 600, fontSize: 13 }}>{item.name}</Td>
-                  <Td><span style={{ fontSize: 11, background: '#f3f4f6', color: '#374151', padding: '2px 7px', borderRadius: 50, fontWeight: 600 }}>{item.sku}</span></Td>
-                  <Td style={{ fontSize: 13, color: '#6b7280' }}>{item.category}</Td>
+                  <Td><span style={{ fontSize: 11, background: 'var(--bg-muted)', color: 'var(--text-secondary)', padding: '2px 7px', borderRadius: 50, fontWeight: 600 }}>{item.sku}</span></Td>
+                  <Td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{item.category}</Td>
                   <Td style={{ fontWeight: 700 }}>{item.qty}</Td>
                   <Td style={{ fontSize: 13 }}>{fmtCurrency(item.value)}</Td>
                   <Td><Badge label={item.stock_status?.replace('_', ' ')} color={item.stock_status === 'low' || item.stock_status === 'out_of_stock' ? 'red' : 'green'} /></Td>
                 </Tr>
               ))}
               {inventory_list.length === 0 && (
-                <Tr><Td colSpan={6} style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>No products yet</Td></Tr>
+                <Tr><Td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-light)', padding: 24 }}>No products yet</Td></Tr>
               )}
             </Tbody>
           </Table>
@@ -690,13 +690,13 @@ function OperationsTab({ data, isDark }) {
                       <Td style={{ fontWeight: 600, fontSize: 13 }}>{d.delivery_ref}</Td>
                       <Td>{d.customer}</Td>
                       <Td style={{ fontSize: 13 }}>{d.driver}</Td>
-                      <Td style={{ fontSize: 13, color: '#6b7280' }}>{d.zone}</Td>
+                      <Td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{d.zone}</Td>
                       <Td style={{ fontWeight: 600, fontSize: 13 }}>{d.eta ? `${d.eta} min` : '—'}</Td>
                       <Td><Badge label={d.status?.replace('_', ' ')} color={statusColor(d.status)} /></Td>
                     </Tr>
                   ))}
                   {active_deliveries.length === 0 && (
-                    <Tr><Td colSpan={6} style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>No active deliveries</Td></Tr>
+                    <Tr><Td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-light)', padding: 24 }}>No active deliveries</Td></Tr>
                   )}
                 </Tbody>
               </Table>
@@ -706,8 +706,8 @@ function OperationsTab({ data, isDark }) {
         right={
           <Card>
             <CardBody>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 2 }}>Delivery Status</div>
-              <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12 }}>Today's breakdown</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>Delivery Status</div>
+              <div style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 12 }}>Today's breakdown</div>
               <div ref={deliveryRef} />
             </CardBody>
           </Card>
@@ -728,14 +728,14 @@ function OperationsTab({ data, isDark }) {
                   {staff_today.map((s, i) => (
                     <Tr key={i}>
                       <Td style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</Td>
-                      <Td style={{ fontSize: 12, color: '#6b7280' }}>{s.role}</Td>
-                      <Td><span style={{ fontSize: 11, background: '#f3f4f6', color: '#374151', padding: '2px 7px', borderRadius: 50, fontWeight: 600 }}>{s.shift}</span></Td>
+                      <Td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{s.role}</Td>
+                      <Td><span style={{ fontSize: 11, background: 'var(--bg-muted)', color: 'var(--text-secondary)', padding: '2px 7px', borderRadius: 50, fontWeight: 600 }}>{s.shift}</span></Td>
                       <Td style={{ fontSize: 13 }}>{s.clock_in || '—'}</Td>
                       <Td><Badge label={s.status?.replace('_', ' ')} color={s.status === 'present' ? 'green' : s.status === 'absent' ? 'red' : 'amber'} /></Td>
                     </Tr>
                   ))}
                   {staff_today.length === 0 && (
-                    <Tr><Td colSpan={5} style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>No attendance records today</Td></Tr>
+                    <Tr><Td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-light)', padding: 24 }}>No attendance records today</Td></Tr>
                   )}
                 </Tbody>
               </Table>
@@ -757,12 +757,12 @@ function OperationsTab({ data, isDark }) {
                       <Td style={{ fontWeight: 600, fontSize: 13 }}>{p.po_ref || p.reference}</Td>
                       <Td style={{ fontSize: 13 }}>{p.supplier || p.description}</Td>
                       <Td style={{ fontWeight: 700, fontSize: 13 }}>{fmtCurrency(p.amount)}</Td>
-                      <Td style={{ fontSize: 13, color: '#6b7280' }}>{p.date ? new Date(p.date).toLocaleDateString('en-NG') : '—'}</Td>
+                      <Td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{p.date ? new Date(p.date).toLocaleDateString('en-NG') : '—'}</Td>
                       <Td><Badge label={p.status} color={statusColor(p.status)} /></Td>
                     </Tr>
                   ))}
                   {purchase_orders.length === 0 && (
-                    <Tr><Td colSpan={5} style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>No purchase orders</Td></Tr>
+                    <Tr><Td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-light)', padding: 24 }}>No purchase orders</Td></Tr>
                   )}
                 </Tbody>
               </Table>
@@ -807,8 +807,8 @@ function CustomersTab({ data, isDark }) {
         left={
           <Card>
             <CardBody>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 2 }}>New Customer Growth</div>
-              <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12 }}>Last 6 months</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>New Customer Growth</div>
+              <div style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 12 }}>Last 6 months</div>
               <div ref={growthRef} />
             </CardBody>
           </Card>
@@ -826,7 +826,7 @@ function CustomersTab({ data, isDark }) {
                   {customer_list.map((c, i) => (
                     <Tr key={i}>
                       <Td style={{ fontWeight: 600, fontSize: 13 }}>{c.name}</Td>
-                      <Td style={{ fontSize: 13, color: '#6b7280' }}>{c.phone}</Td>
+                      <Td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{c.phone}</Td>
                       <Td style={{ fontWeight: 700 }}>{c.total_orders}</Td>
                       <Td><span style={{ fontSize: 11, background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: 50, fontWeight: 600 }}>{fmt(c.points)} pts</span></Td>
                       <Td style={{ fontWeight: 600 }}>{fmtCurrency(c.wallet_balance)}</Td>
@@ -834,7 +834,7 @@ function CustomersTab({ data, isDark }) {
                     </Tr>
                   ))}
                   {customer_list.length === 0 && (
-                    <Tr><Td colSpan={6} style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>No customers yet</Td></Tr>
+                    <Tr><Td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-light)', padding: 24 }}>No customers yet</Td></Tr>
                   )}
                 </Tbody>
               </Table>
@@ -889,9 +889,9 @@ function ChefBemsTab({ data, isDark }) {
             </CardHeader>
             <CardBody flush>
               {recent_convs.length === 0
-                ? <div style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>No conversations today</div>
+                ? <div style={{ textAlign: 'center', color: 'var(--text-light)', padding: 24 }}>No conversations today</div>
                 : recent_convs.map((c, i) => (
-                    <div key={c.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px', borderBottom: i < recent_convs.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                    <div key={c.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px', borderBottom: i < recent_convs.length - 1 ? '1px solid var(--border)' : 'none' }}>
                       <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#dbeafe', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
                         {(c.customer || 'A').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                       </div>
@@ -900,8 +900,8 @@ function ChefBemsTab({ data, isDark }) {
                           <span style={{ fontWeight: 600, fontSize: 13 }}>{c.customer}</span>
                           <Badge label={c.status} color={c.status === 'success' ? 'green' : c.status === 'failed' ? 'red' : 'amber'} />
                         </div>
-                        <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 2 }}>"{c.query}"</div>
-                        <div style={{ fontSize: 10, color: '#9ca3af' }}>{new Date(c.created_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>"{c.query}"</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-light)' }}>{new Date(c.created_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                     </div>
                   ))
@@ -920,12 +920,12 @@ function ChefBemsTab({ data, isDark }) {
             </CardHeader>
             <CardBody flush>
               {dietary_rules.length === 0
-                ? <div style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>No dietary rules configured</div>
+                ? <div style={{ textAlign: 'center', color: 'var(--text-light)', padding: 24 }}>No dietary rules configured</div>
                 : dietary_rules.map((r, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < dietary_rules.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < dietary_rules.length - 1 ? '1px solid var(--border)' : 'none' }}>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: 13 }}>{r.name}</div>
-                        <div style={{ fontSize: 11, color: '#9ca3af' }}>{r.scope}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-light)' }}>{r.scope}</div>
                       </div>
                       <Badge label={r.status} color="green" />
                     </div>
@@ -942,11 +942,11 @@ function ChefBemsTab({ data, isDark }) {
             </CardHeader>
             <CardBody flush>
               {meal_associations.length === 0
-                ? <div style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>No meal associations yet</div>
+                ? <div style={{ textAlign: 'center', color: 'var(--text-light)', padding: 24 }}>No meal associations yet</div>
                 : meal_associations.map((m, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < meal_associations.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < meal_associations.length - 1 ? '1px solid var(--border)' : 'none' }}>
                       <span style={{ fontWeight: 600, fontSize: 13 }}>{m.meal}</span>
-                      <span style={{ fontSize: 12, color: '#9ca3af' }}>{m.association_count} associations</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-light)' }}>{m.association_count} associations</span>
                     </div>
                   ))
               }

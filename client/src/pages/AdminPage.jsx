@@ -32,36 +32,6 @@ const tabs = [
   { id: "subscribers", label: "Subscribers", emoji: "📧" },
   { id: "returns", label: "Returns", emoji: "↩️" },
 ];
-const mockCustomers = [
-  {
-    name: "Obisesan Esther",
-    email: "est0295@gmail.com",
-    orders: 8,
-    spent: 84500,
-    active: true,
-  },
-  {
-    name: "Adewale Tunde",
-    email: "tunde@gmail.com",
-    orders: 3,
-    spent: 21000,
-    active: true,
-  },
-  {
-    name: "Chioma Okafor",
-    email: "chioma@yahoo.com",
-    orders: 12,
-    spent: 143000,
-    active: true,
-  },
-  {
-    name: "Ibrahim Hassan",
-    email: "ibrahim@gmail.com",
-    orders: 1,
-    spent: 5250,
-    active: false,
-  },
-];
 export default function AdminPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -79,6 +49,7 @@ export default function AdminPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [subscribers, setSubscribers] = useState([]);
   const [returns, setReturns] = useState([]);
+  const [customers, setCustomers] = useState([]);
   // Real stats state
   const [stats, setStats] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
@@ -103,13 +74,15 @@ export default function AdminPage() {
     let isMounted = true;
     const loadData = async () => {
       try {
-        const [subscribersRes, returnsRes] = await Promise.all([
+        const [subscribersRes, returnsRes, customersRes] = await Promise.all([
           api.get("/admin/subscribers"),
           api.get("/admin/returns"),
+          api.get("/admin/customers", { params: { limit: 100 } }),
         ]);
         if (!isMounted) return;
         setSubscribers(subscribersRes.data.subscribers || []);
         setReturns(returnsRes.data.returns || []);
+        setCustomers(customersRes.data.customers || []);
       } catch (err) {
         console.error("Admin data fetch error:", err);
       }
@@ -1759,9 +1732,9 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mockCustomers.map((c, i) => (
+                    {customers.map((c, i) => (
                       <tr
-                        key={c.name}
+                        key={c.id}
                         style={{ borderBottom: "1px solid #F5F5F5" }}
                         onMouseEnter={(e) =>
                           (e.currentTarget.style.backgroundColor = C.bg)
@@ -1794,7 +1767,7 @@ export default function AdminPage() {
                                 flexShrink: 0,
                               }}
                             >
-                              {c.name[0]}
+                              {(c.name || "?")[0]}
                             </div>
                             <p
                               style={{
@@ -1824,7 +1797,7 @@ export default function AdminPage() {
                             textAlign: "center",
                           }}
                         >
-                          {c.orders}
+                          {c.total_orders || 0}
                         </td>
                         <td
                           style={{
@@ -1835,20 +1808,20 @@ export default function AdminPage() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          ₦{(Number(c.spent) || 0).toLocaleString()}
+                          ₦{(Number(c.total_spent) || 0).toLocaleString()}
                         </td>
                         <td style={{ padding: "14px 16px" }}>
                           <span
                             style={{
-                              backgroundColor: c.active ? "#E8F5E9" : "#F5F5F5",
-                              color: c.active ? C.primary : C.muted,
+                              backgroundColor: c.status === "active" ? "#E8F5E9" : "#F5F5F5",
+                              color: c.status === "active" ? C.primary : C.muted,
                               fontSize: "12px",
                               fontWeight: 600,
                               padding: "3px 10px",
                               borderRadius: "20px",
                             }}
                           >
-                            {c.active ? "Active" : "Inactive"}
+                            {c.status === "active" ? "Active" : "Inactive"}
                           </span>
                         </td>
                         <td style={{ padding: "14px 16px" }}>
@@ -3142,7 +3115,7 @@ export default function AdminPage() {
                     flexShrink: 0,
                   }}
                 >
-                  {viewCustomer.name[0]}
+                  {(viewCustomer.name || "?")[0]}
                 </div>
                 <div>
                   <p
@@ -3153,10 +3126,10 @@ export default function AdminPage() {
                   <p
                     style={{
                       fontSize: "13px",
-                      color: viewCustomer.active ? C.primary : C.muted,
+                      color: viewCustomer.status === "active" ? C.primary : C.muted,
                     }}
                   >
-                    {viewCustomer.active ? "✅ Active Customer" : "⭕ Inactive"}
+                    {viewCustomer.status === "active" ? "✅ Active Customer" : "⭕ Inactive"}
                   </p>
                 </div>
               </div>
@@ -3164,16 +3137,16 @@ export default function AdminPage() {
                 { label: "Email", value: viewCustomer.email },
                 {
                   label: "Total Orders",
-                  value: `${viewCustomer.orders} orders`,
+                  value: `${viewCustomer.total_orders || 0} orders`,
                 },
                 {
                   label: "Total Spent",
-                  value: `₦${(Number(viewCustomer.spent) || 0).toLocaleString()}`,
+                  value: `₦${(Number(viewCustomer.total_spent) || 0).toLocaleString()}`,
                   green: true,
                 },
                 {
                   label: "Status",
-                  value: viewCustomer.active ? "Active" : "Inactive",
+                  value: viewCustomer.status === "active" ? "Active" : "Inactive",
                 },
               ].map((row) => (
                 <div

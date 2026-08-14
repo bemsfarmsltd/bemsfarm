@@ -1,20 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useResponsive } from "../hooks/useResponsive";
 import api from "../services/api";
 
-// Sample products to test dynamic pricing
-const SAMPLE_PRODUCTS = [
-  { id: 1, name: "Black-eyed Beans" },
-  { id: 2, name: "Ugu Leaves" },
-  { id: 3, name: "Fresh Tomatoes" },
-  { id: 4, name: "Ofada Rice" },
-  { id: 5, name: "Palm Oil" },
-];
-
 export default function DynamicPricingPage() {
   const { isMobile } = useResponsive();
+
+  // Real catalog — the hardcoded id 1-5 sample list didn't match any
+  // actual product IDs, so every "select a product" click 404'd.
+  const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+
+  useEffect(() => {
+    api.get("/products", { params: { limit: 9 } })
+      .then((r) => setProducts(r.data.products || []))
+      .catch(() => {})
+      .finally(() => setProductsLoading(false));
+  }, []);
 
   // State management
   const [selectedProductId, setSelectedProductId] = useState(null);
@@ -113,7 +116,13 @@ export default function DynamicPricingPage() {
                 gap: "12px",
               }}
             >
-              {SAMPLE_PRODUCTS.map((product) => (
+              {productsLoading && (
+                <p style={{ gridColumn: "1 / -1", color: "#9CA3AF", fontSize: "13px" }}>Loading products…</p>
+              )}
+              {!productsLoading && products.length === 0 && (
+                <p style={{ gridColumn: "1 / -1", color: "#9CA3AF", fontSize: "13px" }}>No products available.</p>
+              )}
+              {products.map((product) => (
                 <motion.button
                   key={product.id}
                   whileHover={{ scale: 1.05 }}

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { ROLE_META } from '../../lib/roles'
+import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
 // ── Brand tokens ──────────────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ function IconBtn({ icon, onClick, title, badge, active }) {
         width: 36, height: 36, borderRadius: 8,
         background: active ? C.hover : 'transparent',
         border: 'none', cursor: 'pointer',
-        color: '#374151', flexShrink: 0,
+        color: 'var(--text-secondary)', flexShrink: 0,
         transition: 'background 0.13s',
       }}
       onMouseEnter={e => e.currentTarget.style.background = C.hover}
@@ -65,7 +66,7 @@ function DropPanel({ children, style }) {
     <div style={{
       position: 'absolute',
       top: 'calc(100% + 8px)',
-      background: '#fff',
+      background: 'var(--bg-card)',
       borderRadius: 12,
       boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
       border: `1px solid ${C.border}`,
@@ -144,7 +145,7 @@ function AddNewDropdown() {
                   >
                     <div style={{
                       width: 30, height: 30, borderRadius: 7, flexShrink: 0,
-                      background: '#f9fafb', border: `1px solid ${C.border}`,
+                      background: 'var(--bg-subtle)', border: `1px solid ${C.border}`,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       <i className={item.icon} style={{ fontSize: 14, color: C.green }} />
@@ -162,39 +163,41 @@ function AddNewDropdown() {
 }
 
 // ── Notifications dropdown ────────────────────────────────────────────────────
-const MOCK_NOTES = [
-  {
-    id: 1,
-    icon: 'ri-alert-line', color: '#ef4444', iconBg: 'var(--bg-red-faint)',
-    title: 'Tomatoes below reorder level',
-    sub: '3 kg left — reorder threshold: 10 kg',
-    time: '5 min ago',
-  },
-  {
-    id: 2,
-    icon: 'ri-time-line', color: '#f59e0b', iconBg: 'var(--bg-yellow-faint)',
-    title: 'Batch BT-2024-0041 expiring soon',
-    sub: 'Expires in 2 days',
-    time: '1 hour ago',
-  },
-  {
-    id: 3,
-    icon: 'ri-shopping-bag-line', color: '#22c55e', iconBg: 'var(--bg-green-faint)',
-    title: 'New order #BF-2026-000124',
-    sub: 'Amara Obi — ₦18,500',
-    time: '2 hours ago',
-  },
-]
-
+// Built from real stock alerts (GET /admin/inventory/alerts) — out-of-stock
+// items surface first as the most urgent, then low-stock ones — rather than
+// a static hardcoded list unrelated to actual inventory state.
 function NotificationsDropdown() {
   const { open, setOpen, ref } = useDropdown()
+  const [notes, setNotes] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/admin/inventory/alerts')
+      .then(({ data }) => {
+        const outOfStock = (data.out_of_stock || []).map(p => ({
+          id: `oos-${p.id}`,
+          icon: 'ri-close-circle-line', color: '#ef4444', iconBg: 'var(--bg-red-faint)',
+          title: `${p.name} is out of stock`,
+          sub: p.sku ? `SKU: ${p.sku}` : p.category || '',
+        }))
+        const lowStock = (data.low_stock || []).map(p => ({
+          id: `low-${p.id}`,
+          icon: 'ri-alert-line', color: '#f59e0b', iconBg: 'var(--bg-yellow-faint)',
+          title: `${p.name} below reorder level`,
+          sub: `${p.stock} left — reorder threshold: ${p.low_stock_threshold}`,
+        }))
+        setNotes([...outOfStock, ...lowStock].slice(0, 8))
+      })
+      .catch(() => setNotes([]))
+      .finally(() => setLoading(false))
+  }, [])
 
   return (
     <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
       <IconBtn
         icon="ri-notification-3-line"
         title="Notifications"
-        badge
+        badge={notes.length > 0}
         active={open}
         onClick={() => setOpen(o => !o)}
       />
@@ -203,26 +206,37 @@ function NotificationsDropdown() {
         <DropPanel style={{ width: 340, right: 0 }}>
           {/* Header */}
           <div style={{
-            display: 'flex', alignItems: 'center', justifycontent: 'space-between',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '14px 16px 12px', borderBottom: `1px solid var(--border-subtle)`,
           }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Notifications</span>
-            <span style={{
-              background: 'var(--bg-muted)', color: C.muted,
-              fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 50,
-            }}>
-              {MOCK_NOTES.length} New
-            </span>
+            {notes.length > 0 && (
+              <span style={{
+                background: 'var(--bg-muted)', color: C.muted,
+                fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 50,
+              }}>
+                {notes.length} New
+              </span>
+            )}
           </div>
 
           {/* Items */}
           <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-            {MOCK_NOTES.map((n, i) => (
+            {loading && (
+              <div style={{ padding: '24px 16px', textAlign: 'center', fontSize: 13, color: C.muted }}>Loading…</div>
+            )}
+            {!loading && notes.length === 0 && (
+              <div style={{ padding: '24px 16px', textAlign: 'center', fontSize: 13, color: C.muted }}>
+                <i className="ri-checkbox-circle-line" style={{ fontSize: 20, display: 'block', marginBottom: 6 }} />
+                No stock alerts right now
+              </div>
+            )}
+            {notes.map((n, i) => (
               <div
                 key={n.id}
                 style={{
                   display: 'flex', gap: 12, padding: '12px 16px',
-                  borderBottom: i < MOCK_NOTES.length - 1 ? `1px solid var(--border-subtle)` : 'none',
+                  borderBottom: i < notes.length - 1 ? `1px solid var(--border-subtle)` : 'none',
                 }}
               >
                 <div style={{
@@ -235,7 +249,6 @@ function NotificationsDropdown() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 2 }}>{n.title}</div>
                   <div style={{ fontSize: 12, color: C.muted }}>{n.sub}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-light)', marginTop: 2 }}>{n.time}</div>
                 </div>
               </div>
             ))}
@@ -389,6 +402,12 @@ export default function Topbar({ onToggleSidebar }) {
   const navigate = useNavigate()
   const { isDark, toggleTheme } = useTheme()
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const handleSearchSubmit = (e) => {
+    if (e.key !== 'Enter' || !searchTerm.trim()) return
+    navigate(`/products?search=${encodeURIComponent(searchTerm.trim())}`)
+  }
   const roleMeta = user ? ROLE_META[user.role] : null
 
   const initials = user
@@ -433,7 +452,12 @@ export default function Topbar({ onToggleSidebar }) {
       zIndex: 99,
       fontFamily: 'Nunito, sans-serif',
       color: 'var(--text-primary)',
-      overflowX: 'auto',
+      // NOTE: no overflowX here — setting it without overflowY forces the
+      // browser to auto-promote overflowY to 'auto' too (CSS spec quirk),
+      // which clips every dropdown panel below this 60px-tall header
+      // (Add New / Notifications / Profile all silently became invisible).
+      // The responsive .bf-admin-topbar-wide-only class already handles
+      // narrow viewports by hiding elements, so no scroll container is needed.
     }}>
 
       {/* Sidebar toggle */}
@@ -469,7 +493,10 @@ export default function Topbar({ onToggleSidebar }) {
         }} />
         <input
           type="search"
-          placeholder="Search Bems Farms..."
+          placeholder="Search products… (Enter)"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          onKeyDown={handleSearchSubmit}
           style={{
             paddingLeft: 32, paddingRight: 12,
             height: 36, width: 210,

@@ -15,6 +15,7 @@ const login = z.object({
 
 const updateProfile = z.object({
   name: z.string({ error: "Name is required" }).trim().min(1, "Name is required"),
+  email: z.email({ error: "Enter a valid email address" }).optional(),
   phone: z.string().trim().optional(),
   gender: z.string().trim().max(20).optional(),
   id_number: z.string().trim().max(100).optional(),

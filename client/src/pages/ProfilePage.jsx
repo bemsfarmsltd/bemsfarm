@@ -335,6 +335,26 @@ export default function ProfilePage() {
 
   const wishlistProducts = allProducts.filter((p) => favorites[p.id]);
 
+  // Returns & cancellations — both derive from the customer's own orders,
+  // so a cancelled order shows up under "My Cancellations" without a
+  // second endpoint.
+  const [myOrders, setMyOrders] = useState([]);
+  const [myReturns, setMyReturns] = useState([]);
+
+  useEffect(() => {
+    api.get("/orders").then((r) => setMyOrders(r.data.orders || [])).catch(() => {});
+    api.get("/orders/returns").then((r) => setMyReturns(r.data.returns || [])).catch(() => {});
+  }, []);
+
+  const cancelledOrders = myOrders.filter((o) => o.status === "cancelled");
+
+  const RETURN_STATUS_META = {
+    submitted: { label: "Pending Review", color: "#F57C00", bg: "#FFF3E0" },
+    pending:   { label: "Pending Review", color: "#F57C00", bg: "#FFF3E0" },
+    approved:  { label: "Approved",       color: "#2E7D32", bg: "#E8F5E9" },
+    rejected:  { label: "Rejected",       color: "#DC2626", bg: "#FEE2E2" },
+  };
+
   const removeFromWishlist = (productId) => {
     setFavorites((prev) => {
       const updated = { ...prev, [productId]: false };
@@ -459,6 +479,7 @@ export default function ProfilePage() {
     try {
       const res = await api.patch("/auth/profile", {
         name: `${fields.firstName} ${fields.lastName}`.trim(),
+        email: fields.email,
         phone: fields.phone,
         gender: fields.gender,
         id_number: fields.idNumber,
@@ -954,6 +975,37 @@ export default function ProfilePage() {
                   exit={{ opacity: 0, y: -10 }}
                 >
                   <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "Syne, sans-serif" }}>My Returns</h3>
+                  {myReturns.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "28px" }}>
+                      {myReturns.map((ret) => {
+                        const meta = RETURN_STATUS_META[ret.status] || RETURN_STATUS_META.pending;
+                        return (
+                          <div key={ret.id} style={{ border: "1px solid #E5E7EB", borderRadius: "14px", padding: "16px 20px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                              <div>
+                                <p style={{ fontWeight: 700, fontSize: "14px", margin: "0 0 2px" }}>Order #{ret.order_id}</p>
+                                <p style={{ fontSize: "12px", color: "#9CA3AF", margin: 0 }}>
+                                  {new Date(ret.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}
+                                </p>
+                              </div>
+                              <span style={{ background: meta.bg, color: meta.color, fontSize: "12px", fontWeight: 700, padding: "4px 12px", borderRadius: "50px" }}>
+                                {meta.label}
+                              </span>
+                            </div>
+                            <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 4px", textTransform: "capitalize" }}>
+                              Reason: {ret.reason?.replace(/_/g, " ")}
+                            </p>
+                            {ret.items?.length > 0 && (
+                              <p style={{ fontSize: "13px", color: "#4B5563", margin: 0 }}>
+                                {ret.items.map((i) => `${i.product_name} (×${i.returned_quantity})`).join(", ")}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {myReturns.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 20px" }}>
                     <div style={{ fontSize: "56px", marginBottom: "16px" }}>↩️</div>
                     <h4 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 700 }}>No Returns Yet</h4>
@@ -966,6 +1018,7 @@ export default function ProfilePage() {
                       <p style={{ fontSize: "13px", color: "#4B5563", margin: "0" }}>✓ Contact info@bemsfarms.com for assistance</p>
                     </div>
                   </div>
+                  )}
                 </motion.div>
               )}
 
@@ -977,6 +1030,29 @@ export default function ProfilePage() {
                   exit={{ opacity: 0, y: -10 }}
                 >
                   <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "Syne, sans-serif" }}>My Cancellations</h3>
+                  {cancelledOrders.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "28px" }}>
+                      {cancelledOrders.map((order) => (
+                        <div key={order.id} style={{ border: "1px solid #E5E7EB", borderRadius: "14px", padding: "16px 20px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                            <div>
+                              <p style={{ fontWeight: 700, fontSize: "14px", margin: "0 0 2px" }}>Order #{order.id}</p>
+                              <p style={{ fontSize: "12px", color: "#9CA3AF", margin: 0 }}>
+                                Cancelled {order.cancelled_at ? new Date(order.cancelled_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }) : ""}
+                              </p>
+                            </div>
+                            <span style={{ background: "#FEE2E2", color: "#DC2626", fontSize: "12px", fontWeight: 700, padding: "4px 12px", borderRadius: "50px" }}>
+                              Cancelled
+                            </span>
+                          </div>
+                          {order.cancel_reason && (
+                            <p style={{ fontSize: "13px", color: "#4B5563", margin: 0 }}>Reason: {order.cancel_reason}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {cancelledOrders.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 20px" }}>
                     <div style={{ fontSize: "56px", marginBottom: "16px" }}>❌</div>
                     <h4 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 700 }}>No Cancelled Orders</h4>
@@ -989,6 +1065,7 @@ export default function ProfilePage() {
                       <p style={{ fontSize: "13px", color: "#4B5563", margin: "0" }}>✓ Contact support immediately to cancel</p>
                     </div>
                   </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

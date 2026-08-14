@@ -6,6 +6,7 @@ import {
   FINANCE_ROLES, DELIVERY_ROLES,
   POS_ROLES, ORDER_ROLES, CUSTOMER_ROLES, PRODUCT_ROLES,
   REPORT_ROLES, AI_ROLES, STAFF_ROLES, SETTINGS_ROLES,
+  PURCHASE_ROLES, SUPPLIER_ROLES, MULTISTORE_ROLES,
 } from './lib/roles'
 
 // Public
@@ -57,6 +58,21 @@ import CustomerDetail from './pages/customers/CustomerDetail'
 import LoyaltyPoints  from './pages/customers/LoyaltyPoints'
 import ActivityLog    from './pages/customers/ActivityLog'
 import CustomerReportPage from './pages/customers/CustomerReport'
+
+// Purchase
+import PurchaseList     from './pages/purchase/PurchaseList'
+import AddPurchase      from './pages/purchase/AddPurchase'
+import PurchasePayments from './pages/purchase/PurchasePayments'
+import PurchaseReturns  from './pages/purchase/PurchaseReturns'
+
+// Suppliers
+import SuppliersList    from './pages/suppliers/SuppliersList'
+import AddSupplier      from './pages/suppliers/AddSupplier'
+import SupplierBalance  from './pages/suppliers/SupplierBalance'
+import SupplierPayments from './pages/suppliers/SupplierPayments'
+
+// Stores
+import StoreList        from './pages/stores/StoreList'
 
 // Staff
 import StaffList        from './pages/staff/StaffList'
@@ -162,6 +178,27 @@ function App() {
               <Route path="/deliveries/map"     element={<DeliveryMap />} />
               <Route path="/deliveries/zones"   element={<DeliveryZones />} />
               <Route path="/deliveries/drivers" element={<DriversManagement />} />
+            </Route>
+
+            {/* ── Purchases ── superadmin, manager */}
+            <Route element={<ProtectedRoute allowedRoles={PURCHASE_ROLES} />}>
+              <Route path="/purchase"          element={<PurchaseList />} />
+              <Route path="/purchase/add"      element={<AddPurchase />} />
+              <Route path="/purchase/payments" element={<PurchasePayments />} />
+              <Route path="/purchase/returns"  element={<PurchaseReturns />} />
+            </Route>
+
+            {/* ── Suppliers ── superadmin, manager */}
+            <Route element={<ProtectedRoute allowedRoles={SUPPLIER_ROLES} />}>
+              <Route path="/suppliers"          element={<SuppliersList />} />
+              <Route path="/suppliers/add"      element={<AddSupplier />} />
+              <Route path="/suppliers/balance"  element={<SupplierBalance />} />
+              <Route path="/suppliers/payments" element={<SupplierPayments />} />
+            </Route>
+
+            {/* ── Stores ── superadmin, manager */}
+            <Route element={<ProtectedRoute allowedRoles={MULTISTORE_ROLES} />}>
+              <Route path="/stores" element={<StoreList />} />
             </Route>
 
             {/* ── Customers ── superadmin, manager, cashier */}

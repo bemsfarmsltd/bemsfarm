@@ -164,7 +164,7 @@ router.get("/", requireRole("superadmin", "manager"), async (req, res, next) => 
       SELECT
         s.id, s.employee_code, s.department, s.role, s.shift,
         s.basic_salary, s.hire_date, s.status, s.created_at,
-        u.id AS user_id, u.name, u.email, u.phone, u.avatar_url,
+        u.id AS user_id, u.name, u.email, u.phone, u.avatar_url, u.role AS system_role,
         (SELECT status FROM staff_attendance
          WHERE staff_id = s.id AND date = CURRENT_DATE
          LIMIT 1) AS today_status,

@@ -577,7 +577,7 @@ router.get("/receipts", requireRole("superadmin","manager","admin","cashier","ac
     // Fetch items for visible receipts
     const ids = rows.rows.map(r => r.id);
     const items = ids.length
-      ? await pool.query(`SELECT oi.*, oi.order_id FROM order_items oi WHERE oi.order_id = ANY($1::int[])`, [ids])
+      ? await pool.query(`SELECT oi.*, oi.order_id FROM order_items oi WHERE oi.order_id::text = ANY($1::text[])`, [ids])
       : { rows: [] };
 
     const itemsMap = {};

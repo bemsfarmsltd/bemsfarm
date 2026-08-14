@@ -309,9 +309,21 @@ CREATE TABLE IF NOT EXISTS suppliers (
   total_paid      DECIMAL(12,2) DEFAULT 0,
   notes           TEXT,
   status          VARCHAR(20)   DEFAULT 'active',
+  company         VARCHAR(255),
+  city            VARCHAR(100),
+  state           VARCHAR(100),
+  credit_limit    DECIMAL(12,2),
   created_at      TIMESTAMP     DEFAULT NOW(),
   updated_at      TIMESTAMP     DEFAULT NOW()
 );
+
+-- The AddSupplier/SuppliersList forms collect company/city/state/credit_limit,
+-- but the table above predates those fields — add them if this ran before.
+ALTER TABLE suppliers
+  ADD COLUMN IF NOT EXISTS company      VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS city         VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS state        VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS credit_limit DECIMAL(12,2);
 
 
 -- ══════════════════════════════════════════════════════════════
