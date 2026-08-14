@@ -88,12 +88,67 @@ export default function ComingSoonPage() {
   const clickTimerRef = useRef(null);
   const [copied, setCopied] = useState(false);
 
+  const referralUrl = `${window.location.origin}/?ref=${myReferralCode}`;
+  const referralShareText =
+    "Join me on BemsFarms — Nigeria's freshest farm marketplace! Get early access + a discount:";
+
   const copyToClipboard = () => {
-    const url = `${window.location.origin}/?ref=${myReferralCode}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(referralUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const canNativeShare = typeof navigator !== "undefined" && !!navigator.share;
+
+  const handleNativeShare = async () => {
+    try {
+      await navigator.share({
+        title: "BemsFarms",
+        text: referralShareText,
+        url: referralUrl,
+      });
+    } catch {
+      // user cancelled the share sheet — nothing to do
+    }
+  };
+
+  const SHARE_PLATFORMS = [
+    {
+      key: "whatsapp",
+      label: "WhatsApp",
+      icon: "💬",
+      color: "#25D366",
+      href: `https://wa.me/?text=${encodeURIComponent(`${referralShareText} ${referralUrl}`)}`,
+    },
+    {
+      key: "facebook",
+      label: "Facebook",
+      icon: "f",
+      color: "#1877F2",
+      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralUrl)}&quote=${encodeURIComponent(referralShareText)}`,
+    },
+    {
+      key: "twitter",
+      label: "X (Twitter)",
+      icon: "𝕏",
+      color: "#000000",
+      href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(referralShareText)}&url=${encodeURIComponent(referralUrl)}`,
+    },
+    {
+      key: "telegram",
+      label: "Telegram",
+      icon: "✈️",
+      color: "#229ED9",
+      href: `https://t.me/share/url?url=${encodeURIComponent(referralUrl)}&text=${encodeURIComponent(referralShareText)}`,
+    },
+    {
+      key: "email",
+      label: "Email",
+      icon: "✉️",
+      color: "#6B7280",
+      href: `mailto:?subject=${encodeURIComponent("Join me on BemsFarms")}&body=${encodeURIComponent(`${referralShareText}\n\n${referralUrl}`)}`,
+    },
+  ];
 
   useEffect(() => {
     const t = setInterval(() => setTime(getTimeLeft(COUNTDOWN.target)), 1000);
@@ -585,7 +640,7 @@ export default function ComingSoonPage() {
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap"
                     }}>
-                      {`${window.location.origin}/?ref=${myReferralCode}`}
+                      {referralUrl}
                     </div>
                     <button
                       onClick={copyToClipboard}
@@ -603,6 +658,62 @@ export default function ComingSoonPage() {
                     >
                       {copied ? "Copied! ✓" : "Copy"}
                     </button>
+                  </div>
+
+                  {/* Share to platform */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px", flexWrap: "wrap" }}>
+                    <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "11px", marginRight: "2px" }}>
+                      Share via:
+                    </span>
+                    {canNativeShare && (
+                      <button
+                        onClick={handleNativeShare}
+                        aria-label="Share referral link"
+                        title="Share…"
+                        style={{
+                          width: "30px",
+                          height: "30px",
+                          borderRadius: "50%",
+                          border: "none",
+                          backgroundColor: "rgba(255,255,255,0.12)",
+                          color: "white",
+                          fontSize: "14px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        ⤴
+                      </button>
+                    )}
+                    {SHARE_PLATFORMS.map((p) => (
+                      <a
+                        key={p.key}
+                        href={p.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Share on ${p.label}`}
+                        title={p.label}
+                        style={{
+                          width: "30px",
+                          height: "30px",
+                          borderRadius: "50%",
+                          backgroundColor: p.color,
+                          color: "white",
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          textDecoration: "none",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {p.icon}
+                      </a>
+                    ))}
                   </div>
                 </div>
 
