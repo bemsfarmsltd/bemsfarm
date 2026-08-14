@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmt   = n  => `₦${Number(n || 0).toLocaleString('en-NG')}`
+const fmt   = n  => `₦${Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const fmtN  = n  => Number(n || 0).toLocaleString()
 const ini   = n  => (n || '??').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 const today      = new Date().toISOString().slice(0, 10)

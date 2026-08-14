@@ -71,11 +71,17 @@ const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { clampLimit } = require("../utils/pagination");
 
 router.use(protect);
 
 // ── HELPER: auto reference ───────────────────────────────────────────────────
 async function nextRef(client, prefix, table) {
+  // Both call sites run inside a transaction, so this lock is released
+  // automatically at COMMIT/ROLLBACK. Without it, two concurrent creates
+  // could read the same COUNT(*) and collide on the table's UNIQUE
+  // reference constraint, failing the second request with a raw 500.
+  await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [table]);
   const row = await client.query(`SELECT COUNT(*) FROM ${table}`);
   const n   = parseInt(row.rows[0].count) + 1;
   return `${prefix}-${String(n).padStart(4, "0")}`;
@@ -99,7 +105,8 @@ async function syncSupplierBalance(client, supplierId) {
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, search = "", status = "", payment_status = "", supplier_id = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, search = "", status = "", payment_status = "", supplier_id = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where  = [];
@@ -336,7 +343,8 @@ router.post("/:id/receive", requireRole("superadmin", "manager", "admin", "store
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/payments", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, supplier_id = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, supplier_id = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const where  = supplier_id ? [`sp.supplier_id = $1`] : [];
     const params = supplier_id ? [parseInt(supplier_id)] : [];
@@ -378,7 +386,8 @@ router.get("/payments", requireRole("superadmin", "manager", "admin"), async (re
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, status = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, status = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const where  = status ? ["pr.status = $1"] : [];
     const params = status ? [status] : [];

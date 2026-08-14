@@ -3,7 +3,7 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 
-const fmt = n => `₦${Number(n||0).toLocaleString('en-NG')}`
+const fmt = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const ETA_OPTIONS = ['15–30 mins','30–45 mins','45–60 mins','60–90 mins','1–2 hours','2–3 hours']
 const DRIVER_STATUS_COLOR = { on_delivery:'#3b82f6', active:'#22c55e', off_duty:'#6b7280', suspended:'#ef4444' }
 const BLANK = { zone_name:'', delivery_fee:'', min_order_amount:'', estimated_eta:ETA_OPTIONS[1], coverage_areas:'', notes:'', is_active:true, driver_ids:[] }
@@ -301,9 +301,9 @@ export default function DeliveryZones() {
                   <div style={{ fontSize:11, color:'var(--text-light)', marginBottom:5 }}>Coverage Areas</div>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
                     {coverageArr.slice(0,4).map(a => (
-                      <span key={a} style={{ fontSize:10, fontWeight:400, padding:'2px 8px', borderRadius:50, background:'#f1f5f9', color:'var(--text-secondary)', border:'1px solid #e2e8f0' }}>{a}</span>
+                      <span key={a} style={{ fontSize:10, fontWeight:400, padding:'2px 8px', borderRadius:50, background:'var(--bg-subtle)', color:'var(--text-secondary)', border:'1px solid var(--border)' }}>{a}</span>
                     ))}
-                    {coverageArr.length>4 && <span style={{ fontSize:10, padding:'2px 8px', borderRadius:50, background:'#f1f5f9', color:'var(--text-muted)' }}>+{coverageArr.length-4} more</span>}
+                    {coverageArr.length>4 && <span style={{ fontSize:10, padding:'2px 8px', borderRadius:50, background:'var(--bg-subtle)', color:'var(--text-muted)' }}>+{coverageArr.length-4} more</span>}
                     {coverageArr.length===0 && <span style={{ fontSize:11, color:'var(--text-light)' }}>No areas specified</span>}
                   </div>
                 </div>
@@ -386,7 +386,7 @@ export default function DeliveryZones() {
                     <div style={{ marginBottom:16 }}>
                       <div style={{ fontWeight:700, fontSize:12, marginBottom:8 }}>Coverage Areas</div>
                       <div style={{ display:'flex', flexWrap:'wrap', gap:4 }}>
-                        {coverageArr.map(a => <span key={a} style={{ fontSize:11, padding:'3px 9px', borderRadius:50, background:'#f1f5f9', color:'var(--text-secondary)', border:'1px solid #e2e8f0' }}>{a}</span>)}
+                        {coverageArr.map(a => <span key={a} style={{ fontSize:11, padding:'3px 9px', borderRadius:50, background:'var(--bg-subtle)', color:'var(--text-secondary)', border:'1px solid var(--border)' }}>{a}</span>)}
                         {coverageArr.length===0 && <span style={{ fontSize:12, color:'var(--text-light)' }}>No areas specified</span>}
                       </div>
                     </div>

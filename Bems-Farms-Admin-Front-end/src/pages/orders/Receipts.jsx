@@ -20,7 +20,7 @@ const CHANNEL_CFG = {
 
 const BLANK_FORM = { customerId:'', customName:'', customPhone:'', customEmail:'', customAddress:'', paymentMethod:'Bank Transfer', dueDate:'', notes:'', discount:0, deliveryFee:0, items:[{ name:'',qty:1,unit:'kg',price:0,total:0 }] }
 
-const fmt       = (n) => `₦${Number(n||0).toLocaleString("en-NG")}`
+const fmt       = (n) => `₦${Number(n||0).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const calcSub   = (items) => items.reduce((s,i)=>s+i.total,0)
 const calcTotal = (items,fee,disc) => calcSub(items)+Number(fee||0)-Number(disc||0)
 

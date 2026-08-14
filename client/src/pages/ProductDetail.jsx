@@ -540,6 +540,7 @@ export default function ProductDetail() {
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  aria-label="Decrease quantity"
                   style={{
                     width: "44px",
                     height: "48px",
@@ -565,13 +566,33 @@ export default function ProductDetail() {
                 </span>
                 <motion.button
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => setQuantity((q) => q + 1)}
+                  onClick={() =>
+                    setQuantity((q) =>
+                      product.stock_quantity
+                        ? Math.min(q + 1, product.stock_quantity)
+                        : q + 1,
+                    )
+                  }
+                  disabled={
+                    !!product.stock_quantity &&
+                    quantity >= product.stock_quantity
+                  }
+                  aria-label="Increase quantity"
                   style={{
                     width: "44px",
                     height: "48px",
                     border: "none",
                     backgroundColor: "#F57C00",
-                    cursor: "pointer",
+                    cursor:
+                      !!product.stock_quantity &&
+                      quantity >= product.stock_quantity
+                        ? "not-allowed"
+                        : "pointer",
+                    opacity:
+                      !!product.stock_quantity &&
+                      quantity >= product.stock_quantity
+                        ? 0.5
+                        : 1,
                     fontSize: "20px",
                     fontWeight: 700,
                     color: "white",
@@ -819,7 +840,14 @@ export default function ProductDetail() {
                             onClick={() => setSelectedRating(star)}
                             onMouseEnter={() => setHoverRating(star)}
                             onMouseLeave={() => setHoverRating(0)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setSelectedRating(star);
+                              }
+                            }}
                             role="button"
+                            tabIndex={0}
                             aria-label={`Rate ${star} star${star === 1 ? "" : "s"}`}
                             style={{
                               fontSize: "28px",
@@ -962,7 +990,7 @@ export default function ProductDetail() {
                             {r.reviewer_name}
                           </span>
                           <span style={{ fontSize: "12px", color: "#9AA0A6" }}>
-                            {new Date(r.created_at).toLocaleDateString()}
+                            {new Date(r.created_at).toLocaleDateString("en-NG")}
                           </span>
                         </div>
                         {r.comment && (

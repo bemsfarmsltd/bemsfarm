@@ -61,6 +61,7 @@ const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { clampLimit } = require("../utils/pagination");
 
 router.use(protect);
 
@@ -77,24 +78,18 @@ async function getGroup(group) {
 }
 
 async function saveGroup(group, body, updatedBy) {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    for (const [key, value] of Object.entries(body)) {
-      await client.query(
-        `INSERT INTO settings (key, value, group_name, updated_by, updated_at)
-         VALUES ($1,$2,$3,$4,NOW())
-         ON CONFLICT (key) DO UPDATE SET value=$2, updated_by=$4, updated_at=NOW()`,
-        [key, String(value ?? ""), group, updatedBy]
-      );
-    }
-    await client.query("COMMIT");
-  } catch (err) {
-    await client.query("ROLLBACK");
-    throw err;
-  } finally {
-    client.release();
-  }
+  const entries = Object.entries(body);
+  if (!entries.length) return;
+  const keys   = entries.map(([k]) => k);
+  const values = entries.map(([, v]) => String(v ?? ""));
+  // Single multi-row upsert instead of one round-trip per key — a settings
+  // page with a dozen fields previously issued a dozen sequential inserts.
+  await pool.query(
+    `INSERT INTO settings (key, value, group_name, updated_by, updated_at)
+     SELECT k, v, $3, $4, NOW() FROM UNNEST($1::text[], $2::text[]) AS t(k, v)
+     ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_by=EXCLUDED.updated_by, updated_at=NOW()`,
+    [keys, values, group, updatedBy]
+  );
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -306,7 +301,8 @@ router.post("/invoices", requireRole("superadmin", "manager"), async (req, res, 
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/manager", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 50 } = req.query;
+    const { page = 1, limit: limitRaw = 50 } = req.query;
+    const limit = clampLimit(limitRaw, 50);
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     const adminRoles = ["superadmin", "manager", "admin", "cashier", "storekeeper", "delivery_manager"];

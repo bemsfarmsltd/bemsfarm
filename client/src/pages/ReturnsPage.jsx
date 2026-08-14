@@ -66,13 +66,24 @@ export default function ReturnsPage() {
   // keyed by product_id (string): { selected, returnQty, condition, remarks, product_name, ordered_quantity }
   const [returnItems, setReturnItems]     = useState({});
   const [submitting, setSubmitting]       = useState(false);
+  const [submitError, setSubmitError]     = useState("");
   const [success, setSuccess]             = useState(false);
   const [tab, setTab]                     = useState("new");
 
   useEffect(() => {
-    api.get("/orders").then((r) =>
-      setOrders(r.data.orders.filter((o) => o.status === "delivered"))
-    );
+    // Matches OrderDetailPage's eligibility check: delivered AND within 7
+    // days of updated_at (the delivery-status timestamp, not created_at —
+    // an order placed 2 weeks ago but delivered yesterday is still eligible).
+    api.get("/orders").then((r) => {
+      const now = Date.now();
+      const eligible = (r.data.orders || []).filter((o) => {
+        if (o.status !== "delivered") return false;
+        const deliveredAt = o.updated_at || o.updatedAt || o.created_at || o.date;
+        const daysSince = (now - new Date(deliveredAt).getTime()) / 86400000;
+        return daysSince <= 7;
+      });
+      setOrders(eligible);
+    });
     api.get("/orders/returns").then((r) => setMyReturns(r.data.returns));
   }, []);
 
@@ -141,8 +152,11 @@ export default function ReturnsPage() {
   const validationError = validate();
 
   const handleSubmit = async () => {
-    if (validationError) return alert(validationError);
+    // Unreachable via the UI — the submit button is disabled while
+    // validationError is set — but guard defensively without a native alert.
+    if (validationError) return;
 
+    setSubmitError("");
     const itemsPayload = selectedItemsList.map(([productId, v]) => ({
       product_id:        parseInt(productId),
       product_name:      v.product_name,
@@ -163,7 +177,7 @@ export default function ReturnsPage() {
       setSuccess(true);
       api.get("/orders/returns").then((r) => setMyReturns(r.data.returns));
     } catch (err) {
-      alert(err.response?.data?.message || "Return submission failed");
+      setSubmitError(err.response?.data?.message || "Return submission failed. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -175,6 +189,7 @@ export default function ReturnsPage() {
     setReason("");
     setDescription("");
     setReturnItems({});
+    setSubmitError("");
   }
 
   const statusColors = {
@@ -289,7 +304,7 @@ export default function ReturnsPage() {
                           <div>
                             <p style={{ fontWeight: 700, fontSize: "14px", color: "#111827" }}>#{order.id}</p>
                             <p style={{ fontSize: "12px", color: "#9CA3AF" }}>
-                              {new Date(order.created_at || order.date).toLocaleDateString()} • {order.items?.length || 0} item{order.items?.length !== 1 ? "s" : ""}
+                              Delivered {new Date(order.updated_at || order.updatedAt || order.created_at || order.date).toLocaleDateString("en-NG")} • {order.items?.length || 0} item{order.items?.length !== 1 ? "s" : ""}
                             </p>
                           </div>
                           <p style={{ fontWeight: 800, color: "#1B4332", fontSize: "15px" }}>
@@ -510,6 +525,13 @@ export default function ReturnsPage() {
                     </div>
                   )}
 
+                  {/* Submission error */}
+                  {submitError && (
+                    <div style={{ padding: "10px 14px", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: "10px", fontSize: "13px", color: "#991B1B", marginBottom: "16px" }}>
+                      ⚠️ {submitError}
+                    </div>
+                  )}
+
                   {/* Submit */}
                   <motion.button
                     whileHover={!validationError ? { scale: 1.02 } : {}}
@@ -570,7 +592,7 @@ export default function ReturnsPage() {
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
                         <div>
                           <p style={{ fontWeight: 700, fontSize: "15px", color: "#111827" }}>Return #{ret.id}</p>
-                          <p style={{ fontSize: "12px", color: "#9CA3AF" }}>Order #{ret.order_id} • Submitted {new Date(ret.created_at).toLocaleDateString()}</p>
+                          <p style={{ fontSize: "12px", color: "#9CA3AF" }}>Order #{ret.order_id} • Submitted {new Date(ret.created_at).toLocaleDateString("en-NG")}</p>
                         </div>
                         <span style={{ backgroundColor: s.bg, color: s.color, fontSize: "12px", fontWeight: 700, padding: "4px 12px", borderRadius: "50px" }}>
                           {s.label}

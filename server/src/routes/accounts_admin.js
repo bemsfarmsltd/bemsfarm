@@ -131,6 +131,7 @@ const { protect, requireRole } = require("../middleware/authMiddleware");
 const accountsController = require("../controllers/accountsController");
 const validate = require("../middleware/validate");
 const accountsAdminSchemas = require("../schemas/accountsAdminSchemas");
+const { clampLimit } = require("../utils/pagination");
 
 router.use(protect);
 
@@ -311,7 +312,8 @@ router.delete("/bank-accounts/:id", requireRole("superadmin"), accountsControlle
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/income", requireRole("superadmin", "manager", "accountant"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, search = "", source = "", status = "", from = "", to = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, search = "", source = "", status = "", from = "", to = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where  = [];
@@ -420,7 +422,8 @@ router.delete("/income/:id", requireRole("superadmin"), async (req, res, next) =
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/expenses", requireRole("superadmin", "manager", "accountant"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, search = "", category = "", status = "", from = "", to = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, search = "", category = "", status = "", from = "", to = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where  = [];
@@ -557,7 +560,8 @@ router.delete("/expenses/:id", requireRole("superadmin"), async (req, res, next)
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/transactions", requireRole("superadmin", "manager", "accountant"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, type = "", bank_account_id = "", from = "", to = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, type = "", bank_account_id = "", from = "", to = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where  = [];
@@ -608,7 +612,8 @@ router.post("/transfers", requireRole("superadmin", "manager"), accountsControll
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/commissions", requireRole("superadmin", "manager", "accountant"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, status = "", driver_id = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, status = "", driver_id = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where  = [];

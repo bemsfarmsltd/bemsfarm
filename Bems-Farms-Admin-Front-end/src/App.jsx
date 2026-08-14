@@ -29,6 +29,7 @@ import Variants        from './pages/products/Variants'
 import Barcode         from './pages/products/Barcode'
 import BulkExport      from './pages/products/BulkExport'
 import BulkImport      from './pages/products/BulkImport'
+import Warranty        from './pages/products/Warranty'
 
 // Inventory
 import StockList       from './pages/inventory/StockList'
@@ -152,6 +153,7 @@ function App() {
               <Route path="/products/variants"       element={<Variants />} />
               <Route path="/products/barcode"        element={<Barcode />} />
               <Route path="/products/export"         element={<BulkExport />} />
+              <Route path="/products/warranty"       element={<Warranty />} />
               <Route path="/products/import"         element={<BulkImport />} />
 
               <Route path="/inventory/stock"      element={<StockList />} />

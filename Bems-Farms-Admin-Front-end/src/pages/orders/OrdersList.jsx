@@ -38,7 +38,7 @@ function getChannelCfg(channel, source) {
 
 const PIPELINE = ["paid","processing","packed_ready","driver_assigned","out_for_delivery","delivered"]
 
-const fmt = (n) => `₦${Number(n||0).toLocaleString("en-NG")}`
+const fmt = (n) => `₦${Number(n||0).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const pipeIdx = (s) => {
   const map = { paid:1,new_order:1,pending:1,processing:2,packed_ready:3,packed:3,driver_assigned:4,assigned:4,out_for_delivery:5,shipped:5,delivered:6 }
   return (map[s]||0)-1

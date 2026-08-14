@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 
 const fmt  = n => `₦${Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const fmtD = s => s ? new Date(s).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'
+const fmtD = s => s ? new Date(s).toLocaleDateString('en-NG', { day:'2-digit', month:'short', year:'numeric' }) : '—'
 
 const REASONS = [
   'Payroll Funding', 'Tax Reserve Top-up', 'Supplier Payment', 'Operational Expenses',

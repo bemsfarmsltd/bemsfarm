@@ -146,11 +146,6 @@ export default function LoginPage() {
         {/* Right Side: Form Pane */}
         <div className="flex-1 p-6 md:p-12 flex flex-col justify-between overflow-y-auto">
 
-          {/* Header decoration */}
-          <div className="flex justify-end text-gray-400 text-xs font-semibold mb-6">
-            <span>English (USA) ▼</span>
-          </div>
-
           <div className="w-full max-w-sm mx-auto my-auto text-left">
             <h1 className="text-3xl font-extrabold text-gray-900 mb-2 font-display">Sign in</h1>
             <p className="text-gray-500 text-[14px] mb-8 font-medium">

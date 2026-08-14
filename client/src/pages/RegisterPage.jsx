@@ -177,11 +177,6 @@ export default function RegisterPage() {
         {/* Right Side: Form Pane */}
         <div className="flex-1 p-6 md:p-10 flex flex-col justify-between overflow-y-auto">
 
-          {/* Header decoration */}
-          <div className="flex justify-end text-gray-400 text-xs font-semibold mb-4">
-            <span>English (USA) ▼</span>
-          </div>
-
           <div className="w-full max-w-sm mx-auto my-auto text-left">
             <h1 className="text-2xl font-extrabold text-gray-900 mb-1 font-display">Sign up</h1>
             <p className="text-gray-500 text-[13px] mb-6 font-medium">

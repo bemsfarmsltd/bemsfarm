@@ -4,7 +4,7 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 
-const fmt = n => `₦${Number(n).toLocaleString()}`
+const fmt = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 function useApexChart(ref, optionsFn, deps = []) {
   useEffect(() => {

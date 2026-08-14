@@ -5,6 +5,9 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const validate = require("../middleware/validate");
+const customerAdminSchemas = require("../schemas/customerAdminSchemas");
+const { clampLimit } = require("../utils/pagination");
 
 router.use(protect);
 
@@ -18,7 +21,8 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant"), asy
       tier = "",
       status = "",
     } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const cappedLimit = clampLimit(limit, 20);
+    const offset = (parseInt(page) - 1) * cappedLimit;
     const params = [];
     const where = [];
 
@@ -47,7 +51,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant"), asy
       params,
     );
 
-    params.push(parseInt(limit));
+    params.push(cappedLimit);
     params.push(offset);
 
     const rows = await pool.query(
@@ -94,7 +98,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant"), asy
       customers: rows.rows,
       total: parseInt(countRes.rows[0].count),
       page: parseInt(page),
-      pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit)),
+      pages: Math.ceil(parseInt(countRes.rows[0].count) / cappedLimit),
       stats: {
         ...stats.rows[0],
         platinum: parseInt(platinum.rows[0].count),
@@ -119,8 +123,9 @@ router.get(
         to,
         sort_by  = "total_spending",
         page     = 1,
-        limit    = 20,
+        limit: limitRaw = 20,
       } = req.query;
+      const limit = clampLimit(limitRaw, 20);
 
       const params = [];
       const searchCond = search
@@ -382,7 +387,8 @@ Based on purchase history and a total spending of **₦${Number(customer.total_s
 // as an :id value.
 router.get("/site-activity", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
-    const { type = "", search = "", date_from = "", date_to = "", limit = 100 } = req.query;
+    const { type = "", search = "", date_from = "", date_to = "", limit: limitRaw = 100 } = req.query;
+    const limit = clampLimit(limitRaw, 100);
     const params = [];
     const where = [];
 
@@ -644,6 +650,7 @@ router.post(
 router.patch(
   "/:id/status",
   requireRole("superadmin", "manager", "admin"),
+  validate(customerAdminSchemas.updateStatus),
   async (req, res, next) => {
     try {
       const { status } = req.body;
@@ -866,14 +873,14 @@ router.post(
 // ── GET /api/admin/customers/loyalty/activity ─────────────────────
 router.get("/loyalty/activity", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
-    const { limit = 30, customer_id } = req.query;
+    const { limit: limitRaw = 30, customer_id } = req.query;
     const params = [];
     const where = [];
     if (customer_id) {
       params.push(customer_id);
       where.push(`(c.id::text = $${params.length} OR c.customer_code = $${params.length})`);
     }
-    params.push(parseInt(limit));
+    params.push(clampLimit(limitRaw, 30));
     const result = await pool.query(
       `SELECT lt.id, lt.type, lt.points, lt.description, lt.created_at,
               c.id AS customer_id, c.customer_code, c.name AS customer_name
@@ -893,14 +900,14 @@ router.get("/loyalty/activity", requireRole("superadmin", "manager", "admin", "a
 // ── GET /api/admin/customers/wallet/activity ──────────────────────
 router.get("/wallet/activity", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
-    const { limit = 30, customer_id } = req.query;
+    const { limit: limitRaw = 30, customer_id } = req.query;
     const params = [];
     const where = [];
     if (customer_id) {
       params.push(customer_id);
       where.push(`(c.id::text = $${params.length} OR c.customer_code = $${params.length})`);
     }
-    params.push(parseInt(limit));
+    params.push(clampLimit(limitRaw, 30));
     const result = await pool.query(
       `SELECT wt.id, wt.type, wt.amount, wt.balance_after, wt.reference,
               wt.payment_method, wt.description, wt.created_at,

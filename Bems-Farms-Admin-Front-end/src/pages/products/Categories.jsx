@@ -108,15 +108,26 @@ export default function Categories() {
     }
   }
 
-  function handleImport(rows) {
+  async function handleImport(rows) {
     const existingCodes = items.map(i=>i.code)
-    const today = new Date().toISOString().slice(0,10)
-    const newItems = rows.map((row,idx) => {
+    const created = []
+    const failed = []
+    for (const [idx, row] of rows.entries()) {
       const name = row.name?.trim()||`Imported ${idx+1}`
-      const code = genCode(name,[...existingCodes]); existingCodes.push(code)
-      return { id:Math.max(...items.map(i=>i.id),0)+idx+1,name,code,description:row.description||'',products:0,status:row.status?.toLowerCase()==='inactive'?'inactive':'active',created:today }
-    })
-    setItems(p=>[...p,...newItems]); closeModal()
+      const code = genCode(name,existingCodes); existingCodes.push(code)
+      try {
+        const res = await api.post('/admin/config/categories', {
+          name, code,
+          description: row.description||'',
+          status: row.status?.toLowerCase()==='inactive'?'inactive':'active',
+        })
+        created.push({ ...res.data, products: 0 })
+      } catch { failed.push(name) }
+    }
+    if (created.length) setItems(p=>[...created,...p])
+    if (created.length) toast.success(`Imported ${created.length} categor${created.length===1?'y':'ies'}`)
+    if (failed.length) toast.error(`Failed to import: ${failed.join(', ')}`)
+    closeModal()
   }
 
   const B = 'var(--border)', S = '#6b7280'
@@ -211,8 +222,8 @@ export default function Categories() {
                   <td style={{ ...TD,color:S,fontSize:12 }}>{r.created}</td>
                   <td style={TD}>
                     <div style={{ display:'flex',gap:12,alignItems:'center' }}>
-                      <button onClick={()=>openEdit(r)} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-pencil-line" style={{ fontSize:16 }}/></button>
-                      <button onClick={()=>openDelete(r)} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:16 }}/></button>
+                      <button onClick={()=>openEdit(r)} aria-label={`Edit ${r.name}`} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-pencil-line" style={{ fontSize:16 }}/></button>
+                      <button onClick={()=>openDelete(r)} aria-label={`Delete ${r.name}`} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:16 }}/></button>
                     </div>
                   </td>
                 </tr>
@@ -236,7 +247,7 @@ export default function Categories() {
                   <i className="ri-price-tag-3-line" style={{ fontSize:18 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>{editItem?'Edit Category':'Add New Category'}</span>
-                <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <form onSubmit={saveForm} style={{ padding:24 }}>
                 <div style={{ marginBottom:16 }}>
@@ -279,7 +290,7 @@ export default function Categories() {
                   <i className="ri-delete-bin-line" style={{ fontSize:18 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Delete Category?</span>
-                <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <div style={{ padding:24,textAlign:'center' }}>
                 <p style={{ color:S,fontSize:14,marginBottom:24 }}><strong style={{ color:'var(--text-primary)' }}>{editItem?.name}</strong></p>

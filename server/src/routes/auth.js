@@ -99,22 +99,11 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
 // ─────────────────────────────────────────────
 router.post("/login", validate(authSchemas.login), async (req, res, next) => {
   const clientIP = req.ip || req.connection?.remoteAddress || "unknown";
-  const userAgent = req.headers["user-agent"] || "unknown";
   const origin =
     req.headers["origin"] || req.headers["referer"] || "mobile/unknown";
 
-  console.log(`\n🔐 LOGIN ATTEMPT`);
-  console.log(`   IP:         ${clientIP}`);
-  console.log(`   Origin:     ${origin}`);
-  console.log(`   User-Agent: ${userAgent.substring(0, 80)}`);
-  console.log(
-    `   Body keys:  ${Object.keys(req.body || {}).join(", ") || "EMPTY"}`,
-  );
-
   try {
     const { email, password } = req.body;
-
-    console.log(`   Email: ${email.trim().toLowerCase()}`);
 
     const result = await pool.query(
       "SELECT * FROM users WHERE LOWER(email) = LOWER($1)",
@@ -123,21 +112,16 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
     const user = result.rows[0];
 
     if (!user) {
-      console.log(`   ❌ FAILED — no user found`);
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    console.log(`   ✅ User found — id: ${user.id}, role: ${user.role}`);
-
     // Check account status
     if (user.status === "suspended") {
-      console.log(`   ❌ FAILED — account suspended`);
       return res
         .status(403)
         .json({ message: "Account suspended. Contact support." });
     }
     if (user.status === "inactive") {
-      console.log(`   ❌ FAILED — account inactive`);
       return res
         .status(403)
         .json({ message: "Account inactive. Contact support." });
@@ -145,7 +129,6 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
 
     // Check lockout
     if (user.locked_until && new Date(user.locked_until) > new Date()) {
-      console.log(`   ❌ FAILED — account locked until ${user.locked_until}`);
       return res
         .status(403)
         .json({ message: "Account temporarily locked. Try again later." });
@@ -162,7 +145,6 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
         "UPDATE users SET failed_login_attempts=$1, locked_until=$2 WHERE id=$3",
         [attempts, lockUntil, user.id],
       );
-      console.log(`   ❌ FAILED — wrong password (attempt ${attempts})`);
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
@@ -203,10 +185,6 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
       store_id: user.store_id || null,
       status: user.status,
     };
-
-    console.log(
-      `   ✅ LOGIN SUCCESS — user: ${user.email}, role: ${user.role}\n`,
-    );
 
     // Sync AI context (fire-and-forget — never blocks login response)
     upsertContext(user.id, {

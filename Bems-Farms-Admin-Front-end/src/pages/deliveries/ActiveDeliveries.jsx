@@ -24,7 +24,7 @@ const LOG_STATUS_CFG = {
   dispute:          { label:'Dispute',     color:'#ef4444', bg:'#fee2e2' },
 }
 
-const fmt = n => `₦${Number(n||0).toLocaleString('en-NG')}`
+const fmt = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
 const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
 const lbl  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }

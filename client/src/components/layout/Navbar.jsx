@@ -240,16 +240,22 @@ function NavSearchBar() {
             }}
           >
             {results.map((product) => (
-              <div
+              <button
                 key={product.id}
+                type="button"
                 onClick={() => handleSelect(product)}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 10,
+                  width: "100%",
                   padding: "9px 10px",
+                  border: "none",
+                  background: "none",
                   borderRadius: 10,
                   cursor: "pointer",
+                  textAlign: "left",
+                  fontFamily: "Nunito, sans-serif",
                 }}
                 onMouseEnter={(e) =>
                   (e.currentTarget.style.background = "#F0FFF4")
@@ -297,12 +303,17 @@ function NavSearchBar() {
                     {product.category_name || product.category}
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
-            <div
+            <button
+              type="button"
               onClick={handleSubmit}
               style={{
+                display: "block",
+                width: "100%",
                 padding: "9px 10px",
+                border: "none",
+                background: "none",
                 borderRadius: 10,
                 cursor: "pointer",
                 fontSize: 13,
@@ -311,6 +322,7 @@ function NavSearchBar() {
                 borderTop: "1px solid #F3F4F6",
                 marginTop: 4,
                 textAlign: "center",
+                fontFamily: "Nunito, sans-serif",
               }}
               onMouseEnter={(e) =>
                 (e.currentTarget.style.background = "#F0FFF4")
@@ -320,7 +332,7 @@ function NavSearchBar() {
               }
             >
               See all results for "{query}" →
-            </div>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -431,6 +443,20 @@ export default function Navbar() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // Account dropdown items were plain <div onClick> — unreachable by keyboard.
+  // Escape closes the menu and returns focus to the trigger button.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => {
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        dropdownRef.current?.querySelector("button")?.focus();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [menuOpen]);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -686,6 +712,7 @@ export default function Navbar() {
                 <AnimatePresence>
                   {menuOpen && (
                     <motion.div
+                      role="menu"
                       initial={{ opacity: 0, y: -6, scale: 0.97 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -6, scale: 0.97 }}
@@ -731,8 +758,10 @@ export default function Navbar() {
                         </p>
                       </div>
                       {DROPDOWN_ITEMS.map((item) => (
-                        <div
+                        <button
                           key={item.path}
+                          type="button"
+                          role="menuitem"
                           onClick={() => {
                             if (item.path.startsWith("http")) {
                               window.location.href = item.path;
@@ -745,12 +774,17 @@ export default function Navbar() {
                             display: "flex",
                             alignItems: "center",
                             gap: "10px",
+                            width: "100%",
                             padding: "9px 12px",
+                            border: "none",
+                            background: "none",
                             borderRadius: "9px",
                             cursor: "pointer",
                             fontSize: "13px",
                             fontWeight: 500,
                             color: "#374151",
+                            fontFamily: "Nunito, sans-serif",
+                            textAlign: "left",
                           }}
                           onMouseEnter={(e) =>
                             (e.currentTarget.style.backgroundColor = "#F0FFF4")
@@ -762,7 +796,7 @@ export default function Navbar() {
                         >
                           <span>{item.icon}</span>
                           <span>{item.label}</span>
-                        </div>
+                        </button>
                       ))}
                       <div
                         style={{
@@ -771,18 +805,25 @@ export default function Navbar() {
                           margin: "4px 0",
                         }}
                       />
-                      <div
+                      <button
+                        type="button"
+                        role="menuitem"
                         onClick={handleLogout}
                         style={{
                           display: "flex",
                           alignItems: "center",
                           gap: "10px",
+                          width: "100%",
                           padding: "9px 12px",
+                          border: "none",
+                          background: "none",
                           borderRadius: "9px",
                           cursor: "pointer",
                           fontSize: "13px",
                           fontWeight: 600,
                           color: "#DC2626",
+                          fontFamily: "Nunito, sans-serif",
+                          textAlign: "left",
                         }}
                         onMouseEnter={(e) =>
                           (e.currentTarget.style.backgroundColor = "#FEF2F2")
@@ -794,7 +835,7 @@ export default function Navbar() {
                       >
                         <span>🚪</span>
                         <span>Sign Out</span>
-                      </div>
+                      </button>
                     </motion.div>
                   )}
                 </AnimatePresence>

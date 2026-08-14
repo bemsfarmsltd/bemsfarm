@@ -32,7 +32,7 @@ const STATUS_META = {
   pending:    { label:'Pending',    color:'#f7b84b', bg:'rgba(247,184,75,.12)'  },
   processing: { label:'Processing', color:'#299cdb', bg:'rgba(41,156,219,.12)'  },
 }
-const fmt = n => '₦' + Math.round(n).toLocaleString()
+const fmt = n => '₦' + Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const genOrderId = () => 'BF-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-5)
 const POS_RETURN_REASONS = ['Damaged on delivery','Wrong item sent','Quality below standard','Spoiled / Already expired','Item missing from order','Incorrect quantity','Customer changed mind','Packaging damaged']
 

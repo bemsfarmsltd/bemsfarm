@@ -114,16 +114,29 @@ export default function SubCategories() {
     }
   }
 
-  function handleImport(rows) {
+  async function handleImport(rows) {
     const existingCodes = items.map(i=>i.code)
-    const today = new Date().toISOString().slice(0,10)
-    const newItems = rows.map((row,idx) => {
-      const name   = row.name?.trim()||`Imported ${idx+1}`
-      const parent = row.parent?.trim()||CATEGORIES[0].name
-      const code   = genSubCode(name,parent,[...existingCodes]); existingCodes.push(code)
-      return { id:Math.max(...items.map(i=>i.id),0)+idx+1,name,parent,code,showPOS:true,status:row.status?.toLowerCase()==='inactive'?'inactive':'active',created:today }
-    })
-    setItems(p=>[...p,...newItems]); closeModal()
+    const created = []
+    const skipped = []
+    for (const [idx, row] of rows.entries()) {
+      const name = row.name?.trim()||`Imported ${idx+1}`
+      const parentName = row.parent?.trim()||categories[0]?.name||''
+      const cat = categories.find(c => c.name.toLowerCase()===parentName.toLowerCase())
+      if (!cat) { skipped.push(name); continue }
+      const code = genSubCode(name,cat.name,existingCodes); existingCodes.push(code)
+      try {
+        const res = await api.post('/admin/config/subcategories', {
+          name, category_id: cat.id, code,
+          status: row.status?.toLowerCase()==='inactive'?'inactive':'active',
+          showPOS: true,
+        })
+        created.push({ ...res.data, category_name: cat.name })
+      } catch { skipped.push(name) }
+    }
+    if (created.length) setItems(p=>[...created,...p])
+    if (created.length) toast.success(`Imported ${created.length} sub-categor${created.length===1?'y':'ies'}`)
+    if (skipped.length) toast.error(`Skipped (no matching parent category): ${skipped.join(', ')}`)
+    closeModal()
   }
 
   const B = 'var(--border)', S = '#6b7280'
@@ -210,8 +223,8 @@ export default function SubCategories() {
                   <td style={{ ...TD,color:S,fontSize:12 }}>{r.created}</td>
                   <td style={TD}>
                     <div style={{ display:'flex',gap:4 }}>
-                      <button onClick={()=>openEdit(r)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0f4ff',color:'#405189',cursor:'pointer' }}><i className="ri-pencil-line"/></button>
-                      <button onClick={()=>openDelete(r)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#fff0f0',color:'#f06548',cursor:'pointer' }}><i className="ri-delete-bin-line"/></button>
+                      <button onClick={()=>openEdit(r)} aria-label={`Edit ${r.name}`} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0f4ff',color:'#405189',cursor:'pointer' }}><i className="ri-pencil-line"/></button>
+                      <button onClick={()=>openDelete(r)} aria-label={`Delete ${r.name}`} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#fff0f0',color:'#f06548',cursor:'pointer' }}><i className="ri-delete-bin-line"/></button>
                     </div>
                   </td>
                 </tr>
@@ -235,7 +248,7 @@ export default function SubCategories() {
                   <i className="ri-price-tag-2-line" style={{ fontSize:18 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>{editItem?'Edit Sub-Category':'Add New Sub-Category'}</span>
-                <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <form onSubmit={saveForm} style={{ padding:24 }}>
                 <div style={{ marginBottom:14 }}>
@@ -288,7 +301,7 @@ export default function SubCategories() {
                   <i className="ri-delete-bin-line" style={{ fontSize:18 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Delete Sub-Category?</span>
-                <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <div style={{ padding:24,textAlign:'center' }}>
                 <p style={{ color:S,fontSize:14,marginBottom:24 }}><strong style={{ color:'var(--text-primary)' }}>{editItem?.name}</strong></p>

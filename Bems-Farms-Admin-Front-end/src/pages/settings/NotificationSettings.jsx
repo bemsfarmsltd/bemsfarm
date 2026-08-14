@@ -119,9 +119,9 @@ export default function NotificationSettings() {
                 { key:'push_enabled', label:'Push',            icon:'ri-notification-3-line',  color:'#f57c00', desc:'Browser push alerts'     },
               ].map(c=>(
                 <div key={c.key} onClick={()=>toggle(c.key)}
-                  style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'16px 12px',borderRadius:12,border:`2px solid ${settings[c.key]?c.color:B}`,background:settings[c.key]?`${c.color}08`:'#fff',cursor:'pointer',transition:'all .15s',textAlign:'center' }}>
+                  style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'16px 12px',borderRadius:12,border:`2px solid ${settings[c.key]?c.color:B}`,background:settings[c.key]?`${c.color}08`:'var(--bg-card)',cursor:'pointer',transition:'all .15s',textAlign:'center' }}>
                   <i className={c.icon} style={{ fontSize:26,color:settings[c.key]?c.color:S }}/>
-                  <div style={{ fontWeight:700,fontSize:12,color:settings[c.key]?'#111827':S }}>{c.label}</div>
+                  <div style={{ fontWeight:700,fontSize:12,color:settings[c.key]?'var(--text-primary)':S }}>{c.label}</div>
                   <div style={{ fontSize:10,color:settings[c.key]?c.color:S,fontWeight:600 }}>{settings[c.key]?'Enabled':'Disabled'}</div>
                 </div>
               ))}

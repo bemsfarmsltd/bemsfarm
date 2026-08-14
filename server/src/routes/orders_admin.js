@@ -4,6 +4,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
+const { clampLimit } = require("../utils/pagination");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const orderAdminSchemas = require("../schemas/orderAdminSchemas");
@@ -62,11 +63,12 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
   try {
     const {
       page = 1,
-      limit = 20,
+      limit: limitRaw = 20,
       search = "",
       status = "",
       channel = "",
     } = req.query;
+    const limit = clampLimit(limitRaw, 20);
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
@@ -207,7 +209,8 @@ router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
 // ── GET /api/admin/orders/invoices ─────────────────────────────────────────
 router.get("/invoices", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, search = "", status = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, search = "", status = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where = [];
@@ -268,7 +271,7 @@ router.get("/invoices", requireRole("superadmin", "manager", "admin"), async (re
 });
 
 // ── POST /api/admin/orders/invoices ─────────────────────────────────────────
-router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+router.post("/invoices", requireRole("superadmin", "manager", "admin"), validate(orderAdminSchemas.createInvoice), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -288,11 +291,6 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (r
       status = "draft"
     } = req.body;
 
-    if (!customer_name) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({ message: "Customer name is required" });
-    }
-
     let linkedCustomerId = null;
     if (customer_id) {
       const custCheck = await client.query(
@@ -301,21 +299,13 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), async (r
       );
       if (custCheck.rows.length) linkedCustomerId = custCheck.rows[0].id;
     }
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({ message: "At least one item is required" });
-    }
 
-    // Calculate subtotal and validate items
+    // Calculate subtotal — qty/price shape and positivity already enforced by createInvoice schema
     let subtotal = 0;
     const cleanItems = [];
     for (const item of items) {
-      const qty = parseInt(item.qty ?? item.quantity ?? 1);
-      const price = parseFloat(item.price || item.unit_price || 0);
-      if (!Number.isInteger(qty) || qty <= 0) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({ message: `Invalid quantity for item ${item.name}` });
-      }
+      const qty = parseInt(item.qty ?? item.quantity);
+      const price = parseFloat(item.price ?? item.unit_price ?? 0);
       const itemTotal = qty * price;
       subtotal += itemTotal;
       cleanItems.push({
@@ -395,7 +385,7 @@ router.patch("/invoices/:id/status", requireRole("superadmin", "manager", "admin
 });
 
 // ── POST /api/admin/orders/returns ─────────────────────────────────────────
-router.post("/returns", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+router.post("/returns", requireRole("superadmin", "manager", "admin"), validate(orderAdminSchemas.createReturn), async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -413,18 +403,7 @@ router.post("/returns", requireRole("superadmin", "manager", "admin"), async (re
       refundMethod = "Bank Transfer"
     } = req.body;
 
-    if (!customerIdInput && !customer) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({ message: "Customer is required" });
-    }
-    if (!productIdInput && !product) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({ message: "Product is required" });
-    }
-    if (!qty || parseInt(qty) <= 0) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({ message: "Quantity must be greater than 0" });
-    }
+    // customer/product presence and qty > 0 already enforced by createReturn schema
 
     // 1. Resolve customer_id — the admin UI now sends a real customer_id
     // directly (picked from the actual customers table); the name-based
@@ -496,7 +475,8 @@ router.post("/returns", requireRole("superadmin", "manager", "admin"), async (re
 // ── GET /api/admin/orders/returns ─────────────────────────────────────────
 router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, search = "", status = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, search = "", status = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where = [];
@@ -818,7 +798,11 @@ router.patch(
       INSERT INTO delivery_assignments (delivery_id, driver_id, assignment_type, assigned_by, driver_response, created_at)
       VALUES ($1,$2,$3,$4,'pending',NOW())
     `,
-        [deliveryId, driver_id, reassign ? "manual" : "manual", req.user.id],
+        // Both a fresh assignment and a reassignment are manual actions from
+        // this table's perspective (deliveries_admin.js's auto-log query
+        // distinguishes them from 'auto'/'system' rows, not from each other —
+        // the reassign-vs-assign distinction lives in the `note` text below).
+        [deliveryId, driver_id, "manual", req.user.id],
       );
 
       const note = reassign

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useCart } from "../../context/CartContext";
 import { NAIRA_PER_UNIT } from "../../utils/currency";
+import { getProductImageByName } from "../../utils/productImages";
 
 /* ---------------- IMAGE HELPERS ---------------- */
 
@@ -12,38 +13,9 @@ function getDisplayImage(product) {
   return getProductImage(product.name);
 }
 
+// Re-exported under the name ProductDetail.jsx already imports.
 export function getProductImage(name) {
-  const map = {
-    "Ofada Rice":
-      "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141430/ofada_rice_mhhzt2.jpg",
-    "Long Grain Rice":
-      "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141706/long_grain_rice_yn01lt.jpg",
-    "Palm Oil":
-      "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141485/palm_oil_ufbfu6.jpg",
-    "Groundnut Oil":
-      "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141769/Groundnut-oil_mgv43t.jpg",
-    "Black-eyed Beans":
-      "https://res.cloudinary.com/dyzkjerez/image/upload/v1780142333/black-eyed-beans_i2n8fi.jpg",
-    "Brown Beans":
-      "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141864/brown_beans_zxbjos.jpg",
-    "Garri (White)":
-      "https://res.cloudinary.com/dyzkjerez/image/upload/v1780142399/white_garri_zaq8i4.png",
-    "Garri (Yellow)":
-      "https://res.cloudinary.com/dyzkjerez/image/upload/v1780142425/yellow_garri_kxiyxr.png",
-    "Fresh Tomatoes":
-      "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141584/tomatoes_omiotj.jpg",
-    "Dried Crayfish":
-      "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141631/crayfish_bslwl4.jpg",
-    Cocoyam:
-      "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141939/cocoyam_wvtyqz.png",
-    "Ugu Leaves":
-      "https://res.cloudinary.com/dyzkjerez/image/upload/v1780142531/ugu_zva1av.png",
-  };
-
-  return (
-    map[name] ||
-    "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&q=80"
-  );
+  return getProductImageByName(name);
 }
 
 export function getProductBg(name) {
@@ -110,15 +82,19 @@ export default function ProductCard({ product, index = 0 }) {
   const [added, setAdded] = useState(false);
   const [hovered, setHovered] = useState(false);
 
+  // Real products come from the API as stock_quantity, not stock — using
+  // the wrong field name here left isOutOfStock/isLowStock permanently
+  // false, so this card's stock badges and add-to-cart guard never fired.
+  const isOutOfStock = Number(product.stock_quantity) === 0;
+  const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= 5;
+
   const handleAdd = (e) => {
     e.stopPropagation();
+    if (isOutOfStock) return;
     addToCart(product);
     setAdded(true);
     setTimeout(() => setAdded(false), 800);
   };
-
-  const isOutOfStock = product.stock === 0;
-  const isLowStock = product.stock > 0 && product.stock <= 5;
 
   return (
     <motion.div
@@ -202,7 +178,7 @@ export default function ProductCard({ product, index = 0 }) {
             zIndex: 5,
           }}
         >
-          ⚡ {product.stock} left
+          ⚡ {product.stock_quantity} left
         </div>
       )}
 
@@ -240,6 +216,10 @@ export default function ProductCard({ product, index = 0 }) {
             textAlign: "center",
             cursor: "pointer",
             zIndex: 3,
+            // opacity:0 alone still leaves this clickable — block pointer
+            // events too, or an out-of-stock card's invisible overlay can
+            // still be clicked to add it to cart.
+            pointerEvents: isOutOfStock ? "none" : "auto",
           }}
         >
           <span style={{ color: "white", fontWeight: 700, fontSize: "12px" }}>
@@ -299,17 +279,18 @@ export default function ProductCard({ product, index = 0 }) {
           </p>
 
           <motion.button
-            whileTap={{ scale: 0.8 }}
+            whileTap={isOutOfStock ? undefined : { scale: 0.8 }}
             onClick={handleAdd}
+            disabled={isOutOfStock}
             style={{
               width: 32,
               height: 32,
               borderRadius: 9,
-              backgroundColor: added ? "#2E7D32" : "#F57C00",
+              backgroundColor: isOutOfStock ? "#D1D5DB" : added ? "#2E7D32" : "#F57C00",
               color: "white",
               border: "none",
               fontSize: "16px",
-              cursor: "pointer",
+              cursor: isOutOfStock ? "not-allowed" : "pointer",
               flexShrink: 0,
               display: "flex",
               alignItems: "center",

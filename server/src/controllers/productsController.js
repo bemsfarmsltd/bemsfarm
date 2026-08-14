@@ -71,9 +71,15 @@ const getProductById = async (req, res, next) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      `SELECT p.*, c.name as category_name
+      `SELECT p.*, c.name as category_name,
+              COALESCE(pr.avg_rating, 0) AS avg_rating,
+              COALESCE(pr.review_count, 0) AS review_count
        FROM products p
        LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN (
+         SELECT product_id, AVG(rating) AS avg_rating, COUNT(*) AS review_count
+         FROM product_reviews WHERE status = 'approved' GROUP BY product_id
+       ) pr ON pr.product_id = p.id
        WHERE p.id = $1`,
       [id],
     );
@@ -82,10 +88,19 @@ const getProductById = async (req, res, next) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    // Get related products from same category
+    // Get related products from same category — same rating join as the
+    // main product list, so ProductCard (used for these related cards
+    // elsewhere) has ratings available if it's ever wired to show them.
     const related = await pool.query(
-      `SELECT * FROM products 
-       WHERE category_id = $1 AND id != $2 
+      `SELECT p.*,
+              COALESCE(pr.avg_rating, 0) AS avg_rating,
+              COALESCE(pr.review_count, 0) AS review_count
+       FROM products p
+       LEFT JOIN (
+         SELECT product_id, AVG(rating) AS avg_rating, COUNT(*) AS review_count
+         FROM product_reviews WHERE status = 'approved' GROUP BY product_id
+       ) pr ON pr.product_id = p.id
+       WHERE p.category_id = $1 AND p.id != $2
        LIMIT 4`,
       [result.rows[0].category_id, id],
     );

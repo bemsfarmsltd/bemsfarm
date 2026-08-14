@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const fmt = (n) => '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })
+const fmt = (n) => '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export default function SupplierBalance() {
   const navigate = useNavigate()

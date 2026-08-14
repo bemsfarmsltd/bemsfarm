@@ -3,8 +3,8 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 
-const fmt  = n => `₦${Number(n).toLocaleString()}`
-const fmtD = s => s ? new Date(s).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'
+const fmt  = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const fmtD = s => s ? new Date(s).toLocaleDateString('en-NG', { day:'2-digit', month:'short', year:'numeric' }) : '—'
 
 const CATEGORIES  = ['Staff Salary','Fuel & Transport','Packaging Materials','Utilities','Cold Storage',
   'Vehicle Maintenance','Produce Purchase','Marketing','Office Rent','Software & IT','Security','Other']

@@ -3,8 +3,8 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 
-const fmt  = n => `₦${Number(n).toLocaleString()}`
-const fmtD = s => s ? new Date(s).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'
+const fmt  = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const fmtD = s => s ? new Date(s).toLocaleDateString('en-NG', { day:'2-digit', month:'short', year:'numeric' }) : '—'
 
 const CATEGORIES  = ['Sales', 'Wallet Top-up', 'Delivery Fee', 'Corporate Supply', 'POS Sale', 'Refund Recovery', 'Other']
 const PAY_METHODS = ['Monnify', 'Bank Transfer', 'Cash', 'POS Terminal', 'Wallet', 'USSD']

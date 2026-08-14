@@ -40,6 +40,7 @@ const { protect, requireRole } = require("../middleware/authMiddleware");
 const { validateCoupon } = require("../utils/coupons");
 const validate = require("../middleware/validate");
 const couponAdminSchemas = require("../schemas/couponAdminSchemas");
+const { clampLimit } = require("../utils/pagination");
 
 router.use(protect);
 
@@ -75,7 +76,8 @@ router.use(requireRole("superadmin", "manager", "admin"));
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/", async (req, res, next) => {
   try {
-    const { status = "", search = "", page = 1, limit = 30 } = req.query;
+    const { status = "", search = "", page = 1, limit: limitRaw = 30 } = req.query;
+    const limit = clampLimit(limitRaw, 30);
     const params = [];
     const where  = [];
 
@@ -271,7 +273,8 @@ router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/usage/all", async (req, res, next) => {
   try {
-    const { page = 1, limit = 50 } = req.query;
+    const { page = 1, limit: limitRaw = 50 } = req.query;
+    const limit = clampLimit(limitRaw, 50);
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     const [rows, count] = await Promise.all([

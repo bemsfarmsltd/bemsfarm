@@ -15,6 +15,7 @@ const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { clampLimit } = require("../utils/pagination");
 const {
   upsertContext,
   upsertOnboarding,
@@ -105,7 +106,8 @@ router.post("/onboarding", async (req, res, next) => {
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/activity", async (req, res, next) => {
   try {
-    const { page = 1, limit = 50, type = "" } = req.query;
+    const { page = 1, limit: limitRaw = 50, type = "" } = req.query;
+    const limit = clampLimit(limitRaw, 50);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const where  = type ? "AND type=$4" : "";
     const params = [req.user.id, parseInt(limit), offset];
@@ -139,7 +141,8 @@ router.get("/activity", async (req, res, next) => {
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/conversations", async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, bot_type = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, bot_type = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset  = (parseInt(page) - 1) * parseInt(limit);
     const where   = bot_type ? "AND bot_type=$2" : "";
     const params  = bot_type ? [req.user.id, bot_type, parseInt(limit), offset] : [req.user.id, parseInt(limit), offset];

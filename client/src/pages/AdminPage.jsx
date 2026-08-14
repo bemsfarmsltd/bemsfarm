@@ -1139,7 +1139,7 @@ export default function AdminPage() {
                                   whiteSpace: "nowrap",
                                 }}
                               >
-                                {new Date(order.date).toLocaleDateString()}
+                                {new Date(order.date).toLocaleDateString("en-NG")}
                               </td>
                               <td
                                 style={{
@@ -1344,7 +1344,7 @@ export default function AdminPage() {
                                   whiteSpace: "nowrap",
                                 }}
                               >
-                                {new Date(order.date).toLocaleDateString()}
+                                {new Date(order.date).toLocaleDateString("en-NG")}
                               </td>
                               <td
                                 style={{
@@ -1947,7 +1947,7 @@ export default function AdminPage() {
                         color: C.muted,
                       }}
                     >
-                      {new Date(s.subscribed_at).toLocaleDateString()}
+                      {new Date(s.subscribed_at).toLocaleDateString("en-NG")}
                     </td>
                     <td style={{ padding: "14px 16px" }}>
                       <code
@@ -2086,7 +2086,7 @@ export default function AdminPage() {
                           color: C.muted,
                         }}
                       >
-                        {new Date(r.created_at).toLocaleDateString()}
+                        {new Date(r.created_at).toLocaleDateString("en-NG")}
                       </td>
                       <td style={{ padding: "12px 16px" }}>
                         <span
@@ -2638,7 +2638,7 @@ export default function AdminPage() {
                 { label: "Customer", value: viewOrder.customer },
                 {
                   label: "Date",
-                  value: new Date(viewOrder.date).toLocaleDateString(),
+                  value: new Date(viewOrder.date).toLocaleDateString("en-NG"),
                 },
                 {
                   label: "Amount",

@@ -44,6 +44,7 @@ export default function ProductsList() {
   const [deleteId, setDeleteId] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [selected, setSelected] = useState([])
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -70,10 +71,22 @@ export default function ProductsList() {
     finally { setDeleting(false) }
   }
 
+  const handleBulkDelete = async () => {
+    setDeleting(true)
+    try {
+      const results = await Promise.allSettled(selected.map(id => api.delete(`/admin/products/${id}`)))
+      const ok = results.filter(r => r.status === 'fulfilled').length
+      const failed = results.length - ok
+      if (ok) toast.success(`Archived ${ok} product${ok===1?'':'s'}`)
+      if (failed) toast.error(`Failed to archive ${failed} product${failed===1?'':'s'}`)
+      setSelected([]); setBulkDeleteConfirm(false); load()
+    } finally { setDeleting(false) }
+  }
+
   const toggleSelect = id => setSelected(p => p.includes(id) ? p.filter(x=>x!==id) : [...p,id])
   const toggleAll    = () => setSelected(p => p.length===products.length ? [] : products.map(p=>p.id))
 
-  const B = 'var(--border)', S = '#6b7280', BG2 = '#f9fafb'
+  const B = 'var(--border)', S = '#6b7280', BG2 = 'var(--bg-subtle)'
 
   return (
     <div style={{ fontFamily:'Nunito,sans-serif' }}>
@@ -84,7 +97,7 @@ export default function ProductsList() {
           <div style={{ fontSize:12,color:S,marginTop:2 }}>{total} products total</div>
         </div>
         <div style={{ display:'flex',gap:8,flexWrap:'wrap' }}>
-          {selected.length>0&&<button style={btnD}><i className="ri-delete-bin-line"/>Delete ({selected.length})</button>}
+          {selected.length>0&&<button style={btnD} onClick={()=>setBulkDeleteConfirm(true)}><i className="ri-delete-bin-line"/>Delete ({selected.length})</button>}
           <Link to="/products/import" style={{ ...btnL,textDecoration:'none' }}><i className="ri-upload-cloud-2-line"/>Import</Link>
           <Link to="/products/add" style={{ ...btnP,textDecoration:'none' }}><i className="ri-add-line"/>Add Product</Link>
         </div>
@@ -207,6 +220,29 @@ export default function ProductsList() {
                 <div style={{ display:'flex',gap:10 }}>
                   <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={()=>setDeleteId(null)}>Cancel</button>
                   <button style={{ ...btnD,flex:1,justifyContent:'center' }} onClick={handleDelete} disabled={deleting}>{deleting?'Deleting…':'Yes, Delete'}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Bulk delete modal */}
+      {bulkDeleteConfirm&&(
+        <>
+          <div onClick={()=>setBulkDeleteConfirm(false)} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
+          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
+            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:380,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
+              <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
+                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:18 }}/></div>
+                <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Delete {selected.length} Product{selected.length===1?'':'s'}?</span>
+                <button onClick={()=>setBulkDeleteConfirm(false)} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+              </div>
+              <div style={{ padding:24,textAlign:'center' }}>
+                <p style={{ color:S,fontSize:14,marginBottom:24 }}>They will be archived and hidden from the store.</p>
+                <div style={{ display:'flex',gap:10 }}>
+                  <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={()=>setBulkDeleteConfirm(false)}>Cancel</button>
+                  <button style={{ ...btnD,flex:1,justifyContent:'center' }} onClick={handleBulkDelete} disabled={deleting}>{deleting?'Deleting…':'Yes, Delete'}</button>
                 </div>
               </div>
             </div>

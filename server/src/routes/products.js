@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
+const { clampLimit } = require("../utils/pagination");
 const {
   getProducts,
   getProductById,
@@ -24,7 +25,8 @@ router.get("/", getProducts);
 
 router.get("/search", async (req, res, next) => {
   try {
-    const { q, limit = 8 } = req.query;
+    const { q, limit: limitRaw = 8 } = req.query;
+    const limit = clampLimit(limitRaw, 8);
     if (!q || !q.trim()) {
       return res.json({ products: [] });
     }
@@ -63,7 +65,8 @@ router.get("/search", async (req, res, next) => {
 router.get("/:id/reviews", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit: limitRaw = 10 } = req.query;
+    const limit = clampLimit(limitRaw, 10);
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     const [statsRes, reviewsRes] = await Promise.all([

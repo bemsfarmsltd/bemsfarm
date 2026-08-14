@@ -186,7 +186,7 @@ export default function BulkImport() {
       setHistory(prev => [{
         file: uploadedFile.name, type: activeType,
         by: 'You', status: data.failed === 0 ? 'success' : (data.imported === 0 ? 'failed' : 'partial'),
-        date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        date: new Date().toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }),
       }, ...prev])
       setStep(3)
     } catch (err) {

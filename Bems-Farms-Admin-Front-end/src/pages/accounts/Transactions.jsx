@@ -3,7 +3,7 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 
-const fmt = n => `₦${Number(n).toLocaleString()}`
+const fmt = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const TYPE_CFG = {
   credit:  { label:'Credit',  cls:'success', icon:'ri-arrow-up-circle-line'   },
@@ -281,7 +281,7 @@ export default function Transactions() {
                 return (
                   <tr key={t.id} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <td style={tdStyle}>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{t.date ? new Date(t.date).toLocaleDateString('en-GB') : '—'}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{t.date ? new Date(t.date).toLocaleDateString('en-NG') : '—'}</div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{t.reference}</div>
                     </td>
                     <td style={tdStyle}>
@@ -413,7 +413,7 @@ export default function Transactions() {
               {[
                 { label: 'Reference', val: selected.reference },
                 { label: 'Transaction ID', val: selected.id },
-                { label: 'Date', val: selected.date ? new Date(selected.date).toLocaleDateString('en-GB') : '—' },
+                { label: 'Date', val: selected.date ? new Date(selected.date).toLocaleDateString('en-NG') : '—' },
                 { label: 'Type', val: selected.type },
                 { label: 'Source', val: selected.source_type || '—' },
                 { label: 'Payment Method', val: selected.payment_method || '—' },

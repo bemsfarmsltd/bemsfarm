@@ -420,6 +420,7 @@ export default function Sidebar({ mobileOpen = false }) {
               {is('superadmin', 'manager') && <li><SideLink to="/products/barcode">Barcode</SideLink></li>}
               {is('superadmin', 'manager') && <li><SideLink to="/products/export">Bulk Export</SideLink></li>}
               {is('superadmin', 'manager') && <li><SideLink to="/products/import">Bulk Import</SideLink></li>}
+              <li><SideLink to="/products/warranty">Warranty &amp; Quality</SideLink></li>
             </CollapseMenu>
           )}
 

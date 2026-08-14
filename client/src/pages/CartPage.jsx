@@ -6,7 +6,7 @@ import PageWrapper from "../components/layout/PageWrapper";
 import { getProductEmoji, getProductBg } from "../components/ui/ProductCard";
 import api from "../services/api";
 import { NAIRA_PER_UNIT } from "../utils/currency";
-import { getDeliveryFee } from "../utils/delivery";
+import { getDeliveryFee, FREE_DELIVERY_THRESHOLD } from "../utils/delivery";
 
 /*
   ── RESPONSIVE STRATEGY ──────────────────────────────────────
@@ -242,6 +242,7 @@ export default function CartPage() {
                       <motion.button
                         whileTap={{ scale: 0.8 }}
                         onClick={() => removeFromCart(product.id)}
+                        aria-label={`Remove ${product.name} from cart`}
                         style={{
                           position: "absolute",
                           top: "-8px",
@@ -328,6 +329,7 @@ export default function CartPage() {
                       <motion.button
                         whileTap={{ scale: 0.8 }}
                         onClick={() => updateQuantity(product.id, quantity - 1)}
+                        aria-label={`Decrease quantity of ${product.name}`}
                         style={{
                           width: "26px",
                           height: "26px",
@@ -358,6 +360,7 @@ export default function CartPage() {
                       <motion.button
                         whileTap={{ scale: 0.8 }}
                         onClick={() => updateQuantity(product.id, quantity + 1)}
+                        aria-label={`Increase quantity of ${product.name}`}
                         style={{
                           width: "26px",
                           height: "26px",
@@ -584,7 +587,7 @@ export default function CartPage() {
                   marginBottom: "14px",
                 }}
               >
-                Add ₦{(15000 - cartSubtotal).toLocaleString()} more for free
+                Add ₦{(FREE_DELIVERY_THRESHOLD - cartSubtotal).toLocaleString()} more for free
                 shipping
               </p>
             )}

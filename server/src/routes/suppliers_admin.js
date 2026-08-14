@@ -51,6 +51,7 @@ const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const supplierAdminSchemas = require("../schemas/supplierAdminSchemas");
+const { clampLimit } = require("../utils/pagination");
 
 router.use(protect);
 
@@ -71,7 +72,8 @@ async function nextSupplierCode(client) {
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, search = "", category = "", status = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, search = "", category = "", status = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where  = [];
@@ -331,7 +333,8 @@ router.get("/:id/balance", requireRole("superadmin", "manager", "admin"), async 
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/payments/all", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, supplier_id = "", from = "", to = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, supplier_id = "", from = "", to = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where  = [];

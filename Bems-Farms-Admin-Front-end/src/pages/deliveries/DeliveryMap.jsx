@@ -18,7 +18,7 @@ const STATUS_CFG = {
   shipped:            { label:'En Route',        color:'#3b82f6', bg:'#dbeafe', pulse:true  },
   delivery_attempted: { label:'Attempted',       color:'#f97316', bg:'#ffedd5', pulse:false },
 }
-const fmt = n => `₦${Number(n).toLocaleString()}`
+const fmt = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 function driverIcon(driver, status) {
   const cfg   = STATUS_CFG[status] || { label: status || 'Pending', color:'var(--text-light)', bg:'var(--border)', pulse:false }

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const fmt = (n) => '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })
+const fmt = (n) => '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 function ReturnStatusBadge({ status }) {
   const map = {
@@ -183,7 +183,7 @@ export default function PurchaseReturns() {
                     <td className="fw-medium">{r.reference || `#RET-${r.id}`}</td>
                     <td>{r.purchase_order_id ? `#PO-${r.purchase_order_id}` : '—'}</td>
                     <td>{r.supplier_name || '—'}</td>
-                    <td>{r.created_at ? new Date(r.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                    <td>{r.created_at ? new Date(r.created_at).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
                     <td>{fmt(r.total_value)}</td>
                     <td><ReturnStatusBadge status={r.status} /></td>
                     <td className="text-wrap" style={{ maxWidth: 180 }}>{r.reason || '—'}</td>
@@ -248,7 +248,7 @@ export default function PurchaseReturns() {
                   </div>
                   <div className="col-md-6">
                     <p className="mb-1 text-muted small">Return Date</p>
-                    <p className="fw-medium mb-0">{viewReturn.created_at ? new Date(viewReturn.created_at).toLocaleDateString('en-GB') : '—'}</p>
+                    <p className="fw-medium mb-0">{viewReturn.created_at ? new Date(viewReturn.created_at).toLocaleDateString('en-NG') : '—'}</p>
                   </div>
                   <div className="col-md-6">
                     <p className="mb-1 text-muted small">Total Amount</p>

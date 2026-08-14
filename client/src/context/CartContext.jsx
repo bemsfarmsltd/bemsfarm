@@ -41,13 +41,16 @@ export function CartProvider({ children }) {
   }, [appliedCoupon]);
 
   const addToCart = (product) => {
-    setCart((prev) => ({
-      ...prev,
-      [product.id]: {
-        product,
-        quantity: (prev[product.id]?.quantity || 0) + 1,
-      },
-    }));
+    setCart((prev) => {
+      const currentQty = prev[product.id]?.quantity || 0;
+      const maxQty = product.stock_quantity ?? Infinity;
+      const nextQty = Math.min(currentQty + 1, maxQty);
+      if (nextQty === currentQty) return prev;
+      return {
+        ...prev,
+        [product.id]: { product, quantity: nextQty },
+      };
+    });
   };
 
   const removeFromCart = (productId) => {
@@ -63,10 +66,15 @@ export function CartProvider({ children }) {
       removeFromCart(productId);
       return;
     }
-    setCart((prev) => ({
-      ...prev,
-      [productId]: { ...prev[productId], quantity },
-    }));
+    setCart((prev) => {
+      const existing = prev[productId];
+      if (!existing) return prev;
+      const maxQty = existing.product?.stock_quantity ?? Infinity;
+      return {
+        ...prev,
+        [productId]: { ...existing, quantity: Math.min(quantity, maxQty) },
+      };
+    });
   };
 
   const clearCart = () => { setCart({}); setAppliedCoupon(null); };

@@ -387,12 +387,31 @@ router.patch("/items/:itemId", async (req, res, next) => {
       return res.status(400).json({ message: "quantity required" });
     }
 
+    // Nothing previously checked that this item's cart belonged to the
+    // caller — any client could mutate any other customer's cart item by
+    // guessing/incrementing itemId. Resolve who's asking and require the
+    // item's cart to match, the same way GET / and DELETE / already do.
+    const customer   = await resolveCustomer(req);
+    const session_id = req.body.session_id || req.query.session_id || req.headers["x-session-id"];
+    const customer_id = customer?.id || null;
+
     const item = await client.query(
-      "SELECT * FROM customer_cart_items WHERE id=$1", [req.params.itemId]
+      `SELECT cci.*, cc.customer_id AS cart_customer_id, cc.session_id AS cart_session_id
+       FROM customer_cart_items cci
+       JOIN customer_carts cc ON cc.id = cci.cart_id
+       WHERE cci.id=$1`,
+      [req.params.itemId]
     );
     if (!item.rows.length) {
       await client.query("ROLLBACK");
       return res.status(404).json({ message: "Item not found" });
+    }
+    const owned = item.rows[0].cart_customer_id != null
+      ? item.rows[0].cart_customer_id === customer_id
+      : session_id && item.rows[0].cart_session_id === session_id;
+    if (!owned) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({ message: "Not authorized to modify this cart item" });
     }
 
     if (parseInt(quantity) <= 0) {
@@ -435,13 +454,32 @@ router.delete("/items/:itemId", async (req, res, next) => {
   try {
     await client.query("BEGIN");
 
-    const item = await client.query(
-      "DELETE FROM customer_cart_items WHERE id=$1 RETURNING *", [req.params.itemId]
+    const customer   = await resolveCustomer(req);
+    const session_id = req.query.session_id || req.headers["x-session-id"];
+    const customer_id = customer?.id || null;
+
+    const existing = await client.query(
+      `SELECT cci.id, cc.customer_id AS cart_customer_id, cc.session_id AS cart_session_id
+       FROM customer_cart_items cci
+       JOIN customer_carts cc ON cc.id = cci.cart_id
+       WHERE cci.id=$1`,
+      [req.params.itemId]
     );
-    if (!item.rows.length) {
+    if (!existing.rows.length) {
       await client.query("ROLLBACK");
       return res.status(404).json({ message: "Item not found" });
     }
+    const owned = existing.rows[0].cart_customer_id != null
+      ? existing.rows[0].cart_customer_id === customer_id
+      : session_id && existing.rows[0].cart_session_id === session_id;
+    if (!owned) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({ message: "Not authorized to modify this cart item" });
+    }
+
+    const item = await client.query(
+      "DELETE FROM customer_cart_items WHERE id=$1 RETURNING *", [req.params.itemId]
+    );
 
     const cartId = item.rows[0].cart_id;
     await client.query(

@@ -9,8 +9,10 @@ const STATUS_CFG = {
   off_duty:    { label:'Off Duty',    color:'var(--text-muted)', bg:'var(--border)', icon:'ri-moon-line'             },
   suspended:   { label:'Suspended',  color:'#ef4444', bg:'#fee2e2', icon:'ri-forbid-line'           },
 }
-const VEHICLE_TYPES = ['Motorcycle','Bicycle','Car','Van']
-const fmt = n => `₦${Number(n||0).toLocaleString('en-NG')}`
+// Values must stay lowercase — they're validated against the DB's
+// drivers_vehicle_type_check constraint, which only accepts lowercase.
+const VEHICLE_TYPES = ['motorcycle','bicycle','car','van']
+const fmt = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
 const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
@@ -42,7 +44,7 @@ function ModalShell({ title, onClose, children, maxWidth=460 }) {
   )
 }
 
-const BLANK = { name:'', phone:'', email:'', vehicle_type:'Motorcycle', vehicle_plate:'', zone_id:'', notes:'' }
+const BLANK = { name:'', phone:'', email:'', vehicle_type:'motorcycle', vehicle_plate:'', zone_id:'', notes:'' }
 
 export default function DriversManagement() {
   const [drivers, setDrivers]           = useState([])
@@ -83,7 +85,7 @@ export default function DriversManagement() {
     setSelected(driver); setActiveModal(type); setSuspendNote('')
     if (type==='add')  { setForm(BLANK); setIsEditing(false) }
     if (type==='edit' && driver) {
-      setForm({ name:driver.name, phone:driver.phone, email:driver.email||'', vehicle_type:driver.vehicle_type||'Motorcycle', vehicle_plate:driver.vehicle_plate||'', zone_id:driver.zone_id||'', notes:driver.notes||'' })
+      setForm({ name:driver.name, phone:driver.phone, email:driver.email||'', vehicle_type:driver.vehicle_type||'motorcycle', vehicle_plate:driver.vehicle_plate||'', zone_id:driver.zone_id||'', notes:driver.notes||'' })
       setIsEditing(true)
     }
   }
@@ -441,7 +443,7 @@ export default function DriversManagement() {
                   <div>
                     <label style={lbl}>Vehicle Type</label>
                     <select value={form.vehicle_type} onChange={e=>setField('vehicle_type',e.target.value)} style={inp}>
-                      {VEHICLE_TYPES.map(v => <option key={v}>{v}</option>)}
+                      {VEHICLE_TYPES.map(v => <option key={v} value={v} style={{ textTransform:'capitalize' }}>{v.charAt(0).toUpperCase()+v.slice(1)}</option>)}
                     </select>
                   </div>
                   <div>

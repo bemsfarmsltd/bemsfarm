@@ -387,6 +387,21 @@ export default function ComingSoonPage() {
           </motion.p>
 
           {/* Countdown */}
+          {time.days === 0 && time.hours === 0 && time.minutes === 0 && time.seconds === 0 ? (
+            <motion.p
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.4 }}
+              style={{
+                fontSize: "16px",
+                fontWeight: 700,
+                color: "#F59E0B",
+                marginBottom: "40px",
+              }}
+            >
+              🚀 We're just about ready — launching any moment now!
+            </motion.p>
+          ) : (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -445,6 +460,7 @@ export default function ComingSoonPage() {
               </div>
             ))}
           </motion.div>
+          )}
 
           {/* Email capture */}
           <motion.div
@@ -697,20 +713,6 @@ export default function ComingSoonPage() {
           >
             © 2026 BemsFarms. Made with 🌿 in Nigeria
           </p>
-          <div style={{ display: "flex", gap: "16px" }}>
-            {["Instagram", "Twitter", "Facebook"].map((s) => (
-              <span
-                key={s}
-                style={{
-                  color: "rgba(255,255,255,0.3)",
-                  fontSize: "12px",
-                  cursor: "pointer",
-                }}
-              >
-                {s}
-              </span>
-            ))}
-          </div>
         </div>
       </div>
     </div>

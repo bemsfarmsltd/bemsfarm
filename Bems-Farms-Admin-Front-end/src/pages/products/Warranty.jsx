@@ -3,15 +3,6 @@ import { useState, useMemo, useEffect } from 'react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const MOCK_CLAIMS = [
-  { id:1,  order:'#ORD-2026-0412', customer:'Amaka O.',   product:'Catfish (Fresh)',    policy:'Seafood Freshness',       issue:'Fish had off smell on arrival',    status:'approved',  date:'2026-04-12', resolution:'Replaced with fresh batch' },
-  { id:2,  order:'#ORD-2026-0398', customer:'Emeka D.',   product:'Chicken (Whole)',    policy:'Meat Quality Assurance',  issue:'Chicken looked pale, not fresh',   status:'pending',   date:'2026-04-10', resolution:'' },
-  { id:3,  order:'#ORD-2026-0381', customer:'Ngozi A.',   product:'Farm Eggs (Crate)', policy:'Fresh Produce Guarantee', issue:'3 eggs cracked on arrival',        status:'approved',  date:'2026-04-08', resolution:'Partial refund issued' },
-  { id:4,  order:'#ORD-2026-0375', customer:'Tunde B.',   product:'Whole Milk (1L)',    policy:'Dairy Shelf Life',        issue:'Milk turned sour in 3 days',       status:'pending',   date:'2026-04-07', resolution:'' },
-  { id:5,  order:'#ORD-2026-0362', customer:'Chioma N.',  product:'Local Tomatoes',     policy:'Fresh Produce Guarantee', issue:'Tomatoes already soft on delivery', status:'rejected',  date:'2026-04-05', resolution:'Claim outside coverage window' },
-  { id:6,  order:'#ORD-2026-0340', customer:'Samuel K.',  product:'Beef (Boneless)',    policy:'Meat Quality Assurance',  issue:'Different cut than ordered',       status:'approved',  date:'2026-04-03', resolution:'Full replacement sent' },
-]
-
 const POLICY_TYPES = ['freshness','quality','shelf_life','seal']
 const BLANK_POLICY = { name:'', type:'freshness', days:3, products:0, description:'', status:'active' }
 
@@ -34,7 +25,10 @@ const TYPE_COLOR = { freshness:'#0ab39c', quality:'#405189', shelf_life:'#299cdb
 export default function Warranty() {
   const [tab, setTab]                   = useState('policies')
   const [policies, setPolicies]         = useState([])
-  const [claims, setClaims]             = useState(MOCK_CLAIMS)
+  // No backend exists yet for warranty claims (checked server/src/routes/ —
+  // only warranty *policies* are real). Starting empty rather than seeding
+  // fake claims — the table's existing empty state handles this cleanly.
+  const [claims, setClaims]             = useState([])
   const [search, setSearch]             = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [activeModal, setActiveModal]   = useState(null)
@@ -335,7 +329,7 @@ export default function Warranty() {
                 {viewItem.resolution&&(
                   <div style={{ marginTop:12 }}>
                     <div style={{ fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:6 }}>Resolution</div>
-                    <p style={{ fontSize:13,color:'var(--text-secondary)',background:'#f0fdf4',borderRadius:8,padding:'10px 14px',margin:0 }}>{viewItem.resolution}</p>
+                    <p style={{ fontSize:13,color:'var(--text-secondary)',background:'var(--bg-subtle)',borderRadius:8,padding:'10px 14px',margin:0 }}>{viewItem.resolution}</p>
                   </div>
                 )}
                 <div style={{ marginTop:16,display:'flex',alignItems:'center',justifyContent:'space-between' }}>

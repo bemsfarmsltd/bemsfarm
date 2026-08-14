@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const fmt = (n) => '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })
+const fmt = (n) => '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 function StatusBadge({ status }) {
   const map = {
@@ -219,8 +219,8 @@ export default function PurchaseList() {
                   <tr key={o.id}>
                     <td><span className="fw-medium link-custom-primary">{o.reference}</span></td>
                     <td>{o.supplier_name || '—'}</td>
-                    <td>{o.order_date ? new Date(o.order_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
-                    <td>{o.expected_date ? new Date(o.expected_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                    <td>{o.order_date ? new Date(o.order_date).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                    <td>{o.expected_date ? new Date(o.expected_date).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
                     <td><StatusBadge status={o.status} /></td>
                     <td>{fmt(o.total)}</td>
                     <td className={Number(o.balance_due) > 0 ? 'text-danger fw-medium' : ''}>{fmt(o.balance_due)}</td>
@@ -297,11 +297,11 @@ export default function PurchaseList() {
                   </div>
                   <div className="col-md-3">
                     <p className="mb-1 text-muted small">Order Date</p>
-                    <p className="fw-medium mb-0">{viewOrder.order_date ? new Date(viewOrder.order_date).toLocaleDateString('en-GB') : '—'}</p>
+                    <p className="fw-medium mb-0">{viewOrder.order_date ? new Date(viewOrder.order_date).toLocaleDateString('en-NG') : '—'}</p>
                   </div>
                   <div className="col-md-3">
                     <p className="mb-1 text-muted small">Expected Date</p>
-                    <p className="fw-medium mb-0">{viewOrder.expected_date ? new Date(viewOrder.expected_date).toLocaleDateString('en-GB') : '—'}</p>
+                    <p className="fw-medium mb-0">{viewOrder.expected_date ? new Date(viewOrder.expected_date).toLocaleDateString('en-NG') : '—'}</p>
                   </div>
                   <div className="col-md-3">
                     <p className="mb-1 text-muted small">Subtotal</p>

@@ -3,6 +3,8 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const validate = require("../middleware/validate");
+const configAdminSchemas = require("../schemas/configAdminSchemas");
 
 // All routes require authentication
 router.use(protect);
@@ -30,7 +32,7 @@ router.get("/categories", async (req, res, next) => {
   }
 });
 
-router.post("/categories", async (req, res, next) => {
+router.post("/categories", validate(configAdminSchemas.createCategory), async (req, res, next) => {
   try {
     const { name, code, description, status } = req.body;
     const result = await pool.query(
@@ -44,7 +46,7 @@ router.post("/categories", async (req, res, next) => {
   }
 });
 
-router.put("/categories/:id", async (req, res, next) => {
+router.put("/categories/:id", validate(configAdminSchemas.updateCategory), async (req, res, next) => {
   try {
     const { name, code, description, status } = req.body;
     const result = await pool.query(
@@ -59,6 +61,17 @@ router.put("/categories/:id", async (req, res, next) => {
 
 router.delete("/categories/:id", async (req, res, next) => {
   try {
+    // products.category_id has no ON DELETE behavior configured, so an
+    // in-use category currently fails with a raw FK-violation 500 — check
+    // first and return a readable 400 instead.
+    const [products, subs, legacySubs] = await Promise.all([
+      pool.query(`SELECT 1 FROM products WHERE category_id=$1 LIMIT 1`, [req.params.id]),
+      pool.query(`SELECT 1 FROM subcategories WHERE category_id=$1 LIMIT 1`, [req.params.id]),
+      pool.query(`SELECT 1 FROM sub_categories WHERE category_id=$1 LIMIT 1`, [req.params.id]),
+    ]);
+    if (products.rows.length || subs.rows.length || legacySubs.rows.length) {
+      return res.status(400).json({ message: "Cannot delete a category that still has products or sub-categories assigned to it." });
+    }
     await pool.query(`DELETE FROM categories WHERE id=$1`, [req.params.id]);
     res.json({ success: true });
   } catch (err) {
@@ -81,7 +94,7 @@ router.get("/subcategories", async (req, res, next) => {
   }
 });
 
-router.post("/subcategories", async (req, res, next) => {
+router.post("/subcategories", validate(configAdminSchemas.createSubcategory), async (req, res, next) => {
   try {
     const { category_id, name, code, description, status } = req.body;
     const result = await pool.query(
@@ -95,7 +108,7 @@ router.post("/subcategories", async (req, res, next) => {
   }
 });
 
-router.put("/subcategories/:id", async (req, res, next) => {
+router.put("/subcategories/:id", validate(configAdminSchemas.updateSubcategory), async (req, res, next) => {
   try {
     const { category_id, name, code, description, status } = req.body;
     const result = await pool.query(
@@ -127,7 +140,7 @@ router.get("/units", async (req, res, next) => {
   }
 });
 
-router.post("/units", async (req, res, next) => {
+router.post("/units", validate(configAdminSchemas.createUnit), async (req, res, next) => {
   try {
     const { name, short, type, step, status } = req.body;
     const result = await pool.query(
@@ -141,7 +154,7 @@ router.post("/units", async (req, res, next) => {
   }
 });
 
-router.put("/units/:id", async (req, res, next) => {
+router.put("/units/:id", validate(configAdminSchemas.updateUnit), async (req, res, next) => {
   try {
     const { name, short, type, step, status } = req.body;
     const result = await pool.query(
@@ -173,7 +186,7 @@ router.get("/warranties", async (req, res, next) => {
   }
 });
 
-router.post("/warranties", async (req, res, next) => {
+router.post("/warranties", validate(configAdminSchemas.createWarranty), async (req, res, next) => {
   try {
     const { name, duration, type, description, status } = req.body;
     const result = await pool.query(
@@ -187,7 +200,7 @@ router.post("/warranties", async (req, res, next) => {
   }
 });
 
-router.put("/warranties/:id", async (req, res, next) => {
+router.put("/warranties/:id", validate(configAdminSchemas.updateWarranty), async (req, res, next) => {
   try {
     const { name, duration, type, description, status } = req.body;
     const result = await pool.query(

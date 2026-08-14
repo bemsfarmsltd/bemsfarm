@@ -72,6 +72,7 @@ export default function Conversations() {
   const [search, setSearch]         = useState('')
   const [statusFilter, setStatus]   = useState('all')
   const [actionLoading, setAction]  = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
 
   const fetchConvos = useCallback(async () => {
     setLoading(true)
@@ -115,7 +116,7 @@ export default function Conversations() {
   }
 
   const deleteConvo = async (id) => {
-    if (!window.confirm('Delete this conversation permanently?')) return
+    setConfirmDeleteId(null)
     setAction(true)
     try {
       await api.delete(`/admin/chef-bems/conversations/${id}`)
@@ -315,7 +316,7 @@ export default function Conversations() {
                 {msgs.length === 0 ? (
                   <div style={{ textAlign:'center', color:'var(--text-light)', padding:'24px 0' }}>
                     {selConvo.user_message ? (
-                      <div style={{ background:'var(--bg-card)', border:'1px solid #e2e8f0', borderRadius:12, padding:'10px 14px', fontSize:13, color:'#1e293b', textAlign:'left', maxWidth:'68%' }}>
+                      <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:12, padding:'10px 14px', fontSize:13, color:'var(--text-primary)', textAlign:'left', maxWidth:'68%' }}>
                         {selConvo.user_message}
                       </div>
                     ) : (
@@ -398,7 +399,7 @@ export default function Conversations() {
                     </button>
                   )}
                   {user?.role === 'superadmin' && (
-                    <button onClick={() => deleteConvo(selConvo.id)} disabled={actionLoading} style={btnStyle('transparent','#dc2626','1.5px solid #fca5a5')}>
+                    <button onClick={() => setConfirmDeleteId(selConvo.id)} disabled={actionLoading} style={btnStyle('transparent','#dc2626','1.5px solid #fca5a5')}>
                       <i className="ri-delete-bin-line" />Delete
                     </button>
                   )}
@@ -415,6 +416,27 @@ export default function Conversations() {
           </div>
         )}
       </div>
+
+      {confirmDeleteId && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
+          onClick={e => e.target===e.currentTarget && setConfirmDeleteId(null)}>
+          <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth:400, padding:28, textAlign:'center' }}>
+            <div style={{ width:56, height:56, borderRadius:'50%', background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
+              <i className="ri-delete-bin-line" style={{ fontSize:24, color:'#dc2626' }} />
+            </div>
+            <div style={{ fontWeight:700, fontSize:17, marginBottom:6, color:'var(--text-primary)' }}>Delete Conversation?</div>
+            <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:24 }}>
+              This conversation will be permanently deleted. This cannot be undone.
+            </div>
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={() => setConfirmDeleteId(null)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-primary)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
+              <button onClick={() => deleteConvo(confirmDeleteId)} disabled={actionLoading} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>
+                {actionLoading ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

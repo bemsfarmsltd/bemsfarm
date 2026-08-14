@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const fmt = (n) => '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })
+const fmt = (n) => '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export default function PurchasePayments() {
   const [payments, setPayments] = useState([])
@@ -170,7 +170,7 @@ export default function PurchasePayments() {
                   <tr><td colSpan={7} className="text-center text-muted py-5">No payments found.</td></tr>
                 ) : payments.map(p => (
                   <tr key={p.id}>
-                    <td>{p.payment_date ? new Date(p.payment_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                    <td>{p.payment_date ? new Date(p.payment_date).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
                     <td className="fw-medium">{p.po_reference || p.reference || '—'}</td>
                     <td>{p.supplier_name || '—'}</td>
                     <td className="fw-medium text-success">{fmt(p.amount)}</td>

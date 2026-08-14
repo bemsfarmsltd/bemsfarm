@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../../lib/api";
 
-const fmt = (n) => `₦${Number(n||0).toLocaleString("en-NG")}`
+const fmt = (n) => `₦${Number(n||0).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const STATUS_CFG = {
   paid:             { label:"New Order",       color:"#0ea5e9", bg:"#e0f2fe" },
@@ -312,7 +312,7 @@ export default function OrderDetail() {
 
           {o.driver_name&&(
             <InfoCard title="Delivery">
-              {[["Driver",o.driver_name,"#111827"],["Phone",o.driver_phone,"#111827"],o.eta_minutes&&["ETA",`${o.eta_minutes} min`,"#16a34a"],o.driver_plate&&["Vehicle",o.driver_plate,"#111827"]].filter(Boolean).map(([k,v,c])=>(
+              {[["Driver",o.driver_name,"var(--text-primary)"],["Phone",o.driver_phone,"var(--text-primary)"],o.eta_minutes&&["ETA",`${o.eta_minutes} min`,"#16a34a"],o.driver_plate&&["Vehicle",o.driver_plate,"var(--text-primary)"]].filter(Boolean).map(([k,v,c])=>(
                 <div key={k} style={{ display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8 }}>
                   <span style={{ color:'var(--text-muted)' }}>{k}</span>
                   <span style={{ fontWeight:600,color:c }}>{v}</span>
@@ -322,7 +322,7 @@ export default function OrderDetail() {
           )}
 
           <InfoCard title="Payment">
-            {[["Method",o.payment_method||"—","#111827",500],["Reference",o.payment_ref||"—","#6b7280",400],["Source",o.source||(o.channel||"").replace(/_/g," "),"#111827",500],["Amount",fmt(o.total),"#1B4332",700]].map(([k,v,c,w])=>(
+            {[["Method",o.payment_method||"—","var(--text-primary)",500],["Reference",o.payment_ref||"—","#6b7280",400],["Source",o.source||(o.channel||"").replace(/_/g," "),"var(--text-primary)",500],["Amount",fmt(o.total),"#1B4332",700]].map(([k,v,c,w])=>(
               <div key={k} style={{ display:"flex",justifyContent:"space-between",fontSize:k==="Reference"?11:13,marginBottom:8 }}>
                 <span style={{ color:'var(--text-muted)' }}>{k}</span>
                 <span style={{ fontWeight:w,color:c }}>{v}</span>

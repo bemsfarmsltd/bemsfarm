@@ -51,7 +51,7 @@ function Modal({ open, onClose, title, danger, children }) {
       <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)' }} />
       <div style={{ position:'relative', background:'var(--bg-card)', borderRadius:14, padding:'24px 28px', width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.25)', zIndex:1 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:danger?'#dc2626':'#111827', fontFamily:'Syne, sans-serif' }}>{title}</h3>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:danger?'#dc2626':'var(--text-primary)', fontFamily:'Syne, sans-serif' }}>{title}</h3>
           <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:20, padding:2, display:'flex', alignItems:'center' }}>
             <i className="ri-close-line" />
           </button>
@@ -277,7 +277,7 @@ export default function MealAssociations() {
               const strength = parseFloat(a.strength || 0)
               const strColor = strength >= 1.5 ? '#15803d' : strength >= 0.8 ? '#b45309' : '#dc2626'
               return (
-                <tr key={a.id} style={{ borderBottom:'1px solid #f9fafb', background: i%2===0 ? '#fff' : '#fafafa' }}>
+                <tr key={a.id} style={{ borderBottom:'1px solid var(--border)', background: i%2===0 ? 'var(--bg-card)' : 'var(--bg-subtle)' }}>
                   <td style={{ padding:'12px 16px', fontSize:13, fontWeight:700, color:'var(--text-primary)', fontFamily:'Nunito, sans-serif' }}>
                     {a.product_name}
                   </td>

@@ -97,7 +97,7 @@ export default function AddCustomer() {
                 <div>
                   <label style={lbl}>Phone Number <span style={{ color:'#dc2626' }}>*</span></label>
                   <div style={{ display:'flex', gap:0 }}>
-                    <span style={{ padding:'9px 10px', borderRadius:'8px 0 0 8px', border:'1.5px solid var(--border)', borderRight:'none', background:'#f1f5f9', fontSize:13, color:'var(--text-secondary)', flexShrink:0 }}>+234</span>
+                    <span style={{ padding:'9px 10px', borderRadius:'8px 0 0 8px', border:'1.5px solid var(--border)', borderRight:'none', background:'var(--bg-subtle)', fontSize:13, color:'var(--text-secondary)', flexShrink:0 }}>+234</span>
                     <input value={form.phone} onChange={e => fld('phone', e.target.value.replace(/\D/g,''))} maxLength={11} placeholder="08031234567" style={{ ...inp, borderRadius:'0 8px 8px 0', flex:1 }} required />
                   </div>
                 </div>
@@ -180,7 +180,7 @@ export default function AddCustomer() {
                   <label style={lbl}>Initial Loyalty Tier</label>
                   <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:4 }}>
                     {TIERS.map(t => (
-                      <div key={t.val} onClick={() => fld('tier', t.val)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:9, border:`1.5px solid ${form.tier===t.val?t.color:'#e2e8f0'}`, background: form.tier===t.val?t.bg:'#fff', cursor:'pointer', transition:'all 0.12s' }}>
+                      <div key={t.val} onClick={() => fld('tier', t.val)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:9, border:`1.5px solid ${form.tier===t.val?t.color:'var(--border)'}`, background: form.tier===t.val?t.bg:'var(--bg-card)', cursor:'pointer', transition:'all 0.12s' }}>
                         <i className={t.icon} style={{ color:t.color, fontSize:16, flexShrink:0 }} />
                         <div style={{ flex:1 }}>
                           <div style={{ fontSize:12, fontWeight:700, color: form.tier===t.val?t.color:'var(--text-secondary)' }}>{t.val}</div>

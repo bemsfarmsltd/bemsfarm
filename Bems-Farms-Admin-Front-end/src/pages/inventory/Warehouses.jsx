@@ -187,7 +187,7 @@ export default function Warehouses() {
                 )}
 
                 <div style={{ marginTop:10, fontSize:12, color:'var(--text-muted)' }}>
-                  Added {w.created_at ? new Date(w.created_at).toLocaleDateString('en-GB') : '—'}
+                  Added {w.created_at ? new Date(w.created_at).toLocaleDateString('en-NG') : '—'}
                 </div>
               </div>
             </div>

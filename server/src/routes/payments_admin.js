@@ -4,6 +4,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
+const { clampLimit } = require("../utils/pagination");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const paymentSchemas = require("../schemas/paymentSchemas");
@@ -14,7 +15,8 @@ router.use(protect);
 // ── GET /api/admin/payments/reconciliation ──────────────────────
 router.get("/reconciliation", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
-    const { status = "", search = "", limit = 20, page = 1 } = req.query;
+    const { status = "", search = "", limit: limitRaw = 20, page = 1 } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     
     const params = [];
@@ -81,7 +83,8 @@ router.get("/reconciliation", requireRole("superadmin", "manager", "admin", "acc
 // ── GET /api/admin/payments/webhook-logs ────────────────────────
 router.get("/webhook-logs", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
-    const { status = "", limit = 50, page = 1 } = req.query;
+    const { status = "", limit: limitRaw = 50, page = 1 } = req.query;
+    const limit = clampLimit(limitRaw, 50);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     
     const params = [];

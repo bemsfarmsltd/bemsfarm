@@ -82,6 +82,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
+const { clampLimit } = require("../utils/pagination");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 
 router.use(protect);
@@ -114,7 +115,8 @@ async function applyStockChange(client, { productId, warehouseId, type, delta, r
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, search = "", category = "", stock_status = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, search = "", category = "", stock_status = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where = ["p.status != 'archived'"];
@@ -320,7 +322,8 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin"), async (r
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/movements", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, product_id = "", type = "", from = "", to = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, product_id = "", type = "", from = "", to = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where = [];
@@ -388,6 +391,7 @@ router.post(
       if (!product_id) { await client.query("ROLLBACK"); return res.status(400).json({ message: "product_id required" }); }
       if (new_quantity === undefined || new_quantity === null) { await client.query("ROLLBACK"); return res.status(400).json({ message: "new_quantity required" }); }
       if (!reason) { await client.query("ROLLBACK"); return res.status(400).json({ message: "reason required for stock adjustments" }); }
+      if (isNaN(parseInt(new_quantity))) { await client.query("ROLLBACK"); return res.status(400).json({ message: "new_quantity must be a number" }); }
 
       const cur = await client.query("SELECT stock FROM products WHERE id=$1 FOR UPDATE", [parseInt(product_id)]);
       if (!cur.rows.length) { await client.query("ROLLBACK"); return res.status(404).json({ message: "Product not found" }); }
@@ -548,7 +552,8 @@ router.delete("/warehouses/:id", requireRole("superadmin"), async (req, res, nex
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/batches", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, product_id = "", status = "", expiring = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, product_id = "", status = "", expiring = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where  = [];
@@ -641,7 +646,8 @@ router.delete("/batches/:id", requireRole("superadmin", "manager"), async (req, 
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/lost-items", requireRole("superadmin", "manager", "admin", "storekeeper"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, status = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, status = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const where  = status ? ["li.status = $1"] : [];
     const params = status ? [status] : [];

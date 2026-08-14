@@ -3,8 +3,8 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 
-const fmt = n => `₦${Number(n).toLocaleString()}`
-const fmtD = s => s ? new Date(s).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'
+const fmt = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const fmtD = s => s ? new Date(s).toLocaleDateString('en-NG', { day:'2-digit', month:'short', year:'numeric' }) : '—'
 const ini  = name => (name || '').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 
 const DRIVER_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec4899']

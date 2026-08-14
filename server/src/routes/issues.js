@@ -45,6 +45,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
+const { clampLimit } = require("../utils/pagination");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { SMS } = require("../services/smsService");
 const { initiateMonnifyRefund } = require("../utils/monnify");
@@ -91,6 +92,11 @@ async function ensureIssueTables() {
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
+  // The live DB already has these (added outside this file); declared here
+  // too so a fresh deployment doesn't end up doing a seq scan on GET /issues
+  // (filters by user_id) or the per-issue activity subquery (filters by issue_id).
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_issues_user_id ON issues(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_issue_act ON issue_activities(issue_id)`);
 }
 
 const activitiesSubquery = `
@@ -166,7 +172,8 @@ router.get(
   protect,
   requireRole(...STAFF_ROLES),
   async (req, res, next) => {
-    const { status, type, page = 1, limit = 20 } = req.query;
+    const { status, type, page = 1, limit: limitRaw = 20 } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     try {

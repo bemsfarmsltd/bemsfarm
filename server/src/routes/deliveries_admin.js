@@ -10,6 +10,16 @@ const deliveryAdminSchemas = require("../schemas/deliveryAdminSchemas");
 
 router.use(protect);
 
+// delivery_zones.zone_id is a text PK ("ZONE001", ...), not an auto-increment
+// column, so inserts must generate the next one themselves.
+async function nextZoneId(client) {
+  const row = await client.query(
+    `SELECT COALESCE(MAX(CAST(SUBSTRING(zone_id FROM 5) AS INTEGER)), 0) + 1 AS n
+     FROM delivery_zones WHERE zone_id ~ '^ZONE[0-9]+$'`
+  );
+  return `ZONE${String(row.rows[0].n).padStart(3, "0")}`;
+}
+
 // ── GET /api/admin/deliveries/active ─────────────────────────────
 router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   try {
@@ -356,6 +366,7 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
       `
       SELECT
         dr.*,
+        dr.primary_zone_id AS zone_id,
         dz.zone_name AS zone,
         COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'delivered') AS total_deliveries,
         COALESCE(AVG(df.rating), 0)                                AS rating,
@@ -395,6 +406,7 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
 router.post(
   "/drivers",
   requireRole("superadmin", "manager", "admin"),
+  validate(deliveryAdminSchemas.createDriver),
   async (req, res, next) => {
     try {
       const {
@@ -410,12 +422,16 @@ router.post(
       if (!name || !phone)
         return res.status(400).json({ message: "Name and phone required" });
 
+      // The drivers table's zone column is primary_zone_id — this INSERT
+      // referenced a zone_id column that doesn't exist and made every
+      // driver-create request fail with a raw 500. Request/response bodies
+      // still use zone_id (that's what the admin UI's driver form sends).
       const result = await pool.query(
         `
       INSERT INTO drivers
-        (name, phone, email, vehicle_type, vehicle_plate, zone_id, notes, status, joined_at, created_at)
+        (name, phone, email, vehicle_type, vehicle_plate, primary_zone_id, notes, status, joined_date, created_at)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW())
-      RETURNING *
+      RETURNING *, primary_zone_id AS zone_id
     `,
         [
           name,
@@ -440,6 +456,7 @@ router.post(
 router.patch(
   "/drivers/:id",
   requireRole("superadmin", "manager", "admin"),
+  validate(deliveryAdminSchemas.updateDriver),
   async (req, res, next) => {
     try {
       const {
@@ -454,14 +471,14 @@ router.patch(
       await pool.query(
         `
       UPDATE drivers SET
-        name          = COALESCE($1, name),
-        phone         = COALESCE($2, phone),
-        email         = COALESCE($3, email),
-        vehicle_type  = COALESCE($4, vehicle_type),
-        vehicle_plate = COALESCE($5, vehicle_plate),
-        zone_id       = COALESCE($6, zone_id),
-        notes         = COALESCE($7, notes),
-        updated_at    = NOW()
+        name             = COALESCE($1, name),
+        phone            = COALESCE($2, phone),
+        email            = COALESCE($3, email),
+        vehicle_type     = COALESCE($4, vehicle_type),
+        vehicle_plate    = COALESCE($5, vehicle_plate),
+        primary_zone_id  = COALESCE($6, primary_zone_id),
+        notes            = COALESCE($7, notes),
+        updated_at       = NOW()
       WHERE id = $8
     `,
         [
@@ -520,9 +537,17 @@ router.patch(
 // ── GET /api/admin/delivery-zones ─────────────────────────────────
 router.get("/zones", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
   try {
+    // delivery_zones' PK is zone_id (no id column) and its real fee/eta/active
+    // columns are min_order_value / estimated_delivery_time / status — alias
+    // them to the names the admin UI has always read (zone.id, .min_order_amount,
+    // .estimated_eta, .is_active) rather than rewriting every call site.
     const rows = await pool.query(`
       SELECT
         dz.*,
+        dz.zone_id AS id,
+        dz.min_order_value AS min_order_amount,
+        dz.estimated_delivery_time AS estimated_eta,
+        (dz.status = 'active') AS is_active,
         COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'delivered') AS deliveries,
         COALESCE(SUM(o.total) FILTER (WHERE d.status = 'delivered'), 0) AS revenue,
         JSON_AGG(DISTINCT dr.name) FILTER (WHERE dr.id IS NOT NULL) AS driver_names,
@@ -550,6 +575,7 @@ router.get("/zones", requireRole("superadmin", "manager", "admin", "delivery_man
 router.post(
   "/zones",
   requireRole("superadmin", "manager", "admin"),
+  validate(deliveryAdminSchemas.createZone),
   async (req, res, next) => {
     try {
       const {
@@ -566,24 +592,42 @@ router.post(
       if (!zone_name || !delivery_fee)
         return res.status(400).json({ message: "Zone name and fee required" });
 
-      const result = await pool.query(
-        `
-      INSERT INTO delivery_zones
-        (zone_name, delivery_fee, min_order_amount, estimated_eta,
-         coverage_areas, notes, status, created_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
-      RETURNING *
-    `,
-        [
-          zone_name,
-          parseFloat(delivery_fee),
-          parseFloat(min_order_amount) || 0,
-          estimated_eta || null,
-          coverage_areas ? JSON.stringify(coverage_areas) : null,
-          notes || null,
-          is_active ? 'active' : 'inactive',
-        ],
-      );
+      // delivery_zones' real columns are min_order_value / estimated_delivery_time
+      // (min_order_amount / estimated_eta don't exist) and its PK is a
+      // generated text zone_id, not an auto id — this INSERT previously
+      // 500'd on every call.
+      const client = await pool.connect();
+      let result;
+      try {
+        await client.query("BEGIN");
+        const zoneId = await nextZoneId(client);
+        result = await client.query(
+          `
+        INSERT INTO delivery_zones
+          (zone_id, zone_name, delivery_fee, min_order_value, estimated_delivery_time,
+           coverage_areas, notes, status, created_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+        RETURNING *, zone_id AS id, min_order_value AS min_order_amount,
+                  estimated_delivery_time AS estimated_eta, (status = 'active') AS is_active
+      `,
+          [
+            zoneId,
+            zone_name,
+            parseFloat(delivery_fee),
+            parseFloat(min_order_amount) || 0,
+            estimated_eta || null,
+            coverage_areas ? JSON.stringify(coverage_areas) : null,
+            notes || null,
+            is_active ? 'active' : 'inactive',
+          ],
+        );
+        await client.query("COMMIT");
+      } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+      } finally {
+        client.release();
+      }
 
       const zone = result.rows[0];
 
@@ -591,7 +635,7 @@ router.post(
       if (driver_ids.length) {
         await pool.query(
           `UPDATE drivers SET primary_zone_id=$1 WHERE id = ANY($2::int[])`,
-          [zone.id, driver_ids],
+          [zone.zone_id, driver_ids],
         );
       }
 
@@ -606,6 +650,7 @@ router.post(
 router.patch(
   "/zones/:id",
   requireRole("superadmin", "manager", "admin"),
+  validate(deliveryAdminSchemas.updateZone),
   async (req, res, next) => {
     const client = await pool.connect();
     try {
@@ -624,15 +669,14 @@ router.patch(
       await client.query(
         `
       UPDATE delivery_zones SET
-        zone_name          = COALESCE($1, zone_name),
-        delivery_fee       = COALESCE($2, delivery_fee),
-        min_order_amount   = COALESCE($3, min_order_amount),
-        estimated_eta      = COALESCE($4, estimated_eta),
-        coverage_areas     = COALESCE($5, coverage_areas),
-        notes              = COALESCE($6, notes),
-        status             = COALESCE($7, status),
-        updated_at         = NOW()
-      WHERE id = $8
+        zone_name             = COALESCE($1, zone_name),
+        delivery_fee          = COALESCE($2, delivery_fee),
+        min_order_value       = COALESCE($3, min_order_value),
+        estimated_delivery_time = COALESCE($4, estimated_delivery_time),
+        coverage_areas        = COALESCE($5, coverage_areas),
+        notes                 = COALESCE($6, notes),
+        status                = COALESCE($7, status)
+      WHERE zone_id = $8
     `,
         [
           zone_name || null,
@@ -676,10 +720,10 @@ router.delete(
   requireRole("superadmin", "manager"),
   async (req, res, next) => {
     try {
-      await pool.query("UPDATE drivers SET zone_id=NULL WHERE zone_id=$1", [
+      await pool.query("UPDATE drivers SET primary_zone_id=NULL WHERE primary_zone_id=$1", [
         req.params.id,
       ]);
-      await pool.query("DELETE FROM delivery_zones WHERE id=$1", [
+      await pool.query("DELETE FROM delivery_zones WHERE zone_id=$1", [
         req.params.id,
       ]);
       res.json({ message: "Zone deleted" });

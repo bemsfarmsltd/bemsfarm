@@ -23,8 +23,6 @@ const STATUS_CFG = {
   rejected:   { label:'Rejected',   color:'#991b1b', bg:'#fee2e2' },
 }
 
-const MOCK_RETURNS = []
-
 function nextRef(list) {
   const max=list.reduce((m,r)=>Math.max(m,Number(r.ref.split('-')[2])),0)
   return `RTN-2026-${String(max+1).padStart(3,'0')}`
@@ -516,7 +514,7 @@ export default function Refunds() {
                 {[['Product',selected.product],['Qty Returned',`${selected.qty} ${selected.unit}`],['Unit Price',`₦${selected.unitPrice?.toLocaleString()}`],['Total Value',`₦${selected.totalValue?.toLocaleString()}`],['Order Ref',selected.ordRef||'—'],['Reason',selected.reason]].map(([k,v],i)=>(
                   <div key={i} style={{ display:'flex',justifyContent:'space-between',marginBottom:8,gap:16 }}>
                     <span style={{ color:'var(--text-muted)' }}>{k}</span>
-                    <span style={{ fontWeight:k==='Total Value'?700:500,color:k==='Total Value'?'#f06548':'#111827',textAlign:'right' }}>{v}</span>
+                    <span style={{ fontWeight:k==='Total Value'?700:500,color:k==='Total Value'?'#f06548':'var(--text-primary)',textAlign:'right' }}>{v}</span>
                   </div>
                 ))}
                 {selected.notes&&(
@@ -541,7 +539,7 @@ export default function Refunds() {
                 {[['Refund Amount',selected.refundAmount>0?`₦${selected.refundAmount.toLocaleString()}`:'—'],['Refund Method',selected.refundMethod||'—'],selected.refundRef&&['Ref / Receipt',selected.refundRef],['Processed By',selected.processedBy||'—'],['Processed On',selected.processedOn||'—']].filter(Boolean).map(([k,v])=>(
                   <div key={k} style={{ display:'flex',justifyContent:'space-between',marginBottom:8 }}>
                     <span style={{ color:'var(--text-muted)' }}>{k}</span>
-                    <span style={{ fontWeight:k==='Refund Amount'?700:400,color:k==='Refund Amount'?'#f06548':'#111827' }}>{v}</span>
+                    <span style={{ fontWeight:k==='Refund Amount'?700:400,color:k==='Refund Amount'?'#f06548':'var(--text-primary)' }}>{v}</span>
                   </div>
                 ))}
                 {selected.inspectionNotes&&(

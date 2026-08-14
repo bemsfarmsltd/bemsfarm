@@ -19,7 +19,10 @@ export default function ContactPage() {
   const isTablet = width >= 640 && width < 1024;
 
   const handleSend = async () => {
-    if (!form.name || !form.email || !form.message) return;
+    if (!form.name || !form.email || !form.message) {
+      setError("Please fill in your name, email, and message before sending.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -170,7 +173,7 @@ export default function ContactPage() {
             }}
           >
             Questions about your order? Need help finding a product? We respond
-            within minutes.
+            within 24 hours.
           </p>
         </div>
       </div>

@@ -3,10 +3,10 @@ import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 import api from '../../lib/api'
 
-const fmt = n => `₦${Number(n).toLocaleString()}`
+const fmt = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const ini = n => n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
 const fmtDate = d => d ? new Date(d).toISOString().slice(0,10) : '—'
-const fmtTime = d => d ? new Date(d).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : ''
+const fmtTime = d => d ? new Date(d).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'}) : ''
 
 const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec4899','#f97316','#14b8a6','#6366f1','#84cc16','#a855f7','#ef4444','#10b981','#d97706','#6366f1']
 
@@ -309,7 +309,7 @@ export default function WalletBalance() {
             <div style={{ marginBottom:14 }}>
               <label style={lbl}>Amount <span style={{ color:'#dc2626' }}>*</span></label>
               <div style={{ display:'flex' }}>
-                <span style={{ padding:'9px 10px', borderRadius:'8px 0 0 8px', border:'1.5px solid var(--border)', borderRight:'none', background:'#f1f5f9', fontSize:13, color:'var(--text-secondary)', flexShrink:0 }}>₦</span>
+                <span style={{ padding:'9px 10px', borderRadius:'8px 0 0 8px', border:'1.5px solid var(--border)', borderRight:'none', background:'var(--bg-subtle)', fontSize:13, color:'var(--text-secondary)', flexShrink:0 }}>₦</span>
                 <input type="number" min={1} placeholder="Enter amount" value={amount} onChange={e => setAmount(e.target.value)} style={{ ...inp, borderRadius:'0 8px 8px 0', flex:1 }} />
               </div>
               {amount && <div style={{ marginTop:4, fontSize:11, color:'#22c55e' }}>New balance: {fmt(selectedCust.wallet+parseInt(amount||0))}</div>}
@@ -342,7 +342,7 @@ export default function WalletBalance() {
             <div style={{ marginBottom:14 }}>
               <label style={lbl}>Amount to Debit <span style={{ color:'#dc2626' }}>*</span></label>
               <div style={{ display:'flex' }}>
-                <span style={{ padding:'9px 10px', borderRadius:'8px 0 0 8px', border:'1.5px solid var(--border)', borderRight:'none', background:'#f1f5f9', fontSize:13, color:'var(--text-secondary)', flexShrink:0 }}>₦</span>
+                <span style={{ padding:'9px 10px', borderRadius:'8px 0 0 8px', border:'1.5px solid var(--border)', borderRight:'none', background:'var(--bg-subtle)', fontSize:13, color:'var(--text-secondary)', flexShrink:0 }}>₦</span>
                 <input type="number" min={1} max={selectedCust.wallet} placeholder="Enter amount" value={amount} onChange={e => setAmount(e.target.value)} style={{ ...inp, borderRadius:'0 8px 8px 0', flex:1 }} />
               </div>
               {amount && parseInt(amount)>selectedCust.wallet && <div style={{ fontSize:11, color:'#dc2626', marginTop:4 }}>Exceeds wallet balance.</div>}

@@ -4,7 +4,7 @@ import api from '../../lib/api'
 import PageHeader from '../../components/ui/PageHeader'
 import toast from 'react-hot-toast'
 
-const fmt    = n  => `₦${Number(n || 0).toLocaleString('en-NG')}`
+const fmt    = n  => `₦${Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const ini    = n  => (n||'??').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
 const fmtPts = n  => Number(n||0).toLocaleString()+' pts'
 

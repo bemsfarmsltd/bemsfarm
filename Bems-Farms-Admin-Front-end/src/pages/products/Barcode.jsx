@@ -3,41 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
 const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
 const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
 const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
 const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
 const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
-
-function BarcodeDisplay({ value, type }) {
-  const BAR_W = 1.5
-  const bars = useMemo(() => {
-    let hash = 0
-    for (let i=0;i<value.length;i++) hash=(hash*31+value.charCodeAt(i))>>>0
-    const count = 20 + (hash % 15)
-    const result = []
-    for (let i=0;i<count;i++) result.push((hash>>(i%32))&1 ? BAR_W*(1+(i%3)) : BAR_W*0.7)
-    return result
-  }, [value])
-
-  if (type==='qr') return (
-    <div style={{ width:64,height:64,display:'grid',gridTemplateColumns:'repeat(8,8px)',gap:0 }}>
-      {[...Array(64)].map((_,i)=>{
-        let h=0; for(let j=0;j<value.length;j++) h=(h*31+value.charCodeAt(j))>>>0
-        return <div key={i} style={{ width:8,height:8,background:(h>>((i*3)%32))&1?'#111827':'transparent' }}/>
-      })}
-    </div>
-  )
-
-  return (
-    <div style={{ display:'flex',alignItems:'flex-end',height:40,gap:'1px' }}>
-      {bars.map((w,i)=>(
-        <div key={i} style={{ width:w,height:i%2===0?40:30,background:'#111827',flexShrink:0 }}/>
-      ))}
-    </div>
-  )
-}
 
 function TableStepper({ value, onChange }) {
   const handleMinus = () => {
@@ -241,10 +211,6 @@ export default function Barcode() {
     }, 500)
   }
 
-  const handleGenerate = () => {
-    toast.success('Barcodes generated successfully!')
-  }
-
   const B = 'var(--border)', S = '#6b7280'
 
   if (loading) return (
@@ -272,6 +238,11 @@ export default function Barcode() {
         <div style={{ marginBottom:20 }}>
           <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:16,color:'var(--text-primary)' }}>Print Barcodes</div>
           <div style={{ fontSize:12,color:S,marginTop:2 }}>Generate, customize and print product barcodes with advanced options</div>
+        </div>
+
+        <div style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'10px 14px', borderRadius:10, marginBottom:20, background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', fontSize:12 }}>
+          <i className="ri-alert-line" style={{ fontSize:16, flexShrink:0, marginTop:1 }} />
+          <span>Printed labels show product name, SKU and price only — this page does not render a real scannable barcode/QR graphic. Use the product's existing barcode (set in Products) if you need a physical label a scanner can read.</span>
         </div>
 
         {/* Product Selection Area */}
@@ -483,19 +454,6 @@ export default function Barcode() {
             >
               <i className="ri-printer-line"/>
               Print
-            </button>
-            <button
-              onClick={handleGenerate}
-              disabled={selectedList.length === 0}
-              style={{
-                ...btnP,
-                borderRadius:8,
-                padding:'10px 20px',
-                opacity: selectedList.length === 0 ? 0.5 : 1
-              }}
-            >
-              <i className="ri-magic-line"/>
-              Generate
             </button>
           </div>
         </div>

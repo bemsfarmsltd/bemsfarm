@@ -118,10 +118,6 @@ export function priceStyle(size = "md") {
   };
 }
 
-export function formatNaira(amount) {
-  return `₦${Math.round(amount).toLocaleString("en-NG")}`;
-}
-
 // ── BADGE / PILL ─────────────────────────────────────────────
 export function badgeStyle(tone = "neutral") {
   const tones = {

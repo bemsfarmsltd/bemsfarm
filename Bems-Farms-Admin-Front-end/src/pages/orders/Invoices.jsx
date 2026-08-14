@@ -18,7 +18,7 @@ const CHANNEL_CFG = {
   manual:    { label:'Manual',         icon:'ri-edit-line',       color:'#f59e0b' },
 }
 
-const fmt       = (n) => `₦${Number(n).toLocaleString()}`
+const fmt       = (n) => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const calcSub   = (items) => items.reduce((s,i)=>s+i.total,0)
 const calcTotal = (items,fee,disc) => calcSub(items)+Number(fee||0)-Number(disc||0)
 

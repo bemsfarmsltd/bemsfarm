@@ -12,12 +12,6 @@ const EXPORT_TYPES = [
 
 const FORMATS = ['CSV','XLSX','PDF']
 
-const HISTORY = [
-  { type:'products',   file:'products_export_2026-03-01.csv',  by:'Admin',         rows:42, format:'CSV',  date:'01 Mar 2026',size:'84 KB' },
-  { type:'inventory',  file:'inventory_2026-02-20.xlsx',        by:'Store Manager', rows:38, format:'XLSX', date:'20 Feb 2026',size:'62 KB' },
-  { type:'categories', file:'categories_2026-01-15.csv',        by:'Admin',         rows:8,  format:'CSV',  date:'15 Jan 2026',size:'4 KB'  },
-]
-
 const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
 const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
 const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
@@ -33,7 +27,11 @@ export default function BulkExport() {
   const [dateTo, setDateTo]                 = useState('')
   const [filterStatus, setFilterStatus]     = useState('all')
   const [exporting, setExporting]           = useState(false)
-  const [history, setHistory]               = useState(HISTORY)
+  const [downloadingType, setDownloadingType] = useState(null)
+  // Real export history — there's no backend storage for past export
+  // files, so this only ever reflects exports made this session, rather
+  // than a fabricated multi-month audit trail.
+  const [history, setHistory]               = useState([])
 
   const typeConfig = EXPORT_TYPES.find(t=>t.key===selectedType)
   const fields     = useMemo(() => selectedFields || typeConfig.fields, [selectedFields, typeConfig])
@@ -52,6 +50,26 @@ export default function BulkExport() {
     }
   }
 
+  // Shared by the main "Export" button and each history row's re-download —
+  // both trigger a real CSV fetch + browser download for the given type.
+  async function downloadExport(type) {
+    const res = await api.get(`/admin/config/export`, {
+      params: { type },
+      responseType: 'blob'
+    })
+    const blob = new Blob([res.data], { type: 'text/csv' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const filename = `${type}_export_${new Date().toISOString().slice(0,10)}.csv`
+    link.href = url
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+    link.parentNode.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    return { filename, blob }
+  }
+
   async function handleExport() {
     if (selectedFormat !== 'CSV') {
       toast.error('Only CSV format is currently supported for direct exports.')
@@ -59,27 +77,14 @@ export default function BulkExport() {
     }
     setExporting(true)
     try {
-      const res = await api.get(`/admin/config/export`, {
-        params: { type: selectedType },
-        responseType: 'blob'
-      })
-      const blob = new Blob([res.data], { type: 'text/csv' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      const filename = `${selectedType}_export_${new Date().toISOString().slice(0,10)}.csv`
-      link.href = url
-      link.setAttribute('download', filename)
-      document.body.appendChild(link)
-      link.click()
-      link.parentNode.removeChild(link)
-
+      const { filename, blob } = await downloadExport(selectedType)
       setHistory(p => [{
         type: selectedType,
         file: filename,
         by: 'Admin',
         rows: 'All',
         format: 'CSV',
-        date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        date: new Date().toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }),
         size: `${Math.round(blob.size / 1024)} KB`
       }, ...p])
       toast.success('Report exported successfully')
@@ -87,6 +92,18 @@ export default function BulkExport() {
       toast.error('Failed to export data')
     } finally {
       setExporting(false)
+    }
+  }
+
+  async function handleHistoryDownload(row) {
+    setDownloadingType(row.type)
+    try {
+      await downloadExport(row.type)
+      toast.success('Download started')
+    } catch {
+      toast.error('Failed to download')
+    } finally {
+      setDownloadingType(null)
     }
   }
 
@@ -129,7 +146,7 @@ export default function BulkExport() {
             <div style={{ padding:16,display:'flex',flexWrap:'wrap',gap:8 }}>
               {typeConfig.fields.map(f=>(
                 <button key={f} onClick={()=>toggleField(f)}
-                  style={{ display:'inline-flex',alignItems:'center',gap:5,padding:'5px 12px',borderRadius:20,border:`1.5px solid ${fields.includes(f)?typeConfig.color:B}`,background:fields.includes(f)?`${typeConfig.color}12`:'#fff',color:fields.includes(f)?typeConfig.color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontSize:12,fontWeight:600 }}>
+                  style={{ display:'inline-flex',alignItems:'center',gap:5,padding:'5px 12px',borderRadius:20,border:`1.5px solid ${fields.includes(f)?typeConfig.color:B}`,background:fields.includes(f)?`${typeConfig.color}12`:'var(--bg-card)',color:fields.includes(f)?typeConfig.color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontSize:12,fontWeight:600 }}>
                   {fields.includes(f)&&<i className="ri-check-line" style={{ fontSize:11 }}/>}
                   {f}
                 </button>
@@ -206,6 +223,11 @@ export default function BulkExport() {
               <tr>{['File','Type','Format','Rows','Exported By','Date','Size',''].map(h=><th key={h} style={TH}>{h}</th>)}</tr>
             </thead>
             <tbody>
+              {history.length===0&&(
+                <tr><td colSpan={8} style={{ ...TD,textAlign:'center',padding:'40px 0',color:S }}>
+                  <i className="ri-download-cloud-2-line" style={{ fontSize:32,display:'block',marginBottom:8 }}/>No exports yet this session
+                </td></tr>
+              )}
               {history.map((row,i)=>{
                 const cfg = EXPORT_TYPES.find(t=>t.key===row.type)||EXPORT_TYPES[0]
                 return (
@@ -226,7 +248,7 @@ export default function BulkExport() {
                     <td style={{ ...TD,color:S,fontSize:12 }}>{row.size}</td>
                     <td style={TD}>
                       <div style={{ display:'flex',gap:4 }}>
-                        <button style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0f4ff',color:'#405189',cursor:'pointer' }}><i className="ri-download-line"/></button>
+                        <button onClick={()=>handleHistoryDownload(row)} disabled={downloadingType===row.type} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0f4ff',color:'#405189',cursor:downloadingType===row.type?'wait':'pointer' }}><i className={downloadingType===row.type?'ri-loader-4-line':'ri-download-line'}/></button>
                         <button onClick={()=>setHistory(p=>p.filter((_,idx)=>idx!==i))} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#fff0f0',color:'#f06548',cursor:'pointer' }}><i className="ri-delete-bin-line"/></button>
                       </div>
                     </td>

@@ -17,6 +17,7 @@ const { protect, requireRole } = require("../middleware/authMiddleware");
 const { NAIRA_PER_UNIT } = require("../utils/currency");
 const { validateCoupon, recordCouponUsage } = require("../utils/coupons");
 const { getTaxSettings, computeTax } = require("../utils/taxSettings");
+const { clampLimit } = require("../utils/pagination");
 const validate = require("../middleware/validate");
 const posSchemas = require("../schemas/posSchemas");
 
@@ -180,7 +181,8 @@ router.get("/session/current", requireRole("superadmin", "manager", "admin", "ca
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/sessions", requireRole("superadmin","manager","admin"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, from, to, cashier_id } = req.query;
+    const { page = 1, limit: limitRaw = 20, from, to, cashier_id } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const params = []; const where = [];
 
     if (from) { params.push(from); where.push(`DATE(ps.opened_at)>=$${params.length}`); }
@@ -527,7 +529,8 @@ router.post("/transaction", requireRole("superadmin","manager","admin","cashier"
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/receipts", requireRole("superadmin","manager","admin","cashier","accountant"), async (req, res, next) => {
   try {
-    const { search = "", from, to, payment_method, cashier_id, page = 1, limit = 20 } = req.query;
+    const { search = "", from, to, payment_method, cashier_id, page = 1, limit: limitRaw = 20 } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const params = []; const where = ["o.status = 'completed'", "(o.source = 'pos' OR o.source = 'Physical Store (POS)')"];
 
     if (search) {
@@ -603,7 +606,8 @@ router.get("/receipts", requireRole("superadmin","manager","admin","cashier","ac
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/products", requireRole("superadmin", "manager", "admin", "cashier"), async (req, res, next) => {
   try {
-    const { q = "", barcode, category_id, limit = 50 } = req.query;
+    const { q = "", barcode, category_id, limit: limitRaw = 50 } = req.query;
+    const limit = clampLimit(limitRaw, 50);
     const params = []; const where = ["p.status='active'"];
 
     if (barcode) {
@@ -644,7 +648,8 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/customers", requireRole("superadmin", "manager", "admin", "cashier"), async (req, res, next) => {
   try {
-    const { q = "", limit = 20 } = req.query;
+    const { q = "", limit: limitRaw = 20 } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const result = await pool.query(
       `SELECT id, name, email, phone, loyalty_points
        FROM customers

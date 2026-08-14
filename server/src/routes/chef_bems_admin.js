@@ -5,6 +5,7 @@ const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { clampLimit } = require("../utils/pagination");
 
 router.use(protect);
 const AI_ROLES = requireRole("superadmin","manager","kitchen_staff");
@@ -12,7 +13,8 @@ const AI_ROLES = requireRole("superadmin","manager","kitchen_staff");
 // ─── CONVERSATIONS ────────────────────────────────────────────────────────────
 router.get("/conversations", AI_ROLES, async (req, res, next) => {
   try {
-    const { search = "", status, page = 1, limit = 20 } = req.query;
+    const { search = "", status, page = 1, limit: limitRaw = 20 } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const params = []; const where = [];
     if (search) { params.push(`%${search}%`); where.push(`(customer_name ILIKE $${params.length} OR user_message ILIKE $${params.length} OR session_id ILIKE $${params.length})`); }
     if (status) { params.push(status); where.push(`status = $${params.length}`); }
@@ -49,7 +51,8 @@ router.delete("/conversations/:id", requireRole("superadmin"), async (req, res, 
 
 router.get("/dietary-rules", AI_ROLES, async (req, res, next) => {
   try {
-    const { search = "", page = 1, limit = 50 } = req.query;
+    const { search = "", page = 1, limit: limitRaw = 50 } = req.query;
+    const limit = clampLimit(limitRaw, 50);
     const params = []; const where = [];
     if (search) { params.push(`%${search}%`); where.push(`(condition ILIKE $${params.length} OR rule_text ILIKE $${params.length} OR tags ILIKE $${params.length})`); }
     const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -101,7 +104,8 @@ router.delete("/dietary-rules/:id", requireRole("superadmin"), async (req, res, 
 // ─── MEAL ASSOCIATIONS ────────────────────────────────────────────────────────
 router.get("/meal-associations", AI_ROLES, async (req, res, next) => {
   try {
-    const { search = "", page = 1, limit = 50 } = req.query;
+    const { search = "", page = 1, limit: limitRaw = 50 } = req.query;
+    const limit = clampLimit(limitRaw, 50);
     const params = []; const where = [];
     if (search) { params.push(`%${search}%`); where.push(`(product_name ILIKE $${params.length} OR associated_product_name ILIKE $${params.length} OR association_type ILIKE $${params.length})`); }
     const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -151,7 +155,8 @@ router.delete("/meal-associations/:id", requireRole("superadmin","manager"), asy
 
 router.get("/substitutions", AI_ROLES, async (req, res, next) => {
   try {
-    const { search = "", page = 1, limit = 50 } = req.query;
+    const { search = "", page = 1, limit: limitRaw = 50 } = req.query;
+    const limit = clampLimit(limitRaw, 50);
     const params = []; const where = [];
     if (search) { params.push(`%${search}%`); where.push(`(original_item ILIKE $${params.length} OR substitute_item ILIKE $${params.length} OR dietary_tags ILIKE $${params.length})`); }
     const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -203,7 +208,8 @@ router.delete("/substitutions/:id", requireRole("superadmin","manager"), async (
 
 router.get("/recommendations", AI_ROLES, async (req, res, next) => {
   try {
-    const { search = "", page = 1, limit = 50 } = req.query;
+    const { search = "", page = 1, limit: limitRaw = 50 } = req.query;
+    const limit = clampLimit(limitRaw, 50);
     const params = []; const where = [];
     if (search) { params.push(`%${search}%`); where.push(`(title ILIKE $${params.length} OR trigger_condition ILIKE $${params.length} OR recommended_items ILIKE $${params.length})`); }
     const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";

@@ -3,8 +3,8 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/ui/PageHeader'
 
-const fmt  = n => `₦${Number(n || 0).toLocaleString()}`
-const fmtD = s => s ? new Date(s).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
+const fmt  = n => `₦${Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const fmtD = s => s ? new Date(s).toLocaleString('en-NG', { day:'2-digit', month:'short', year:'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
 
 const STATUS_CFG = {
   successful: { label: 'Successful', bg: 'var(--bg-green-faint)', color: '#22c55e' },

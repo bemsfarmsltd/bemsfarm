@@ -7,6 +7,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
+const { clampLimit } = require("../utils/pagination");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { trackActivity } = require("../utils/aiContext");
 
@@ -58,12 +59,13 @@ router.get("/", requireRole("superadmin", "manager", "admin"), async (req, res, 
   try {
     const {
       page = 1,
-      limit = 20,
+      limit: limitRaw = 20,
       search = "",
       category = "",
       status = "",
       stock = "", // "low" | "out" | ""
     } = req.query;
+    const limit = clampLimit(limitRaw, 20);
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
@@ -108,12 +110,13 @@ router.get("/", requireRole("superadmin", "manager", "admin"), async (req, res, 
         p.expiry_date, p.created_at, p.hsn_code, p.track_inventory,
         cat.name AS category,
         COALESCE(
-          SUM(oi.subtotal),
-          SUM(oi.quantity * oi.price), 0
+          SUM(oi.subtotal) FILTER (WHERE o.status NOT IN ('cancelled','failed')),
+          SUM(oi.quantity * oi.price) FILTER (WHERE o.status NOT IN ('cancelled','failed')), 0
         ) AS revenue
       FROM products p
       LEFT JOIN categories cat ON p.category_id = cat.id
       LEFT JOIN order_items oi ON oi.product_id = p.id
+      LEFT JOIN orders o ON o.id = oi.order_id
       ${whereClause}
       GROUP BY p.id, cat.name
       ORDER BY p.created_at DESC

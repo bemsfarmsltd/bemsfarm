@@ -211,8 +211,6 @@ const DIETARY_RULES = {
 // ── GET SMART RECOMMENDATIONS ────────────────────────────────
 router.post("/recommendations", async (req, res, next) => {
   try {
-    console.log("🎯 Smart recommendations request:", req.body);
-
     const { dietary_need, budget, family_size } = req.body;
 
     if (!dietary_need) {
@@ -220,7 +218,6 @@ router.post("/recommendations", async (req, res, next) => {
     }
 
     const rules = DIETARY_RULES[dietary_need] || DIETARY_RULES.general;
-    console.log("📖 Using rules for:", dietary_need);
 
     try {
       const productsResult = await pool.query(
@@ -265,8 +262,6 @@ router.post("/recommendations", async (req, res, next) => {
         (a, b) => priorityOrder[a.priority] - priorityOrder[b.priority],
       );
 
-      console.log("✅ Generated", matched.length, "smart recommendations");
-
       res.json({
         recommendations: matched.slice(0, 8),
         health_note: rules.healthNote,
@@ -297,11 +292,6 @@ router.post("/co-purchase", async (req, res, next) => {
       return res.status(400).json({ message: "product_id required" });
     }
 
-    console.log(
-      "🛒 Finding co-purchase recommendations for product:",
-      product_id,
-    );
-
     const result = await pool.query(
       `
       SELECT
@@ -330,8 +320,6 @@ router.post("/co-purchase", async (req, res, next) => {
       frequency: r.frequency,
       buyTogetherPercentage: r.buy_together_percentage,
     }));
-
-    console.log("✅ Found", recommendations.length, "co-purchases");
 
     res.json({
       message: `Customers who bought this also bought:`,
@@ -502,12 +490,6 @@ router.post("/recipe-helper", async (req, res, next) => {
         unit: product?.unit || "1 unit",
       };
     });
-
-    console.log(
-      `✅ Recipe helper (${source}) found`,
-      ingredients.length,
-      "ingredients",
-    );
 
     res.json({
       recipe_name,
@@ -1030,7 +1012,6 @@ router.post("/visual-scan", async (req, res, next) => {
     const mimeType = matches[1];
     const base64Data = matches[2];
 
-    console.log(`📸 Running ingredient visual scan (Mime: ${mimeType})...`);
     const visionData = await callGeminiVision(base64Data, mimeType);
     const detectedIngredients = visionData.ingredients || [];
 

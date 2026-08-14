@@ -190,7 +190,7 @@ export default function Footer() {
             className="bf-footer-bottom-links"
             style={{ display: "flex", flexWrap: "wrap" }}
           >
-            {["Privacy", "Terms", "Support"].map((item) => (
+            {["Support"].map((item) => (
               <a
                 key={item}
                 href="/contact"

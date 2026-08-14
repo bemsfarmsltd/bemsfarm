@@ -8,7 +8,7 @@ const EMPTY_FORM = {
   contact_person: '', category: '', payment_terms: '', credit_limit: '', notes: '', status: 'active',
 }
 
-const fmt = (n) => '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })
+const fmt = (n) => '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 function StatusBadge({ status }) {
   if (status === 'active')
@@ -403,7 +403,7 @@ export default function SuppliersList() {
                       <tbody>
                         {viewPayments.map(p => (
                           <tr key={p.id}>
-                            <td>{p.date ? new Date(p.date).toLocaleDateString('en-GB') : '—'}</td>
+                            <td>{p.date ? new Date(p.date).toLocaleDateString('en-NG') : '—'}</td>
                             <td>{fmt(p.amount)}</td>
                             <td>{p.payment_method || '—'}</td>
                             <td>{p.reference || '—'}</td>

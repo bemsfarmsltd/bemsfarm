@@ -11,6 +11,7 @@ const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const storeAdminSchemas = require("../schemas/storeAdminSchemas");
+const { clampLimit } = require("../utils/pagination");
 
 router.use(protect);
 
@@ -19,7 +20,8 @@ router.use(protect);
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
-    const { status = "", search = "", page = 1, limit = 50 } = req.query;
+    const { status = "", search = "", page = 1, limit: limitRaw = 50 } = req.query;
+    const limit = clampLimit(limitRaw, 50);
     const params = [];
     const where  = [];
 

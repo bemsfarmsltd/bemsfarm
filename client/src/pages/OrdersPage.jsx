@@ -4,45 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
 import api from "../services/api";
-
-const PRODUCT_IMAGES = {
-  "Ofada Rice":
-    "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141430/ofada_rice_mhhzt2.jpg",
-  "Long Grain Rice":
-    "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141706/long_grain_rice_yn01lt.jpg",
-  "Palm Oil":
-    "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141485/palm_oil_ufbfu6.jpg",
-  "Groundnut Oil":
-    "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141769/Groundnut-oil_mgv43t.jpg",
-  "Black-eyed Beans":
-    "https://res.cloudinary.com/dyzkjerez/image/upload/v1780142333/black-eyed-beans_i2n8fi.jpg",
-  "Brown Beans":
-    "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141864/brown_beans_zxbjos.jpg",
-  "Garri (White)":
-    "https://res.cloudinary.com/dyzkjerez/image/upload/v1780142399/white_garri_zaq8i4.png",
-  "Garri (Yellow)":
-    "https://res.cloudinary.com/dyzkjerez/image/upload/v1780142425/yellow_garri_kxiyxr.png",
-  "Fresh Tomatoes":
-    "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141584/tomatoes_omiotj.jpg",
-  "Dried Crayfish":
-    "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141631/crayfish_bslwl4.jpg",
-  Cocoyam:
-    "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141939/cocoyam_wvtyqz.png",
-  "Ugu Leaves":
-    "https://res.cloudinary.com/dyzkjerez/image/upload/v1780142531/ugu_zva1av.png",
-};
-
-function getProductImage(item) {
-  if (
-    item.image_url?.startsWith("data:") ||
-    item.image_url?.startsWith("http")
-  )
-    return item.image_url;
-  return (
-    PRODUCT_IMAGES[item.name] ||
-    "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=400&q=80"
-  );
-}
+import { NAIRA_PER_UNIT } from "../utils/currency";
+import { getProductImage } from "../utils/productImages";
 
 const STATUS_CONFIG = {
   pending: { color: "#D97706", bg: "#FEF3C7", label: "Pending", icon: "⏳" },
@@ -412,7 +375,11 @@ export default function OrdersPage() {
       addToCart({
         id: item.product_id,
         name: item.name,
-        price: item.price,
+        // order_items.price is stored in full Naira (server multiplies by
+        // NAIRA_PER_UNIT at order time) — divide back out so it matches the
+        // base-unit convention CartContext expects, or reordering silently
+        // inflates the cart total by NAIRA_PER_UNIT (1500x).
+        price: item.price / NAIRA_PER_UNIT,
         image_url: item.image_url || getProductImage(item),
       });
     });
@@ -570,6 +537,16 @@ export default function OrdersPage() {
                 month: "short",
                 year: "numeric",
               });
+              // Delivered orders have an actual delivery date — showing a
+              // computed "estimate" for something that already happened is
+              // misleading, so use the real status-change timestamp instead.
+              const deliveredDate = order.status === "delivered"
+                ? new Date(order.updated_at || order.updatedAt || order.created_at).toLocaleDateString("en-NG", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : null;
 
               return (
                 <div key={order.id} className="op-card">
@@ -646,12 +623,12 @@ export default function OrdersPage() {
                     ))}
                   </div>
 
-                  {/* Delivery estimated footer */}
+                  {/* Delivery date footer */}
                   {order.status !== "cancelled" && (
                     <div className="op-card-footer">
                       <i className="ri-truck-line" style={{ color: "#2E7D32", fontSize: "15px" }} />
-                      <span>Estimated Delivery:</span>
-                      <span style={{ color: "#111827" }}>{estDelivery}</span>
+                      <span>{deliveredDate ? "Delivered:" : "Estimated Delivery:"}</span>
+                      <span style={{ color: "#111827" }}>{deliveredDate || estDelivery}</span>
                     </div>
                   )}
                 </div>

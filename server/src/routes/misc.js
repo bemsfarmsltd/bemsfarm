@@ -47,13 +47,10 @@ router.post("/contact", async (req, res, next) => {
 
 // ── SUBSCRIBE ─────────────────────────────────────────────────
 router.post("/subscribe", async (req, res, next) => {
-  console.log("📧 Subscribe hit. Body:", req.body);
-
   const { email, referred_by } = req.body;
 
   // Validate
   if (!email) {
-    console.log("❌ No email provided");
     return res.status(400).json({ message: "Email is required" });
   }
   if (
@@ -61,7 +58,6 @@ router.post("/subscribe", async (req, res, next) => {
     !email.includes("@") ||
     !email.includes(".")
   ) {
-    console.log("❌ Invalid email:", email);
     return res
       .status(400)
       .json({ message: "Please enter a valid email address" });
@@ -79,7 +75,6 @@ router.post("/subscribe", async (req, res, next) => {
 
     if (checkRes.rows.length > 0) {
       const existing = checkRes.rows[0];
-      console.log("ℹ️ Email already subscribed:", existing.email);
       return res.json({
         success: true,
         message: `Welcome back! You are already subscribed. Your discount code is ${existing.discount_code}.`,
@@ -121,15 +116,11 @@ router.post("/subscribe", async (req, res, next) => {
     }
 
     // 4. Insert new subscription
-    const insertRes = await pool.query(
+    await pool.query(
       `INSERT INTO email_subscriptions (email, referral_code, referred_by, discount_code, is_active, subscribed_at)
-       VALUES ($1, $2, $3, 'BEMS10', true, NOW())
-       RETURNING id, email, referral_code, discount_code`,
+       VALUES ($1, $2, $3, 'BEMS10', true, NOW())`,
       [cleanEmail, referralCode, finalReferredBy]
     );
-
-    const newSub = insertRes.rows[0];
-    console.log("✅ New subscriber registered:", newSub);
 
     // 5. Update referrer count & check threshold rewards
     if (finalReferredBy) {
@@ -144,7 +135,6 @@ router.post("/subscribe", async (req, res, next) => {
 
         if (referrerUpdate.rows.length > 0) {
           const referrer = referrerUpdate.rows[0];
-          console.log(`📈 Referrer ${referrer.email} count updated to ${referrer.referral_count}`);
 
           // Trigger rewards upgrade
           let upgradeCode = null;

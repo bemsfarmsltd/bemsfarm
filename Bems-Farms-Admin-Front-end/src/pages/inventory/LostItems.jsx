@@ -62,6 +62,7 @@ export default function LostItems() {
   const [saving,     setSaving]   = useState(false)
   const [filterStatus, setFilterStatus] = useState('')
   const [error, setError] = useState(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
@@ -163,7 +164,7 @@ export default function LostItems() {
   function closeView()    { setViewItem(null) }
 
   async function handleDelete(id) {
-    if (!window.confirm('Are you sure you want to delete this report?')) return
+    setConfirmDeleteId(null)
     try {
       await api.delete(`/admin/inventory/lost-items/${id}`)
       toast.success('Report deleted successfully')
@@ -348,7 +349,7 @@ export default function LostItems() {
                         <button onClick={() => { setForm({ ...r, date: formatDate(r.created_at) }); setShowForm(true); }} title="Edit Report" style={{ background:'none', border:'none', color:'#475569', cursor:'pointer', padding:4, display:'inline-flex', alignItems:'center' }}>
                           <i className="ri-pencil-line" style={{ fontSize:15 }}/>
                         </button>
-                        <button onClick={() => handleDelete(r.id)} title="Delete Report" style={{ background:'none', border:'none', color:'#ef4444', cursor:'pointer', padding:4, display:'inline-flex', alignItems:'center' }}>
+                        <button onClick={() => setConfirmDeleteId(r.id)} title="Delete Report" style={{ background:'none', border:'none', color:'#ef4444', cursor:'pointer', padding:4, display:'inline-flex', alignItems:'center' }}>
                           <i className="ri-delete-bin-line" style={{ fontSize:15 }}/>
                         </button>
                       </div>
@@ -453,12 +454,30 @@ export default function LostItems() {
               ))}
             </div>
             {viewItem.notes && (
-              <div style={{ background:'#fef9f9', border:'1px solid #fecaca', borderRadius:10, padding:'12px 14px', fontSize:13, color:'var(--text-muted)', lineHeight:1.6 }}>
+              <div style={{ background:'var(--bg-subtle)', border:'1px solid #fecaca', borderRadius:10, padding:'12px 14px', fontSize:13, color:'var(--text-muted)', lineHeight:1.6 }}>
                 <strong style={{ color:'var(--text-secondary)' }}>Notes: </strong>{viewItem.notes}
               </div>
             )}
             <div style={{ marginTop:16 }}>
               <button onClick={closeView} style={{ ...btnL, justifyContent:'center', width:'100%' }}>Close</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete confirmation modal */}
+      {confirmDeleteId && (
+        <Modal title="Delete Report?" onClose={() => setConfirmDeleteId(null)} maxWidth={400}>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ width:56, height:56, borderRadius:'50%', background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
+              <i className="ri-delete-bin-line" style={{ fontSize:24, color:'#dc2626' }} />
+            </div>
+            <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:24 }}>
+              This lost-item report will be permanently deleted. This cannot be undone.
+            </div>
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={() => setConfirmDeleteId(null)} style={{ ...btnL, flex:1, justifyContent:'center' }}>Cancel</button>
+              <button onClick={() => handleDelete(confirmDeleteId)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>Delete</button>
             </div>
           </div>
         </Modal>

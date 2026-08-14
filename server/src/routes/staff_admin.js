@@ -117,6 +117,7 @@ const pool     = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const staffAdminSchemas = require("../schemas/staffAdminSchemas");
+const { clampLimit } = require("../utils/pagination");
 
 router.use(protect);
 
@@ -137,7 +138,8 @@ async function generateEmployeeCode(client) {
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, search = "", department = "", status = "", role = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, search = "", department = "", status = "", role = "" } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where  = [];
@@ -451,7 +453,8 @@ router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/attendance", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
-    const { date = new Date().toISOString().slice(0, 10), page = 1, limit = 50, staff_id = "" } = req.query;
+    const { date = new Date().toISOString().slice(0, 10), page = 1, limit: limitRaw = 50, staff_id = "" } = req.query;
+    const limit = clampLimit(limitRaw, 50);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [date];
     const extra  = staff_id ? ["sa.staff_id = $2"] : [];
@@ -502,8 +505,10 @@ router.post(
       const today    = new Date().toISOString().slice(0, 10);
       const nowTime  = new Date();
 
-      // Determine late status (if after 9:00 AM WAT)
-      const hour   = nowTime.getUTCHours() + 1; // rough WAT offset
+      // Determine late status (if after 9:00 AM WAT). Using the IANA zone
+      // directly avoids the UTC+1 arithmetic wrapping wrong at the WAT day
+      // boundary (UTC hour 23 → WAT hour 0, not 24).
+      const hour   = parseInt(nowTime.toLocaleString("en-US", { timeZone: "Africa/Lagos", hour: "2-digit", hour12: false }), 10);
       const status = hour >= 9 ? "late" : "present";
 
       const result = await pool.query(
@@ -652,7 +657,8 @@ router.delete("/schedule/:id", requireRole("superadmin", "manager"), async (req,
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/holidays", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
-    const { status = "", staff_id = "", page = 1, limit = 20 } = req.query;
+    const { status = "", staff_id = "", page = 1, limit: limitRaw = 20 } = req.query;
+    const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
     const where  = [];
