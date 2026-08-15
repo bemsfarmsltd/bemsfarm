@@ -177,7 +177,7 @@ export default function SubCategories() {
       <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
         <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap' }}>
           <div style={{ position:'relative',flex:'1 1 220px' }}>
-            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:15,pointerEvents:'none' }}/>
+            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
             <input type="text" placeholder="Search sub-categories…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp,paddingLeft:34 }}/>
           </div>
           <select style={{ ...inp,width:'auto' }} value={filterCat} onChange={e=>setFilterCat(e.target.value)}>
@@ -201,7 +201,7 @@ export default function SubCategories() {
             <tbody>
               {filtered.length===0&&(
                 <tr><td colSpan={7} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                  <i className="ri-price-tag-2-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>No sub-categories found
+                  <i className="ri-price-tag-2-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No sub-categories found
                 </td></tr>
               )}
               {filtered.map(r=>(
@@ -245,7 +245,7 @@ export default function SubCategories() {
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:480,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-price-tag-2-line" style={{ fontSize:18 }}/>
+                  <i className="ri-price-tag-2-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>{editItem?'Edit Sub-Category':'Add New Sub-Category'}</span>
                 <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
@@ -298,7 +298,7 @@ export default function SubCategories() {
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-delete-bin-line" style={{ fontSize:18 }}/>
+                  <i className="ri-delete-bin-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Delete Sub-Category?</span>
                 <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>

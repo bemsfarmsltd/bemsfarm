@@ -97,7 +97,7 @@ export default function StockAlerts() {
       {/* Critical banner */}
       {stats.out > 0 && (
         <div style={{ background:'#fef0ed', border:'1px solid #fecaca', borderRadius:10, padding:'12px 16px', display:'flex', alignItems:'center', gap:10, marginBottom:20, color:'#7f1d1d' }}>
-          <i className="ri-close-circle-fill" style={{ fontSize:18, color:'#dc2626', flexShrink:0 }}/>
+          <i className="ri-close-circle-fill" style={{ fontSize:24, color:'#dc2626', flexShrink:0 }}/>
           <span style={{ fontSize:13 }}><strong>{stats.out} product{stats.out > 1 ? 's' : ''} are completely out of stock</strong> — adjust stock levels or contact suppliers.</span>
         </div>
       )}
@@ -127,7 +127,7 @@ export default function StockAlerts() {
       <div style={{ background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
         <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <div style={{ position:'relative', flex:1, minWidth:200 }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:20 }}/>
             <input style={{ ...inp, paddingLeft:32 }} placeholder="Search product, SKU…" value={search} onChange={e => setSearch(e.target.value)}/>
           </div>
           <select style={{ ...inp, width:'auto', minWidth:140 }} value={filterSev} onChange={e => setSev(e.target.value)}>
@@ -154,7 +154,7 @@ export default function StockAlerts() {
                 </td></tr>
               ) : visible.length === 0 ? (
                 <tr><td colSpan={9} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
-                  <i className="ri-checkbox-circle-line" style={{ fontSize:32, display:'block', marginBottom:8, color:'#0ab39c' }}/>
+                  <i className="ri-checkbox-circle-line" style={{ fontSize:43, display:'block', marginBottom:8, color:'#0ab39c' }}/>
                   {alerts.length === 0 ? 'No alerts — all products well stocked!' : 'No alerts match your filters.'}
                 </td></tr>
               ) : visible.map(a => {

@@ -102,7 +102,7 @@ export default function LoyaltyPoints() {
       />
 
       {loading ? (
-        <div style={{ textAlign:'center', padding:60, color:'var(--text-muted)' }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
+        <div style={{ textAlign:'center', padding:60, color:'var(--text-muted)' }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
       ) : (
       <>
       {/* Tier Cards */}
@@ -135,7 +135,7 @@ export default function LoyaltyPoints() {
           {/* Search */}
           <div style={{ ...card, padding:'10px 14px', marginBottom:12 }}>
             <div style={{ position:'relative' }}>
-              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
+              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customers…" style={{ ...inp, paddingLeft:32 }} />
             </div>
           </div>
@@ -210,7 +210,7 @@ export default function LoyaltyPoints() {
             {history.slice(0,12).map((h,i) => (
               <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 16px', borderBottom: i<11?'1px solid #f9fafb':'none' }}>
                 <div style={{ width:32, height:32, borderRadius:'50%', background: h.type==='earn'?'#f0fdf4':h.type==='redeem'?'#fef2f2':'#f5f3ff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  <i className={h.type==='earn'?'ri-add-line':h.type==='redeem'?'ri-subtract-line':'ri-admin-line'} style={{ fontSize:13, color:h.type==='earn'?'#22c55e':h.type==='redeem'?'#ef4444':'#8b5cf6' }} />
+                  <i className={h.type==='earn'?'ri-add-line':h.type==='redeem'?'ri-subtract-line':'ri-admin-line'} style={{ fontSize:18, color:h.type==='earn'?'#22c55e':h.type==='redeem'?'#ef4444':'#8b5cf6' }} />
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:12, fontWeight:500, color:'var(--text-primary)' }}>{h.customer}</div>

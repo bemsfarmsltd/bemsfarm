@@ -634,7 +634,7 @@ export default function Navbar() {
                   lineHeight: 1,
                 }}
               >
-                <span style={{ fontSize: "19px" }}>🛒</span>
+                <span style={{ fontSize: "26" }}>🛒</span>
                 {cartCount > 0 && (
                   <span
                     style={{
@@ -794,7 +794,7 @@ export default function Navbar() {
                               "transparent")
                           }
                         >
-                          <span>{item.icon}</span>
+                          <span style={{fontSize:'1.35em'}}>{item.icon}</span>
                           <span>{item.label}</span>
                         </button>
                       ))}
@@ -833,7 +833,7 @@ export default function Navbar() {
                             "transparent")
                         }
                       >
-                        <span>🚪</span>
+                        <span style={{fontSize:'1.35em'}}>🚪</span>
                         <span>Sign Out</span>
                       </button>
                     </motion.div>

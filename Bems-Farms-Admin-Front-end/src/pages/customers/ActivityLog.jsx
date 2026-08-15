@@ -129,7 +129,7 @@ export default function ActivityLog() {
       <div style={{ ...card, padding:'14px 16px', marginBottom:14 }}>
         <div className="grid-form-cols" style={{ display:'grid', gridTemplateColumns:'1fr auto auto auto', gap:10, alignItems:'center' }}>
           <div style={{ position:'relative' }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
+            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, email, or reference…" style={{ ...inp, paddingLeft:32 }} />
           </div>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From" style={{ ...inp, width:'auto' }} />
@@ -157,13 +157,13 @@ export default function ActivityLog() {
       {/* Loading / empty states */}
       {loading && (
         <div style={{ ...card, padding:'48px', textAlign:'center', color:'var(--text-light)', fontSize:13 }}>
-          <i className="ri-loader-4-line" style={{ fontSize:32, display:'block', marginBottom:8 }} />
+          <i className="ri-loader-4-line" style={{ fontSize:43, display:'block', marginBottom:8 }} />
           Loading…
         </div>
       )}
       {!loading && activity.length===0 && (
         <div style={{ ...card, padding:'48px', textAlign:'center', color:'var(--text-light)', fontSize:13 }}>
-          <i className="ri-search-line" style={{ fontSize:32, display:'block', marginBottom:8 }} />
+          <i className="ri-search-line" style={{ fontSize:43, display:'block', marginBottom:8 }} />
           No activity matches your filters.
         </div>
       )}

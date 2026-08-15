@@ -125,7 +125,7 @@ export default function Warehouses() {
 
       {/* Search */}
       <div style={{ position:'relative', marginBottom:20, maxWidth:420 }}>
-        <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:15 }}/>
+        <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:20 }}/>
         <input style={{ ...inp, paddingLeft:32 }} placeholder="Search warehouses…" value={search} onChange={e => setSearch(e.target.value)}/>
       </div>
 
@@ -139,7 +139,7 @@ export default function Warehouses() {
       {/* Empty */}
       {!loading && filtered.length === 0 && (
         <div style={{ textAlign:'center', padding:60, color:'var(--text-light)' }}>
-          <i className="ri-building-line" style={{ fontSize:40, display:'block', marginBottom:10 }}/>No warehouses found
+          <i className="ri-building-line" style={{ fontSize:54, display:'block', marginBottom:10 }}/>No warehouses found
         </div>
       )}
 
@@ -152,7 +152,7 @@ export default function Warehouses() {
             <div key={w.id} style={{ background:'var(--bg-card)', borderRadius:14, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
               <div style={{ background:`${sc}10`, borderBottom:'1px solid var(--border)', padding:'16px 20px', display:'flex', alignItems:'center', gap:14 }}>
                 <div style={{ width:48, height:48, borderRadius:12, background:`${sc}20`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  <i className="ri-building-2-line" style={{ fontSize:22, color:sc }}/>
+                  <i className="ri-building-2-line" style={{ fontSize:30, color:sc }}/>
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15, color:'var(--text-primary)' }}>{w.name}</div>
@@ -162,8 +162,8 @@ export default function Warehouses() {
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:6 }}>
-                  <button onClick={() => openEdit(w)} title="Edit" style={{ width:28, height:28, borderRadius:7, border:'none', background:'#dbeafe', color:'#1d4ed8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><i className="ri-pencil-line" style={{ fontSize:12 }}/></button>
-                  <button onClick={() => openDel(w)} title="Delete" style={{ width:28, height:28, borderRadius:7, border:'none', background:'#fee2e2', color:'#dc2626', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:12 }}/></button>
+                  <button onClick={() => openEdit(w)} title="Edit" style={{ width:28, height:28, borderRadius:7, border:'none', background:'#dbeafe', color:'#1d4ed8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><i className="ri-pencil-line" style={{ fontSize:16 }}/></button>
+                  <button onClick={() => openDel(w)} title="Delete" style={{ width:28, height:28, borderRadius:7, border:'none', background:'#fee2e2', color:'#dc2626', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:16 }}/></button>
                 </div>
               </div>
 
@@ -245,7 +245,7 @@ export default function Warehouses() {
         <div style={{ position:'fixed', inset:0, zIndex:1055, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
           <div style={{ background:'var(--bg-card)', borderRadius:14, width:'100%', maxWidth:340, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', padding:28, textAlign:'center' }}>
             <div style={{ width:56, height:56, borderRadius:'50%', background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
-              <i className="ri-delete-bin-line" style={{ fontSize:24, color:'#dc2626' }}/>
+              <i className="ri-delete-bin-line" style={{ fontSize:32, color:'#dc2626' }}/>
             </div>
             <div style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:16, marginBottom:6 }}>Delete Warehouse?</div>
             <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:24 }}>{editItem?.name}{editItem?.code ? ` (${editItem.code})` : ''}</div>

@@ -465,7 +465,7 @@ export default function ProductsPage() {
                 marginBottom: "20px",
               }}
             >
-              <span style={{ fontSize: "20px" }}>⚠️</span>
+              <span style={{ fontSize: "27" }}>⚠️</span>
               <div>
                 <p style={{ fontWeight: 700, color: "#DC2626", margin: "0 0 4px" }}>Failed to load products</p>
                 <p style={{ fontSize: "13px", color: "#DC2626", margin: 0 }}>{error}</p>

@@ -108,7 +108,7 @@ export default function ProductsList() {
         {/* Filters */}
         <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap' }}>
           <div style={{ position:'relative',flex:'1 1 220px' }}>
-            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:15,pointerEvents:'none' }}/>
+            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
             <input type="text" placeholder="Search products…" value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} style={{ ...inp,paddingLeft:34 }}/>
           </div>
           <select style={{ ...inp,width:'auto',minWidth:150 }} value={category} onChange={e=>{ setCategory(e.target.value); setPage(1) }}>
@@ -150,7 +150,7 @@ export default function ProductsList() {
                       <div style={{ display:'flex',alignItems:'center',gap:10 }}>
                         {p.image_url
                           ? <img src={p.image_url} alt={p.name} style={{ width:36,height:36,borderRadius:8,objectFit:'cover',border:`1px solid ${B}`,flexShrink:0 }}/>
-                          : <div style={{ width:36,height:36,borderRadius:8,background:'#f0f4ff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0 }}>🌿</div>
+                          : <div style={{ width:36,height:36,borderRadius:8,background:'#f0f4ff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0 }}>🌿</div>
                         }
                         <div>
                           <div style={{ fontWeight:600,fontSize:13 }}>{p.name}</div>
@@ -181,7 +181,7 @@ export default function ProductsList() {
               })}
               {!loading&&products.length===0&&(
                 <tr><td colSpan={9} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                  <i className="ri-inbox-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>
+                  <i className="ri-inbox-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>
                   No products found. <Link to="/products/add" style={{ color:'#1B4332' }}>Add your first product →</Link>
                 </td></tr>
               )}
@@ -211,7 +211,7 @@ export default function ProductsList() {
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:380,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:18 }}/></div>
+                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:24 }}/></div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Delete Product?</span>
                 <button onClick={()=>setDeleteId(null)} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
@@ -234,7 +234,7 @@ export default function ProductsList() {
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:380,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:18 }}/></div>
+                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:24 }}/></div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Delete {selected.length} Product{selected.length===1?'':'s'}?</span>
                 <button onClick={()=>setBulkDeleteConfirm(false)} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>

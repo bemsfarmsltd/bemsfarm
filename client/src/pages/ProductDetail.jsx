@@ -708,7 +708,7 @@ export default function ProductDetail() {
                     borderBottom: i === 0 ? "1px solid #E8EAED" : "none",
                   }}
                 >
-                  <span style={{ fontSize: "24px" }}>{item.icon}</span>
+                  <span style={{ fontSize: "32" }}>{item.icon}</span>
                   <div>
                     <p
                       style={{
@@ -1034,7 +1034,7 @@ export default function ProductDetail() {
                       color: "#5F6368",
                     }}
                   >
-                    <span style={{ color: "#2E7D32" }}>✓</span> {item}
+                    <span style={{ fontSize:'1.35em',  color: "#2E7D32" }}>✓</span> {item}
                   </div>
                 ))}
               </div>

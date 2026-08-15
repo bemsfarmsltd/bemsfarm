@@ -103,7 +103,7 @@ function Checkbox({ checked, onChange, label }) {
           transition: 'all 0.15s',
         }}
       >
-        {checked && <i className="ri-check-line" style={{ fontSize: 13 }} />}
+        {checked && <i className="ri-check-line" style={{ fontSize: 18 }} />}
       </div>
       {label}
     </label>
@@ -215,7 +215,7 @@ export default function Barcode() {
 
   if (loading) return (
     <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300,fontFamily:'Nunito,sans-serif',color:'var(--text-muted)' }}>
-      <i className="ri-loader-4-line" style={{ fontSize:36,display:'block',marginBottom:8,textAlign:'center' }}/>
+      <i className="ri-loader-4-line" style={{ fontSize:49,display:'block',marginBottom:8,textAlign:'center' }}/>
     </div>
   )
 
@@ -228,7 +228,7 @@ export default function Barcode() {
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)' }}>
           <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Products</span>
-          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <i className="ri-arrow-right-s-line" style={{ fontSize:19 }} />
           <span style={{ fontWeight:600,color:'var(--text-primary)' }}>Barcode</span>
         </div>
       </div>
@@ -241,7 +241,7 @@ export default function Barcode() {
         </div>
 
         <div style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'10px 14px', borderRadius:10, marginBottom:20, background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', fontSize:12 }}>
-          <i className="ri-alert-line" style={{ fontSize:16, flexShrink:0, marginTop:1 }} />
+          <i className="ri-alert-line" style={{ fontSize:22, flexShrink:0, marginTop:1 }} />
           <span>Printed labels show product name, SKU and price only — this page does not render a real scannable barcode/QR graphic. Use the product's existing barcode (set in Products) if you need a physical label a scanner can read.</span>
         </div>
 
@@ -272,7 +272,7 @@ export default function Barcode() {
             <div style={{ position:'relative' }}>
               <label style={LBL}>Product</label>
               <div style={{ position:'relative' }}>
-                <i className="ri-search-line" style={{ position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:S,fontSize:15,pointerEvents:'none' }}/>
+                <i className="ri-search-line" style={{ position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
                 <input
                   type="text"
                   placeholder="Product name, SKU or barcode"
@@ -331,7 +331,7 @@ export default function Barcode() {
           <div style={{ border:`1.5px dashed ${B}`,borderRadius:12,padding:20,background:'var(--bg-page)',textAlign:'center',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',gap:8,cursor:'pointer' }}>
             <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,color:'var(--text-primary)',alignSelf:'flex-start',marginBottom:4 }}>Bulk Import</div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
-              <i className="ri-cloud-upload-line" style={{ fontSize:28,color:'var(--text-light)' }}/>
+              <i className="ri-cloud-upload-line" style={{ fontSize:38,color:'var(--text-light)' }}/>
               <div style={{ fontSize:12,fontWeight:700,color:'var(--text-secondary)' }}>Upload CSV</div>
             </div>
           </div>

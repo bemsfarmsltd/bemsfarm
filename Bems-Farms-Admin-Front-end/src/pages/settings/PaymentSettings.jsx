@@ -111,10 +111,10 @@ export default function PaymentSettings() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
+          <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
         ) : gateways.length === 0 ? (
           <div style={{ textAlign:'center',padding:60,color:S }}>
-            <i className="ri-bank-card-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>No gateways configured
+            <i className="ri-bank-card-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No gateways configured
           </div>
         ) : (
           <div style={{ overflowX:'auto' }}>
@@ -155,7 +155,7 @@ export default function PaymentSettings() {
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:520,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-bank-card-line" style={{ fontSize:18 }}/>
+                  <i className="ri-bank-card-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Configure {modal.name}</span>
                 <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>

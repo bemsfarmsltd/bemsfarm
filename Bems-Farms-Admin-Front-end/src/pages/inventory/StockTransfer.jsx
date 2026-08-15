@@ -142,7 +142,7 @@ export default function StockTransfer() {
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
           <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Inventory</span>
-          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <i className="ri-arrow-right-s-line" style={{ fontSize:19 }} />
           <span style={{ fontWeight:600, color:'var(--text-primary)' }}>Stock Transfer</span>
         </div>
       </div>
@@ -169,7 +169,7 @@ export default function StockTransfer() {
       <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
         <div style={{ padding:'16px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <div style={{ position:'relative', flex:1, minWidth:220 }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:20 }}/>
             <input style={{ ...inp, paddingLeft:32 }} placeholder="Search reference, product, w..." value={search} onChange={e => setSearch(e.target.value)}/>
           </div>
           <button style={btnP} onClick={openForm}><i className="ri-add-line"/>New Transfer</button>
@@ -191,7 +191,7 @@ export default function StockTransfer() {
                 </td></tr>
               ) : movements.length === 0 ? (
                 <tr><td colSpan={8} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
-                  <i className="ri-swap-box-line" style={{ fontSize:32, display:'block', marginBottom:8 }}/>No transfers found
+                  <i className="ri-swap-box-line" style={{ fontSize:43, display:'block', marginBottom:8 }}/>No transfers found
                 </td></tr>
               ) : movements.map(m => {
                 const sc = getStatusCfg(m)
@@ -268,7 +268,7 @@ export default function StockTransfer() {
                 </select>
               </div>
               <div style={{ textAlign:'center', paddingTop:22 }}>
-                <i className="ri-arrow-right-line" style={{ fontSize:22, color:'#299cdb' }}/>
+                <i className="ri-arrow-right-line" style={{ fontSize:30, color:'#299cdb' }}/>
               </div>
               <div>
                 <label style={LBL}>To Warehouse <span style={{ color:'#dc2626' }}>*</span></label>

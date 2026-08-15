@@ -73,14 +73,14 @@ export default function SupplierReport() {
       {/* Empty state */}
       {!data && !loading && (
         <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
-          <i className="ri-truck-line" style={{ fontSize:40,display:'block',marginBottom:10 }}/>
+          <i className="ri-truck-line" style={{ fontSize:54,display:'block',marginBottom:10 }}/>
           <div style={{ fontSize:14,fontWeight:600 }}>Select a date range and click Generate Report</div>
         </div>
       )}
 
       {loading && (
         <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
-          <i className="ri-loader-4-line" style={{ fontSize:32,display:'block',marginBottom:8 }}/>Loading…
+          <i className="ri-loader-4-line" style={{ fontSize:43,display:'block',marginBottom:8 }}/>Loading…
         </div>
       )}
 
@@ -100,7 +100,7 @@ export default function SupplierReport() {
             </div>
             {(!data.suppliers || data.suppliers.length === 0) ? (
               <div style={{ padding:60,textAlign:'center',color:S }}>
-                <i className="ri-inbox-line" style={{ fontSize:32,display:'block',marginBottom:8 }}/>
+                <i className="ri-inbox-line" style={{ fontSize:43,display:'block',marginBottom:8 }}/>
                 <div style={{ fontSize:13 }}>No supplier data found for the selected period.</div>
               </div>
             ) : (

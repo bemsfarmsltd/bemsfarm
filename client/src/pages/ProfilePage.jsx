@@ -400,7 +400,7 @@ export default function ProfilePage() {
     return (
       <PageWrapper>
         <div style={{ maxWidth: "500px", margin: "80px auto", textAlign: "center", padding: "40px 24px" }}>
-          <div style={{ fontSize: "80px", marginBottom: "20px" }}>🔐</div>
+          <div style={{ fontSize: "108", marginBottom: "20px" }}>🔐</div>
           <h2 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "12px", fontFamily: "Syne, sans-serif" }}>Please Sign In</h2>
           <p style={{ color: "#9CA3AF", marginBottom: "24px", fontFamily: "Nunito, sans-serif" }}>You need to be logged in to view your profile settings</p>
           <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
@@ -903,7 +903,7 @@ export default function ProfilePage() {
                       color: "#6B7280",
                     }}
                   >
-                    <div style={{ fontSize: "32px", marginBottom: "10px" }}>💳</div>
+                    <div style={{ fontSize: "43", marginBottom: "10px" }}>💳</div>
                     <p style={{ fontWeight: 700, color: "#111827", margin: "0 0 6px" }}>No saved cards</p>
                     <p style={{ fontSize: "13px", margin: 0 }}>
                       BemsFarms doesn't store your card details — you'll enter them
@@ -1054,7 +1054,7 @@ export default function ProfilePage() {
                   )}
                   {cancelledOrders.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 20px" }}>
-                    <div style={{ fontSize: "56px", marginBottom: "16px" }}>❌</div>
+                    <div style={{ fontSize: "76", marginBottom: "16px" }}>❌</div>
                     <h4 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 700 }}>No Cancelled Orders</h4>
                     <p style={{ color: "#9CA3AF", fontSize: "14px", margin: "0 0 24px" }}>Orders can be cancelled within 1 hour of placement.</p>
                     <div style={{ backgroundColor: "#FFF8F2", border: "1px solid #FFE6D5", borderRadius: "14px", padding: "20px", textAlign: "left", maxWidth: "480px", margin: "0 auto" }}>

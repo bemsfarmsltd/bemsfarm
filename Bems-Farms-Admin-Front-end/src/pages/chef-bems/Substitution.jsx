@@ -242,7 +242,7 @@ export default function Substitution() {
       {/* Filter Bar */}
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
         <div style={{ position:'relative', flex:1 }}>
-          <i className="ri-search-line" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
+          <i className="ri-search-line" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
           <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search by item name or dietary tags..."
             style={{ ...inp, paddingLeft:34 }} />
         </div>
@@ -267,7 +267,7 @@ export default function Substitution() {
             ) : subs.length === 0 ? (
               <tr>
                 <td colSpan={7} style={{ textAlign:'center', padding:'48px 0', color:'var(--text-light)' }}>
-                  <i className="ri-exchange-line" style={{ fontSize:36, display:'block', marginBottom:8 }} />
+                  <i className="ri-exchange-line" style={{ fontSize:49, display:'block', marginBottom:8 }} />
                   <div>No substitutions found. {search ? 'Try a different search.' : 'Add your first ingredient substitution.'}</div>
                   {!search && <button onClick={() => { setForm({...BLANK}); setAddModal(true) }} style={{ ...btn('#1B4332','#fff'), marginTop:12 }}><i className="ri-add-line" />Add First Substitution</button>}
                 </td>
@@ -284,7 +284,7 @@ export default function Substitution() {
                   </td>
                   <td style={{ padding:'12px 16px', fontSize:13, color:'var(--text-secondary)', fontFamily:'Nunito, sans-serif' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                      <i className="ri-arrow-right-line" style={{ color:'var(--text-light)', fontSize:12, flexShrink:0 }} />
+                      <i className="ri-arrow-right-line" style={{ color:'var(--text-light)', fontSize:16, flexShrink:0 }} />
                       {s.substitute_item}
                     </div>
                   </td>

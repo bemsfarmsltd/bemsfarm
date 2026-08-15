@@ -146,7 +146,7 @@ export default function ActiveDeliveries() {
       {activeTab==='auto_log' && (
         <div>
           <div style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'12px 16px', borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1d4ed8', fontSize:12, marginBottom:16 }}>
-            <i className="ri-cpu-line" style={{ marginTop:1, flexShrink:0, fontSize:14 }} />
+            <i className="ri-cpu-line" style={{ marginTop:1, flexShrink:0, fontSize:19 }} />
             <div><strong>System Auto Assignment</strong> — Every automatic driver match is logged here. Managers can review and override from the Orders page.</div>
           </div>
           <div style={card}>
@@ -234,7 +234,7 @@ export default function ActiveDeliveries() {
           <div style={{ ...card, marginBottom:16 }}>
             <div style={{ padding:'10px 14px', display:'flex', flexWrap:'wrap', gap:10, alignItems:'center' }}>
               <div style={{ position:'relative', maxWidth:280, flex:1 }}>
-                <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
+                <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Delivery ref, order, customer, driver…" style={{ ...inp, paddingLeft:32 }} />
               </div>
               {filterStatus!=='all' && (
@@ -244,7 +244,7 @@ export default function ActiveDeliveries() {
               )}
               <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8 }}>
                 <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:50, background:'#dcfce7', color:'#16a34a' }}>
-                  <i className="ri-checkbox-blank-circle-fill" style={{ fontSize:7 }} />Live
+                  <i className="ri-checkbox-blank-circle-fill" style={{ fontSize:9 }} />Live
                 </span>
                 <span style={{ fontSize:12, color:'var(--text-muted)' }}>{filtered.length} active</span>
               </div>
@@ -278,7 +278,7 @@ export default function ActiveDeliveries() {
 
           {!loading && filtered.length===0 && (
             <div style={{ ...card, padding:'48px', textAlign:'center', color:'var(--text-light)' }}>
-              <i className="ri-truck-line" style={{ fontSize:36, display:'block', marginBottom:8 }} />
+              <i className="ri-truck-line" style={{ fontSize:49, display:'block', marginBottom:8 }} />
               <div style={{ fontSize:13 }}>No active deliveries{filterStatus!=='all'?' matching this filter':''}</div>
             </div>
           )}
@@ -315,7 +315,7 @@ export default function ActiveDeliveries() {
                       </div>
                       {del.customer_phone && (
                         <a href={`tel:${del.customer_phone}`} style={{ width:32, height:32, borderRadius:'50%', border:'1.5px solid var(--border)', background:'var(--bg-card)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-secondary)', flexShrink:0 }}>
-                          <i className="ri-phone-line" style={{ fontSize:13 }} />
+                          <i className="ri-phone-line" style={{ fontSize:18 }} />
                         </a>
                       )}
                     </div>
@@ -482,7 +482,7 @@ export default function ActiveDeliveries() {
                       <div style={{ fontWeight:600, fontSize:13 }}>{driver.name}</div>
                       <div style={{ fontSize:11, color:'var(--text-muted)' }}>{driver.phone} · {driver.zone}</div>
                     </div>
-                    {Number(reassignDriverId)===driver.id && <i className="ri-checkbox-circle-fill" style={{ color:'#8b5cf6', fontSize:18 }} />}
+                    {Number(reassignDriverId)===driver.id && <i className="ri-checkbox-circle-fill" style={{ color:'#8b5cf6', fontSize:24 }} />}
                   </div>
                 ))}
                 {drivers.length===0 && <div style={{ textAlign:'center', color:'var(--text-light)', padding:'24px 0', fontSize:13 }}>No available drivers</div>}
@@ -609,7 +609,7 @@ export default function ActiveDeliveries() {
                   <>
                     <div style={{ textAlign:'center', marginBottom:24 }}>
                       <div style={{ width:56, height:56, borderRadius:'50%', background:'#dbeafe', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 12px' }}>
-                        <i className="ri-store-2-fill" style={{ fontSize:24, color:'#3b82f6' }} />
+                        <i className="ri-store-2-fill" style={{ fontSize:32, color:'#3b82f6' }} />
                       </div>
                       <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>Instruct Driver to Return Goods</div>
                       <div style={{ fontSize:13, color:'var(--text-muted)' }}>
@@ -632,7 +632,7 @@ export default function ActiveDeliveries() {
                   <>
                     <div style={{ textAlign:'center', marginBottom:24 }}>
                       <div style={{ width:56, height:56, borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 12px' }}>
-                        <i className="ri-database-2-fill" style={{ fontSize:24, color:'#22c55e' }} />
+                        <i className="ri-database-2-fill" style={{ fontSize:32, color:'#22c55e' }} />
                       </div>
                       <div style={{ fontWeight:700, fontSize:16 }}>Confirm Goods Received & Stock Restored</div>
                     </div>

@@ -215,7 +215,7 @@ export default function OrdersList() {
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
           <span>Orders</span>
-          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <i className="ri-arrow-right-s-line" style={{ fontSize:19 }} />
           <span style={{ fontWeight:600, color:'var(--text-primary)' }}>All Orders</span>
         </div>
       </div>
@@ -249,7 +249,7 @@ export default function OrdersList() {
       <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",marginBottom:16 }}>
         <div style={{ padding:"12px 16px",display:"flex",flexWrap:"wrap",gap:10,alignItems:"center" }}>
           <div style={{ position:"relative",minWidth:240,flex:1 }}>
-            <i className="ri-search-line" style={{ position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:'var(--text-light)',fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:'var(--text-light)',fontSize:20 }}/>
             <input style={{ ...inp,paddingLeft:32 }} placeholder="Order ref, name, phone..." value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }}/>
           </div>
           <select style={{ ...inp,width:"auto",minWidth:150 }} value={filterChannel} onChange={e=>{ setFilterChannel(e.target.value); setPage(1) }}>
@@ -292,7 +292,7 @@ export default function OrdersList() {
               ))}
               {!loading&&orders.length===0&&(
                 <tr><td colSpan={9} style={{ ...TD,textAlign:"center",padding:48,color:'var(--text-light)' }}>
-                  <i className="ri-inbox-line" style={{ fontSize:36,display:"block",marginBottom:8 }}/>No orders found
+                  <i className="ri-inbox-line" style={{ fontSize:49,display:"block",marginBottom:8 }}/>No orders found
                 </td></tr>
               )}
               {!loading&&orders.map(order=>{
@@ -462,7 +462,7 @@ export default function OrdersList() {
                       <div style={{ fontWeight:600,fontSize:13 }}>{driver.name}</div>
                       <div style={{ fontSize:11,color:S }}>{driver.phone} · {driver.vehicle_plate||driver.vehicle_type}</div>
                     </div>
-                    {Number(assignDriverId)===driver.id&&<i className="ri-checkbox-circle-fill" style={{ fontSize:18,color:"#6366f1" }}/>}
+                    {Number(assignDriverId)===driver.id&&<i className="ri-checkbox-circle-fill" style={{ fontSize:24,color:"#6366f1" }}/>}
                   </div>
                 ))}
               </div>
@@ -494,7 +494,7 @@ export default function OrdersList() {
                     <div style={{ fontWeight:600,fontSize:13 }}>{d.label}</div>
                     <div style={{ fontSize:11,color:S }}>{d.desc}</div>
                   </div>
-                  {disputeDecision===d.key&&<i className="ri-checkbox-circle-fill" style={{ fontSize:18,color:d.color }}/>}
+                  {disputeDecision===d.key&&<i className="ri-checkbox-circle-fill" style={{ fontSize:24,color:d.color }}/>}
                 </div>
               ))}
             </div>
@@ -639,7 +639,7 @@ function OrderViewModal({ order, onClose, onProcess, onPack, onAssign, onDispute
         <div style={{ overflowY:"auto",flex:1 }}>
           {loading?(
             <div style={{ textAlign:"center",padding:48,color:'var(--text-muted)' }}>
-              <i className="ri-loader-4-line" style={{ fontSize:32,display:"block",marginBottom:8 }}/>Loading order details...
+              <i className="ri-loader-4-line" style={{ fontSize:43,display:"block",marginBottom:8 }}/>Loading order details...
             </div>
           ):(
             <div className="ord-modal-grid" style={{ padding:24,display:"grid",gridTemplateColumns:"1fr 300px",gap:24 }}>
@@ -704,7 +704,7 @@ function OrderViewModal({ order, onClose, onProcess, onPack, onAssign, onDispute
                     return (
                       <div key={i} style={{ display:"flex",gap:12,marginBottom:16 }}>
                         <div style={{ width:32,height:32,borderRadius:"50%",background:c?.bg||"var(--border)",border:`2px solid ${c?.color||"var(--border-strong)"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                          <i className={c?.icon||"ri-circle-line"} style={{ color:c?.color||"#6b7280",fontSize:11 }}/>
+                          <i className={c?.icon||"ri-circle-line"} style={{ color:c?.color||"#6b7280",fontSize:15 }}/>
                         </div>
                         <div>
                           <div style={{ fontWeight:600,fontSize:13 }}>{c?.label||ev.to_status}</div>

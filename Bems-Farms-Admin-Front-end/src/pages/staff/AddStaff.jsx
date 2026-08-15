@@ -69,7 +69,7 @@ export default function AddStaff() {
     return (
       <div style={{ fontFamily:'Nunito,sans-serif', maxWidth:520, margin:'40px auto' }}>
         <div style={{ background:'var(--bg-card)', borderRadius:14, border:`1px solid ${B}`, boxShadow:'0 4px 20px rgba(0,0,0,.08)', padding:32, textAlign:'center' }}>
-          <div style={{ width:64, height:64, borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:28 }}>✅</div>
+          <div style={{ width:64, height:64, borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:38 }}>✅</div>
           <h3 style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:17, marginBottom:6 }}>Staff Member Created</h3>
           <p style={{ color:S, fontSize:13, marginBottom:20 }}>
             <strong style={{ color:'var(--text-primary)' }}>{result.staff.name}</strong> ({result.staff.employee_code}) has been added.

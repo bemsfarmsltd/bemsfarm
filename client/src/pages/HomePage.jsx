@@ -268,7 +268,7 @@ export default function HomePage() {
             
             {/* Box 1 */}
             <div className="home-glass-card p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">📁</div>
+              <div style={{fontSize:'1.35em'}} className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">📁</div>
               <h3 className="font-bold text-[16px] text-gray-800 dark:text-white mb-2">Best Quality</h3>
               <p className="text-gray-500 dark:text-neutral-400 text-[12.5px] leading-relaxed">
                 We create the best dishes from fresh farm produce to give you healthy consumption as much as we can.
@@ -277,7 +277,7 @@ export default function HomePage() {
 
             {/* Box 2 */}
             <div className="home-glass-card p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">🍲</div>
+              <div style={{fontSize:'1.35em'}} className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">🍲</div>
               <h3 className="font-bold text-[16px] text-gray-800 dark:text-white mb-2">Variety of Dishes</h3>
               <p className="text-gray-500 dark:text-neutral-400 text-[12.5px] leading-relaxed">
                 We bring to live several local cuisines from the deep roots of Nigeria to soothe your taste buds.
@@ -286,7 +286,7 @@ export default function HomePage() {
 
             {/* Box 3 */}
             <div className="home-glass-card p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">🎁</div>
+              <div style={{fontSize:'1.35em'}} className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">🎁</div>
               <h3 className="font-bold text-[16px] text-gray-800 dark:text-white mb-2">Reusable Packs</h3>
               <p className="text-gray-500 dark:text-neutral-400 text-[12.5px] leading-relaxed">
                 Our food packaging are durable and can be reused at home for food packs, we charge nothing for.
@@ -358,7 +358,7 @@ export default function HomePage() {
                 marginBottom: "20px",
               }}
             >
-              <span style={{ fontSize: "20px" }}>⚠️</span>
+              <span style={{ fontSize: "27" }}>⚠️</span>
               <div>
                 <p style={{ fontWeight: 700, color: "#DC2626", margin: "0 0 4px" }}>Failed to load products</p>
                 <p style={{ fontSize: "13px", color: "#DC2626", margin: 0 }}>{loadError}</p>

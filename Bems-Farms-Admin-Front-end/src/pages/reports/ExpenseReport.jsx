@@ -59,14 +59,14 @@ export default function ExpenseReport() {
 
       {!data && !loading && (
         <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
-          <i className="ri-bill-line" style={{ fontSize:40,display:'block',marginBottom:10 }}/>
+          <i className="ri-bill-line" style={{ fontSize:54,display:'block',marginBottom:10 }}/>
           <div style={{ fontSize:14,fontWeight:600 }}>Select date range and click Generate Report</div>
         </div>
       )}
 
       {loading && (
         <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
-          <i className="ri-loader-4-line" style={{ fontSize:32,display:'block',marginBottom:8 }}/>Loading…
+          <i className="ri-loader-4-line" style={{ fontSize:43,display:'block',marginBottom:8 }}/>Loading…
         </div>
       )}
 
@@ -76,7 +76,7 @@ export default function ExpenseReport() {
           <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14,marginBottom:20 }}>
             <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:20,display:'flex',alignItems:'center',gap:14 }}>
               <div style={{ width:44,height:44,borderRadius:12,background:'#fee2e2',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-                <i className="ri-money-dollar-circle-line" style={{ fontSize:22,color:'#991b1b' }}/>
+                <i className="ri-money-dollar-circle-line" style={{ fontSize:30,color:'#991b1b' }}/>
               </div>
               <div>
                 <div style={{ fontSize:11,color:S,fontWeight:600,marginBottom:2 }}>Total Expenses</div>

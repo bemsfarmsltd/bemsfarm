@@ -90,7 +90,7 @@ export default function Calendar() {
             onClick={() => setShowModal(true)}
             style={{ ...btnBase, background: '#1B4332', color: '#fff' }}
           >
-            <i className="ri-add-circle-line" style={{ fontSize: 15 }} />
+            <i className="ri-add-circle-line" style={{ fontSize: 20 }} />
             Add Event
           </button>
         }
@@ -156,21 +156,21 @@ export default function Calendar() {
                   <div>
                     <label style={labelStyle}>Start Date *</label>
                     <div style={{ position: 'relative' }}>
-                      <i className="ri-calendar-check-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 14 }} />
+                      <i className="ri-calendar-check-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 19 }} />
                       <input type="date" style={{ ...inputStyle, paddingLeft: 30 }} value={form.start} onChange={e => set('start', e.target.value)} required />
                     </div>
                   </div>
                   <div>
                     <label style={labelStyle}>End Date</label>
                     <div style={{ position: 'relative' }}>
-                      <i className="ri-calendar-check-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 14 }} />
+                      <i className="ri-calendar-check-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 19 }} />
                       <input type="date" style={{ ...inputStyle, paddingLeft: 30 }} value={form.end} onChange={e => set('end', e.target.value)} />
                     </div>
                   </div>
                   <div>
                     <label style={labelStyle}>Time</label>
                     <div style={{ position: 'relative' }}>
-                      <i className="ri-time-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 14 }} />
+                      <i className="ri-time-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 19 }} />
                       <input type="time" style={{ ...inputStyle, paddingLeft: 30 }} value={form.time} onChange={e => set('time', e.target.value)} />
                     </div>
                   </div>

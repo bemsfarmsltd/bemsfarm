@@ -182,7 +182,7 @@ export default function Refunds() {
       <div style={{ background:'var(--bg-card)',borderRadius:12,border:'1px solid var(--border)',boxShadow:'0 1px 4px rgba(0,0,0,0.06)',overflow:'hidden' }}>
         <div style={{ padding:'14px 16px',borderBottom:'1px solid var(--border)',display:'flex',flexWrap:'wrap',gap:10,alignItems:'center' }}>
           <div style={{ position:'relative',minWidth:260 }}>
-            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text-light)',fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text-light)',fontSize:20 }}/>
             <input style={{ ...inp,paddingLeft:32 }} placeholder="Search by customer, ref, product…" value={search} onChange={e=>setSearch(e.target.value)}/>
           </div>
           <select style={{ ...inp,width:'auto',minWidth:140 }} value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
@@ -204,7 +204,7 @@ export default function Refunds() {
             <tbody>
               {filtered.length===0&&(
                 <tr><td colSpan={12} style={{ ...TD,textAlign:'center',padding:48,color:'var(--text-light)' }}>
-                  <i className="ri-arrow-go-back-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>No return records found
+                  <i className="ri-arrow-go-back-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No return records found
                 </td></tr>
               )}
               {filtered.map(r=>{
@@ -421,7 +421,7 @@ export default function Refunds() {
 
                     {procForm.condition!=='partial'&&(
                       <div style={{ background:'var(--bg-subtle)',border:'1px solid var(--border)',borderRadius:8,padding:12,marginBottom:14,fontSize:13,display:'flex',alignItems:'center',gap:10 }}>
-                        <i className={procForm.condition==='resalable'?'ri-arrow-down-circle-line':'ri-error-warning-line'} style={{ fontSize:18,color:procForm.condition==='resalable'?'#16a34a':'#991b1b' }}/>
+                        <i className={procForm.condition==='resalable'?'ri-arrow-down-circle-line':'ri-error-warning-line'} style={{ fontSize:24,color:procForm.condition==='resalable'?'#16a34a':'#991b1b' }}/>
                         <span>All <strong>{selected.qty} {selected.unit}</strong> will be{' '}
                           {procForm.condition==='resalable'
                             ? <span style={{ color:'#16a34a',fontWeight:600 }}>returned to stock</span>
@@ -605,7 +605,7 @@ export default function Refunds() {
           <div style={{ position:'fixed',inset:0,zIndex:1055,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:380,boxShadow:'0 8px 40px rgba(0,0,0,0.18)',padding:32,textAlign:'center' }}>
               <div style={{ width:56,height:56,borderRadius:'50%',background:'#fee2e2',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px' }}>
-                <i className="ri-delete-bin-line" style={{ fontSize:22,color:'#dc2626' }}/>
+                <i className="ri-delete-bin-line" style={{ fontSize:30,color:'#dc2626' }}/>
               </div>
               <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:16,marginBottom:6 }}>Delete Return?</div>
               <div style={{ fontSize:13,color:'var(--text-muted)',marginBottom:24 }}>{selected?.ref} — {selected?.customer}</div>

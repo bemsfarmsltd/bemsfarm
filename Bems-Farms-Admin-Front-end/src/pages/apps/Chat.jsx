@@ -89,7 +89,7 @@ export default function Chat() {
           {/* Search */}
           <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
             <div style={{ position: 'relative' }}>
-              <i className="ri-search-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 14 }} />
+              <i className="ri-search-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 19 }} />
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -180,13 +180,13 @@ export default function Chat() {
               </div>
             </div>
             <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 6 }} title="Voice call">
-              <i className="ri-phone-line" style={{ fontSize: 18 }} />
+              <i className="ri-phone-line" style={{ fontSize: 24 }} />
             </button>
             <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 6 }} title="Video call">
-              <i className="ri-vidicon-line" style={{ fontSize: 18 }} />
+              <i className="ri-vidicon-line" style={{ fontSize: 24 }} />
             </button>
             <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 6 }} title="Search">
-              <i className="ri-search-line" style={{ fontSize: 18 }} />
+              <i className="ri-search-line" style={{ fontSize: 24 }} />
             </button>
           </div>
 
@@ -194,7 +194,7 @@ export default function Chat() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--bg-subtle)' }}>
             {currentMsgs.length === 0 && (
               <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-light)' }}>
-                <i className="ri-chat-3-line" style={{ fontSize: 40, display: 'block', marginBottom: 8 }} />
+                <i className="ri-chat-3-line" style={{ fontSize: 54, display: 'block', marginBottom: 8 }} />
                 <div style={{ fontSize: 13 }}>No messages yet. Say hi!</div>
               </div>
             )}
@@ -224,7 +224,7 @@ export default function Chat() {
           <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 12 }}>
               <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', padding: 4 }}>
-                <i className="ri-emotion-line" style={{ fontSize: 18 }} />
+                <i className="ri-emotion-line" style={{ fontSize: 24 }} />
               </button>
               <input
                 value={text}
@@ -234,7 +234,7 @@ export default function Chat() {
                 style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13, fontFamily: 'Nunito, sans-serif', background: 'none' }}
               />
               <label style={{ cursor: 'pointer', color: 'var(--text-light)', padding: 4 }}>
-                <i className="ri-image-line" style={{ fontSize: 18 }} />
+                <i className="ri-image-line" style={{ fontSize: 24 }} />
                 <input type="file" style={{ display: 'none' }} />
               </label>
               <button
@@ -244,7 +244,7 @@ export default function Chat() {
                   width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                 }}
               >
-                <i className="ri-send-plane-2-line" style={{ fontSize: 16 }} />
+                <i className="ri-send-plane-2-line" style={{ fontSize: 22 }} />
               </button>
             </div>
           </div>

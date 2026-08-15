@@ -96,7 +96,7 @@ export default function InvoiceSettings() {
       <SettingsNav/>
 
       {loading ? (
-        <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
+        <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
       ) : (
         <form onSubmit={handleSave}>
           <Card title="Receipts Numbering" subtitle="Define the prefix and auto-increment pattern for receipt numbers.">

@@ -217,7 +217,7 @@ export default function DriverCommissions() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ position: 'relative' }}>
               <input style={{ ...inpStyle, width: '220px', paddingLeft: '32px' }} placeholder="Search driver name…" value={search} onChange={e => setSearch(e.target.value)} />
-              <i className="ri-search-line" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', color: 'var(--text-muted)' }} />
+              <i className="ri-search-line" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '19', color: 'var(--text-muted)' }} />
             </div>
             <select style={{ ...inpStyle, width: '150px' }} value={filterSt} onChange={e => setFilterSt(e.target.value)}>
               <option value="all">All Status</option>

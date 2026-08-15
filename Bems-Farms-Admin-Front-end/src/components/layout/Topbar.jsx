@@ -119,7 +119,7 @@ function AddNewDropdown() {
         onMouseEnter={e => e.currentTarget.style.background = C.hover}
         onMouseLeave={e => { if (!open) e.currentTarget.style.background = 'transparent' }}
       >
-        <i className="ri-add-line" style={{ fontSize: 16 }} />
+        <i className="ri-add-line" style={{ fontSize: 22 }} />
         Add New
       </button>
 
@@ -227,7 +227,7 @@ function NotificationsDropdown() {
             )}
             {!loading && notes.length === 0 && (
               <div style={{ padding: '24px 16px', textAlign: 'center', fontSize: 13, color: C.muted }}>
-                <i className="ri-checkbox-circle-line" style={{ fontSize: 20, display: 'block', marginBottom: 6 }} />
+                <i className="ri-checkbox-circle-line" style={{ fontSize: 27, display: 'block', marginBottom: 6 }} />
                 No stock alerts right now
               </div>
             )}
@@ -297,7 +297,7 @@ function ProfileDropdown({ user, roleMeta, initials, onLogout }) {
         }}>
           {initials}
         </div>
-        <i className="ri-arrow-down-s-line" style={{ fontSize: 16, color: C.muted }} />
+        <i className="ri-arrow-down-s-line" style={{ fontSize: 22, color: C.muted }} />
       </button>
 
       {open && (
@@ -366,7 +366,7 @@ function ProfileDropdown({ user, roleMeta, initials, onLogout }) {
               onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-red-faint)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <i className="ri-logout-box-r-line" style={{ fontSize: 15, color: '#ef4444' }} />
+              <i className="ri-logout-box-r-line" style={{ fontSize: 20, color: '#ef4444' }} />
               Log Out
             </button>
           </div>
@@ -478,7 +478,7 @@ export default function Topbar({ onToggleSidebar }) {
         fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)',
         flexShrink: 0,
       }}>
-        <i className="ri-store-2-line" style={{ fontSize: 15, color: C.green }} />
+        <i className="ri-store-2-line" style={{ fontSize: 20, color: C.green }} />
         <span>Bems Farms HQ</span>
       </div>
 
@@ -488,7 +488,7 @@ export default function Topbar({ onToggleSidebar }) {
       {/* Search — desktop only; fixed 210px would overflow a phone-width topbar */}
       <div className="bf-admin-topbar-wide-only" style={{ position: 'relative', alignItems: 'center', flexShrink: 0 }}>
         <i className="ri-search-line" style={{
-          position: 'absolute', left: 10, fontSize: 15,
+          position: 'absolute', left: 10, fontSize: 20,
           color: 'var(--text-muted)', pointerEvents: 'none',
         }} />
         <input

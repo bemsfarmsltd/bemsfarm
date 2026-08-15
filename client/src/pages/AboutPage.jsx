@@ -190,7 +190,7 @@ export default function AboutPage() {
                     padding: "7px 14px",
                   }}
                 >
-                  <span style={{ fontSize: "16px" }}>{v.icon}</span>
+                  <span style={{ fontSize: "22" }}>{v.icon}</span>
                   <span
                     style={{
                       fontSize: "13px",

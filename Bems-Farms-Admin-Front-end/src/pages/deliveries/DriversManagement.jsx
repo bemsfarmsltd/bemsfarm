@@ -25,7 +25,7 @@ function StarRating({ rating }) {
   return (
     <span>
       {[1,2,3,4,5].map(i => (
-        <i key={i} className={i<=Math.round(rating||0)?'ri-star-fill':'ri-star-line'} style={{ fontSize:12, color:i<=Math.round(rating||0)?'#d97706':'var(--border-strong)' }} />
+        <i key={i} className={i<=Math.round(rating||0)?'ri-star-fill':'ri-star-line'} style={{ fontSize:16, color:i<=Math.round(rating||0)?'#d97706':'var(--border-strong)' }} />
       ))}
       <span style={{ marginLeft:4, fontSize:12, fontWeight:600 }}>{Number(rating||0).toFixed(1)}</span>
     </span>
@@ -156,7 +156,7 @@ export default function DriversManagement() {
     <div style={{ fontFamily:'Nunito, sans-serif' }}>
       <PageHeader title="Drivers Management" subtitle="Manage your delivery team" actions={
         <button onClick={() => setActiveModal('notify')} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:8, border:'none', background:'#F57C00', color:'#fff', cursor:'pointer', fontWeight:700, fontSize:13, fontFamily:'Nunito, sans-serif' }}>
-          <i className="ri-notification-3-line" style={{ fontSize:15 }}/>Notify Drivers
+          <i className="ri-notification-3-line" style={{ fontSize:20 }}/>Notify Drivers
         </button>
       } />
 
@@ -185,7 +185,7 @@ export default function DriversManagement() {
       <div style={{ ...card, marginBottom:16 }}>
         <div style={{ padding:'10px 14px', display:'flex', flexWrap:'wrap', gap:10, alignItems:'center' }}>
           <div style={{ position:'relative', maxWidth:280, flex:1 }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
+            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name, phone, zone…" style={{ ...inp, paddingLeft:32 }} />
           </div>
           {filterStatus!=='all' && (
@@ -258,14 +258,14 @@ export default function DriversManagement() {
                     <TD>
                       <div style={{ display:'flex', gap:5 }}>
                         <button onClick={() => openModal('profile',driver)} title="Profile" style={{ width:30, height:30, borderRadius:7, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-secondary)' }}>
-                          <i className="ri-eye-line" style={{ fontSize:13 }} />
+                          <i className="ri-eye-line" style={{ fontSize:18 }} />
                         </button>
                         <button onClick={() => openModal('edit',driver)} title="Edit" style={{ width:30, height:30, borderRadius:7, border:'none', background:'#eff6ff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#3b82f6' }}>
-                          <i className="ri-edit-line" style={{ fontSize:13 }} />
+                          <i className="ri-edit-line" style={{ fontSize:18 }} />
                         </button>
                         {driver.status==='suspended'
-                          ? <button onClick={() => activateDriver(driver)} title="Reinstate" style={{ width:30, height:30, borderRadius:7, border:'none', background:'#dcfce7', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#16a34a' }}><i className="ri-checkbox-circle-line" style={{ fontSize:13 }} /></button>
-                          : driver.status!=='on_delivery' && <button onClick={() => openModal('suspend',driver)} title="Suspend" style={{ width:30, height:30, borderRadius:7, border:'none', background:'#fee2e2', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#dc2626' }}><i className="ri-forbid-line" style={{ fontSize:13 }} /></button>
+                          ? <button onClick={() => activateDriver(driver)} title="Reinstate" style={{ width:30, height:30, borderRadius:7, border:'none', background:'#dcfce7', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#16a34a' }}><i className="ri-checkbox-circle-line" style={{ fontSize:18 }} /></button>
+                          : driver.status!=='on_delivery' && <button onClick={() => openModal('suspend',driver)} title="Suspend" style={{ width:30, height:30, borderRadius:7, border:'none', background:'#fee2e2', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#dc2626' }}><i className="ri-forbid-line" style={{ fontSize:18 }} /></button>
                         }
                       </div>
                     </TD>

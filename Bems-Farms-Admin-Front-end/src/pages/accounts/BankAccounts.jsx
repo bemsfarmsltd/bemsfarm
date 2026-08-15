@@ -277,7 +277,7 @@ export default function BankAccounts() {
         </div>
       ) : activeAccounts.length === 0 ? (
         <div style={{ ...cardStyle, padding: '40px', textAlign: 'center', marginBottom: '24px', color: 'var(--text-light)' }}>
-          <i className="ri-bank-card-line" style={{ fontSize: '48px', color: 'var(--text-muted)', display: 'block', marginBottom: '12px' }} />
+          <i className="ri-bank-card-line" style={{ fontSize: '65', color: 'var(--text-muted)', display: 'block', marginBottom: '12px' }} />
           No active bank accounts. Click "Add Bank Account" to configure one.
         </div>
       ) : (

@@ -93,7 +93,7 @@ export default function CurrencySettings() {
           <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>Currencies</span>
           <div style={{ display:'flex',gap:10,alignItems:'center' }}>
             <div style={{ position:'relative' }}>
-              <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:15,pointerEvents:'none' }}/>
+              <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
               <input type="text" placeholder="Search currency…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp,paddingLeft:34,width:200 }}/>
             </div>
             <button style={btnP} onClick={openAdd}><i className="ri-add-line"/>Add Currency</button>
@@ -101,7 +101,7 @@ export default function CurrencySettings() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
+          <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
         ) : (
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%',borderCollapse:'collapse' }}>
@@ -160,7 +160,7 @@ export default function CurrencySettings() {
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:460,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-money-dollar-circle-line" style={{ fontSize:18 }}/>
+                  <i className="ri-money-dollar-circle-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>{modal==='add'?'Add Currency':'Edit Currency'}</span>
                 <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>

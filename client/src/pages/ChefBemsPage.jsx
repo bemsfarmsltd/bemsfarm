@@ -726,7 +726,7 @@ export default function ChefBemsPage() {
           {/* New Chat Button */}
           <div className="sidebar-header">
             <button className="btn-new-chat" onClick={handleStartNewChat}>
-              <span>➕</span> New Conversation
+              <span style={{fontSize:'1.35em'}}>➕</span> New Conversation
             </button>
           </div>
 
@@ -748,7 +748,7 @@ export default function ChefBemsPage() {
                     onClick={() => handleSelectConversation(conv)}
                   >
                     <div className="conv-item-left">
-                      <span>💬</span>
+                      <span style={{fontSize:'1.35em'}}>💬</span>
                       {isEditing ? (
                         <input
                           type="text"
@@ -933,7 +933,7 @@ export default function ChefBemsPage() {
                       className="chatgpt-prompt-card"
                       onClick={() => sendMessage(p.text)}
                     >
-                      <div style={{ fontSize: "20px" }}>{p.icon}</div>
+                      <div style={{ fontSize: "27" }}>{p.icon}</div>
                       <div style={{ fontSize: "13px", fontWeight: "bold", color: "var(--gray-900)" }}>{p.text}</div>
                       <div style={{ fontSize: "11px", color: "var(--gray-500)" }}>Click to ask Chef Bems instantly</div>
                     </div>

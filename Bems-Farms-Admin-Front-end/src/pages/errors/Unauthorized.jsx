@@ -13,7 +13,7 @@ export default function Unauthorized() {
 
         {/* Icon */}
         <div style={{ width:88, height:88, borderRadius:'50%', background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 28px' }}>
-          <i className="ri-lock-line" style={{ fontSize:40, color:'#dc2626' }} />
+          <i className="ri-lock-line" style={{ fontSize:54, color:'#dc2626' }} />
         </div>
 
         {/* Heading */}

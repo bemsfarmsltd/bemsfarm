@@ -257,9 +257,9 @@ export default function CustomerReport() {
         subtitle={
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: S }}>
             <Link to="/dashboard" style={{ color: '#0ab39c', textDecoration: 'none', fontWeight: 600 }}>Dashboard</Link>
-            <i className="ri-arrow-right-s-line" style={{ fontSize: 13 }} />
+            <i className="ri-arrow-right-s-line" style={{ fontSize: 18 }} />
             <Link to="/customers" style={{ color: '#0ab39c', textDecoration: 'none', fontWeight: 600 }}>Customers</Link>
-            <i className="ri-arrow-right-s-line" style={{ fontSize: 13 }} />
+            <i className="ri-arrow-right-s-line" style={{ fontSize: 18 }} />
             <span style={{ color: S }}>Customer Report</span>
           </span>
         }
@@ -348,7 +348,7 @@ export default function CustomerReport() {
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: S, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Search</div>
             <div style={{ position: 'relative' }}>
-              <i className="ri-search-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 14, pointerEvents: 'none' }} />
+              <i className="ri-search-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 19, pointerEvents: 'none' }} />
               <input
                 type="text"
                 value={search}
@@ -446,7 +446,7 @@ export default function CustomerReport() {
                 <tr>
                   <td colSpan={9} style={{ textAlign: 'center', padding: '56px 0', color: 'var(--text-light)', fontSize: 13 }}>
                     <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--bg-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-                      <i className="ri-user-search-line" style={{ fontSize: 26, color: 'var(--border-strong)' }} />
+                      <i className="ri-user-search-line" style={{ fontSize: 35, color: 'var(--border-strong)' }} />
                     </div>
                     <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>No customers found</div>
                     <div style={{ fontSize: 12 }}>Try adjusting your filters or search query.</div>
@@ -536,7 +536,7 @@ export default function CustomerReport() {
                           justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
                         }}
                       >
-                        <i className="ri-eye-line" style={{ fontSize: 13 }} />
+                        <i className="ri-eye-line" style={{ fontSize: 18 }} />
                       </button>
                     </TD>
                   </tr>
@@ -580,7 +580,7 @@ export default function CustomerReport() {
             textAlign: 'center',
           }}>
             <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#ccf0ea', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-              <i className="ri-line-chart-line" style={{ fontSize: 26, color: '#0ab39c' }} />
+              <i className="ri-line-chart-line" style={{ fontSize: 35, color: '#0ab39c' }} />
             </div>
             <div style={{ fontWeight: 700, fontSize: 13, color: '#1B4332', marginBottom: 4 }}>Customer Growth Chart</div>
             <div style={{ fontSize: 11, color: S }}>Chart integration coming soon</div>

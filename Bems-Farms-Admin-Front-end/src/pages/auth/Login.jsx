@@ -142,7 +142,7 @@ export default function Login() {
                     background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', padding: 2, lineHeight: 1,
                   }}
                 >
-                  <i className={showPw ? 'ri-eye-off-line' : 'ri-eye-line'} style={{ fontSize: 18 }} />
+                  <i className={showPw ? 'ri-eye-off-line' : 'ri-eye-line'} style={{ fontSize: 24 }} />
                 </button>
               </div>
             </div>

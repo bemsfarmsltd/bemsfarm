@@ -622,7 +622,7 @@ function IssueDetailPanel({ issue, onClose, onUpdated }) {
                     onChange={() => setStatus(opt.value)}
                     style={{ accentColor: "#2E7D32" }}
                   />
-                  <span style={{ fontSize: 18 }}>{opt.icon}</span>
+                  <span style={{ fontSize: 24 }}>{opt.icon}</span>
                   <div>
                     <div
                       style={{

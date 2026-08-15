@@ -195,7 +195,7 @@ export default function CustomerDetail() {
               ))}
               {(c.addresses||[]).map((addr,i) => (
                 <div key={i} style={{ display:'flex', gap:12, padding:'10px 16px', borderBottom:'1px solid #f9fafb' }}>
-                  <i className="ri-home-3-line" style={{ color:'#94a3b8', fontSize:14, marginTop:2, flexShrink:0 }} />
+                  <i className="ri-home-3-line" style={{ color:'#94a3b8', fontSize:19, marginTop:2, flexShrink:0 }} />
                   <div>
                     <div style={{ fontSize:10, color:'#94a3b8', marginBottom:2 }}>{addr.label||'Address'}{addr.is_default?' (Default)':''}</div>
                     <div style={{ fontSize:12, color:'var(--text-secondary)' }}>{addr.full_address}</div>
@@ -230,7 +230,7 @@ export default function CustomerDetail() {
                 return (
                   <div key={o.id} style={{ display:'flex', alignItems:'flex-start', gap:14, padding:'16px 20px', borderBottom: i<(c.orders.length-1)?'1px solid var(--border)':'none' }}>
                     <div style={{ width:40, height:40, borderRadius:'50%', background:'#f0fdf4', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <i className="ri-shopping-bag-line" style={{ color:'#22c55e', fontSize:16 }} />
+                      <i className="ri-shopping-bag-line" style={{ color:'#22c55e', fontSize:22 }} />
                     </div>
                     <div style={{ flex:1 }}>
                       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8, marginBottom:4 }}>
@@ -273,7 +273,7 @@ export default function CustomerDetail() {
                 : (c.loyalty||[]).map((p,i) => (
                   <div key={i} style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 20px', borderBottom: i<(c.loyalty.length-1)?'1px solid #f9fafb':'none' }}>
                     <div style={{ width:36, height:36, borderRadius:'50%', background: p.type==='earned'?'#f0fdf4':p.type==='bonus'?'#f5f3ff':'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <i className={p.type==='earned'?'ri-add-line':p.type==='bonus'?'ri-gift-line':'ri-subtract-line'} style={{ fontSize:14, color:p.type==='earned'?'#22c55e':p.type==='bonus'?'#8b5cf6':'#ef4444' }} />
+                      <i className={p.type==='earned'?'ri-add-line':p.type==='bonus'?'ri-gift-line':'ri-subtract-line'} style={{ fontSize:19, color:p.type==='earned'?'#22c55e':p.type==='bonus'?'#8b5cf6':'#ef4444' }} />
                     </div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:13 }}>{p.description}</div>
@@ -320,7 +320,7 @@ export default function CustomerDetail() {
                   <div style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--text-secondary)' }}>Recent Activity</div>
                   {c.activity.map((a,i) => (
                     <div key={i} style={{ display:'flex', gap:12, padding:'10px 0', borderBottom: i<(c.activity.length-1)?'1px solid #f9fafb':'none' }}>
-                      <i className="ri-history-line" style={{ color:'#94a3b8', fontSize:14, marginTop:2 }} />
+                      <i className="ri-history-line" style={{ color:'#94a3b8', fontSize:19, marginTop:2 }} />
                       <div>
                         <div style={{ fontSize:12 }}>{a.description}</div>
                         <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>{new Date(a.created_at).toLocaleString('en-NG')}</div>

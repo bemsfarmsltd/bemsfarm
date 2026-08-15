@@ -193,7 +193,7 @@ export default function AddProduct() {
 
   if (loadingRefs) return (
     <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300,fontFamily:'Nunito,sans-serif',color:'var(--text-muted)' }}>
-      <i className="ri-loader-4-line" style={{ fontSize:36,display:'block',marginBottom:8,textAlign:'center' }}/>
+      <i className="ri-loader-4-line" style={{ fontSize:49,display:'block',marginBottom:8,textAlign:'center' }}/>
     </div>
   )
 
@@ -211,7 +211,7 @@ export default function AddProduct() {
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)' }}>
           <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Products</span>
-          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <i className="ri-arrow-right-s-line" style={{ fontSize:19 }} />
           <span style={{ fontWeight:600,color:'var(--text-primary)' }}>{isEdit ? 'Edit Product' : 'Add Products'}</span>
         </div>
       </div>
@@ -239,7 +239,7 @@ export default function AddProduct() {
             transition:'all 0.15s'
           }}
         >
-          <i className="ri-file-text-line" style={{ fontSize:15 }}/>
+          <i className="ri-file-text-line" style={{ fontSize:20 }}/>
           Add Single Product
         </Link>
         <Link
@@ -263,7 +263,7 @@ export default function AddProduct() {
             transition:'all 0.15s'
           }}
         >
-          <i className="ri-cloud-upload-line" style={{ fontSize:15 }}/>
+          <i className="ri-cloud-upload-line" style={{ fontSize:20 }}/>
           Bulk Import
         </Link>
       </div>
@@ -435,7 +435,7 @@ export default function AddProduct() {
                   alignItems: 'center',
                   gap: 8,
                 }}>
-                  <i className="ri-image-line" style={{ fontSize: 32, color: 'var(--text-light)' }} />
+                  <i className="ri-image-line" style={{ fontSize: 43, color: 'var(--text-light)' }} />
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>Main Product Image</div>
                   <input
                     type="url"
@@ -474,7 +474,7 @@ export default function AddProduct() {
                     alignItems: 'center',
                     gap: 4
                   }}>
-                    <i className="ri-image-add-line" style={{ fontSize: 18, color: 'var(--text-light)' }} />
+                    <i className="ri-image-add-line" style={{ fontSize: 24, color: 'var(--text-light)' }} />
                     <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)' }}>Image 2</div>
                     <input
                       type="url"
@@ -497,7 +497,7 @@ export default function AddProduct() {
                     alignItems: 'center',
                     gap: 4
                   }}>
-                    <i className="ri-image-add-line" style={{ fontSize: 18, color: 'var(--text-light)' }} />
+                    <i className="ri-image-add-line" style={{ fontSize: 24, color: 'var(--text-light)' }} />
                     <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)' }}>Image 3</div>
                     <input
                       type="url"
@@ -520,7 +520,7 @@ export default function AddProduct() {
                     alignItems: 'center',
                     gap: 4
                   }}>
-                    <i className="ri-image-add-line" style={{ fontSize: 18, color: 'var(--text-light)' }} />
+                    <i className="ri-image-add-line" style={{ fontSize: 24, color: 'var(--text-light)' }} />
                     <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)' }}>Image 4</div>
                     <input
                       type="url"

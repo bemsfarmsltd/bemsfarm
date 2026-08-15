@@ -209,7 +209,7 @@ export default function BulkImport() {
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)' }}>
           <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Products</span>
-          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <i className="ri-arrow-right-s-line" style={{ fontSize:19 }} />
           <span style={{ fontWeight:600,color:'var(--text-primary)' }}>Add Products</span>
         </div>
       </div>
@@ -236,7 +236,7 @@ export default function BulkImport() {
             transition:'all 0.15s'
           }}
         >
-          <i className="ri-file-text-line" style={{ fontSize:15 }}/>
+          <i className="ri-file-text-line" style={{ fontSize:20 }}/>
           Add Single Product
         </Link>
         <Link
@@ -259,7 +259,7 @@ export default function BulkImport() {
             transition:'all 0.15s'
           }}
         >
-          <i className="ri-cloud-upload-line" style={{ fontSize:15 }}/>
+          <i className="ri-cloud-upload-line" style={{ fontSize:20 }}/>
           Bulk Import
         </Link>
       </div>
@@ -305,7 +305,7 @@ export default function BulkImport() {
               onDrop={handleDrop}
               onClick={()=>fileInputRef.current?.click()}
               style={{ border:`2px dashed ${dragOver?typeConfig.color:B}`,borderRadius:12,padding:'52px 24px',textAlign:'center',cursor:'pointer',background:dragOver?`${typeConfig.color}08`:'#fafafa',transition:'all .15s' }}>
-              <div style={{ fontSize:48 }}>📂</div>
+              <div style={{ fontSize:65 }}>📂</div>
               <div style={{ fontWeight:700,fontSize:16,marginTop:10,marginBottom:4 }}>Drag & drop your file here</div>
               <div style={{ fontSize:13,color:S,marginBottom:16 }}>or click to browse — CSV only (max 10 MB)</div>
               <button type="button" style={btnL} onClick={e=>{ e.stopPropagation(); fileInputRef.current?.click() }}>Browse File</button>
@@ -326,7 +326,7 @@ export default function BulkImport() {
           <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
             <div>
               <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:4 }}>
-                <i className="ri-git-merge-line" style={{ color:'#405189',fontSize:18 }}/>
+                <i className="ri-git-merge-line" style={{ color:'#405189',fontSize:24 }}/>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>Map Your Columns</span>
               </div>
               <div style={{ fontSize:12,color:S }}>File: <strong style={{ color:'var(--text-primary)' }}>{uploadedFile?.name}</strong> · {fileHeaders.length} column{fileHeaders.length!==1?'s':''} detected · {mappedCount} mapped</div>

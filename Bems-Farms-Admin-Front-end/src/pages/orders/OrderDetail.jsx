@@ -153,7 +153,7 @@ export default function OrderDetail() {
   if (loading) return (
     <div style={{ display:"flex",justifyContent:"center",alignItems:"center",minHeight:300,fontFamily:"Nunito,sans-serif" }}>
       <div style={{ textAlign:"center",color:'var(--text-muted)' }}>
-        <i className="ri-loader-4-line" style={{ fontSize:36,display:"block",marginBottom:8 }}/>Loading order...
+        <i className="ri-loader-4-line" style={{ fontSize:49,display:"block",marginBottom:8 }}/>Loading order...
       </div>
     </div>
   )
@@ -180,7 +180,7 @@ export default function OrderDetail() {
       {/* Page header */}
       <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:24,flexWrap:"wrap" }}>
         <Link to="/orders" style={{ display:"inline-flex",alignItems:"center",justifyContent:"center",width:36,height:36,borderRadius:8,border:"1.5px solid var(--border)",background:'var(--bg-card)',color:'var(--text-secondary)',textDecoration:"none" }}>
-          <i className="ri-arrow-left-line" style={{ fontSize:16 }}/>
+          <i className="ri-arrow-left-line" style={{ fontSize:22 }}/>
         </Link>
         <div>
           <div style={{ fontFamily:"Syne,sans-serif",fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Order {o.id}</div>
@@ -355,7 +355,7 @@ export default function OrderDetail() {
                     <div style={{ fontWeight:600,fontSize:13 }}>{driver.name}</div>
                     <div style={{ fontSize:11,color:S }}>{driver.phone} · {driver.vehicle_plate||driver.vehicle_type}</div>
                   </div>
-                  {Number(assignDriverId)===driver.id&&<i className="ri-checkbox-circle-fill" style={{ fontSize:18,color:"#6366f1" }}/>}
+                  {Number(assignDriverId)===driver.id&&<i className="ri-checkbox-circle-fill" style={{ fontSize:24,color:"#6366f1" }}/>}
                 </div>
               ))}
             </div>
@@ -388,7 +388,7 @@ export default function OrderDetail() {
                   <div style={{ fontWeight:600,fontSize:13 }}>{d.label}</div>
                   <div style={{ fontSize:11,color:S }}>{d.desc}</div>
                 </div>
-                {disputeDecision===d.key&&<i className="ri-checkbox-circle-fill" style={{ fontSize:18,color:d.color }}/>}
+                {disputeDecision===d.key&&<i className="ri-checkbox-circle-fill" style={{ fontSize:24,color:d.color }}/>}
               </div>
             ))}
           </div>

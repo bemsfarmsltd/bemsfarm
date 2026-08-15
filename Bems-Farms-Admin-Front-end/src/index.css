@@ -7,6 +7,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Remix Icon sizing ─────────────────────────────────────────────────────── */
+/* Remix Icon ships with no default font-size — every <i className="ri-..."> */
+/* inherits its size from context, so most icons in this app render at whatever */
+/* the surrounding text size happens to be (often quite small). Icons that set */
+/* an explicit inline fontSize already got a matching bump directly in JSX; this */
+/* rule scales everything else relative to its own inherited size so the overall */
+/* icon hierarchy (small icon vs. large icon) is preserved, not flattened. */
+[class^="ri-"], [class*=" ri-"] {
+  font-size: 1.35em;
+}
+
 /* ── CSS design tokens ─────────────────────────────────────────────────────── */
 :root {
   /* Brand */

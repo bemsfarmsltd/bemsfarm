@@ -103,12 +103,12 @@ export default function TaxSettings() {
       <SettingsNav/>
 
       {loading ? (
-        <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
+        <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
       ) : (
         <>
           {!form.tax_enabled && (
             <div style={{ background:'#fef3c7',border:'1px solid #fcd34d',borderRadius:10,padding:'12px 16px',marginBottom:20,fontSize:13,color:'#92400e',display:'flex',alignItems:'center',gap:10 }}>
-              <i className="ri-alert-line" style={{ fontSize:18 }}/>
+              <i className="ri-alert-line" style={{ fontSize:24 }}/>
               <span><strong>Tax system is disabled.</strong> Tax will not be applied to sales or receipts.</span>
             </div>
           )}

@@ -155,7 +155,7 @@ export default function WalletBalance() {
       <PageHeader title="Wallet Balances" subtitle="Manage customer wallet funds, top-ups, and credits" />
 
       {loading ? (
-        <div style={{ textAlign:'center', padding:60, color:'var(--text-muted)' }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
+        <div style={{ textAlign:'center', padding:60, color:'var(--text-muted)' }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
       ) : (
       <>
       {/* KPI Strip */}
@@ -184,7 +184,7 @@ export default function WalletBalance() {
         <div>
           <div style={{ ...card, padding:'10px 14px', marginBottom:12 }}>
             <div style={{ position:'relative' }}>
-              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
+              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customers…" style={{ ...inp, paddingLeft:32 }} />
             </div>
           </div>
@@ -233,7 +233,7 @@ export default function WalletBalance() {
                               <i className="ri-subtract-line" />Debit
                             </button>
                             <button onClick={() => { setSelectedCust(c); setModal('history') }} title="View History" style={{ width:28, height:28, borderRadius:'50%', border:'1.5px solid #bfdbfe', background:'#eff6ff', color:'#2563eb', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
-                              <i className="ri-history-line" style={{ fontSize:12 }} />
+                              <i className="ri-history-line" style={{ fontSize:16 }} />
                             </button>
                           </div>
                         </TD>

@@ -148,7 +148,7 @@ export default function Categories() {
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)' }}>
           <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Products</span>
-          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <i className="ri-arrow-right-s-line" style={{ fontSize:19 }} />
           <span style={{ fontWeight:600,color:'var(--text-primary)' }}>Categories</span>
         </div>
       </div>
@@ -173,7 +173,7 @@ export default function Categories() {
       <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
         <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap' }}>
           <div style={{ position:'relative',flex:'1 1 220px' }}>
-            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:15,pointerEvents:'none' }}/>
+            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
             <input type="text" placeholder="Search categories…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp,paddingLeft:34 }}/>
           </div>
           <select style={{ ...inp,width:'auto' }} value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
@@ -193,7 +193,7 @@ export default function Categories() {
             <tbody>
               {filtered.length===0&&(
                 <tr><td colSpan={6} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                  <i className="ri-price-tag-3-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>No categories found
+                  <i className="ri-price-tag-3-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No categories found
                 </td></tr>
               )}
               {filtered.map(r=>(
@@ -222,8 +222,8 @@ export default function Categories() {
                   <td style={{ ...TD,color:S,fontSize:12 }}>{r.created}</td>
                   <td style={TD}>
                     <div style={{ display:'flex',gap:12,alignItems:'center' }}>
-                      <button onClick={()=>openEdit(r)} aria-label={`Edit ${r.name}`} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-pencil-line" style={{ fontSize:16 }}/></button>
-                      <button onClick={()=>openDelete(r)} aria-label={`Delete ${r.name}`} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:16 }}/></button>
+                      <button onClick={()=>openEdit(r)} aria-label={`Edit ${r.name}`} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-pencil-line" style={{ fontSize:22 }}/></button>
+                      <button onClick={()=>openDelete(r)} aria-label={`Delete ${r.name}`} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:22 }}/></button>
                     </div>
                   </td>
                 </tr>
@@ -244,7 +244,7 @@ export default function Categories() {
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:460,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'var(--orange-accent)',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-price-tag-3-line" style={{ fontSize:18 }}/>
+                  <i className="ri-price-tag-3-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>{editItem?'Edit Category':'Add New Category'}</span>
                 <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
@@ -287,7 +287,7 @@ export default function Categories() {
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-delete-bin-line" style={{ fontSize:18 }}/>
+                  <i className="ri-delete-bin-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Delete Category?</span>
                 <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>

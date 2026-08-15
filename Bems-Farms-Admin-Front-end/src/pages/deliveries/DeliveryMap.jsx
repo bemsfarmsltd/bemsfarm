@@ -147,7 +147,7 @@ export default function DeliveryMap() {
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:50, background:'#dcfce7', color:'#16a34a' }}>
-            <i className="ri-checkbox-blank-circle-fill" style={{ fontSize:7 }} />Live
+            <i className="ri-checkbox-blank-circle-fill" style={{ fontSize:9 }} />Live
           </span>
           <span style={{ fontSize:12, color:'var(--text-muted)' }}>{deliveries.length} active deliveries</span>
         </div>
@@ -159,7 +159,7 @@ export default function DeliveryMap() {
         {/* Side panel */}
         <div style={{ overflowY:'auto', background:'#fcfcfc', borderRight:'1px solid var(--border)' }}>
           <div style={{ padding:'16px 14px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8, background:'var(--bg-card)' }}>
-            <i className="ri-list-check" style={{ color:'var(--text-light)', fontSize:16 }} />
+            <i className="ri-list-check" style={{ color:'var(--text-light)', fontSize:22 }} />
             <span style={{ fontWeight:700, fontSize:14, color:'var(--text-secondary)' }}>Active Deliveries</span>
             <span style={{ marginLeft:'auto', fontSize:11, fontWeight:700, width:20, height:20, borderRadius:'50%', background:'var(--orange-accent)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center' }}>
               {deliveries.length}
@@ -169,7 +169,7 @@ export default function DeliveryMap() {
           <div style={{ padding:'10px' }}>
             {!loading && deliveries.length===0 && (
               <div style={{ padding:'32px 16px', textAlign:'center', color:'var(--text-light)', fontSize:12 }}>
-                <i className="ri-truck-line" style={{ fontSize:28, display:'block', marginBottom:8 }} />
+                <i className="ri-truck-line" style={{ fontSize:38, display:'block', marginBottom:8 }} />
                 No active deliveries right now
               </div>
             )}
@@ -191,11 +191,11 @@ export default function DeliveryMap() {
                   </div>
                   {/* Customer */}
                   <div style={{ display:'flex', alignItems:'flex-start', gap:6, marginBottom:4 }}>
-                    <i className="ri-user-line" style={{ color:'var(--text-light)', fontSize:12, marginTop:1, flexShrink:0 }} />
+                    <i className="ri-user-line" style={{ color:'var(--text-light)', fontSize:16, marginTop:1, flexShrink:0 }} />
                     <span style={{ fontSize:12, fontWeight:600, color:'#475569' }}>{del.customer.name}</span>
                   </div>
                   <div style={{ display:'flex', alignItems:'flex-start', gap:6, marginBottom:8 }}>
-                    <i className="ri-map-pin-line" style={{ color:'var(--text-light)', fontSize:12, marginTop:1, flexShrink:0 }} />
+                    <i className="ri-map-pin-line" style={{ color:'var(--text-light)', fontSize:16, marginTop:1, flexShrink:0 }} />
                     <span style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.3 }}>{del.customer.address}</span>
                   </div>
                   {/* Footer info row */}
@@ -293,11 +293,11 @@ export default function DeliveryMap() {
                         <div style={{ padding:'10px 14px' }}>
                           <div style={{ fontSize:13, fontWeight:600, marginBottom:5 }}>{del.orderId}</div>
                           <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:4 }}>
-                            <i className="ri-user-line" style={{ color:'var(--text-light)', fontSize:11 }} />
+                            <i className="ri-user-line" style={{ color:'var(--text-light)', fontSize:15 }} />
                             <span style={{ fontSize:12 }}>{del.customer.name}</span>
                           </div>
                           <div style={{ display:'flex', alignItems:'flex-start', gap:4, marginBottom:8 }}>
-                            <i className="ri-map-pin-line" style={{ color:'var(--text-light)', fontSize:11, marginTop:2 }} />
+                            <i className="ri-map-pin-line" style={{ color:'var(--text-light)', fontSize:15, marginTop:2 }} />
                             <span style={{ color:'var(--text-muted)', fontSize:11 }}>{del.customer.address}</span>
                           </div>
                           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -324,7 +324,7 @@ export default function DeliveryMap() {
                           </div>
                         </div>
                         <div style={{ display:'flex', alignItems:'flex-start', gap:4, marginBottom:8 }}>
-                          <i className="ri-map-pin-fill" style={{ color:del.driver.color, fontSize:11, marginTop:2, flexShrink:0 }} />
+                          <i className="ri-map-pin-fill" style={{ color:del.driver.color, fontSize:15, marginTop:2, flexShrink:0 }} />
                           <span style={{ fontSize:13 }}>{del.customer.address}</span>
                         </div>
                         <div style={{ borderTop:'1px solid var(--border)', paddingTop:8, display:'flex', justifyContent:'space-between' }}>
@@ -351,7 +351,7 @@ export default function DeliveryMap() {
                   <div style={{ fontSize:10, color:'var(--text-muted)' }}>{(STATUS_CFG[selected.status] || {label: selected.status || 'Pending'}).label}</div>
                 </div>
                 <button onClick={() => { setSelected(null); setFlyTarget(null) }} style={{ width:24, height:24, borderRadius:'50%', border:'1px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-light)' }}>
-                  <i className="ri-close-line" style={{ fontSize:12 }} />
+                  <i className="ri-close-line" style={{ fontSize:16 }} />
                 </button>
               </div>
               <div style={{ fontSize:12 }}>

@@ -207,7 +207,7 @@ export default function DeliveryZones() {
       {/* Filter Bar */}
       <div style={{ ...card, padding:'10px 14px', marginBottom:14, display:'flex', flexWrap:'wrap', gap:10, alignItems:'center' }}>
         <div style={{ position:'relative', maxWidth:280, flex:1 }}>
-          <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
+          <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Zone name, area…" style={{ ...inp, paddingLeft:32 }} />
         </div>
         <div style={{ display:'flex', gap:6 }}>
@@ -233,7 +233,7 @@ export default function DeliveryZones() {
 
       {!loading && filtered.length===0 && (
         <div style={{ ...card, padding:'48px', textAlign:'center', color:'var(--text-light)' }}>
-          <i className="ri-map-2-line" style={{ fontSize:36, display:'block', marginBottom:8 }} />
+          <i className="ri-map-2-line" style={{ fontSize:49, display:'block', marginBottom:8 }} />
           <div style={{ fontSize:13 }}>No zones found. <button onClick={() => openModal('add')} style={{ background:'none', border:'none', cursor:'pointer', color:'#1B4332', fontWeight:600, fontSize:13, padding:0 }}>Add the first zone →</button></div>
         </div>
       )}
@@ -260,7 +260,7 @@ export default function DeliveryZones() {
                   {/* Dropdown menu */}
                   <div style={{ position:'relative' }}>
                     <button onClick={() => setMenuZone(menuZone===zone.id?null:zone.id)} style={{ width:30, height:30, borderRadius:7, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-secondary)' }}>
-                      <i className="ri-more-2-line" style={{ fontSize:14 }} />
+                      <i className="ri-more-2-line" style={{ fontSize:19 }} />
                     </button>
                     {menuZone===zone.id && (
                       <>
@@ -439,7 +439,7 @@ export default function DeliveryZones() {
             <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth:400 }}>
               <div style={{ padding:28, textAlign:'center' }}>
                 <div style={{ width:56, height:56, borderRadius:'50%', background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
-                  <i className="ri-delete-bin-line" style={{ fontSize:24, color:'#dc2626' }} />
+                  <i className="ri-delete-bin-line" style={{ fontSize:32, color:'#dc2626' }} />
                 </div>
                 <div style={{ fontWeight:700, fontSize:17, marginBottom:6 }}>Delete Zone?</div>
                 <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:24 }}>

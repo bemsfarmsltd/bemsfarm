@@ -188,7 +188,7 @@ export default function RegisterPage() {
 
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3 text-xs font-semibold mb-4 flex items-center gap-2">
-                <span>⚠️</span> {error}
+                <span style={{fontSize:'1.35em'}}>⚠️</span> {error}
               </div>
             )}
 
@@ -318,7 +318,7 @@ export default function RegisterPage() {
                         }`}
                       >
                         {tag.label}
-                        {isSelected && <span className="text-[10px] text-emerald-600">✕</span>}
+                        {isSelected && <span style={{fontSize:'1.35em'}} className="text-[10px] text-emerald-600">✕</span>}
                       </button>
                     );
                   })}

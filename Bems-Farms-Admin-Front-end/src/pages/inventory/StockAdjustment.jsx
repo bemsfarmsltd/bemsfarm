@@ -162,7 +162,7 @@ export default function StockAdjustment() {
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
           <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Inventory</span>
-          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <i className="ri-arrow-right-s-line" style={{ fontSize:19 }} />
           <span style={{ fontWeight:600, color:'var(--text-primary)' }}>Adjustments</span>
         </div>
       </div>
@@ -190,7 +190,7 @@ export default function StockAdjustment() {
       <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
         <div style={{ padding:'16px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
           <div style={{ position:'relative', flex:1, minWidth:200 }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:20 }}/>
             <input style={{ ...inp, paddingLeft:32 }} placeholder="Search product, ref..." value={search} onChange={e => setSearch(e.target.value)}/>
           </div>
           <select style={{ ...inp, width:'auto', minWidth:140 }} value={filterType} onChange={e => setFilterType(e.target.value)}>
@@ -217,7 +217,7 @@ export default function StockAdjustment() {
                 </td></tr>
               ) : filteredMovements.length === 0 ? (
                 <tr><td colSpan={10} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
-                  <i className="ri-equalizer-line" style={{ fontSize:32, display:'block', marginBottom:8 }}/>No adjustments found
+                  <i className="ri-equalizer-line" style={{ fontSize:43, display:'block', marginBottom:8 }}/>No adjustments found
                 </td></tr>
               ) : filteredMovements.map(m => {
                 const tc = getAdjType(m)

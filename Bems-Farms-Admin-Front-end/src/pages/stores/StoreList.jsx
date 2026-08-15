@@ -134,7 +134,7 @@ export default function StoreList() {
           <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>All Stores</span>
           <div style={{ display:'flex',gap:10,alignItems:'center' }}>
             <div style={{ position:'relative' }}>
-              <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:15,pointerEvents:'none' }}/>
+              <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
               <input type="text" placeholder="Search stores…" value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} style={{ ...inp,paddingLeft:34,width:220 }}/>
             </div>
             <button style={btnP} onClick={openAdd}><i className="ri-store-2-line"/>Add Store</button>
@@ -142,7 +142,7 @@ export default function StoreList() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
+          <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
         ) : (
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%',borderCollapse:'collapse' }}>
@@ -152,7 +152,7 @@ export default function StoreList() {
               <tbody>
                 {stores.length === 0 && (
                   <tr><td colSpan={8} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                    <i className="ri-store-2-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>No stores found
+                    <i className="ri-store-2-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No stores found
                   </td></tr>
                 )}
                 {stores.map(s=>(
@@ -195,7 +195,7 @@ export default function StoreList() {
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:560,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10,flexShrink:0 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-store-2-line" style={{ fontSize:18 }}/>
+                  <i className="ri-store-2-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Add New Store</span>
                 <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
@@ -257,7 +257,7 @@ export default function StoreList() {
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:560,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10,flexShrink:0 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-edit-box-line" style={{ fontSize:18 }}/>
+                  <i className="ri-edit-box-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Edit Store — {modal.name}</span>
                 <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
@@ -319,7 +319,7 @@ export default function StoreList() {
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:580,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10,flexShrink:0 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-store-2-line" style={{ fontSize:18 }}/>
+                  <i className="ri-store-2-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>{viewData.store.name}</span>
                 <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
@@ -353,7 +353,7 @@ export default function StoreList() {
                     Staff Members {!viewLoading && <span style={{ fontSize:12,color:S,fontWeight:400 }}>({viewData.staff.length})</span>}
                   </div>
                   {viewLoading ? (
-                    <div style={{ textAlign:'center',padding:30,color:S }}><i className="ri-loader-4-line" style={{ fontSize:24 }}/></div>
+                    <div style={{ textAlign:'center',padding:30,color:S }}><i className="ri-loader-4-line" style={{ fontSize:32 }}/></div>
                   ) : viewData.staff.length === 0 ? (
                     <div style={{ textAlign:'center',padding:30,color:S,fontSize:13 }}>No staff assigned to this store.</div>
                   ) : (
@@ -395,7 +395,7 @@ export default function StoreList() {
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <i className="ri-delete-bin-line" style={{ fontSize:22 }}/>
+                <i className="ri-delete-bin-line" style={{ fontSize:30 }}/>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Delete Store?</span>
                 <button onClick={()=>setDeleteItem(null)} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>

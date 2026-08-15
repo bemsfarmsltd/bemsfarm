@@ -433,7 +433,7 @@ export default function ContactPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 style={{ textAlign: "center", padding: "40px 20px" }}
               >
-                <div style={{ fontSize: "80px", marginBottom: "20px" }}>✅</div>
+                <div style={{ fontSize: "108", marginBottom: "20px" }}>✅</div>
                 <h3
                   style={{
                     fontSize: "24px",

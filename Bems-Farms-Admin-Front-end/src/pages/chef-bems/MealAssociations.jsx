@@ -238,7 +238,7 @@ export default function MealAssociations() {
       {/* Filter Bar */}
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20, flexWrap:'wrap' }}>
         <div style={{ position:'relative', flex:1, minWidth:240 }}>
-          <i className="ri-search-line" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
+          <i className="ri-search-line" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
           <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search product names or association type..."
             style={{ ...inp, paddingLeft:34 }} />
         </div>
@@ -267,7 +267,7 @@ export default function MealAssociations() {
             ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={7} style={{ textAlign:'center', padding:'48px 0', color:'var(--text-light)' }}>
-                  <i className="ri-links-line" style={{ fontSize:36, display:'block', marginBottom:8 }} />
+                  <i className="ri-links-line" style={{ fontSize:49, display:'block', marginBottom:8 }} />
                   <div>No meal associations found. {search && 'Try a different search.'}</div>
                   {!search && <button onClick={() => { setForm({...BLANK}); setAddModal(true) }} style={{ ...btn('#1B4332','#fff'), marginTop:12 }}><i className="ri-add-line" />Add First Association</button>}
                 </td>

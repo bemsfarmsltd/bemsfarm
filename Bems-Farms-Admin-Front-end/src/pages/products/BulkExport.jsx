@@ -147,7 +147,7 @@ export default function BulkExport() {
               {typeConfig.fields.map(f=>(
                 <button key={f} onClick={()=>toggleField(f)}
                   style={{ display:'inline-flex',alignItems:'center',gap:5,padding:'5px 12px',borderRadius:20,border:`1.5px solid ${fields.includes(f)?typeConfig.color:B}`,background:fields.includes(f)?`${typeConfig.color}12`:'var(--bg-card)',color:fields.includes(f)?typeConfig.color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontSize:12,fontWeight:600 }}>
-                  {fields.includes(f)&&<i className="ri-check-line" style={{ fontSize:11 }}/>}
+                  {fields.includes(f)&&<i className="ri-check-line" style={{ fontSize:15 }}/>}
                   {f}
                 </button>
               ))}
@@ -225,7 +225,7 @@ export default function BulkExport() {
             <tbody>
               {history.length===0&&(
                 <tr><td colSpan={8} style={{ ...TD,textAlign:'center',padding:'40px 0',color:S }}>
-                  <i className="ri-download-cloud-2-line" style={{ fontSize:32,display:'block',marginBottom:8 }}/>No exports yet this session
+                  <i className="ri-download-cloud-2-line" style={{ fontSize:43,display:'block',marginBottom:8 }}/>No exports yet this session
                 </td></tr>
               )}
               {history.map((row,i)=>{

@@ -275,17 +275,17 @@ export default function LandingPage() {
               {/* Features inline row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-4 text-center">
                 <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-white/15 rounded-full flex items-center justify-center text-xl mb-3">🚚</div>
+                  <div style={{fontSize:'1.35em'}} className="w-12 h-12 bg-white/15 rounded-full flex items-center justify-center text-xl mb-3">🚚</div>
                   <h3 className="font-bold text-[16px] mb-1">Fast Delivery</h3>
                   <p className="text-primary-light text-[13px]">Receive order within 2-4 hours locally</p>
                 </div>
                 <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-white/15 rounded-full flex items-center justify-center text-xl mb-3">🥗</div>
+                  <div style={{fontSize:'1.35em'}} className="w-12 h-12 bg-white/15 rounded-full flex items-center justify-center text-xl mb-3">🥗</div>
                   <h3 className="font-bold text-[16px] mb-1">Fresh Food</h3>
                   <p className="text-primary-light text-[13px]">Directly from farm to your kitchen</p>
                 </div>
                 <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 bg-white/15 rounded-full flex items-center justify-center text-xl mb-3">📦</div>
+                  <div style={{fontSize:'1.35em'}} className="w-12 h-12 bg-white/15 rounded-full flex items-center justify-center text-xl mb-3">📦</div>
                   <h3 className="font-bold text-[16px] mb-1">Pick up</h3>
                   <p className="text-primary-light text-[13px]">Convenient pick-up points or doorstep delivery</p>
                 </div>
@@ -354,7 +354,7 @@ export default function LandingPage() {
             {/* Category Card 4: Others Green banner */}
             <div className="bg-primary rounded-2xl p-6 text-white flex flex-col justify-between items-center text-center shadow-md">
               <div className="my-auto py-4">
-                <div className="text-4xl mb-4">🍎🌾🥔</div>
+                <div style={{fontSize:'1.35em'}} className="text-4xl mb-4">🍎🌾🥔</div>
                 <h3 className="font-serif text-xl font-bold mb-3">Other Categories</h3>
                 <p className="text-primary-light text-[13px] leading-relaxed mb-6">
                   Explore Grains, Legumes, Tubers, Local Spices, Oils and more from our farmers.
@@ -388,15 +388,15 @@ export default function LandingPage() {
 
             <ul className="space-y-4">
               <li className="flex items-center gap-3 font-semibold text-gray-700 text-[14px]">
-                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs">✓</span>
+                <span style={{fontSize:'1.35em'}} className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs">✓</span>
                 Best service and fast response
               </li>
               <li className="flex items-center gap-3 font-semibold text-gray-700 text-[14px]">
-                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs">✓</span>
+                <span style={{fontSize:'1.35em'}} className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs">✓</span>
                 User-friendly storefront & AI companion
               </li>
               <li className="flex items-center gap-3 font-semibold text-gray-700 text-[14px]">
-                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs">✓</span>
+                <span style={{fontSize:'1.35em'}} className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs">✓</span>
                 Professional dispatch & quality control staff
               </li>
             </ul>
@@ -407,28 +407,28 @@ export default function LandingPage() {
             
             {/* Feature Box 1 */}
             <div className="p-6 bg-[#F8FAFC] border border-gray-100 rounded-2xl text-center flex flex-col items-center">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-[16px] text-primary font-bold mb-4">🚚</div>
+              <div style={{fontSize:'1.35em'}} className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-[16px] text-primary font-bold mb-4">🚚</div>
               <h4 className="font-bold text-[15px] text-gray-800 mb-1.5">Fast delivery</h4>
               <p className="text-gray-500 text-[12px] leading-relaxed">Swift delivery across Lagos and key regional centers.</p>
             </div>
 
             {/* Feature Box 2 */}
             <div className="p-6 bg-[#F8FAFC] border border-gray-100 rounded-2xl text-center flex flex-col items-center">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-[16px] text-primary font-bold mb-4">🥗</div>
+              <div style={{fontSize:'1.35em'}} className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-[16px] text-primary font-bold mb-4">🥗</div>
               <h4 className="font-bold text-[15px] text-gray-800 mb-1.5">Fresh Foods</h4>
               <p className="text-gray-500 text-[12px] leading-relaxed">Direct harvest crops that never sit on retail storage.</p>
             </div>
 
             {/* Feature Box 3 */}
             <div className="p-6 bg-[#F8FAFC] border border-gray-100 rounded-2xl text-center flex flex-col items-center">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-[16px] text-primary font-bold mb-4">🔒</div>
+              <div style={{fontSize:'1.35em'}} className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-[16px] text-primary font-bold mb-4">🔒</div>
               <h4 className="font-bold text-[15px] text-gray-800 mb-1.5">Secured Payments</h4>
               <p className="text-gray-500 text-[12px] leading-relaxed">Integrates with Monnify for seamless debit card transactions.</p>
             </div>
 
             {/* Feature Box 4 */}
             <div className="p-6 bg-[#F8FAFC] border border-gray-100 rounded-2xl text-center flex flex-col items-center">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-[16px] text-primary font-bold mb-4">🏠</div>
+              <div style={{fontSize:'1.35em'}} className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-[16px] text-primary font-bold mb-4">🏠</div>
               <h4 className="font-bold text-[15px] text-gray-800 mb-1.5">Pick up</h4>
               <p className="text-gray-500 text-[12px] leading-relaxed">Select home delivery or choose from localized hubs.</p>
             </div>
@@ -482,7 +482,7 @@ export default function LandingPage() {
               <div className="space-y-6">
                 {/* Feature 1 */}
                 <div className="flex gap-4 items-start">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-lg">💬</div>
+                  <div style={{fontSize:'1.35em'}} className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-lg">💬</div>
                   <div>
                     <h4 className="font-bold text-[16px] text-gray-800 mb-1">Smart Search & Shopping lists</h4>
                     <p className="text-gray-500 text-[13px] leading-relaxed">Ask Chef Bems for specific recipe items. He will map cooking ingredients to real stock items in our warehouse instantly.</p>
@@ -491,7 +491,7 @@ export default function LandingPage() {
 
                 {/* Feature 2 */}
                 <div className="flex gap-4 items-start">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-lg">🥗</div>
+                  <div style={{fontSize:'1.35em'}} className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-lg">🥗</div>
                   <div>
                     <h4 className="font-bold text-[16px] text-gray-800 mb-1">Personalized Dietary Profiling</h4>
                     <p className="text-gray-500 text-[13px] leading-relaxed">Configure filters based on health goals (e.g. hypertension, heart health, muscle building) to filter recommended products.</p>
@@ -500,7 +500,7 @@ export default function LandingPage() {
 
                 {/* Feature 3 */}
                 <div className="flex gap-4 items-start">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-lg">🔄</div>
+                  <div style={{fontSize:'1.35em'}} className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-lg">🔄</div>
                   <div>
                     <h4 className="font-bold text-[16px] text-gray-800 mb-1">Instant Ingredient Substitutions</h4>
                     <p className="text-gray-500 text-[13px] leading-relaxed">If a recipe ingredient is currently out of stock, Chef Bems automatically suggests local, available substitutes you can order instead.</p>
@@ -577,8 +577,8 @@ export default function LandingPage() {
             </p>
             <div className="flex gap-4 font-bold text-white text-lg">
               <span className="cursor-pointer hover:text-emerald-500">𝕏</span>
-              <span className="cursor-pointer hover:text-emerald-500">📷</span>
-              <span className="cursor-pointer hover:text-emerald-500">📘</span>
+              <span style={{fontSize:'1.35em'}} className="cursor-pointer hover:text-emerald-500">📷</span>
+              <span style={{fontSize:'1.35em'}} className="cursor-pointer hover:text-emerald-500">📘</span>
             </div>
           </div>
 
@@ -609,15 +609,15 @@ export default function LandingPage() {
             <h4 className="text-white font-bold text-[14px] uppercase tracking-wider mb-4">Contact Info</h4>
             <ul className="space-y-3.5 text-[13px]">
               <li className="flex items-start gap-3">
-                <span className="text-primary">📍</span>
+                <span style={{fontSize:'1.35em'}} className="text-primary">📍</span>
                 <span>Lagos Mainland Hub, Yaba, Lagos, Nigeria.</span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="text-primary">✉️</span>
+                <span style={{fontSize:'1.35em'}} className="text-primary">✉️</span>
                 <a href="mailto:info@bemsfarms.com" className="hover:text-primary transition-colors">info@bemsfarms.com</a>
               </li>
               <li className="flex items-start gap-3">
-                <span className="text-primary">📞</span>
+                <span style={{fontSize:'1.35em'}} className="text-primary">📞</span>
                 <span>+234 (0) 800-BEMSFARM</span>
               </li>
             </ul>

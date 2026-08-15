@@ -210,7 +210,7 @@ export default function Income() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ position: 'relative' }}>
               <input style={{ ...inpStyle, width: '220px', paddingLeft: '32px' }} placeholder="Search source, ref, ID…" value={search} onChange={e => setSearch(e.target.value)} />
-              <i className="ri-search-line" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', color: 'var(--text-muted)' }} />
+              <i className="ri-search-line" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '19', color: 'var(--text-muted)' }} />
             </div>
             <select style={{ ...inpStyle, width: '150px' }} value={filterCat} onChange={e => setFiltCat(e.target.value)}>
               <option value="all">All Categories</option>
@@ -479,7 +479,7 @@ export default function Income() {
               </div>
               <div style={{ padding: '24px', textAlign: 'center' }}>
                 <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--bg-red-faint)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                  <i className="ri-arrow-up-circle-line fs-24 text-danger" style={{ color: '#ef4444', fontSize: '24px' }} />
+                  <i className="ri-arrow-up-circle-line fs-24 text-danger" style={{ color: '#ef4444', fontSize: '32' }} />
                 </div>
                 <h5 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>Delete this income record?</h5>
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '24px' }}>

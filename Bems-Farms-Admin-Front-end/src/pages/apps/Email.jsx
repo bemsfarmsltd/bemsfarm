@@ -115,7 +115,7 @@ export default function Email() {
         subtitle="Manage emails for Bems Farms"
         actions={
           <button onClick={() => setCompose(true)} style={{ ...btnBase, background: '#1B4332', color: '#fff' }}>
-            <i className="ri-edit-2-line" style={{ fontSize: 14 }} />
+            <i className="ri-edit-2-line" style={{ fontSize: 19 }} />
             Compose
           </button>
         }
@@ -155,14 +155,14 @@ export default function Email() {
           <div style={{ padding: '14px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-light)' }}>LABELS</div>
-              <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1B4332' }}><i className="ri-add-line" style={{ fontSize: 14 }} /></button>
+              <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1B4332' }}><i className="ri-add-line" style={{ fontSize: 19 }} /></button>
             </div>
             {LABELS.map(l => (
               <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', cursor: 'pointer', borderRadius: 8 }}
                 onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
                 onMouseLeave={e => e.currentTarget.style.background = 'none'}
               >
-                <i className="ri-checkbox-blank-circle-fill" style={{ color: l.color, fontSize: 10 }} />
+                <i className="ri-checkbox-blank-circle-fill" style={{ color: l.color, fontSize: 14 }} />
                 <span style={{ flex: 1, fontSize: 13, color: 'var(--text-secondary)' }}>{l.label}</span>
                 <span style={{ fontSize: 11, color: 'var(--text-light)' }}>{l.count}</span>
               </div>
@@ -182,11 +182,11 @@ export default function Email() {
                 <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-light)', marginLeft: 6 }}>{folderEmails.length} messages</span>
               </span>
               <button onClick={() => setSearchOpen(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
-                <i className="ri-search-line" style={{ fontSize: 16 }} />
+                <i className="ri-search-line" style={{ fontSize: 22 }} />
               </button>
               {checked.length > 0 && (
                 <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 4 }}>
-                  <i className="ri-delete-bin-6-line" style={{ fontSize: 16 }} />
+                  <i className="ri-delete-bin-6-line" style={{ fontSize: 22 }} />
                 </button>
               )}
             </div>
@@ -195,7 +195,7 @@ export default function Email() {
             {searchOpen && (
               <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ position: 'relative' }}>
-                  <i className="ri-search-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 14 }} />
+                  <i className="ri-search-line" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', fontSize: 19 }} />
                   <input
                     autoFocus
                     value={search}
@@ -211,7 +211,7 @@ export default function Email() {
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {folderEmails.length === 0 && (
                 <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-light)' }}>
-                  <i className="ri-inbox-line" style={{ fontSize: 40, display: 'block', marginBottom: 8 }} />
+                  <i className="ri-inbox-line" style={{ fontSize: 54, display: 'block', marginBottom: 8 }} />
                   <div style={{ fontSize: 13 }}>No emails in {folder}</div>
                 </div>
               )}
@@ -259,7 +259,7 @@ export default function Email() {
                     onClick={e => { e.stopPropagation(); toggleStar(email.id) }}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: email.starred ? '#F57C00' : 'var(--border-strong)', padding: 4, flexShrink: 0 }}
                   >
-                    <i className={email.starred ? 'ri-star-fill' : 'ri-star-line'} style={{ fontSize: 15 }} />
+                    <i className={email.starred ? 'ri-star-fill' : 'ri-star-line'} style={{ fontSize: 20 }} />
                   </button>
                 </div>
               ))}
@@ -272,23 +272,23 @@ export default function Email() {
               {/* Detail toolbar */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
                 <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }} title="Back">
-                  <i className="ri-arrow-left-line" style={{ fontSize: 18 }} />
+                  <i className="ri-arrow-left-line" style={{ fontSize: 24 }} />
                 </button>
                 <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }} title="Archive">
-                  <i className="ri-archive-line" style={{ fontSize: 18 }} />
+                  <i className="ri-archive-line" style={{ fontSize: 24 }} />
                 </button>
                 <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }} title="Mark spam">
-                  <i className="ri-spam-2-line" style={{ fontSize: 18 }} />
+                  <i className="ri-spam-2-line" style={{ fontSize: 24 }} />
                 </button>
                 <div style={{ flex: 1 }} />
                 <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }} title="Reply">
-                  <i className="ri-reply-line" style={{ fontSize: 18 }} />
+                  <i className="ri-reply-line" style={{ fontSize: 24 }} />
                 </button>
                 <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }} title="Snooze">
-                  <i className="ri-time-line" style={{ fontSize: 18 }} />
+                  <i className="ri-time-line" style={{ fontSize: 24 }} />
                 </button>
                 <button onClick={() => setDelModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: 4 }} title="Delete">
-                  <i className="ri-delete-bin-6-line" style={{ fontSize: 18 }} />
+                  <i className="ri-delete-bin-6-line" style={{ fontSize: 24 }} />
                 </button>
               </div>
 
@@ -324,11 +324,11 @@ export default function Email() {
                   />
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
                     <label style={{ cursor: 'pointer', color: 'var(--text-light)' }}>
-                      <i className="ri-image-line" style={{ fontSize: 16 }} />
+                      <i className="ri-image-line" style={{ fontSize: 22 }} />
                       <input type="file" style={{ display: 'none' }} />
                     </label>
                     <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}>
-                      <i className="ri-links-line" style={{ fontSize: 16 }} />
+                      <i className="ri-links-line" style={{ fontSize: 22 }} />
                     </button>
                     <div style={{ flex: 1 }} />
                     <button style={{ ...btnBase, padding: '6px 14px', background: 'var(--bg-muted)', color: 'var(--text-secondary)', fontSize: 12 }}>Draft</button>
@@ -365,11 +365,11 @@ export default function Email() {
           />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
             <label style={{ cursor: 'pointer', color: 'var(--text-light)' }}>
-              <i className="ri-image-line" style={{ fontSize: 18 }} />
+              <i className="ri-image-line" style={{ fontSize: 24 }} />
               <input type="file" style={{ display: 'none' }} />
             </label>
             <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)' }}>
-              <i className="ri-links-line" style={{ fontSize: 18 }} />
+              <i className="ri-links-line" style={{ fontSize: 24 }} />
             </button>
             <div style={{ flex: 1 }} />
             <button type="button" onClick={() => setCompose(false)} style={{ ...btnBase, padding: '7px 16px', background: 'var(--bg-muted)', color: 'var(--text-secondary)' }}>Draft</button>
@@ -385,7 +385,7 @@ export default function Email() {
       <Modal open={delModal} onClose={() => setDelModal(false)} title="Delete Email" maxWidth={420}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <i className="ri-delete-bin-6-line" style={{ fontSize: 26, color: '#dc2626' }} />
+            <i className="ri-delete-bin-6-line" style={{ fontSize: 35, color: '#dc2626' }} />
           </div>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24 }}>Are you sure you want to delete this email? This action cannot be undone.</p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>

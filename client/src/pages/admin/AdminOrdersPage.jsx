@@ -339,7 +339,7 @@ export default function AdminOrdersPage() {
             border: "2px dashed #E5E7EB",
           }}
         >
-          <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
+          <div style={{ fontSize: 65, marginBottom: 12 }}>📦</div>
           <h3 style={{ color: "#374151", margin: "0 0 8px" }}>
             No orders found
           </h3>

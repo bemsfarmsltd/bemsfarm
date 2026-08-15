@@ -182,13 +182,13 @@ export default function Conversations() {
       {/* Attention banners */}
       {kpi.failed > 0 && (
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, marginBottom:12, background:'#fee2e2', border:'1px solid #fca5a5', color:'#991b1b', fontSize:13 }}>
-          <i className="ri-close-circle-line" style={{ fontSize:18, flexShrink:0 }} />
+          <i className="ri-close-circle-line" style={{ fontSize:24, flexShrink:0 }} />
           <span><strong>{kpi.failed} conversation{kpi.failed>1?'s':''}</strong> where the AI failed to respond — a dietary rule may be missing.</span>
         </div>
       )}
       {kpi.lowConf > 0 && (
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, marginBottom:12, background:'#fce7f3', border:'1px solid #f9a8d4', color:'#9d174d', fontSize:13 }}>
-          <i className="ri-error-warning-line" style={{ fontSize:18, flexShrink:0 }} />
+          <i className="ri-error-warning-line" style={{ fontSize:24, flexShrink:0 }} />
           <span><strong>{kpi.lowConf} conversation{kpi.lowConf>1?'s':''}</strong> received a low-confidence AI reply. Consider adding a matching dietary rule.</span>
         </div>
       )}
@@ -200,7 +200,7 @@ export default function Conversations() {
         <div style={{ display:'flex', flexDirection:'column', borderRight:'1px solid var(--border)' }}>
           <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border)' }}>
             <div style={{ position:'relative', marginBottom:8 }}>
-              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
+              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
               <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search customer, session, message..."
                 style={{ width:'100%', padding:'7px 10px 7px 30px', borderRadius:8, border:'1px solid var(--border)', fontSize:12, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box' }} />
             </div>
@@ -218,7 +218,7 @@ export default function Conversations() {
               <Spinner size={24} />
             ) : convos.length === 0 ? (
               <div style={{ textAlign:'center', padding:'32px 16px', color:'var(--text-light)' }}>
-                <i className="ri-chat-3-line" style={{ fontSize:32, display:'block', marginBottom:6 }} />
+                <i className="ri-chat-3-line" style={{ fontSize:43, display:'block', marginBottom:6 }} />
                 <div style={{ fontSize:12 }}>No conversations found</div>
               </div>
             ) : convos.map((c, i) => {
@@ -321,7 +321,7 @@ export default function Conversations() {
                       </div>
                     ) : (
                       <>
-                        <i className="ri-chat-3-line" style={{ fontSize:28, display:'block', marginBottom:6 }} />
+                        <i className="ri-chat-3-line" style={{ fontSize:38, display:'block', marginBottom:6 }} />
                         <div style={{ fontSize:12 }}>No message thread available</div>
                       </>
                     )}
@@ -345,7 +345,7 @@ export default function Conversations() {
                       <div style={{ maxWidth:'68%', background: isAI ? '#d1fae5' : '#fff', border:`1px solid ${isAI ? '#6ee7b7' : '#e2e8f0'}`, borderRadius: isAI ? '12px 12px 2px 12px' : '12px 12px 12px 2px', padding:'10px 14px', fontSize:13, color:'#1e293b', whiteSpace:'pre-line' }}>
                         {isAI && (
                           <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:4 }}>
-                            <i className="ri-robot-line" style={{ color:'#10b981', fontSize:10 }} />
+                            <i className="ri-robot-line" style={{ color:'#10b981', fontSize:14 }} />
                             <span style={{ fontSize:10, color:'#10b981', fontWeight:600 }}>Chef Bems AI · via n8n</span>
                           </div>
                         )}
@@ -362,7 +362,7 @@ export default function Conversations() {
                     <div style={{ width:30, height:30, borderRadius:'50%', background:'#10b981', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, flexShrink:0, alignSelf:'flex-end' }}><i className="ri-robot-line" /></div>
                     <div style={{ maxWidth:'68%', background:'#d1fae5', border:'1px solid #6ee7b7', borderRadius:'12px 12px 2px 12px', padding:'10px 14px', fontSize:13, color:'#1e293b', whiteSpace:'pre-line' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:4 }}>
-                        <i className="ri-robot-line" style={{ color:'#10b981', fontSize:10 }} />
+                        <i className="ri-robot-line" style={{ color:'#10b981', fontSize:14 }} />
                         <span style={{ fontSize:10, color:'#10b981', fontWeight:600 }}>Chef Bems AI · via n8n</span>
                       </div>
                       {selConvo.ai_response}
@@ -410,7 +410,7 @@ export default function Conversations() {
         })() : (
           <div style={{ display:'flex', alignItems:'center', justifyContent:'center', flex:1, color:'var(--text-light)' }}>
             <div style={{ textAlign:'center' }}>
-              <i className="ri-chat-3-line" style={{ fontSize:40, display:'block', marginBottom:8 }} />
+              <i className="ri-chat-3-line" style={{ fontSize:54, display:'block', marginBottom:8 }} />
               <div style={{ fontSize:13 }}>{loading ? 'Loading conversations…' : 'Select a conversation to view'}</div>
             </div>
           </div>
@@ -422,7 +422,7 @@ export default function Conversations() {
           onClick={e => e.target===e.currentTarget && setConfirmDeleteId(null)}>
           <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth:400, padding:28, textAlign:'center' }}>
             <div style={{ width:56, height:56, borderRadius:'50%', background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
-              <i className="ri-delete-bin-line" style={{ fontSize:24, color:'#dc2626' }} />
+              <i className="ri-delete-bin-line" style={{ fontSize:32, color:'#dc2626' }} />
             </div>
             <div style={{ fontWeight:700, fontSize:17, marginBottom:6, color:'var(--text-primary)' }}>Delete Conversation?</div>
             <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:24 }}>

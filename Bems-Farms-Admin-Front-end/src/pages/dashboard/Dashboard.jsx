@@ -597,7 +597,7 @@ function InventoryTab({ data, isDark }) {
                 : low_stock_items.map((item, i) => (
                     <div key={item.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px', borderBottom: i < low_stock_items.length - 1 ? '1px solid var(--border)' : 'none' }}>
                       <div style={{ width: 34, height: 34, borderRadius: 8, background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <i className="ri-archive-stack-line" style={{ fontSize: 16 }} />
+                        <i className="ri-archive-stack-line" style={{ fontSize: 22 }} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
@@ -1044,11 +1044,11 @@ export default function Dashboard() {
               onClick={refresh}
               style={{ ...btnBase, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
             >
-              <i className="ri-refresh-line" style={{ fontSize: 15 }} />
+              <i className="ri-refresh-line" style={{ fontSize: 20 }} />
               Refresh
             </button>
             <Link to="/orders" style={{ ...btnBase, background: '#1B4332', color: '#fff', border: 'none' }}>
-              <i className="ri-add-line" style={{ fontSize: 15 }} />
+              <i className="ri-add-line" style={{ fontSize: 20 }} />
               New Order
             </Link>
           </>
@@ -1096,7 +1096,7 @@ export default function Dashboard() {
           padding: '12px 16px', borderRadius: 10, marginBottom: 20,
           background: 'var(--bg-red-faint)', border: '1px solid var(--border)', color: '#dc2626',
         }}>
-          <i className="ri-error-warning-line" style={{ fontSize: 18, flexShrink: 0 }} />
+          <i className="ri-error-warning-line" style={{ fontSize: 24, flexShrink: 0 }} />
           <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{error}</span>
           <button
             onClick={refresh}

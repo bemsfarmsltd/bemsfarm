@@ -256,7 +256,7 @@ export default function PaymentReconciliation() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                 <div style={{ position: 'relative' }}>
                   <input style={{ ...inpStyle, width: '220px', paddingLeft: '32px' }} placeholder="Search reference, email…" value={paySearch} onChange={e => setPaySearch(e.target.value)} />
-                  <i className="ri-search-line" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '13px', color: 'var(--text-muted)' }} />
+                  <i className="ri-search-line" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '18', color: 'var(--text-muted)' }} />
                 </div>
                 <select style={{ ...inpStyle, width: '150px' }} value={payStatus} onChange={e => setPayStatus(e.target.value)}>
                   <option value="all">All Payments</option>

@@ -203,7 +203,7 @@ export default function DietaryRules() {
       {/* Filter Bar */}
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
         <div style={{ position:'relative', flex:1 }}>
-          <i className="ri-search-line" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
+          <i className="ri-search-line" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
           <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search conditions, rule text, or tags..."
             style={{ ...inp, paddingLeft:34 }} />
         </div>
@@ -228,7 +228,7 @@ export default function DietaryRules() {
             ) : rules.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ textAlign:'center', padding:'48px 0', color:'var(--text-light)' }}>
-                  <i className="ri-file-list-3-line" style={{ fontSize:36, display:'block', marginBottom:8 }} />
+                  <i className="ri-file-list-3-line" style={{ fontSize:49, display:'block', marginBottom:8 }} />
                   <div>No dietary rules found. {search && 'Try a different search.'}</div>
                   {!search && <button onClick={() => { setForm({...BLANK}); setAddModal(true) }} style={{ ...btn('#1B4332','#fff'), marginTop:12 }}><i className="ri-add-line" />Add First Rule</button>}
                 </td>
@@ -309,7 +309,7 @@ export default function DietaryRules() {
         {deleteModal && (
           <>
             <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:10, padding:'14px 16px', marginBottom:20, display:'flex', gap:10 }}>
-              <i className="ri-alarm-warning-line" style={{ fontSize:20, color:'#ea580c', flexShrink:0, marginTop:1 }} />
+              <i className="ri-alarm-warning-line" style={{ fontSize:27, color:'#ea580c', flexShrink:0, marginTop:1 }} />
               <div>
                 <div style={{ fontWeight:700, fontSize:13, color:'#c2410c', marginBottom:4 }}>Warning: This affects live AI responses</div>
                 <p style={{ fontSize:12, color:'#9a3412', margin:0, lineHeight:1.6 }}>

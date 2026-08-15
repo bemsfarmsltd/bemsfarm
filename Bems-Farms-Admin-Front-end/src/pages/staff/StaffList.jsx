@@ -120,7 +120,7 @@ export default function StaffList() {
           <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>All Staff</span>
           <div style={{ display:'flex',gap:10,alignItems:'center' }}>
             <div style={{ position:'relative' }}>
-              <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:15,pointerEvents:'none' }}/>
+              <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
               <input type="text" placeholder="Search name, email, code…" value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} style={{ ...inp,paddingLeft:34,width:220 }}/>
             </div>
             <select value={statusFilter} onChange={e=>{ setStatusFilter(e.target.value); setPage(1) }} style={{ ...inp, width:150 }}>
@@ -131,7 +131,7 @@ export default function StaffList() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
+          <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
         ) : (
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%',borderCollapse:'collapse' }}>
@@ -141,7 +141,7 @@ export default function StaffList() {
               <tbody>
                 {staff.length === 0 && (
                   <tr><td colSpan={8} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                    <i className="ri-team-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>No staff found
+                    <i className="ri-team-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No staff found
                   </td></tr>
                 )}
                 {staff.map(m => (
@@ -197,7 +197,7 @@ export default function StaffList() {
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <i className="ri-user-settings-line" style={{ fontSize:22 }}/>
+                <i className="ri-user-settings-line" style={{ fontSize:30 }}/>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Update Status?</span>
                 <button onClick={()=>setStatusTarget(null)} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
@@ -222,7 +222,7 @@ export default function StaffList() {
           <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <i className="ri-delete-bin-line" style={{ fontSize:22 }}/>
+                <i className="ri-delete-bin-line" style={{ fontSize:30 }}/>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Deactivate Staff?</span>
                 <button onClick={()=>setDeleteItem(null)} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>

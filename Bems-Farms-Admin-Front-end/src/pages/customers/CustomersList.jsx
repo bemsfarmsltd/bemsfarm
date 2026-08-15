@@ -138,7 +138,7 @@ export default function CustomersList() {
       {/* Search */}
       <div style={{ ...card, padding:'10px 14px', marginBottom:14 }}>
         <div style={{ position:'relative', display:'flex', alignItems:'center' }}>
-          <i className="ri-search-line" style={{ position:'absolute', left:10, color:'var(--text-light)', fontSize:14 }} />
+          <i className="ri-search-line" style={{ position:'absolute', left:10, color:'var(--text-light)', fontSize:19 }} />
           <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search by name, phone, email, area or ID…"
             style={{ width:'100%', padding:'8px 36px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', background:'var(--bg-subtle)', boxSizing:'border-box' }} />
           {search && (
@@ -168,7 +168,7 @@ export default function CustomersList() {
 
               {!loading && customers.length===0 && (
                 <tr><td colSpan={10} style={{ textAlign:'center', padding:'48px 0', color:'var(--text-light)', fontSize:13, borderBottom:'none' }}>
-                  <i className="ri-user-search-line" style={{ fontSize:28, display:'block', marginBottom:8 }} />
+                  <i className="ri-user-search-line" style={{ fontSize:38, display:'block', marginBottom:8 }} />
                   No customers found. <Link to="/customers/add">Add the first one →</Link>
                 </td></tr>
               )}
@@ -191,7 +191,7 @@ export default function CustomersList() {
                       <div style={{ fontSize:12 }}>{c.phone}</div>
                       <div style={{ fontSize:11, color:'#94a3b8' }}>{c.email||'—'}</div>
                     </TD>
-                    <TD><span style={{ fontSize:12, display:'flex', alignItems:'center', gap:3 }}><i className="ri-map-pin-line" style={{ color:'#94a3b8', fontSize:11 }} />{c.zone||'—'}</span></TD>
+                    <TD><span style={{ fontSize:12, display:'flex', alignItems:'center', gap:3 }}><i className="ri-map-pin-line" style={{ color:'#94a3b8', fontSize:15 }} />{c.zone||'—'}</span></TD>
                     <TD>
                       <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:50, background:tc.bg, color:tc.color, border:`1px solid ${tc.border}` }}>
                         <i className={tc.icon} />{c.tier}
@@ -210,10 +210,10 @@ export default function CustomersList() {
                     <TD>
                       <div style={{ display:'flex', gap:5 }}>
                         <Link to={`/customers/${c.customer_code||c.id}`} title="View Profile" style={{ width:30, height:30, borderRadius:'50%', border:'1.5px solid #bfdbfe', background:'#eff6ff', color:'#2563eb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                          <i className="ri-eye-line" style={{ fontSize:13 }} />
+                          <i className="ri-eye-line" style={{ fontSize:18 }} />
                         </Link>
                         <button title="Remove" onClick={() => { setSelected(c); setDeleteModal(true) }} style={{ width:30, height:30, borderRadius:'50%', border:'1.5px solid #fecaca', background:'#fef2f2', color:'#dc2626', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
-                          <i className="ri-delete-bin-line" style={{ fontSize:13 }} />
+                          <i className="ri-delete-bin-line" style={{ fontSize:18 }} />
                         </button>
                       </div>
                     </TD>
@@ -245,7 +245,7 @@ export default function CustomersList() {
             </div>
             <div style={{ padding:'24px', textAlign:'center' }}>
               <div style={{ width:56, height:56, borderRadius:'50%', background:'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 12px' }}>
-                <i className="ri-user-unfollow-line" style={{ color:'#ef4444', fontSize:24 }} />
+                <i className="ri-user-unfollow-line" style={{ color:'#ef4444', fontSize:32 }} />
               </div>
               <div style={{ fontWeight:700, fontSize:15, marginBottom:6 }}>Remove {selected.name}?</div>
               <div style={{ color:'var(--text-muted)', fontSize:13, marginBottom:24 }}>Customer data will be anonymised. This cannot be undone.</div>

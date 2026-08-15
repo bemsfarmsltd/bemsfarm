@@ -96,7 +96,7 @@ export default function GeneralSettings() {
       <SettingsNav/>
 
       {loading ? (
-        <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
+        <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
       ) : (
         <form onSubmit={handleSave}>
           <Card title="Store & Business Information" subtitle="Displayed on receipts, and customer-facing documents.">

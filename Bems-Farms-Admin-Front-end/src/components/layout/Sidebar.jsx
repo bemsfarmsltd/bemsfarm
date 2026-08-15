@@ -142,7 +142,7 @@ function CollapseMenu({ icon, label, badge, children, paths = [] }) {
         <i
           className="ri-arrow-right-s-line"
           style={{
-            fontSize: 16,
+            fontSize: 22,
             color: C.muted,
             transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
             transition: 'transform 0.2s ease',
@@ -238,7 +238,7 @@ function ProfileFooter({ user, roleMeta, initials, showSettings }) {
           className="ri-arrow-up-s-line"
           style={{
             color: C.muted,
-            fontSize: 16,
+            fontSize: 22,
             transform: open ? 'rotate(0deg)' : 'rotate(180deg)',
             transition: 'transform 0.2s ease',
           }}
@@ -302,7 +302,7 @@ function ProfileFooter({ user, roleMeta, initials, showSettings }) {
               onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <i className="ri-logout-box-r-line" style={{ fontSize: 15, color: '#ef4444' }} />
+              <i className="ri-logout-box-r-line" style={{ fontSize: 20, color: '#ef4444' }} />
               Sign Out
             </button>
           </div>

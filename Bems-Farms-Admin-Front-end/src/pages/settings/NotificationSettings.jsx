@@ -107,7 +107,7 @@ export default function NotificationSettings() {
       <SettingsNav/>
 
       {loading ? (
-        <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:28 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
+        <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
       ) : (
         <form onSubmit={handleSave}>
           {/* Notification Channels */}

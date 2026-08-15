@@ -69,7 +69,7 @@ export default function StockValuation() {
 
   if (loading) return (
     <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'Nunito,sans-serif', color:'var(--text-muted)' }}>
-      <i className="ri-loader-4-line" style={{ fontSize:36, display:'block', marginBottom:8, textAlign:'center' }}/>
+      <i className="ri-loader-4-line" style={{ fontSize:49, display:'block', marginBottom:8, textAlign:'center' }}/>
     </div>
   )
 
@@ -82,7 +82,7 @@ export default function StockValuation() {
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
           <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Inventory</span>
-          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <i className="ri-arrow-right-s-line" style={{ fontSize:19 }} />
           <span style={{ fontWeight:600, color:'var(--text-primary)' }}>Valuation</span>
         </div>
       </div>
@@ -169,7 +169,7 @@ export default function StockValuation() {
             <tbody>
               {enriched.length === 0 ? (
                 <tr><td colSpan={9} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
-                  <i className="ri-bar-chart-line" style={{ fontSize:32, display:'block', marginBottom:8 }}/>No products found
+                  <i className="ri-bar-chart-line" style={{ fontSize:43, display:'block', marginBottom:8 }}/>No products found
                 </td></tr>
               ) : enriched.map(p => (
                 <tr key={p.id}

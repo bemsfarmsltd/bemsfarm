@@ -189,7 +189,7 @@ export default function Invoices() {
       <div style={{ background:'var(--bg-card)',borderRadius:12,border:'1px solid var(--border)',boxShadow:'0 1px 4px rgba(0,0,0,0.06)',marginBottom:16 }}>
         <div style={{ padding:'12px 16px',display:'flex',flexWrap:'wrap',gap:10,alignItems:'center' }}>
           <div style={{ position:'relative',minWidth:260 }}>
-            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text-light)',fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text-light)',fontSize:20 }}/>
             <input style={{ ...inp,paddingLeft:32 }} placeholder="Invoice ref, customer, order..." value={search} onChange={e=>setSearch(e.target.value)}/>
           </div>
           {filterStatus!=='all'&&(
@@ -228,7 +228,7 @@ export default function Invoices() {
             <tbody>
               {filtered.length===0&&(
                 <tr><td colSpan={9} style={{ ...TD,textAlign:'center',padding:48,color:'var(--text-light)' }}>
-                  <i className="ri-file-list-3-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>No invoices found
+                  <i className="ri-file-list-3-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No invoices found
                 </td></tr>
               )}
               {filtered.map(inv=>{

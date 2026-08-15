@@ -248,7 +248,7 @@ export default function ReturnsPage() {
             /* ── Success state ─────────────────────────────────── */
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
               style={{ textAlign: "center", padding: "60px 20px", ...card }}>
-              <div style={{ fontSize: "80px", marginBottom: "20px" }}>✅</div>
+              <div style={{ fontSize: "108", marginBottom: "20px" }}>✅</div>
               <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: "24px", fontWeight: 800, color: "#1B4332", marginBottom: "12px" }}>
                 Return Request Submitted!
               </h2>
@@ -287,7 +287,7 @@ export default function ReturnsPage() {
                 <h3 style={stepTitle}>Step 1 — Select the Order</h3>
                 {orders.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "32px", color: "#9CA3AF" }}>
-                    <div style={{ fontSize: "48px", marginBottom: "12px" }}>📦</div>
+                    <div style={{ fontSize: "65", marginBottom: "12px" }}>📦</div>
                     <p style={{ fontSize: "14px" }}>No delivered orders eligible for return</p>
                     <p style={{ fontSize: "13px" }}>Only orders delivered within the last 7 days can be returned</p>
                   </div>
@@ -352,7 +352,7 @@ export default function ReturnsPage() {
                                 background: isOn ? "#40916C" : "white",
                                 display: "flex", alignItems: "center", justifyContent: "center",
                               }}>
-                                {isOn && <span style={{ color: "white", fontSize: "13px", fontWeight: 900 }}>✓</span>}
+                                {isOn && <span style={{ color: "white", fontSize: "18", fontWeight: 900 }}>✓</span>}
                               </div>
 
                               {/* Product icon */}
@@ -575,7 +575,7 @@ export default function ReturnsPage() {
           <div>
             {myReturns.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 20px", ...card }}>
-                <div style={{ fontSize: "64px", marginBottom: "16px" }}>📋</div>
+                <div style={{ fontSize: "86", marginBottom: "16px" }}>📋</div>
                 <h3 style={{ fontFamily: "Syne, sans-serif", fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>No Returns Yet</h3>
                 <p style={{ color: "#9CA3AF", marginBottom: "20px" }}>You haven't submitted any return requests</p>
                 <button onClick={() => setTab("new")} style={{ backgroundColor: "#1B4332", color: "white", border: "none", borderRadius: "12px", padding: "12px 28px", fontWeight: 700, cursor: "pointer" }}>

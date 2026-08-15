@@ -161,7 +161,7 @@ export default function Warranty() {
           </div>
           <div style={{ display:'flex',gap:8,padding:'10px 0 10px 20px',borderLeft:`1px solid ${B}` }}>
             <div style={{ position:'relative' }}>
-              <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:15,pointerEvents:'none' }}/>
+              <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
               <input type="text" placeholder={tab==='policies'?'Search policies…':'Search claims…'} value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp,paddingLeft:34,width:200 }}/>
             </div>
             <select style={{ ...inp,width:'auto' }} value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
@@ -180,7 +180,7 @@ export default function Warranty() {
               <tbody>
                 {filteredPolicies.length===0&&(
                   <tr><td colSpan={7} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                    <i className="ri-shield-check-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>No policies found
+                    <i className="ri-shield-check-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No policies found
                   </td></tr>
                 )}
                 {filteredPolicies.map(r=>(
@@ -215,7 +215,7 @@ export default function Warranty() {
               <tbody>
                 {filteredClaims.length===0&&(
                   <tr><td colSpan={8} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                    <i className="ri-file-list-3-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>No claims found
+                    <i className="ri-file-list-3-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No claims found
                   </td></tr>
                 )}
                 {filteredClaims.map(r=>(
@@ -256,7 +256,7 @@ export default function Warranty() {
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:500,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-shield-check-line" style={{ fontSize:18 }}/>
+                  <i className="ri-shield-check-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>{editItem?'Edit Policy':'Add Warranty Policy'}</span>
                 <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
@@ -307,7 +307,7 @@ export default function Warranty() {
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:500,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-file-list-3-line" style={{ fontSize:18 }}/>
+                  <i className="ri-file-list-3-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Claim Detail</span>
                 <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
@@ -356,7 +356,7 @@ export default function Warranty() {
             <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
               <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-delete-bin-line" style={{ fontSize:18 }}/>
+                  <i className="ri-delete-bin-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Delete Policy?</span>
                 <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>

@@ -280,7 +280,7 @@ export default function OrderDetailPage() {
                     }}
                   >
                     {isPast && !isCancelled ? (
-                      <span style={{ color: "#fff", fontSize: 14 }}>✓</span>
+                      <span style={{ color: "#fff", fontSize: 19 }}>✓</span>
                     ) : (
                       <span
                         style={{

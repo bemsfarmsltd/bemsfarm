@@ -161,7 +161,7 @@ export default function Landing() {
 
         {/* Scroll hint */}
         <div style={{ position:'absolute', bottom:32, left:'50%', transform:'translateX(-50%)', zIndex:2, color:'rgba(255,255,255,0.4)', fontSize:12, textAlign:'center', animation:'bounce 2s infinite' }}>
-          <i className="ri-arrow-down-line" style={{ fontSize:20, display:'block', marginBottom:4 }}/>
+          <i className="ri-arrow-down-line" style={{ fontSize:27, display:'block', marginBottom:4 }}/>
           Scroll
         </div>
       </section>
@@ -318,7 +318,7 @@ export default function Landing() {
                 {WHY_LIST.map(item => (
                   <div key={item} style={{ display:'flex', alignItems:'center', gap:12 }}>
                     <div style={{ width:26, height:26, borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <i className="ri-check-line" style={{ fontSize:13, color:'#1B4332' }}/>
+                      <i className="ri-check-line" style={{ fontSize:18, color:'#1B4332' }}/>
                     </div>
                     <span style={{ fontSize:13, color:'var(--text-secondary)', fontWeight:600 }}>{item}</span>
                   </div>
@@ -352,7 +352,7 @@ export default function Landing() {
                     style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'18px 22px', background:'none', border:'none', cursor:'pointer', fontFamily:'Nunito,sans-serif', textAlign:'left' }}>
                     <span style={{ fontSize:15, fontWeight:700, color:'var(--text-primary)', lineHeight:1.4 }}>{q}</span>
                     <div style={{ width:28, height:28, borderRadius:'50%', background: open ? '#1B4332' : 'var(--border)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'background 0.2s' }}>
-                      <i className={open ? 'ri-subtract-line' : 'ri-add-line'} style={{ fontSize:14, color: open ? '#fff' : '#6b7280' }}/>
+                      <i className={open ? 'ri-subtract-line' : 'ri-add-line'} style={{ fontSize:19, color: open ? '#fff' : '#6b7280' }}/>
                     </div>
                   </button>
                   {open && (

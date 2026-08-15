@@ -54,14 +54,14 @@ export default function FinanceReport() {
 
       {!data && !loading && (
         <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
-          <i className="ri-funds-line" style={{ fontSize:40,display:'block',marginBottom:10 }}/>
+          <i className="ri-funds-line" style={{ fontSize:54,display:'block',marginBottom:10 }}/>
           <div style={{ fontSize:14,fontWeight:600 }}>Select a date range and click Generate Report</div>
         </div>
       )}
 
       {loading && (
         <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
-          <i className="ri-loader-4-line" style={{ fontSize:32,display:'block',marginBottom:8 }}/>Loading…
+          <i className="ri-loader-4-line" style={{ fontSize:43,display:'block',marginBottom:8 }}/>Loading…
         </div>
       )}
 

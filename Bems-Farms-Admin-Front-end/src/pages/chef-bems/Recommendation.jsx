@@ -251,7 +251,7 @@ export default function Recommendation() {
       {/* Filter Bar */}
       <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
         <div style={{ position:'relative', flex:1 }}>
-          <i className="ri-search-line" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:14 }} />
+          <i className="ri-search-line" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
           <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search title, trigger condition, or recommended items..."
             style={{ ...inp, paddingLeft:34 }} />
         </div>
@@ -276,7 +276,7 @@ export default function Recommendation() {
             ) : recs.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ textAlign:'center', padding:'48px 0', color:'var(--text-light)' }}>
-                  <i className="ri-thumb-up-line" style={{ fontSize:36, display:'block', marginBottom:8 }} />
+                  <i className="ri-thumb-up-line" style={{ fontSize:49, display:'block', marginBottom:8 }} />
                   <div>No recommendations found. {search ? 'Try a different search.' : 'Add your first AI recommendation rule.'}</div>
                   {!search && <button onClick={() => { setForm({...BLANK}); setAddModal(true) }} style={{ ...btn('#1B4332','#fff'), marginTop:12 }}><i className="ri-add-line" />Add First Recommendation</button>}
                 </td>

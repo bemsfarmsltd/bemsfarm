@@ -602,7 +602,7 @@ export default function ComingSoonPage() {
                   backdropFilter: "blur(10px)"
                 }}
               >
-                <p style={{ fontSize: "24px", margin: "0 0 8px 0" }}>🎉</p>
+                <p style={{ fontSize: "32", margin: "0 0 8px 0" }}>🎉</p>
                 <p
                   style={{
                     color: "white",
@@ -727,12 +727,12 @@ export default function ComingSoonPage() {
                   {/* Milestones */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "10px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", opacity: myReferralCount >= 3 ? 1 : 0.6 }}>
-                      <span>🎟️</span>
+                      <span style={{fontSize:'1.35em'}}>🎟️</span>
                       <span style={{ flex: 1 }}>Refer 3 friends (<strong>20% off</strong>)</span>
                       <span style={{ fontWeight: 700 }}>{myReferralCount >= 3 ? "✅" : `${myReferralCount}/3`}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", opacity: myReferralCount >= 5 ? 1 : 0.6 }}>
-                      <span>👑</span>
+                      <span style={{fontSize:'1.35em'}}>👑</span>
                       <span style={{ flex: 1 }}>Refer 5 friends (<strong>30% off</strong>)</span>
                       <span style={{ fontWeight: 700 }}>{myReferralCount >= 5 ? "✅" : `${myReferralCount}/5`}</span>
                     </div>

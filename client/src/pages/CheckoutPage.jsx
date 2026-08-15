@@ -320,7 +320,7 @@ export default function CheckoutPage() {
             padding: "40px 20px",
           }}
         >
-          <span style={{ fontSize: "64px" }}>🛒</span>
+          <span style={{ fontSize: "86" }}>🛒</span>
           <h2
             style={{
               fontFamily: "Syne, sans-serif",
@@ -444,7 +444,7 @@ export default function CheckoutPage() {
                 gap: "8px",
               }}
             >
-              <span>⚠️</span>
+              <span style={{fontSize:'1.35em'}}>⚠️</span>
               <span>{error}</span>
             </motion.div>
           )}

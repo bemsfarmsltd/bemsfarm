@@ -194,7 +194,7 @@ export default function Receipts() {
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
           <span>Orders</span>
-          <i className="ri-arrow-right-s-line" style={{ fontSize:14 }} />
+          <i className="ri-arrow-right-s-line" style={{ fontSize:19 }} />
           <span style={{ fontWeight:600, color:'var(--text-primary)' }}>Receipts</span>
         </div>
       </div>
@@ -226,7 +226,7 @@ export default function Receipts() {
       <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',marginBottom:16 }}>
         <div style={{ padding:'12px 16px',display:'flex',flexWrap:'wrap',gap:10,alignItems:'center' }}>
           <div style={{ position:'relative',minWidth:260,flex:1 }}>
-            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text-light)',fontSize:15 }}/>
+            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text-light)',fontSize:20 }}/>
             <input style={{ ...inp,paddingLeft:32 }} placeholder="Receipt ref, customer, order..." value={search} onChange={e=>setSearch(e.target.value)}/>
           </div>
           {filterStatus!=='all'&&(
@@ -270,7 +270,7 @@ export default function Receipts() {
               ))}
               {!loading && filtered.length===0&&(
                 <tr><td colSpan={9} style={{ ...TD,textAlign:'center',padding:48,color:'var(--text-light)' }}>
-                  <i className="ri-file-list-3-line" style={{ fontSize:36,display:'block',marginBottom:8 }}/>No receipts found
+                  <i className="ri-file-list-3-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No receipts found
                 </td></tr>
               )}
               {!loading && filtered.map(inv=>{
@@ -291,7 +291,7 @@ export default function Receipts() {
                       {inv.order_id ? (
                         <div style={{ fontSize:11,color:S,marginTop:2 }}>
                           <span style={{ display:'inline-flex',alignItems:'center',gap:4 }}>
-                            <i className="ri-link" style={{ fontSize:10 }}/>ORD-2026-{String(inv.order_id).padStart(4, '0')}
+                            <i className="ri-link" style={{ fontSize:14 }}/>ORD-2026-{String(inv.order_id).padStart(4, '0')}
                           </span>
                         </div>
                       ) : (

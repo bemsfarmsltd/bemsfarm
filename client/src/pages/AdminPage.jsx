@@ -478,7 +478,7 @@ export default function AdminPage() {
                   backgroundColor: "transparent",
                 }}
               >
-                <span>🏠</span> Back to Store
+                <span style={{fontSize:'1.35em'}}>🏠</span> Back to Store
               </button>
             </div>
           </nav>
@@ -2206,7 +2206,7 @@ export default function AdminPage() {
               gap: "3px",
             }}
           >
-            <span style={{ fontSize: "20px" }}>🏠</span>
+            <span style={{ fontSize: "27" }}>🏠</span>
             <span style={{ fontSize: "10px" }}>Store</span>
           </button>
         </div>
@@ -2308,7 +2308,7 @@ export default function AdminPage() {
                       gap: "8px",
                     }}
                   >
-                    <span style={{ fontSize: "36px" }}>📷</span>
+                    <span style={{ fontSize: "49" }}>📷</span>
                     <p
                       style={{
                         fontSize: "14px",
@@ -2556,7 +2556,7 @@ export default function AdminPage() {
         {deleteProduct && (
           <Modal onClose={() => setDeleteProduct(null)} title="">
             <div style={{ textAlign: "center", padding: "8px 0 20px" }}>
-              <div style={{ fontSize: "52px", marginBottom: "14px" }}>⚠️</div>
+              <div style={{ fontSize: "70", marginBottom: "14px" }}>⚠️</div>
               <h3
                 style={{
                   fontSize: "20px",
@@ -2806,7 +2806,7 @@ export default function AdminPage() {
                   />
                 ) : (
                   <>
-                    <span style={{ fontSize: "28px" }}>📷</span>
+                    <span style={{ fontSize: "38" }}>📷</span>
                     <p
                       style={{
                         fontSize: "13px",

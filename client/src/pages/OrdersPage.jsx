@@ -443,7 +443,7 @@ export default function OrdersPage() {
               gap: "12px",
             }}
           >
-            <span style={{ fontSize: "20px" }}>⚠️</span>
+            <span style={{ fontSize: "27" }}>⚠️</span>
             <div>
               <p style={{ fontWeight: 700, color: "#DC2626", margin: "0 0 4px" }}>Failed to load orders</p>
               <p style={{ fontSize: "13px", color: "#DC2626", margin: 0 }}>{error}</p>
@@ -498,7 +498,7 @@ export default function OrdersPage() {
               border: "1px solid #E5E7EB",
             }}
           >
-            <div style={{ fontSize: "72px", marginBottom: "20px" }}>📭</div>
+            <div style={{ fontSize: "97", marginBottom: "20px" }}>📭</div>
             <h3 style={{ fontFamily: "Syne, sans-serif", fontSize: "22px", fontWeight: 700, color: "#111827", margin: "0 0 10px" }}>
               {filter === "all" ? "No orders yet" : `No ${filter} orders`}
             </h3>

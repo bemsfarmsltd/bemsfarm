@@ -457,11 +457,11 @@ export default function POS() {
       {/* TOPBAR */}
       <header style={{ height:58, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', zIndex:200, background:'var(--bg-card)', borderBottom:`1px solid ${B}` }}>
         <div style={{ flex:'0 0 auto', display:'flex', alignItems:'center', gap:8, fontWeight:800, fontSize:15, color:'#0ab39c', whiteSpace:'nowrap' }}>
-          <span style={{ fontSize:24 }}>🌾</span>
+          <span style={{ fontSize:32 }}>🌾</span>
           <span style={{ lineHeight:1.2 }}>Bems Farms<br/><span style={{ fontSize:9, fontWeight:500, color:S, letterSpacing:1 }}>POINT OF SALE</span></span>
         </div>
         <div style={{ position:'relative', flex:'1 1 auto', minWidth:0, maxWidth:520, marginLeft:16 }}>
-          <i className="ri-search-line" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#0ab39c', fontSize:15, pointerEvents:'none' }}/>
+          <i className="ri-search-line" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#0ab39c', fontSize:20, pointerEvents:'none' }}/>
           <input id="scan-field" ref={scanInputRef} type="text" placeholder="Search products  ·  or scan / type barcode + Enter" autoComplete="off"
             value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => { if (e.key==='Enter'&&search.trim()) handleBarcodeScan(search) }}
             style={{ width:'100%', height:38, paddingLeft:38, paddingRight:96, border:'2px solid #0ab39c', borderRadius:8, fontSize:13, background:'var(--bg-card)', color:'var(--text-primary)', outline:'none', boxShadow:'0 0 0 3px rgba(10,179,156,.1)', boxSizing:'border-box' }}/>
@@ -517,7 +517,7 @@ export default function POS() {
                 </div>
                 {c.badge
                   ? <span style={{ background:c.color, color:'#fff', borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:700, flexShrink:0 }}>{c.badge}{c.badgeLabel?' '+c.badgeLabel:''}</span>
-                  : <i className="ri-arrow-right-s-line" style={{ fontSize:18, color:c.color, flexShrink:0 }}/>
+                  : <i className="ri-arrow-right-s-line" style={{ fontSize:24, color:c.color, flexShrink:0 }}/>
                 }
               </button>
             ))}
@@ -539,9 +539,9 @@ export default function POS() {
           {/* Product grid */}
           <div style={{ flex:1, overflowY:'auto', padding:12, background:BG2 }}>
             {catalogLoading
-              ? <div style={{ textAlign:'center', padding:'60px 0', color:S }}><i className="ri-loader-4-line" style={{ fontSize:32 }}/><p style={{ marginTop:12 }}>Loading products…</p></div>
+              ? <div style={{ textAlign:'center', padding:'60px 0', color:S }}><i className="ri-loader-4-line" style={{ fontSize:43 }}/><p style={{ marginTop:12 }}>Loading products…</p></div>
               : products.length === 0
-              ? <div style={{ textAlign:'center', padding:'60px 0', color:S }}><div style={{ fontSize:52 }}>🔍</div><p style={{ marginTop:12 }}>No products found</p></div>
+              ? <div style={{ textAlign:'center', padding:'60px 0', color:S }}><div style={{ fontSize:70 }}>🔍</div><p style={{ marginTop:12 }}>No products found</p></div>
               : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(145px,1fr))', gap:10 }}>
                   {products.map(p => {
                     const color = catColor(p.category_id); const low=p.stock>0&&p.stock<=5; const out=p.stock===0; const inCart=cart.find(i=>i.id===p.id)
@@ -553,7 +553,7 @@ export default function POS() {
                         <div style={{ height:64, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:8, background:`${color}18`, overflow:'hidden', marginBottom:8 }}>
                           {p.image_url
                             ? <img src={p.image_url} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                            : <span style={{ fontSize:36 }}>🌿</span>}
+                            : <span style={{ fontSize:49 }}>🌿</span>}
                         </div>
                         <div style={{ fontSize:11, fontWeight:600, lineHeight:1.3, marginBottom:4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{p.name}</div>
                         <div style={{ fontSize:9, color:S, marginBottom:6 }}>{p.sku} · per {p.unit}</div>
@@ -649,7 +649,7 @@ export default function POS() {
           <div style={{ flex:1, overflowY:'auto', padding:'4px 0' }}>
             {cart.length === 0
               ? <div style={{ textAlign:'center', padding:'50px 20px', color:S }}>
-                  <div style={{ fontSize:44 }}>🛒</div>
+                  <div style={{ fontSize:59 }}>🛒</div>
                   <p style={{ marginTop:10, fontSize:13 }}>Scan a barcode or tap a product<br/>to start the order</p>
                   <div style={{ marginTop:16, padding:'8px 14px', background:'#0ab39c10', borderRadius:8, border:'1px dashed #0ab39c50', fontSize:11, color:'#0ab39c' }}>
                     💡 Point scanner at a barcode and it<br/>will appear here automatically
@@ -696,7 +696,7 @@ export default function POS() {
           <div style={{ padding:'8px 14px', borderTop:`1px solid ${B}`, background: txnVerifyStatus==='found'?'rgba(10,179,156,.03)':txnVerifyStatus==='notfound'||txnVerifyStatus==='error'?'rgba(240,101,72,.03)':'transparent' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
               <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                <i className="ri-secure-payment-line" style={{ fontSize:13, color:txnVerifyStatus==='found'?'#0ab39c':S }}/>
+                <i className="ri-secure-payment-line" style={{ fontSize:18, color:txnVerifyStatus==='found'?'#0ab39c':S }}/>
                 <span style={{ fontSize:10, fontWeight:700, color:txnVerifyStatus==='found'?'#0ab39c':S, textTransform:'uppercase', letterSpacing:.5 }}>Transaction ID</span>
                 {txnVerifyStatus==='found' && <span style={{ fontSize:9, background:'#dcfce7', color:'#166534', borderRadius:20, padding:'1px 7px', fontWeight:700 }}>VERIFIED ✓</span>}
               </div>
@@ -762,7 +762,7 @@ export default function POS() {
             {txnVerifyStatus==='found' && txnVerifiedData && (
               <div style={{ marginTop:6, padding:'8px 10px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:6 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6, color:'#166534', fontWeight:700, fontSize:11 }}>
-                  <i className="ri-checkbox-circle-fill" style={{ fontSize:14, color:'#0ab39c' }}/>Payment successfully verified — linked to this sale
+                  <i className="ri-checkbox-circle-fill" style={{ fontSize:19, color:'#0ab39c' }}/>Payment successfully verified — linked to this sale
                 </div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'3px 12px', fontSize:11 }}>
                   {[
@@ -817,7 +817,7 @@ export default function POS() {
             <div style={{ fontSize:10, fontWeight:700, color:S, textTransform:'uppercase', letterSpacing:.8, marginBottom:10 }}>Select Payment Method</div>
             {txnLastFour.length > 0 && txnVerifyStatus !== 'found' && (
               <div style={{ marginBottom:10, padding:'6px 10px', background:'#fef3c7', border:'1px solid #fde68a', borderRadius:8, fontSize:11, color:'#92400e', display:'flex', alignItems:'center', gap:6 }}>
-                <i className="ri-lock-line" style={{ fontSize:13 }}/>Transaction ID entered but not verified — verify above before checkout
+                <i className="ri-lock-line" style={{ fontSize:18 }}/>Transaction ID entered but not verified — verify above before checkout
               </div>
             )}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:8 }}>
@@ -848,7 +848,7 @@ export default function POS() {
               })()}
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, background:'rgba(64,81,137,.08)', border:'1px dashed rgba(64,81,137,.3)' }}>
-              <i className="ri-information-line" style={{ color:'#405189', fontSize:14, flexShrink:0 }}/>
+              <i className="ri-information-line" style={{ color:'#405189', fontSize:19, flexShrink:0 }}/>
               <span style={{ fontSize:10, color:S, lineHeight:1.4 }}>Card payments use an <strong style={{ color:'#405189' }}>external POS terminal</strong>. Process on the device, then confirm here to record.</span>
             </div>
           </div>
@@ -895,7 +895,7 @@ export default function POS() {
             </div>
             <div style={{ minHeight:280, maxHeight:'45vh', overflowY:'auto' }}>
               {scanCart.length===0
-                ? <div style={{ textAlign:'center', padding:'70px 20px', color:S }}><div style={{ fontSize:68 }}>📦</div><div style={{ marginTop:14, fontWeight:700, fontSize:17 }}>No items scanned yet</div><div style={{ fontSize:13, marginTop:6 }}>Scan a barcode or type a SKU above</div></div>
+                ? <div style={{ textAlign:'center', padding:'70px 20px', color:S }}><div style={{ fontSize:92 }}>📦</div><div style={{ marginTop:14, fontWeight:700, fontSize:17 }}>No items scanned yet</div><div style={{ fontSize:13, marginTop:6 }}>Scan a barcode or type a SKU above</div></div>
                 : scanCart.map((item,idx) => {
                     const color = catColor(item.category_id)
                     return (
@@ -923,8 +923,8 @@ export default function POS() {
                 {taxSettings.enabled && <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12, fontSize:13, color:S }}><span>VAT ({taxSettings.rate}%)</span><span>{fmt(scVat)}</span></div>}
                 <div style={{ display:'flex', justifyContent:'space-between', marginBottom:16 }}><span style={{ fontWeight:700, fontSize:18 }}>Total</span><span style={{ fontWeight:900, fontSize:24, color:'#0ab39c' }}>{fmt(scTotal)}</span></div>
                 <div style={{ display:'flex', gap:12 }}>
-                  <button style={{ ...btnL, flex:1, padding:'14px' }} onClick={scannerAddToOrder}><i className="ri-add-circle-line" style={{ fontSize:18 }}/>Add to Order</button>
-                  <button style={{ ...btnP, flex:1, padding:'14px' }} onClick={scannerQuickPay}><i className="ri-secure-payment-line" style={{ fontSize:18 }}/>Quick Pay</button>
+                  <button style={{ ...btnL, flex:1, padding:'14px' }} onClick={scannerAddToOrder}><i className="ri-add-circle-line" style={{ fontSize:24 }}/>Add to Order</button>
+                  <button style={{ ...btnP, flex:1, padding:'14px' }} onClick={scannerQuickPay}><i className="ri-secure-payment-line" style={{ fontSize:24 }}/>Quick Pay</button>
                 </div>
                 <div style={{ textAlign:'center', fontSize:11, color:S, marginTop:10 }}><b>Add to Order</b> — merges into current order · <b>Quick Pay</b> — goes straight to payment</div>
               </div>
@@ -1052,7 +1052,7 @@ export default function POS() {
               <span style={{ color:S }}>Total to charge on terminal</span><span style={{ fontWeight:700, fontSize:17 }}>{fmt(total)}</span>
             </div>
             <div style={{ background:'rgba(64,81,137,.08)', border:'1px solid rgba(64,81,137,.2)', borderRadius:10, padding:'12px 16px', marginBottom:20, display:'flex', alignItems:'center', gap:12 }}>
-              <i className="ri-bank-card-2-line" style={{ fontSize:28, color:'#405189', flexShrink:0 }}/>
+              <i className="ri-bank-card-2-line" style={{ fontSize:38, color:'#405189', flexShrink:0 }}/>
               <div style={{ fontSize:12, color:S, lineHeight:1.6 }}>Process <strong style={{ color:'var(--text-primary)' }}>{fmt(total)}</strong> on the external POS terminal.<br/>Once confirmed, click <strong style={{ color:'#405189' }}>Confirm Payment</strong> below.</div>
             </div>
             <label style={LBL}>Card Type <span style={{ fontWeight:400, color:S }}>(optional)</span></label>
@@ -1080,7 +1080,7 @@ export default function POS() {
             <div style={{ fontSize:12, color:S, marginBottom:4 }}>Total Amount</div>
             <div style={{ fontSize:26, fontWeight:900, marginBottom:20 }}>{fmt(total)}</div>
             <div style={{ width:160, height:160, margin:'0 auto 16px', background:BG2, border:`2px solid ${B}`, borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:6, color:S }}>
-              <i className="ri-qr-code-line" style={{ fontSize:72 }}/>
+              <i className="ri-qr-code-line" style={{ fontSize:97 }}/>
               <div style={{ fontSize:9, fontWeight:600, letterSpacing:.5 }}>SCAN TO PAY</div>
             </div>
             <p style={{ color:S, marginBottom:8, fontSize:12 }}>Ask customer to scan the QR code<br/>or dial USSD to complete payment</p>
@@ -1109,7 +1109,7 @@ export default function POS() {
             <div style={{ marginBottom:12 }}><label style={LBL}>Transaction Reference / Session ID</label><input style={inp} placeholder="Enter reference number" value={txnRef} onChange={e=>setTxnRef(e.target.value)}/></div>
             <div style={{ marginBottom:20 }}><label style={LBL}>Transfer Date</label><input type="date" style={inp} value={transferDate} onChange={e=>setTransferDate(e.target.value)}/></div>
             <div style={{ background:'#e0f2fe', border:'1px solid #bae6fd', borderRadius:8, padding:'10px 14px', display:'flex', alignItems:'flex-start', gap:8, marginBottom:20, fontSize:12 }}>
-              <i className="ri-bank-line" style={{ fontSize:18, color:'#0369a1', flexShrink:0 }}/>
+              <i className="ri-bank-line" style={{ fontSize:24, color:'#0369a1', flexShrink:0 }}/>
               <span>Ensure the transfer is confirmed in your bank before submitting.</span>
             </div>
             <div style={{ display:'flex', gap:12 }}>
@@ -1275,7 +1275,7 @@ export default function POS() {
           <MHead title="Billing History" onClose={closeModal} color="#299cdb"/>
           <div style={{ padding:24, overflowY:'auto' }}>
             <div style={{ position:'relative', marginBottom:16 }}>
-              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:15 }}/>
+              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:20 }}/>
               <input style={{ ...inp, paddingLeft:34 }} placeholder="Search receipts…" value={receiptSearch} onChange={e=>setReceiptSearch(e.target.value)}/>
             </div>
             <div style={{ overflowX:'auto' }}>
@@ -1323,7 +1323,7 @@ export default function POS() {
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:900, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
           <div style={{ background:'var(--bg-card)', borderRadius:16, width:'100%', maxWidth:380, boxShadow:'0 24px 48px rgba(0,0,0,.3)' }}>
             <div style={{ padding:'32px 24px', textAlign:'center' }}>
-              <div style={{ width:80, height:80, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:36 }}>✅</div>
+              <div style={{ width:80, height:80, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:49 }}>✅</div>
               <h5 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:20, marginBottom:8 }}>Payment Successful!</h5>
               <p style={{ color:S, marginBottom:20 }}>Transaction processed successfully.</p>
               <div style={{ marginBottom:20 }}>
@@ -1369,7 +1369,7 @@ export default function POS() {
         if (returnSuccess) return (
           <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:820, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
             <div style={{ background:'var(--bg-card)', borderRadius:16, maxWidth:360, width:'100%', padding:32, textAlign:'center', boxShadow:'0 24px 48px rgba(0,0,0,.3)' }}>
-              <div style={{ width:72, height:72, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:32 }}>✅</div>
+              <div style={{ width:72, height:72, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:43 }}>✅</div>
               <h6 style={{ fontWeight:700, marginBottom:4, fontSize:16 }}>Return Processed</h6>
               <div style={{ color:S, marginBottom:16, fontSize:13 }}>{returnSuccess.ref}</div>
               <div style={{ background:BG2, borderRadius:8, padding:16, marginBottom:20, fontSize:13, textAlign:'left' }}>
@@ -1387,7 +1387,7 @@ export default function POS() {
               <div style={{ padding:'14px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', justifyContent:'space-between', background:BG2, flexShrink:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#f06548,#e04b2f)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <i className="ri-arrow-go-back-line" style={{ fontSize:18, color:'#fff' }}/>
+                    <i className="ri-arrow-go-back-line" style={{ fontSize:24, color:'#fff' }}/>
                   </div>
                   <div>
                     <div style={{ fontWeight:700, fontSize:14 }}>Goods Return</div>
@@ -1412,7 +1412,7 @@ export default function POS() {
                     <div>
                       <label style={{ ...LBL, color:'#f06548' }}><i className="ri-barcode-line"/> Scan Barcode / Enter SKU</label>
                       <div style={{ position:'relative' }}>
-                        <i className="ri-barcode-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#f06548', fontSize:15 }}/>
+                        <i className="ri-barcode-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#f06548', fontSize:20 }}/>
                         <input autoFocus style={{ ...inp, paddingLeft:34, borderColor:'#f06548', boxShadow:'0 0 0 3px rgba(240,101,72,.1)' }}
                           placeholder="Scan barcode or type SKU + Enter  (e.g. BF-VEG-001)"
                           onKeyDown={e => {
@@ -1428,7 +1428,7 @@ export default function POS() {
                     </div>
                     {returnForm.product && (
                       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderRadius:8, background:'rgba(240,101,72,.08)', border:'1px solid rgba(240,101,72,.25)' }}>
-                        <i className="ri-shopping-bag-3-line" style={{ fontSize:22, color:'#f06548' }}/>
+                        <i className="ri-shopping-bag-3-line" style={{ fontSize:30, color:'#f06548' }}/>
                         <div style={{ flex:1 }}>
                           <div style={{ fontWeight:700, fontSize:13 }}>{returnForm.product.name}</div>
                           <div style={{ fontSize:11, color:S }}>{returnForm.product.sku} · ₦{returnForm.product.price.toLocaleString()} / {returnForm.product.unit}</div>
@@ -1617,7 +1617,7 @@ export default function POS() {
       {/* TOAST */}
       {toast && (
         <div style={{ position:'fixed', bottom:30, right:30, zIndex:999, padding:'10px 18px', borderRadius:10, background:toast.type==='error'?'#f06548':'#0ab39c', color:'#fff', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:8, boxShadow:'0 8px 24px rgba(0,0,0,.25)', animation:'fadeIn .2s ease', maxWidth:280 }}>
-          <span style={{ fontSize:20 }}>{toast.icon}</span><span>{toast.msg}</span>
+          <span style={{ fontSize:27 }}>{toast.icon}</span><span>{toast.msg}</span>
         </div>
       )}
 
