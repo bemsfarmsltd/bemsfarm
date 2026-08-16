@@ -79,27 +79,41 @@ const HOME_CSS = `
   0%, 100% { border-radius: 65% 35% 45% 55% / 40% 55% 45% 60%; }
   50%      { border-radius: 40% 60% 60% 40% / 60% 40% 55% 45%; }
 }
+/* Drifts a blob from its resting position out to (--float-x, --float-y) and
+   back — ease-in-out on a 0/50/100 keyframe gives it a natural slow-down/
+   reverse at each end, i.e. a ping-pong glide rather than a mechanical loop. */
+@keyframes blobFloat {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(var(--float-x), var(--float-y)); }
+}
 `;
 
 // Large soft "frosted glass" blob panels forming the hero backdrop — sized,
 // positioned and timed by hand so the composition is stable across renders.
+// moveX/moveY/moveDur/moveDelay drive the ping-pong drift (blobFloat); each
+// blob gets its own direction, distance and speed so they desync naturally
+// instead of all bouncing in lockstep.
 const HERO_GLASS_BLOBS = [
-  { width: 340, height: 320, top: "-6%",  left: "38%", tone: "emerald", morph: "a", dur: 20 },
-  { width: 460, height: 420, top: "8%",   left: "54%", tone: "frost",   morph: "b", dur: 26 },
-  { width: 300, height: 280, top: "48%",  left: "70%", tone: "amber",   morph: "a", dur: 22 },
-  { width: 150, height: 150, top: "4%",   left: "2%",  tone: "frost",   morph: "b", dur: 14 },
+  { width: 340, height: 320, top: "-6%",  left: "38%", tone: "emerald", morph: "a", dur: 20, moveX: 70,  moveY: 50,  moveDur: 12, moveDelay: 0   },
+  { width: 460, height: 420, top: "8%",   left: "54%", tone: "frost",   morph: "b", dur: 26, moveX: -90, moveY: 60,  moveDur: 16, moveDelay: 1.5 },
+  { width: 300, height: 280, top: "48%",  left: "70%", tone: "amber",   morph: "a", dur: 22, moveX: 50,  moveY: -70, moveDur: 10, moveDelay: 3   },
+  { width: 150, height: 150, top: "4%",   left: "2%",  tone: "frost",   morph: "b", dur: 14, moveX: -40, moveY: 90,  moveDur: 8,  moveDelay: 0.7 },
 ];
 
 function HeroGlassBlob({ b }) {
+  const morphName = b.morph === "b" ? "blobMorphB" : "blobMorphA";
   return (
     <div
-      className={`hero-glass-blob tone-${b.tone} ${b.morph === "b" ? "" : ""}`}
+      className={`hero-glass-blob tone-${b.tone}`}
       style={{
         width: b.width,
         height: b.height,
         top: b.top,
         left: b.left,
-        animation: `${b.morph === "b" ? "blobMorphB" : "blobMorphA"} ${b.dur}s ease-in-out infinite`,
+        "--float-x": `${b.moveX}px`,
+        "--float-y": `${b.moveY}px`,
+        animation: `${morphName} ${b.dur}s ease-in-out infinite, blobFloat ${b.moveDur}s ease-in-out infinite`,
+        animationDelay: `0s, ${b.moveDelay}s`,
       }}
     />
   );
