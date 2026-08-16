@@ -5,8 +5,8 @@ import toast from 'react-hot-toast'
 const S = '#6b7280', B = 'var(--border)'
 const TH = { padding:'10px 16px',fontSize:11,fontWeight:700,color:S,textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',background:'var(--bg-subtle)',whiteSpace:'nowrap' }
 const TD = { padding:'11px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
-const inp = { padding:'8px 12px',border:`1.5px solid ${B}`,borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',color:'var(--text-primary)' }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 20px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
+const inp = { padding:'8px 12px',border:`1.5px solid ${B}`,borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',color:'var(--text-primary)' }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 20px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
 
 function ngn(v) { return `₦${Number(v||0).toLocaleString()}` }
 
@@ -33,9 +33,9 @@ export default function ExpenseReport() {
   }, [filters])
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Expense Report</div>
+        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Expense Report</div>
         <div style={{ fontSize:12,color:S,marginTop:2 }}>Track business expenses by category and date range.</div>
       </div>
 
@@ -88,7 +88,7 @@ export default function ExpenseReport() {
           {/* By Category */}
           {data.summary?.by_category?.length > 0 && (
             <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',marginBottom:20 }}>
-              <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13 }}>Expenses by Category</div>
+              <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Expenses by Category</div>
               <table style={{ width:'100%',borderCollapse:'collapse' }}>
                 <thead><tr>{['Category','Amount','% of Total'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
                 <tbody>
@@ -117,7 +117,7 @@ export default function ExpenseReport() {
           {/* Expense list */}
           {data.expenses?.length > 0 && (
             <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
-              <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13 }}>Expense Entries</div>
+              <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Expense Entries</div>
               <div style={{ overflowX:'auto' }}>
                 <table style={{ width:'100%',borderCollapse:'collapse' }}>
                   <thead>

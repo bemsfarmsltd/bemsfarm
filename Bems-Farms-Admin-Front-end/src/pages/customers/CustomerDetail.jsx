@@ -66,14 +66,14 @@ export default function CustomerDetail() {
   }, [activeTab])
 
   if (loading) return (
-    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'var(--body-font)' }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <Spinner />
     </div>
   )
 
   if (error) return (
-    <div style={{ fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:10, padding:'12px 16px', color:'#dc2626', fontSize:13, marginBottom:16 }}>{error}</div>
       <Link to="/customers" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', textDecoration:'none', fontSize:13, fontWeight:600 }}>← Back</Link>
     </div>
@@ -100,13 +100,13 @@ export default function CustomerDetail() {
   const custColor = AVATAR_COLORS[(c.id||0) % AVATAR_COLORS.length] || '#3b82f6'
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Breadcrumb header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:8 }}>
         <div>
-          <div style={{ fontSize:18, fontWeight:800, color:'#1B4332', fontFamily:'Syne, sans-serif' }}>{c.name}</div>
+          <div style={{ fontSize:18, fontWeight:800, color:'#1B4332', fontFamily:'var(--heading-font)' }}>{c.name}</div>
           <div style={{ fontSize:12, color:'#94a3b8' }}>Customer Profile · {c.customer_code}</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#64748b' }}>
@@ -122,7 +122,7 @@ export default function CustomerDetail() {
           {/* Profile card */}
           <div style={{ ...card, padding:'24px 20px', textAlign:'center' }}>
             <div style={{ width:68, height:68, borderRadius:'50%', background:custColor, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:22, margin:'0 auto 12px' }}>{ini(c.name)}</div>
-            <div style={{ fontWeight:800, fontSize:17, fontFamily:'Syne, sans-serif', marginBottom:4 }}>{c.name}</div>
+            <div style={{ fontWeight:800, fontSize:17, fontFamily:'var(--heading-font)', marginBottom:4 }}>{c.name}</div>
             <div style={{ fontSize:12, color:'#94a3b8', marginBottom:12 }}>{c.customer_code}</div>
             <div style={{ display:'flex', justifyContent:'center', gap:6, marginBottom:16, flexWrap:'wrap' }}>
               {pill(`${c.tier} Member`, tc.bg, tc.color, tc.border, tc.icon)}
@@ -211,7 +211,7 @@ export default function CustomerDetail() {
           {/* Tabs */}
           <div style={{ padding:'0 16px', borderBottom:'1px solid var(--border)', display:'flex', gap:4 }}>
             {TABS.map(t => (
-              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'14px 14px 12px', border:'none', background:'none', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight: activeTab===t.id ? 700 : 500, color: activeTab===t.id ? '#1B4332' : '#64748b', borderBottom: `2px solid ${activeTab===t.id ? '#1B4332' : 'transparent'}`, marginBottom:-1 }}>
+              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'14px 14px 12px', border:'none', background:'none', cursor:'pointer', fontSize:13, fontFamily:'var(--body-font)', fontWeight: activeTab===t.id ? 700 : 500, color: activeTab===t.id ? '#1B4332' : '#64748b', borderBottom: `2px solid ${activeTab===t.id ? '#1B4332' : 'transparent'}`, marginBottom:-1 }}>
                 <i className={t.icon} />
                 {t.label}
                 {t.count!==null && (
@@ -363,7 +363,7 @@ export default function CustomerDetail() {
                     {insights.split("\n\n").map((block, idx) => {
                       if (block.startsWith("###")) {
                         return (
-                          <h4 key={idx} style={{ margin:'8px 0 4px', fontSize:14, fontWeight:700, color:'#1B4332', fontFamily:'Syne, sans-serif' }}>
+                          <h4 key={idx} style={{ margin:'8px 0 4px', fontSize:14, fontWeight:700, color:'#1B4332', fontFamily:'var(--heading-font)' }}>
                             {block.replace("###", "").trim()}
                           </h4>
                         );

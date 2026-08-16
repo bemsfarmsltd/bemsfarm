@@ -271,7 +271,7 @@ export default function AIChatbot() {
                     color: "#fff",
                     fontWeight: 800,
                     fontSize: 14,
-                    fontFamily: "Syne, sans-serif",
+                    fontFamily: "var(--heading-font)",
                   }}
                 >
                   Chef Bems
@@ -358,7 +358,7 @@ export default function AIChatbot() {
                       lineHeight: 1.6,
                       border:
                         msg.role === "assistant" ? "1px solid #E5E7EB" : "none",
-                      fontFamily: "Nunito, sans-serif",
+                      fontFamily: "var(--body-font)",
                       whiteSpace: "pre-wrap",
                     }}
                   >
@@ -444,7 +444,7 @@ export default function AIChatbot() {
                       fontWeight: 600,
                       color: "#1B4332",
                       cursor: "pointer",
-                      fontFamily: "Nunito, sans-serif",
+                      fontFamily: "var(--body-font)",
                     }}
                   >
                     {q.text}
@@ -471,7 +471,7 @@ export default function AIChatbot() {
                     fontSize: 13,
                     fontWeight: 700,
                     cursor: "pointer",
-                    fontFamily: "Nunito, sans-serif",
+                    fontFamily: "var(--body-font)",
                   }}
                 >
                   Shop Fresh Ingredients →
@@ -505,7 +505,7 @@ export default function AIChatbot() {
                   fontSize: 13,
                   outline: "none",
                   resize: "none",
-                  fontFamily: "Nunito, sans-serif",
+                  fontFamily: "var(--body-font)",
                   lineHeight: 1.5,
                   maxHeight: 80,
                   overflowY: "auto",

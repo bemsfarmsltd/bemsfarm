@@ -324,7 +324,7 @@ export default function CheckoutPage() {
           <span style={{ fontSize: "86" }}>🛒</span>
           <h2
             style={{
-              fontFamily: "Syne, sans-serif",
+              fontFamily: "var(--heading-font)",
               fontSize: "22px",
               fontWeight: 700,
               color: "#1B4332",
@@ -347,7 +347,7 @@ export default function CheckoutPage() {
               fontWeight: 700,
               cursor: "pointer",
               fontSize: "14px",
-              fontFamily: "Nunito, sans-serif",
+              fontFamily: "var(--body-font)",
             }}
           >
             Browse Products
@@ -363,7 +363,7 @@ export default function CheckoutPage() {
     border: "1px solid #E5E7EB",
     borderRadius: "10px",
     fontSize: "14px",
-    fontFamily: "Nunito, sans-serif",
+    fontFamily: "var(--body-font)",
     outline: "none",
     boxSizing: "border-box",
     transition: "border-color 0.15s",
@@ -411,7 +411,7 @@ export default function CheckoutPage() {
           <div style={{ maxWidth: "960px", margin: "0 auto" }}>
             <h1
               style={{
-                fontFamily: "Syne, sans-serif",
+                fontFamily: "var(--heading-font)",
                 fontSize: "clamp(20px, 4vw, 28px)",
                 fontWeight: 800,
                 color: "#1B4332",
@@ -464,7 +464,7 @@ export default function CheckoutPage() {
               <div style={cardStyle}>
                 <h2
                   style={{
-                    fontFamily: "Syne, sans-serif",
+                    fontFamily: "var(--heading-font)",
                     fontSize: "16px",
                     fontWeight: 700,
                     color: "#111827",
@@ -622,7 +622,7 @@ export default function CheckoutPage() {
               <div style={cardStyle}>
                 <h2
                   style={{
-                    fontFamily: "Syne, sans-serif",
+                    fontFamily: "var(--heading-font)",
                     fontSize: "16px",
                     fontWeight: 700,
                     color: "#111827",
@@ -707,7 +707,7 @@ export default function CheckoutPage() {
                             fontSize: "14px",
                             fontWeight: 700,
                             color: "#111827",
-                            fontFamily: "Nunito, sans-serif",
+                            fontFamily: "var(--body-font)",
                           }}
                         >
                           {m.label}
@@ -761,7 +761,7 @@ export default function CheckoutPage() {
                     fontWeight: 800,
                     fontSize: "16px",
                     cursor: loading ? "not-allowed" : "pointer",
-                    fontFamily: "Nunito, sans-serif",
+                    fontFamily: "var(--body-font)",
                     boxShadow: loading
                       ? "none"
                       : "0 4px 16px rgba(27,67,50,0.3)",
@@ -811,7 +811,7 @@ export default function CheckoutPage() {
             <div style={{ ...cardStyle, position: "sticky", top: "80px" }}>
               <h2
                 style={{
-                  fontFamily: "Syne, sans-serif",
+                  fontFamily: "var(--heading-font)",
                   fontSize: "16px",
                   fontWeight: 700,
                   color: "#111827",
@@ -956,7 +956,7 @@ export default function CheckoutPage() {
                       fontSize: "15px",
                       fontWeight: 800,
                       color: "#111827",
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                     }}
                   >
                     Total
@@ -966,7 +966,7 @@ export default function CheckoutPage() {
                       fontSize: "15px",
                       fontWeight: 800,
                       color: "#1B4332",
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                     }}
                   >
                     ₦{total.toLocaleString()}
@@ -987,7 +987,7 @@ export default function CheckoutPage() {
                   fontSize: "13px",
                   fontWeight: 600,
                   cursor: "pointer",
-                  fontFamily: "Nunito, sans-serif",
+                  fontFamily: "var(--body-font)",
                 }}
               >
                 ← Edit Cart

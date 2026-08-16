@@ -397,7 +397,7 @@ export default function AdminPage() {
                     fontSize: "16px",
                     fontWeight: 800,
                     color: "white",
-                    fontFamily: "Syne, sans-serif",
+                    fontFamily: "var(--heading-font)",
                     letterSpacing: "-0.3px",
                   }}
                 >
@@ -434,7 +434,7 @@ export default function AdminPage() {
                   cursor: "pointer",
                   textAlign: "left",
                   fontSize: "14px",
-                  fontFamily: "Nunito, sans-serif",
+                  fontFamily: "var(--body-font)",
                   fontWeight: activeTab === tab.id ? 700 : 500,
                   backgroundColor:
                     activeTab === tab.id

@@ -24,7 +24,7 @@ export default function StatsCard({ title, value, sub, icon: Icon, riIcon, color
         border: '1px solid var(--border)',
         boxShadow: 'var(--shadow-card)',
         height: '100%',
-        fontFamily: 'Nunito, sans-serif',
+        fontFamily: 'var(--body-font)',
         position: 'relative',
         overflow: 'hidden',
         cursor: 'pointer',
@@ -55,7 +55,7 @@ export default function StatsCard({ title, value, sub, icon: Icon, riIcon, color
           </p>
           <div style={{
             fontSize: 24, fontWeight: 800, color: 'var(--text-primary)',
-            marginBottom: 6, fontFamily: 'Syne, sans-serif',
+            marginBottom: 6, fontFamily: 'var(--heading-font)',
             lineHeight: 1.1,
             letterSpacing: '-0.02em',
           }}>

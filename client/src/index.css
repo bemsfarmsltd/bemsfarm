@@ -24,6 +24,9 @@
   --gray-500: #9AA0A6;
   --gray-700: #5F6368;
   --gray-900: #202124;
+  --heading-font: 'Playfair Display', 'Georgia', serif;
+  --body-font: 'Plus Jakarta Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --custom-font: 'Sacramento', cursive;
 }
 
 /* Dark Mode CSS Variables Override */
@@ -41,14 +44,14 @@
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'Nunito', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--body-font);
   background-color: var(--white);
   color: var(--gray-900);
   overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Syne', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--heading-font);
 }
 
 ::-webkit-scrollbar { width: 6px; }

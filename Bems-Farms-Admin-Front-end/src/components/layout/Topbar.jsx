@@ -112,7 +112,7 @@ function AddNewDropdown() {
           background: open ? C.hover : 'transparent',
           border: `1px solid ${C.border}`,
           color: C.text, fontSize: 13, fontWeight: 600,
-          cursor: 'pointer', fontFamily: 'Nunito, sans-serif',
+          cursor: 'pointer', fontFamily: 'var(--body-font)',
           transition: 'background 0.13s',
           whiteSpace: 'nowrap',
         }}
@@ -284,7 +284,7 @@ function ProfileDropdown({ user, roleMeta, initials, onLogout }) {
           background: open ? C.hover : 'transparent',
           border: 'none', cursor: 'pointer',
           transition: 'background 0.13s',
-          fontFamily: 'Nunito, sans-serif',
+          fontFamily: 'var(--body-font)',
         }}
         onMouseEnter={e => e.currentTarget.style.background = C.hover}
         onMouseLeave={e => { if (!open) e.currentTarget.style.background = 'transparent' }}
@@ -360,7 +360,7 @@ function ProfileDropdown({ user, roleMeta, initials, onLogout }) {
                 width: '100%', padding: '7px 14px',
                 background: 'transparent', border: 'none', cursor: 'pointer',
                 fontSize: 13, fontWeight: 500, color: '#ef4444',
-                fontFamily: 'Nunito, sans-serif',
+                fontFamily: 'var(--body-font)',
                 transition: 'background 0.1s',
               }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-red-faint)'}
@@ -450,7 +450,7 @@ export default function Topbar({ onToggleSidebar }) {
       gap: 10,
       padding: '0 12px',
       zIndex: 99,
-      fontFamily: 'Nunito, sans-serif',
+      fontFamily: 'var(--body-font)',
       color: 'var(--text-primary)',
       // NOTE: no overflowX here — setting it without overflowY forces the
       // browser to auto-promote overflowY to 'auto' too (CSS spec quirk),
@@ -502,7 +502,7 @@ export default function Topbar({ onToggleSidebar }) {
             height: 36, width: 210,
             border: `1px solid var(--border)`, borderRadius: 8,
             fontSize: 13, color: 'var(--text-secondary)', background: 'var(--bg-hover)',
-            outline: 'none', fontFamily: 'Nunito, sans-serif',
+            outline: 'none', fontFamily: 'var(--body-font)',
             transition: 'border-color 0.15s',
           }}
           onFocus={e => e.target.style.borderColor = 'var(--green-mid)'}

@@ -21,16 +21,16 @@ const STATUS_CFG = {
 
 const TH   = { padding:"10px 16px",fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:"uppercase",letterSpacing:"0.06em",textAlign:"left",whiteSpace:"nowrap" }
 const TD   = { padding:"12px 16px",verticalAlign:"middle",borderBottom:"1px solid var(--border)",fontSize:13,color:'var(--text-primary)' }
-const btnP = { display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",borderRadius:9,border:"none",background:"#1B4332",color:"#fff",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:13 }
-const btnL = { display:"inline-flex",alignItems:"center",gap:6,padding:"9px 16px",borderRadius:9,border:"1.5px solid var(--border)",background:'var(--bg-card)',color:'var(--text-secondary)',cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:600,fontSize:13 }
-const inp  = { display:"block",width:"100%",padding:"9px 12px",border:"1.5px solid var(--border)",borderRadius:8,fontFamily:"Nunito,sans-serif",fontSize:13,outline:"none",background:'var(--bg-card)',boxSizing:"border-box" }
+const btnP = { display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",borderRadius:9,border:"none",background:"#1B4332",color:"#fff",cursor:"pointer",fontFamily:"var(--body-font)",fontWeight:700,fontSize:13 }
+const btnL = { display:"inline-flex",alignItems:"center",gap:6,padding:"9px 16px",borderRadius:9,border:"1.5px solid var(--border)",background:'var(--bg-card)',color:'var(--text-secondary)',cursor:"pointer",fontFamily:"var(--body-font)",fontWeight:600,fontSize:13 }
+const inp  = { display:"block",width:"100%",padding:"9px 12px",border:"1.5px solid var(--border)",borderRadius:8,fontFamily:"var(--body-font)",fontSize:13,outline:"none",background:'var(--bg-card)',boxSizing:"border-box" }
 const LBL  = { display:"block",fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:6 }
 const S    = "#6b7280"
 
 function InfoCard({ title, children }) {
   return (
     <div style={{ background:'var(--bg-card)',borderRadius:10,border:"1px solid var(--border)",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",overflow:"hidden",marginBottom:16 }}>
-      <div style={{ padding:"12px 16px",borderBottom:"1px solid var(--border)",fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:13,color:'var(--text-primary)' }}>{title}</div>
+      <div style={{ padding:"12px 16px",borderBottom:"1px solid var(--border)",fontFamily:"var(--heading-font)",fontWeight:700,fontSize:13,color:'var(--text-primary)' }}>{title}</div>
       <div style={{ padding:16 }}>{children}</div>
     </div>
   )
@@ -42,7 +42,7 @@ function Modal({ title, onClose, children, maxWidth=480, danger=false }) {
     <div style={{ position:"fixed",inset:0,zIndex:1055,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
       <div style={{ background:'var(--bg-card)',borderRadius:14,width:"100%",maxWidth,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",maxHeight:"90vh",display:"flex",flexDirection:"column" }}>
         <div style={{ background:danger?"#7f1d1d":"#1B4332",color:"#fff",padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
-          <span style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15 }}>{title}</span>
+          <span style={{ fontFamily:"var(--heading-font)",fontWeight:700,fontSize:15 }}>{title}</span>
           <button onClick={onClose} aria-label="Close" style={{ background:"none",border:"none",color:"rgba(255,255,255,0.8)",cursor:"pointer",fontSize:20,display:"flex",padding:4 }}><i className="ri-close-line"/></button>
         </div>
         <div style={{ padding:24,overflowY:"auto" }}>{children}</div>
@@ -151,7 +151,7 @@ export default function OrderDetail() {
   }
 
   if (loading) return (
-    <div style={{ display:"flex",justifyContent:"center",alignItems:"center",minHeight:300,fontFamily:"Nunito,sans-serif" }}>
+    <div style={{ display:"flex",justifyContent:"center",alignItems:"center",minHeight:300,fontFamily:"var(--body-font)" }}>
       <div style={{ textAlign:"center",color:'var(--text-muted)' }}>
         <i className="ri-loader-4-line" style={{ fontSize:49,display:"block",marginBottom:8 }}/>Loading order...
       </div>
@@ -159,7 +159,7 @@ export default function OrderDetail() {
   )
 
   if (error) return (
-    <div style={{ fontFamily:"Nunito,sans-serif",padding:24 }}>
+    <div style={{ fontFamily:"var(--body-font)",padding:24 }}>
       <div style={{ background:"#fee2e2",border:"1px solid #fca5a5",borderRadius:10,padding:16,color:"#991b1b",marginBottom:16 }}>{error}</div>
       <Link to="/orders" style={{ ...btnL,textDecoration:"none" }}><i className="ri-arrow-left-line"/>Back to Orders</Link>
     </div>
@@ -170,7 +170,7 @@ export default function OrderDetail() {
   const hasDriver = !!(o.driver_id || o.driver_name)
 
   return (
-    <div style={{ fontFamily:"Nunito,sans-serif" }}>
+    <div style={{ fontFamily:"var(--body-font)" }}>
       {/* Fixed 320px sidebar column would overflow on any phone-width screen */}
       <style>{`
         @media (max-width: 700px) {
@@ -183,7 +183,7 @@ export default function OrderDetail() {
           <i className="ri-arrow-left-line" style={{ fontSize:22 }}/>
         </Link>
         <div>
-          <div style={{ fontFamily:"Syne,sans-serif",fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Order {o.id}</div>
+          <div style={{ fontFamily:"var(--heading-font)",fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Order {o.id}</div>
           <div style={{ fontSize:12,color:'var(--text-muted)',marginTop:2 }}>
             {new Date(o.created_at).toLocaleString("en-NG",{ weekday:"long",year:"numeric",month:"long",day:"numeric",hour:"2-digit",minute:"2-digit" })}
           </div>

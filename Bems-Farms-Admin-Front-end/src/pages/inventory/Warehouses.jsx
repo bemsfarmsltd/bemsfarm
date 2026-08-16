@@ -2,10 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
-const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:13 }
-const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
-const btnD = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:13 }
+const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'var(--body-font)', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
+const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }
+const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }
+const btnD = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }
 const LBL  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:6 }
 
 const STATUS_COLOR = { active:'#0ab39c', inactive:'#9ca3af' }
@@ -22,7 +22,7 @@ function Modal({ title, onClose, children }) {
     <div style={{ position:'fixed', inset:0, zIndex:1055, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <div style={{ background:'var(--bg-card)', borderRadius:14, width:'100%', maxWidth:580, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', overflow:'hidden', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
         <div style={{ background:'#1B4332', color:'#fff', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-          <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15 }}>{title}</span>
+          <span style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:15 }}>{title}</span>
           <button onClick={onClose} aria-label="Close" style={{ background:'none', border:'none', color:'rgba(255,255,255,0.8)', cursor:'pointer', fontSize:20, display:'flex', padding:4 }}><i className="ri-close-line"/></button>
         </div>
         <div style={{ padding:24, overflowY:'auto' }}>{children}</div>
@@ -94,10 +94,10 @@ export default function Warehouses() {
   }
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24, flexWrap:'wrap', gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:22, color:'var(--text-primary)' }}>Warehouses</div>
+          <div style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:22, color:'var(--text-primary)' }}>Warehouses</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Inventory / Warehouses</div>
         </div>
         <button onClick={openAdd} style={btnP}><i className="ri-add-line"/>Add Warehouse</button>
@@ -155,7 +155,7 @@ export default function Warehouses() {
                   <i className="ri-building-2-line" style={{ fontSize:30, color:sc }}/>
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15, color:'var(--text-primary)' }}>{w.name}</div>
+                  <div style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:15, color:'var(--text-primary)' }}>{w.name}</div>
                   <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
                     <span style={{ background:`${sc}18`, color:sc, borderRadius:50, padding:'2px 8px', fontSize:11, fontWeight:600, textTransform:'capitalize' }}>{w.status}</span>
                     {w.code && <span style={{ marginLeft:8 }}>{w.code}</span>}
@@ -247,7 +247,7 @@ export default function Warehouses() {
             <div style={{ width:56, height:56, borderRadius:'50%', background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
               <i className="ri-delete-bin-line" style={{ fontSize:32, color:'#dc2626' }}/>
             </div>
-            <div style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:16, marginBottom:6 }}>Delete Warehouse?</div>
+            <div style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:16, marginBottom:6 }}>Delete Warehouse?</div>
             <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:24 }}>{editItem?.name}{editItem?.code ? ` (${editItem.code})` : ''}</div>
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={close} style={{ ...btnL, flex:1, justifyContent:'center' }}>Cancel</button>

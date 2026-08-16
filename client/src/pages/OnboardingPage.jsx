@@ -267,7 +267,7 @@ export default function OnboardingPage() {
   return (
     <div
       className="ob-layout"
-      style={{ backgroundColor: "#FBF8F3", fontFamily: "Nunito, sans-serif" }}
+      style={{ backgroundColor: "#FBF8F3", fontFamily: "var(--body-font)" }}
     >
       <style>{OB_CSS}</style>
 
@@ -390,7 +390,7 @@ export default function OnboardingPage() {
                 </div>
                 <h2
                   style={{
-                    fontFamily: "Syne, sans-serif",
+                    fontFamily: "var(--heading-font)",
                     fontSize: "clamp(26px, 3vw, 32px)",
                     fontWeight: 800,
                     letterSpacing: "-0.01em",
@@ -497,7 +497,7 @@ export default function OnboardingPage() {
               color: "#6B7280",
               fontSize: "14px",
               fontWeight: 700,
-              fontFamily: "Nunito, sans-serif",
+              fontFamily: "var(--body-font)",
             }}
           >
             Skip →
@@ -534,7 +534,7 @@ export default function OnboardingPage() {
                 color: "#9CA3AF",
                 fontSize: "14px",
                 fontWeight: 700,
-                fontFamily: "Nunito, sans-serif",
+                fontFamily: "var(--body-font)",
               }}
             >
               Skip setup →
@@ -557,7 +557,7 @@ export default function OnboardingPage() {
                   <Chip>Welcome</Chip>
                   <h1
                     style={{
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                       fontSize: "clamp(28px, 4vw, 40px)",
                       fontWeight: 800,
                       letterSpacing: "-0.015em",
@@ -566,7 +566,7 @@ export default function OnboardingPage() {
                       margin: "14px 0 10px",
                     }}
                   >
-                    Welcome to BemsFarms
+                    Welcome to <span style={{ fontFamily: "var(--custom-font)", fontWeight: 400 }}>BemsFarms</span>
                   </h1>
                   <p
                     style={{
@@ -626,7 +626,7 @@ export default function OnboardingPage() {
                         >
                           <p
                             style={{
-                              fontFamily: "Syne, sans-serif",
+                              fontFamily: "var(--heading-font)",
                               fontSize: card.featured ? "17px" : "13px",
                               fontWeight: 700,
                               color: "white",
@@ -657,7 +657,7 @@ export default function OnboardingPage() {
                   <Chip>Household</Chip>
                   <h1
                     style={{
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                       fontSize: "clamp(26px, 4vw, 36px)",
                       fontWeight: 800,
                       letterSpacing: "-0.01em",
@@ -779,7 +779,7 @@ export default function OnboardingPage() {
                           >
                             <p
                               style={{
-                                fontFamily: "Syne, sans-serif",
+                                fontFamily: "var(--heading-font)",
                                 fontSize: "14px",
                                 fontWeight: 700,
                                 color: "#0D1117",
@@ -805,7 +805,7 @@ export default function OnboardingPage() {
                   <Chip>Budget</Chip>
                   <h1
                     style={{
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                       fontSize: "clamp(26px, 4vw, 36px)",
                       fontWeight: 800,
                       letterSpacing: "-0.01em",
@@ -884,7 +884,7 @@ export default function OnboardingPage() {
                           )}
                           <p
                             style={{
-                              fontFamily: "Syne, sans-serif",
+                              fontFamily: "var(--heading-font)",
                               fontSize: "22px",
                               fontWeight: 800,
                               letterSpacing: "-0.01em",
@@ -917,7 +917,7 @@ export default function OnboardingPage() {
                   <Chip>Health</Chip>
                   <h1
                     style={{
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                       fontSize: "clamp(26px, 4vw, 36px)",
                       fontWeight: 800,
                       letterSpacing: "-0.01em",
@@ -990,7 +990,7 @@ export default function OnboardingPage() {
                               fontWeight: 700,
                               color: selected ? "#1B4332" : "#4B5563",
                               flex: 1,
-                              fontFamily: "Nunito, sans-serif",
+                              fontFamily: "var(--body-font)",
                               lineHeight: 1.3,
                             }}
                           >
@@ -1046,7 +1046,7 @@ export default function OnboardingPage() {
                   fontWeight: 700,
                   cursor: "pointer",
                   fontSize: "14px",
-                  fontFamily: "Nunito, sans-serif",
+                  fontFamily: "var(--body-font)",
                 }}
               >
                 ← Back
@@ -1074,7 +1074,7 @@ export default function OnboardingPage() {
                 fontWeight: 800,
                 cursor: canContinue() ? "pointer" : "default",
                 fontSize: "15px",
-                fontFamily: "Nunito, sans-serif",
+                fontFamily: "var(--body-font)",
                 boxShadow: canContinue()
                   ? "0 8px 24px rgba(27,67,50,0.28)"
                   : "none",

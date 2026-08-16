@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 
 const inp = {
   width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)',
-  fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box',
+  fontSize:13, fontFamily:'var(--body-font)', outline:'none', boxSizing:'border-box',
   color:'var(--text-primary)', background:'var(--bg-card)',
 }
 const lbl = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
@@ -14,7 +14,7 @@ const lbl = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-se
 const btn = (bg, color, border) => ({
   display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px',
   borderRadius:8, border: border ?? 'none', cursor:'pointer',
-  background:bg, color, fontSize:13, fontWeight:700, fontFamily:'Nunito, sans-serif',
+  background:bg, color, fontSize:13, fontWeight:700, fontFamily:'var(--body-font)',
 })
 
 const ASSOCIATION_TYPES = [
@@ -51,7 +51,7 @@ function Modal({ open, onClose, title, danger, children }) {
       <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)' }} />
       <div style={{ position:'relative', background:'var(--bg-card)', borderRadius:14, padding:'24px 28px', width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.25)', zIndex:1 }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:danger?'#dc2626':'var(--text-primary)', fontFamily:'Syne, sans-serif' }}>{title}</h3>
+          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:danger?'#dc2626':'var(--text-primary)', fontFamily:'var(--heading-font)' }}>{title}</h3>
           <button onClick={onClose} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:20, padding:2, display:'flex', alignItems:'center' }}>
             <i className="ri-close-line" />
           </button>
@@ -204,7 +204,7 @@ export default function MealAssociations() {
   }
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <PageHeader
         title="Chef Bems AI — Meal Associations"
@@ -228,7 +228,7 @@ export default function MealAssociations() {
               <i className={k.icon} style={{ fontSize:20, color:k.color }} />
             </div>
             <div>
-              <div style={{ fontSize:22, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{k.value}</div>
+              <div style={{ fontSize:22, fontWeight:800, color:'var(--text-primary)', fontFamily:'var(--heading-font)', lineHeight:1 }}>{k.value}</div>
               <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{k.label}</div>
             </div>
           </div>
@@ -257,7 +257,7 @@ export default function MealAssociations() {
           <thead>
             <tr style={{ borderBottom:'1px solid var(--border)', background:'var(--bg-subtle)' }}>
               {['Product','Associated Product','Type','Strength','Notes','Created','Actions'].map(h => (
-                <th key={h} style={{ padding:'11px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', fontFamily:'Nunito, sans-serif', whiteSpace:'nowrap' }}>{h}</th>
+                <th key={h} style={{ padding:'11px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', fontFamily:'var(--body-font)', whiteSpace:'nowrap' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -278,10 +278,10 @@ export default function MealAssociations() {
               const strColor = strength >= 1.5 ? '#15803d' : strength >= 0.8 ? '#b45309' : '#dc2626'
               return (
                 <tr key={a.id} style={{ borderBottom:'1px solid var(--border)', background: i%2===0 ? 'var(--bg-card)' : 'var(--bg-subtle)' }}>
-                  <td style={{ padding:'12px 16px', fontSize:13, fontWeight:700, color:'var(--text-primary)', fontFamily:'Nunito, sans-serif' }}>
+                  <td style={{ padding:'12px 16px', fontSize:13, fontWeight:700, color:'var(--text-primary)', fontFamily:'var(--body-font)' }}>
                     {a.product_name}
                   </td>
-                  <td style={{ padding:'12px 16px', fontSize:13, color:'var(--text-secondary)', fontFamily:'Nunito, sans-serif' }}>
+                  <td style={{ padding:'12px 16px', fontSize:13, color:'var(--text-secondary)', fontFamily:'var(--body-font)' }}>
                     {a.associated_product_name}
                   </td>
                   <td style={{ padding:'12px 16px' }}>
@@ -297,7 +297,7 @@ export default function MealAssociations() {
                       <span style={{ fontSize:11, fontWeight:700, color:strColor }}>{strength.toFixed(1)}</span>
                     </div>
                   </td>
-                  <td style={{ padding:'12px 16px', fontSize:12, color:'var(--text-muted)', fontFamily:'Nunito, sans-serif', maxWidth:200 }}>
+                  <td style={{ padding:'12px 16px', fontSize:12, color:'var(--text-muted)', fontFamily:'var(--body-font)', maxWidth:200 }}>
                     {a.notes ? (
                       <div style={{ overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
                         {a.notes}

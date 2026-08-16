@@ -15,8 +15,8 @@ const NAV = [
   { label:'Notifications',to:'/settings/notifications'  },
 ]
 
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
 const B = 'var(--border)', S = '#6b7280'
 
 function Toggle({ value, onChange }) {
@@ -32,7 +32,7 @@ function Card({ title, subtitle, children, action }) {
     <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
       <div style={{ padding:'16px 24px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,color:'var(--text-primary)',marginBottom:2 }}>{title}</div>
+          <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,color:'var(--text-primary)',marginBottom:2 }}>{title}</div>
           {subtitle&&<div style={{ fontSize:12,color:S }}>{subtitle}</div>}
         </div>
         {action}
@@ -59,7 +59,7 @@ function SettingsNav() {
   return (
     <div style={{ display:'flex',gap:0,borderBottom:`2px solid ${B}`,marginBottom:24,overflowX:'auto' }}>
       {NAV.map(n=>(
-        <Link key={n.to} to={n.to} style={{ padding:'10px 16px',border:'none',borderBottom:pathname===n.to?'2px solid #1B4332':'2px solid transparent',background:'transparent',fontFamily:'Nunito,sans-serif',fontWeight:pathname===n.to?700:500,fontSize:13,color:pathname===n.to?'#1B4332':S,cursor:'pointer',textDecoration:'none',whiteSpace:'nowrap',marginBottom:-2 }}>
+        <Link key={n.to} to={n.to} style={{ padding:'10px 16px',border:'none',borderBottom:pathname===n.to?'2px solid #1B4332':'2px solid transparent',background:'transparent',fontFamily:'var(--body-font)',fontWeight:pathname===n.to?700:500,fontSize:13,color:pathname===n.to?'#1B4332':S,cursor:'pointer',textDecoration:'none',whiteSpace:'nowrap',marginBottom:-2 }}>
           {n.label}
         </Link>
       ))}
@@ -97,10 +97,10 @@ export default function NotificationSettings() {
   }
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:10 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Settings</div>
+          <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Settings</div>
           <div style={{ fontSize:12,color:S,marginTop:2 }}>Manage store preferences and system configurations.</div>
         </div>
       </div>

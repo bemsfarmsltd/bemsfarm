@@ -35,7 +35,7 @@ const ORDERS_CSS = `
   gap: 16px;
 }
 .op-title-row h1 {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--heading-font), sans-serif;
   font-size: 28px;
   font-weight: 800;
   color: #1B4332;
@@ -69,7 +69,7 @@ const ORDERS_CSS = `
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--body-font), sans-serif;
   background-color: #ffffff;
   color: #6B7280;
   border: 1px solid #E5E7EB;
@@ -129,7 +129,7 @@ const ORDERS_CSS = `
 }
 .op-header-value.price {
   color: #1B4332;
-  font-family: 'Syne', sans-serif;
+  font-family: var(--heading-font), sans-serif;
   font-size: 14px;
 }
 .op-header-value.order-num {
@@ -147,7 +147,7 @@ const ORDERS_CSS = `
   text-align: left;
   text-decoration: underline;
   margin-top: 2px;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--body-font), sans-serif;
 }
 
 /* Order Items list */
@@ -250,7 +250,7 @@ const ORDERS_CSS = `
   font-size: 11px;
   font-weight: 800;
   cursor: pointer;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--body-font), sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   box-shadow: 0 2px 6px rgba(245,124,0,0.15);
@@ -269,7 +269,7 @@ const ORDERS_CSS = `
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--body-font), sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   transition: all 0.2s;
@@ -499,10 +499,10 @@ export default function OrdersPage() {
             }}
           >
             <div style={{ fontSize: "97", marginBottom: "20px" }}>📭</div>
-            <h3 style={{ fontFamily: "Syne, sans-serif", fontSize: "22px", fontWeight: 700, color: "#111827", margin: "0 0 10px" }}>
+            <h3 style={{ fontFamily: "var(--heading-font)", fontSize: "22px", fontWeight: 700, color: "#111827", margin: "0 0 10px" }}>
               {filter === "all" ? "No orders yet" : `No ${filter} orders`}
             </h3>
-            <p style={{ color: "#9CA3AF", marginBottom: "24px", fontSize: "15px", fontFamily: "Nunito, sans-serif" }}>
+            <p style={{ color: "#9CA3AF", marginBottom: "24px", fontSize: "15px", fontFamily: "var(--body-font)" }}>
               {filter === "all" ? "Your order history will appear here" : `You have no ${filter} orders`}
             </p>
             <button
@@ -516,7 +516,7 @@ export default function OrdersPage() {
                 fontWeight: 700,
                 cursor: "pointer",
                 fontSize: "15px",
-                fontFamily: "Nunito, sans-serif",
+                fontFamily: "var(--body-font)",
                 boxShadow: "0 4px 16px rgba(27,67,50,0.2)",
               }}
             >
@@ -664,10 +664,10 @@ export default function OrdersPage() {
                 padding: "28px",
                 width: "100%",
                 maxWidth: "440px",
-                fontFamily: "Nunito, sans-serif"
+                fontFamily: "var(--body-font)"
               }}
             >
-              <h3 style={{ fontFamily: "Syne, sans-serif", fontSize: "20px", fontWeight: 800, marginBottom: "8px", color: "#111827" }}>
+              <h3 style={{ fontFamily: "var(--heading-font)", fontSize: "20px", fontWeight: 800, marginBottom: "8px", color: "#111827" }}>
                 Cancel Order #{cancelModal.id}?
               </h3>
               <p style={{ color: "#6B7280", fontSize: "14px", marginBottom: "20px", lineHeight: 1.5 }}>
@@ -696,7 +696,7 @@ export default function OrdersPage() {
                       backgroundColor: cancelReason === r ? "rgba(46, 125, 50, 0.04)" : "white",
                       cursor: "pointer",
                       fontSize: "14px",
-                      fontFamily: "Nunito, sans-serif",
+                      fontFamily: "var(--body-font)",
                       color: cancelReason === r ? "#2E7D32" : "#4B5563",
                       fontWeight: cancelReason === r ? 700 : 400,
                       transition: "all 0.2s",
@@ -720,7 +720,7 @@ export default function OrdersPage() {
                   fontSize: "14px",
                   outline: "none",
                   resize: "none",
-                  fontFamily: "Nunito, sans-serif",
+                  fontFamily: "var(--body-font)",
                   marginBottom: "20px",
                   boxSizing: "border-box",
                 }}
@@ -737,7 +737,7 @@ export default function OrdersPage() {
                     backgroundColor: "white",
                     cursor: "pointer",
                     fontWeight: 700,
-                    fontFamily: "Nunito, sans-serif",
+                    fontFamily: "var(--body-font)",
                     fontSize: "14px",
                     color: "#4B5563"
                   }}
@@ -756,7 +756,7 @@ export default function OrdersPage() {
                     color: "white",
                     cursor: !cancelReason ? "not-allowed" : "pointer",
                     fontWeight: 700,
-                    fontFamily: "Nunito, sans-serif",
+                    fontFamily: "var(--body-font)",
                     fontSize: "14px",
                   }}
                 >

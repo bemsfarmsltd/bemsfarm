@@ -53,7 +53,7 @@ const DASHBOARD_CSS = `
   flex-wrap: wrap;
 }
 .bp-greeting h2 {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--heading-font), sans-serif;
   font-size: 26px;
   font-weight: 800;
   color: var(--gray-900);
@@ -81,7 +81,7 @@ const DASHBOARD_CSS = `
   outline: none;
   width: 100%;
   font-size: 14px;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--body-font), sans-serif;
   color: var(--gray-900);
   background: transparent;
 }
@@ -169,7 +169,7 @@ const DASHBOARD_CSS = `
   z-index: 2;
 }
 .bp-promo-info h3 {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--heading-font), sans-serif;
   font-size: 32px;
   font-weight: 800;
   margin: 0 0 8px;
@@ -189,7 +189,7 @@ const DASHBOARD_CSS = `
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--body-font), sans-serif;
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   transition: all 0.2s;
 }
@@ -216,7 +216,7 @@ const DASHBOARD_CSS = `
   margin-bottom: 16px;
 }
 .bp-section-title h3 {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--heading-font), sans-serif;
   font-size: 20px;
   font-weight: 800;
   color: var(--gray-900);
@@ -257,7 +257,7 @@ const DASHBOARD_CSS = `
   font-size: 13px;
   font-weight: 700;
   color: var(--gray-700);
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--body-font), sans-serif;
   transition: box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 .bp-category-card:hover {
@@ -441,7 +441,7 @@ export default function ProductsPage() {
                 color: "#4B5563",
                 outline: "none",
                 backgroundColor: "rgba(255,255,255,0.8)",
-                fontFamily: "Nunito, sans-serif",
+                fontFamily: "var(--body-font)",
                 cursor: "pointer"
               }}
             >
@@ -526,7 +526,7 @@ export default function ProductsPage() {
                 alt=""
                 style={{ width: "72px", height: "72px", margin: "0 auto 12px", display: "block" }}
               />
-              <h4 style={{ margin: "0 0 6px", fontFamily: "Syne, sans-serif", fontSize: "16px", fontWeight: 700 }}>No products found</h4>
+              <h4 style={{ margin: "0 0 6px", fontFamily: "var(--heading-font)", fontSize: "16px", fontWeight: 700 }}>No products found</h4>
               <p style={{ color: "#9CA3AF", fontSize: "13px", margin: "0 0 16px" }}>Try searching something else</p>
               <button
                 onClick={() => { setSearch(""); setActiveCat("All"); }}
@@ -641,7 +641,7 @@ export default function ProductsPage() {
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "auto" }}>
                       <div style={{ minWidth: 0, overflow: "hidden" }}>
                         <span style={{ fontSize: "10px", color: "#9CA3AF" }}>{product.unit}</span>
-                        <div style={{ fontSize: "16px", fontWeight: 800, color: "#1B4332", fontFamily: "Syne, sans-serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <div style={{ fontSize: "16px", fontWeight: 800, color: "#1B4332", fontFamily: "var(--heading-font)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           ₦{(product.price * NAIRA_PER_UNIT).toLocaleString()}
                         </div>
                       </div>

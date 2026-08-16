@@ -124,7 +124,7 @@ export default function CartPage() {
               style={{ width: "120px", height: "120px", margin: "0 auto 20px", display: "block" }}
             />
             <h2
-              style={{ fontSize: "22px", fontWeight: 800, marginBottom: "10px", fontFamily: "Syne, sans-serif" }}
+              style={{ fontSize: "22px", fontWeight: 800, marginBottom: "10px", fontFamily: "var(--heading-font)" }}
             >
               Your cart is empty
             </h2>
@@ -193,7 +193,7 @@ export default function CartPage() {
             fontSize: "clamp(22px, 5vw, 28px)",
             fontWeight: 800,
             marginBottom: "20px",
-            fontFamily: "Syne, sans-serif",
+            fontFamily: "var(--heading-font)",
           }}
         >
           My Cart
@@ -520,7 +520,7 @@ export default function CartPage() {
                 fontSize: "17px",
                 fontWeight: 700,
                 marginBottom: "18px",
-                fontFamily: "Syne, sans-serif",
+                fontFamily: "var(--heading-font)",
               }}
             >
               Cart Total

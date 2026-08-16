@@ -190,7 +190,7 @@ function NavSearchBar() {
             fontSize: 13,
             background: "transparent",
             color: "#111827",
-            fontFamily: "Nunito, sans-serif",
+            fontFamily: "var(--body-font)",
             opacity: expanded ? 1 : 0,
             padding: "0 10px 0 0",
             minWidth: 0,
@@ -256,7 +256,7 @@ function NavSearchBar() {
                   borderRadius: 10,
                   cursor: "pointer",
                   textAlign: "left",
-                  fontFamily: "Nunito, sans-serif",
+                  fontFamily: "var(--body-font)",
                 }}
                 onMouseEnter={(e) =>
                   (e.currentTarget.style.background = "#F0FFF4")
@@ -323,7 +323,7 @@ function NavSearchBar() {
                 borderTop: "1px solid #F3F4F6",
                 marginTop: 4,
                 textAlign: "center",
-                fontFamily: "Nunito, sans-serif",
+                fontFamily: "var(--body-font)",
               }}
               onMouseEnter={(e) =>
                 (e.currentTarget.style.background = "#F0FFF4")
@@ -389,7 +389,7 @@ function MobileSearchBar({ onClose }) {
             background: "transparent",
             padding: "11px 10px",
             fontSize: 14,
-            fontFamily: "Nunito, sans-serif",
+            fontFamily: "var(--body-font)",
             color: "#111827",
           }}
         />
@@ -570,7 +570,7 @@ export default function Navbar() {
                     fontWeight: isActive(path) ? 700 : 500,
                     color: isActive(path) ? "#2E7D32" : "#6B7280",
                     backgroundColor: isActive(path) ? "rgba(46, 125, 50, 0.08)" : "transparent",
-                    fontFamily: "Nunito, sans-serif",
+                    fontFamily: "var(--body-font)",
                     transition: "all 0.15s",
                     cursor: "pointer",
                     whiteSpace: "nowrap",
@@ -793,7 +793,7 @@ export default function Navbar() {
                             fontSize: "13px",
                             fontWeight: 500,
                             color: "#374151",
-                            fontFamily: "Nunito, sans-serif",
+                            fontFamily: "var(--body-font)",
                             textAlign: "left",
                           }}
                           onMouseEnter={(e) =>
@@ -832,7 +832,7 @@ export default function Navbar() {
                           fontSize: "13px",
                           fontWeight: 600,
                           color: "#DC2626",
-                          fontFamily: "Nunito, sans-serif",
+                          fontFamily: "var(--body-font)",
                           textAlign: "left",
                         }}
                         onMouseEnter={(e) =>
@@ -882,7 +882,7 @@ export default function Navbar() {
                   fontWeight: 600,
                   fontSize: "13px",
                   cursor: "pointer",
-                  fontFamily: "Nunito, sans-serif",
+                  fontFamily: "var(--body-font)",
                   whiteSpace: "nowrap",
                 }}
               >
@@ -899,7 +899,7 @@ export default function Navbar() {
                   fontWeight: 700,
                   fontSize: "13px",
                   cursor: "pointer",
-                  fontFamily: "Nunito, sans-serif",
+                  fontFamily: "var(--body-font)",
                   whiteSpace: "nowrap",
                 }}
               >
@@ -940,7 +940,7 @@ export default function Navbar() {
                       backgroundColor: isActive(path)
                         ? "#F0FFF4"
                         : "transparent",
-                      fontFamily: "Nunito, sans-serif",
+                      fontFamily: "var(--body-font)",
                     }}
                   >
                     {label}

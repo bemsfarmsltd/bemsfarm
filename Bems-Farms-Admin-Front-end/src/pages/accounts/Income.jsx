@@ -154,7 +154,7 @@ export default function Income() {
     padding: '8px 16px',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontFamily: 'Syne, sans-serif',
+    fontFamily: 'var(--heading-font)',
     fontWeight: 700,
     fontSize: '13px',
     display: 'inline-flex',
@@ -181,12 +181,12 @@ export default function Income() {
   }
 
   return (
-    <div style={{ fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ fontFamily: 'var(--body-font)' }}>
       <PageHeader title="Income & Sales Ledger" breadcrumbs={['Accounts', 'Income']} />
 
       {/* Categories summary strip */}
       <div style={{ ...cardStyle, padding: '16px 20px', marginBottom: '24px' }}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', marginBottom: '12px' }}>
+        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--heading-font)', marginBottom: '12px' }}>
           Category Inflow Breakdown (This Page)
         </div>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -336,14 +336,14 @@ export default function Income() {
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '460px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }}>
               <div style={{ background: '#1B4332', padding: '18px 24px', color: '#fff', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}><i className="ri-arrow-up-circle-line me-2" />Income Record</div>
+                  <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}><i className="ri-arrow-up-circle-line me-2" />Income Record</div>
                   <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>{selected.id} · {fmtD(selected.date)}</div>
                 </div>
                 <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
               <div style={{ padding: '24px' }}>
                 <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ fontWeight: 800, color: '#22c55e', fontSize: '28px', fontFamily: 'Syne, sans-serif' }}>+{fmt(selected.amount)}</div>
+                  <div style={{ fontWeight: 800, color: '#22c55e', fontSize: '28px', fontFamily: 'var(--heading-font)' }}>+{fmt(selected.amount)}</div>
                   <span style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -389,7 +389,7 @@ export default function Income() {
           {(activeModal === 'add' || activeModal === 'edit') && (
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-modal)' }}>
               <div style={{ background: '#1B4332', padding: '18px 24px', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>
+                <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>
                   <i className={`${activeModal === 'add' ? 'ri-add-circle-line' : 'ri-edit-line'} me-2`} />
                   {activeModal === 'add' ? 'Add Income Record' : 'Edit Income Record'}
                 </div>
@@ -474,7 +474,7 @@ export default function Income() {
           {activeModal === 'delete' && selected && (
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '400px', overflow: 'hidden', boxShadow: 'var(--shadow-modal)' }}>
               <div style={{ background: '#7f1d1d', padding: '18px 24px', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}><i className="ri-delete-bin-line me-2" />Delete Record</div>
+                <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}><i className="ri-delete-bin-line me-2" />Delete Record</div>
                 <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
               <div style={{ padding: '24px', textAlign: 'center' }}>

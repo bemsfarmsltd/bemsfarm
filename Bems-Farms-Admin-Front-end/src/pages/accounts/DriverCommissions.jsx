@@ -138,7 +138,7 @@ export default function DriverCommissions() {
     padding: '8px 16px',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontFamily: 'Syne, sans-serif',
+    fontFamily: 'var(--heading-font)',
     fontWeight: 700,
     fontSize: '13px',
     display: 'inline-flex',
@@ -165,7 +165,7 @@ export default function DriverCommissions() {
   }
 
   return (
-    <div style={{ fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ fontFamily: 'var(--body-font)' }}>
       <PageHeader title="Driver Commissions" breadcrumbs={['Accounts', 'Commissions']} />
 
       {/* KPI strip */}
@@ -341,7 +341,7 @@ export default function DriverCommissions() {
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '460px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Pay Driver Commission</span>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Pay Driver Commission</span>
               <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => { setSelected(null); setPayConfirm(false); setPayNote('') }}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px' }}>
@@ -404,7 +404,7 @@ export default function DriverCommissions() {
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '440px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Generate Commissions</span>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Generate Commissions</span>
               <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setGenerateModal(false)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px' }}>
@@ -436,7 +436,7 @@ export default function DriverCommissions() {
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '440px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Edit Commission Status</span>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Edit Commission Status</span>
               <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setEditModal(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px' }}>
@@ -471,14 +471,14 @@ export default function DriverCommissions() {
             onClick={e => e.stopPropagation()}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
               <div>
-                <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Commission Summary</span>
+                <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Commission Summary</span>
                 <div style={{ color: '#ffffff', fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>{viewModal.driver_name} · ID: {viewModal.driver_id}</div>
               </div>
               <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setViewModal(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px' }}>
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <div style={{ fontSize: '28px', fontWeight: 800, color: '#22c55e', fontFamily: 'Syne, sans-serif' }}>{fmt(viewModal.net_payout || 0)}</div>
+                <div style={{ fontSize: '28px', fontWeight: 800, color: '#22c55e', fontFamily: 'var(--heading-font)' }}>{fmt(viewModal.net_payout || 0)}</div>
                 <span style={{
                   display: 'inline-flex',
                   alignItems: 'center',

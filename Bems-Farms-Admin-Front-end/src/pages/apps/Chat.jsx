@@ -38,7 +38,7 @@ function Avatar({ contact, size = 40 }) {
       background: contact.color + '22', color: contact.color,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontWeight: 700, fontSize: size * 0.32, flexShrink: 0,
-      fontFamily: 'Nunito, sans-serif',
+      fontFamily: 'var(--body-font)',
     }}>
       {contact.initials}
     </div>
@@ -79,7 +79,7 @@ export default function Chat() {
   const card = { background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', overflow: 'hidden' }
 
   return (
-    <div style={{ fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ fontFamily: 'var(--body-font)' }}>
       <PageHeader title="Team Chat" subtitle="Communicate with staff and team members" />
 
       <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16, height: 'calc(100vh - 200px)', minHeight: 500 }}>
@@ -97,7 +97,7 @@ export default function Chat() {
                 style={{
                   width: '100%', padding: '8px 12px 8px 32px', borderRadius: 8,
                   border: '1px solid var(--border)', fontSize: 13, outline: 'none',
-                  fontFamily: 'Nunito, sans-serif', boxSizing: 'border-box',
+                  fontFamily: 'var(--body-font)', boxSizing: 'border-box',
                 }}
               />
             </div>
@@ -108,14 +108,14 @@ export default function Chat() {
             <div ref={sortRef} style={{ position: 'relative' }}>
               <button
                 onClick={() => setShowSort(v => !v)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#1B4332', display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'Nunito, sans-serif' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#1B4332', display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'var(--body-font)' }}
               >
                 {sort} <i className="ri-arrow-down-s-line" />
               </button>
               {showSort && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 20, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', minWidth: 140, padding: '4px 0' }}>
                   {['Latest First', 'Weekly', 'Monthly'].map(o => (
-                    <button key={o} onClick={() => { setSort(o); setShowSort(false) }} style={{ display: 'block', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12, fontFamily: 'Nunito, sans-serif', color: o === sort ? '#1B4332' : '#374151', fontWeight: o === sort ? 700 : 400 }}>
+                    <button key={o} onClick={() => { setSort(o); setShowSort(false) }} style={{ display: 'block', width: '100%', padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12, fontFamily: 'var(--body-font)', color: o === sort ? '#1B4332' : '#374151', fontWeight: o === sort ? 700 : 400 }}>
                       {o}
                     </button>
                   ))}
@@ -123,7 +123,7 @@ export default function Chat() {
               )}
             </div>
             <button
-              style={{ background: '#1B4332', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'Nunito, sans-serif' }}
+              style={{ background: '#1B4332', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'var(--body-font)' }}
             >
               <i className="ri-add-line" />
               New Chat
@@ -231,7 +231,7 @@ export default function Chat() {
                 onChange={e => setText(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
                 placeholder="Type a message..."
-                style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13, fontFamily: 'Nunito, sans-serif', background: 'none' }}
+                style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13, fontFamily: 'var(--body-font)', background: 'none' }}
               />
               <label style={{ cursor: 'pointer', color: 'var(--text-light)', padding: 4 }}>
                 <i className="ri-image-line" style={{ fontSize: 24 }} />

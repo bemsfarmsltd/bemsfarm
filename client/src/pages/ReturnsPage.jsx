@@ -32,7 +32,7 @@ const inputStyle = {
   border: "1.5px solid #E5E7EB",
   borderRadius: "10px",
   fontSize: "13px",
-  fontFamily: "Nunito, sans-serif",
+  fontFamily: "var(--body-font)",
   color: "#111827",
   outline: "none",
   boxSizing: "border-box",
@@ -48,7 +48,7 @@ const labelStyle = {
 };
 
 const stepTitle = {
-  fontFamily: "Syne, sans-serif",
+  fontFamily: "var(--heading-font)",
   fontWeight: 700,
   fontSize: "16px",
   color: "#111827",
@@ -218,7 +218,7 @@ export default function ReturnsPage() {
             <span> / </span>
             <span style={{ color: "white" }}>Returns & Refunds</span>
           </div>
-          <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: "32px", fontWeight: 800, color: "white", marginBottom: "8px" }}>
+          <h1 style={{ fontFamily: "var(--heading-font)", fontSize: "32px", fontWeight: 800, color: "white", marginBottom: "8px" }}>
             Returns & Refunds
           </h1>
           <p style={{ color: "rgba(255,255,255,0.75)", fontSize: "14px" }}>
@@ -233,7 +233,7 @@ export default function ReturnsPage() {
           {["new", "history"].map((t) => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: "10px 20px", border: "none", cursor: "pointer", fontSize: "14px",
-              fontWeight: tab === t ? 700 : 500, fontFamily: "Nunito, sans-serif",
+              fontWeight: tab === t ? 700 : 500, fontFamily: "var(--body-font)",
               backgroundColor: "transparent", color: tab === t ? "#1B4332" : "#9CA3AF",
               borderBottom: `2px solid ${tab === t ? "#40916C" : "transparent"}`, marginBottom: "-2px",
             }}>
@@ -249,7 +249,7 @@ export default function ReturnsPage() {
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
               style={{ textAlign: "center", padding: "60px 20px", ...card }}>
               <div style={{ fontSize: "108", marginBottom: "20px" }}>✅</div>
-              <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: "24px", fontWeight: 800, color: "#1B4332", marginBottom: "12px" }}>
+              <h2 style={{ fontFamily: "var(--heading-font)", fontSize: "24px", fontWeight: 800, color: "#1B4332", marginBottom: "12px" }}>
                 Return Request Submitted!
               </h2>
               <p style={{ color: "#6B7280", marginBottom: "24px", maxWidth: "400px", margin: "0 auto 24px", lineHeight: 1.6 }}>
@@ -548,7 +548,7 @@ export default function ReturnsPage() {
                       fontSize: "16px",
                       fontWeight: 700,
                       cursor: validationError ? "not-allowed" : "pointer",
-                      fontFamily: "Nunito, sans-serif",
+                      fontFamily: "var(--body-font)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -576,7 +576,7 @@ export default function ReturnsPage() {
             {myReturns.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 20px", ...card }}>
                 <div style={{ fontSize: "86", marginBottom: "16px" }}>📋</div>
-                <h3 style={{ fontFamily: "Syne, sans-serif", fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>No Returns Yet</h3>
+                <h3 style={{ fontFamily: "var(--heading-font)", fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>No Returns Yet</h3>
                 <p style={{ color: "#9CA3AF", marginBottom: "20px" }}>You haven't submitted any return requests</p>
                 <button onClick={() => setTab("new")} style={{ backgroundColor: "#1B4332", color: "white", border: "none", borderRadius: "12px", padding: "12px 28px", fontWeight: 700, cursor: "pointer" }}>
                   Submit a Return

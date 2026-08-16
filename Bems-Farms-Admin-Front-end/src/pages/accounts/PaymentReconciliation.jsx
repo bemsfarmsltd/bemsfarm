@@ -145,7 +145,7 @@ export default function PaymentReconciliation() {
     padding: '8px 16px',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontFamily: 'Syne, sans-serif',
+    fontFamily: 'var(--heading-font)',
     fontWeight: 700,
     fontSize: '13px',
     display: 'inline-flex',
@@ -172,7 +172,7 @@ export default function PaymentReconciliation() {
   }
 
   return (
-    <div style={{ fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ fontFamily: 'var(--body-font)' }}>
       <PageHeader title="Payment Reconciliation Gateway" breadcrumbs={['Accounts', 'Reconciliation']} />
 
       {/* Stats Summary Strip */}
@@ -457,7 +457,7 @@ export default function PaymentReconciliation() {
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '460px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Manual Payment Reconciliation</span>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Manual Payment Reconciliation</span>
               <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setShowReconcileModal(false)}><i className="ri-close-line" /></button>
             </div>
             <form onSubmit={handleManualReconcile} style={{ padding: '24px' }}>
@@ -493,7 +493,7 @@ export default function PaymentReconciliation() {
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '720px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Webhook Payload Dump</span>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Webhook Payload Dump</span>
               <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setShowPayloadModal(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '16px', background: '#1e293b', maxHeight: '480px', overflowY: 'auto' }}>

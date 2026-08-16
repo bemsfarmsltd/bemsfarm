@@ -18,7 +18,7 @@ const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec489
 const HIST_TYPE = { earned:'earn', bonus:'admin', referral:'admin', redeemed:'redeem', deducted:'admin' }
 
 const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
-const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
+const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'var(--body-font)', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
 const lbl  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
 
 const TH = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap', background:'var(--bg-subtle)', borderBottom:'1px solid var(--border)' }}>{children}</th>
@@ -95,7 +95,7 @@ export default function LoyaltyPoints() {
   const closeModal = () => { setModal(null); setSelected(null); setPts(''); setReason('') }
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <PageHeader
         title="Loyalty Points"
         subtitle="Manage customer loyalty tiers and points — earn 1 pt per ₦10 spent"
@@ -119,7 +119,7 @@ export default function LoyaltyPoints() {
                 </div>
                 <span style={{ fontWeight:700, fontSize:14, color:cfg.color }}>{tier}</span>
               </div>
-              <div style={{ fontSize:22, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1, marginBottom:4 }}>{count}</div>
+              <div style={{ fontSize:22, fontWeight:800, color:'var(--text-primary)', fontFamily:'var(--heading-font)', lineHeight:1, marginBottom:4 }}>{count}</div>
               <div style={{ fontSize:11, color:'#64748b' }}>customers · {fmtPts(totalInTier)} total</div>
               <div style={{ fontSize:10, color:'#94a3b8', marginTop:4 }}>
                 Min: {fmtPts(cfg.min)}{cfg.next?` → ${cfg.next} at ${fmtPts(TIER_CFG[cfg.next].min)}`:'(max tier)'}
@@ -183,10 +183,10 @@ export default function LoyaltyPoints() {
                         <TD style={{ color:'var(--text-muted)', fontSize:12 }}>{c.lastEarned}</TD>
                         <TD>
                           <div style={{ display:'flex', gap:5 }}>
-                            <button onClick={() => { setSelected(c); setModal('award'); setPts(''); setReason('') }} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:7, border:'none', background:'#f0fdf4', color:'#16a34a', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'Nunito, sans-serif' }}>
+                            <button onClick={() => { setSelected(c); setModal('award'); setPts(''); setReason('') }} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:7, border:'none', background:'#f0fdf4', color:'#16a34a', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'var(--body-font)' }}>
                               <i className="ri-add-line" />Award
                             </button>
-                            <button onClick={() => { setSelected(c); setModal('deduct'); setPts(''); setReason('') }} disabled={c.points===0} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:7, border:'1.5px solid #fecaca', background:'var(--bg-card)', color:'#dc2626', fontSize:11, fontWeight:700, cursor: c.points===0?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', opacity: c.points===0?0.5:1 }}>
+                            <button onClick={() => { setSelected(c); setModal('deduct'); setPts(''); setReason('') }} disabled={c.points===0} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:7, border:'1.5px solid #fecaca', background:'var(--bg-card)', color:'#dc2626', fontSize:11, fontWeight:700, cursor: c.points===0?'not-allowed':'pointer', fontFamily:'var(--body-font)', opacity: c.points===0?0.5:1 }}>
                               <i className="ri-subtract-line" />Deduct
                             </button>
                           </div>
@@ -231,7 +231,7 @@ export default function LoyaltyPoints() {
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={closeModal}>
           <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth:440, boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
             <div style={{ background:'#1B4332', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif' }}>{modal==='award'?'Award Points':'Deduct Points'}</span>
+              <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'var(--heading-font)' }}>{modal==='award'?'Award Points':'Deduct Points'}</span>
               <button onClick={closeModal} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding:24 }}>
@@ -260,8 +260,8 @@ export default function LoyaltyPoints() {
                 <textarea rows={2} placeholder={modal==='award'?'e.g. Referral bonus, Birthday reward…':'e.g. Points reversal, Error correction…'} value={reason} onChange={e => setReason(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
               </div>
               <div style={{ display:'flex', gap:10 }}>
-                <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600 }}>Cancel</button>
-                <button disabled={!pts||parseInt(pts)<1||saving} onClick={() => processPoints(modal)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background: modal==='award'?'#16a34a':'#dc2626', color:'#fff', cursor: (!pts||parseInt(pts)<1||saving)?'not-allowed':'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:700, opacity: (!pts||parseInt(pts)<1||saving)?0.6:1 }}>
+                <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'var(--body-font)', fontWeight:600 }}>Cancel</button>
+                <button disabled={!pts||parseInt(pts)<1||saving} onClick={() => processPoints(modal)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background: modal==='award'?'#16a34a':'#dc2626', color:'#fff', cursor: (!pts||parseInt(pts)<1||saving)?'not-allowed':'pointer', fontSize:13, fontFamily:'var(--body-font)', fontWeight:700, opacity: (!pts||parseInt(pts)<1||saving)?0.6:1 }}>
                   {saving ? 'Saving…' : `${modal==='award'?'Award':'Deduct'} ${pts?fmtPts(pts):'Points'}`}
                 </button>
               </div>

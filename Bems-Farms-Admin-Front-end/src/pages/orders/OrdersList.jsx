@@ -45,9 +45,9 @@ const pipeIdx = (s) => {
   return (map[s]||0)-1
 }
 
-const inp  = { display:"block",width:"100%",padding:"9px 12px",border:"1.5px solid var(--border)",borderRadius:8,fontFamily:"Nunito,sans-serif",fontSize:13,outline:"none",background:'var(--bg-card)',boxSizing:"border-box" }
-const btnP = { display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",borderRadius:9,border:"none",background:"var(--orange-accent)",color:"#fff",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:13 }
-const btnL = { display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:9,border:"1.5px solid var(--border)",background:'var(--bg-card)',color:'var(--text-secondary)',cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:600,fontSize:13 }
+const inp  = { display:"block",width:"100%",padding:"9px 12px",border:"1.5px solid var(--border)",borderRadius:8,fontFamily:"var(--body-font)",fontSize:13,outline:"none",background:'var(--bg-card)',boxSizing:"border-box" }
+const btnP = { display:"inline-flex",alignItems:"center",gap:6,padding:"9px 18px",borderRadius:9,border:"none",background:"var(--orange-accent)",color:"#fff",cursor:"pointer",fontFamily:"var(--body-font)",fontWeight:700,fontSize:13 }
+const btnL = { display:"inline-flex",alignItems:"center",gap:6,padding:"7px 14px",borderRadius:9,border:"1.5px solid var(--border)",background:'var(--bg-card)',color:'var(--text-secondary)',cursor:"pointer",fontFamily:"var(--body-font)",fontWeight:600,fontSize:13 }
 const TH   = { padding:"10px 16px",fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:"uppercase",letterSpacing:"0.06em",textAlign:"left",whiteSpace:"nowrap" }
 const TD   = { padding:"12px 16px",verticalAlign:"middle",borderBottom:"1px solid var(--border)",fontSize:13,color:'var(--text-primary)' }
 // Was referenced in the dispute/reschedule/cancel modals below but never
@@ -62,7 +62,7 @@ function Modal({ title, onClose, children, maxWidth=600, danger=false }) {
     <div style={{ position:"fixed",inset:0,zIndex:1055,display:"flex",alignItems:"center",justifyContent:"center",padding:16 }}>
       <div style={{ background:'var(--bg-card)',borderRadius:14,width:"100%",maxWidth,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",maxHeight:"90vh",display:"flex",flexDirection:"column" }}>
         <div style={{ background:danger?"#7f1d1d":"var(--orange-accent)",color:"#fff",padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
-          <span style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15 }}>{title}</span>
+          <span style={{ fontFamily:"var(--heading-font)",fontWeight:700,fontSize:15 }}>{title}</span>
           <button onClick={onClose} aria-label="Close" style={{ background:"none",border:"none",color:"rgba(255,255,255,0.8)",cursor:"pointer",fontSize:20,display:"flex",padding:4 }}><i className="ri-close-line"/></button>
         </div>
         <div style={{ padding:24,overflowY:"auto" }}>{children}</div>
@@ -207,11 +207,11 @@ export default function OrdersList() {
   const B = 'var(--border)', S = '#6b7280'
 
   return (
-    <div style={{ fontFamily:"Nunito,sans-serif" }}>
+    <div style={{ fontFamily:"var(--body-font)" }}>
       {/* Page Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>All Orders</div>
+          <div style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>All Orders</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
           <span>Orders</span>
@@ -265,7 +265,7 @@ export default function OrdersList() {
           <div style={{ display:"flex",whiteSpace:"nowrap",padding:"0 8px" }}>
             {STATUS_TABS.map(t=>(
               <button key={t.key} onClick={()=>{ setFilterStatus(t.key); setPage(1) }}
-                style={{ background:"none",border:"none",cursor:"pointer",padding:"10px 12px",fontSize:13,fontWeight:filterStatus===t.key?700:400,color:filterStatus===t.key?"var(--orange-accent)":S,borderBottom:filterStatus===t.key?"2px solid var(--orange-accent)":"2px solid transparent",fontFamily:"Nunito,sans-serif",whiteSpace:"nowrap" }}>
+                style={{ background:"none",border:"none",cursor:"pointer",padding:"10px 12px",fontSize:13,fontWeight:filterStatus===t.key?700:400,color:filterStatus===t.key?"var(--orange-accent)":S,borderBottom:filterStatus===t.key?"2px solid var(--orange-accent)":"2px solid transparent",fontFamily:"var(--body-font)",whiteSpace:"nowrap" }}>
                 {t.label}
               </button>
             ))}
@@ -585,8 +585,8 @@ function OrderViewModal({ order, onClose, onProcess, onPack, onAssign, onDispute
   },[order.id])
 
   const o=detail||order, cfg=STATUS_CFG[o.status]||STATUS_CFG.pending, idx=pipeIdx(o.status)
-  const btnP2={ display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,border:"none",background:"var(--orange-accent)",color:"#fff",cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:700,fontSize:13 }
-  const btnL2={ display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,border:"1.5px solid var(--border)",background:'var(--bg-card)',color:'var(--text-secondary)',cursor:"pointer",fontFamily:"Nunito,sans-serif",fontWeight:600,fontSize:13 }
+  const btnP2={ display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,border:"none",background:"var(--orange-accent)",color:"#fff",cursor:"pointer",fontFamily:"var(--body-font)",fontWeight:700,fontSize:13 }
+  const btnL2={ display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,border:"1.5px solid var(--border)",background:'var(--bg-card)',color:'var(--text-secondary)',cursor:"pointer",fontFamily:"var(--body-font)",fontWeight:600,fontSize:13 }
 
   return <>
     {/* The modal's 2-column body (1fr 300px) and the customer/address info
@@ -604,7 +604,7 @@ function OrderViewModal({ order, onClose, onProcess, onPack, onAssign, onDispute
       <div style={{ background:'var(--bg-card)',borderRadius:14,width:"100%",maxWidth:900,maxHeight:"90vh",boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",display:"flex",flexDirection:"column" }}>
         <div style={{ background:"var(--orange-accent)",color:"#fff",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
           <div>
-            <div style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:16 }}>ORD-{yearOf(o.created_at)}-{String(o.id).padStart(4, '0')}</div>
+            <div style={{ fontFamily:"var(--heading-font)",fontWeight:700,fontSize:16 }}>ORD-{yearOf(o.created_at)}-{String(o.id).padStart(4, '0')}</div>
             <div style={{ fontSize:12,opacity:0.75,marginTop:2 }}>{new Date(o.created_at).toLocaleString("en-NG")} · {getChannelCfg(o.channel, o.source).label}</div>
           </div>
           <div style={{ display:"flex",alignItems:"center",gap:10 }}>

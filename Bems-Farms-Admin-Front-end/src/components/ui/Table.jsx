@@ -1,7 +1,7 @@
 export function Table({ children }) {
   return (
     <div style={{ overflowX: 'auto', width: '100%' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'Nunito, sans-serif' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'var(--body-font)' }}>
         {children}
       </table>
     </div>

@@ -3,10 +3,10 @@ import { useNavigate, useParams, Link, useLocation } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
 const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
 
 function NumericStepper({ value, onChange, min=0 }) {
   const handleMinus = () => {
@@ -53,7 +53,7 @@ function NumericStepper({ value, onChange, min=0 }) {
           background: 'var(--bg-card)',
           color: 'var(--text-primary)',
           textAlign: 'center',
-          fontFamily: 'Nunito, sans-serif',
+          fontFamily: 'var(--body-font)',
           fontSize: 13,
           fontWeight: 600,
           outline: 'none',
@@ -89,7 +89,7 @@ function NumericStepper({ value, onChange, min=0 }) {
 function Card({ title, children, style={} }) {
   return (
     <div style={{ background:'var(--bg-card)',borderRadius:12,border:'1px solid var(--border)',overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20,...style }}>
-      <div style={{ padding:'14px 20px',borderBottom:'1px solid var(--border)',fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,color:'var(--text-primary)' }}>{title}</div>
+      <div style={{ padding:'14px 20px',borderBottom:'1px solid var(--border)',fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13,color:'var(--text-primary)' }}>{title}</div>
       <div style={{ padding:20 }}>{children}</div>
     </div>
   )
@@ -192,7 +192,7 @@ export default function AddProduct() {
   }
 
   if (loadingRefs) return (
-    <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300,fontFamily:'Nunito,sans-serif',color:'var(--text-muted)' }}>
+    <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300,fontFamily:'var(--body-font)',color:'var(--text-muted)' }}>
       <i className="ri-loader-4-line" style={{ fontSize:49,display:'block',marginBottom:8,textAlign:'center' }}/>
     </div>
   )
@@ -203,11 +203,11 @@ export default function AddProduct() {
   const currentTab = location.pathname.includes('/import') ? 'import' : 'single'
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       {/* Header & Breadcrumbs */}
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>{isEdit ? 'Edit Product' : 'Add Products'}</div>
+          <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>{isEdit ? 'Edit Product' : 'Add Products'}</div>
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)' }}>
           <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Products</span>
@@ -230,7 +230,7 @@ export default function AddProduct() {
             background: currentTab === 'single' ? 'var(--orange-accent)' : 'var(--bg-card)',
             color: currentTab === 'single' ? '#fff' : 'var(--text-secondary)',
             cursor:'pointer',
-            fontFamily:'Nunito,sans-serif',
+            fontFamily:'var(--body-font)',
             fontWeight:700,
             fontSize:13,
             textDecoration:'none',
@@ -254,7 +254,7 @@ export default function AddProduct() {
             background: currentTab === 'import' ? 'var(--orange-accent)' : 'var(--bg-card)',
             color: currentTab === 'import' ? '#fff' : 'var(--text-secondary)',
             cursor:'pointer',
-            fontFamily:'Nunito,sans-serif',
+            fontFamily:'var(--body-font)',
             fontWeight:700,
             fontSize:13,
             textDecoration:'none',

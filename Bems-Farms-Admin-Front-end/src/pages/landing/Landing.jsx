@@ -60,7 +60,7 @@ export default function Landing() {
   }, [])
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif', color:'var(--text-primary)', overflowX:'hidden' }}>
+    <div style={{ fontFamily:'var(--body-font)', color:'var(--text-primary)', overflowX:'hidden' }}>
 
       {/* ── NAVBAR ── */}
       <nav style={{
@@ -75,9 +75,9 @@ export default function Landing() {
           {/* Logo */}
           <a href="#home" style={{ display:'flex', alignItems:'center', gap:10, textDecoration:'none' }}>
             <div style={{ width:36, height:36, borderRadius:9, background:'#1B4332', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <span style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:13, color:'#fff' }}>BF</span>
+              <span style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:13, color:'#fff' }}>BF</span>
             </div>
-            <span style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:18, color:'#fff', letterSpacing:'-0.02em' }}>Bems Farms</span>
+            <span style={{ fontFamily:'var(--custom-font)', fontWeight:700, fontSize:24, color:'#fff' }}>Bems Farms</span>
           </a>
 
           {/* Desktop nav links */}
@@ -94,7 +94,7 @@ export default function Landing() {
           </ul>
 
           {/* Sign In button */}
-          <button onClick={() => navigate('/login')} style={{ padding:'9px 22px', background:'#1B4332', color:'#fff', border:'none', borderRadius:9, fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:14, cursor:'pointer', flexShrink:0, transition:'background 0.2s' }}
+          <button onClick={() => navigate('/login')} style={{ padding:'9px 22px', background:'#1B4332', color:'#fff', border:'none', borderRadius:9, fontFamily:'var(--body-font)', fontWeight:700, fontSize:14, cursor:'pointer', flexShrink:0, transition:'background 0.2s' }}
             onMouseEnter={e => e.currentTarget.style.background='#14532d'}
             onMouseLeave={e => e.currentTarget.style.background='#1B4332'}>
             Sign In
@@ -116,7 +116,7 @@ export default function Landing() {
                 {n.label}
               </a>
             ))}
-            <button onClick={() => navigate('/login')} style={{ marginTop:16, width:'100%', padding:'12px', background:'#1B4332', color:'#fff', border:'none', borderRadius:9, fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:14, cursor:'pointer' }}>
+            <button onClick={() => navigate('/login')} style={{ marginTop:16, width:'100%', padding:'12px', background:'#1B4332', color:'#fff', border:'none', borderRadius:9, fontFamily:'var(--body-font)', fontWeight:700, fontSize:14, cursor:'pointer' }}>
               Sign In
             </button>
           </div>
@@ -137,7 +137,7 @@ export default function Landing() {
           <div style={{ display:'inline-block', background:'rgba(27,67,50,0.6)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:50, padding:'8px 20px', fontSize:13, fontWeight:600, color:'#86efac', marginBottom:28, backdropFilter:'blur(8px)' }}>
             🌿 Farm-to-Table Management Platform
           </div>
-          <h1 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(32px, 6vw, 60px)', color:'#fff', lineHeight:1.15, marginBottom:24, letterSpacing:'-0.02em' }}>
+          <h1 style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:'clamp(32px, 6vw, 60px)', color:'#fff', lineHeight:1.15, marginBottom:24, letterSpacing:'-0.02em' }}>
             Run Bems Farms Smarter —{' '}
             <span style={{ color:'#F57C00' }}>From Farm to Doorstep</span>
           </h1>
@@ -146,12 +146,12 @@ export default function Landing() {
             Built specifically for Bems Farms' farm-to-table operations.
           </p>
           <div style={{ display:'flex', gap:14, justifyContent:'center', flexWrap:'wrap' }}>
-            <button onClick={() => navigate('/login')} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 32px', background:'#1B4332', color:'#fff', border:'none', borderRadius:10, fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:15, cursor:'pointer', transition:'transform 0.2s, background 0.2s' }}
+            <button onClick={() => navigate('/login')} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 32px', background:'#1B4332', color:'#fff', border:'none', borderRadius:10, fontFamily:'var(--body-font)', fontWeight:700, fontSize:15, cursor:'pointer', transition:'transform 0.2s, background 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.background='#14532d'; e.currentTarget.style.transform='translateY(-2px)' }}
               onMouseLeave={e => { e.currentTarget.style.background='#1B4332'; e.currentTarget.style.transform='' }}>
               Enter Admin <i className="ri-arrow-right-line"/>
             </button>
-            <a href="#features" style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 32px', background:'transparent', color:'#fff', border:'1.5px solid rgba(255,255,255,0.35)', borderRadius:10, fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:15, textDecoration:'none', transition:'border-color 0.2s, background 0.2s' }}
+            <a href="#features" style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 32px', background:'transparent', color:'#fff', border:'1.5px solid rgba(255,255,255,0.35)', borderRadius:10, fontFamily:'var(--body-font)', fontWeight:700, fontSize:15, textDecoration:'none', transition:'border-color 0.2s, background 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.7)'; e.currentTarget.style.background='rgba(255,255,255,0.06)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.35)'; e.currentTarget.style.background='transparent' }}>
               Explore Features
@@ -177,7 +177,7 @@ export default function Landing() {
                 <div style={{ width:56, height:56, borderRadius:14, background:`${f.color}18`, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px' }}>
                   <i className={f.icon} style={{ fontSize:26, color:f.color }}/>
                 </div>
-                <h3 style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:16, color:'var(--text-primary)', marginBottom:10 }}>{f.title}</h3>
+                <h3 style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:16, color:'var(--text-primary)', marginBottom:10 }}>{f.title}</h3>
                 <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7, marginBottom:16 }}>{f.desc}</p>
                 <a href="#services" style={{ fontSize:13, fontWeight:700, color:f.color, textDecoration:'none', display:'inline-flex', alignItems:'center', gap:4 }}>
                   Learn More <i className="ri-arrow-right-line"/>
@@ -212,7 +212,7 @@ export default function Landing() {
 
             {/* Text */}
             <div>
-              <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(24px, 3vw, 38px)', color:'var(--text-primary)', lineHeight:1.25, marginBottom:20 }}>
+              <h2 style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:'clamp(24px, 3vw, 38px)', color:'var(--text-primary)', lineHeight:1.25, marginBottom:20 }}>
                 Everything You Need to Run{' '}
                 <span style={{ color:'#1B4332' }}>Bems Farms Smarter</span>
               </h2>
@@ -227,7 +227,7 @@ export default function Landing() {
                   { stat:'Real-time', desc:'Live order tracking, stock levels, and delivery status in one view.' },
                 ].map(s => (
                   <div key={s.stat}>
-                    <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:32, color:'#1B4332', marginBottom:8 }}>{s.stat}</div>
+                    <div style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:32, color:'#1B4332', marginBottom:8 }}>{s.stat}</div>
                     <p style={{ fontSize:14, color:'var(--text-muted)', lineHeight:1.65 }}>{s.desc}</p>
                   </div>
                 ))}
@@ -251,7 +251,7 @@ export default function Landing() {
                 <i className={c.icon} style={{ fontSize:22, color:'#fff' }}/>
               </div>
               <div>
-                <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:28, color:'#fff', lineHeight:1 }}>{c.count}</div>
+                <div style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:28, color:'#fff', lineHeight:1 }}>{c.count}</div>
                 <div style={{ fontSize:13, color:'rgba(255,255,255,0.7)', marginTop:4 }}>{c.label}</div>
               </div>
             </div>
@@ -269,7 +269,7 @@ export default function Landing() {
               <span style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Our Modules</span>
               <div style={{ height:1, width:48, background:'var(--border)' }}/>
             </div>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(24px, 3vw, 36px)', color:'var(--text-primary)' }}>
+            <h2 style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:'clamp(24px, 3vw, 36px)', color:'var(--text-primary)' }}>
               Everything Bems Farms Needs
             </h2>
           </div>
@@ -283,7 +283,7 @@ export default function Landing() {
                   <i className={s.icon} style={{ fontSize:22, color:s.color }}/>
                 </div>
                 <div>
-                  <h3 style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15, color:'var(--text-primary)', marginBottom:8 }}>{s.title}</h3>
+                  <h3 style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:15, color:'var(--text-primary)', marginBottom:8 }}>{s.title}</h3>
                   <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7, margin:0 }}>{s.desc}</p>
                 </div>
               </div>
@@ -298,7 +298,7 @@ export default function Landing() {
           <div style={{ background:'var(--bg-subtle)', borderRadius:20, padding:'52px 52px', display:'grid', gridTemplateColumns:'1fr auto', gap:48, alignItems:'center' }}>
             <div>
               <div style={{ fontSize:12, fontWeight:700, color:'#1B4332', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>Why Choose Bems Farms Admin</div>
-              <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(22px, 3vw, 34px)', color:'var(--text-primary)', lineHeight:1.25, marginBottom:20 }}>
+              <h2 style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:'clamp(22px, 3vw, 34px)', color:'var(--text-primary)', lineHeight:1.25, marginBottom:20 }}>
                 Built for Fresh Produce —<br/>Not Generic Retail
               </h2>
               <p style={{ fontSize:15, color:'var(--text-muted)', lineHeight:1.8, marginBottom:28, maxWidth:520 }}>
@@ -306,7 +306,7 @@ export default function Landing() {
                 Bems Farms Admin was designed from the ground up for a fresh food business —
                 FEFO inventory, delivery zone management, Chef AI, and loyalty all in one place.
               </p>
-              <button onClick={() => navigate('/login')} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'12px 28px', background:'#1B4332', color:'#fff', border:'none', borderRadius:9, fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:14, cursor:'pointer', transition:'background 0.2s' }}
+              <button onClick={() => navigate('/login')} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'12px 28px', background:'#1B4332', color:'#fff', border:'none', borderRadius:9, fontFamily:'var(--body-font)', fontWeight:700, fontSize:14, cursor:'pointer', transition:'background 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.background='#14532d'}
                 onMouseLeave={e => e.currentTarget.style.background='#1B4332'}>
                 Get Started <i className="ri-arrow-right-line"/>
@@ -338,7 +338,7 @@ export default function Landing() {
               <span style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.1em' }}>FAQ</span>
               <div style={{ height:1, width:48, background:'var(--border)' }}/>
             </div>
-            <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(22px, 3vw, 34px)', color:'var(--text-primary)' }}>
+            <h2 style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:'clamp(22px, 3vw, 34px)', color:'var(--text-primary)' }}>
               Frequently Asked Questions
             </h2>
           </div>
@@ -349,7 +349,7 @@ export default function Landing() {
               return (
                 <div key={i} style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${open ? '#bbf7d0' : 'var(--border)'}`, overflow:'hidden', transition:'border-color 0.2s' }}>
                   <button onClick={() => setOpenFaq(open ? null : i)}
-                    style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'18px 22px', background:'none', border:'none', cursor:'pointer', fontFamily:'Nunito,sans-serif', textAlign:'left' }}>
+                    style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'18px 22px', background:'none', border:'none', cursor:'pointer', fontFamily:'var(--body-font)', textAlign:'left' }}>
                     <span style={{ fontSize:15, fontWeight:700, color:'var(--text-primary)', lineHeight:1.4 }}>{q}</span>
                     <div style={{ width:28, height:28, borderRadius:'50%', background: open ? '#1B4332' : 'var(--border)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'background 0.2s' }}>
                       <i className={open ? 'ri-subtract-line' : 'ri-add-line'} style={{ fontSize:19, color: open ? '#fff' : '#6b7280' }}/>
@@ -368,19 +368,19 @@ export default function Landing() {
       {/* ── CTA ── */}
       <section id="contact" style={{ background:'linear-gradient(135deg, #1B4332 0%, #405189 100%)', padding:'80px 24px', textAlign:'center' }}>
         <div style={{ maxWidth:640, margin:'0 auto' }}>
-          <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'clamp(26px, 4vw, 44px)', color:'#fff', marginBottom:20, letterSpacing:'-0.01em' }}>
+          <h2 style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:'clamp(26px, 4vw, 44px)', color:'#fff', marginBottom:20, letterSpacing:'-0.01em' }}>
             Ready to Manage Bems Farms?
           </h2>
           <p style={{ fontSize:16, color:'rgba(255,255,255,0.82)', lineHeight:1.75, marginBottom:40 }}>
             Sign in to the admin portal and start managing orders, inventory, and deliveries today.
           </p>
           <div style={{ display:'flex', gap:14, justifyContent:'center', flexWrap:'wrap' }}>
-            <button onClick={() => navigate('/login')} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 32px', background:'var(--bg-card)', color:'#1B4332', border:'none', borderRadius:10, fontFamily:'Nunito,sans-serif', fontWeight:800, fontSize:15, cursor:'pointer', transition:'transform 0.2s' }}
+            <button onClick={() => navigate('/login')} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 32px', background:'var(--bg-card)', color:'#1B4332', border:'none', borderRadius:10, fontFamily:'var(--body-font)', fontWeight:800, fontSize:15, cursor:'pointer', transition:'transform 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.transform='translateY(-2px)'}
               onMouseLeave={e => e.currentTarget.style.transform=''}>
               <i className="ri-login-box-line"/>Sign In to Admin
             </button>
-            <a href="mailto:info@bemsfarms.com" style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 32px', background:'transparent', color:'#fff', border:'1.5px solid rgba(255,255,255,0.4)', borderRadius:10, fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:15, textDecoration:'none', transition:'border-color 0.2s, background 0.2s' }}
+            <a href="mailto:info@bemsfarms.com" style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 32px', background:'transparent', color:'#fff', border:'1.5px solid rgba(255,255,255,0.4)', borderRadius:10, fontFamily:'var(--body-font)', fontWeight:700, fontSize:15, textDecoration:'none', transition:'border-color 0.2s, background 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.8)'; e.currentTarget.style.background='rgba(255,255,255,0.08)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(255,255,255,0.4)'; e.currentTarget.style.background='transparent' }}>
               <i className="ri-mail-line"/>Contact Us

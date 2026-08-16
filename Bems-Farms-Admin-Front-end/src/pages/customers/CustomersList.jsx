@@ -87,7 +87,7 @@ export default function CustomersList() {
   ]
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <PageHeader
         title="Online Customers"
         subtitle="Self-registered customers ordering via the Bems Farms app & website"
@@ -104,7 +104,7 @@ export default function CustomersList() {
           <div key={k.label} style={{ ...card, padding:'14px 16px', display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
             <div>
               <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>{k.label}</div>
-              <div style={{ fontSize:18, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{k.val}</div>
+              <div style={{ fontSize:18, fontWeight:800, color:'var(--text-primary)', fontFamily:'var(--heading-font)', lineHeight:1 }}>{k.val}</div>
             </div>
             <div style={{ width:38, height:38, borderRadius:9, background:k.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={k.icon} style={{ color:k.color, fontSize:18 }} />
@@ -120,7 +120,7 @@ export default function CustomersList() {
           const count = t==='all' ? total : tierCounts[t]||0
           const isActive = filterTier===t
           return (
-            <button key={t} onClick={() => { setTier(t); setPage(1) }} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'6px 12px', borderRadius:8, border:'none', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'Nunito, sans-serif', background: isActive ? (cfg?cfg.color:'#1B4332') : '#f8fafc', color: isActive ? '#fff' : '#64748b' }}>
+            <button key={t} onClick={() => { setTier(t); setPage(1) }} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'6px 12px', borderRadius:8, border:'none', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'var(--body-font)', background: isActive ? (cfg?cfg.color:'#1B4332') : '#f8fafc', color: isActive ? '#fff' : '#64748b' }}>
               {cfg && <i className={cfg.icon} />}
               {t==='all' ? 'All Tiers' : t} ({count})
             </button>
@@ -128,7 +128,7 @@ export default function CustomersList() {
         })}
         <div style={{ marginLeft:'auto', display:'flex', gap:6 }}>
           {['active','inactive'].map(s => (
-            <button key={s} onClick={() => { setSt(filterSt===s?'all':s); setPage(1) }} style={{ padding:'6px 12px', borderRadius:8, border:'none', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'Nunito, sans-serif', background: filterSt===s ? STATUS_CFG[s].color : '#f8fafc', color: filterSt===s ? '#fff' : '#64748b' }}>
+            <button key={s} onClick={() => { setSt(filterSt===s?'all':s); setPage(1) }} style={{ padding:'6px 12px', borderRadius:8, border:'none', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'var(--body-font)', background: filterSt===s ? STATUS_CFG[s].color : '#f8fafc', color: filterSt===s ? '#fff' : '#64748b' }}>
               {s.charAt(0).toUpperCase()+s.slice(1)}
             </button>
           ))}
@@ -140,7 +140,7 @@ export default function CustomersList() {
         <div style={{ position:'relative', display:'flex', alignItems:'center' }}>
           <i className="ri-search-line" style={{ position:'absolute', left:10, color:'var(--text-light)', fontSize:19 }} />
           <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search by name, phone, email, area or ID…"
-            style={{ width:'100%', padding:'8px 36px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', background:'var(--bg-subtle)', boxSizing:'border-box' }} />
+            style={{ width:'100%', padding:'8px 36px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'var(--body-font)', outline:'none', background:'var(--bg-subtle)', boxSizing:'border-box' }} />
           {search && (
             <button onClick={() => setSearch('')} style={{ position:'absolute', right:10, background:'none', border:'none', cursor:'pointer', color:'var(--text-light)', padding:0, fontSize:18, display:'flex', alignItems:'center' }}>
               <i className="ri-close-line" />
@@ -228,8 +228,8 @@ export default function CustomersList() {
           <div style={{ padding:'12px 16px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <span style={{ fontSize:12, color:'var(--text-muted)' }}>Showing {(page-1)*20+1}–{Math.min(page*20,total)} of {total}</span>
             <div style={{ display:'flex', gap:6 }}>
-              <button disabled={page===1} onClick={() => setPage(p=>p-1)} style={{ padding:'5px 12px', borderRadius:7, border:'1.5px solid var(--border)', background: page===1?'#f9fafb':'#fff', color: page===1?'#9ca3af':'#374151', fontSize:12, cursor: page===1?'default':'pointer', fontFamily:'Nunito, sans-serif' }}>‹ Prev</button>
-              <button disabled={page>=pages} onClick={() => setPage(p=>p+1)} style={{ padding:'5px 12px', borderRadius:7, border:'1.5px solid var(--border)', background: page>=pages?'#f9fafb':'#fff', color: page>=pages?'#9ca3af':'#374151', fontSize:12, cursor: page>=pages?'default':'pointer', fontFamily:'Nunito, sans-serif' }}>Next ›</button>
+              <button disabled={page===1} onClick={() => setPage(p=>p-1)} style={{ padding:'5px 12px', borderRadius:7, border:'1.5px solid var(--border)', background: page===1?'#f9fafb':'#fff', color: page===1?'#9ca3af':'#374151', fontSize:12, cursor: page===1?'default':'pointer', fontFamily:'var(--body-font)' }}>‹ Prev</button>
+              <button disabled={page>=pages} onClick={() => setPage(p=>p+1)} style={{ padding:'5px 12px', borderRadius:7, border:'1.5px solid var(--border)', background: page>=pages?'#f9fafb':'#fff', color: page>=pages?'#9ca3af':'#374151', fontSize:12, cursor: page>=pages?'default':'pointer', fontFamily:'var(--body-font)' }}>Next ›</button>
             </div>
           </div>
         )}
@@ -240,7 +240,7 @@ export default function CustomersList() {
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={() => setDeleteModal(false)}>
           <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth:420 }} onClick={e => e.stopPropagation()}>
             <div style={{ background:'#1B4332', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif' }}>Remove Customer</span>
+              <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'var(--heading-font)' }}>Remove Customer</span>
               <button onClick={() => setDeleteModal(false)} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding:'24px', textAlign:'center' }}>
@@ -250,8 +250,8 @@ export default function CustomersList() {
               <div style={{ fontWeight:700, fontSize:15, marginBottom:6 }}>Remove {selected.name}?</div>
               <div style={{ color:'var(--text-muted)', fontSize:13, marginBottom:24 }}>Customer data will be anonymised. This cannot be undone.</div>
               <div style={{ display:'flex', gap:10 }}>
-                <button onClick={() => setDeleteModal(false)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600 }}>Cancel</button>
-                <button onClick={deleteCustomer} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:700 }}>Yes, Remove</button>
+                <button onClick={() => setDeleteModal(false)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'var(--body-font)', fontWeight:600 }}>Cancel</button>
+                <button onClick={deleteCustomer} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontSize:13, fontFamily:'var(--body-font)', fontWeight:700 }}>Yes, Remove</button>
               </div>
             </div>
           </div>

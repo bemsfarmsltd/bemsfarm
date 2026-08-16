@@ -338,7 +338,7 @@ export default function ChefBemsPage() {
           height: calc(100vh - 72px);
           width: 100%;
           overflow: hidden;
-          font-family: 'Nunito', sans-serif;
+          font-family: var(--body-font), sans-serif;
           background-color: var(--gray-50);
         }
         @media (max-width: 768px) {

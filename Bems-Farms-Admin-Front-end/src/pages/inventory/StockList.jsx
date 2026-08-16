@@ -9,11 +9,11 @@ const STATUS_CFG = {
   out_of_stock: { label:'Out of Stock', bg:'#fee2e2', color:'#991b1b' },
 }
 
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
+const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }
 const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
 const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text-primary)' }
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
+const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'var(--body-font)', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
 
 export default function StockList() {
   const navigate = useNavigate()
@@ -78,11 +78,11 @@ export default function StockList() {
   const B = 'var(--border)', S = '#6b7280'
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       {/* Page header & Breadcrumbs */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>Stock List</div>
+          <div style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>Stock List</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
           <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Inventory</span>
@@ -128,7 +128,7 @@ export default function StockList() {
         </div>
 
         <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'Nunito,sans-serif' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'var(--body-font)' }}>
             <thead>
               <tr style={{ background:'var(--bg-subtle)', borderBottom:`1px solid ${B}` }}>
                 <th style={TH}>

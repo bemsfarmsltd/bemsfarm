@@ -188,7 +188,7 @@ function OverviewTab({ data, isDark }) {
                   <i className={icon} style={{ fontSize: 16 }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>{fmt(pipeline[key] || 0)}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--heading-font)' }}>{fmt(pipeline[key] || 0)}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</div>
                 </div>
               </div>
@@ -974,7 +974,7 @@ const btnBase = {
   display: 'inline-flex', alignItems: 'center', gap: 6,
   padding: '7px 14px', borderRadius: 8,
   fontSize: 13, fontWeight: 600, cursor: 'pointer',
-  fontFamily: 'Nunito, sans-serif', transition: 'opacity 0.15s',
+  fontFamily: 'var(--body-font)', transition: 'opacity 0.15s',
   textDecoration: 'none',
 }
 
@@ -1023,7 +1023,7 @@ export default function Dashboard() {
   const data = tabData[activeTab] || {}
 
   return (
-    <div style={{ fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ fontFamily: 'var(--body-font)' }}>
       <style>{`
         @keyframes shimmer { to { background-position: -200% 0; } }
         /* TwoCol is used ~15x across every tab for chart+table side-by-side
@@ -1072,7 +1072,7 @@ export default function Dashboard() {
                   color: isActive ? '#F57C00' : 'var(--text-muted)',
                   borderBottom: isActive ? '2px solid #F57C00' : '2px solid transparent',
                   marginBottom: -1,
-                  fontFamily: 'Nunito, sans-serif',
+                  fontFamily: 'var(--body-font)',
                   transition: 'color 0.13s',
                 }}
               >

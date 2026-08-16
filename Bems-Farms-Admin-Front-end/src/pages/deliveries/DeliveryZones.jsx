@@ -9,14 +9,14 @@ const DRIVER_STATUS_COLOR = { on_delivery:'#3b82f6', active:'#22c55e', off_duty:
 const BLANK = { zone_name:'', delivery_fee:'', min_order_amount:'', estimated_eta:ETA_OPTIONS[1], coverage_areas:'', notes:'', is_active:true, driver_ids:[] }
 
 const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
-const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
+const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'var(--body-font)', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
 const lbl  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
 
 function ModalShell({ title, onClose, children, maxWidth=520 }) {
   return (
     <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth, maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
       <div style={{ background:'#1B4332', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-        <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif' }}>{title}</span>
+        <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'var(--heading-font)' }}>{title}</span>
         <button onClick={onClose} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
       </div>
       {children}
@@ -165,8 +165,8 @@ export default function DeliveryZones() {
         </div>
       </div>
       <div style={{ display:'flex', gap:10, marginTop:20 }}>
-        <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
-        <button onClick={saveZone} disabled={!form.zone_name||!form.delivery_fee||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:(!form.zone_name||!form.delivery_fee||submitting)?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13, opacity:(!form.zone_name||!form.delivery_fee||submitting)?0.6:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+        <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
+        <button onClick={saveZone} disabled={!form.zone_name||!form.delivery_fee||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:(!form.zone_name||!form.delivery_fee||submitting)?'not-allowed':'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13, opacity:(!form.zone_name||!form.delivery_fee||submitting)?0.6:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
           <i className={isEditing?'ri-save-line':'ri-add-line'} />
           {submitting?'Saving…':isEditing?'Save Changes':'Create Zone'}
         </button>
@@ -175,9 +175,9 @@ export default function DeliveryZones() {
   )
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <PageHeader title="Delivery Zones" subtitle="Manage coverage areas, fees and driver assignments" actions={
-        <button onClick={() => openModal('add')} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:700 }}>
+        <button onClick={() => openModal('add')} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontSize:13, fontFamily:'var(--body-font)', fontWeight:700 }}>
           <i className="ri-add-line" />Add Zone
         </button>
       } />
@@ -198,7 +198,7 @@ export default function DeliveryZones() {
             </div>
             <div>
               <div style={{ fontSize:10, color:'#64748b' }}>{c.label}</div>
-              <div style={{ fontSize:16, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{c.value}</div>
+              <div style={{ fontSize:16, fontWeight:800, color:'var(--text-primary)', fontFamily:'var(--heading-font)', lineHeight:1 }}>{c.value}</div>
             </div>
           </div>
         ))}
@@ -212,7 +212,7 @@ export default function DeliveryZones() {
         </div>
         <div style={{ display:'flex', gap:6 }}>
           {[{key:'all',label:'All'},{key:'active',label:'Active'},{key:'inactive',label:'Inactive'}].map(t => (
-            <button key={t.key} onClick={() => setFilterActive(t.key)} style={{ padding:'6px 14px', borderRadius:8, border:'none', background:filterActive===t.key?'#1B4332':'#f8fafc', color:filterActive===t.key?'#fff':'#374151', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:12 }}>
+            <button key={t.key} onClick={() => setFilterActive(t.key)} style={{ padding:'6px 14px', borderRadius:8, border:'none', background:filterActive===t.key?'#1B4332':'#f8fafc', color:filterActive===t.key?'#fff':'#374151', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:12 }}>
               {t.label}
             </button>
           ))}
@@ -272,7 +272,7 @@ export default function DeliveryZones() {
                             { icon:zone.is_active?'ri-close-circle-line':'ri-checkbox-circle-line', label:zone.is_active?'Deactivate':'Activate', action:()=>{toggleActive(zone);setMenuZone(null)}, color:zone.is_active?'#dc2626':'#16a34a' },
                             { icon:'ri-delete-bin-line',  label:'Delete',                    action:()=>{openModal('delete',zone);setMenuZone(null)}, color:'#dc2626' },
                           ].map(item => (
-                            <button key={item.label} onClick={item.action} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'9px 14px', border:'none', background:'none', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontSize:12, color:item.color||'#374151', textAlign:'left' }}>
+                            <button key={item.label} onClick={item.action} style={{ display:'flex', alignItems:'center', gap:10, width:'100%', padding:'9px 14px', border:'none', background:'none', cursor:'pointer', fontFamily:'var(--body-font)', fontSize:12, color:item.color||'#374151', textAlign:'left' }}>
                               <i className={item.icon} style={{ color:item.color||'#6b7280', fontSize:13 }} />{item.label}
                             </button>
                           ))}
@@ -335,13 +335,13 @@ export default function DeliveryZones() {
 
               {/* Footer */}
               <div style={{ padding:'10px 14px', borderTop:'1px solid var(--border)', display:'flex', gap:8 }}>
-                <button onClick={() => openModal('edit',zone)} style={{ flex:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5, padding:'7px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:11 }}>
+                <button onClick={() => openModal('edit',zone)} style={{ flex:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5, padding:'7px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:11 }}>
                   <i className="ri-edit-line" />Edit
                 </button>
-                <button onClick={() => openModal('view',zone)} style={{ flex:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5, padding:'7px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:11 }}>
+                <button onClick={() => openModal('view',zone)} style={{ flex:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5, padding:'7px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:11 }}>
                   <i className="ri-eye-line" />Details
                 </button>
-                <button onClick={() => toggleActive(zone)} style={{ flex:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5, padding:'7px', borderRadius:8, border:'none', background:zone.is_active?'#fee2e2':'#dcfce7', color:zone.is_active?'#dc2626':'#16a34a', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:11 }}>
+                <button onClick={() => toggleActive(zone)} style={{ flex:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5, padding:'7px', borderRadius:8, border:'none', background:zone.is_active?'#fee2e2':'#dcfce7', color:zone.is_active?'#dc2626':'#16a34a', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:11 }}>
                   <i className={zone.is_active?'ri-pause-line':'ri-play-line'} />{zone.is_active?'Disable':'Enable'}
                 </button>
               </div>
@@ -413,13 +413,13 @@ export default function DeliveryZones() {
                       </div>
                     )}
                     <div style={{ display:'flex', gap:10 }}>
-                      <button onClick={() => { closeModal(); setTimeout(()=>openModal('edit',selected),100) }} style={{ flex:1, padding:'8px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:12, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                      <button onClick={() => { closeModal(); setTimeout(()=>openModal('edit',selected),100) }} style={{ flex:1, padding:'8px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:12, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                         <i className="ri-edit-line" />Edit Zone
                       </button>
-                      <button onClick={() => { toggleActive(selected); closeModal() }} style={{ flex:1, padding:'8px', borderRadius:8, border:'none', background:selected.is_active?'#fee2e2':'#dcfce7', color:selected.is_active?'#dc2626':'#16a34a', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:12 }}>
+                      <button onClick={() => { toggleActive(selected); closeModal() }} style={{ flex:1, padding:'8px', borderRadius:8, border:'none', background:selected.is_active?'#fee2e2':'#dcfce7', color:selected.is_active?'#dc2626':'#16a34a', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:12 }}>
                         {selected.is_active?'Deactivate':'Activate'}
                       </button>
-                      <button onClick={closeModal} style={{ padding:'8px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:12 }}>Close</button>
+                      <button onClick={closeModal} style={{ padding:'8px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:12 }}>Close</button>
                     </div>
                   </div>
                 </div>
@@ -446,8 +446,8 @@ export default function DeliveryZones() {
                   Delete <strong>{selected.zone_name}</strong>? This cannot be undone.
                 </div>
                 <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
-                  <button onClick={deleteZone} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>
+                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
+                  <button onClick={deleteZone} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }}>
                     {submitting?'Deleting…':'Delete Zone'}
                   </button>
                 </div>

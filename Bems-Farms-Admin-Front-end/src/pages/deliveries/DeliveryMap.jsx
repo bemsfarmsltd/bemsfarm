@@ -127,7 +127,7 @@ export default function DeliveryMap() {
   const handleSelect = del => { setSelected(del); setFlyTarget(del.driverPos) }
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif', height:'calc(100vh - 70px)', display:'flex', flexDirection:'column' }}>
+    <div style={{ fontFamily:'var(--body-font)', height:'calc(100vh - 70px)', display:'flex', flexDirection:'column' }}>
       <style>{`
         @keyframes pulse-ring { 0% { transform:scale(0.8);opacity:0.8; } 100% { transform:scale(1.8);opacity:0; } }
         .leaflet-popup-content-wrapper { border-radius:10px !important; box-shadow:0 4px 20px rgba(0,0,0,0.15) !important; padding:0 !important; overflow:hidden; }
@@ -138,7 +138,7 @@ export default function DeliveryMap() {
       {/* Page Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12, flexShrink:0 }}>
         <div>
-          <div style={{ fontFamily:'Syne, sans-serif', fontWeight:700, fontSize:18, color:'var(--text-primary)' }}>Live Delivery Map</div>
+          <div style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:18, color:'var(--text-primary)' }}>Live Delivery Map</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
             <span style={{ color:'var(--text-light)' }}>Deliveries</span>
             <i className="ri-arrow-right-s-line" style={{ margin:'0 4px', color:'var(--border-strong)' }} />
@@ -214,7 +214,7 @@ export default function DeliveryMap() {
                       )}
                     </div>
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); handleSelect(del); }} style={{ width:'100%', marginTop:10, padding:'6px 12px', borderRadius:8, border:'none', background:'#eff6ff', color:'#2563eb', fontSize:11, fontFamily:'Nunito, sans-serif', fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+                  <button onClick={(e) => { e.stopPropagation(); handleSelect(del); }} style={{ width:'100%', marginTop:10, padding:'6px 12px', borderRadius:8, border:'none', background:'#eff6ff', color:'#2563eb', fontSize:11, fontFamily:'var(--body-font)', fontWeight:700, cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', gap:5 }}>
                     <i className="ri-focus-target" /> Focus on Map
                   </button>
                 </div>
@@ -256,7 +256,7 @@ export default function DeliveryMap() {
             {/* Store marker */}
             <Marker position={STORE_POS} icon={storeIcon()}>
               <Popup>
-                <div style={{ padding:'12px 14px', minWidth:200, fontFamily:'Nunito, sans-serif' }}>
+                <div style={{ padding:'12px 14px', minWidth:200, fontFamily:'var(--body-font)' }}>
                   <div style={{ fontWeight:700, marginBottom:4, fontSize:13 }}>🏪 Bems Farms Headquarters</div>
                   <div style={{ color:'var(--text-muted)', fontSize:12 }}>Dispatch Warehouse · Deliveries depart here</div>
                   <div style={{ marginTop:8, fontSize:12 }}><i className="ri-map-pin-line" style={{ marginRight:4 }} />Lagos Island, Lagos</div>
@@ -268,7 +268,7 @@ export default function DeliveryMap() {
             {userPos && (
               <Marker position={userPos} icon={userLocationIcon()}>
                 <Popup>
-                  <div style={{ fontFamily:'Nunito, sans-serif', padding:5 }}>
+                  <div style={{ fontFamily:'var(--body-font)', padding:5 }}>
                     <strong>Your Location (Admin)</strong>
                   </div>
                 </Popup>
@@ -284,7 +284,7 @@ export default function DeliveryMap() {
                   {/* Driver marker */}
                   <Marker position={del.driverPos} icon={driverIcon(del.driver, del.status)}>
                     <Popup>
-                      <div style={{ minWidth:240, fontFamily:'Nunito, sans-serif' }}>
+                      <div style={{ minWidth:240, fontFamily:'var(--body-font)' }}>
                         <div style={{ background:del.driver.color, padding:'10px 14px', color:'#fff' }}>
                           <div style={{ fontWeight:700, fontSize:13 }}>{del.driver.name}</div>
                           <div style={{ fontSize:11, opacity:0.85 }}>{del.driver.bike} · {del.driver.phone}</div>
@@ -313,7 +313,7 @@ export default function DeliveryMap() {
                   {/* Customer marker */}
                   <Marker position={del.customerPos} icon={customerIcon(del.driver.color)}>
                     <Popup>
-                      <div style={{ padding:'12px 14px', minWidth:200, fontFamily:'Nunito, sans-serif' }}>
+                      <div style={{ padding:'12px 14px', minWidth:200, fontFamily:'var(--body-font)' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
                           <div style={{ width:28, height:28, borderRadius:'50%', background:del.driver.color+'20', color:del.driver.color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, flexShrink:0 }}>
                             {del.customer.name.split(' ').map(n=>n[0]).join('')}

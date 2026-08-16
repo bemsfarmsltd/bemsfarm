@@ -155,7 +155,7 @@ export default function FinancialOverview() {
   }
 
   return (
-    <div style={{ fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ fontFamily: 'var(--body-font)' }}>
       <PageHeader title="Financial Overview" breadcrumbs={['Accounts', 'Overview']} />
 
       {/* KPI Strip */}
@@ -210,7 +210,7 @@ export default function FinancialOverview() {
           <div style={cardStyle}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
               <div>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>Revenue vs Expenses vs Profit</div>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--heading-font)' }}>Revenue vs Expenses vs Profit</div>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Monthly breakdown (in thousands ₦)</div>
               </div>
             </div>
@@ -224,7 +224,7 @@ export default function FinancialOverview() {
 
         <div>
           <div style={cardStyle}>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', marginBottom: '4px' }}>Bank Balance Breakdown</div>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--heading-font)', marginBottom: '4px' }}>Bank Balance Breakdown</div>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px' }}>All operational accounts</div>
             {bankAccounts.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0', fontSize: '13px' }}>No bank account data.</div>
@@ -258,7 +258,7 @@ export default function FinancialOverview() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <div style={cardStyle}>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--heading-font)', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
               Finance Quick Links
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -296,7 +296,7 @@ export default function FinancialOverview() {
 
         <div>
           <div style={cardStyle}>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--heading-font)', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
               Monthly Income Summary
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

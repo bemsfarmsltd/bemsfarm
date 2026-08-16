@@ -20,7 +20,7 @@ const CHIP_COLORS = [
 const inputStyle = {
   width: '100%', padding: '8px 12px', borderRadius: 8,
   border: '1px solid var(--border-strong)', fontSize: 13,
-  fontFamily: 'Nunito, sans-serif', outline: 'none',
+  fontFamily: 'var(--body-font)', outline: 'none',
   boxSizing: 'border-box',
 }
 
@@ -29,7 +29,7 @@ const labelStyle = { fontSize: 12, fontWeight: 700, color: 'var(--text-secondary
 const btnBase = {
   display: 'inline-flex', alignItems: 'center', gap: 6,
   padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-  cursor: 'pointer', fontFamily: 'Nunito, sans-serif', border: 'none',
+  cursor: 'pointer', fontFamily: 'var(--body-font)', border: 'none',
 }
 
 const today = new Date().toISOString().slice(0, 10)
@@ -81,7 +81,7 @@ export default function Calendar() {
   }
 
   return (
-    <div style={{ fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ fontFamily: 'var(--body-font)' }}>
       <PageHeader
         title="Calendar"
         subtitle="Manage farm events, meetings, and schedules"
@@ -136,7 +136,7 @@ export default function Calendar() {
             padding: 28, margin: '0 16px',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne, sans-serif' }}>Add Event</span>
+              <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--heading-font)' }}>Add Event</span>
               <button
                 onClick={() => setShowModal(false)}
                 aria-label="Close"

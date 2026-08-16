@@ -23,9 +23,9 @@ const REASON_CFG = {
   'Other':                { icon:'ri-more-line',          color:'var(--text-muted)' },
 }
 
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
-const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'var(--orange-accent)', color:'#fff', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:13 }
-const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
+const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'var(--body-font)', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
+const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'var(--orange-accent)', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }
+const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }
 const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
 const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text-primary)' }
 const LBL  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:6 }
@@ -36,7 +36,7 @@ function Modal({ title, onClose, maxWidth, children }) {
     <div style={{ position:'fixed', inset:0, zIndex:1055, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
       <div style={{ background:'var(--bg-card)', borderRadius:14, width:'100%', maxWidth:maxWidth||640, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', overflow:'hidden', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
         <div style={{ background:'var(--orange-accent)', color:'#fff', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-          <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15 }}>{title}</span>
+          <span style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:15 }}>{title}</span>
           <button onClick={onClose} aria-label="Close" style={{ background:'none', border:'none', color:'rgba(255,255,255,0.8)', cursor:'pointer', fontSize:20, display:'flex', padding:4 }}><i className="ri-close-line"/></button>
         </div>
         <div style={{ padding:24, overflowY:'auto' }}>{children}</div>
@@ -208,17 +208,17 @@ export default function LostItems() {
   const B = 'var(--border)', S = '#6b7280'
 
   if (loading) return (
-    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'Nunito,sans-serif', color:'var(--text-muted)' }}>
+    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'var(--body-font)', color:'var(--text-muted)' }}>
       <i className="ri-loader-4-line" style={{ fontSize:49, display:'block', marginBottom:8, textAlign:'center' }}/>
     </div>
   )
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       {/* Header & Breadcrumbs */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>Lost & Damaged Items</div>
+          <div style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>Lost & Damaged Items</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
           <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Inventory</span>
@@ -272,7 +272,7 @@ export default function LostItems() {
         </div>
 
         <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'Nunito,sans-serif' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'var(--body-font)' }}>
             <thead>
               <tr style={{ background:'var(--bg-subtle)', borderBottom:`1px solid ${B}` }}>
                 {['Ref No','Date','Product','Qty Lost','Total Loss','Reason','Warehouse','Reported By','Investigator', 'Status', 'Action'].map(h => (
@@ -481,7 +481,7 @@ export default function LostItems() {
             </div>
             <div style={{ display:'flex', gap:10 }}>
               <button onClick={() => setConfirmDeleteId(null)} style={{ ...btnL, flex:1, justifyContent:'center' }}>Cancel</button>
-              <button onClick={() => handleDelete(confirmDeleteId)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>Delete</button>
+              <button onClick={() => handleDelete(confirmDeleteId)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }}>Delete</button>
             </div>
           </div>
         </Modal>

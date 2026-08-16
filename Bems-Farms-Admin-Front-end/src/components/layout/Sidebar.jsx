@@ -375,7 +375,7 @@ export default function Sidebar({ mobileOpen = false }) {
         left: 0,
         top: 0,
         zIndex: 100,
-        fontFamily: 'Nunito, sans-serif',
+        fontFamily: 'var(--body-font)',
         transition: 'transform 0.25s ease',
       }}>
 

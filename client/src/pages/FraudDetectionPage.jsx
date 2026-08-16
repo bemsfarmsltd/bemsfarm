@@ -82,7 +82,7 @@ export default function FraudDetectionPage() {
           >
             <h1
               style={{
-                fontFamily: "Syne, sans-serif",
+                fontFamily: "var(--heading-font)",
                 fontSize: isMobile ? "24px" : "36px",
                 fontWeight: 800,
                 color: "white",
@@ -116,7 +116,7 @@ export default function FraudDetectionPage() {
           >
             <h3
               style={{
-                fontFamily: "Syne, sans-serif",
+                fontFamily: "var(--heading-font)",
                 fontSize: "16px",
                 fontWeight: 700,
                 color: "#111827",
@@ -157,7 +157,7 @@ export default function FraudDetectionPage() {
                     border: "1px solid #E5E7EB",
                     borderRadius: "10px",
                     fontSize: "13px",
-                    fontFamily: "Nunito, sans-serif",
+                    fontFamily: "var(--body-font)",
                     outline: "none",
                   }}
                   onFocus={(e) =>
@@ -192,7 +192,7 @@ export default function FraudDetectionPage() {
                     border: "1px solid #E5E7EB",
                     borderRadius: "10px",
                     fontSize: "13px",
-                    fontFamily: "Nunito, sans-serif",
+                    fontFamily: "var(--body-font)",
                     outline: "none",
                   }}
                   onFocus={(e) =>
@@ -226,7 +226,7 @@ export default function FraudDetectionPage() {
                     border: "1px solid #E5E7EB",
                     borderRadius: "10px",
                     fontSize: "13px",
-                    fontFamily: "Nunito, sans-serif",
+                    fontFamily: "var(--body-font)",
                     outline: "none",
                   }}
                   onFocus={(e) =>
@@ -259,7 +259,7 @@ export default function FraudDetectionPage() {
                 fontWeight: 700,
                 cursor: loading ? "not-allowed" : "pointer",
                 fontSize: "14px",
-                fontFamily: "Nunito, sans-serif",
+                fontFamily: "var(--body-font)",
                 opacity: loading ? 0.7 : 1,
               }}
             >
@@ -328,7 +328,7 @@ export default function FraudDetectionPage() {
                     </p>
                     <p
                       style={{
-                        fontFamily: "Syne, sans-serif",
+                        fontFamily: "var(--heading-font)",
                         fontSize: isMobile ? "32px" : "40px",
                         fontWeight: 800,
                         color: getRiskColor(fraudCheck.risk_level),
@@ -371,7 +371,7 @@ export default function FraudDetectionPage() {
                     </p>
                     <p
                       style={{
-                        fontFamily: "Syne, sans-serif",
+                        fontFamily: "var(--heading-font)",
                         fontSize: "36px",
                         fontWeight: 800,
                         marginBottom: 0,
@@ -409,7 +409,7 @@ export default function FraudDetectionPage() {
                   >
                     <h3
                       style={{
-                        fontFamily: "Syne, sans-serif",
+                        fontFamily: "var(--heading-font)",
                         fontSize: "16px",
                         fontWeight: 700,
                         color: "#111827",
@@ -475,7 +475,7 @@ export default function FraudDetectionPage() {
               >
                 <h3
                   style={{
-                    fontFamily: "Syne, sans-serif",
+                    fontFamily: "var(--heading-font)",
                     fontSize: "16px",
                     fontWeight: 700,
                     color: "#111827",

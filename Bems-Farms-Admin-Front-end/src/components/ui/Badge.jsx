@@ -53,7 +53,7 @@ export default function Badge({ label, color = 'slate' }) {
       background: bg,
       color: text,
       whiteSpace: 'nowrap',
-      fontFamily: 'Nunito, sans-serif',
+      fontFamily: 'var(--body-font)',
     }}>
       {label}
     </span>

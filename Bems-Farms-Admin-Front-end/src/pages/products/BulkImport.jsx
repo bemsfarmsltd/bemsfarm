@@ -64,9 +64,9 @@ const STATUS_STYLE = {
   processing: { background:'#e0f2fe',color:'#0369a1' },
 }
 
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
 const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
 const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
 
@@ -201,11 +201,11 @@ export default function BulkImport() {
   const B = 'var(--border)', S = '#6b7280'
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       {/* Header & Breadcrumbs */}
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Add Products</div>
+          <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Add Products</div>
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)' }}>
           <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Products</span>
@@ -228,7 +228,7 @@ export default function BulkImport() {
             background: 'var(--bg-card)',
             color: 'var(--text-secondary)',
             cursor:'pointer',
-            fontFamily:'Nunito,sans-serif',
+            fontFamily:'var(--body-font)',
             fontWeight:700,
             fontSize:13,
             textDecoration:'none',
@@ -251,7 +251,7 @@ export default function BulkImport() {
             background: 'var(--orange-accent)',
             color: '#fff',
             cursor:'pointer',
-            fontFamily:'Nunito,sans-serif',
+            fontFamily:'var(--body-font)',
             fontWeight:700,
             fontSize:13,
             textDecoration:'none',
@@ -268,7 +268,7 @@ export default function BulkImport() {
       <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:'14px 20px',marginBottom:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'flex',gap:10,flexWrap:'wrap' }}>
         {Object.entries(IMPORT_TYPES).map(([key,cfg])=>(
           <button key={key} onClick={()=>handleTypeChange(key)}
-            style={{ display:'inline-flex',alignItems:'center',gap:6,padding:'9px 16px',borderRadius:9,border:`2px solid ${activeType===key?cfg.color:B}`,background:activeType===key?cfg.color:'#fff',color:activeType===key?'#fff':'#374151',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13,transition:'all .15s' }}>
+            style={{ display:'inline-flex',alignItems:'center',gap:6,padding:'9px 16px',borderRadius:9,border:`2px solid ${activeType===key?cfg.color:B}`,background:activeType===key?cfg.color:'#fff',color:activeType===key?'#fff':'#374151',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13,transition:'all .15s' }}>
             <i className={cfg.icon}/>{cfg.label}
           </button>
         ))}
@@ -280,7 +280,7 @@ export default function BulkImport() {
           <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
             <div style={{ display:'flex',alignItems:'center',gap:10 }}>
               <i className={typeConfig.icon} style={{ color:typeConfig.color,fontSize:20 }}/>
-              <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>Import {typeConfig.label}</span>
+              <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14 }}>Import {typeConfig.label}</span>
             </div>
             <button style={btnL} onClick={()=>downloadTemplate(activeType)}><i className="ri-download-line"/>Download Template</button>
           </div>
@@ -327,7 +327,7 @@ export default function BulkImport() {
             <div>
               <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:4 }}>
                 <i className="ri-git-merge-line" style={{ color:'#405189',fontSize:24 }}/>
-                <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>Map Your Columns</span>
+                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14 }}>Map Your Columns</span>
               </div>
               <div style={{ fontSize:12,color:S }}>File: <strong style={{ color:'var(--text-primary)' }}>{uploadedFile?.name}</strong> · {fileHeaders.length} column{fileHeaders.length!==1?'s':''} detected · {mappedCount} mapped</div>
             </div>
@@ -391,7 +391,7 @@ export default function BulkImport() {
         <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
           <div style={{ padding:'48px 24px',textAlign:'center' }}>
             <div style={{ fontSize:56 }}>{importResult.failed===0?'✅':importResult.imported===0?'❌':'⚠️'}</div>
-            <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:18,marginTop:12,marginBottom:6 }}>
+            <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:18,marginTop:12,marginBottom:6 }}>
               {importResult.imported} of {importResult.total} row{importResult.total!==1?'s':''} imported
             </div>
             <div style={{ fontSize:13,color:S,marginBottom:20 }}>{uploadedFile?.name} as {typeConfig.label}.</div>
@@ -412,7 +412,7 @@ export default function BulkImport() {
       {/* Import History */}
       <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
         <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
-          <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>Import History</span>
+          <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14 }}>Import History</span>
           <button style={btnP} onClick={()=>{ resetUpload(); window.scrollTo(0,0) }}><i className="ri-upload-line"/>Upload File</button>
         </div>
         <div style={{ overflowX:'auto' }}>

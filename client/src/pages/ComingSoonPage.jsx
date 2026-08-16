@@ -210,7 +210,7 @@ export default function ComingSoonPage() {
         minHeight: "100vh",
         overflow: "hidden",
         position: "relative",
-        fontFamily: "Nunito, sans-serif",
+        fontFamily: "var(--body-font)",
       }}
     >
       <style>{CSS}</style>
@@ -303,9 +303,9 @@ export default function ComingSoonPage() {
             <span
               style={{
                 display: "none",
-                fontFamily: "Syne, sans-serif",
-                fontSize: "20px",
-                fontWeight: 900,
+                fontFamily: "var(--custom-font)",
+                fontSize: "26px",
+                fontWeight: 700,
                 color: "white",
               }}
             >
@@ -411,7 +411,7 @@ export default function ComingSoonPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
             style={{
-              fontFamily: "Syne, sans-serif",
+              fontFamily: "var(--heading-font)",
               fontSize: "clamp(36px, 10vw, 80px)",
               fontWeight: 900,
               color: "white",
@@ -490,7 +490,7 @@ export default function ComingSoonPage() {
                       transition={{ duration: 0.2 }}
                       className="cs-countdown-num"
                       style={{
-                        fontFamily: "Syne, sans-serif",
+                        fontFamily: "var(--heading-font)",
                         fontWeight: 900,
                         color: "white",
                         margin: 0,
@@ -576,7 +576,7 @@ export default function ComingSoonPage() {
                       fontSize: "14px",
                       cursor: loading ? "not-allowed" : "pointer",
                       whiteSpace: "nowrap",
-                      fontFamily: "Nunito, sans-serif",
+                      fontFamily: "var(--body-font)",
                     }}
                   >
                     {loading ? "Subscribing..." : "Notify Me →"}
@@ -609,7 +609,7 @@ export default function ComingSoonPage() {
                     fontWeight: 800,
                     fontSize: "18px",
                     margin: "0 0 4px 0",
-                    fontFamily: "Syne, sans-serif"
+                    fontFamily: "var(--heading-font)"
                   }}
                 >
                   You're on the list!
@@ -781,7 +781,7 @@ export default function ComingSoonPage() {
                 </span>
                 <p
                   style={{
-                    fontFamily: "Syne, sans-serif",
+                    fontFamily: "var(--heading-font)",
                     fontSize: "13px",
                     fontWeight: 700,
                     color: "white",

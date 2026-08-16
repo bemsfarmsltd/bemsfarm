@@ -21,7 +21,7 @@ const PROFILE_CSS = `
   margin-bottom: 28px;
 }
 .p-title-row h1 {
-  font-family: 'Syne', sans-serif;
+  font-family: var(--heading-font), sans-serif;
   font-size: 28px;
   font-weight: 800;
   color: #1B4332;
@@ -72,7 +72,7 @@ const PROFILE_CSS = `
   cursor: pointer;
   text-align: left;
   transition: all 0.2s;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--body-font), sans-serif;
 }
 .p-tab-btn:hover {
   background-color: #F9FAFB;
@@ -121,7 +121,7 @@ const PROFILE_CSS = `
   outline: none;
   background-color: #ffffff;
   color: #111827;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--body-font), sans-serif;
   box-sizing: border-box;
   transition: border-color 0.2s;
 }
@@ -182,7 +182,7 @@ const PROFILE_CSS = `
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--body-font), sans-serif;
   transition: background-color 0.2s;
 }
 .p-upload-btn:hover {
@@ -197,7 +197,7 @@ const PROFILE_CSS = `
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--body-font), sans-serif;
   transition: all 0.2s;
 }
 .p-delete-btn:hover {
@@ -269,7 +269,7 @@ const PROFILE_CSS = `
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  font-family: 'Nunito', sans-serif;
+  font-family: var(--body-font), sans-serif;
   box-shadow: 0 4px 12px rgba(245,124,0,0.2);
   transition: all 0.2s;
 }
@@ -401,8 +401,8 @@ export default function ProfilePage() {
       <PageWrapper>
         <div style={{ maxWidth: "500px", margin: "80px auto", textAlign: "center", padding: "40px 24px" }}>
           <div style={{ fontSize: "108", marginBottom: "20px" }}>🔐</div>
-          <h2 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "12px", fontFamily: "Syne, sans-serif" }}>Please Sign In</h2>
-          <p style={{ color: "#9CA3AF", marginBottom: "24px", fontFamily: "Nunito, sans-serif" }}>You need to be logged in to view your profile settings</p>
+          <h2 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "12px", fontFamily: "var(--heading-font)" }}>Please Sign In</h2>
+          <p style={{ color: "#9CA3AF", marginBottom: "24px", fontFamily: "var(--body-font)" }}>You need to be logged in to view your profile settings</p>
           <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
             <button
               onClick={() => navigate("/login")}
@@ -415,7 +415,7 @@ export default function ProfilePage() {
                 fontWeight: 700,
                 cursor: "pointer",
                 fontSize: "15px",
-                fontFamily: "Nunito, sans-serif"
+                fontFamily: "var(--body-font)"
               }}
             >
               Sign In
@@ -431,7 +431,7 @@ export default function ProfilePage() {
                 fontWeight: 700,
                 cursor: "pointer",
                 fontSize: "15px",
-                fontFamily: "Nunito, sans-serif"
+                fontFamily: "var(--body-font)"
               }}
             >
               Register
@@ -798,7 +798,7 @@ export default function ProfilePage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                 >
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "Syne, sans-serif" }}>Password Changes</h3>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "var(--heading-font)" }}>Password Changes</h3>
                   <div style={{ display: "flex", flexDirection: "column", gap: "16px", maxWidth: "480px" }}>
                     {passwordError && <p style={{ color: "#EF4444", fontSize: "13px", margin: 0 }}>{passwordError}</p>}
                     <div className="p-field">
@@ -829,7 +829,7 @@ export default function ProfilePage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                 >
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "Syne, sans-serif" }}>Address Book</h3>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "var(--heading-font)" }}>Address Book</h3>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "16px", marginBottom: "24px" }}>
                     {addresses.map((addr) => (
                       <div key={addr.id} style={{ border: addr.is_default ? "2px solid #2E7D32" : "1px solid #E5E7EB", borderRadius: "16px", padding: "18px", position: "relative" }}>
@@ -893,7 +893,7 @@ export default function ProfilePage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                 >
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "Syne, sans-serif" }}>Payment Options</h3>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "var(--heading-font)" }}>Payment Options</h3>
                   <div
                     style={{
                       border: "1px dashed #E5E7EB",
@@ -920,7 +920,7 @@ export default function ProfilePage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                 >
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "Syne, sans-serif" }}>My Wishlist</h3>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "var(--heading-font)" }}>My Wishlist</h3>
                   {wishlistProducts.length === 0 ? (
                     <p style={{ color: "#9CA3AF", fontSize: "14px" }}>
                       No saved items yet. Tap the ♡ on any product to save it here.
@@ -974,7 +974,7 @@ export default function ProfilePage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                 >
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "Syne, sans-serif" }}>My Returns</h3>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "var(--heading-font)" }}>My Returns</h3>
                   {myReturns.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "28px" }}>
                       {myReturns.map((ret) => {
@@ -1029,7 +1029,7 @@ export default function ProfilePage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                 >
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "Syne, sans-serif" }}>My Cancellations</h3>
+                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "var(--heading-font)" }}>My Cancellations</h3>
                   {cancelledOrders.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "28px" }}>
                       {cancelledOrders.map((order) => (

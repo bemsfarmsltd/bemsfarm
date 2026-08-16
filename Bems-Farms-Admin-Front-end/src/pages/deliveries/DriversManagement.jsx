@@ -15,7 +15,7 @@ const VEHICLE_TYPES = ['motorcycle','bicycle','car','van']
 const fmt = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
-const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
+const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'var(--body-font)', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
 const lbl  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
 
 const TH = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap', background:'var(--bg-subtle)', borderBottom:'1px solid var(--border)' }}>{children}</th>
@@ -36,7 +36,7 @@ function ModalShell({ title, onClose, children, maxWidth=460 }) {
   return (
     <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth, maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
       <div style={{ background:'#1B4332', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-        <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif' }}>{title}</span>
+        <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'var(--heading-font)' }}>{title}</span>
         <button onClick={onClose} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
       </div>
       {children}
@@ -153,9 +153,9 @@ export default function DriversManagement() {
   })
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <PageHeader title="Drivers Management" subtitle="Manage your delivery team" actions={
-        <button onClick={() => setActiveModal('notify')} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:8, border:'none', background:'#F57C00', color:'#fff', cursor:'pointer', fontWeight:700, fontSize:13, fontFamily:'Nunito, sans-serif' }}>
+        <button onClick={() => setActiveModal('notify')} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 16px', borderRadius:8, border:'none', background:'#F57C00', color:'#fff', cursor:'pointer', fontWeight:700, fontSize:13, fontFamily:'var(--body-font)' }}>
           <i className="ri-notification-3-line" style={{ fontSize:20 }}/>Notify Drivers
         </button>
       } />
@@ -175,7 +175,7 @@ export default function DriversManagement() {
             </div>
             <div>
               <div style={{ fontSize:11, color:'#64748b' }}>{c.label}</div>
-              <div style={{ fontSize:20, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{c.value}</div>
+              <div style={{ fontSize:20, fontWeight:800, color:'var(--text-primary)', fontFamily:'var(--heading-font)', lineHeight:1 }}>{c.value}</div>
             </div>
           </div>
         ))}
@@ -189,7 +189,7 @@ export default function DriversManagement() {
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Name, phone, zone…" style={{ ...inp, paddingLeft:32 }} />
           </div>
           {filterStatus!=='all' && (
-            <button onClick={() => setFilterStatus('all')} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'7px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:12, fontFamily:'Nunito, sans-serif', color:'var(--text-secondary)' }}>
+            <button onClick={() => setFilterStatus('all')} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'7px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:12, fontFamily:'var(--body-font)', color:'var(--text-secondary)' }}>
               <i className="ri-close-line" />Clear
             </button>
           )}
@@ -198,7 +198,7 @@ export default function DriversManagement() {
         <div style={{ borderTop:'1px solid var(--border)', overflowX:'auto' }}>
           <div style={{ display:'flex', whiteSpace:'nowrap' }}>
             {[{ key:'all', label:'All Drivers' }, ...Object.entries(STATUS_CFG).map(([k,v])=>({ key:k, label:v.label }))].map(t => (
-              <button key={t.key} onClick={() => setFilterStatus(t.key)} style={{ padding:'10px 16px', border:'none', borderBottom:filterStatus===t.key?'2px solid #1B4332':'2px solid transparent', background:'transparent', color:filterStatus===t.key?'#1B4332':'#6b7280', fontWeight:filterStatus===t.key?700:400, fontSize:12, cursor:'pointer', fontFamily:'Nunito, sans-serif', whiteSpace:'nowrap' }}>
+              <button key={t.key} onClick={() => setFilterStatus(t.key)} style={{ padding:'10px 16px', border:'none', borderBottom:filterStatus===t.key?'2px solid #1B4332':'2px solid transparent', background:'transparent', color:filterStatus===t.key?'#1B4332':'#6b7280', fontWeight:filterStatus===t.key?700:400, fontSize:12, cursor:'pointer', fontFamily:'var(--body-font)', whiteSpace:'nowrap' }}>
                 {t.label}
               </button>
             ))}
@@ -290,7 +290,7 @@ export default function DriversManagement() {
                   <div style={{ display:'flex', gap:8 }}>
                     {['all','selected'].map(t => (
                       <button key={t} onClick={() => setNotifyForm(f => ({...f, target:t, selectedDriverIds:[]}))}
-                        style={{ flex:1, padding:'8px 12px', borderRadius:8, border:`2px solid ${notifyForm.target===t?'#1B4332':'var(--border)'}`, background:notifyForm.target===t?'#1B4332':'transparent', color:notifyForm.target===t?'#fff':'#374151', cursor:'pointer', fontWeight:700, fontSize:12, fontFamily:'Nunito,sans-serif' }}>
+                        style={{ flex:1, padding:'8px 12px', borderRadius:8, border:`2px solid ${notifyForm.target===t?'#1B4332':'var(--border)'}`, background:notifyForm.target===t?'#1B4332':'transparent', color:notifyForm.target===t?'#fff':'#374151', cursor:'pointer', fontWeight:700, fontSize:12, fontFamily:'var(--body-font)' }}>
                         <i className={t==='all'?'ri-broadcast-line':'ri-user-search-line'} style={{ marginRight:5 }}/>
                         {t==='all'?'All Drivers':'Selected Drivers'}
                       </button>
@@ -324,8 +324,8 @@ export default function DriversManagement() {
                 </div>
 
                 <div style={{ display:'flex', gap:10, marginBottom:24 }}>
-                  <button onClick={() => setActiveModal(null)} style={{ flex:1, padding:'9px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'Nunito,sans-serif', color:'var(--text-secondary)' }}>Cancel</button>
-                  <button onClick={submitNotification} disabled={notifySubmitting} style={{ flex:2, padding:'9px', borderRadius:8, border:'none', background:'#F57C00', color:'#fff', cursor:notifySubmitting?'not-allowed':'pointer', fontSize:13, fontWeight:700, fontFamily:'Nunito,sans-serif', opacity:notifySubmitting?0.7:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                  <button onClick={() => setActiveModal(null)} style={{ flex:1, padding:'9px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontWeight:600, fontFamily:'var(--body-font)', color:'var(--text-secondary)' }}>Cancel</button>
+                  <button onClick={submitNotification} disabled={notifySubmitting} style={{ flex:2, padding:'9px', borderRadius:8, border:'none', background:'#F57C00', color:'#fff', cursor:notifySubmitting?'not-allowed':'pointer', fontSize:13, fontWeight:700, fontFamily:'var(--body-font)', opacity:notifySubmitting?0.7:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
                     {notifySubmitting ? <><i className="ri-loader-4-line"/>Sending…</> : <><i className="ri-send-plane-line"/>Send Notification</>}
                   </button>
                 </div>
@@ -404,18 +404,18 @@ export default function DriversManagement() {
                       </div>
                     )}
                     <div style={{ display:'flex', gap:10 }}>
-                      <button onClick={() => { closeModal(); setTimeout(()=>openModal('edit',selected),100) }} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'8px 14px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:12 }}>
+                      <button onClick={() => { closeModal(); setTimeout(()=>openModal('edit',selected),100) }} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'8px 14px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:12 }}>
                         <i className="ri-edit-line" />Edit
                       </button>
                       {selected.status==='suspended'
-                        ? <button onClick={() => { activateDriver(selected); closeModal() }} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'8px 14px', borderRadius:8, border:'none', background:'#22c55e', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:12 }}>
+                        ? <button onClick={() => { activateDriver(selected); closeModal() }} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'8px 14px', borderRadius:8, border:'none', background:'#22c55e', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:12 }}>
                             <i className="ri-checkbox-circle-line" />Reinstate
                           </button>
-                        : selected.status!=='on_delivery' && <button onClick={() => { closeModal(); setTimeout(()=>openModal('suspend',selected),100) }} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'8px 14px', borderRadius:8, border:'none', background:'#fee2e2', color:'#dc2626', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:12 }}>
+                        : selected.status!=='on_delivery' && <button onClick={() => { closeModal(); setTimeout(()=>openModal('suspend',selected),100) }} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'8px 14px', borderRadius:8, border:'none', background:'#fee2e2', color:'#dc2626', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:12 }}>
                             <i className="ri-forbid-line" />Suspend
                           </button>
                       }
-                      <button onClick={closeModal} style={{ marginLeft:'auto', padding:'8px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:12 }}>Close</button>
+                      <button onClick={closeModal} style={{ marginLeft:'auto', padding:'8px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:12 }}>Close</button>
                     </div>
                   </div>
                 </div>
@@ -463,8 +463,8 @@ export default function DriversManagement() {
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:10, marginTop:20 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
-                  <button onClick={saveDriver} disabled={!form.name||!form.phone||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:(!form.name||!form.phone||submitting)?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13, opacity:(!form.name||!form.phone||submitting)?0.6:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
+                  <button onClick={saveDriver} disabled={!form.name||!form.phone||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:(!form.name||!form.phone||submitting)?'not-allowed':'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13, opacity:(!form.name||!form.phone||submitting)?0.6:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6 }}>
                     <i className={isEditing?'ri-save-line':'ri-add-line'} />
                     {submitting?'Saving…':isEditing?'Save Changes':'Add Driver'}
                   </button>
@@ -477,7 +477,7 @@ export default function DriversManagement() {
           {activeModal==='suspend' && selected && (
             <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth:420 }}>
               <div style={{ background:'#7f1d1d', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif', display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'var(--heading-font)', display:'flex', alignItems:'center', gap:8 }}>
                   <i className="ri-forbid-line" />Suspend Driver
                 </span>
                 <button onClick={closeModal} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
@@ -492,8 +492,8 @@ export default function DriversManagement() {
                   <textarea rows={3} placeholder="e.g. Multiple complaints, delivery fraud…" value={suspendNote} onChange={e=>setSuspendNote(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
                 </div>
                 <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
-                  <button onClick={suspendDriver} disabled={!suspendNote||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:(!suspendNote||submitting)?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13, opacity:(!suspendNote||submitting)?0.6:1 }}>
+                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
+                  <button onClick={suspendDriver} disabled={!suspendNote||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:(!suspendNote||submitting)?'not-allowed':'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13, opacity:(!suspendNote||submitting)?0.6:1 }}>
                     {submitting?'Suspending…':'Suspend Driver'}
                   </button>
                 </div>

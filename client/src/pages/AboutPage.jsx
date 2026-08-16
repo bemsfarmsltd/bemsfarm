@@ -4,7 +4,7 @@ import PageWrapper from "../components/layout/PageWrapper";
 
 /*
   CONSISTENCY FIXES vs previous version:
-  - fontFamily changed from "Inter" to "Syne, sans-serif" / "Nunito, sans-serif"
+  - fontFamily changed from "Inter" to "var(--heading-font)" / "var(--body-font)"
     to match the rest of the app (Navbar, HomePage, ProductsPage etc.)
   - /shop links changed to /products
   - /ai-recommendations changed to /recommendations
@@ -92,7 +92,7 @@ export default function AboutPage() {
 
   return (
     <PageWrapper>
-      <div style={{ fontFamily: "Nunito, sans-serif", overflowX: "hidden" }}>
+      <div style={{ fontFamily: "var(--body-font)", overflowX: "hidden" }}>
         {/* ── HERO ── */}
         <section
           style={{
@@ -158,7 +158,7 @@ export default function AboutPage() {
                 margin: "0 0 20px",
                 lineHeight: 1.1,
                 letterSpacing: "-0.02em",
-                fontFamily: "Syne, sans-serif",
+                fontFamily: "var(--heading-font)",
               }}
             >
               Our Story
@@ -241,7 +241,7 @@ export default function AboutPage() {
                 color: "#0D1117",
                 margin: "0 0 20px",
                 lineHeight: 1.2,
-                fontFamily: "Syne, sans-serif",
+                fontFamily: "var(--heading-font)",
               }}
             >
               Connecting Farms to Your Dinner Table
@@ -284,7 +284,7 @@ export default function AboutPage() {
                       fontSize: 28,
                       fontWeight: 900,
                       color: "#2E7D32",
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                     }}
                   >
                     {stat.icon}
@@ -354,7 +354,7 @@ export default function AboutPage() {
                     fontWeight: 800,
                     fontSize: 14,
                     color: "#0D1117",
-                    fontFamily: "Syne, sans-serif",
+                    fontFamily: "var(--heading-font)",
                   }}
                 >
                   Farm Fresh Guaranteed
@@ -404,7 +404,7 @@ export default function AboutPage() {
                   fontSize: "clamp(1.5rem,3vw,2.2rem)",
                   fontWeight: 800,
                   margin: 0,
-                  fontFamily: "Syne, sans-serif",
+                  fontFamily: "var(--heading-font)",
                 }}
               >
                 Our Core Values
@@ -468,7 +468,7 @@ export default function AboutPage() {
                       fontSize: 16,
                       fontWeight: 800,
                       margin: "0 0 10px",
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                     }}
                   >
                     {v.title}
@@ -510,7 +510,7 @@ export default function AboutPage() {
                 fontWeight: 800,
                 color: "#0D1117",
                 margin: 0,
-                fontFamily: "Syne, sans-serif",
+                fontFamily: "var(--heading-font)",
               }}
             >
               The People Behind BemsFarms
@@ -583,7 +583,7 @@ export default function AboutPage() {
                       fontWeight: 800,
                       color: "#0D1117",
                       margin: "0 0 8px",
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                     }}
                   >
                     {member.name}
@@ -625,7 +625,7 @@ export default function AboutPage() {
                 fontWeight: 800,
                 color: "#0D1117",
                 margin: 0,
-                fontFamily: "Syne, sans-serif",
+                fontFamily: "var(--heading-font)",
               }}
             >
               From Vision to Reality
@@ -672,7 +672,7 @@ export default function AboutPage() {
                       flexShrink: 0,
                       zIndex: 1,
                       boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                     }}
                   >
                     {m.year}
@@ -693,7 +693,7 @@ export default function AboutPage() {
                         fontWeight: 800,
                         color: "#0D1117",
                         margin: "0 0 6px",
-                        fontFamily: "Syne, sans-serif",
+                        fontFamily: "var(--heading-font)",
                       }}
                     >
                       {m.event}
@@ -745,7 +745,7 @@ export default function AboutPage() {
                 fontSize: "clamp(1.5rem,3vw,2.2rem)",
                 fontWeight: 900,
                 margin: "0 0 16px",
-                fontFamily: "Syne, sans-serif",
+                fontFamily: "var(--heading-font)",
               }}
             >
               Ready to Eat Fresh?

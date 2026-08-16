@@ -7,7 +7,7 @@ export default function ComingSoon({ title = "Section", icon = "ri-time-line" })
       alignItems: 'center',
       justifyContent: 'center',
       minHeight: '70vh',
-      fontFamily: 'Nunito, sans-serif',
+      fontFamily: 'var(--body-font)',
       padding: '24px',
     }}>
       <div style={{
@@ -71,7 +71,7 @@ export default function ComingSoon({ title = "Section", icon = "ri-time-line" })
           padding: '6px 12px',
           borderRadius: '9999px',
           marginBottom: '16px',
-          fontFamily: 'Syne, sans-serif',
+          fontFamily: 'var(--heading-font)',
         }}>
           <span style={{
             width: '6px',
@@ -85,7 +85,7 @@ export default function ComingSoon({ title = "Section", icon = "ri-time-line" })
 
         {/* Headings */}
         <h2 style={{
-          fontFamily: 'Syne, sans-serif',
+          fontFamily: 'var(--heading-font)',
           fontWeight: 800,
           fontSize: '24px',
           color: '#111827',

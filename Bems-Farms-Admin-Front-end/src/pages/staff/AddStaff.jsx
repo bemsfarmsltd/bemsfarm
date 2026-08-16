@@ -4,10 +4,10 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { ROLES, ROLE_META } from '../../lib/roles'
 
-const inp  = { display:'block',width:'100%',padding:'9px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const inp  = { display:'block',width:'100%',padding:'9px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
 const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 18px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13,textDecoration:'none' }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 20px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'10px 18px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13,textDecoration:'none' }
 const B = 'var(--border)', S = '#6b7280'
 
 const SHIFTS = ['morning', 'afternoon', 'evening']
@@ -27,7 +27,7 @@ function Section({ title, icon, children }) {
     <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,.05)', marginBottom:16, overflow:'hidden' }}>
       <div style={{ padding:'12px 18px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', gap:8, background:'var(--bg-subtle)' }}>
         <i className={icon} style={{ color:'#1B4332', fontSize:15 }}/>
-        <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:13 }}>{title}</span>
+        <span style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:13 }}>{title}</span>
       </div>
       <div style={{ padding:18 }}>{children}</div>
     </div>
@@ -67,10 +67,10 @@ export default function AddStaff() {
 
   if (result) {
     return (
-      <div style={{ fontFamily:'Nunito,sans-serif', maxWidth:520, margin:'40px auto' }}>
+      <div style={{ fontFamily:'var(--body-font)', maxWidth:520, margin:'40px auto' }}>
         <div style={{ background:'var(--bg-card)', borderRadius:14, border:`1px solid ${B}`, boxShadow:'0 4px 20px rgba(0,0,0,.08)', padding:32, textAlign:'center' }}>
           <div style={{ width:64, height:64, borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:38 }}>✅</div>
-          <h3 style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:17, marginBottom:6 }}>Staff Member Created</h3>
+          <h3 style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:17, marginBottom:6 }}>Staff Member Created</h3>
           <p style={{ color:S, fontSize:13, marginBottom:20 }}>
             <strong style={{ color:'var(--text-primary)' }}>{result.staff.name}</strong> ({result.staff.employee_code}) has been added.
           </p>
@@ -91,10 +91,10 @@ export default function AddStaff() {
   }
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif', maxWidth:820 }}>
+    <div style={{ fontFamily:'var(--body-font)', maxWidth:820 }}>
       <div style={{ marginBottom:20, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Add Staff</div>
+          <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Add Staff</div>
           <div style={{ fontSize:12,color:S,marginTop:2 }}>Create a new employee record and system account.</div>
         </div>
         <Link to="/staff" style={btnL}><i className="ri-arrow-left-line"/>Back to Staff</Link>

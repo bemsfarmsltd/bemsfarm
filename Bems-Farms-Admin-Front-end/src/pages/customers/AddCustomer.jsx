@@ -14,7 +14,7 @@ const TIERS = [
 ]
 
 const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)', marginBottom:16 }
-const inp = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
+const inp = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'var(--body-font)', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
 const lbl = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
 
 function CardHeader({ icon, color, title }) {
@@ -65,7 +65,7 @@ export default function AddCustomer() {
   const previewIni  = ((form.first_name?.[0]||'')+(form.last_name?.[0]||'')).toUpperCase()||'?'
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       <PageHeader
@@ -214,7 +214,7 @@ export default function AddCustomer() {
             )}
 
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              <button type="submit" disabled={saving} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background: saving?'#40916C':'#1B4332', color:'#fff', fontSize:14, fontWeight:700, cursor: saving?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+              <button type="submit" disabled={saving} style={{ width:'100%', padding:'12px', borderRadius:10, border:'none', background: saving?'#40916C':'#1B4332', color:'#fff', fontSize:14, fontWeight:700, cursor: saving?'not-allowed':'pointer', fontFamily:'var(--body-font)', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
                 {saving && <Spinner />}
                 <i className="ri-user-add-line" />
                 {saving ? 'Registering…' : 'Register Customer'}

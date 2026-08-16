@@ -62,7 +62,7 @@ export default function DemandForecastingPage() {
           >
             <h1
               style={{
-                fontFamily: "Syne, sans-serif",
+                fontFamily: "var(--heading-font)",
                 fontSize: isMobile ? "24px" : "36px",
                 fontWeight: 800,
                 color: "white",
@@ -122,7 +122,7 @@ export default function DemandForecastingPage() {
                 >
                   <h2
                     style={{
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                       fontSize: "20px",
                       fontWeight: 700,
                       color: "#111827",
@@ -162,7 +162,7 @@ export default function DemandForecastingPage() {
                       </p>
                       <p
                         style={{
-                          fontFamily: "Syne, sans-serif",
+                          fontFamily: "var(--heading-font)",
                           fontSize: "32px",
                           fontWeight: 800,
                           color: "#DC2626",
@@ -204,7 +204,7 @@ export default function DemandForecastingPage() {
                       </p>
                       <p
                         style={{
-                          fontFamily: "Syne, sans-serif",
+                          fontFamily: "var(--heading-font)",
                           fontSize: "32px",
                           fontWeight: 800,
                           color: "#F59E0B",
@@ -314,7 +314,7 @@ export default function DemandForecastingPage() {
                 >
                   <h2
                     style={{
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                       fontSize: "20px",
                       fontWeight: 700,
                       color: "#111827",
@@ -376,7 +376,7 @@ export default function DemandForecastingPage() {
                         >
                           <h3
                             style={{
-                              fontFamily: "Syne, sans-serif",
+                              fontFamily: "var(--heading-font)",
                               fontSize: "14px",
                               fontWeight: 700,
                               color: "#111827",

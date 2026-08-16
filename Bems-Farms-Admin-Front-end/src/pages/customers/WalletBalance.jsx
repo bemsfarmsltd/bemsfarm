@@ -28,7 +28,7 @@ const TIER_CFG = {
 const METHODS = ['Bank Transfer','Monnify','Cash','POS','USSD']
 
 const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
-const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
+const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'var(--body-font)', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
 const lbl  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
 
 const TH = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap', background:'var(--bg-subtle)', borderBottom:'1px solid var(--border)' }}>{children}</th>
@@ -39,7 +39,7 @@ function ModalShell({ title, onClose, children, wide }) {
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }} onClick={onClose}>
       <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth: wide?520:440, maxHeight:'90vh', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
         <div style={{ background:'#1B4332', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-          <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif' }}>{title}</span>
+          <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'var(--heading-font)' }}>{title}</span>
           <button onClick={onClose} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
         </div>
         {children}
@@ -151,7 +151,7 @@ export default function WalletBalance() {
   const custHistory = selectedCust ? history.filter(h=>h.customerId===selectedCust.id) : []
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <PageHeader title="Wallet Balances" subtitle="Manage customer wallet funds, top-ups, and credits" />
 
       {loading ? (
@@ -170,7 +170,7 @@ export default function WalletBalance() {
           <div key={k.label} style={{ ...card, padding:'14px 16px', display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
             <div>
               <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>{k.label}</div>
-              <div style={{ fontSize:18, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{k.val}</div>
+              <div style={{ fontSize:18, fontWeight:800, color:'var(--text-primary)', fontFamily:'var(--heading-font)', lineHeight:1 }}>{k.val}</div>
             </div>
             <div style={{ width:38, height:38, borderRadius:9, background:k.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={k.icon} style={{ color:k.color, fontSize:18 }} />
@@ -226,10 +226,10 @@ export default function WalletBalance() {
                         <TD style={{ color:'var(--text-muted)', fontSize:12 }}>{c.totalTopUps}×</TD>
                         <TD>
                           <div style={{ display:'flex', gap:5 }}>
-                            <button onClick={() => { setSelectedCust(c); setModal('topup'); setAmount(''); setNote(''); setMethod('Bank Transfer') }} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 9px', borderRadius:7, border:'none', background:'#f0fdf4', color:'#16a34a', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'Nunito, sans-serif' }}>
+                            <button onClick={() => { setSelectedCust(c); setModal('topup'); setAmount(''); setNote(''); setMethod('Bank Transfer') }} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 9px', borderRadius:7, border:'none', background:'#f0fdf4', color:'#16a34a', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'var(--body-font)' }}>
                               <i className="ri-add-line" />Top Up
                             </button>
-                            <button onClick={() => { setSelectedCust(c); setModal('debit'); setAmount(''); setNote('') }} disabled={c.wallet===0} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 9px', borderRadius:7, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', fontSize:11, fontWeight:700, cursor:c.wallet===0?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', opacity:c.wallet===0?0.5:1 }}>
+                            <button onClick={() => { setSelectedCust(c); setModal('debit'); setAmount(''); setNote('') }} disabled={c.wallet===0} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 9px', borderRadius:7, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', fontSize:11, fontWeight:700, cursor:c.wallet===0?'not-allowed':'pointer', fontFamily:'var(--body-font)', opacity:c.wallet===0?0.5:1 }}>
                               <i className="ri-subtract-line" />Debit
                             </button>
                             <button onClick={() => { setSelectedCust(c); setModal('history') }} title="View History" style={{ width:28, height:28, borderRadius:'50%', border:'1.5px solid #bfdbfe', background:'#eff6ff', color:'#2563eb', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
@@ -253,7 +253,7 @@ export default function WalletBalance() {
               const cfg = t!=='all' ? TYPE_CFG[t] : null
               const isActive = filterType===t
               return (
-                <button key={t} onClick={() => setFilterType(t)} style={{ padding:'5px 12px', borderRadius:7, border:'none', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Nunito, sans-serif', background: isActive?(cfg?cfg.color:'#1B4332'):'#f8fafc', color: isActive?'#fff':'#64748b' }}>
+                <button key={t} onClick={() => setFilterType(t)} style={{ padding:'5px 12px', borderRadius:7, border:'none', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'var(--body-font)', background: isActive?(cfg?cfg.color:'#1B4332'):'#f8fafc', color: isActive?'#fff':'#64748b' }}>
                   {t==='all'?'All':cfg.label}
                 </button>
               )
@@ -300,7 +300,7 @@ export default function WalletBalance() {
               <label style={lbl}>Quick Amount</label>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                 {[1000,2000,5000,10000,20000,50000].map(a => (
-                  <button key={a} type="button" onClick={() => setAmount(String(a))} style={{ padding:'5px 10px', borderRadius:7, fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Nunito, sans-serif', border:'1px solid #bbf7d0', background:amount===String(a)?'#22c55e':'#f0fdf4', color:amount===String(a)?'#fff':'#16a34a' }}>
+                  <button key={a} type="button" onClick={() => setAmount(String(a))} style={{ padding:'5px 10px', borderRadius:7, fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'var(--body-font)', border:'1px solid #bbf7d0', background:amount===String(a)?'#22c55e':'#f0fdf4', color:amount===String(a)?'#fff':'#16a34a' }}>
                     {fmt(a)}
                   </button>
                 ))}
@@ -325,8 +325,8 @@ export default function WalletBalance() {
               <input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. June wallet load" style={inp} />
             </div>
             <div style={{ display:'flex', gap:10 }}>
-              <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600 }}>Cancel</button>
-              <button disabled={!amount||parseInt(amount)<1||saving} onClick={processTopUp} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#16a34a', color:'#fff', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:700, cursor:(!amount||parseInt(amount)<1||saving)?'not-allowed':'pointer', opacity:(!amount||parseInt(amount)<1||saving)?0.6:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+              <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'var(--body-font)', fontWeight:600 }}>Cancel</button>
+              <button disabled={!amount||parseInt(amount)<1||saving} onClick={processTopUp} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#16a34a', color:'#fff', fontSize:13, fontFamily:'var(--body-font)', fontWeight:700, cursor:(!amount||parseInt(amount)<1||saving)?'not-allowed':'pointer', opacity:(!amount||parseInt(amount)<1||saving)?0.6:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
                 <i className="ri-add-circle-line" />{saving ? 'Saving…' : `Top Up ${amount?fmt(amount):''}`}
               </button>
             </div>
@@ -353,8 +353,8 @@ export default function WalletBalance() {
               <textarea rows={2} placeholder="e.g. Error correction, manual adjustment…" value={note} onChange={e => setNote(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
             </div>
             <div style={{ display:'flex', gap:10 }}>
-              <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600 }}>Cancel</button>
-              <button disabled={!amount||parseInt(amount)<1||parseInt(amount)>selectedCust.wallet||!note.trim()||saving} onClick={processDebit} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:700, cursor:'pointer' }}>
+              <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'var(--body-font)', fontWeight:600 }}>Cancel</button>
+              <button disabled={!amount||parseInt(amount)<1||parseInt(amount)>selectedCust.wallet||!note.trim()||saving} onClick={processDebit} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', fontSize:13, fontFamily:'var(--body-font)', fontWeight:700, cursor:'pointer' }}>
                 {saving ? 'Saving…' : `Debit ${amount?fmt(amount):''}`}
               </button>
             </div>
@@ -367,7 +367,7 @@ export default function WalletBalance() {
         <ModalShell title={`Wallet History — ${selectedCust.name}`} onClose={closeModal} wide>
           <div style={{ background:'#f0fdf4', padding:'12px 20px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
             <div style={{ fontSize:11, color:'#16a34a' }}>Current Balance</div>
-            <div style={{ fontSize:24, fontWeight:800, color:'#16a34a', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{fmt(selectedCust.wallet)}</div>
+            <div style={{ fontSize:24, fontWeight:800, color:'#16a34a', fontFamily:'var(--heading-font)', lineHeight:1 }}>{fmt(selectedCust.wallet)}</div>
           </div>
           <div style={{ overflowY:'auto', flex:1 }}>
             {custHistory.length===0 && <div style={{ textAlign:'center', padding:'40px 0', color:'#94a3b8', fontSize:13 }}>No wallet transactions yet.</div>}
@@ -392,10 +392,10 @@ export default function WalletBalance() {
             })}
           </div>
           <div style={{ padding:'12px 16px', borderTop:'1px solid var(--border)', display:'flex', gap:10, flexShrink:0 }}>
-            <button onClick={() => { setModal('topup'); setAmount(''); setNote(''); setMethod('Bank Transfer') }} style={{ flex:1, padding:'8px', borderRadius:8, border:'none', background:'#16a34a', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'Nunito, sans-serif', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
+            <button onClick={() => { setModal('topup'); setAmount(''); setNote(''); setMethod('Bank Transfer') }} style={{ flex:1, padding:'8px', borderRadius:8, border:'none', background:'#16a34a', color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'var(--body-font)', display:'flex', alignItems:'center', justifyContent:'center', gap:5 }}>
               <i className="ri-add-line" />Top Up
             </button>
-            <button onClick={closeModal} style={{ flex:1, padding:'8px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:12, fontFamily:'Nunito, sans-serif', fontWeight:600 }}>Close</button>
+            <button onClick={closeModal} style={{ flex:1, padding:'8px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:12, fontFamily:'var(--body-font)', fontWeight:600 }}>Close</button>
           </div>
         </ModalShell>
       )}

@@ -8,9 +8,9 @@ const SEV_CFG = {
   low:          { label:'Low Stock',    bg:'#fef9c3', color:'#854d0e', icon:'ri-alert-fill',         border:'#f7b84b' },
 }
 
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'Nunito,sans-serif', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
-const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:13 }
-const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:13 }
+const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'var(--body-font)', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
+const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }
+const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }
 const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
 const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text-primary)' }
 const LBL  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:6 }
@@ -85,11 +85,11 @@ export default function StockAlerts() {
   }
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       {/* Page header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24, flexWrap:'wrap', gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:22, color:'var(--text-primary)' }}>Low Stock Alerts</div>
+          <div style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:22, color:'var(--text-primary)' }}>Low Stock Alerts</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Inventory / Low Stock Alerts</div>
         </div>
       </div>
@@ -139,7 +139,7 @@ export default function StockAlerts() {
         </div>
 
         <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'Nunito,sans-serif' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'var(--body-font)' }}>
             <thead>
               <tr style={{ background:'var(--bg-subtle)', borderBottom:'1px solid var(--border)' }}>
                 {['Product','SKU','Category','Warehouse','Current Stock','Reorder Level','Shortage','Severity','Action'].map(h => (
@@ -206,7 +206,7 @@ export default function StockAlerts() {
         <div onClick={closeReorder} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1054 }}/>
         <div style={{ position:'fixed', inset:0, zIndex:1055, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
           <div style={{ background:'var(--bg-card)', borderRadius:14, width:'100%', maxWidth:360, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', padding:28 }}>
-            <div style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:16, marginBottom:4 }}>Update Reorder Level</div>
+            <div style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:16, marginBottom:4 }}>Update Reorder Level</div>
             <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:20 }}>Set the minimum quantity that triggers a reorder alert.</div>
             <form onSubmit={saveReorder}>
               <div style={{ marginBottom:20 }}>

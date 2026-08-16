@@ -5,8 +5,8 @@ import toast from 'react-hot-toast'
 const S = '#6b7280', B = 'var(--border)'
 const TH = { padding:'10px 16px',fontSize:11,fontWeight:700,color:S,textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',background:'var(--bg-subtle)',whiteSpace:'nowrap' }
 const TD = { padding:'11px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
-const inp = { padding:'8px 12px',border:`1.5px solid ${B}`,borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',color:'var(--text-primary)' }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 20px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
+const inp = { padding:'8px 12px',border:`1.5px solid ${B}`,borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',color:'var(--text-primary)' }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 20px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
 
 function ngn(v) { return `₦${Number(v||0).toLocaleString()}` }
 
@@ -47,9 +47,9 @@ export default function SalesReport() {
   function set(k, v) { setFilters(f => ({ ...f, [k]: v })) }
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Sales Report</div>
+        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Sales Report</div>
         <div style={{ fontSize:12,color:S,marginTop:2 }}>Analyse orders, revenue, and top-selling products.</div>
       </div>
 
@@ -113,7 +113,7 @@ export default function SalesReport() {
           {/* Breakdown Table */}
           {data.chart && data.chart.length > 0 && (
             <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',marginBottom:20 }}>
-              <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>
+              <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14 }}>
                 {filters.group_by.charAt(0).toUpperCase()+filters.group_by.slice(1)}ly Breakdown
               </div>
               <div style={{ overflowX:'auto' }}>
@@ -136,7 +136,7 @@ export default function SalesReport() {
           {/* Top Products */}
           {data.top_products && data.top_products.length > 0 && (
             <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
-              <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14 }}>Top Products</div>
+              <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14 }}>Top Products</div>
               <div style={{ overflowX:'auto' }}>
                 <table style={{ width:'100%',borderCollapse:'collapse' }}>
                   <thead><tr>{['#','Product','Qty Sold','Revenue'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>

@@ -17,7 +17,7 @@ export default function Layout() {
   }, [location.pathname])
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-page)', color: 'var(--text-primary)', fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-page)', color: 'var(--text-primary)', fontFamily: 'var(--body-font)' }}>
 
       {/*
         Below 1024px the sidebar is an off-canvas drawer (hidden by default,

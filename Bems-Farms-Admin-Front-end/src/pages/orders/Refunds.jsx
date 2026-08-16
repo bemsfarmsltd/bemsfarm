@@ -28,9 +28,9 @@ function nextRef(list) {
   return `RTN-${new Date().getFullYear()}-${String(max+1).padStart(3,'0')}`
 }
 
-const inp  = { display:'block',width:'100%',padding:'9px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box' }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const inp  = { display:'block',width:'100%',padding:'9px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box' }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
 const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:6 }
 const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap' }
 const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
@@ -41,7 +41,7 @@ function Modal({ title, onClose, children, maxWidth=620, wide=false }) {
     <div style={{ position:'fixed',inset:0,zIndex:1055,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
       <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:wide?960:maxWidth,boxShadow:'0 8px 40px rgba(0,0,0,0.18)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
         <div style={{ background:'#1B4332',color:'#fff',padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0 }}>
-          <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:15 }}>{title}</span>
+          <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:15 }}>{title}</span>
           <button onClick={onClose} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:20,display:'flex',padding:4 }}><i className="ri-close-line"/></button>
         </div>
         <div style={{ overflowY:'auto',flex:1 }}>{children}</div>
@@ -155,12 +155,12 @@ export default function Refunds() {
     setProcForm(f=>({ ...f,condition:val,goodsAction,resalableQty,writeOffQty }))
   }
 
-  const btnDanger = { display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#dc2626',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
+  const btnDanger = { display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#dc2626',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <div style={{ marginBottom:24 }}>
-        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:22,color:'var(--text-primary)' }}>Customer Returns & Refunds</div>
+        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:22,color:'var(--text-primary)' }}>Customer Returns & Refunds</div>
         <div style={{ fontSize:12,color:'var(--text-muted)',marginTop:2 }}>Orders / Returns & Refunds</div>
       </div>
 
@@ -329,7 +329,7 @@ export default function Refunds() {
             <div style={{ display:'flex',borderBottom:'1px solid var(--border)',background:'#f0f3f9' }}>
               {[{ id:'inspect',icon:'ri-search-2-line',label:'1 · Inspect Goods' },{ id:'refund',icon:'ri-refund-2-line',label:'2 · Refund Decision' }].map(t=>(
                 <button key={t.id} onClick={()=>setProcessTab(t.id)}
-                  style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'14px',border:'none',cursor:'pointer',fontSize:13,fontWeight:processTab===t.id?700:400,fontFamily:'Nunito,sans-serif',background:processTab===t.id?'#1B4332':'transparent',color:processTab===t.id?'#fff':'#6b7280',borderBottom:processTab===t.id?'none':'none' }}>
+                  style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'14px',border:'none',cursor:'pointer',fontSize:13,fontWeight:processTab===t.id?700:400,fontFamily:'var(--body-font)',background:processTab===t.id?'#1B4332':'transparent',color:processTab===t.id?'#fff':'#6b7280',borderBottom:processTab===t.id?'none':'none' }}>
                   <i className={t.icon}/>{t.label}
                 </button>
               ))}
@@ -614,7 +614,7 @@ export default function Refunds() {
               <div style={{ width:56,height:56,borderRadius:'50%',background:'#fee2e2',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px' }}>
                 <i className="ri-delete-bin-line" style={{ fontSize:30,color:'#dc2626' }}/>
               </div>
-              <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:16,marginBottom:6 }}>Delete Return?</div>
+              <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:16,marginBottom:6 }}>Delete Return?</div>
               <div style={{ fontSize:13,color:'var(--text-muted)',marginBottom:24 }}>{selected?.refund_ref || selected?.id} — {selected?.customer_name || 'Unknown'}</div>
               <div style={{ display:'flex',gap:10 }}>
                 <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>

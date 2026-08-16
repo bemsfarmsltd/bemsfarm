@@ -135,7 +135,7 @@ export default function LoginPage() {
           <div className="absolute bottom-6 md:bottom-12 left-6 md:left-12 right-6 md:right-12 text-white z-10 text-left">
             <h2 className="text-[28px] md:text-[38px] font-bold leading-tight font-display mb-3">
               Welcome Back to <br />
-              BemsFarms
+              <span style={{ fontFamily: "var(--custom-font)", fontWeight: 400 }}>BemsFarms</span>
             </h2>
             <p className="text-emerald-100/80 text-[13px] md:text-[15px] font-medium max-w-xs leading-relaxed">
               Access your personalized dashboard and source premium, fresh Nigerian farm produce directly.

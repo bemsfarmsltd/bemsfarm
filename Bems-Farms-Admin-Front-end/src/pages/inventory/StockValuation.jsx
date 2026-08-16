@@ -68,17 +68,17 @@ export default function StockValuation() {
   const B = 'var(--border)', S = '#6b7280'
 
   if (loading) return (
-    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'Nunito,sans-serif', color:'var(--text-muted)' }}>
+    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'var(--body-font)', color:'var(--text-muted)' }}>
       <i className="ri-loader-4-line" style={{ fontSize:49, display:'block', marginBottom:8, textAlign:'center' }}/>
     </div>
   )
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       {/* Header & Breadcrumbs */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>Stock Valuation</div>
+          <div style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>Stock Valuation</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
           <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Inventory</span>
@@ -110,7 +110,7 @@ export default function StockValuation() {
 
       {/* Valuation by Category */}
       <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', padding:24, marginBottom:24 }}>
-        <div style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, marginBottom:16, color:'var(--text-primary)' }}>Valuation by Category</div>
+        <div style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:14, marginBottom:16, color:'var(--text-primary)' }}>Valuation by Category</div>
         <div style={{ overflowX:'auto' }}>
           <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
             <thead>
@@ -151,7 +151,7 @@ export default function StockValuation() {
       {/* Product-Level Valuation */}
       <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
         <div style={{ padding:'16px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:14, color:'var(--text-primary)' }}>Product-Level Valuation</div>
+          <div style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:14, color:'var(--text-primary)' }}>Product-Level Valuation</div>
           <span style={{ background:'var(--bg-muted)', color:S, fontSize:11, padding:'3px 10px', borderRadius:50, fontWeight:600 }}>
             {products.length} product{products.length !== 1 ? 's' : ''}
           </span>

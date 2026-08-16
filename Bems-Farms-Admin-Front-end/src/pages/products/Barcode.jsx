@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
+const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
 const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
 const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
 const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
@@ -52,7 +52,7 @@ function TableStepper({ value, onChange }) {
           background: 'var(--bg-card)',
           color: 'var(--text-primary)',
           textAlign: 'center',
-          fontFamily: 'Nunito, sans-serif',
+          fontFamily: 'var(--body-font)',
           fontSize: 12,
           fontWeight: 600,
           outline: 'none',
@@ -214,17 +214,17 @@ export default function Barcode() {
   const B = 'var(--border)', S = '#6b7280'
 
   if (loading) return (
-    <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300,fontFamily:'Nunito,sans-serif',color:'var(--text-muted)' }}>
+    <div style={{ display:'flex',justifyContent:'center',alignItems:'center',minHeight:300,fontFamily:'var(--body-font)',color:'var(--text-muted)' }}>
       <i className="ri-loader-4-line" style={{ fontSize:49,display:'block',marginBottom:8,textAlign:'center' }}/>
     </div>
   )
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       {/* Header & Breadcrumbs */}
       <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12 }}>
         <div>
-          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Barcode</div>
+          <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Barcode</div>
         </div>
         <div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)' }}>
           <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Products</span>
@@ -236,7 +236,7 @@ export default function Barcode() {
       {/* Main card */}
       <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:24 }}>
         <div style={{ marginBottom:20 }}>
-          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:16,color:'var(--text-primary)' }}>Print Barcodes</div>
+          <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:16,color:'var(--text-primary)' }}>Print Barcodes</div>
           <div style={{ fontSize:12,color:S,marginTop:2 }}>Generate, customize and print product barcodes with advanced options</div>
         </div>
 
@@ -249,7 +249,7 @@ export default function Barcode() {
         <div className="grid-sidebar-split" style={{ display:'grid',gridTemplateColumns:'1fr 280px',gap:24,marginBottom:24 }}>
           {/* Left Selection */}
           <div style={{ border:`1.5px solid ${B}`,borderRadius:12,padding:20,background:'var(--bg-card)' }}>
-            <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,color:'var(--text-primary)',marginBottom:14 }}>Product Selection</div>
+            <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13,color:'var(--text-primary)',marginBottom:14 }}>Product Selection</div>
             
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16 }}>
               <div>
@@ -329,7 +329,7 @@ export default function Barcode() {
 
           {/* Right Import */}
           <div style={{ border:`1.5px dashed ${B}`,borderRadius:12,padding:20,background:'var(--bg-page)',textAlign:'center',display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',gap:8,cursor:'pointer' }}>
-            <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:13,color:'var(--text-primary)',alignSelf:'flex-start',marginBottom:4 }}>Bulk Import</div>
+            <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13,color:'var(--text-primary)',alignSelf:'flex-start',marginBottom:4 }}>Bulk Import</div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
               <i className="ri-cloud-upload-line" style={{ fontSize:38,color:'var(--text-light)' }}/>
               <div style={{ fontSize:12,fontWeight:700,color:'var(--text-secondary)' }}>Upload CSV</div>
@@ -394,7 +394,7 @@ export default function Barcode() {
 
         {/* Barcode Options */}
         <div style={{ borderTop:`1px solid ${B}`,paddingTop:20 }}>
-          <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,color:'var(--text-primary)',marginBottom:16 }}>Barcode Options</div>
+          <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,color:'var(--text-primary)',marginBottom:16 }}>Barcode Options</div>
           <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16,marginBottom:20 }}>
             <div>
               <label style={LBL}>Barcode Type</label>
@@ -435,7 +435,7 @@ export default function Barcode() {
                 display:'inline-flex',alignItems:'center',gap:6,
                 padding:'10px 20px',borderRadius:8,border:'none',
                 background:'#0f172a',color:'#fff',cursor:'pointer',
-                fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13
+                fontFamily:'var(--body-font)',fontWeight:700,fontSize:13
               }}
             >
               <i className="ri-refresh-line"/>
@@ -448,7 +448,7 @@ export default function Barcode() {
                 display:'inline-flex',alignItems:'center',gap:6,
                 padding:'10px 20px',borderRadius:8,border:'none',
                 background:'#2563eb',color:'#fff',cursor:'pointer',
-                fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13,
+                fontFamily:'var(--body-font)',fontWeight:700,fontSize:13,
                 opacity: selectedList.length === 0 ? 0.5 : 1
               }}
             >

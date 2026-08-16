@@ -119,7 +119,7 @@ export default function Transactions() {
   }
 
   return (
-    <div style={{ fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ fontFamily: 'var(--body-font)' }}>
       <PageHeader title="Transactions" breadcrumbs={['Accounts', 'Transactions']} />
 
       {/* KPI strip */}
@@ -374,7 +374,7 @@ export default function Transactions() {
             onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ color: '#ffffff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Transaction Detail</div>
+              <div style={{ color: '#ffffff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Transaction Detail</div>
               <button style={{ background: 'transparent', border: 'none', color: '#ffffff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setSelected(null)}>
                 <i className="ri-close-line" />
               </button>
@@ -400,7 +400,7 @@ export default function Transactions() {
                       }}>
                         <i className={tc.icon} style={{ fontSize: '28px', color: credit ? '#22c55e' : '#ef4444' }} />
                       </div>
-                      <div style={{ fontSize: '28px', fontWeight: 800, color: credit ? '#22c55e' : '#ef4444', fontFamily: 'Syne, sans-serif' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 800, color: credit ? '#22c55e' : '#ef4444', fontFamily: 'var(--heading-font)' }}>
                         {credit ? '+' : '-'}{fmt(Math.abs(Number(selected.amount || 0)))}
                       </div>
                     </>

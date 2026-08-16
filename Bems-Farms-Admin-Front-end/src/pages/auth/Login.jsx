@@ -36,7 +36,7 @@ const ROLE_ACCESS = {
 const inputStyle = {
   width: '100%', padding: '10px 14px', borderRadius: 10,
   border: '1.5px solid var(--border)', fontSize: 14,
-  fontFamily: 'Nunito, sans-serif', outline: 'none',
+  fontFamily: 'var(--body-font)', outline: 'none',
   background: 'var(--bg-card)', color: 'var(--text-primary)', boxSizing: 'border-box',
   transition: 'border-color 0.15s',
 }
@@ -76,7 +76,7 @@ export default function Login() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'var(--body-font)' }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         input:focus { border-color: #1B4332 !important; box-shadow: 0 0 0 3px rgba(27,67,50,0.1); }
@@ -96,7 +96,7 @@ export default function Login() {
           </div>
 
           {/* Heading */}
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1B4332', fontFamily: 'Syne, sans-serif', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1B4332', fontFamily: 'var(--heading-font)', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
             Welcome Back!
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 28px' }}>
@@ -164,7 +164,7 @@ export default function Login() {
                 width: '100%', padding: '12px', borderRadius: 10,
                 background: loading ? '#40916C' : '#1B4332', color: '#fff',
                 border: 'none', fontSize: 14, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
-                fontFamily: 'Nunito, sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                fontFamily: 'var(--body-font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 transition: 'background 0.15s',
               }}
             >
@@ -200,7 +200,7 @@ export default function Login() {
                         background: isActive ? m.bg : '#fff',
                         border: `1.5px solid ${isActive ? m.color : 'var(--border)'}`,
                         transition: 'all 0.12s',
-                        fontFamily: 'Nunito, sans-serif',
+                        fontFamily: 'var(--body-font)',
                       }}
                     >
                       <div style={{
@@ -231,7 +231,7 @@ export default function Login() {
                     style={{
                       padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
                       fontSize: 11, fontWeight: 700, background: '#1B4332', color: '#fff',
-                      fontFamily: 'Nunito, sans-serif', flexShrink: 0,
+                      fontFamily: 'var(--body-font)', flexShrink: 0,
                     }}
                   >
                     {loading ? '…' : 'Go →'}
@@ -255,7 +255,7 @@ export default function Login() {
         <div style={{ maxWidth: 680, width: '100%' }}>
           <h2 style={{
             fontSize: 36, fontWeight: 800, color: '#fff',
-            fontFamily: 'Syne, sans-serif', letterSpacing: '-0.03em',
+            fontFamily: 'var(--heading-font)', letterSpacing: '-0.03em',
             lineHeight: 1.15, marginBottom: 12,
           }}>
             Manage Bems Farms<br />from One Powerful Dashboard

@@ -26,7 +26,7 @@ const LOG_STATUS_CFG = {
 
 const fmt = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
-const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
+const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'var(--body-font)', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
 const lbl  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
 
 const TH = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap', background:'var(--bg-subtle)', borderBottom:'1px solid var(--border)' }}>{children}</th>
@@ -36,7 +36,7 @@ function ModalShell({ title, onClose, children, maxWidth=460, headerBg='#1B4332'
   return (
     <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth, maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
       <div style={{ background:headerBg, borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-        <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif' }}>{title}</span>
+        <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'var(--heading-font)' }}>{title}</span>
         <button onClick={onClose} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
       </div>
       {children}
@@ -122,9 +122,9 @@ export default function ActiveDeliveries() {
   )
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <PageHeader title="Active Deliveries" subtitle="Live delivery tracking" actions={
-        <button onClick={load} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'Nunito, sans-serif', fontWeight:600, color:'var(--text-secondary)' }}>
+        <button onClick={load} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'var(--body-font)', fontWeight:600, color:'var(--text-secondary)' }}>
           <i className="ri-refresh-line" />Refresh
         </button>
       } />
@@ -135,7 +135,7 @@ export default function ActiveDeliveries() {
           { key:'live',     label:'Live Deliveries',      icon:'ri-truck-line',  count:deliveries.length },
           { key:'auto_log', label:'Auto Assignment Log',  icon:'ri-cpu-line',    count:autoLog.length },
         ].map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:'none', background: activeTab===t.key?'#1B4332':'transparent', color: activeTab===t.key?'#fff':'#6b7280', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>
+          <button key={t.key} onClick={() => setActiveTab(t.key)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:'none', background: activeTab===t.key?'#1B4332':'transparent', color: activeTab===t.key?'#fff':'#6b7280', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>
             <i className={t.icon} />{t.label}
             <span style={{ fontSize:10, fontWeight:700, padding:'1px 7px', borderRadius:50, background: activeTab===t.key?'rgba(255,255,255,0.25)':'var(--border)', color: activeTab===t.key?'#fff':'#374151' }}>{t.count}</span>
           </button>
@@ -224,7 +224,7 @@ export default function ActiveDeliveries() {
                 </div>
                 <div>
                   <div style={{ fontSize:11, color:'#64748b' }}>{c.label}</div>
-                  <div style={{ fontSize:22, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{c.value}</div>
+                  <div style={{ fontSize:22, fontWeight:800, color:'var(--text-primary)', fontFamily:'var(--heading-font)', lineHeight:1 }}>{c.value}</div>
                 </div>
               </div>
             ))}
@@ -238,7 +238,7 @@ export default function ActiveDeliveries() {
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Delivery ref, order, customer, driver…" style={{ ...inp, paddingLeft:32 }} />
               </div>
               {filterStatus!=='all' && (
-                <button onClick={() => setFilterStatus('all')} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'7px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:12, fontFamily:'Nunito, sans-serif', color:'var(--text-secondary)' }}>
+                <button onClick={() => setFilterStatus('all')} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'7px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:12, fontFamily:'var(--body-font)', color:'var(--text-secondary)' }}>
                   <i className="ri-close-line" />Clear
                 </button>
               )}
@@ -257,7 +257,7 @@ export default function ActiveDeliveries() {
                   { key:'assigned',           label:'Awaiting Pickup'     },
                   { key:'delivery_attempted', label:'Delivery Attempted'  },
                 ].map(t => (
-                  <button key={t.key} onClick={() => setFilterStatus(t.key)} style={{ padding:'10px 16px', border:'none', borderBottom: filterStatus===t.key?'2px solid #1B4332':'2px solid transparent', background:'transparent', color: filterStatus===t.key?'#1B4332':'#6b7280', fontWeight: filterStatus===t.key?700:400, fontSize:12, cursor:'pointer', fontFamily:'Nunito, sans-serif', whiteSpace:'nowrap' }}>
+                  <button key={t.key} onClick={() => setFilterStatus(t.key)} style={{ padding:'10px 16px', border:'none', borderBottom: filterStatus===t.key?'2px solid #1B4332':'2px solid transparent', background:'transparent', color: filterStatus===t.key?'#1B4332':'#6b7280', fontWeight: filterStatus===t.key?700:400, fontSize:12, cursor:'pointer', fontFamily:'var(--body-font)', whiteSpace:'nowrap' }}>
                     {t.label}
                   </button>
                 ))}
@@ -387,29 +387,29 @@ export default function ActiveDeliveries() {
 
                     {/* Actions */}
                     <div style={{ display:'flex', gap:8, marginTop:'auto', flexWrap:'wrap' }}>
-                      <button onClick={() => openModal('view', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:11, fontFamily:'Nunito, sans-serif', fontWeight:600, color:'var(--text-secondary)' }}>
+                      <button onClick={() => openModal('view', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:11, fontFamily:'var(--body-font)', fontWeight:600, color:'var(--text-secondary)' }}>
                         <i className="ri-eye-line" />Details
                       </button>
                       {isEnRoute && <>
-                        <button onClick={() => openModal('attempted', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'none', background:'#fef3c7', color:'#d97706', cursor:'pointer', fontSize:11, fontFamily:'Nunito, sans-serif', fontWeight:700, flex:1 }}>
+                        <button onClick={() => openModal('attempted', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'none', background:'#fef3c7', color:'#d97706', cursor:'pointer', fontSize:11, fontFamily:'var(--body-font)', fontWeight:700, flex:1 }}>
                           <i className="ri-route-line" />Mark Attempted
                         </button>
-                        <button onClick={() => openModal('delivered', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'none', background:'#22c55e', color:'#fff', cursor:'pointer', fontSize:11, fontFamily:'Nunito, sans-serif', fontWeight:700, flex:1 }}>
+                        <button onClick={() => openModal('delivered', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'none', background:'#22c55e', color:'#fff', cursor:'pointer', fontSize:11, fontFamily:'var(--body-font)', fontWeight:700, flex:1 }}>
                           <i className="ri-checkbox-circle-line" />Delivered
                         </button>
                       </>}
                       {isAssigned && (
-                        <button onClick={() => openModal('reassign', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--orange-accent)', background:'var(--bg-card)', color:'var(--orange-accent)', cursor:'pointer', fontSize:11, fontFamily:'Nunito, sans-serif', fontWeight:700, flex:1, justifyContent:'center' }}>
+                        <button onClick={() => openModal('reassign', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--orange-accent)', background:'var(--bg-card)', color:'var(--orange-accent)', cursor:'pointer', fontSize:11, fontFamily:'var(--body-font)', fontWeight:700, flex:1, justifyContent:'center' }}>
                           <i className="ri-user-follow-line" />Reassign Driver
                         </button>
                       )}
                       {isAttempted && (del.attempts||0)<2 && (
-                        <button onClick={() => openModal('scheduleRetry', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', cursor:'pointer', fontSize:11, fontFamily:'Nunito, sans-serif', fontWeight:700, flex:1 }}>
+                        <button onClick={() => openModal('scheduleRetry', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', cursor:'pointer', fontSize:11, fontFamily:'var(--body-font)', fontWeight:700, flex:1 }}>
                           <i className="ri-refresh-line" />Schedule Retry
                         </button>
                       )}
                       {isAttempted && (
-                        <button onClick={() => openModal('cancelReturn', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontSize:11, fontFamily:'Nunito, sans-serif', fontWeight:700, flex:1 }}>
+                        <button onClick={() => openModal('cancelReturn', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontSize:11, fontFamily:'var(--body-font)', fontWeight:700, flex:1 }}>
                           <i className="ri-close-circle-line" />Cancel Order
                         </button>
                       )}
@@ -455,10 +455,10 @@ export default function ActiveDeliveries() {
                   </div>
                 )}
                 <div style={{ display:'flex', gap:10, paddingTop:16, borderTop:'1px solid var(--border)' }}>
-                  <button onClick={() => { closeModal(); setTimeout(() => openModal('reassign', selected), 100) }} style={{ flex:1, padding:'9px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                  <button onClick={() => { closeModal(); setTimeout(() => openModal('reassign', selected), 100) }} style={{ flex:1, padding:'9px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
                     <i className="ri-user-add-line" />Reassign Driver
                   </button>
-                  <button onClick={closeModal} style={{ padding:'9px 16px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Close</button>
+                  <button onClick={closeModal} style={{ padding:'9px 16px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Close</button>
                 </div>
               </div>
             </ModalShell>
@@ -487,8 +487,8 @@ export default function ActiveDeliveries() {
                 ))}
                 {drivers.length===0 && <div style={{ textAlign:'center', color:'var(--text-light)', padding:'24px 0', fontSize:13 }}>No available drivers</div>}
                 <div style={{ display:'flex', gap:10, marginTop:16 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
-                  <button onClick={reassignDriver} disabled={!reassignDriverId||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:(!reassignDriverId||submitting)?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13, opacity:(!reassignDriverId||submitting)?0.6:1 }}>
+                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
+                  <button onClick={reassignDriver} disabled={!reassignDriverId||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:(!reassignDriverId||submitting)?'not-allowed':'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13, opacity:(!reassignDriverId||submitting)?0.6:1 }}>
                     {submitting?'Reassigning…':'Reassign & Notify'}
                   </button>
                 </div>
@@ -510,8 +510,8 @@ export default function ActiveDeliveries() {
                   <textarea rows={3} placeholder="e.g. No response after calling twice." value={attemptNote} onChange={e=>setAttemptNote(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
                 </div>
                 <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
-                  <button onClick={markAttempted} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>
+                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
+                  <button onClick={markAttempted} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }}>
                     {submitting?'Saving…':'Confirm Attempted'}
                   </button>
                 </div>
@@ -527,8 +527,8 @@ export default function ActiveDeliveries() {
                   Confirming delivery for <strong>{selected.customer_name}</strong> by <strong>{selected.driver_name||'driver'}</strong>.
                 </div>
                 <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
-                  <button onClick={markDelivered} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#22c55e', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>
+                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
+                  <button onClick={markDelivered} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#22c55e', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }}>
                     {submitting?'Saving…':'Mark as Delivered'}
                   </button>
                 </div>
@@ -550,8 +550,8 @@ export default function ActiveDeliveries() {
                   <textarea rows={3} placeholder="e.g. Customer confirmed available after 5pm. Called and verified." value={retryNote} onChange={e=>setRetryNote(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
                 </div>
                 <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
-                  <button onClick={scheduleRetry} disabled={!retryNote||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', cursor:(!retryNote||submitting)?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13, opacity:(!retryNote||submitting)?0.6:1 }}>
+                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
+                  <button onClick={scheduleRetry} disabled={!retryNote||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', cursor:(!retryNote||submitting)?'not-allowed':'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13, opacity:(!retryNote||submitting)?0.6:1 }}>
                     {submitting?'Saving…':'Confirm — Schedule Retry'}
                   </button>
                 </div>
@@ -565,7 +565,7 @@ export default function ActiveDeliveries() {
               <div style={{ background:'#7f1d1d', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                   <div>
-                    <div style={{ fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif' }}>
+                    <div style={{ fontWeight:700, fontSize:15, fontFamily:'var(--heading-font)' }}>
                       <i className="ri-close-circle-line" style={{ marginRight:8 }} />
                       {(selected.attempts||0)>=2?'Cancel Order — 2 Attempts Exhausted':'Cancel Order & Return Goods'}
                     </div>
@@ -598,8 +598,8 @@ export default function ActiveDeliveries() {
                       <textarea rows={3} placeholder="Why is this being cancelled?" value={cancelReason} onChange={e=>setCancelReason(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
                     </div>
                     <div style={{ display:'flex', gap:10 }}>
-                      <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Go Back</button>
-                      <button disabled={!cancelReason} onClick={() => setCancelStep(2)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:!cancelReason?'not-allowed':'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13, opacity:!cancelReason?0.6:1 }}>
+                      <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Go Back</button>
+                      <button disabled={!cancelReason} onClick={() => setCancelStep(2)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:!cancelReason?'not-allowed':'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13, opacity:!cancelReason?0.6:1 }}>
                         Next — Return Goods to Store
                       </button>
                     </div>
@@ -621,8 +621,8 @@ export default function ActiveDeliveries() {
                       Driver returning goods from: <strong>{selected.delivery_address||'—'}</strong>
                     </div>
                     <div style={{ display:'flex', gap:10 }}>
-                      <button onClick={() => setCancelStep(1)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Back</button>
-                      <button onClick={() => setCancelStep(3)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>
+                      <button onClick={() => setCancelStep(1)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Back</button>
+                      <button onClick={() => setCancelStep(3)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }}>
                         Driver Contacted — Next
                       </button>
                     </div>
@@ -637,8 +637,8 @@ export default function ActiveDeliveries() {
                       <div style={{ fontWeight:700, fontSize:16 }}>Confirm Goods Received & Stock Restored</div>
                     </div>
                     <div style={{ display:'flex', gap:10 }}>
-                      <button onClick={() => setCancelStep(2)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Back</button>
-                      <button onClick={cancelAndReturn} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>
+                      <button onClick={() => setCancelStep(2)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Back</button>
+                      <button onClick={cancelAndReturn} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }}>
                         {submitting?'Cancelling…':'Confirm — Cancel Order & Restore Stock'}
                       </button>
                     </div>

@@ -163,7 +163,7 @@ export default function MoneyTransfer() {
     padding: '8px 16px',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontFamily: 'Syne, sans-serif',
+    fontFamily: 'var(--heading-font)',
     fontWeight: 700,
     fontSize: '13px',
     display: 'inline-flex',
@@ -179,7 +179,7 @@ export default function MoneyTransfer() {
     padding: '8px 16px',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontFamily: 'Nunito, sans-serif',
+    fontFamily: 'var(--body-font)',
     fontWeight: 700,
     fontSize: '13px',
   }
@@ -202,7 +202,7 @@ export default function MoneyTransfer() {
   }
 
   return (
-    <div style={{ fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ fontFamily: 'var(--body-font)' }}>
       <PageHeader title="Money Transfer" breadcrumbs={['Accounts', 'Money Transfer']} />
 
       {/* KPI Stats Strip */}
@@ -251,7 +251,7 @@ export default function MoneyTransfer() {
       {/* Main Card holding table and pagination */}
       <div style={cardStyle}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-          <h3 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: '15px', color: 'var(--text-primary)', margin: 0 }}>Transfer History</h3>
+          <h3 style={{ fontFamily: 'var(--heading-font)', fontWeight: 800, fontSize: '15px', color: 'var(--text-primary)', margin: 0 }}>Transfer History</h3>
           <button style={btnP} onClick={() => { setForm({ ...BLANK_FORM }); setTransferModal(true) }}>
             <i className="ri-exchange-line" />New Transfer
           </button>
@@ -347,7 +347,7 @@ export default function MoneyTransfer() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={() => setTransferModal(false)}>
           <form style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '460px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }} onClick={e => e.stopPropagation()} onSubmit={handleCreateTransfer}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>New Money Transfer</span>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>New Money Transfer</span>
               <button type="button" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setTransferModal(false)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px', display: 'grid', gap: '16px' }}>
@@ -438,14 +438,14 @@ export default function MoneyTransfer() {
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '440px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Transfer Receipt</span>
+                <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Transfer Receipt</span>
                 <div style={{ color: '#ffffff', fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>Ref: {viewModal.reference}</div>
               </div>
               <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setViewModal(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px' }}>
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>{fmt(viewModal.amount || 0)}</div>
+                <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--heading-font)' }}>{fmt(viewModal.amount || 0)}</div>
                 <span style={{
                   display: 'inline-flex',
                   alignItems: 'center',

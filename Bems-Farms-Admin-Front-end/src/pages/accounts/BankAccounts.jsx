@@ -178,7 +178,7 @@ export default function BankAccounts() {
     padding: '8px 16px',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontFamily: 'Syne, sans-serif',
+    fontFamily: 'var(--heading-font)',
     fontWeight: 700,
     fontSize: '13px',
     display: 'inline-flex',
@@ -194,7 +194,7 @@ export default function BankAccounts() {
     padding: '8px 16px',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontFamily: 'Nunito, sans-serif',
+    fontFamily: 'var(--body-font)',
     fontWeight: 700,
     fontSize: '13px',
   }
@@ -221,7 +221,7 @@ export default function BankAccounts() {
   }
 
   return (
-    <div style={{ fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ fontFamily: 'var(--body-font)' }}>
       <PageHeader title="Bank Accounts" breadcrumbs={['Accounts', 'Bank Accounts']} />
 
       {/* KPI Stats Strip */}
@@ -269,7 +269,7 @@ export default function BankAccounts() {
       </div>
 
       {/* Stylized Digital Bank Cards Grid */}
-      <h3 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: '16px', color: 'var(--text-primary)', marginBottom: '14px' }}>My Bank Cards</h3>
+      <h3 style={{ fontFamily: 'var(--heading-font)', fontWeight: 800, fontSize: '16px', color: 'var(--text-primary)', marginBottom: '14px' }}>My Bank Cards</h3>
       
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
@@ -301,7 +301,7 @@ export default function BankAccounts() {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                fontFamily: 'Syne, sans-serif'
+                fontFamily: 'var(--heading-font)'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
@@ -338,7 +338,7 @@ export default function BankAccounts() {
       {/* Bank Accounts Table Details */}
       <div style={cardStyle}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-          <h3 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: '15px', color: 'var(--text-primary)', margin: 0 }}>Registered Accounts</h3>
+          <h3 style={{ fontFamily: 'var(--heading-font)', fontWeight: 800, fontSize: '15px', color: 'var(--text-primary)', margin: 0 }}>Registered Accounts</h3>
           <button style={btnP} onClick={() => { setForm({ ...BLANK_FORM }); setAddModal(true) }}>
             <i className="ri-add-line" />Add Bank Account
           </button>
@@ -438,7 +438,7 @@ export default function BankAccounts() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={() => setAddModal(false)}>
           <form style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }} onClick={e => e.stopPropagation()} onSubmit={handleCreate}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>New Bank Account</span>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>New Bank Account</span>
               <button type="button" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setAddModal(false)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px', display: 'grid', gap: '16px' }}>
@@ -504,7 +504,7 @@ export default function BankAccounts() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={() => setEditModal(null)}>
           <form style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }} onClick={e => e.stopPropagation()} onSubmit={handleUpdate}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Edit Bank Account</span>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Edit Bank Account</span>
               <button type="button" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setEditModal(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px', display: 'grid', gap: '16px' }}>
@@ -570,7 +570,7 @@ export default function BankAccounts() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={() => setConfirmDelete(null)}>
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
             <div style={{ background: '#ef4444', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Deactivate Bank Account</span>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Deactivate Bank Account</span>
               <button type="button" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setConfirmDelete(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px', textAlign: 'center' }}>

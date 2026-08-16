@@ -70,7 +70,7 @@ export default function DynamicPricingPage() {
           >
             <h1
               style={{
-                fontFamily: "Syne, sans-serif",
+                fontFamily: "var(--heading-font)",
                 fontSize: isMobile ? "24px" : "36px",
                 fontWeight: 800,
                 color: "white",
@@ -139,7 +139,7 @@ export default function DynamicPricingPage() {
                       selectedProductId === product.id ? "#F0FFF4" : "white",
                     cursor: "pointer",
                     textAlign: "center",
-                    fontFamily: "Nunito, sans-serif",
+                    fontFamily: "var(--body-font)",
                     fontSize: "14px",
                     fontWeight: selectedProductId === product.id ? 700 : 500,
                     color:
@@ -228,7 +228,7 @@ export default function DynamicPricingPage() {
                   </p>
                   <p
                     style={{
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                       fontSize: "36px",
                       fontWeight: 800,
                       color: "#1B4332",
@@ -264,7 +264,7 @@ export default function DynamicPricingPage() {
                   </p>
                   <p
                     style={{
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "var(--heading-font)",
                       fontSize: "36px",
                       fontWeight: 800,
                       color: "#1B4332",
@@ -321,7 +321,7 @@ export default function DynamicPricingPage() {
               >
                 <h3
                   style={{
-                    fontFamily: "Syne, sans-serif",
+                    fontFamily: "var(--heading-font)",
                     fontSize: "18px",
                     fontWeight: 700,
                     color: "#111827",

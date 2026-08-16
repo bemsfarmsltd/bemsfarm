@@ -7,7 +7,7 @@ export default function PageHeader({ title, subtitle, actions }) {
       flexWrap: 'wrap',
       gap: 16,
       marginBottom: 24,
-      fontFamily: 'Nunito, sans-serif',
+      fontFamily: 'var(--body-font)',
     }}>
       <div>
         <h1 style={{
@@ -15,7 +15,7 @@ export default function PageHeader({ title, subtitle, actions }) {
           fontWeight: 800,
           color: 'var(--text-primary)',
           margin: 0,
-          fontFamily: 'Syne, sans-serif',
+          fontFamily: 'var(--heading-font)',
           letterSpacing: '-0.02em',
           lineHeight: 1.2,
         }}>

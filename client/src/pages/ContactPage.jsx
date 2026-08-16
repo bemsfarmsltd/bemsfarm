@@ -156,7 +156,7 @@ export default function ContactPage() {
           </div>
           <h1
             style={{
-              fontFamily: "Syne, sans-serif",
+              fontFamily: "var(--heading-font)",
               fontSize: isMobile ? "32px" : "48px",
               fontWeight: 800,
               marginBottom: "12px",

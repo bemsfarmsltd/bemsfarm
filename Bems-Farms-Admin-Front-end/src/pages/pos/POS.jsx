@@ -36,11 +36,11 @@ const fmt = n => '₦' + Number(n||0).toLocaleString('en-NG', { minimumFractionD
 const genOrderId = () => 'BF-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-5)
 const POS_RETURN_REASONS = ['Damaged on delivery','Wrong item sent','Quality below standard','Spoiled / Already expired','Item missing from order','Incorrect quantity','Customer changed mind','Packaging damaged']
 
-const inp = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
+const inp = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
 const LBL = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:4 }
-const btnP = { display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#0ab39c',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 16px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
-const btnD = { display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
+const btnP = { display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#0ab39c',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'8px 16px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
+const btnD = { display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
 
 function Overlay({ onClick }) {
   return <div onClick={onClick} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
@@ -58,7 +58,7 @@ function MHead({ title, onClose, color='#1B4332', icon }) {
   return (
     <div style={{ background:color,color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:12,flexShrink:0 }}>
       {icon&&<div style={{ width:40,height:40,borderRadius:10,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0 }}>{icon}</div>}
-      <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:15,flex:1 }}>{title}</span>
+      <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:15,flex:1 }}>{title}</span>
       <button onClick={onClose} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20,display:'flex',padding:4 }}><i className="ri-close-line"/></button>
     </div>
   )
@@ -447,7 +447,7 @@ export default function POS() {
   const BG2 = '#f9fafb' // secondary bg
 
   return (
-    <div style={{ height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--bg-muted)', fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--bg-muted)', fontFamily:'var(--body-font)' }}>
       <style>{`
         /* The topbar packs logo + search + clock + exit + avatar into one
            row — on narrow screens there isn't room for all of it, so drop
@@ -730,7 +730,7 @@ export default function POS() {
                 style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'0 12px', height:32, borderRadius:8, border:'none',
                   background: txnVerifyStatus==='found'?'#0ab39c':'#405189', color:'#fff',
                   cursor: txnLastFour.length<4||txnVerifyStatus==='found'?'not-allowed':'pointer',
-                  fontSize:12, fontWeight:700, fontFamily:'Nunito,sans-serif', opacity:txnLastFour.length<4&&txnVerifyStatus!=='found'?0.5:1, flexShrink:0 }}>
+                  fontSize:12, fontWeight:700, fontFamily:'var(--body-font)', opacity:txnLastFour.length<4&&txnVerifyStatus!=='found'?0.5:1, flexShrink:0 }}>
                 {txnVerifyStatus==='loading' ? <><i className="ri-loader-4-line"/>Checking…</>
                   : txnVerifyStatus==='found'  ? <><i className="ri-check-double-line"/>Verified</>
                   : <><i className="ri-search-line"/>Verify</>}
@@ -897,7 +897,7 @@ export default function POS() {
                 <span style={{ background:'#0ab39c', color:'#fff', display:'flex', alignItems:'center', padding:'0 16px', fontSize:20 }}><i className="ri-barcode-line"/></span>
                 <input ref={scanModalInputRef} type="text" placeholder="Scan barcode or type SKU + Enter…" value={scanCode} autoFocus autoComplete="off"
                   onChange={e => setScanCode(e.target.value)} onKeyDown={e => { if (e.key==='Enter') scannerAddProduct(scanCode) }}
-                  style={{ flex:1, border:'none', outline:'none', padding:'10px 14px', fontSize:15, fontWeight:500, fontFamily:'Nunito,sans-serif', color:'var(--text-primary)' }}/>
+                  style={{ flex:1, border:'none', outline:'none', padding:'10px 14px', fontSize:15, fontWeight:500, fontFamily:'var(--body-font)', color:'var(--text-primary)' }}/>
                 <button onClick={() => scannerAddProduct(scanCode)} style={{ ...btnP, borderRadius:0, padding:'0 20px' }}><i className="ri-add-line"/>Add</button>
               </div>
             </div>
@@ -1027,7 +1027,7 @@ export default function POS() {
             <div style={{ display:'flex', border:`1.5px solid var(--border)`, borderRadius:8, overflow:'hidden', marginBottom:12 }}>
               <span style={{ background:BG2, padding:'0 12px', display:'flex', alignItems:'center', fontSize:15, color:S, borderRight:`1px solid ${B}` }}>₦</span>
               <input type="number" placeholder="0.00" value={cashReceived} onChange={e => setCashReceived(e.target.value)} autoFocus
-                style={{ flex:1, border:'none', outline:'none', padding:'9px 12px', fontSize:14, fontFamily:'Nunito,sans-serif', color:'var(--text-primary)' }}/>
+                style={{ flex:1, border:'none', outline:'none', padding:'9px 12px', fontSize:14, fontFamily:'var(--body-font)', color:'var(--text-primary)' }}/>
             </div>
             <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:20 }}>
               {[500,1000,2000,5000].map(a=><button key={a} onClick={()=>setCashReceived(String(a))} style={{ ...btnL, flex:1 }}>{fmt(a)}</button>)}
@@ -1202,7 +1202,7 @@ export default function POS() {
       {activeModal==='invoice' && (
         <ModalBox maxWidth={680}>
           <div style={{ background:'var(--bg-card)', padding:'14px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', flexWrap:'wrap', gap:12, flexShrink:0 }}>
-            <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15, flex:1 }}>Receipt Preview</span>
+            <span style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:15, flex:1 }}>Receipt Preview</span>
             <div style={{ display:'flex', gap:8 }}>
               <button style={btnL} onClick={printReceipt}><i className="ri-file-pdf-2-line"/>PDF</button>
               <button style={btnL} onClick={() => emailReceipt(orderId, total)}><i className="ri-mail-line"/>Email</button>
@@ -1214,7 +1214,7 @@ export default function POS() {
             <div style={{ border:`1px solid ${B}`, padding:24, borderRadius:10 }}>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:20 }}>
                 <span style={{ fontSize:15, fontWeight:700 }}>{orderId}</span>
-                <div style={{ fontSize:18, fontWeight:800, color:'#0ab39c' }}>🌾 Bems Farms</div>
+                <div style={{ fontFamily:'var(--custom-font)', fontSize:24, fontWeight:700, color:'#0ab39c' }}>🌾 Bems Farms</div>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
                 <div><p style={{ color:S, marginBottom:4, fontSize:12 }}>Issued On:</p><strong style={{ fontSize:14 }}>{new Date().toLocaleDateString('en-NG',{day:'numeric',month:'long',year:'numeric'})}</strong></div>
@@ -1332,7 +1332,7 @@ export default function POS() {
       {activeModal==='receiptDetail' && viewReceipt && (
         <ModalBox maxWidth={680}>
           <div style={{ background:'var(--bg-card)', padding:'14px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', flexWrap:'wrap', gap:12, flexShrink:0 }}>
-            <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15, flex:1 }}>Receipt {viewReceipt.receipt_number}</span>
+            <span style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:15, flex:1 }}>Receipt {viewReceipt.receipt_number}</span>
             <div style={{ display:'flex', gap:8 }}>
               <button style={btnL} onClick={printReceipt}><i className="ri-printer-line"/>Print</button>
               <button style={btnL} onClick={() => emailReceipt(viewReceipt.receipt_number, viewReceipt.total)}><i className="ri-mail-line"/>Email</button>
@@ -1387,7 +1387,7 @@ export default function POS() {
           <div style={{ background:'var(--bg-card)', borderRadius:16, width:'100%', maxWidth:380, boxShadow:'0 24px 48px rgba(0,0,0,.3)' }}>
             <div style={{ padding:'32px 24px', textAlign:'center' }}>
               <div style={{ width:80, height:80, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:49 }}>✅</div>
-              <h5 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:20, marginBottom:8 }}>Payment Successful!</h5>
+              <h5 style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:20, marginBottom:8 }}>Payment Successful!</h5>
               <p style={{ color:S, marginBottom:20 }}>Transaction processed successfully.</p>
               <div style={{ marginBottom:20 }}>
                 <small style={{ color:S }}>Amount</small>
@@ -1556,7 +1556,7 @@ export default function POS() {
                       <div style={{ display:'flex', gap:8 }}>
                         {['Cash','Wallet Credit'].map(m=>(
                           <button key={m} onClick={()=>setReturnForm(f=>({...f,refundMethod:m}))}
-                            style={{ flex:1, padding:'8px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:12, background:returnForm.refundMethod===m?'#f06548':'var(--border)', color:returnForm.refundMethod===m?'#fff':'#374151' }}>
+                            style={{ flex:1, padding:'8px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:12, background:returnForm.refundMethod===m?'#f06548':'var(--border)', color:returnForm.refundMethod===m?'#fff':'#374151' }}>
                             {m==='Cash'?'💵':'👛'} {m}
                           </button>
                         ))}

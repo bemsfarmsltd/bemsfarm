@@ -42,7 +42,7 @@ function describe(a) {
   }
 }
 
-const inp = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
+const inp = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'var(--body-font)', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
 const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
 
 function formatDate(d) {
@@ -99,7 +99,7 @@ export default function ActivityLog() {
   const clearFilters = () => { setSearch(''); setFilterType('all'); setDateFrom(''); setDateTo('') }
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <PageHeader
         title="Activity Log"
         subtitle="Real platform events — logins, orders, admin product edits, AI chats"
@@ -116,7 +116,7 @@ export default function ActivityLog() {
           <div key={k.label} style={{ ...card, padding:'14px 16px', display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
             <div>
               <div style={{ fontSize:11, color:'#64748b', marginBottom:4 }}>{k.label}</div>
-              <div style={{ fontSize:18, fontWeight:800, color:'var(--text-primary)', fontFamily:'Syne, sans-serif', lineHeight:1 }}>{k.val}</div>
+              <div style={{ fontSize:18, fontWeight:800, color:'var(--text-primary)', fontFamily:'var(--heading-font)', lineHeight:1 }}>{k.val}</div>
             </div>
             <div style={{ width:38, height:38, borderRadius:9, background:k.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <i className={k.icon} style={{ color:k.color, fontSize:18 }} />
@@ -134,20 +134,20 @@ export default function ActivityLog() {
           </div>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="From" style={{ ...inp, width:'auto' }} />
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} title="To" style={{ ...inp, width:'auto' }} />
-          <button onClick={clearFilters} style={{ padding:'9px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:12, fontFamily:'Nunito, sans-serif', fontWeight:600, color:'var(--text-secondary)', whiteSpace:'nowrap' }}>Clear</button>
+          <button onClick={clearFilters} style={{ padding:'9px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:12, fontFamily:'var(--body-font)', fontWeight:600, color:'var(--text-secondary)', whiteSpace:'nowrap' }}>Clear</button>
         </div>
       </div>
 
       {/* Type pills */}
       <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:20 }}>
-        <button onClick={() => setFilterType('all')} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'5px 12px', borderRadius:7, border:'none', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Nunito, sans-serif', background: filterType==='all'?'#1B4332':'#f8fafc', color: filterType==='all'?'#fff':'#64748b' }}>
+        <button onClick={() => setFilterType('all')} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'5px 12px', borderRadius:7, border:'none', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'var(--body-font)', background: filterType==='all'?'#1B4332':'#f8fafc', color: filterType==='all'?'#fff':'#64748b' }}>
           All Events ({total})
         </button>
         {allTypes.map(t => {
           const cfg = TYPE_CFG[t] || fallbackCfg(t)
           const isActive = filterType===t
           return (
-            <button key={t} onClick={() => setFilterType(t)} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'5px 12px', borderRadius:7, border:'none', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'Nunito, sans-serif', background: isActive?cfg.color:'#f8fafc', color: isActive?'#fff':'#64748b' }}>
+            <button key={t} onClick={() => setFilterType(t)} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'5px 12px', borderRadius:7, border:'none', fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'var(--body-font)', background: isActive?cfg.color:'#f8fafc', color: isActive?'#fff':'#64748b' }}>
               <i className={cfg.icon} />{cfg.label} ({typeCounts[t]})
             </button>
           )

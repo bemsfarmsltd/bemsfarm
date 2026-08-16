@@ -20,8 +20,10 @@ export const colors = {
 };
 
 export const fonts = {
-  heading: "'Syne', sans-serif",
-  body: "'Nunito', sans-serif",
+  heading: "'Playfair Display', serif",
+  body: "'Plus Jakarta Sans', sans-serif",
+  // Wordmark / hero-accent use only — not for general headings or body text.
+  custom: "'Sacramento', cursive",
 };
 
 // ── BUTTONS ──────────────────────────────────────────────────

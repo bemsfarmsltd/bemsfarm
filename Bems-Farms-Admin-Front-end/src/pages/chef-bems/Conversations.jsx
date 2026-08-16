@@ -36,7 +36,7 @@ const btnStyle = (bg, color, border) => ({
   display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px',
   borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer',
   background: bg, color, border: border ?? 'none',
-  fontFamily:'Nunito, sans-serif',
+  fontFamily:'var(--body-font)',
 })
 
 function Spinner({ size = 32 }) {
@@ -151,7 +151,7 @@ export default function Conversations() {
   const selConvo = selected ? convos.find(c => c.id === selected.id) || selected : null
 
   return (
-    <div style={{ fontFamily:'Nunito, sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       <PageHeader
         title="Chef Bems AI — Conversations"
@@ -171,7 +171,7 @@ export default function Conversations() {
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
               <i className={k.icon} style={{ fontSize:22, color:k.color }} />
               <div>
-                <div style={{ fontWeight:800, fontSize:18, color:k.color, fontFamily:'Syne, sans-serif', lineHeight:1 }}>{k.value}</div>
+                <div style={{ fontWeight:800, fontSize:18, color:k.color, fontFamily:'var(--heading-font)', lineHeight:1 }}>{k.value}</div>
                 <div style={{ fontSize:10, color:k.color, opacity:0.85, marginTop:2 }}>{k.label}</div>
               </div>
             </div>
@@ -202,11 +202,11 @@ export default function Conversations() {
             <div style={{ position:'relative', marginBottom:8 }}>
               <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
               <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search customer, session, message..."
-                style={{ width:'100%', padding:'7px 10px 7px 30px', borderRadius:8, border:'1px solid var(--border)', fontSize:12, fontFamily:'Nunito, sans-serif', outline:'none', boxSizing:'border-box' }} />
+                style={{ width:'100%', padding:'7px 10px 7px 30px', borderRadius:8, border:'1px solid var(--border)', fontSize:12, fontFamily:'var(--body-font)', outline:'none', boxSizing:'border-box' }} />
             </div>
             <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
               {[{key:'all',label:`All (${total})`},{key:'pending',label:'Pending'},{key:'resolved',label:'Resolved'},{key:'escalated',label:'Escalated'}].map(f => (
-                <button key={f.key} onClick={() => { setStatus(f.key); setPage(1) }} style={{ fontSize:10, padding:'3px 8px', borderRadius:6, border:'none', cursor:'pointer', fontFamily:'Nunito, sans-serif', background: statusFilter===f.key ? '#1B4332' : '#f1f5f9', color: statusFilter===f.key ? '#fff' : '#475569' }}>
+                <button key={f.key} onClick={() => { setStatus(f.key); setPage(1) }} style={{ fontSize:10, padding:'3px 8px', borderRadius:6, border:'none', cursor:'pointer', fontFamily:'var(--body-font)', background: statusFilter===f.key ? '#1B4332' : '#f1f5f9', color: statusFilter===f.key ? '#fff' : '#475569' }}>
                   {f.label}
                 </button>
               ))}
@@ -230,7 +230,7 @@ export default function Conversations() {
               const displayName = c.customer_name || c.session_id || 'Unknown'
               const displayTime = c.created_at ? new Date(c.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : ''
               return (
-                <button key={c.id} onClick={() => setSelected(c)} style={{ width:'100%', textAlign:'left', border:'none', borderBottom:'1px solid #f9fafb', padding:'12px 14px', cursor:'pointer', background: isActive ? 'rgba(27,67,50,0.07)' : 'transparent', borderLeft:`3px solid ${isActive ? '#1B4332' : 'transparent'}`, display:'block', fontFamily:'Nunito, sans-serif' }}>
+                <button key={c.id} onClick={() => setSelected(c)} style={{ width:'100%', textAlign:'left', border:'none', borderBottom:'1px solid #f9fafb', padding:'12px 14px', cursor:'pointer', background: isActive ? 'rgba(27,67,50,0.07)' : 'transparent', borderLeft:`3px solid ${isActive ? '#1B4332' : 'transparent'}`, display:'block', fontFamily:'var(--body-font)' }}>
                   <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
                     <div style={{ width:34, height:34, borderRadius:'50%', background:AVATAR_COLORS[i%AVATAR_COLORS.length], color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:11, flexShrink:0 }}>
                       {ini(displayName)}
@@ -429,8 +429,8 @@ export default function Conversations() {
               This conversation will be permanently deleted. This cannot be undone.
             </div>
             <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => setConfirmDeleteId(null)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-primary)', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:600, fontSize:13 }}>Cancel</button>
-              <button onClick={() => deleteConvo(confirmDeleteId)} disabled={actionLoading} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'Nunito, sans-serif', fontWeight:700, fontSize:13 }}>
+              <button onClick={() => setConfirmDeleteId(null)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-primary)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
+              <button onClick={() => deleteConvo(confirmDeleteId)} disabled={actionLoading} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }}>
                 {actionLoading ? 'Deleting…' : 'Delete'}
               </button>
             </div>

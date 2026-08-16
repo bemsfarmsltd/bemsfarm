@@ -32,7 +32,7 @@ const EMAILS = [
 const inputStyle = {
   width: '100%', padding: '8px 12px', borderRadius: 8,
   border: '1px solid var(--border-strong)', fontSize: 13,
-  fontFamily: 'Nunito, sans-serif', outline: 'none',
+  fontFamily: 'var(--body-font)', outline: 'none',
   boxSizing: 'border-box',
 }
 
@@ -44,7 +44,7 @@ const card = {
 const btnBase = {
   display: 'inline-flex', alignItems: 'center', gap: 6,
   padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-  cursor: 'pointer', fontFamily: 'Nunito, sans-serif', border: 'none',
+  cursor: 'pointer', fontFamily: 'var(--body-font)', border: 'none',
 }
 
 function Modal({ open, onClose, title, children, maxWidth = 560 }) {
@@ -54,7 +54,7 @@ function Modal({ open, onClose, title, children, maxWidth = 560 }) {
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)' }} />
       <div style={{ position: 'relative', width: '100%', maxWidth, background: 'var(--bg-card)', borderRadius: 14, boxShadow: '0 8px 32px rgba(0,0,0,0.18)', padding: 28, margin: '0 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne, sans-serif' }}>{title}</span>
+          <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--heading-font)' }}>{title}</span>
           <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: 20 }}>
             <i className="ri-close-line" />
           </button>
@@ -109,7 +109,7 @@ export default function Email() {
   }
 
   return (
-    <div style={{ fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ fontFamily: 'var(--body-font)' }}>
       <PageHeader
         title="Mailbox"
         subtitle="Manage emails for Bems Farms"
@@ -138,7 +138,7 @@ export default function Email() {
                   border: 'none', cursor: 'pointer',
                   color: folder === f.key ? '#1B4332' : '#374151',
                   fontWeight: folder === f.key ? 700 : 400,
-                  fontSize: 13, fontFamily: 'Nunito, sans-serif',
+                  fontSize: 13, fontFamily: 'var(--body-font)',
                 }}
               >
                 <i className={f.icon} style={{ fontSize: 16, flexShrink: 0 }} />
@@ -294,7 +294,7 @@ export default function Email() {
 
               {/* Email body */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'var(--text-primary)', marginBottom: 16 }}>{selected.subject}</h2>
+                <h2 style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--heading-font)', color: 'var(--text-primary)', marginBottom: 16 }}>{selected.subject}</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                   <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#1B433218', color: '#1B4332', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16 }}>
                     {selected.from.charAt(0)}
@@ -315,12 +315,12 @@ export default function Email() {
                 <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
                     <span style={{ fontSize: 12, color: 'var(--text-light)', fontWeight: 600 }}>To:</span>
-                    <input defaultValue={selected.email} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 12, fontFamily: 'Nunito, sans-serif', color: 'var(--text-secondary)' }} />
+                    <input defaultValue={selected.email} style={{ flex: 1, border: 'none', outline: 'none', fontSize: 12, fontFamily: 'var(--body-font)', color: 'var(--text-secondary)' }} />
                   </div>
                   <textarea
                     placeholder="Type your reply..."
                     rows={3}
-                    style={{ width: '100%', border: 'none', outline: 'none', padding: '10px 12px', fontSize: 12, fontFamily: 'Nunito, sans-serif', resize: 'none', boxSizing: 'border-box' }}
+                    style={{ width: '100%', border: 'none', outline: 'none', padding: '10px 12px', fontSize: 12, fontFamily: 'var(--body-font)', resize: 'none', boxSizing: 'border-box' }}
                   />
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
                     <label style={{ cursor: 'pointer', color: 'var(--text-light)' }}>

@@ -29,7 +29,7 @@ const inp = {
   padding: '8px 12px',
   border: `1.5px solid ${B}`,
   borderRadius: 8,
-  fontFamily: 'Nunito, sans-serif',
+  fontFamily: 'var(--body-font)',
   fontSize: 13,
   outline: 'none',
   background: 'var(--bg-card)',
@@ -88,7 +88,7 @@ function StatCard({ label, value, icon, color, bg, sub }) {
       </div>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 11, color: S, fontWeight: 600, marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif', lineHeight: 1.1 }}>{value}</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--heading-font)', lineHeight: 1.1 }}>{value}</div>
         {sub && <div style={{ fontSize: 10, color: S, marginTop: 2 }}>{sub}</div>}
       </div>
     </div>
@@ -108,7 +108,7 @@ function SegmentCard({ label, count, total, icon, color, bg, desc }) {
           {pct}%
         </span>
       </div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>{fmtN(count)}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--heading-font)' }}>{fmtN(count)}</div>
       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginTop: 2 }}>{label}</div>
       <div style={{ fontSize: 11, color: S, marginTop: 4 }}>{desc}</div>
     </div>
@@ -152,12 +152,12 @@ function Pagination({ page, pages, total, limit, onChange }) {
         <button
           disabled={page === 1}
           onClick={() => onChange(1)}
-          style={{ padding: '5px 10px', borderRadius: 7, border: `1.5px solid ${B}`, background: page === 1 ? '#f9fafb' : '#fff', color: page === 1 ? '#9ca3af' : '#374151', fontSize: 12, cursor: page === 1 ? 'default' : 'pointer', fontFamily: 'Nunito, sans-serif' }}
+          style={{ padding: '5px 10px', borderRadius: 7, border: `1.5px solid ${B}`, background: page === 1 ? '#f9fafb' : '#fff', color: page === 1 ? '#9ca3af' : '#374151', fontSize: 12, cursor: page === 1 ? 'default' : 'pointer', fontFamily: 'var(--body-font)' }}
         >«</button>
         <button
           disabled={page === 1}
           onClick={() => onChange(page - 1)}
-          style={{ padding: '5px 12px', borderRadius: 7, border: `1.5px solid ${B}`, background: page === 1 ? '#f9fafb' : '#fff', color: page === 1 ? '#9ca3af' : '#374151', fontSize: 12, cursor: page === 1 ? 'default' : 'pointer', fontFamily: 'Nunito, sans-serif' }}
+          style={{ padding: '5px 12px', borderRadius: 7, border: `1.5px solid ${B}`, background: page === 1 ? '#f9fafb' : '#fff', color: page === 1 ? '#9ca3af' : '#374151', fontSize: 12, cursor: page === 1 ? 'default' : 'pointer', fontFamily: 'var(--body-font)' }}
         >‹ Prev</button>
         {[...Array(Math.min(pages, 5))].map((_, i) => {
           let p = i + 1
@@ -170,19 +170,19 @@ function Pagination({ page, pages, total, limit, onChange }) {
             <button
               key={p}
               onClick={() => onChange(p)}
-              style={{ padding: '5px 10px', borderRadius: 7, border: `1.5px solid ${page === p ? '#1B4332' : B}`, background: page === p ? '#1B4332' : '#fff', color: page === p ? '#fff' : '#374151', fontSize: 12, cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: page === p ? 700 : 400 }}
+              style={{ padding: '5px 10px', borderRadius: 7, border: `1.5px solid ${page === p ? '#1B4332' : B}`, background: page === p ? '#1B4332' : '#fff', color: page === p ? '#fff' : '#374151', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--body-font)', fontWeight: page === p ? 700 : 400 }}
             >{p}</button>
           )
         })}
         <button
           disabled={page >= pages}
           onClick={() => onChange(page + 1)}
-          style={{ padding: '5px 12px', borderRadius: 7, border: `1.5px solid ${B}`, background: page >= pages ? '#f9fafb' : '#fff', color: page >= pages ? '#9ca3af' : '#374151', fontSize: 12, cursor: page >= pages ? 'default' : 'pointer', fontFamily: 'Nunito, sans-serif' }}
+          style={{ padding: '5px 12px', borderRadius: 7, border: `1.5px solid ${B}`, background: page >= pages ? '#f9fafb' : '#fff', color: page >= pages ? '#9ca3af' : '#374151', fontSize: 12, cursor: page >= pages ? 'default' : 'pointer', fontFamily: 'var(--body-font)' }}
         >Next ›</button>
         <button
           disabled={page >= pages}
           onClick={() => onChange(pages)}
-          style={{ padding: '5px 10px', borderRadius: 7, border: `1.5px solid ${B}`, background: page >= pages ? '#f9fafb' : '#fff', color: page >= pages ? '#9ca3af' : '#374151', fontSize: 12, cursor: page >= pages ? 'default' : 'pointer', fontFamily: 'Nunito, sans-serif' }}
+          style={{ padding: '5px 10px', borderRadius: 7, border: `1.5px solid ${B}`, background: page >= pages ? '#f9fafb' : '#fff', color: page >= pages ? '#9ca3af' : '#374151', fontSize: 12, cursor: page >= pages ? 'default' : 'pointer', fontFamily: 'var(--body-font)' }}
         >»</button>
       </div>
     </div>
@@ -249,7 +249,7 @@ export default function CustomerReport() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ fontFamily: 'Nunito, sans-serif' }}>
+    <div style={{ fontFamily: 'var(--body-font)' }}>
 
       {/* ── Page Header ──────────────────────────────────────────────────────── */}
       <PageHeader
@@ -267,13 +267,13 @@ export default function CustomerReport() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => handleExport('CSV')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: `1.5px solid ${B}`, background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Nunito, sans-serif' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: `1.5px solid ${B}`, background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--body-font)' }}
             >
               <i className="ri-file-text-line" style={{ color: '#0ab39c' }} /> Export CSV
             </button>
             <button
               onClick={() => handleExport('PDF')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: '#1B4332', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'Nunito, sans-serif' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: '#1B4332', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'var(--body-font)' }}
             >
               <i className="ri-file-pdf-line" /> Export PDF
             </button>
@@ -384,13 +384,13 @@ export default function CustomerReport() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => handleExport('CSV')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: `1.5px solid ${B}`, background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Nunito, sans-serif', whiteSpace: 'nowrap' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: `1.5px solid ${B}`, background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'var(--body-font)', whiteSpace: 'nowrap' }}
             >
               <i className="ri-download-line" style={{ color: '#0ab39c' }} /> CSV
             </button>
             <button
               onClick={() => handleExport('PDF')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: `1.5px solid ${B}`, background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'Nunito, sans-serif', whiteSpace: 'nowrap' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 14px', borderRadius: 8, border: `1.5px solid ${B}`, background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'var(--body-font)', whiteSpace: 'nowrap' }}
             >
               <i className="ri-file-pdf-line" style={{ color: '#f06548' }} /> PDF
             </button>
@@ -403,7 +403,7 @@ export default function CustomerReport() {
         {/* Table header bar */}
         <div style={{ padding: '14px 18px', borderBottom: `1px solid ${B}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', fontFamily: 'var(--heading-font)' }}>
               Top Customers
             </span>
             <span style={{ fontSize: 12, color: S, marginLeft: 10 }}>
@@ -561,7 +561,7 @@ export default function CustomerReport() {
         {/* Growth Chart */}
         <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: `1px solid ${B}` }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', fontFamily: 'var(--heading-font)' }}>
               Customer Growth
             </span>
           </div>
@@ -607,7 +607,7 @@ export default function CustomerReport() {
                   <i className={item.icon} style={{ color: item.color, fontSize: 14 }} />
                   <span style={{ fontSize: 10, fontWeight: 700, color: S, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.label}</span>
                 </div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: item.color, fontFamily: 'Syne, sans-serif' }}>{item.value}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: item.color, fontFamily: 'var(--heading-font)' }}>{item.value}</div>
               </div>
             ))}
           </div>
@@ -616,7 +616,7 @@ export default function CustomerReport() {
         {/* Customer Segments */}
         <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: `1px solid ${B}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', fontFamily: 'var(--heading-font)' }}>
               Customer Segments
             </span>
             <span style={{ fontSize: 11, color: S }}>{fmtN(stats.total)} total</span>

@@ -24,9 +24,9 @@ const calcTotal = (items,fee,disc) => calcSub(items)+Number(fee||0)-Number(disc|
 
 const BLANK_FORM = { customerId:'', customName:'', customPhone:'', customEmail:'', customAddress:'', paymentMethod:'Bank Transfer', dueDate:'', notes:'', discount:0, deliveryFee:0, items:[{ name:'',qty:1,unit:'kg',price:0,total:0 }] }
 
-const inp  = { display:'block',width:'100%',padding:'9px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box' }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:600,fontSize:13 }
+const inp  = { display:'block',width:'100%',padding:'9px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box' }
+const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
+const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
 const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:6 }
 const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap' }
 const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
@@ -37,7 +37,7 @@ function Modal({ title, onClose, children, maxWidth=600 }) {
     <div style={{ position:'fixed',inset:0,zIndex:1055,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
       <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth,boxShadow:'0 8px 40px rgba(0,0,0,0.18)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
         <div style={{ background:'#1B4332',color:'#fff',padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0 }}>
-          <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:15 }}>{title}</span>
+          <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:15 }}>{title}</span>
           <button onClick={onClose} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:20,display:'flex',padding:4 }}><i className="ri-close-line"/></button>
         </div>
         <div style={{ padding:24,overflowY:'auto' }}>{children}</div>
@@ -156,9 +156,9 @@ export default function Invoices() {
   const STATUS_TABS = [{ key:'all',label:'All Invoices' },...Object.entries(STATUS_CFG).map(([k,v])=>({ key:k,label:v.label }))]
 
   return (
-    <div style={{ fontFamily:'Nunito,sans-serif' }}>
+    <div style={{ fontFamily:'var(--body-font)' }}>
       <div style={{ marginBottom:24 }}>
-        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:22,color:'var(--text-primary)' }}>Invoices</div>
+        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:22,color:'var(--text-primary)' }}>Invoices</div>
         <div style={{ fontSize:12,color:'var(--text-muted)',marginTop:2 }}>Orders / Invoices</div>
       </div>
 
@@ -206,7 +206,7 @@ export default function Invoices() {
           <div style={{ display:'flex',whiteSpace:'nowrap',padding:'0 8px' }}>
             {STATUS_TABS.map(t=>(
               <button key={t.key} onClick={()=>setFilterStatus(t.key)}
-                style={{ background:'none',border:'none',cursor:'pointer',padding:'10px 12px',fontSize:13,fontWeight:filterStatus===t.key?700:400,color:filterStatus===t.key?'#1B4332':'#6b7280',borderBottom:filterStatus===t.key?'2px solid #1B4332':'2px solid transparent',fontFamily:'Nunito,sans-serif',whiteSpace:'nowrap' }}>
+                style={{ background:'none',border:'none',cursor:'pointer',padding:'10px 12px',fontSize:13,fontWeight:filterStatus===t.key?700:400,color:filterStatus===t.key?'#1B4332':'#6b7280',borderBottom:filterStatus===t.key?'2px solid #1B4332':'2px solid transparent',fontFamily:'var(--body-font)',whiteSpace:'nowrap' }}>
                 {t.label}
               </button>
             ))}
@@ -307,11 +307,11 @@ export default function Invoices() {
                   <div style={{ background:'#1e293b',color:'#fff',borderRadius:'14px 14px 0 0',padding:'24px 32px' }}>
                     <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between' }}>
                       <div>
-                        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:18,marginBottom:4 }}>BEMS FARMS</div>
+                        <div style={{ fontFamily:'var(--custom-font)',fontWeight:700,fontSize:26,marginBottom:4 }}>Bems Farms</div>
                         <div style={{ fontSize:12,opacity:0.7 }}>Premium Fresh Produce · Lagos, Nigeria</div>
                       </div>
                       <div style={{ textAlign:'right' }}>
-                        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:20,marginBottom:6 }}>{selected.id}</div>
+                        <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:20,marginBottom:6 }}>{selected.id}</div>
                         <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:cfg.bg,color:cfg.color,borderRadius:50,padding:'4px 10px',fontSize:11,fontWeight:600 }}>
                           <i className={cfg.icon}/>{cfg.label}
                         </span>
@@ -518,7 +518,7 @@ export default function Invoices() {
             </div>
             <div style={{ display:'flex',gap:10 }}>
               <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Go Back</button>
-              <button style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#dc2626',color:'#fff',cursor:'pointer',fontFamily:'Nunito,sans-serif',fontWeight:700,fontSize:13,flex:1 }} onClick={cancelInvoice}>
+              <button style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#dc2626',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13,flex:1 }} onClick={cancelInvoice}>
                 <i className="ri-close-circle-line"/>Cancel Invoice
               </button>
             </div>
