@@ -9,6 +9,7 @@ const { protect, requireRole } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const orderAdminSchemas = require("../schemas/orderAdminSchemas");
 const emailService = require("../services/emailService");
+const { restoreOrderStock } = require("../utils/orderStock");
 
 router.use(protect);
 
@@ -112,7 +113,8 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
         dr.vehicle_plate AS driver_plate,
         d.id AS delivery_id, d.status AS delivery_status,
         d.attempts, d.eta_minutes,
-        (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count
+        (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count,
+        (SELECT STRING_AGG(oi.product_name, ', ' ORDER BY oi.id) FROM order_items oi WHERE oi.order_id = o.id) AS item_names
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
       LEFT JOIN drivers dr ON o.driver_id = dr.id
@@ -530,6 +532,28 @@ router.patch("/returns/:id/status", requireRole("superadmin", "manager", "admin"
   }
 });
 
+// ── DELETE /api/admin/orders/returns/:id ─────────────────────────────────
+router.delete("/returns/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+  try {
+    const existing = await pool.query(
+      `SELECT status FROM returns WHERE id = $1 OR refund_ref = $1::text`,
+      [req.params.id]
+    );
+    if (!existing.rows.length) {
+      return res.status(404).json({ message: "Return not found" });
+    }
+    // A refunded return is a completed financial record — don't let it be
+    // erased from the audit trail, same reasoning as other money-movement rows.
+    if (existing.rows[0].status === "refunded") {
+      return res.status(400).json({ message: "Cannot delete a return that has already been refunded." });
+    }
+    await pool.query(`DELETE FROM returns WHERE id = $1 OR refund_ref = $1::text`, [req.params.id]);
+    res.json({ message: "Return deleted" });
+  } catch (err) {
+    next(err);
+  }
+});
+
 
 
 
@@ -645,6 +669,13 @@ router.patch(
         "UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2",
         [status, req.params.id],
       );
+
+      // Only restore on the transition INTO cancelled — fromStatus==='dispute'
+      // is already blocked above, but guard against re-cancelling an
+      // already-cancelled order here too, or stock would be double-restored.
+      if (status === "cancelled" && fromStatus !== "cancelled") {
+        await restoreOrderStock(client, req.params.id);
+      }
 
       await logStatusChange(
         client,
@@ -931,6 +962,7 @@ router.patch(
         "UPDATE orders SET status='cancelled', cancel_reason=$1, cancelled_at=NOW(), updated_at=NOW() WHERE id=$2",
         [reason || null, req.params.id],
       );
+      await restoreOrderStock(client, req.params.id);
 
       await logStatusChange(
         client,

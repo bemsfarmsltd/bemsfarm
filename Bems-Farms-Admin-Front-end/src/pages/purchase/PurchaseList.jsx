@@ -155,7 +155,7 @@ export default function PurchaseList() {
               <p className="text-muted mb-0">View and manage all purchase orders.</p>
             </div>
             <Link to="/purchase/add" className="btn btn-primary">
-              <i data-lucide="plus" className="size-4 me-1"></i>Add Purchase
+              <i className="ri-add-line size-4 me-1"></i>Add Purchase
             </Link>
           </div>
 
@@ -168,7 +168,7 @@ export default function PurchaseList() {
                 value={searchInput}
                 onChange={handleSearchChange}
               />
-              <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
+              <i className="ri-search-line size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
             </div>
             <select
               className="form-select"
@@ -283,7 +283,7 @@ export default function PurchaseList() {
             <div className="modal-content">
               <div className="modal-header">
                 <h6 className="modal-title">Purchase Order — {viewOrder.reference}</h6>
-                <button className="btn-close" onClick={() => setViewOrder(null)}></button>
+                <button className="btn-close" aria-label="Close" onClick={() => setViewOrder(null)}></button>
               </div>
               <div className="modal-body">
                 <div className="row g-3 mb-4">
@@ -379,7 +379,7 @@ export default function PurchaseList() {
             <div className="modal-content">
               <div className="modal-header">
                 <h6 className="modal-title">Receive Items — {receiveOrder.reference}</h6>
-                <button className="btn-close" onClick={() => setReceiveOrder(null)}></button>
+                <button className="btn-close" aria-label="Close" onClick={() => setReceiveOrder(null)}></button>
               </div>
               <form onSubmit={handleReceiveSubmit}>
                 <div className="modal-body">

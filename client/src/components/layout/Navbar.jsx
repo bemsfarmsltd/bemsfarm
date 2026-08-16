@@ -13,6 +13,7 @@ import { useTheme } from "../../context/ThemeContext";
 import logo from "../../assets/bemsfarms_logo.png";
 import api from "../../services/api";
 import { NAIRA_PER_UNIT } from "../../utils/currency";
+import { STAFF_ROLES } from "../ProtectedRoute";
 
 const NAVBAR_CSS = `
 .bf-navbar-links { display: none; }
@@ -481,6 +482,11 @@ export default function Navbar() {
     : "https://bems-admin.vercel.app";
 
   const isAdmin = ["superadmin", "admin", "manager", "staff"].includes(user?.role);
+  // Fraud Monitor / Forecasting are behind a stricter role gate (see
+  // STAFF_ROLES in ProtectedRoute.jsx, which does NOT include "admin") —
+  // only show these links to roles that can actually open the page, or an
+  // "admin" user gets a dead-looking link that silently bounces them home.
+  const canAccessStaffTools = STAFF_ROLES.includes(user?.role);
 
   const DROPDOWN_ITEMS = [
     { icon: "👤", label: "My Profile", path: "/profile" },
@@ -489,8 +495,12 @@ export default function Navbar() {
     ...(isAdmin
       ? [
           { icon: "⚙️", label: "Admin Panel", path: ADMIN_PANEL_URL },
-          { icon: "🔐", label: "Fraud Monitor", path: "/fraud-detection" },
-          { icon: "📈", label: "Forecasting", path: "/demand-forecasting" },
+          ...(canAccessStaffTools
+            ? [
+                { icon: "🔐", label: "Fraud Monitor", path: "/fraud-detection" },
+                { icon: "📈", label: "Forecasting", path: "/demand-forecasting" },
+              ]
+            : []),
           { icon: "👨‍🍳", label: "AI Chef", path: "/chef-chat" },
         ]
       : []),

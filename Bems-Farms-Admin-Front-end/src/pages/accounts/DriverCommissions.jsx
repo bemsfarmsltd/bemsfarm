@@ -342,7 +342,7 @@ export default function DriverCommissions() {
             onClick={e => e.stopPropagation()}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
               <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Pay Driver Commission</span>
-              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={() => { setSelected(null); setPayConfirm(false); setPayNote('') }}><i className="ri-close-line" /></button>
+              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => { setSelected(null); setPayConfirm(false); setPayNote('') }}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '8px', background: 'var(--bg-hover)', marginBottom: '20px', border: '1px solid var(--border)' }}>
@@ -405,7 +405,7 @@ export default function DriverCommissions() {
             onClick={e => e.stopPropagation()}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
               <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Generate Commissions</span>
-              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={() => setGenerateModal(false)}><i className="ri-close-line" /></button>
+              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setGenerateModal(false)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px' }}>
               <div className="grid-form-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
@@ -437,7 +437,7 @@ export default function DriverCommissions() {
             onClick={e => e.stopPropagation()}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
               <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Edit Commission Status</span>
-              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={() => setEditModal(null)}><i className="ri-close-line" /></button>
+              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setEditModal(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px' }}>
               <div style={{ marginBottom: '16px' }}>
@@ -474,7 +474,7 @@ export default function DriverCommissions() {
                 <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Commission Summary</span>
                 <div style={{ color: '#ffffff', fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>{viewModal.driver_name} · ID: {viewModal.driver_id}</div>
               </div>
-              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={() => setViewModal(null)}><i className="ri-close-line" /></button>
+              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setViewModal(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px' }}>
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>

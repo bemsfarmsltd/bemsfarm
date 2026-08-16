@@ -150,7 +150,7 @@ export default function PurchaseReturns() {
             <h5 className="card-title mb-0">Returns List</h5>
             <div className="d-flex align-items-center gap-2">
               <button className="btn btn-primary" onClick={openAdd}>
-                <i data-lucide="plus" className="size-4 me-1"></i>Add Return
+                <i className="ri-add-line size-4 me-1"></i>Add Return
               </button>
             </div>
           </div>
@@ -234,7 +234,7 @@ export default function PurchaseReturns() {
             <div className="modal-content">
               <div className="modal-header">
                 <h6 className="modal-title">Return Details — {viewReturn.reference || `#RET-${viewReturn.id}`}</h6>
-                <button className="btn-close" onClick={() => setViewReturn(null)}></button>
+                <button className="btn-close" aria-label="Close" onClick={() => setViewReturn(null)}></button>
               </div>
               <div className="modal-body">
                 <div className="row g-3 mb-4">
@@ -307,7 +307,7 @@ export default function PurchaseReturns() {
             <div className="modal-content">
               <div className="modal-header">
                 <h6 className="modal-title">Create Purchase Return</h6>
-                <button className="btn-close" onClick={() => setShowAdd(false)}></button>
+                <button className="btn-close" aria-label="Close" onClick={() => setShowAdd(false)}></button>
               </div>
               <form onSubmit={handleAddSubmit}>
                 <div className="modal-body">

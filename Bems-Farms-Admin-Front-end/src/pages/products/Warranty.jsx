@@ -259,7 +259,7 @@ export default function Warranty() {
                   <i className="ri-shield-check-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>{editItem?'Edit Policy':'Add Warranty Policy'}</span>
-                <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <form onSubmit={saveForm} style={{ padding:24 }}>
                 <div style={{ marginBottom:14 }}>
@@ -310,7 +310,7 @@ export default function Warranty() {
                   <i className="ri-file-list-3-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Claim Detail</span>
-                <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <div style={{ padding:24 }}>
                 {[
@@ -359,7 +359,7 @@ export default function Warranty() {
                   <i className="ri-delete-bin-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Delete Policy?</span>
-                <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <div style={{ padding:24,textAlign:'center' }}>
                 <p style={{ color:S,fontSize:14,marginBottom:24 }}>Delete policy <strong style={{ color:'var(--text-primary)' }}>{editItem.name}</strong>? Products using it will lose warranty coverage.</p>

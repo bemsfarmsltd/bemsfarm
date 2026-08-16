@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require("../db/pool");
 const { sendSubscriptionWelcomeEmail, sendReferralUpgradeEmail, sendMail } = require("../services/emailService");
 const { verifyMonnifyWebhookSignature } = require("../utils/monnify");
+const { restoreOrderStock } = require("../utils/orderStock");
 const crypto = require("crypto");
 
 function generateReferralCode() {
@@ -337,6 +338,9 @@ router.post(
         }
       } else if (status === "reversed") {
         if (orderId) {
+          const prevOrder = await pool.query("SELECT status FROM orders WHERE id = $1", [orderId]);
+          const alreadyCancelled = prevOrder.rows[0]?.status === "cancelled";
+
           // Update order to cancelled/refunded
           await pool.query(
             "UPDATE orders SET status = 'cancelled', updated_at = NOW() WHERE id = $1",
@@ -347,6 +351,12 @@ router.post(
             "UPDATE income SET status = 'reversed' WHERE order_id = $1",
             [String(orderId)]
           );
+          // Restore stock deducted at order creation — same as every other
+          // order-cancellation path. Guard against a duplicate webhook
+          // delivery double-restoring stock for an order already cancelled.
+          if (!alreadyCancelled) {
+            await restoreOrderStock(pool, orderId);
+          }
           console.log(`🔄 Order ${orderId} reversed/cancelled following webhook refund notification.`);
         }
       }

@@ -50,7 +50,6 @@ export default function Footer() {
       links: [
         { label: "About Us", path: "/about" },
         { label: "Contact", path: "/contact" },
-        { label: "Pricing Guide", path: "/dynamic-pricing" },
       ],
     },
   ];

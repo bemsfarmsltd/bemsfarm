@@ -348,7 +348,7 @@ export default function MoneyTransfer() {
           <form style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '460px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }} onClick={e => e.stopPropagation()} onSubmit={handleCreateTransfer}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>New Money Transfer</span>
-              <button type="button" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={() => setTransferModal(false)}><i className="ri-close-line" /></button>
+              <button type="button" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setTransferModal(false)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px', display: 'grid', gap: '16px' }}>
               <div>
@@ -441,7 +441,7 @@ export default function MoneyTransfer() {
                 <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Transfer Receipt</span>
                 <div style={{ color: '#ffffff', fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>Ref: {viewModal.reference}</div>
               </div>
-              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={() => setViewModal(null)}><i className="ri-close-line" /></button>
+              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setViewModal(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px' }}>
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>

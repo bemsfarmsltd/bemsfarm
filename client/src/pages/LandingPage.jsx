@@ -29,13 +29,13 @@ const HERO_IMAGES = [
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isLoggedIn } = useAuth();
   const [emailInput, setEmailInput] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [feedIndex, setFeedIndex] = useState(0);
 
   // Auto-redirect if user is logged in
-  if (isAuthenticated) {
+  if (isLoggedIn) {
     navigate("/home");
   }
 

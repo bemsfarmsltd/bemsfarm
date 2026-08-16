@@ -98,8 +98,14 @@ class AccountsRepository {
   // transfers/etc. can silently end up with the same generated reference.
   async generateReference(client, prefix, table, refCol = "reference") {
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`ref_${prefix}`]);
-    const row = await client.query(`SELECT COUNT(*) FROM ${table}`);
-    const n = parseInt(row.rows[0].count) + 1;
+    // MAX of the existing numeric suffix, not COUNT(*) — COUNT undercounts
+    // (and risks a duplicate reference) if any row was ever deleted.
+    const row = await client.query(
+      `SELECT MAX(CAST(SPLIT_PART(${refCol}, '-', 2) AS INTEGER)) AS max_n
+       FROM ${table} WHERE ${refCol} LIKE $1`,
+      [`${prefix}-%`]
+    );
+    const n = (row.rows[0].max_n || 0) + 1;
     return `${prefix}-${String(n).padStart(4, "0")}`;
   }
 

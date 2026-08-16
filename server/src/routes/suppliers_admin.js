@@ -62,8 +62,13 @@ router.use(protect);
 // suppliers.supplier_code's UNIQUE constraint under concurrency.
 async function nextSupplierCode(client) {
   await client.query("SELECT pg_advisory_xact_lock(hashtext('supplier_code'))");
-  const row = await client.query("SELECT COUNT(*) FROM suppliers");
-  const n   = parseInt(row.rows[0].count) + 1;
+  // MAX of the existing numeric suffix, not COUNT(*) — COUNT undercounts
+  // (and risks a duplicate code) if any supplier was ever deleted.
+  const row = await client.query(
+    `SELECT MAX(CAST(SPLIT_PART(supplier_code, '-', 2) AS INTEGER)) AS max_n
+     FROM suppliers WHERE supplier_code LIKE 'SUP-%'`
+  );
+  const n = (row.rows[0].max_n || 0) + 1;
   return `SUP-${String(n).padStart(3, "0")}`;
 }
 

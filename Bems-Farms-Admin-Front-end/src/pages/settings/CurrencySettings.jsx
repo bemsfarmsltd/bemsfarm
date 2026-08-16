@@ -163,7 +163,7 @@ export default function CurrencySettings() {
                   <i className="ri-money-dollar-circle-line" style={{ fontSize:24 }}/>
                 </div>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>{modal==='add'?'Add Currency':'Edit Currency'}</span>
-                <button onClick={closeModal} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <form onSubmit={handleSave} style={{ padding:24 }}>
                 <div style={{ marginBottom:14 }}>

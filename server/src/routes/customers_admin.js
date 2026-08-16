@@ -577,9 +577,14 @@ router.post(
           });
       }
 
-      // Generate customer code
-      const countRow = await client.query("SELECT COUNT(*) FROM customers");
-      const code = `CUS-${String(parseInt(countRow.rows[0].count) + 1).padStart(3, "0")}`;
+      // Generate customer code — MAX of the existing numeric suffix, not
+      // COUNT(*), which undercounts (and risks a duplicate code) if any
+      // customer row was ever deleted.
+      const maxRow = await client.query(
+        `SELECT MAX(CAST(SPLIT_PART(customer_code, '-', 2) AS INTEGER)) AS max_n
+         FROM customers WHERE customer_code LIKE 'CUS-%'`
+      );
+      const code = `CUS-${String((maxRow.rows[0].max_n || 0) + 1).padStart(3, "0")}`;
 
       const result = await client.query(
         `
@@ -837,10 +842,7 @@ router.post(
       }
 
       const reference = `${type === "topup" ? "WLT" : "DBT"}-${Date.now().toString(36).toUpperCase()}`;
-      // wallet_transactions.type is DB-constrained to order/refund/loyalty
-      // vocabulary — there's no generic "manual debit" value, so a manual
-      // admin debit is recorded as order_payment with a clarifying description
-      const dbType = type === "topup" ? "top_up" : "order_payment";
+      const dbType = type === "topup" ? "top_up" : "admin_debit";
 
       await client.query(
         `INSERT INTO wallet_transactions

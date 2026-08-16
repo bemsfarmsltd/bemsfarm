@@ -372,7 +372,7 @@ export default function Expenses() {
                   <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}><i className="ri-arrow-down-circle-line me-2 text-danger" />Expense Voucher</div>
                   <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>{selected.reference || selected.id} · {fmtD(selected.date)}</div>
                 </div>
-                <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={closeModal}><i className="ri-close-line" /></button>
+                <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
               <div style={{ padding: '24px' }}>
                 <div style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -431,7 +431,7 @@ export default function Expenses() {
                   <i className={`${activeModal === 'add' ? 'ri-add-circle-line' : 'ri-edit-line'} me-2`} />
                   {activeModal === 'add' ? 'Add Expense' : 'Edit Expense'}
                 </div>
-                <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={closeModal}><i className="ri-close-line" /></button>
+                <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
               <div style={{ padding: '24px' }}>
                 <div className="grid-form-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
@@ -512,7 +512,7 @@ export default function Expenses() {
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '420px', overflow: 'hidden', boxShadow: 'var(--shadow-modal)' }}>
               <div style={{ background: '#14532d', padding: '18px 24px', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}><i className="ri-check-double-line me-2" />Approve Expense</div>
-                <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={closeModal}><i className="ri-close-line" /></button>
+                <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
               <div style={{ padding: '24px', textAlign: 'center' }}>
                 <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--bg-green-faint)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
@@ -543,7 +543,7 @@ export default function Expenses() {
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '420px', overflow: 'hidden', boxShadow: 'var(--shadow-modal)' }}>
               <div style={{ background: '#7f1d1d', padding: '18px 24px', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}><i className="ri-close-circle-line me-2" />Reject Expense</div>
-                <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={closeModal}><i className="ri-close-line" /></button>
+                <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
               <div style={{ padding: '24px' }}>
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
@@ -568,7 +568,7 @@ export default function Expenses() {
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '400px', overflow: 'hidden', boxShadow: 'var(--shadow-modal)' }}>
               <div style={{ background: '#7f1d1d', padding: '18px 24px', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}><i className="ri-delete-bin-line me-2" />Delete Expense</div>
-                <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={closeModal}><i className="ri-close-line" /></button>
+                <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
               <div style={{ padding: '24px', textAlign: 'center' }}>
                 <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--bg-red-faint)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>

@@ -8,6 +8,7 @@ const { verifyMonnifyTransaction } = require("../utils/monnify");
 const { validateCoupon, recordCouponUsage } = require("../utils/coupons");
 const validate = require("../middleware/validate");
 const orderSchemas = require("../schemas/orderSchemas");
+const { restoreOrderStock } = require("../utils/orderStock");
 const { submitReturn, getUserReturns } = require("../controllers/returnsController");
 
 // ─────────────────────────────────────────────
@@ -407,19 +408,7 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
       [reason.trim(), id],
     );
 
-    const items = await client.query(
-      `SELECT product_id, quantity FROM order_items WHERE order_id=$1`,
-      [id],
-    );
-
-    for (const item of items.rows) {
-      await client.query(
-        `UPDATE products
-         SET stock = COALESCE(stock, 0) + $1
-         WHERE id = $2`,
-        [item.quantity, item.product_id],
-      );
-    }
+    await restoreOrderStock(client, id);
 
     await client.query("COMMIT");
 

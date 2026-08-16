@@ -516,6 +516,18 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
 
     if (userResult.rows.length > 0) {
       user = userResult.rows[0];
+      // /login blocks suspended/inactive accounts — Google sign-in must too,
+      // or a deactivated/suspended user can just re-authenticate around it.
+      if (user.status === "suspended") {
+        return res
+          .status(403)
+          .json({ message: "Account suspended. Contact support." });
+      }
+      if (user.status === "inactive") {
+        return res
+          .status(403)
+          .json({ message: "Account inactive. Contact support." });
+      }
     } else {
       const newUser = await pool.query(
         `INSERT INTO users (name, email, password, role, google_id, avatar_url, created_at)

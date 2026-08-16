@@ -199,7 +199,7 @@ export default function StaffList() {
               <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <i className="ri-user-settings-line" style={{ fontSize:30 }}/>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Update Status?</span>
-                <button onClick={()=>setStatusTarget(null)} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+                <button onClick={()=>setStatusTarget(null)} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <div style={{ padding:24,textAlign:'center' }}>
                 <p style={{ color:S,fontSize:14,marginBottom:24 }}>
@@ -224,7 +224,7 @@ export default function StaffList() {
               <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
                 <i className="ri-delete-bin-line" style={{ fontSize:30 }}/>
                 <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:14,flex:1 }}>Deactivate Staff?</span>
-                <button onClick={()=>setDeleteItem(null)} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+                <button onClick={()=>setDeleteItem(null)} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
               </div>
               <div style={{ padding:24,textAlign:'center' }}>
                 <p style={{ color:S,fontSize:14,marginBottom:24 }}>

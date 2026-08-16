@@ -375,7 +375,7 @@ export default function Transactions() {
             {/* Header */}
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ color: '#ffffff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Transaction Detail</div>
-              <button style={{ background: 'transparent', border: 'none', color: '#ffffff', fontSize: '20px', cursor: 'pointer' }} onClick={() => setSelected(null)}>
+              <button style={{ background: 'transparent', border: 'none', color: '#ffffff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setSelected(null)}>
                 <i className="ri-close-line" />
               </button>
             </div>

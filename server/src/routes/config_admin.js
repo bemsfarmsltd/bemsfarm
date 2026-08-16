@@ -9,9 +9,15 @@ const configAdminSchemas = require("../schemas/configAdminSchemas");
 // All routes require authentication
 router.use(protect);
 
-// Allow read-only (GET) operations for all authenticated staff.
+// Allow read-only (GET) operations for all authenticated staff — but the
+// comment always said "staff", while the code only checked HTTP method, so
+// any authenticated customer ("user" role) could read this too, including
+// /export?type=products which returns cost_price (internal margin data).
 // Restrict modifying operations (POST, PUT, DELETE) to superadmin, admin, or manager.
 router.use((req, res, next) => {
+  if (req.user?.role === "user") {
+    return res.status(403).json({ message: "Access denied. Staff access required." });
+  }
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
     return next();
   }

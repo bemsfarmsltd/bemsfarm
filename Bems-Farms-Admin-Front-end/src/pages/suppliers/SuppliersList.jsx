@@ -230,7 +230,7 @@ export default function SuppliersList() {
               value={searchInput}
               onChange={handleSearchChange}
             />
-            <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
+            <i className="ri-search-line size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
           </div>
           <div className="d-flex flex-wrap gap-2 align-items-center">
             <select className="form-select w-auto" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }}>
@@ -239,7 +239,7 @@ export default function SuppliersList() {
               <option value="inactive">Inactive</option>
             </select>
             <button className="btn btn-primary" onClick={() => { setShowAdd(true); setAddForm(EMPTY_FORM) }}>
-              <i data-lucide="plus" className="size-4 me-1"></i>Add Supplier
+              <i className="ri-add-line size-4 me-1"></i>Add Supplier
             </button>
           </div>
         </div>
@@ -332,7 +332,7 @@ export default function SuppliersList() {
             <div className="modal-content">
               <div className="modal-header">
                 <h6 className="modal-title">Supplier Details — {viewSupplier.name}</h6>
-                <button className="btn-close" onClick={() => setViewSupplier(null)}></button>
+                <button className="btn-close" aria-label="Close" onClick={() => setViewSupplier(null)}></button>
               </div>
               <div className="modal-body">
                 <div className="row g-3 mb-4">
@@ -430,7 +430,7 @@ export default function SuppliersList() {
             <div className="modal-content">
               <div className="modal-header">
                 <h6 className="modal-title">Edit Supplier</h6>
-                <button className="btn-close" onClick={() => setEditSupplier(null)}></button>
+                <button className="btn-close" aria-label="Close" onClick={() => setEditSupplier(null)}></button>
               </div>
               <form onSubmit={handleEditSubmit}>
                 <div className="modal-body">
@@ -455,7 +455,7 @@ export default function SuppliersList() {
             <div className="modal-content">
               <div className="modal-header">
                 <h6 className="modal-title">Add Supplier</h6>
-                <button className="btn-close" onClick={() => setShowAdd(false)}></button>
+                <button className="btn-close" aria-label="Close" onClick={() => setShowAdd(false)}></button>
               </div>
               <form onSubmit={handleAddSubmit}>
                 <div className="modal-body">

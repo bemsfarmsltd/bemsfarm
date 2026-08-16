@@ -109,20 +109,26 @@ router.get("/activity", async (req, res, next) => {
     const { page = 1, limit: limitRaw = 50, type = "" } = req.query;
     const limit = clampLimit(limitRaw, 50);
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    const where  = type ? "AND type=$4" : "";
-    const params = [req.user.id, parseInt(limit), offset];
-    if (type) params.push(type);
+    // Separate param lists per query — the count query has fewer bound
+    // params than the rows query, so they need their own placeholder index
+    // for `type` rather than sharing one `where` string built for $4.
+    const rowsWhere = type ? "AND type=$4" : "";
+    const rowsParams = [req.user.id, parseInt(limit), offset];
+    if (type) rowsParams.push(type);
+
+    const countWhere = type ? "AND type=$2" : "";
+    const countParams = type ? [req.user.id, type] : [req.user.id];
 
     const rows = await pool.query(
       `SELECT id, type, entity_type, entity_id, metadata, created_at
-       FROM ai_user_activity WHERE user_id=$1 ${where}
+       FROM ai_user_activity WHERE user_id=$1 ${rowsWhere}
        ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
-      params
+      rowsParams
     );
 
     const count = await pool.query(
-      `SELECT COUNT(*) FROM ai_user_activity WHERE user_id=$1 ${where}`,
-      type ? [req.user.id, type] : [req.user.id]
+      `SELECT COUNT(*) FROM ai_user_activity WHERE user_id=$1 ${countWhere}`,
+      countParams
     );
 
     res.json({

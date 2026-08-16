@@ -48,6 +48,9 @@ const protect = async (req, res, next) => {
     if (result.rows[0].status === "suspended") {
       return res.status(403).json({ message: "Account suspended" });
     }
+    if (result.rows[0].status === "inactive") {
+      return res.status(403).json({ message: "Account deactivated" });
+    }
 
     // Tokens issued before this field existed carry no tokenVersion claim —
     // treat that as version 0 so already-issued valid sessions aren't broken

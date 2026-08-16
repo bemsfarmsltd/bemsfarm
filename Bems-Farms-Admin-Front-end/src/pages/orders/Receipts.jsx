@@ -21,6 +21,7 @@ const CHANNEL_CFG = {
 const BLANK_FORM = { customerId:'', customName:'', customPhone:'', customEmail:'', customAddress:'', paymentMethod:'Bank Transfer', dueDate:'', notes:'', discount:0, deliveryFee:0, items:[{ name:'',qty:1,unit:'kg',price:0,total:0 }] }
 
 const fmt       = (n) => `₦${Number(n||0).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const yearOf    = (d) => new Date(d || Date.now()).getFullYear()
 const calcSub   = (items) => items.reduce((s,i)=>s+i.total,0)
 const calcTotal = (items,fee,disc) => calcSub(items)+Number(fee||0)-Number(disc||0)
 
@@ -38,7 +39,7 @@ function Modal({ title, onClose, children, maxWidth=600 }) {
       <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth,boxShadow:'0 8px 40px rgba(0,0,0,0.18)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
         <div style={{ background:'var(--orange-accent)',color:'#fff',padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0 }}>
           <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:15 }}>{title}</span>
-          <button onClick={onClose} style={{ background:'none',border:'none',color:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:20,display:'flex',padding:4 }}><i className="ri-close-line"/></button>
+          <button onClick={onClose} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:20,display:'flex',padding:4 }}><i className="ri-close-line"/></button>
         </div>
         <div style={{ padding:24,overflowY:'auto' }}>{children}</div>
       </div>
@@ -280,7 +281,7 @@ export default function Receipts() {
                 const dueDateString = inv.due_date ? new Date(inv.due_date).toISOString().slice(0,10) : ''
                 const issuedDateString = inv.date_issued ? new Date(inv.date_issued).toISOString().slice(0,10) : new Date(inv.created_at||Date.now()).toISOString().slice(0,10)
                 const overdue=inv.status!=='paid'&&inv.status!=='cancelled'&&inv.due_date&&new Date(inv.due_date)<new Date()
-                const refNo = inv.invoice_ref || `INV-2026-${String(inv.id).padStart(4, '0')}`
+                const refNo = inv.invoice_ref || `INV-${yearOf(inv.date_issued||inv.created_at)}-${String(inv.id).padStart(4, '0')}`
                 
                 return (
                   <tr key={inv.id}
@@ -291,7 +292,7 @@ export default function Receipts() {
                       {inv.order_id ? (
                         <div style={{ fontSize:11,color:S,marginTop:2 }}>
                           <span style={{ display:'inline-flex',alignItems:'center',gap:4 }}>
-                            <i className="ri-link" style={{ fontSize:14 }}/>ORD-2026-{String(inv.order_id).padStart(4, '0')}
+                            <i className="ri-link" style={{ fontSize:14 }}/>ORD-{yearOf(inv.date_issued||inv.created_at)}-{String(inv.order_id).padStart(4, '0')}
                           </span>
                         </div>
                       ) : (
@@ -369,7 +370,7 @@ export default function Receipts() {
                         <div style={{ fontSize:12,opacity:0.9 }}>Premium Fresh Produce · Lagos, Nigeria</div>
                       </div>
                       <div style={{ textAlign:'right' }}>
-                        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:20,marginBottom:6 }}>{selected.invoice_ref || `INV-2026-${String(selected.id).padStart(4, '0')}`}</div>
+                        <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:20,marginBottom:6 }}>{selected.invoice_ref || `INV-${yearOf(selected.date_issued||selected.created_at)}-${String(selected.id).padStart(4, '0')}`}</div>
                         <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:cfg.bg,color:cfg.color,borderRadius:50,padding:'4px 10px',fontSize:11,fontWeight:600 }}>
                           <i className={cfg.icon}/>{cfg.label}
                         </span>
@@ -389,7 +390,7 @@ export default function Receipts() {
                         {[
                           ['Issue Date', selected.date_issued ? new Date(selected.date_issued).toISOString().slice(0, 10) : new Date(selected.created_at).toISOString().slice(0, 10), 'inherit'],
                           ['Due Date', selected.due_date ? new Date(selected.due_date).toISOString().slice(0, 10) : '', selected.status==='overdue'?'#ef4444':'inherit'],
-                          selected.order_id && ['Order Ref', `ORD-2026-${String(selected.order_id).padStart(4, '0')}`, 'inherit'],
+                          selected.order_id && ['Order Ref', `ORD-${yearOf(selected.date_issued||selected.created_at)}-${String(selected.order_id).padStart(4, '0')}`, 'inherit'],
                           ['Channel', null, ''],
                           ['Payment', selected.payment_method || 'Monnify', 'inherit']
                         ].filter(Boolean).map((row,i)=>(
@@ -542,7 +543,7 @@ export default function Receipts() {
               This will mark the receipt as <strong>Sent</strong>. The customer will receive a notification.
             </div>
             <div style={{ border:'1px solid var(--border)',borderRadius:10,padding:14,marginBottom:20,fontSize:13 }}>
-              <div style={{ fontWeight:600 }}>{selected.invoice_ref || `INV-2026-${String(selected.id).padStart(4, '0')}`}</div>
+              <div style={{ fontWeight:600 }}>{selected.invoice_ref || `INV-${yearOf(selected.date_issued||selected.created_at)}-${String(selected.id).padStart(4, '0')}`}</div>
               <div style={{ color:'var(--text-muted)' }}>{selected.customer_name || 'Walk-in'} · {fmt(selected.amount)}</div>
               <div style={{ color:'var(--text-muted)' }}>Due: {selected.due_date ? new Date(selected.due_date).toISOString().slice(0, 10) : ''} · {selected.payment_method || 'Monnify'}</div>
             </div>
@@ -557,7 +558,7 @@ export default function Receipts() {
         {activeModal==='markpaid'&&selected&&(
           <Modal title="Mark as Paid" onClose={closeModal} maxWidth={420}>
             <div style={{ border:'1px solid var(--border)',borderRadius:10,padding:14,marginBottom:16,fontSize:13 }}>
-              <div style={{ fontWeight:600 }}>{selected.invoice_ref || `INV-2026-${String(selected.id).padStart(4, '0')}`}</div>
+              <div style={{ fontWeight:600 }}>{selected.invoice_ref || `INV-${yearOf(selected.date_issued||selected.created_at)}-${String(selected.id).padStart(4, '0')}`}</div>
               <div style={{ color:'var(--text-muted)' }}>{selected.customer_name || 'Walk-in'}</div>
               <div style={{ fontSize:16,fontWeight:700,marginTop:4 }}>{fmt(selected.amount)}</div>
             </div>
@@ -575,7 +576,7 @@ export default function Receipts() {
           <Modal title="Cancel Receipt" onClose={closeModal} maxWidth={400}>
             <div style={{ background:'#fef3c7',border:'1px solid #fde68a',borderRadius:8,padding:'10px 14px',marginBottom:20,fontSize:13 }}>
               <i className="ri-alert-line" style={{ marginRight:6,color:'#92400e' }}/>
-              Are you sure you want to cancel <strong>{selected.invoice_ref || `INV-2026-${String(selected.id).padStart(4, '0')}`}</strong>? This action cannot be undone.
+              Are you sure you want to cancel <strong>{selected.invoice_ref || `INV-${yearOf(selected.date_issued||selected.created_at)}-${String(selected.id).padStart(4, '0')}`}</strong>? This action cannot be undone.
             </div>
             <div style={{ display:'flex',gap:10 }}>
               <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Go Back</button>

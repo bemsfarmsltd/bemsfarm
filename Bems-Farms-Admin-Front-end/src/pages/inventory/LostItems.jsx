@@ -37,7 +37,7 @@ function Modal({ title, onClose, maxWidth, children }) {
       <div style={{ background:'var(--bg-card)', borderRadius:14, width:'100%', maxWidth:maxWidth||640, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', overflow:'hidden', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
         <div style={{ background:'var(--orange-accent)', color:'#fff', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
           <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15 }}>{title}</span>
-          <button onClick={onClose} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.8)', cursor:'pointer', fontSize:20, display:'flex', padding:4 }}><i className="ri-close-line"/></button>
+          <button onClick={onClose} aria-label="Close" style={{ background:'none', border:'none', color:'rgba(255,255,255,0.8)', cursor:'pointer', fontSize:20, display:'flex', padding:4 }}><i className="ri-close-line"/></button>
         </div>
         <div style={{ padding:24, overflowY:'auto' }}>{children}</div>
       </div>
@@ -119,7 +119,7 @@ export default function LostItems() {
 
   const filtered = useMemo(() => {
     return items.filter(r => {
-      const refNo = `LST-2026-${String(r.id).padStart(3, '0')}`
+      const refNo = `LST-${yearOf(r.created_at)}-${String(r.id).padStart(3, '0')}`
       const matchText = (r.product_name || '').toLowerCase().includes(search.toLowerCase()) ||
                         (r.reason || '').toLowerCase().includes(search.toLowerCase()) ||
                         refNo.toLowerCase().includes(search.toLowerCase())
@@ -199,6 +199,10 @@ export default function LostItems() {
     if (!d) return '—'
     const date = new Date(d)
     return date.toISOString().slice(0, 10)
+  }
+
+  function yearOf(d) {
+    return new Date(d || Date.now()).getFullYear()
   }
 
   const B = 'var(--border)', S = '#6b7280'
@@ -291,7 +295,7 @@ export default function LostItems() {
                 </td></tr>
               ) : filtered.map(r => {
                 const sc = getStatusCfg(r)
-                const refNo = `LST-2026-${String(r.id).padStart(3, '0')}`
+                const refNo = `LST-${yearOf(r.created_at)}-${String(r.id).padStart(3, '0')}`
                 const reasonMapped = getMappedReason(r)
                 const ri = REASON_CFG[reasonMapped] || { icon:'ri-question-line', color:S }
                 return (

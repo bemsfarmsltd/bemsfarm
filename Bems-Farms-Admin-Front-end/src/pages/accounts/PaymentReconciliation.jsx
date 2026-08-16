@@ -458,7 +458,7 @@ export default function PaymentReconciliation() {
             onClick={e => e.stopPropagation()}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
               <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Manual Payment Reconciliation</span>
-              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={() => setShowReconcileModal(false)}><i className="ri-close-line" /></button>
+              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setShowReconcileModal(false)}><i className="ri-close-line" /></button>
             </div>
             <form onSubmit={handleManualReconcile} style={{ padding: '24px' }}>
               <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '20px' }}>
@@ -494,7 +494,7 @@ export default function PaymentReconciliation() {
             onClick={e => e.stopPropagation()}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
               <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Webhook Payload Dump</span>
-              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={() => setShowPayloadModal(null)}><i className="ri-close-line" /></button>
+              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setShowPayloadModal(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '16px', background: '#1e293b', maxHeight: '480px', overflowY: 'auto' }}>
               <pre style={{ fontSize: '11px', margin: 0, fontFamily: 'monospace', color: '#38bdf8', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>

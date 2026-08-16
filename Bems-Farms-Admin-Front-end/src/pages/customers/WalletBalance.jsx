@@ -10,14 +10,14 @@ const fmtTime = d => d ? new Date(d).toLocaleTimeString('en-NG',{hour:'2-digit',
 
 const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec4899','#f97316','#14b8a6','#6366f1','#84cc16','#a855f7','#ef4444','#10b981','#d97706','#6366f1']
 
-// DB wallet_transactions.type is constrained to order/refund/loyalty vocabulary
-const DB_TYPE_TO_UI = { top_up:'topup', order_payment:'debit', refund_credit:'refund', loyalty_redemption:'credit' }
+const DB_TYPE_TO_UI = { top_up:'topup', order_payment:'debit', refund_credit:'refund', loyalty_redemption:'credit', admin_debit:'manual_debit' }
 
 const TYPE_CFG = {
-  topup:  { label:'Top-up',        icon:'ri-add-circle-line',    color:'#22c55e', bg:'#f0fdf4', border:'#bbf7d0' },
-  debit:  { label:'Order Debit',   icon:'ri-shopping-bag-line',  color:'#3b82f6', bg:'#eff6ff', border:'#bfdbfe' },
-  credit: { label:'Loyalty Credit',icon:'ri-gift-line',          color:'#8b5cf6', bg:'#f5f3ff', border:'#ddd6fe' },
-  refund: { label:'Refund',        icon:'ri-refund-2-line',      color:'#f59e0b', bg:'#fffbeb', border:'#fde68a' },
+  topup:        { label:'Top-up',        icon:'ri-add-circle-line',    color:'#22c55e', bg:'#f0fdf4', border:'#bbf7d0' },
+  debit:        { label:'Order Debit',   icon:'ri-shopping-bag-line',  color:'#3b82f6', bg:'#eff6ff', border:'#bfdbfe' },
+  credit:       { label:'Loyalty Credit',icon:'ri-gift-line',          color:'#8b5cf6', bg:'#f5f3ff', border:'#ddd6fe' },
+  refund:       { label:'Refund',        icon:'ri-refund-2-line',      color:'#f59e0b', bg:'#fffbeb', border:'#fde68a' },
+  manual_debit: { label:'Manual Debit',  icon:'ri-hand-coin-line',     color:'#ef4444', bg:'#fef2f2', border:'#fecaca' },
 }
 const TIER_CFG = {
   Platinum: { bg:'#f5f3ff', color:'#7c3aed', border:'#ddd6fe' },
@@ -40,7 +40,7 @@ function ModalShell({ title, onClose, children, wide }) {
       <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth: wide?520:440, maxHeight:'90vh', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
         <div style={{ background:'#1B4332', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
           <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif' }}>{title}</span>
-          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
+          <button onClick={onClose} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
         </div>
         {children}
       </div>
@@ -249,7 +249,7 @@ export default function WalletBalance() {
         {/* Right — Transaction Feed */}
         <div>
           <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
-            {['all','topup','debit','credit','refund'].map(t => {
+            {['all','topup','debit','manual_debit','credit','refund'].map(t => {
               const cfg = t!=='all' ? TYPE_CFG[t] : null
               const isActive = filterType===t
               return (

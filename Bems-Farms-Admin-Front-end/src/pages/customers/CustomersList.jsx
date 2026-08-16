@@ -241,7 +241,7 @@ export default function CustomersList() {
           <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth:420 }} onClick={e => e.stopPropagation()}>
             <div style={{ background:'#1B4332', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'Syne, sans-serif' }}>Remove Customer</span>
-              <button onClick={() => setDeleteModal(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
+              <button onClick={() => setDeleteModal(false)} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding:'24px', textAlign:'center' }}>
               <div style={{ width:56, height:56, borderRadius:'50%', background:'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 12px' }}>

@@ -7,6 +7,7 @@ const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const deliveryAdminSchemas = require("../schemas/deliveryAdminSchemas");
+const { restoreOrderStock } = require("../utils/orderStock");
 
 router.use(protect);
 
@@ -173,6 +174,10 @@ router.patch(
       }[status];
 
       if (orderStatus) {
+        const prevOrder = await client.query(
+          "SELECT status FROM orders WHERE id=$1",
+          [del.rows[0].order_id],
+        );
         await client.query(
           "UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2",
           [orderStatus, del.rows[0].order_id],
@@ -184,6 +189,13 @@ router.patch(
       `,
           [del.rows[0].order_id, orderStatus, req.user.id, notes || null],
         );
+        // Cancelling a delivery mirrors 'cancelled' onto its order — restore
+        // the stock that was deducted at order creation, same as every other
+        // order-cancellation path. Guard against double-restoring if the
+        // order was already cancelled.
+        if (orderStatus === "cancelled" && prevOrder.rows[0]?.status !== "cancelled") {
+          await restoreOrderStock(client, del.rows[0].order_id);
+        }
       }
 
       // Log tracking event

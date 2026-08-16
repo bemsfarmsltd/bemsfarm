@@ -39,6 +39,7 @@ function getChannelCfg(channel, source) {
 const PIPELINE = ["paid","processing","packed_ready","driver_assigned","out_for_delivery","delivered"]
 
 const fmt = (n) => `₦${Number(n||0).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const yearOf = (d) => new Date(d || Date.now()).getFullYear()
 const pipeIdx = (s) => {
   const map = { paid:1,new_order:1,pending:1,processing:2,packed_ready:3,packed:3,driver_assigned:4,assigned:4,out_for_delivery:5,shipped:5,delivered:6 }
   return (map[s]||0)-1
@@ -62,7 +63,7 @@ function Modal({ title, onClose, children, maxWidth=600, danger=false }) {
       <div style={{ background:'var(--bg-card)',borderRadius:14,width:"100%",maxWidth,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",maxHeight:"90vh",display:"flex",flexDirection:"column" }}>
         <div style={{ background:danger?"#7f1d1d":"var(--orange-accent)",color:"#fff",padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
           <span style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15 }}>{title}</span>
-          <button onClick={onClose} style={{ background:"none",border:"none",color:"rgba(255,255,255,0.8)",cursor:"pointer",fontSize:20,display:"flex",padding:4 }}><i className="ri-close-line"/></button>
+          <button onClick={onClose} aria-label="Close" style={{ background:"none",border:"none",color:"rgba(255,255,255,0.8)",cursor:"pointer",fontSize:20,display:"flex",padding:4 }}><i className="ri-close-line"/></button>
         </div>
         <div style={{ padding:24,overflowY:"auto" }}>{children}</div>
       </div>
@@ -196,12 +197,11 @@ export default function OrdersList() {
     }
   }
 
-  const getMockItemsSummary = (order) => {
-    const count = order.item_count || 1
-    if (count === 1) return 'Yam (White)'
-    if (count === 2) return 'Fresh Spinach, Sweet Corn'
-    if (count === 3) return 'Fresh Tomatoes, Onion (Red) +1 more'
-    return 'Fresh Tomatoes, Red Bell Pepper +2 more'
+  const getItemsSummary = (order) => {
+    if (!order.item_names) return '—'
+    const names = order.item_names.split(', ')
+    if (names.length <= 2) return names.join(', ')
+    return `${names.slice(0, 2).join(', ')} +${names.length - 2} more`
   }
 
   const B = 'var(--border)', S = '#6b7280'
@@ -223,14 +223,14 @@ export default function OrdersList() {
       {/* Stat cards — auto-fill/minmax collapses naturally on narrow screens, no media query needed */}
       <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(140px, 1fr))",gap:16,marginBottom:24 }}>
         {[
-          { label:"Total Orders",       value:stats.total||14,              color:"#405189",icon:"ri-inbox-archive-line" },
-          { label:"New Orders",         value:stats.new_orders||2,         color:"#299cdb",icon:"ri-file-list-line" },
-          { label:"In Progress",        value:stats.in_progress||3,        color:"#f7b84b",icon:"ri-loader-4-line" },
-          { label:"Out for Delivery",   value:stats.out_for_delivery||1,   color:"#65a30d",icon:"ri-truck-line" },
-          { label:"Delivery Attempted", value:stats.delivery_attempted||1, color:"#ea580c",icon:"ri-alert-line" },
-          { label:"Delivered",          value:stats.delivered||5,          color:"#10b981",icon:"ri-checkbox-circle-line" },
-          { label:"Disputes",           value:stats.disputes||1,           color:"#ef4444",icon:"ri-error-warning-line" },
-          { label:"Total Revenue",      value:fmt(stats.revenue||132600),       color:"#059669",icon:"ri-coins-line" },
+          { label:"Total Orders",       value:stats.total||0,              color:"#405189",icon:"ri-inbox-archive-line" },
+          { label:"New Orders",         value:stats.new_orders||0,         color:"#299cdb",icon:"ri-file-list-line" },
+          { label:"In Progress",        value:stats.in_progress||0,        color:"#f7b84b",icon:"ri-loader-4-line" },
+          { label:"Out for Delivery",   value:stats.out_for_delivery||0,   color:"#65a30d",icon:"ri-truck-line" },
+          { label:"Delivery Attempted", value:stats.delivery_attempted||0, color:"#ea580c",icon:"ri-alert-line" },
+          { label:"Delivered",          value:stats.delivered||0,          color:"#10b981",icon:"ri-checkbox-circle-line" },
+          { label:"Disputes",           value:stats.disputes||0,           color:"#ef4444",icon:"ri-error-warning-line" },
+          { label:"Total Revenue",      value:fmt(stats.revenue||0),       color:"#059669",icon:"ri-coins-line" },
         ].map(c=>(
           <div key={c.label}
             style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,borderLeft:`3px solid ${c.color}`,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -298,7 +298,7 @@ export default function OrdersList() {
               {!loading&&orders.map(order=>{
                 const cfg=STATUS_CFG[order.status]||STATUS_CFG.pending
                 const chCfg=getChannelCfg(order.channel, order.source)
-                const refNo = `ORD-2026-${String(order.id).padStart(4, '0')}`
+                const refNo = `ORD-${yearOf(order.created_at)}-${String(order.id).padStart(4, '0')}`
                 
                 return (
                   <tr key={order.id}
@@ -333,7 +333,7 @@ export default function OrdersList() {
                     </td>
                     <td style={TD}>
                       <div style={{ fontWeight:600 }}>{order.item_count} item{order.item_count!=1?"s":""}</div>
-                      <div style={{ fontSize:11,color:S }}>{getMockItemsSummary(order)}</div>
+                      <div style={{ fontSize:11,color:S }}>{getItemsSummary(order)}</div>
                     </td>
                     <td style={{ ...TD,fontWeight:700 }}>{fmt(order.total)}</td>
                     <td style={TD}>
@@ -604,14 +604,14 @@ function OrderViewModal({ order, onClose, onProcess, onPack, onAssign, onDispute
       <div style={{ background:'var(--bg-card)',borderRadius:14,width:"100%",maxWidth:900,maxHeight:"90vh",boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",display:"flex",flexDirection:"column" }}>
         <div style={{ background:"var(--orange-accent)",color:"#fff",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
           <div>
-            <div style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:16 }}>ORD-2026-{String(o.id).padStart(4, '0')}</div>
+            <div style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:16 }}>ORD-{yearOf(o.created_at)}-{String(o.id).padStart(4, '0')}</div>
             <div style={{ fontSize:12,opacity:0.75,marginTop:2 }}>{new Date(o.created_at).toLocaleString("en-NG")} · {getChannelCfg(o.channel, o.source).label}</div>
           </div>
           <div style={{ display:"flex",alignItems:"center",gap:10 }}>
             <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:cfg.bg,color:cfg.color,borderRadius:50,padding:"4px 10px",fontSize:12,fontWeight:600 }}>
               <i className={cfg.icon}/>{cfg.label}
             </span>
-            <button onClick={onClose} style={{ background:"none",border:"none",color:"rgba(255,255,255,0.8)",cursor:"pointer",fontSize:20,display:"flex",padding:4 }}><i className="ri-close-line"/></button>
+            <button onClick={onClose} aria-label="Close" style={{ background:"none",border:"none",color:"rgba(255,255,255,0.8)",cursor:"pointer",fontSize:20,display:"flex",padding:4 }}><i className="ri-close-line"/></button>
           </div>
         </div>
 

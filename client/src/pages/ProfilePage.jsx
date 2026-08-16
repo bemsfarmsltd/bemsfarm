@@ -1056,10 +1056,10 @@ export default function ProfilePage() {
                   <div style={{ textAlign: "center", padding: "40px 20px" }}>
                     <div style={{ fontSize: "76", marginBottom: "16px" }}>❌</div>
                     <h4 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 700 }}>No Cancelled Orders</h4>
-                    <p style={{ color: "#9CA3AF", fontSize: "14px", margin: "0 0 24px" }}>Orders can be cancelled within 1 hour of placement.</p>
+                    <p style={{ color: "#9CA3AF", fontSize: "14px", margin: "0 0 24px" }}>Orders can be cancelled any time before they're prepared for delivery.</p>
                     <div style={{ backgroundColor: "#FFF8F2", border: "1px solid #FFE6D5", borderRadius: "14px", padding: "20px", textAlign: "left", maxWidth: "480px", margin: "0 auto" }}>
                       <p style={{ color: "#F57C00", fontWeight: 700, margin: "0 0 12px" }}>Cancellation Policy Details</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}>✓ Cancel within 1 hour of placing the order</p>
+                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}>✓ Cancel any time while the order is pending or confirmed</p>
                       <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}>✓ Orders already prepared/dispatched cannot be cancelled</p>
                       <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}>✓ Full refund for eligible cancellations</p>
                       <p style={{ fontSize: "13px", color: "#4B5563", margin: "0" }}>✓ Contact support immediately to cancel</p>

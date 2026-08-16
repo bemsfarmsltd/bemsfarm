@@ -43,7 +43,7 @@ function Modal({ title, onClose, children, maxWidth=480, danger=false }) {
       <div style={{ background:'var(--bg-card)',borderRadius:14,width:"100%",maxWidth,boxShadow:"0 8px 40px rgba(0,0,0,0.18)",overflow:"hidden",maxHeight:"90vh",display:"flex",flexDirection:"column" }}>
         <div style={{ background:danger?"#7f1d1d":"#1B4332",color:"#fff",padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0 }}>
           <span style={{ fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15 }}>{title}</span>
-          <button onClick={onClose} style={{ background:"none",border:"none",color:"rgba(255,255,255,0.8)",cursor:"pointer",fontSize:20,display:"flex",padding:4 }}><i className="ri-close-line"/></button>
+          <button onClick={onClose} aria-label="Close" style={{ background:"none",border:"none",color:"rgba(255,255,255,0.8)",cursor:"pointer",fontSize:20,display:"flex",padding:4 }}><i className="ri-close-line"/></button>
         </div>
         <div style={{ padding:24,overflowY:"auto" }}>{children}</div>
       </div>
@@ -192,7 +192,7 @@ export default function OrderDetail() {
           <span style={{ display:"inline-flex",alignItems:"center",gap:4,background:cfg.bg,color:cfg.color,borderRadius:50,padding:"5px 12px",fontSize:12,fontWeight:600 }}>
             {o.status?.replace(/_/g," ")}
           </span>
-          <button style={btnL}><i className="ri-printer-line"/>Print Receipt</button>
+          <button style={btnL} onClick={() => window.print()}><i className="ri-printer-line"/>Print Receipt</button>
         </div>
       </div>
 

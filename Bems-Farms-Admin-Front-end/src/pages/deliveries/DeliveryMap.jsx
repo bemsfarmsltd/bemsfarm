@@ -350,7 +350,7 @@ export default function DeliveryMap() {
                   <div style={{ fontWeight:600, fontSize:13 }}>{selected.driver.name}</div>
                   <div style={{ fontSize:10, color:'var(--text-muted)' }}>{(STATUS_CFG[selected.status] || {label: selected.status || 'Pending'}).label}</div>
                 </div>
-                <button onClick={() => { setSelected(null); setFlyTarget(null) }} style={{ width:24, height:24, borderRadius:'50%', border:'1px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-light)' }}>
+                <button onClick={() => { setSelected(null); setFlyTarget(null) }} aria-label="Close" style={{ width:24, height:24, borderRadius:'50%', border:'1px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-light)' }}>
                   <i className="ri-close-line" style={{ fontSize:16 }} />
                 </button>
               </div>

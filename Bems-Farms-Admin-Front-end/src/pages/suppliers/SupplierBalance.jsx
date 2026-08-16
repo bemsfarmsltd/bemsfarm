@@ -133,7 +133,7 @@ export default function SupplierBalance() {
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                 />
-                <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
+                <i className="ri-search-line size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
               </div>
             </div>
             <div className="col-md-3 text-end">
@@ -208,7 +208,7 @@ export default function SupplierBalance() {
             <div className="modal-content">
               <div className="modal-header">
                 <h6 className="modal-title">Record Payment — {paymentSupplier?.name}</h6>
-                <button className="btn-close" onClick={() => setShowPayment(false)}></button>
+                <button className="btn-close" aria-label="Close" onClick={() => setShowPayment(false)}></button>
               </div>
               <form onSubmit={handlePaymentSubmit}>
                 <div className="modal-body">

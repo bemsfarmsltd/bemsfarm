@@ -25,7 +25,7 @@ const STATUS_CFG = {
 
 function nextRef(list) {
   const max=list.reduce((m,r)=>Math.max(m,Number(r.ref.split('-')[2])),0)
-  return `RTN-2026-${String(max+1).padStart(3,'0')}`
+  return `RTN-${new Date().getFullYear()}-${String(max+1).padStart(3,'0')}`
 }
 
 const inp  = { display:'block',width:'100%',padding:'9px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'Nunito,sans-serif',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box' }
@@ -42,7 +42,7 @@ function Modal({ title, onClose, children, maxWidth=620, wide=false }) {
       <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:wide?960:maxWidth,boxShadow:'0 8px 40px rgba(0,0,0,0.18)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
         <div style={{ background:'#1B4332',color:'#fff',padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0 }}>
           <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:15 }}>{title}</span>
-          <button onClick={onClose} style={{ background:'none',border:'none',color:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:20,display:'flex',padding:4 }}><i className="ri-close-line"/></button>
+          <button onClick={onClose} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:20,display:'flex',padding:4 }}><i className="ri-close-line"/></button>
         </div>
         <div style={{ overflowY:'auto',flex:1 }}>{children}</div>
       </div>
@@ -137,8 +137,15 @@ export default function Refunds() {
     else if(decision === 'reject') updateStatus('rejected', procForm.inspectionNotes)
     else updateStatus('refunded', procForm.inspectionNotes)
   }
-  function deleteRecord() { toast.error("Deletion not implemented") }
-  function confirmDelete() { toast.error("Deletion not implemented") }
+  async function confirmDelete() {
+    try {
+      await api.delete(`/admin/orders/returns/${selected.id}`)
+      toast.success("Return deleted")
+      closeModal(); load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete return")
+    }
+  }
 
   function handleConditionChange(val) {
     const qty=selected?.qty||0
@@ -608,7 +615,7 @@ export default function Refunds() {
                 <i className="ri-delete-bin-line" style={{ fontSize:30,color:'#dc2626' }}/>
               </div>
               <div style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:16,marginBottom:6 }}>Delete Return?</div>
-              <div style={{ fontSize:13,color:'var(--text-muted)',marginBottom:24 }}>{selected?.ref} — {selected?.customer}</div>
+              <div style={{ fontSize:13,color:'var(--text-muted)',marginBottom:24 }}>{selected?.refund_ref || selected?.id} — {selected?.customer_name || 'Unknown'}</div>
               <div style={{ display:'flex',gap:10 }}>
                 <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
                 <button style={{ ...btnDanger,flex:1 }} onClick={confirmDelete}>Delete</button>

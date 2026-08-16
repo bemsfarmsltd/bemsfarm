@@ -82,8 +82,14 @@ async function nextRef(client, prefix, table) {
   // could read the same COUNT(*) and collide on the table's UNIQUE
   // reference constraint, failing the second request with a raw 500.
   await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [table]);
-  const row = await client.query(`SELECT COUNT(*) FROM ${table}`);
-  const n   = parseInt(row.rows[0].count) + 1;
+  // MAX of the existing numeric suffix, not COUNT(*) — COUNT undercounts
+  // (and risks a duplicate reference) if any row was ever deleted.
+  const row = await client.query(
+    `SELECT MAX(CAST(SPLIT_PART(reference, '-', 2) AS INTEGER)) AS max_n
+     FROM ${table} WHERE reference LIKE $1`,
+    [`${prefix}-%`]
+  );
+  const n = (row.rows[0].max_n || 0) + 1;
   return `${prefix}-${String(n).padStart(4, "0")}`;
 }
 

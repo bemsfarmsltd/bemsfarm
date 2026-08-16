@@ -8,6 +8,7 @@ import api from "../services/api";
 import chefBemsImg from "../assets/chef_bems_cooking.jpg";
 import chefBemsAvatar from "../assets/chef_bems_avatar.png";
 import { escapeHtml } from "../utils/sanitize";
+import { NAIRA_PER_UNIT } from "../utils/currency";
 
 const QUICK_PROMPTS = [
   { icon: "🍲", text: "What can I cook with garri and tomatoes?" },
@@ -312,7 +313,12 @@ export default function ChefBemsPage() {
 
   const handleAddProduct = (e, product) => {
     e.stopPropagation();
-    addToCart(product);
+    // relatedProducts.price comes from the server already multiplied by
+    // NAIRA_PER_UNIT (see server/src/routes/ai.js) — divide back out so it
+    // matches the base-unit convention CartContext expects, or adding it
+    // silently inflates the cart total by NAIRA_PER_UNIT (1500x). Same bug
+    // class already fixed for OrdersPage's reorder flow.
+    addToCart({ ...product, price: product.price / NAIRA_PER_UNIT });
     setAddedIds((prev) => ({ ...prev, [product.id]: true }));
     setTimeout(() => {
       setAddedIds((prev) => {

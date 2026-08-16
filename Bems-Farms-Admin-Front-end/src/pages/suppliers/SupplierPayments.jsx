@@ -90,7 +90,7 @@ export default function SupplierPayments() {
           <div className="d-flex flex-wrap gap-4 align-items-center justify-content-between mb-4">
             <h5 className="card-title mb-0">All Supplier Payments</h5>
             <button className="btn btn-primary" onClick={() => { setForm({ supplier_id: '', amount: '', payment_method: 'bank_transfer', reference: '', date: new Date().toISOString().split('T')[0], notes: '' }); setShowAdd(true) }}>
-              <i data-lucide="plus" className="size-4 me-1"></i>Record Payment
+              <i className="ri-add-line size-4 me-1"></i>Record Payment
             </button>
           </div>
 
@@ -188,7 +188,7 @@ export default function SupplierPayments() {
             <div className="modal-content">
               <div className="modal-header">
                 <h6 className="modal-title">Record Supplier Payment</h6>
-                <button className="btn-close" onClick={() => setShowAdd(false)}></button>
+                <button className="btn-close" aria-label="Close" onClick={() => setShowAdd(false)}></button>
               </div>
               <form onSubmit={handleAddSubmit}>
                 <div className="modal-body">

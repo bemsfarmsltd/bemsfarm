@@ -55,7 +55,7 @@ function Modal({ open, onClose, title, children, maxWidth = 560 }) {
       <div style={{ position: 'relative', width: '100%', maxWidth, background: 'var(--bg-card)', borderRadius: 14, boxShadow: '0 8px 32px rgba(0,0,0,0.18)', padding: 28, margin: '0 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne, sans-serif' }}>{title}</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: 20 }}>
+          <button onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: 20 }}>
             <i className="ri-close-line" />
           </button>
         </div>

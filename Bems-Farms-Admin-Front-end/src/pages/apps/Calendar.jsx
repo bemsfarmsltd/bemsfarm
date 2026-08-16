@@ -139,6 +139,7 @@ export default function Calendar() {
               <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Syne, sans-serif' }}>Add Event</span>
               <button
                 onClick={() => setShowModal(false)}
+                aria-label="Close"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: 20, lineHeight: 1 }}
               >
                 <i className="ri-close-line" />

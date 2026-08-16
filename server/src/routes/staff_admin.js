@@ -128,8 +128,13 @@ router.use(protect);
 // this the race silently produces duplicate codes rather than erroring.
 async function generateEmployeeCode(client) {
   await client.query("SELECT pg_advisory_xact_lock(hashtext('staff_employee_code'))");
-  const row = await client.query("SELECT COUNT(*) FROM staff");
-  const n   = parseInt(row.rows[0].count) + 1;
+  // MAX of the existing numeric suffix, not COUNT(*) — COUNT undercounts
+  // (and risks a duplicate code) if any staff row was ever deleted.
+  const row = await client.query(
+    `SELECT MAX(CAST(SPLIT_PART(employee_code, '-', 2) AS INTEGER)) AS max_n
+     FROM staff WHERE employee_code LIKE 'EMP-%'`
+  );
+  const n = (row.rows[0].max_n || 0) + 1;
   return `EMP-${String(n).padStart(3, "0")}`;
 }
 

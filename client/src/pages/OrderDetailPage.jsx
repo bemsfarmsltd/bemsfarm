@@ -369,7 +369,7 @@ export default function OrderDetailPage() {
                   borderRadius: 12,
                 }}
               >
-                {item.product?.image_url && (
+                {item.image_url && (
                   <div
                     style={{
                       width: 52,
@@ -380,8 +380,8 @@ export default function OrderDetailPage() {
                     }}
                   >
                     <img
-                      src={item.product.image_url}
-                      alt={item.product.name}
+                      src={item.image_url}
+                      alt={item.name}
                       style={{
                         width: "100%",
                         height: "100%",
@@ -394,7 +394,7 @@ export default function OrderDetailPage() {
                   <div
                     style={{ fontWeight: 700, color: "#1a1a1a", fontSize: 15 }}
                   >
-                    {item.product?.name || item.product_name || `Item ${i + 1}`}
+                    {item.name || `Item ${i + 1}`}
                   </div>
                   <div style={{ color: "#9CA3AF", fontSize: 13 }}>
                     Qty: {item.quantity} · ₦

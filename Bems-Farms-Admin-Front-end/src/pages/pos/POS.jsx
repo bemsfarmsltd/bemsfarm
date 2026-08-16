@@ -59,7 +59,7 @@ function MHead({ title, onClose, color='#1B4332', icon }) {
     <div style={{ background:color,color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:12,flexShrink:0 }}>
       {icon&&<div style={{ width:40,height:40,borderRadius:10,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0 }}>{icon}</div>}
       <span style={{ fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:15,flex:1 }}>{title}</span>
-      <button onClick={onClose} style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20,display:'flex',padding:4 }}><i className="ri-close-line"/></button>
+      <button onClick={onClose} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20,display:'flex',padding:4 }}><i className="ri-close-line"/></button>
     </div>
   )
 }
@@ -98,6 +98,14 @@ export default function POS() {
 
   const [activeModal, setActiveModal]     = useState(null)
   const closeModal = () => setActiveModal(null)
+  const [viewReceipt, setViewReceipt]     = useState(null)
+
+  function printReceipt() { window.print() }
+  function emailReceipt(id, total) {
+    const subject = encodeURIComponent(`Bems Farms Receipt ${id}`)
+    const body = encodeURIComponent(`Receipt ${id}\nTotal: ${fmt(total)}\n\nThank you for shopping with Bems Farms!`)
+    window.location.href = `mailto:?subject=${subject}&body=${body}`
+  }
 
   const [scanCart, setScanCart]           = useState([])
   const [scanCode, setScanCode]           = useState('')
@@ -501,7 +509,7 @@ export default function POS() {
             {[
               { label:'Scan Basket',    sub:'Scan barcodes to build order',         icon:'ri-barcode-line',       color:'#0ab39c', badge: scanCart.length||null,  onClick:()=>{ setScanCart([]); setScanCode(''); setActiveModal('scanner') } },
               { label:'Online Orders',  sub:'Import incoming orders to cart',        icon:'ri-shopping-bag-3-line',color:'#405189', badge: onlineOrders.filter(o=>onlineStatusBucket(o.status)==='new').length||null, badgeLabel:'new', onClick:()=>{ refreshOnlineOrders(); setActiveModal('online') } },
-              { label:'Goods Return',   sub:'Process a customer return & refund',    icon:'ri-arrow-go-back-line', color:'#f06548', badge: returnLogs.length||null, onClick:()=>{
+              { label:'Goods Return',   sub:'Log a return (manual refund/restock)',    icon:'ri-arrow-go-back-line', color:'#f06548', badge: returnLogs.length||null, onClick:()=>{
                   if (!catalog.length) { showToast('Product catalog still loading — try again in a moment', 'error', '⏳'); return }
                   setReturnForm(f=>({...f,product:null,unitPrice:0,qty:1,customer:'Walk-in',phone:'',notes:'',condition:'resalable',refundMethod:'Cash',reason:POS_RETURN_REASONS[0]})); setReturnStep(1); setReturnSuccess(null); setActiveModal('return')
                 } },
@@ -1196,9 +1204,9 @@ export default function POS() {
           <div style={{ background:'var(--bg-card)', padding:'14px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', flexWrap:'wrap', gap:12, flexShrink:0 }}>
             <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15, flex:1 }}>Receipt Preview</span>
             <div style={{ display:'flex', gap:8 }}>
-              {[['ri-file-pdf-2-line','PDF'],['ri-mail-line','Email'],['ri-printer-line','Print']].map(([icon,label])=>(
-                <button key={label} style={btnL}><i className={icon}/>{label}</button>
-              ))}
+              <button style={btnL} onClick={printReceipt}><i className="ri-file-pdf-2-line"/>PDF</button>
+              <button style={btnL} onClick={() => emailReceipt(orderId, total)}><i className="ri-mail-line"/>Email</button>
+              <button style={btnL} onClick={printReceipt}><i className="ri-printer-line"/>Print</button>
             </div>
             <button style={{ ...btnP, fontSize:12, padding:'6px 14px' }} onClick={closeModal}>Close</button>
           </div>
@@ -1305,14 +1313,69 @@ export default function POS() {
                       <td style={{ padding:'12px 12px', fontSize:13, fontWeight:600, borderBottom:`1px solid var(--border)` }}>{fmt(h.total)}</td>
                       <td style={{ padding:'12px 12px', borderBottom:`1px solid var(--border)` }}>
                         <div style={{ display:'flex', gap:4 }}>
-                          <button style={{ background:BG2, border:`1px solid ${B}`, borderRadius:6, padding:'4px 8px', cursor:'pointer', fontSize:13, color:'var(--text-secondary)' }}><i className="ri-eye-line"/></button>
-                          <button style={{ background:BG2, border:`1px solid ${B}`, borderRadius:6, padding:'4px 8px', cursor:'pointer', fontSize:13, color:'var(--text-secondary)' }}><i className="ri-printer-line"/></button>
+                          <button style={{ background:BG2, border:`1px solid ${B}`, borderRadius:6, padding:'4px 8px', cursor:'pointer', fontSize:13, color:'var(--text-secondary)' }}
+                            onClick={() => { setViewReceipt(h); setActiveModal('receiptDetail') }}><i className="ri-eye-line"/></button>
+                          <button style={{ background:BG2, border:`1px solid ${B}`, borderRadius:6, padding:'4px 8px', cursor:'pointer', fontSize:13, color:'var(--text-secondary)' }}
+                            onClick={() => { setViewReceipt(h); setActiveModal('receiptDetail'); setTimeout(printReceipt, 150) }}><i className="ri-printer-line"/></button>
                         </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </ModalBox>
+      )}
+
+      {/* RECEIPT DETAIL (from Billing History) */}
+      {activeModal==='receiptDetail' && viewReceipt && (
+        <ModalBox maxWidth={680}>
+          <div style={{ background:'var(--bg-card)', padding:'14px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', flexWrap:'wrap', gap:12, flexShrink:0 }}>
+            <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:15, flex:1 }}>Receipt {viewReceipt.receipt_number}</span>
+            <div style={{ display:'flex', gap:8 }}>
+              <button style={btnL} onClick={printReceipt}><i className="ri-printer-line"/>Print</button>
+              <button style={btnL} onClick={() => emailReceipt(viewReceipt.receipt_number, viewReceipt.total)}><i className="ri-mail-line"/>Email</button>
+            </div>
+            <button style={{ ...btnP, fontSize:12, padding:'6px 14px' }} onClick={() => { closeModal(); setViewReceipt(null) }}>Close</button>
+          </div>
+          <div style={{ padding:24, overflowY:'auto' }}>
+            <div style={{ border:`1px solid ${B}`, padding:24, borderRadius:10 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
+                <div><p style={{ color:S, marginBottom:4, fontSize:12 }}>Paid On:</p><strong style={{ fontSize:14 }}>{new Date(viewReceipt.paid_at).toLocaleString('en-NG')}</strong></div>
+                <div style={{ textAlign:'right' }}>
+                  <p style={{ color:S, marginBottom:4, fontSize:12 }}>Customer:</p>
+                  <strong style={{ fontSize:14 }}>{viewReceipt.customer_name || 'Walk-in Customer'}</strong>
+                </div>
+                <div><p style={{ color:S, marginBottom:4, fontSize:12 }}>Cashier:</p><strong style={{ fontSize:14 }}>{viewReceipt.cashier_name || '—'}</strong></div>
+                <div style={{ textAlign:'right' }}><p style={{ color:S, marginBottom:4, fontSize:12 }}>Payment Method:</p><strong style={{ fontSize:14 }}>{viewReceipt.payment_method}</strong></div>
+              </div>
+              <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:16 }}>
+                <thead>
+                  <tr style={{ borderBottom:`1px solid ${B}` }}>
+                    {['Item','Qty','Unit','Total'].map((hh,i)=><th key={hh} style={{ fontSize:11, fontWeight:600, color:S, padding:'8px 0', textAlign:i===0?'left':'right' }}>{hh}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(viewReceipt.items||[]).map(item=>(
+                    <tr key={item.id}>
+                      <td style={{ padding:'8px 0', fontSize:13 }}>{item.product_name}</td>
+                      <td style={{ padding:'8px 0', fontSize:13, textAlign:'right' }}>{item.quantity}</td>
+                      <td style={{ padding:'8px 0', fontSize:13, textAlign:'right' }}>{fmt(item.price)}</td>
+                      <td style={{ padding:'8px 0', fontSize:13, fontWeight:600, textAlign:'right' }}>{fmt(item.price*item.quantity)}</td>
+                    </tr>
+                  ))}
+                  {Number(viewReceipt.discount_amount)>0 && <tr><td colSpan={3} style={{ textAlign:'right', fontSize:12, color:'#f06548', padding:'6px 0' }}>Discount</td><td style={{ textAlign:'right', fontSize:12, color:'#f06548', padding:'6px 0' }}>− {fmt(viewReceipt.discount_amount)}</td></tr>}
+                  {Number(viewReceipt.tax_amount)>0 && <tr><td colSpan={3} style={{ textAlign:'right', fontSize:12, color:S, padding:'6px 0' }}>VAT</td><td style={{ textAlign:'right', fontSize:12, color:S, padding:'6px 0' }}>{fmt(viewReceipt.tax_amount)}</td></tr>}
+                  <tr style={{ borderTop:`2px solid ${B}` }}>
+                    <td colSpan={3} style={{ fontWeight:700, padding:'10px 0', fontSize:14, textAlign:'right' }}>Total Paid</td>
+                    <td style={{ fontWeight:800, padding:'10px 0', fontSize:15, textAlign:'right', color:'#22c55e' }}>{fmt(viewReceipt.total)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              {viewReceipt.transaction_id && (
+                <div style={{ fontSize:12, color:S }}>Txn ID: {viewReceipt.transaction_id}</div>
+              )}
             </div>
           </div>
         </ModalBox>
@@ -1349,8 +1412,8 @@ export default function POS() {
                 )}
               </div>
               <div style={{ display:'flex', justifyContent:'center', gap:8, marginBottom:16 }}>
-                <button style={btnL}><i className="ri-file-pdf-2-line"/>Download</button>
-                <button style={btnL}><i className="ri-printer-line"/>Print Receipt</button>
+                <button style={btnL} onClick={printReceipt}><i className="ri-file-pdf-2-line"/>Download</button>
+                <button style={btnL} onClick={printReceipt}><i className="ri-printer-line"/>Print Receipt</button>
               </div>
               <button style={{ ...btnP, width:'100%', justifyContent:'center', padding:'12px' }} onClick={newOrder}><i className="ri-add-circle-line"/>New Order</button>
             </div>
@@ -1369,9 +1432,12 @@ export default function POS() {
         if (returnSuccess) return (
           <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:820, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
             <div style={{ background:'var(--bg-card)', borderRadius:16, maxWidth:360, width:'100%', padding:32, textAlign:'center', boxShadow:'0 24px 48px rgba(0,0,0,.3)' }}>
-              <div style={{ width:72, height:72, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:43 }}>✅</div>
-              <h6 style={{ fontWeight:700, marginBottom:4, fontSize:16 }}>Return Processed</h6>
+              <div style={{ width:72, height:72, borderRadius:'50%', background:'#f59e0b', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:43 }}>⚠️</div>
+              <h6 style={{ fontWeight:700, marginBottom:4, fontSize:16 }}>Return Logged — Not Yet Processed</h6>
               <div style={{ color:S, marginBottom:16, fontSize:13 }}>{returnSuccess.ref}</div>
+              <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:8, padding:'10px 14px', marginBottom:16, fontSize:12, color:'#92400e', textAlign:'left' }}>
+                Goods Return isn't wired up to inventory or the till yet — nothing has actually been refunded or restocked. Note the details below and handle the refund and stock adjustment manually for now.
+              </div>
               <div style={{ background:BG2, borderRadius:8, padding:16, marginBottom:20, fontSize:13, textAlign:'left' }}>
                 {[['Refund Amount',`₦${returnSuccess.total.toLocaleString()}`,true],['Method',returnSuccess.method],['Goods',{resalable:'Back to stock',damaged:'Written off',partial:'Split'}[returnSuccess.condition]]].map(([k,v,red])=>(
                   <div key={k} style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}><span style={{ color:S }}>{k}</span><span style={{ fontWeight:700, color:red?'#f06548':'#111827' }}>{v}</span></div>
@@ -1394,7 +1460,7 @@ export default function POS() {
                     <div style={{ fontSize:11, color:S }}>Step {returnStep} of 2</div>
                   </div>
                 </div>
-                <button onClick={closeModal} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, color:S }}><i className="ri-close-line"/></button>
+                <button onClick={closeModal} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, color:S }}><i className="ri-close-line"/></button>
               </div>
               <div style={{ display:'flex', borderBottom:`1px solid ${B}`, flexShrink:0 }}>
                 {[{n:1,label:'Return Details'},{n:2,label:'Inspect & Refund'}].map(s=>(

@@ -439,7 +439,7 @@ export default function BankAccounts() {
           <form style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }} onClick={e => e.stopPropagation()} onSubmit={handleCreate}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>New Bank Account</span>
-              <button type="button" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={() => setAddModal(false)}><i className="ri-close-line" /></button>
+              <button type="button" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setAddModal(false)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px', display: 'grid', gap: '16px' }}>
               <div>
@@ -505,7 +505,7 @@ export default function BankAccounts() {
           <form style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }} onClick={e => e.stopPropagation()} onSubmit={handleUpdate}>
             <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Edit Bank Account</span>
-              <button type="button" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={() => setEditModal(null)}><i className="ri-close-line" /></button>
+              <button type="button" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setEditModal(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px', display: 'grid', gap: '16px' }}>
               <div>
@@ -571,7 +571,7 @@ export default function BankAccounts() {
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '400px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
             <div style={{ background: '#ef4444', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'Syne, sans-serif' }}>Deactivate Bank Account</span>
-              <button type="button" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} onClick={() => setConfirmDelete(null)}><i className="ri-close-line" /></button>
+              <button type="button" style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setConfirmDelete(null)}><i className="ri-close-line" /></button>
             </div>
             <div style={{ padding: '24px', textAlign: 'center' }}>
               <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(239,68,68,0.1)', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', margin: '0 auto 16px' }}>

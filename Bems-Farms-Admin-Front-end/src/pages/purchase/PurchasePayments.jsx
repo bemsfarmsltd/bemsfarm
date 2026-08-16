@@ -112,7 +112,7 @@ export default function PurchasePayments() {
                 setShowAdd(true)
               }}
             >
-              <i data-lucide="plus" className="size-4 me-1"></i>Record Payment
+              <i className="ri-add-line size-4 me-1"></i>Record Payment
             </button>
           </div>
 
@@ -219,7 +219,7 @@ export default function PurchasePayments() {
             <div className="modal-content">
               <div className="modal-header">
                 <h6 className="modal-title">Record Purchase Payment</h6>
-                <button className="btn-close" onClick={() => setShowAdd(false)}></button>
+                <button className="btn-close" aria-label="Close" onClick={() => setShowAdd(false)}></button>
               </div>
               <form onSubmit={handleAddSubmit}>
                 <div className="modal-body">

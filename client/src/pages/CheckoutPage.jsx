@@ -6,6 +6,7 @@ import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { getDeliveryFee } from "../utils/delivery";
+import { NAIRA_PER_UNIT } from "../utils/currency";
 
 const STATES = [
   "Abia",
@@ -875,7 +876,7 @@ export default function CheckoutPage() {
                       ₦
                       {(
                         entry.product.price *
-                        1500 *
+                        NAIRA_PER_UNIT *
                         entry.quantity
                       ).toLocaleString()}
                     </span>
