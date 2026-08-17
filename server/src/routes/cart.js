@@ -21,18 +21,38 @@ if (!JWT_SECRET) {
 }
 
 // Optional auth — resolves user from Bearer token, returns null for guests
+// (or for a suspended/deactivated/session-revoked one — same checks
+// protect() applies, which this hand-rolled verifier previously skipped
+// entirely, letting a suspended account or a token invalidated by a
+// password reset keep adding/removing cart items indefinitely).
 async function resolveCustomer(req) {
   try {
     const auth = req.headers.authorization;
     if (!auth?.startsWith("Bearer ")) return null;
     const decoded = jwt.verify(auth.split(" ")[1], JWT_SECRET);
 
-    // Check both users table (admin) and customers table (shop)
-    const result = await pool.query(
-      "SELECT id, name, email FROM customers WHERE id=$1 UNION ALL SELECT id, name, email FROM users WHERE id=$1 LIMIT 1",
+    // customers (shop) and users (admin/website) are separate identity
+    // tables — check whichever one the token actually belongs to.
+    const customer = await pool.query(
+      "SELECT id, name, email, status FROM customers WHERE id=$1",
       [decoded.id]
     );
-    return result.rows[0] || null;
+    if (customer.rows.length) {
+      const c = customer.rows[0];
+      if (c.status === "suspended" || c.status === "inactive") return null;
+      return { id: c.id, name: c.name, email: c.email };
+    }
+
+    const user = await pool.query(
+      "SELECT id, name, email, status, token_version FROM users WHERE id=$1",
+      [decoded.id]
+    );
+    if (!user.rows.length) return null;
+    const u = user.rows[0];
+    if (u.status === "suspended" || u.status === "inactive") return null;
+    const tokenVersion = decoded.tokenVersion || 0;
+    if (tokenVersion !== u.token_version) return null;
+    return { id: u.id, name: u.name, email: u.email };
   } catch {
     return null;
   }

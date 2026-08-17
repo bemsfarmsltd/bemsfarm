@@ -10,12 +10,6 @@ const STATUS_CFG = {
   shipped:            { label:'En Route',            color:'#3b82f6', bg:'#dbeafe', icon:'ri-truck-line'         },
   delivery_attempted: { label:'Delivery Attempted',  color:'#f97316', bg:'#ffedd5', icon:'ri-route-line'         },
 }
-const CONFIDENCE_CFG = {
-  High:   { color:'#22c55e', bg:'#dcfce7' }, High:   { color:'#22c55e', bg:'#dcfce7' },
-  Medium: { color:'#f59e0b', bg:'#fef3c7' }, medium: { color:'#f59e0b', bg:'#fef3c7' },
-  Low:    { color:'#ef4444', bg:'#fee2e2' }, low:    { color:'#ef4444', bg:'#fee2e2' },
-  high:   { color:'#22c55e', bg:'#dcfce7' },
-}
 const LOG_STATUS_CFG = {
   driver_assigned:  { label:'In Progress', color:'#3b82f6', bg:'#dbeafe' },
   out_for_delivery: { label:'In Progress', color:'#3b82f6', bg:'#dbeafe' },
@@ -153,17 +147,16 @@ export default function ActiveDeliveries() {
             <div style={{ overflowX:'auto' }}>
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
-                  <tr>{['Log ID','Time','Order / Customer','Zone','Auto Driver','Rule','Confidence','Override?','Outcome'].map(h => <TH key={h}>{h}</TH>)}</tr>
+                  <tr>{['Log ID','Time','Order / Customer','Zone','Auto Driver','Override?','Outcome'].map(h => <TH key={h}>{h}</TH>)}</tr>
                 </thead>
                 <tbody>
                   {loading && [...Array(5)].map((_,i) => (
-                    <tr key={i}>{[...Array(9)].map((_,j) => <TD key={j}><div style={{ height:14, background:'#f0f0f0', borderRadius:4 }} /></TD>)}</tr>
+                    <tr key={i}>{[...Array(7)].map((_,j) => <TD key={j}><div style={{ height:14, background:'#f0f0f0', borderRadius:4 }} /></TD>)}</tr>
                   ))}
                   {!loading && autoLog.length===0 && (
-                    <tr><td colSpan={9} style={{ textAlign:'center', color:'var(--text-light)', padding:'32px 0', fontSize:13 }}>No auto-assignment records yet</td></tr>
+                    <tr><td colSpan={7} style={{ textAlign:'center', color:'var(--text-light)', padding:'32px 0', fontSize:13 }}>No auto-assignment records yet</td></tr>
                   )}
                   {!loading && autoLog.map(log => {
-                    const conf = CONFIDENCE_CFG[log.confidence_score] || CONFIDENCE_CFG.Medium
                     const sc   = LOG_STATUS_CFG[log.order_status] || { label:log.order_status, color:'var(--text-muted)', bg:'var(--border)' }
                     return (
                       <tr key={log.id}>
@@ -188,8 +181,6 @@ export default function ActiveDeliveries() {
                             </div>
                           </div>
                         </TD>
-                        <TD style={{ color:'var(--text-muted)', fontSize:11, maxWidth:200 }}>{log.matching_rule||'Zone match'}</TD>
-                        <TD>{pill(conf.bg, conf.color, null, log.confidence_score||'Medium')}</TD>
                         <TD>
                           {log.overridden_by_name
                             ? <div><span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:50, background:'#fef3c7', color:'#d97706' }}><i className="ri-edit-line" />Overridden</span><div style={{ fontSize:10, color:'var(--text-light)', marginTop:2 }}>{log.overridden_by_name}</div></div>

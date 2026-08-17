@@ -6,6 +6,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ordersAPI } from "../services/api"; // adjust path if needed
+import Toast from "../components/ui/Toast";
 
 const STATUS_CONFIG = {
   pending: {
@@ -81,6 +82,13 @@ export default function OrderDetailPage() {
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     ordersAPI
@@ -98,7 +106,7 @@ export default function OrderDetailPage() {
           alignItems: "center",
           justifyContent: "center",
           minHeight: "60vh",
-          fontFamily: "'Inter', sans-serif",
+          fontFamily: "var(--body-font)",
         }}
       >
         <div>
@@ -135,28 +143,101 @@ export default function OrderDetailPage() {
   const daysSinceUpdate =
     (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
   const canReturn = order.status === "delivered" && daysSinceUpdate <= 7;
-  const canCancel = order.status === "pending";
+  const canCancel = order.status === "pending" || order.status === "confirmed";
 
   const handleCancel = async () => {
-    if (!window.confirm("Are you sure you want to cancel this order?")) return;
+    setShowCancelConfirm(false);
     try {
       await ordersAPI.cancel(order.id, "Cancelled by customer");
       setOrder((prev) => ({ ...prev, status: "cancelled" }));
+      showToast("Order cancelled");
     } catch {
-      alert("Failed to cancel order.");
+      showToast("Failed to cancel order.", "error");
     }
   };
 
   return (
     <div
       style={{
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "var(--body-font)",
         padding: "32px 5%",
         maxWidth: 800,
         margin: "0 auto",
         minHeight: "100vh",
       }}
     >
+      <Toast toast={toast} onClose={() => setToast(null)} />
+
+      {showCancelConfirm && (
+        <div
+          onClick={() => setShowCancelConfirm(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            zIndex: 1054,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: 16,
+              width: "100%",
+              maxWidth: 380,
+              padding: 28,
+              textAlign: "center",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+            }}
+          >
+            <h3 style={{ fontSize: 17, fontWeight: 800, color: "#0D1117", margin: "0 0 8px" }}>
+              Cancel this order?
+            </h3>
+            <p style={{ fontSize: 14, color: "#6B7280", margin: "0 0 24px" }}>
+              This can't be undone. The order will be marked as cancelled.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                style={{
+                  flex: 1,
+                  padding: "12px 0",
+                  borderRadius: 12,
+                  border: "1.5px solid #E5E7EB",
+                  background: "#fff",
+                  color: "#374151",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Keep Order
+              </button>
+              <button
+                onClick={handleCancel}
+                style={{
+                  flex: 1,
+                  padding: "12px 0",
+                  borderRadius: 12,
+                  border: "none",
+                  background: "#DC2626",
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Cancel Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Breadcrumb */}
       <div
         style={{
@@ -477,7 +558,7 @@ export default function OrderDetailPage() {
           {/* Cancel button */}
           {canCancel && (
             <button
-              onClick={handleCancel}
+              onClick={() => setShowCancelConfirm(true)}
               style={{
                 padding: "12px 24px",
                 borderRadius: 12,

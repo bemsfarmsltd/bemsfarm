@@ -56,7 +56,13 @@ router.post("/validate", async (req, res, next) => {
     const { code, order_total = 0, customer_id } = req.body;
     if (!code) return res.status(400).json({ message: "code required" });
 
-    const result = await validateCoupon(pool, { code, subtotal: parseFloat(order_total), customerId: customer_id || null });
+    // req.user.id (the authenticated caller) is what order creation actually
+    // checks the per-user limit against (orders.js passes userId the same
+    // way) — relying on a client-supplied customer_id meant this preview
+    // never enforced the limit, since the client never sent one, letting an
+    // already-used single-use coupon show as "applied" here even though
+    // checkout would correctly reject it moments later.
+    const result = await validateCoupon(pool, { code, subtotal: parseFloat(order_total), customerId: customer_id || null, userId: req.user.id });
     if (!result.ok) return res.json({ valid: false, message: result.message });
 
     res.json({

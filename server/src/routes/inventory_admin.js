@@ -728,6 +728,63 @@ router.post(
   }
 );
 
+// ── PATCH /api/admin/inventory/lost-items/:id ───────────────────────────
+// Corrects a report's own fields (reason/notes/quantity/warehouse) — does
+// NOT touch stock, since the original stock deduction already happened at
+// creation and adjusting it here would require reconciling a second delta.
+// Only allowed while the report is still 'pending': once approved/rejected
+// it's part of the audit trail, same reasoning as blocking delete on an
+// already-refunded return elsewhere in this codebase.
+router.patch(
+  "/lost-items/:id",
+  requireRole("superadmin", "manager", "admin", "storekeeper"),
+  async (req, res, next) => {
+    try {
+      const existing = await pool.query("SELECT status, product_id FROM lost_items WHERE id=$1", [req.params.id]);
+      if (!existing.rows.length) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      if (existing.rows[0].status !== "pending") {
+        return res.status(400).json({ message: "Only a pending report can be edited — this one has already been reviewed." });
+      }
+
+      const { warehouse_id, quantity, reason, notes } = req.body;
+      if (quantity !== undefined && (!quantity || parseInt(quantity) <= 0)) {
+        return res.status(400).json({ message: "quantity must be > 0" });
+      }
+
+      let estimated_value;
+      if (quantity !== undefined) {
+        const prod = await pool.query("SELECT unit_price, price FROM products WHERE id=$1", [existing.rows[0].product_id]);
+        const unitValue = parseFloat(prod.rows[0]?.unit_price || prod.rows[0]?.price || 0);
+        estimated_value = unitValue * parseInt(quantity);
+      }
+
+      await pool.query(
+        `UPDATE lost_items SET
+           warehouse_id     = COALESCE($1, warehouse_id),
+           quantity         = COALESCE($2, quantity),
+           reason           = COALESCE($3, reason),
+           notes            = COALESCE($4, notes),
+           estimated_value  = COALESCE($5, estimated_value)
+         WHERE id = $6`,
+        [
+          warehouse_id ? parseInt(warehouse_id) : null,
+          quantity !== undefined ? parseInt(quantity) : null,
+          reason || null,
+          notes || null,
+          estimated_value !== undefined ? estimated_value : null,
+          req.params.id,
+        ]
+      );
+
+      res.json({ message: "Report updated" });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 router.patch(
   "/lost-items/:id/approve",
   requireRole("superadmin", "manager"),

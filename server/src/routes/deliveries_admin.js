@@ -101,8 +101,7 @@ router.get("/auto-log", requireRole("superadmin", "manager", "admin", "delivery_
   try {
     const rows = await pool.query(`
       SELECT
-        da.id, da.assignment_type, 
-        0 AS confidence_score, da.created_at,
+        da.id, da.assignment_type, da.created_at,
         da.driver_response,
         o.id AS order_id, o.status AS order_status,
         COALESCE(o.customer_name, c.name) AS customer_name,

@@ -10,6 +10,7 @@ const validate = require("../middleware/validate");
 const orderAdminSchemas = require("../schemas/orderAdminSchemas");
 const emailService = require("../services/emailService");
 const { restoreOrderStock } = require("../utils/orderStock");
+const { initiateMonnifyRefund } = require("../utils/monnify");
 
 router.use(protect);
 
@@ -185,7 +186,37 @@ router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
+    // Don't let a hard delete silently orphan real financial records —
+    // payments.order_id is ON DELETE SET NULL (so it wouldn't error, just
+    // quietly disconnect a successful payment from the order it was for),
+    // and returns.order_id has no FK at all, so a refunded return would be
+    // left pointing at an id that no longer exists. Block deletion if either
+    // exists; otherwise clean up the non-financial leftovers explicitly.
+    const livePayment = await client.query(
+      "SELECT id FROM payments WHERE order_id=$1 AND status='successful' LIMIT 1",
+      [req.params.id]
+    );
+    if (livePayment.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Cannot delete an order with a successful payment on record — that payment's financial history must be preserved." });
+    }
+    const refundedReturn = await client.query(
+      "SELECT id FROM returns WHERE order_id=$1 AND status='refunded' LIMIT 1",
+      [req.params.id]
+    );
+    if (refundedReturn.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "Cannot delete an order with a refunded return on record — that return's financial history must be preserved." });
+    }
+
     // Remove child rows before deleting the parent
+    const linkedReturns = await client.query("SELECT id FROM returns WHERE order_id=$1", [req.params.id]);
+    if (linkedReturns.rows.length) {
+      const returnIds = linkedReturns.rows.map(r => r.id);
+      await client.query("DELETE FROM return_items WHERE return_id = ANY($1)", [returnIds]).catch(() => {});
+      await client.query("DELETE FROM returns WHERE order_id=$1", [req.params.id]);
+    }
+    await client.query("DELETE FROM payments WHERE order_id=$1", [req.params.id]);
     await client.query("DELETE FROM order_items WHERE order_id=$1", [req.params.id]);
     await client.query(
       "DELETE FROM order_status_history WHERE order_id=$1",
@@ -884,7 +915,7 @@ router.patch(
       await client.query("BEGIN");
       const { decision, notes, refund_amount } = req.body;
 
-      const current = await client.query("SELECT status FROM orders WHERE id=$1", [req.params.id]);
+      const current = await client.query("SELECT status, total, payment_ref FROM orders WHERE id=$1", [req.params.id]);
       if (!current.rows.length) {
         await client.query("ROLLBACK");
         return res.status(404).json({ message: "Order not found" });
@@ -893,10 +924,49 @@ router.patch(
         await client.query("ROLLBACK");
         return res.status(400).json({ message: "This order is not currently disputed" });
       }
+      const order = current.rows[0];
+
+      // A dispute "refund" decision used to just write a note saying a refund
+      // happened — no Monnify call, no ledger entry, nothing actually moved.
+      // Only orders paid via Monnify (payment_ref set) can be auto-refunded
+      // here; COD/other methods need a manual refund, so say so honestly
+      // instead of claiming it was processed.
+      const isRefundDecision = decision === "full_refund" || decision === "partial_refund";
+      const amountToRefund = decision === "full_refund" ? parseFloat(order.total) : parseFloat(refund_amount || 0);
+      let refundOutcome = null;
+      if (isRefundDecision) {
+        if (order.payment_ref && amountToRefund > 0) {
+          try {
+            const refundReference = `BF-DSP-${req.params.id}-${Date.now().toString(36).toUpperCase()}`;
+            await initiateMonnifyRefund({
+              transactionReference: order.payment_ref,
+              refundReference,
+              refundAmount: amountToRefund,
+              refundReason: `Dispute resolution for order #${req.params.id}`,
+              customerNote: "BemsFarms dispute refund",
+            });
+            await client.query("UPDATE orders SET payment_status='refund_pending', updated_at=NOW() WHERE id=$1", [req.params.id]);
+            refundOutcome = "initiated";
+          } catch (refundErr) {
+            console.error("[Dispute Refund] Monnify refund failed:", refundErr.response?.data || refundErr.message);
+            refundOutcome = "failed";
+          }
+        } else {
+          refundOutcome = "manual";
+        }
+      }
 
       const noteMap = {
-        full_refund: `Admin decision: Full refund processed. ${notes || ""}`,
-        partial_refund: `Admin decision: Partial refund of ₦${refund_amount || 0}. Notes: ${notes || ""}`,
+        full_refund: refundOutcome === "initiated"
+          ? `Admin decision: Full refund of ₦${amountToRefund} initiated via Monnify. ${notes || ""}`
+          : refundOutcome === "failed"
+            ? `Admin decision: Full refund approved but the Monnify refund call failed — needs manual follow-up. ${notes || ""}`
+            : `Admin decision: Full refund approved — no online payment reference on this order, process manually. ${notes || ""}`,
+        partial_refund: refundOutcome === "initiated"
+          ? `Admin decision: Partial refund of ₦${amountToRefund} initiated via Monnify. Notes: ${notes || ""}`
+          : refundOutcome === "failed"
+            ? `Admin decision: Partial refund of ₦${amountToRefund} approved but the Monnify refund call failed — needs manual follow-up. Notes: ${notes || ""}`
+            : `Admin decision: Partial refund of ₦${amountToRefund} approved — no online payment reference on this order, process manually. Notes: ${notes || ""}`,
         replacement: `Admin decision: Replacement arranged. Driver to collect goods.`,
         reject: `Admin decision: Claim rejected. Reason: ${notes || ""}`,
       };
@@ -925,7 +995,7 @@ router.patch(
       );
 
       await client.query("COMMIT");
-      res.json({ message: "Dispute resolved" });
+      res.json({ message: "Dispute resolved", refund_outcome: refundOutcome });
     } catch (err) {
       await client.query("ROLLBACK");
       next(err);

@@ -97,25 +97,24 @@ export default function LostItems() {
   useEffect(() => { fetchItems() }, [fetchItems])
   useEffect(() => { setPage(1) }, [search, filterStatus])
 
+  // The backend (see PATCH /admin/inventory/lost-items/:id/approve) only
+  // ever sets status to 'pending', 'approved', or 'rejected' — no
+  // "investigating" state exists server-side, so that's not represented here.
   function getStatusCfg(r) {
     const status = (r.status || '').toLowerCase()
-    if (status === 'pending' || status === 'pending_review' || r.id === 6) {
-      return { label: 'Pending', bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' }
+    if (status === 'approved') {
+      return { label: 'Confirmed Loss', bg: '#fee2e2', color: '#ef4444', border: '#fee2e2' }
     }
-    if (status === 'investigating' || status === 'under_investigation' || r.id === 5) {
-      return { label: 'Investigating', bg: '#e0f2fe', color: '#0284c7', border: '#bae6fd' }
+    if (status === 'rejected') {
+      return { label: 'Rejected', bg: '#f1f5f9', color: '#64748b', border: '#e2e8f0' }
     }
-    return { label: 'Confirmed Loss', bg: '#fee2e2', color: '#ef4444', border: '#fee2e2' }
+    return { label: 'Pending', bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' }
   }
 
-  const getMappedReason = (r) => {
-    const reason = r.reason || ''
-    if (reason === 'Spoilage') return 'Spoilage / Rotting'
-    if (reason === 'Damage') return 'Physical Damage'
-    if (reason === 'System Error') return 'Miscount'
-    if (reason === 'Theft') return 'Theft'
-    return reason || 'Expiry Date Passed'
-  }
+  // The Report-Loss form only ever submits a value straight from REASONS
+  // above, so there are no legacy reason strings to remap — a real reason
+  // just passes through, and a missing one defaults sensibly.
+  const getMappedReason = (r) => r.reason || 'Expiry Date Passed'
 
   const filtered = useMemo(() => {
     return items.filter(r => {
@@ -134,28 +133,21 @@ export default function LostItems() {
 
   const totals = useMemo(() => {
     const reports = items.length
-    const pending = items.filter(r => {
-      const lbl = getStatusCfg(r).label;
-      return lbl === 'Pending' || lbl === 'Pending Review';
-    }).length
-    const investigation = items.filter(r => getStatusCfg(r).label === 'Investigating').length
+    const pending = items.filter(r => getStatusCfg(r).label === 'Pending').length
+    const rejected = items.filter(r => getStatusCfg(r).label === 'Rejected').length
     const confirmedLoss = items.reduce((s, r) => {
-      const lbl = getStatusCfg(r).label;
-      return lbl === 'Confirmed Loss' || lbl === 'Confirmed' ? s + Number(r.estimated_value || 0) : s;
+      return getStatusCfg(r).label === 'Confirmed Loss' ? s + Number(r.estimated_value || 0) : s;
     }, 0)
     return {
       reports,
       pending,
-      investigation,
+      rejected,
       confirmedLoss: `₦${confirmedLoss.toLocaleString()}`
     }
   }, [items])
 
   const pendingCount = useMemo(() => {
-    return items.filter(r => {
-      const lbl = getStatusCfg(r).label;
-      return lbl === 'Pending' || lbl === 'Pending Review';
-    }).length
+    return items.filter(r => getStatusCfg(r).label === 'Pending').length
   }, [items])
 
   function openForm()     { setForm(BLANK_FORM); setShowForm(true) }
@@ -169,10 +161,8 @@ export default function LostItems() {
       await api.delete(`/admin/inventory/lost-items/${id}`)
       toast.success('Report deleted successfully')
       setItems(prev => prev.filter(r => r.id !== id))
-    } catch {
-      // Fallback for mocks
-      setItems(prev => prev.filter(r => r.id !== id))
-      toast.success('Report deleted successfully')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete report')
     }
   }
 
@@ -180,18 +170,30 @@ export default function LostItems() {
     e.preventDefault()
     setSaving(true)
     try {
-      await api.post('/admin/inventory/lost-items', { 
-        ...form, 
-        quantity: Number(form.quantity), 
-        estimated_value: Number(form.estimated_value) 
-      })
-      toast.success('Lost item reported')
+      if (form.id) {
+        // Editing an existing report — corrects the report's own fields only;
+        // does not touch stock (that was already applied at creation time).
+        await api.patch(`/admin/inventory/lost-items/${form.id}`, {
+          warehouse_id: form.warehouse_id,
+          quantity: Number(form.quantity),
+          reason: form.reason,
+          notes: form.notes,
+        })
+        toast.success('Report updated')
+      } else {
+        await api.post('/admin/inventory/lost-items', {
+          ...form,
+          quantity: Number(form.quantity),
+          estimated_value: Number(form.estimated_value)
+        })
+        toast.success('Lost item reported')
+      }
       closeForm()
       fetchItems()
-    } catch (err) { 
-      toast.error(err.response?.data?.message || 'Failed to report') 
-    } finally { 
-      setSaving(false) 
+    } catch (err) {
+      toast.error(err.response?.data?.message || (form.id ? 'Failed to update report' : 'Failed to report'))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -240,7 +242,7 @@ export default function LostItems() {
         {[
           { label:'Total Reports',         value:totals.reports, icon:'ri-file-text-line', color:'#405189', valueColor:'var(--text-primary)' },
           { label:'Pending Review',        value:totals.pending, icon:'ri-time-line', color:'#f7b84b', valueColor:'#f7b84b' },
-          { label:'Under Investigation',   value:totals.investigation, icon:'ri-search-line', color:'#299cdb', valueColor:'#299cdb' },
+          { label:'Rejected',              value:totals.rejected, icon:'ri-close-circle-line', color:'#64748b', valueColor:'#64748b' },
           { label:'Confirmed Value Lost',  value:totals.confirmedLoss, icon:'ri-coins-line', color:'#ef4444', valueColor:'#ef4444' },
         ].map(c => (
           <div key={c.label} style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -265,7 +267,7 @@ export default function LostItems() {
           <select style={{ ...inp, width:'auto', minWidth:140 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">All Records</option>
             <option value="pending">Pending</option>
-            <option value="investigating">Investigating</option>
+            <option value="rejected">Rejected</option>
             <option value="confirmed loss">Confirmed Loss</option>
           </select>
           <button style={btnP} onClick={openForm}><i className="ri-add-line"/>Report Loss</button>
@@ -384,15 +386,16 @@ export default function LostItems() {
 
       {/* Report Loss Modal */}
       {showForm && (
-        <Modal title="Report Lost Item" onClose={closeForm}>
+        <Modal title={form.id ? 'Edit Report' : 'Report Lost Item'} onClose={closeForm}>
           <form onSubmit={saveForm}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
               <div>
                 <label style={LBL}>Product <span style={{ color:'#dc2626' }}>*</span></label>
-                <select style={inp} required value={form.product_id} onChange={e => setForm(f=>({...f,product_id:e.target.value}))}>
+                <select style={{ ...inp, opacity: form.id ? 0.6 : 1 }} required disabled={!!form.id} value={form.product_id} onChange={e => setForm(f=>({...f,product_id:e.target.value}))}>
                   <option value="">— Select Product —</option>
                   {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
+                {form.id && <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>Product can't be changed on an existing report — delete and re-report if it's wrong.</div>}
               </div>
               <div>
                 <label style={LBL}>Warehouse</label>
@@ -417,7 +420,8 @@ export default function LostItems() {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
               <div>
                 <label style={LBL}>Estimated Value (₦)</label>
-                <input type="number" style={inp} min="0" value={form.estimated_value} onChange={e => setForm(f=>({...f,estimated_value:e.target.value}))} placeholder="0"/>
+                <input type="number" style={{ ...inp, opacity: form.id ? 0.6 : 1 }} min="0" disabled={!!form.id} value={form.estimated_value} onChange={e => setForm(f=>({...f,estimated_value:e.target.value}))} placeholder="0"/>
+                {form.id && <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>Recalculated automatically from quantity.</div>}
               </div>
               <div>
                 <label style={LBL}>Date <span style={{ color:'#dc2626' }}>*</span></label>

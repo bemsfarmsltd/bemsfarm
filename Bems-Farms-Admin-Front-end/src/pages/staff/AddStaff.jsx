@@ -115,7 +115,7 @@ export default function AddStaff() {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
             <div>
               <label style={LBL}>Phone</label>
-              <input style={inp} value={form.phone} onChange={sf('phone')} placeholder="0810 000 1234"/>
+              <input style={inp} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g,'') }))} maxLength={11} placeholder="08100001234"/>
             </div>
             <div>
               <label style={LBL}>Password <span style={{ fontWeight:400, color:S }}>(optional)</span></label>

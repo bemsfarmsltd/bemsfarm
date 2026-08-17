@@ -137,20 +137,26 @@ router.post("/subscribe", async (req, res, next) => {
         if (referrerUpdate.rows.length > 0) {
           const referrer = referrerUpdate.rows[0];
 
-          // Trigger rewards upgrade
+          // Trigger rewards upgrade — >= thresholds (not ===) so the
+          // referrer still gets upgraded if the count ever advances by more
+          // than 1 between checks; the discount_code comparison in the
+          // UPDATE below keeps this idempotent so it doesn't re-fire (and
+          // re-email) on every signup past the threshold.
           let upgradeCode = null;
-          if (referrer.referral_count === 3) {
-            upgradeCode = "BEMS20";
-          } else if (referrer.referral_count === 5) {
+          if (referrer.referral_count >= 5) {
             upgradeCode = "BEMS30";
+          } else if (referrer.referral_count >= 3) {
+            upgradeCode = "BEMS20";
           }
 
           if (upgradeCode) {
-            await pool.query(
-              "UPDATE email_subscriptions SET discount_code = $1 WHERE referral_code = $2",
+            const upgraded = await pool.query(
+              "UPDATE email_subscriptions SET discount_code = $1 WHERE referral_code = $2 AND discount_code IS DISTINCT FROM $1 RETURNING email",
               [upgradeCode, finalReferredBy]
             );
-            await sendReferralUpgradeEmail(referrer.email, referrer.referral_count, upgradeCode);
+            if (upgraded.rows.length > 0) {
+              await sendReferralUpgradeEmail(referrer.email, referrer.referral_count, upgradeCode);
+            }
           }
         }
       } catch (refErr) {

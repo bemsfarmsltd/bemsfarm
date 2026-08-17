@@ -85,9 +85,10 @@ export default function AddSupplier() {
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="+234 800 000 0000"
+                      placeholder="08031234567"
                       value={form.phone}
-                      onChange={set('phone')}
+                      onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g,'') }))}
+                      maxLength={11}
                       required
                     />
                   </div>

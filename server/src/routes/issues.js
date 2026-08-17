@@ -60,7 +60,12 @@ const VALID_STATUSES = [
   "closed",
 ];
 
+// Both tables are confirmed to already exist in production (see header
+// comment) — this only needs to run once per process to self-heal a fresh/
+// staging DB, not on every single request to /api/issues/*.
+let issueTablesEnsured = false;
 async function ensureIssueTables() {
+  if (issueTablesEnsured) return;
   await pool.query(`
     CREATE TABLE IF NOT EXISTS issues (
       id SERIAL PRIMARY KEY,
@@ -97,6 +102,7 @@ async function ensureIssueTables() {
   // (filters by user_id) or the per-issue activity subquery (filters by issue_id).
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_issues_user_id ON issues(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_issue_act ON issue_activities(issue_id)`);
+  issueTablesEnsured = true;
 }
 
 const activitiesSubquery = `

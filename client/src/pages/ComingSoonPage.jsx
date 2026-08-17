@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import logo from "../assets/bemsfarms_logo.png";
 import api from "../services/api";
 
-const COUNTDOWN = { target: new Date("2026-07-03T00:00:00") };
+const COUNTDOWN = { target: new Date("2026-08-30T00:00:00") };
 
 function getTimeLeft(target) {
   const diff = target - new Date();

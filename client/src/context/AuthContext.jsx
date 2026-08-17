@@ -152,6 +152,16 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
+  // ── REFRESH TOKEN  (e.g. after change-password, which bumps token_version
+  // server-side and invalidates the token this very request was made with —
+  // without swapping in the fresh one returned, the next API call 403s and
+  // silently logs the user out right after they changed their password) ──
+  const refreshToken = useCallback((newToken) => {
+    setToken(newToken);
+    localStorage.setItem('token', newToken);
+    api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+  }, []);
+
   // ── LOGOUT ───────────────────────────────────────────────────
   const logout = useCallback(() => {
     setUser(null);
@@ -173,6 +183,7 @@ export function AuthProvider({ children }) {
         loginWithGoogle, // call as: await loginWithGoogle(credential)
         logout,
         updateUser, // call as: updateUser({ name, phone, ... }) to merge a patch in
+        refreshToken, // call as: refreshToken(newToken) after change-password
       }}
     >
       {loading ? (

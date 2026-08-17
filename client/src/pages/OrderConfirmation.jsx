@@ -84,7 +84,7 @@ export default function OrderConfirmation() {
               fontWeight: 900,
               color: "#2E7D32",
               marginBottom: "12px",
-              fontFamily: "Space Grotesk, sans-serif",
+              fontFamily: "var(--heading-font)",
             }}
           >
             Order Confirmed! 🎉

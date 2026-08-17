@@ -501,6 +501,16 @@ router.patch("/returns/:id/approve", requireRole("superadmin", "manager"), async
     const allowed = ["approved", "refunded", "cancelled"];
     if (!allowed.includes(action)) return res.status(400).json({ message: `action must be: ${allowed.join(", ")}` });
 
+    // Once a return has actually been refunded, its status can't be freely
+    // flipped again (e.g. refunded -> cancelled -> refunded) — same reasoning
+    // as blocking edits/deletes on an already-refunded customer return
+    // elsewhere: it's a completed financial record, not a re-editable draft.
+    const current = await pool.query("SELECT status FROM purchase_returns WHERE id=$1", [req.params.id]);
+    if (!current.rows.length) return res.status(404).json({ message: "Return not found" });
+    if (current.rows[0].status === "refunded") {
+      return res.status(400).json({ message: "This return has already been refunded and its status can no longer be changed." });
+    }
+
     const result = await pool.query(
       "UPDATE purchase_returns SET status=$1, approved_by=$2 WHERE id=$3 RETURNING *",
       [action, req.user.id, req.params.id]

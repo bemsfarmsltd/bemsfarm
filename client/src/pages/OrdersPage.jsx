@@ -6,6 +6,7 @@ import { useCart } from "../context/CartContext";
 import api from "../services/api";
 import { NAIRA_PER_UNIT } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
+import Toast from "../components/ui/Toast";
 
 const STATUS_CONFIG = {
   pending: { color: "#D97706", bg: "#FEF3C7", label: "Pending", icon: "⏳" },
@@ -334,6 +335,13 @@ export default function OrdersPage() {
   const [cancelModal, setCancelModal] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => setToast(null), 4000);
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -354,7 +362,7 @@ export default function OrdersPage() {
   }, []);
 
   const handleCancel = async () => {
-    if (!cancelReason.trim()) return alert("Please enter a reason");
+    if (!cancelReason.trim()) return showToast("Please enter a reason", "error");
     setCancelling(true);
     try {
       await api.patch(`/orders/${cancelModal.id}/cancel`, {
@@ -362,28 +370,62 @@ export default function OrdersPage() {
       });
       setCancelModal(null);
       setCancelReason("");
+      showToast("Order cancelled");
       fetchOrders();
     } catch (err) {
-      alert(err.response?.data?.message || "Cancellation failed");
+      showToast(err.response?.data?.message || "Cancellation failed", "error");
     } finally {
       setCancelling(false);
     }
   };
 
-  const handleReorder = (order) => {
-    order.items?.forEach((item) => {
-      addToCart({
-        id: item.product_id,
-        name: item.name,
-        // order_items.price is stored in full Naira (server multiplies by
-        // NAIRA_PER_UNIT at order time) — divide back out so it matches the
-        // base-unit convention CartContext expects, or reordering silently
-        // inflates the cart total by NAIRA_PER_UNIT (1500x).
-        price: item.price / NAIRA_PER_UNIT,
-        image_url: item.image_url || getProductImage(item),
-      });
-    });
-    alert("Items added to cart! Redirecting to checkout...");
+  const handleReorder = async (order) => {
+    const items = order.items || [];
+    const skipped = [];
+    let addedAny = false;
+
+    // The order was placed in the past — stock may have changed since, or
+    // sold out entirely. Check each item's CURRENT stock before adding, and
+    // pass stock_quantity through so CartContext's own qty cap applies if
+    // the customer bumps the quantity later, instead of adding unlimited/
+    // out-of-stock quantities straight through to checkout.
+    for (const item of items) {
+      try {
+        const res = await api.get(`/products/${item.product_id}`);
+        const product = res.data.product;
+        const stock = product?.stock_quantity ?? 0;
+        if (!product || stock <= 0) {
+          skipped.push(item.name);
+          continue;
+        }
+        addToCart({
+          id: item.product_id,
+          name: item.name,
+          // order_items.price is stored in full Naira (server multiplies by
+          // NAIRA_PER_UNIT at order time) — divide back out so it matches the
+          // base-unit convention CartContext expects, or reordering silently
+          // inflates the cart total by NAIRA_PER_UNIT (1500x).
+          price: item.price / NAIRA_PER_UNIT,
+          image_url: item.image_url || getProductImage(item),
+          stock_quantity: stock,
+        });
+        addedAny = true;
+      } catch {
+        skipped.push(item.name);
+      }
+    }
+
+    if (!addedAny) {
+      showToast("Sorry, none of the items from this order are currently available.", "error");
+      return;
+    }
+    if (skipped.length > 0) {
+      // Give the customer a moment to actually read which items were
+      // skipped before the page navigates out from under the message.
+      showToast(`${skipped.join(", ")} ${skipped.length === 1 ? "is" : "are"} currently out of stock and ${skipped.length === 1 ? "wasn't" : "weren't"} added. The rest have been added to your cart.`, "error");
+      setTimeout(() => navigate("/checkout"), 1800);
+      return;
+    }
     navigate("/checkout");
   };
 
@@ -392,6 +434,7 @@ export default function OrdersPage() {
 
   return (
     <PageWrapper>
+      <Toast toast={toast} onClose={() => setToast(null)} />
       <div className="op-container">
         <style>{ORDERS_CSS}</style>
 
@@ -608,7 +651,7 @@ export default function OrdersPage() {
                               </button>
                             )}
 
-                            {order.status === "pending" && (
+                            {(order.status === "pending" || order.status === "confirmed") && (
                               <button className="op-secondary-btn" style={{ color: "#EF4444", borderColor: "#EF4444" }} onClick={() => setCancelModal(order)}>
                                 Cancel Order
                               </button>

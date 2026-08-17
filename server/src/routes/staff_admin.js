@@ -290,6 +290,15 @@ router.post(
         system_role,
       } = req.body;
 
+      // Only a superadmin may grant superadmin — otherwise a manager (who
+      // also passes the requireRole check above, since managers legitimately
+      // create cashiers/kitchen_staff/etc.) could self-escalate by minting a
+      // brand-new superadmin account through this same endpoint.
+      if (system_role === "superadmin" && req.user.role !== "superadmin") {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ message: "Only a superadmin can create another superadmin account." });
+      }
+
       const existing = await client.query("SELECT id FROM users WHERE LOWER(email)=LOWER($1)", [email]);
       if (existing.rows.length) {
         await client.query("ROLLBACK");

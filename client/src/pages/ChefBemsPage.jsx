@@ -864,7 +864,7 @@ export default function ChefBemsPage() {
                 ≡
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <h1 style={{ fontSize: "16px", fontWeight: "bold", margin: 0, color: "var(--gray-900)", fontFamily: "Space Grotesk, sans-serif" }}>
+                <h1 style={{ fontSize: "16px", fontWeight: "bold", margin: 0, color: "var(--gray-900)", fontFamily: "var(--heading-font)" }}>
                   Chef Bems 👨‍🍳
                 </h1>
                 <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>Online</span>
@@ -913,7 +913,7 @@ export default function ChefBemsPage() {
                 }}>
                   <img src={chefBemsAvatar} alt="Chef Bems" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </div>
-                <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "var(--gray-900)", margin: 0, fontFamily: "Space Grotesk, sans-serif" }}>
+                <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "var(--gray-900)", margin: 0, fontFamily: "var(--heading-font)" }}>
                   What can I help you cook today?
                 </h2>
                 <p style={{ fontSize: "14px", color: "var(--gray-500)", margin: "8px 0 0", lineHeight: 1.5 }}>

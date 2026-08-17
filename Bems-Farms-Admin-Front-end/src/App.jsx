@@ -6,7 +6,7 @@ import {
   FINANCE_ROLES, DELIVERY_ROLES,
   POS_ROLES, ORDER_ROLES, CUSTOMER_ROLES, PRODUCT_ROLES,
   REPORT_ROLES, AI_ROLES, STAFF_ROLES, SETTINGS_ROLES,
-  PURCHASE_ROLES, SUPPLIER_ROLES, MULTISTORE_ROLES,
+  PURCHASE_ROLES, SUPPLIER_ROLES, MULTISTORE_ROLES, ADMIN_ONLY, SUPERADMIN_ONLY,
 } from './lib/roles'
 
 // Public
@@ -170,8 +170,14 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={ORDER_ROLES} />}>
               <Route path="/orders"          element={<OrdersList />} />
               <Route path="/orders/receipts" element={<Receipts />} />
-              <Route path="/orders/refunds"  element={<Refunds />} />
               <Route path="/orders/:id"      element={<OrderDetail />} />
+            </Route>
+
+            {/* ── Returns & Refunds ── superadmin, manager only — matches
+                Sidebar's link visibility and the backend's actual requireRole
+                on /admin/orders/returns*, tighter than the rest of Orders */}
+            <Route element={<ProtectedRoute allowedRoles={ADMIN_ONLY} />}>
+              <Route path="/orders/refunds" element={<Refunds />} />
             </Route>
 
             {/* ── Deliveries ── superadmin, manager, delivery_manager */}
@@ -206,10 +212,16 @@ function App() {
             {/* ── Customers ── superadmin, manager, cashier */}
             <Route element={<ProtectedRoute allowedRoles={CUSTOMER_ROLES} />}>
               <Route path="/customers"          element={<CustomersList />} />
+              <Route path="/customers/:id"      element={<CustomerDetail />} />
+            </Route>
+
+            {/* ── Customer sub-reports ── superadmin, manager only — matches
+                Sidebar's link visibility and the backend's actual requireRole
+                on these endpoints, tighter than the rest of Customers */}
+            <Route element={<ProtectedRoute allowedRoles={ADMIN_ONLY} />}>
               <Route path="/customers/loyalty"  element={<LoyaltyPoints />} />
               <Route path="/customers/activity" element={<ActivityLog />} />
               <Route path="/customers/report"   element={<CustomerReportPage />} />
-              <Route path="/customers/:id"      element={<CustomerDetail />} />
             </Route>
 
             {/* ── Staff ── superadmin, manager */}
@@ -265,7 +277,14 @@ function App() {
               <Route path="/settings/tax"           element={<TaxSettings />} />
               <Route path="/settings/currencies"    element={<CurrencySettings />} />
               <Route path="/settings/invoices"      element={<InvoiceSettings />} />
-              <Route path="/settings/manager"       element={<ManagerSettings />} />
+            </Route>
+
+            {/* ── Manager Settings ── superadmin only — matches Sidebar's
+                link visibility and the backend's requireRole("superadmin")
+                on every write to /admin/settings/manager (creating/editing
+                other admin-level accounts) */}
+            <Route element={<ProtectedRoute allowedRoles={SUPERADMIN_ONLY} />}>
+              <Route path="/settings/manager" element={<ManagerSettings />} />
             </Route>
 
           </Route>

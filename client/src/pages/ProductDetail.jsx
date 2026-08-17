@@ -298,7 +298,7 @@ export default function ProductDetail() {
                 fontWeight: 900,
                 color: "#202124",
                 marginBottom: "8px",
-                fontFamily: "Space Grotesk, sans-serif",
+                fontFamily: "var(--heading-font)",
                 lineHeight: 1.2,
               }}
             >

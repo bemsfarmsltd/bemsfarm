@@ -309,7 +309,7 @@ const PROFILE_CSS = `
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user, logout, isLoggedIn, updateUser } = useAuth();
+  const { user, logout, isLoggedIn, updateUser, refreshToken } = useAuth();
   const { addToCart } = useCart();
   const fileInputRef = useRef(null);
 
@@ -511,10 +511,14 @@ export default function ProfilePage() {
     }
     setPasswordSaving(true);
     try {
-      await api.post("/auth/change-password", {
+      const res = await api.post("/auth/change-password", {
         current_password: passwordForm.current,
         new_password: passwordForm.next,
       });
+      // Changing the password invalidates every existing token (see
+      // server/src/routes/auth.js) including the one this request used —
+      // swap in the fresh one returned or the very next API call 403s.
+      if (res.data?.token) refreshToken(res.data.token);
       setPasswordForm({ current: "", next: "", confirm: "" });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);

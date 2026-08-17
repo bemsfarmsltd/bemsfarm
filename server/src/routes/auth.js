@@ -330,9 +330,18 @@ router.post("/change-password", protect, validate(authSchemas.changePassword), a
     }
 
     const hash = await bcrypt.hash(new_password, 12);
-    await pool.query("UPDATE users SET password=$1, updated_at=NOW() WHERE id=$2", [hash, req.user.id]);
+    // Bump token_version (invalidates every already-issued access token via
+    // the check in protect()) and clear refresh_token, same as reset-password
+    // — otherwise a stolen token/session survives a voluntary password
+    // change too. Issue a fresh token in the response so the device the
+    // user just changed their password FROM doesn't get logged out too.
+    const updated = await pool.query(
+      "UPDATE users SET password=$1, updated_at=NOW(), token_version=token_version+1, refresh_token=NULL WHERE id=$2 RETURNING id, name, email, role, token_version",
+      [hash, req.user.id],
+    );
 
-    res.json({ message: "Password updated successfully" });
+    const accessToken = generateAccessToken(updated.rows[0]);
+    res.json({ message: "Password updated successfully", token: accessToken });
   } catch (err) {
     next(err);
   }

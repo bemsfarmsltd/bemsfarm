@@ -190,9 +190,9 @@ export default function Footer() {
             style={{ display: "flex", flexWrap: "wrap" }}
           >
             {["Support"].map((item) => (
-              <a
+              <Link
                 key={item}
-                href="/contact"
+                to="/contact"
                 style={{
                   color: "rgba(255,255,255,0.35)",
                   fontSize: "13px",
@@ -206,7 +206,7 @@ export default function Footer() {
                 }
               >
                 {item}
-              </a>
+              </Link>
             ))}
           </div>
         </div>

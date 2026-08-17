@@ -526,7 +526,7 @@ export default function ContactPage() {
                     outline: "none",
                     backgroundColor: "#F8F9FA",
                     resize: "vertical",
-                    fontFamily: "Inter, sans-serif",
+                    fontFamily: "var(--body-font)",
                     color: "#202124",
                     marginBottom: "20px",
                   }}

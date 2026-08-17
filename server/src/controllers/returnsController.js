@@ -58,7 +58,13 @@ const submitReturn = async (req, res, next) => {
       return res.status(400).json({ message: "Only delivered orders can be returned" });
 
     // ── 7-day return window ──────────────────────────────────────
-    const daysDiff = (Date.now() - new Date(order.rows[0].created_at).getTime()) / (1000 * 60 * 60 * 24);
+    // Counted from delivery (updated_at, bumped when status flips to
+    // 'delivered'), not order placement (created_at) — matches the error
+    // message below and the client's own eligibility check (ReturnsPage.jsx,
+    // OrderDetailPage.jsx), which was already using updated_at. An order that
+    // takes longer than 7 days to arrive was previously already ineligible
+    // for return the moment it was delivered.
+    const daysDiff = (Date.now() - new Date(order.rows[0].updated_at).getTime()) / (1000 * 60 * 60 * 24);
     if (daysDiff > 7)
       return res.status(400).json({ message: "Returns must be requested within 7 days of delivery" });
 

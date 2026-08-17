@@ -21,6 +21,9 @@ export const ALL_ROLES = Object.values(ROLES)
 /** Superadmin + Manager only */
 export const ADMIN_ONLY = ['superadmin', 'manager']
 
+/** Superadmin only */
+export const SUPERADMIN_ONLY = ['superadmin']
+
 /** Can manage finances */
 export const FINANCE_ROLES = ['superadmin', 'manager', 'accountant']
 

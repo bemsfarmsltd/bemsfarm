@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
 import logo from "../assets/bemsfarms_logo.png";
 
 // Actual product images from Cloudinary / database
@@ -32,19 +33,32 @@ export default function LandingPage() {
   const { isLoggedIn } = useAuth();
   const [emailInput, setEmailInput] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribeError, setSubscribeError] = useState(null);
   const [feedIndex, setFeedIndex] = useState(0);
 
-  // Auto-redirect if user is logged in
-  if (isLoggedIn) {
-    navigate("/home");
-  }
+  // Auto-redirect if user is logged in — must run as an effect, not directly
+  // in the render body, or it fires "Cannot update a component while
+  // rendering a different component" and (under StrictMode's dev
+  // double-invoke) can navigate twice.
+  useEffect(() => {
+    if (isLoggedIn) navigate("/home");
+  }, [isLoggedIn, navigate]);
 
-  // Handle newsletter signup
-  const handleSubscribe = (e) => {
+  // Handle newsletter signup — same /subscribe endpoint ComingSoonPage uses
+  const handleSubscribe = async (e) => {
     e.preventDefault();
-    if (emailInput.trim()) {
+    if (!emailInput.trim() || subscribing) return;
+    setSubscribing(true);
+    setSubscribeError(null);
+    try {
+      await api.post("/subscribe", { email: emailInput.trim() });
       setSubscribed(true);
       setEmailInput("");
+    } catch (err) {
+      setSubscribeError(err?.response?.data?.message || "Failed to subscribe. Please try again.");
+    } finally {
+      setSubscribing(false);
     }
   };
 
@@ -543,17 +557,22 @@ export default function LandingPage() {
                     placeholder="Enter your email address"
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
+                    disabled={subscribing}
                     className="w-full sm:w-64 md:w-72 bg-white/10 border border-white/25 text-white placeholder-primary-light/70 text-[14px] px-6 py-4 rounded-full focus:outline-none focus:border-white focus:bg-white/20 transition-all font-medium"
                   />
                   <button
                     type="submit"
-                    className="w-full sm:w-auto bg-accent hover:bg-accent-light text-white font-bold text-[14px] px-8 py-4 rounded-full shadow-lg shadow-black/10 transition-colors"
+                    disabled={subscribing}
+                    className="w-full sm:w-auto bg-accent hover:bg-accent-light text-white font-bold text-[14px] px-8 py-4 rounded-full shadow-lg shadow-black/10 transition-colors disabled:opacity-60"
                   >
-                    Subscribe
+                    {subscribing ? "Subscribing…" : "Subscribe"}
                   </button>
                 </>
               )}
             </form>
+            {subscribeError && (
+              <p className="text-red-300 text-[13px] mt-2 w-full text-center md:text-left">{subscribeError}</p>
+            )}
           </div>
 
         </div>
@@ -575,10 +594,12 @@ export default function LandingPage() {
             <p className="text-[13px] leading-relaxed text-gray-400 mb-6 max-w-sm">
               Sourcing fresh, premium, and healthy farm-produce from local agricultural farms straight to your home dining tables. 
             </p>
-            <div className="flex gap-4 font-bold text-white text-lg">
-              <span className="cursor-pointer hover:text-emerald-500">𝕏</span>
-              <span style={{fontSize:'1.35em'}} className="cursor-pointer hover:text-emerald-500">📷</span>
-              <span style={{fontSize:'1.35em'}} className="cursor-pointer hover:text-emerald-500">📘</span>
+            {/* No live social accounts to link to yet — plain (non-clickable)
+                marks instead of icons styled as buttons that go nowhere. */}
+            <div className="flex gap-4 font-bold text-white text-lg opacity-60">
+              <span>𝕏</span>
+              <span style={{fontSize:'1.35em'}}>📷</span>
+              <span style={{fontSize:'1.35em'}}>📘</span>
             </div>
           </div>
 
@@ -597,10 +618,10 @@ export default function LandingPage() {
           <div className="md:col-span-2">
             <h4 className="text-white font-bold text-[14px] uppercase tracking-wider mb-4">Support</h4>
             <ul className="space-y-2.5 text-[13px]">
-              <li><span className="hover:text-white cursor-pointer transition-colors">Privacy Policy</span></li>
-              <li><span className="hover:text-white cursor-pointer transition-colors">Terms of Service</span></li>
-              <li><span className="hover:text-white cursor-pointer transition-colors">Refund & Return Policy</span></li>
-              <li><span className="hover:text-white cursor-pointer transition-colors">FAQ Help Desk</span></li>
+              <li><Link to="/contact" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/contact" className="hover:text-white transition-colors">Terms of Service</Link></li>
+              <li><Link to="/returns" className="hover:text-white transition-colors">Refund & Return Policy</Link></li>
+              <li><Link to="/contact" className="hover:text-white transition-colors">FAQ Help Desk</Link></li>
             </ul>
           </div>
 

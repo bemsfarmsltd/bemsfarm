@@ -127,17 +127,20 @@ const PIPELINE = [
   { label: 'New Orders',  key: 'new_order',       icon: 'ri-shopping-bag-3-line',  text: '#475569', bg: '#f1f5f9', link: '/orders' },
 ]
 
+// `roles` mirrors each target route's actual guard in App.jsx — without it,
+// a role that can't open the destination (e.g. cashier clicking "Add Staff")
+// dead-ends at Unauthorized right from their own dashboard.
 const QUICK_ACTIONS = [
-  { label: 'New Order',    icon: 'ri-add-circle-line',        to: '/orders',          bg: '#1B4332', text: '#fff' },
-  { label: 'New Purchase', icon: 'ri-shopping-bag-3-line',    to: '/purchase/add',    bg: '#f59e0b', text: '#fff' },
-  { label: 'Add Product',  icon: 'ri-price-tag-3-line',       to: '/products/add',    bg: '#06b6d4', text: '#fff' },
-  { label: 'Add Customer', icon: 'ri-user-add-line',          to: '/customers',       bg: '#6b7280', text: '#fff' },
-  { label: 'POS Terminal', icon: 'ri-store-2-line',           to: '/pos',             bg: '#111827', text: '#fff' },
-  { label: 'Add Staff',    icon: 'ri-team-line',              to: '/staff/add',       bg: '#7c3aed', text: '#fff' },
-  { label: 'Sales Report', icon: 'ri-bar-chart-grouped-line', to: '/reports/sales',   bg: 'var(--bg-card)', text: '#1B4332', border: '1.5px solid #1B4332' },
+  { label: 'New Order',    icon: 'ri-add-circle-line',        to: '/orders',          bg: '#1B4332', text: '#fff', roles: ['superadmin','manager','accountant','delivery_manager','cashier','kitchen_staff'] },
+  { label: 'New Purchase', icon: 'ri-shopping-bag-3-line',    to: '/purchase/add',    bg: '#f59e0b', text: '#fff', roles: ['superadmin','manager'] },
+  { label: 'Add Product',  icon: 'ri-price-tag-3-line',       to: '/products/add',    bg: '#06b6d4', text: '#fff', roles: ['superadmin','manager','kitchen_staff'] },
+  { label: 'Add Customer', icon: 'ri-user-add-line',          to: '/customers',       bg: '#6b7280', text: '#fff', roles: ['superadmin','manager','cashier'] },
+  { label: 'POS Terminal', icon: 'ri-store-2-line',           to: '/pos',             bg: '#111827', text: '#fff', roles: ['superadmin','manager','cashier'] },
+  { label: 'Add Staff',    icon: 'ri-team-line',              to: '/staff/add',       bg: '#7c3aed', text: '#fff', roles: ['superadmin','manager'] },
+  { label: 'Sales Report', icon: 'ri-bar-chart-grouped-line', to: '/reports/sales',   bg: 'var(--bg-card)', text: '#1B4332', border: '1.5px solid #1B4332', roles: ['superadmin','manager','accountant'] },
 ]
 
-function OverviewTab({ data, isDark }) {
+function OverviewTab({ data, isDark, role }) {
   const revenueRef = useRef(null)
   const ordersRef  = useRef(null)
   const { kpis = {}, charts = {}, recent_orders = [], pipeline = {} } = data
@@ -228,7 +231,7 @@ function OverviewTab({ data, isDark }) {
             </CardHeader>
             <CardBody>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {QUICK_ACTIONS.map(({ label, icon, to, bg, text, border }) => (
+                {QUICK_ACTIONS.filter(a => a.roles.includes(role)).map(({ label, icon, to, bg, text, border }) => (
                   <Link key={label} to={to} style={{
                     display: 'flex', alignItems: 'center', gap: 7,
                     padding: '8px 10px', borderRadius: 8,
@@ -1128,7 +1131,7 @@ export default function Dashboard() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
           >
-            {activeTab === 'overview'   && <OverviewTab   data={data} isDark={isDark} />}
+            {activeTab === 'overview'   && <OverviewTab   data={data} isDark={isDark} role={user?.role} />}
             {activeTab === 'sales'      && <SalesTab      data={data} isDark={isDark} />}
             {activeTab === 'finance'    && <FinanceTab     data={data} isDark={isDark} />}
             {activeTab === 'inventory'  && <InventoryTab  data={data} isDark={isDark} />}
