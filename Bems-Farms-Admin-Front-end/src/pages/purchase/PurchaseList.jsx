@@ -51,7 +51,7 @@ export default function PurchaseList() {
       if (fromDate) params.from = fromDate
       if (toDate) params.to = toDate
       const res = await api.get('/admin/purchases', { params })
-      setOrders(res.data.orders || [])
+      setOrders(res.data.purchase_orders || [])
       setMeta({ total: res.data.total, pages: res.data.pages || 1 })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load purchases')
@@ -107,8 +107,10 @@ export default function PurchaseList() {
     try {
       const items = receiveItems
         .filter(i => i.new_received_qty !== '' && Number(i.new_received_qty) >= 0)
-        .map(i => ({ item_id: i.id, received_qty: Number(i.new_received_qty) }))
-      await api.patch(`/admin/purchases/${receiveOrder.id}/receive`, { items })
+        .map(i => ({ purchase_order_item_id: i.id, quantity_received: Number(i.new_received_qty) }))
+      // Backend only registers this as POST, and expects
+      // purchase_order_item_id/quantity_received, not item_id/received_qty.
+      await api.post(`/admin/purchases/${receiveOrder.id}/receive`, { items })
       toast.success('Items marked as received')
       setReceiveOrder(null)
       fetchOrders()
@@ -123,7 +125,10 @@ export default function PurchaseList() {
     if (!cancelTarget) return
     setCancelling(true)
     try {
-      await api.delete(`/admin/purchases/${cancelTarget.id}`)
+      // There's no DELETE route for purchase orders — cancellation goes
+      // through the same status-transition endpoint every other status
+      // change uses.
+      await api.patch(`/admin/purchases/${cancelTarget.id}/status`, { status: 'cancelled' })
       toast.success('Purchase order cancelled')
       setCancelTarget(null)
       fetchOrders()
@@ -348,15 +353,15 @@ export default function PurchaseList() {
                         {viewItems.map((item, i) => (
                           <tr key={item.id || i}>
                             <td>{item.product_name || '—'}</td>
-                            <td>{item.quantity}</td>
+                            <td>{item.quantity_ordered}</td>
                             <td>
-                              {item.received_qty < item.quantity
-                                ? <span className="text-warning fw-medium">{item.received_qty}</span>
-                                : <span className="text-success fw-medium">{item.received_qty}</span>
+                              {item.quantity_received < item.quantity_ordered
+                                ? <span className="text-warning fw-medium">{item.quantity_received}</span>
+                                : <span className="text-success fw-medium">{item.quantity_received}</span>
                               }
                             </td>
                             <td>{fmt(item.unit_cost)}</td>
-                            <td>{fmt(item.total)}</td>
+                            <td>{fmt(item.subtotal)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -402,15 +407,15 @@ export default function PurchaseList() {
                           {receiveItems.map((item, i) => (
                             <tr key={item.id || i}>
                               <td>{item.product_name || '—'}</td>
-                              <td>{item.quantity}</td>
-                              <td>{item.received_qty}</td>
+                              <td>{item.quantity_ordered}</td>
+                              <td>{item.quantity_received}</td>
                               <td>
                                 <input
                                   type="number"
                                   className="form-control form-control-sm"
                                   style={{ width: 90 }}
                                   min="0"
-                                  max={item.quantity - (item.received_qty || 0)}
+                                  max={item.quantity_ordered - (item.quantity_received || 0)}
                                   placeholder="0"
                                   value={item.new_received_qty}
                                   onChange={e => setReceiveItems(items =>

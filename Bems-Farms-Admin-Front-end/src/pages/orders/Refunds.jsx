@@ -24,7 +24,7 @@ const STATUS_CFG = {
 }
 
 function nextRef(list) {
-  const max=list.reduce((m,r)=>Math.max(m,Number(r.ref.split('-')[2])),0)
+  const max=list.reduce((m,r)=>Math.max(m,Number((r.refund_ref||'').split('-')[2])||0),0)
   return `RTN-${new Date().getFullYear()}-${String(max+1).padStart(3,'0')}`
 }
 
@@ -90,12 +90,17 @@ export default function Refunds() {
 
   const filtered = useMemo(()=>records.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)),[records])
 
+  const productName = useCallback(id => productOptions.find(p=>String(p.id)===String(id))?.name || '—', [productOptions])
+
   const stats = useMemo(()=>({
     total:    records.length,
     pending:  records.filter(r=>r.status==='pending'||r.status==='inspecting').length,
     approved: records.filter(r=>r.status==='approved').length,
-    refunded: records.filter(r=>r.status==='refunded').reduce((s,r)=>s+Number(r.amount||0),0),
+    refunded: records.filter(r=>r.status==='refunded').reduce((s,r)=>s+Number(r.refund_amount||0),0),
   }),[records])
+
+  const selQty = selected?.quantity || 0
+  const selUnitPrice = selQty ? Number(selected?.refund_amount||0) / selQty : 0
 
   function openLog() {
     setLogForm({ ref:nextRef(records), date:new Date().toISOString().slice(0,10), ordRef:'', customer_id:'', phone:'', product_id:'', qty:1, unit:'kg', unitPrice:0, reason:RETURN_REASONS[0], notes:'' })
@@ -104,7 +109,11 @@ export default function Refunds() {
 
   function openProcess(r) {
     setSelected(r)
-    setProcForm({ condition:r.condition==='pending_check'?'resalable':r.condition, goodsAction:r.goodsAction||'back_to_stock', resalableQty:r.resalableQty, writeOffQty:r.writeOffQty, inspectionNotes:r.inspectionNotes||'', processedBy:r.processedBy||STAFF[0], refundAmount:r.refundAmount, refundMethod:r.refundMethod||REFUND_METHODS[0], refundRef:r.refundRef||'' })
+    // Goods condition / write-off split / inspector name aren't separate
+    // columns on this record — they get folded into the real `description`
+    // note on save, so re-opening a return always starts from a fresh
+    // assessment rather than restoring fake structured state.
+    setProcForm({ condition:'resalable', goodsAction:'back_to_stock', resalableQty:r.quantity||0, writeOffQty:0, inspectionNotes:'', processedBy:STAFF[0], refundAmount:Number(r.refund_amount||0), refundMethod:r.refund_method||REFUND_METHODS[0], refundRef:'' })
     setProcessTab('inspect'); setActiveModal('process')
   }
 
@@ -112,9 +121,9 @@ export default function Refunds() {
   function openDelete(r) { setSelected(r); setActiveModal('delete') }
   function closeModal() { setActiveModal(null); setSelected(null) }
 
-  const updateStatus = async (status, description) => {
+  const updateStatus = async (status, description, extra = {}) => {
     try {
-      await api.patch(`/admin/orders/returns/${selected.id}/status`, { status, description })
+      await api.patch(`/admin/orders/returns/${selected.id}/status`, { status, description, ...extra })
       toast.success("Return status updated")
       closeModal(); load()
     } catch { toast.error("Failed to update status") }
@@ -131,11 +140,24 @@ export default function Refunds() {
     }
   }
 
-  function saveInspection() { updateStatus('inspecting', procForm.inspectionNotes) }
+  function saveInspection() {
+    const conditionLabel = CONDITION_CFG[procForm.condition]?.label || procForm.condition
+    const splitNote = procForm.condition === 'partial'
+      ? ` (${procForm.resalableQty} back to stock, ${selQty - procForm.resalableQty} written off)`
+      : ''
+    const note = [`Inspected by ${procForm.processedBy}: ${conditionLabel}${splitNote}.`, procForm.inspectionNotes].filter(Boolean).join(' ')
+    updateStatus('inspecting', note)
+  }
   function saveRefundDecision(decision) {
     if(decision === 'approve') updateStatus('approved', procForm.inspectionNotes)
     else if(decision === 'reject') updateStatus('rejected', procForm.inspectionNotes)
-    else updateStatus('refunded', procForm.inspectionNotes)
+    else {
+      const refNote = procForm.refundRef ? ` Ref: ${procForm.refundRef}.` : ''
+      updateStatus('refunded', `${procForm.inspectionNotes||''}${refNote}`.trim() || null, {
+        refund_amount: procForm.refundAmount,
+        refund_method: procForm.refundMethod,
+      })
+    }
   }
   async function confirmDelete() {
     try {
@@ -148,7 +170,7 @@ export default function Refunds() {
   }
 
   function handleConditionChange(val) {
-    const qty=selected?.qty||0
+    const qty=selected?.quantity||0
     let goodsAction='back_to_stock', resalableQty=qty, writeOffQty=0
     if (val==='damaged') { goodsAction='write_off'; resalableQty=0; writeOffQty=qty }
     if (val==='partial') { goodsAction='split'; resalableQty=0; writeOffQty=0 }
@@ -217,7 +239,7 @@ export default function Refunds() {
               {filtered.map(r=>{
                 const sc=STATUS_CFG[r.status]||STATUS_CFG.pending, cc=CONDITION_CFG.pending_check
                 const dateStr = r.created_at ? new Date(r.created_at).toISOString().slice(0,10) : ''
-                const refundAmount = Number(r.amount||0)
+                const refundAmount = Number(r.refund_amount||0)
                 return (
                   <tr key={r.id}>
                     <td style={TD}>
@@ -229,15 +251,15 @@ export default function Refunds() {
                       <div style={{ fontSize:11,color:'var(--text-muted)' }}>{r.customer_phone || ''}</div>
                     </td>
                     <td style={{ ...TD,fontSize:12,color:'var(--text-muted)' }}>{r.order_id}</td>
-                    <td style={TD}>—</td>
-                    <td style={{ ...TD,fontWeight:600 }}>—</td>
+                    <td style={TD}>{productName(r.product_id)}</td>
+                    <td style={{ ...TD,fontWeight:600 }}>{r.quantity ?? '—'}</td>
                     <td style={{ ...TD,maxWidth:160,whiteSpace:'normal',fontSize:12 }}>{r.reason || r.description}</td>
                     <td style={TD}><Badge cfg={cc}/></td>
                     <td style={{ ...TD,fontWeight:700,color:refundAmount>0?'#f06548':'#9ca3af' }}>
                       {refundAmount>0?`₦${refundAmount.toLocaleString()}`:'—'}
                     </td>
                     <td style={TD}>
-                      <span style={{ color:'var(--text-light)' }}>—</span>
+                      {r.refund_method || <span style={{ color:'var(--text-light)' }}>—</span>}
                     </td>
                     <td style={TD}><Badge cfg={sc}/></td>
                     <td style={TD}>
@@ -317,12 +339,12 @@ export default function Refunds() {
 
       {/* PROCESS MODAL */}
       {activeModal==='process'&&selected&&(
-        <Modal title={`Process Return — ${selected.ref}`} onClose={closeModal} wide>
+        <Modal title={`Process Return — ${selected.refund_ref||selected.id}`} onClose={closeModal} wide>
           <div>
             {/* Status sub-header */}
             <div style={{ padding:'10px 20px',background:'var(--bg-subtle)',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:10 }}>
               <Badge cfg={STATUS_CFG[selected.status]}/>
-              <span style={{ fontSize:13,color:'var(--text-muted)' }}>{selected.customer} · {selected.product} · {selected.qty} {selected.unit}</span>
+              <span style={{ fontSize:13,color:'var(--text-muted)' }}>{selected.customer_name} · {productName(selected.product_id)} · {selQty}</span>
             </div>
 
             {/* Tab strip */}
@@ -340,42 +362,22 @@ export default function Refunds() {
               <div style={{ padding:20,background:'#fafbfc',borderRight:'1px solid var(--border)' }}>
                 <div style={{ fontSize:11,fontWeight:700,color:'var(--text-muted)',letterSpacing:1,marginBottom:12 }}>RETURN DETAILS</div>
                 <div style={{ background:'#fff8ec',border:'1px solid #fde68a',borderRadius:10,padding:14,marginBottom:12 }}>
-                  <div style={{ fontWeight:700,marginBottom:2 }}>{selected.product}</div>
-                  <div style={{ fontSize:12,color:'var(--text-muted)',marginBottom:10 }}>{selected.customer} · {selected.ordRef}</div>
-                  {/* Per-item list */}
-                  {selected.items?.length > 0 ? (
-                    <div style={{ display:'flex',flexDirection:'column',gap:6 }}>
-                      {selected.items.map((item,i)=>{
-                        const cc=CONDITION_CFG[item.condition]||CONDITION_CFG.pending_check
-                        return (
-                          <div key={i} style={{ background:'var(--bg-card)',borderRadius:8,padding:'8px 10px',border:'1px solid #fde68a' }}>
-                            <div style={{ fontWeight:600,fontSize:12,marginBottom:4 }}>{item.product_name}</div>
-                            <div style={{ display:'flex',gap:8,alignItems:'center',flexWrap:'wrap' }}>
-                              <span style={{ fontSize:11,color:'var(--text-muted)' }}>Ordered: {item.ordered_quantity}</span>
-                              <span style={{ fontSize:11,color:'#92400e',fontWeight:700 }}>Returning: {item.returned_quantity}</span>
-                              <span style={{ display:'inline-flex',alignItems:'center',borderRadius:50,padding:'1px 8px',fontSize:10,fontWeight:600,background:cc.bg,color:cc.color }}>{cc.label}</span>
-                            </div>
-                            {item.remarks&&<div style={{ fontSize:11,color:'var(--text-light)',fontStyle:'italic',marginTop:3 }}>"{item.remarks}"</div>}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8 }}>
-                      {[['QTY',`${selected.qty} ${selected.unit}`],['UNIT PRICE',`₦${selected.unitPrice?.toLocaleString()}`],['TOTAL',`₦${selected.totalValue?.toLocaleString()}`]].map(([k,v])=>(
-                        <div key={k}><div style={{ fontSize:10,color:'var(--text-light)' }}>{k}</div><div style={{ fontWeight:700,fontSize:13 }}>{v}</div></div>
-                      ))}
-                    </div>
-                  )}
+                  <div style={{ fontWeight:700,marginBottom:2 }}>{productName(selected.product_id)}</div>
+                  <div style={{ fontSize:12,color:'var(--text-muted)',marginBottom:10 }}>{selected.customer_name} · {selected.order_id||'—'}</div>
+                  <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8 }}>
+                    {[['QTY',`${selQty}`],['UNIT PRICE',`₦${selUnitPrice.toLocaleString()}`],['TOTAL',`₦${Number(selected.refund_amount||0).toLocaleString()}`]].map(([k,v])=>(
+                      <div key={k}><div style={{ fontSize:10,color:'var(--text-light)' }}>{k}</div><div style={{ fontWeight:700,fontSize:13 }}>{v}</div></div>
+                    ))}
+                  </div>
                 </div>
                 <div style={{ border:'1px solid var(--border)',borderRadius:8,padding:12,marginBottom:10,fontSize:12 }}>
                   <div style={{ fontWeight:700,fontSize:11,color:'var(--text-muted)',marginBottom:8 }}>CUSTOMER COMPLAINT</div>
-                  <div style={{ fontWeight:600,marginBottom:4 }}>{selected.reason}</div>
-                  {selected.notes&&<div style={{ color:'var(--text-muted)',fontStyle:'italic' }}>"{selected.notes}"</div>}
+                  <div style={{ fontWeight:600,marginBottom:4 }}>{selected.reason || '—'}</div>
+                  {selected.description&&<div style={{ color:'var(--text-muted)',fontStyle:'italic' }}>"{selected.description}"</div>}
                 </div>
                 <div style={{ border:'1px solid var(--border)',borderRadius:8,padding:12,fontSize:12 }}>
                   <div style={{ fontWeight:700,fontSize:11,color:'var(--text-muted)',marginBottom:8 }}>RETURN INFO</div>
-                  {[['Return Date',selected.date],['Phone',selected.phone||'—'],['Order Ref',selected.ordRef||'—']].map(([k,v])=>(
+                  {[['Return Date',selected.created_at?new Date(selected.created_at).toISOString().slice(0,10):'—'],['Phone',selected.customer_phone||'—'],['Order Ref',selected.order_id||'—']].map(([k,v])=>(
                     <div key={k} style={{ display:'flex',justifyContent:'space-between',marginBottom:4 }}><span style={{ color:'var(--text-muted)' }}>{k}</span><span>{v}</span></div>
                   ))}
                 </div>
@@ -416,12 +418,12 @@ export default function Refunds() {
                       <div style={{ background:'#fff8ec',border:'1px solid #fde68a',borderRadius:8,padding:14,marginBottom:14,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12 }}>
                         <div>
                           <label style={{ ...LBL,color:'#16a34a' }}><i className="ri-arrow-down-circle-line" style={{ marginRight:4 }}/>Back to Stock (qty)</label>
-                          <input type="number" style={inp} min="0" max={selected.qty} value={procForm.resalableQty}
-                            onChange={e=>setProcForm(f=>({...f,resalableQty:Number(e.target.value),writeOffQty:selected.qty-Number(e.target.value)}))}/>
+                          <input type="number" style={inp} min="0" max={selQty} value={procForm.resalableQty}
+                            onChange={e=>setProcForm(f=>({...f,resalableQty:Number(e.target.value),writeOffQty:selQty-Number(e.target.value)}))}/>
                         </div>
                         <div>
                           <label style={{ ...LBL,color:'#991b1b' }}><i className="ri-error-warning-line" style={{ marginRight:4 }}/>Write Off (qty)</label>
-                          <input type="number" style={{ ...inp,background:'var(--bg-subtle)' }} readOnly value={selected.qty-Number(procForm.resalableQty)}/>
+                          <input type="number" style={{ ...inp,background:'var(--bg-subtle)' }} readOnly value={selQty-Number(procForm.resalableQty)}/>
                         </div>
                       </div>
                     )}
@@ -429,7 +431,7 @@ export default function Refunds() {
                     {procForm.condition!=='partial'&&(
                       <div style={{ background:'var(--bg-subtle)',border:'1px solid var(--border)',borderRadius:8,padding:12,marginBottom:14,fontSize:13,display:'flex',alignItems:'center',gap:10 }}>
                         <i className={procForm.condition==='resalable'?'ri-arrow-down-circle-line':'ri-error-warning-line'} style={{ fontSize:24,color:procForm.condition==='resalable'?'#16a34a':'#991b1b' }}/>
-                        <span>All <strong>{selected.qty} {selected.unit}</strong> will be{' '}
+                        <span>All <strong>{selQty}</strong> will be{' '}
                           {procForm.condition==='resalable'
                             ? <span style={{ color:'#16a34a',fontWeight:600 }}>returned to stock</span>
                             : <span style={{ color:'#991b1b',fontWeight:600 }}>written off to Lost & Damaged</span>}.
@@ -458,7 +460,7 @@ export default function Refunds() {
                         <Badge cfg={CONDITION_CFG[procForm.condition]||CONDITION_CFG.pending_check}/>
                         <span style={{ fontSize:13,color:'var(--text-secondary)' }}>
                           {procForm.condition==='partial'
-                            ? `${procForm.resalableQty} ${selected.unit} back to stock · ${selected.qty-procForm.resalableQty} ${selected.unit} written off`
+                            ? `${procForm.resalableQty} back to stock · ${selQty-procForm.resalableQty} written off`
                             : CONDITION_CFG[procForm.condition]?.action}
                         </span>
                       </div>
@@ -468,7 +470,7 @@ export default function Refunds() {
                       <div>
                         <label style={LBL}>Refund Amount (₦)</label>
                         <input type="number" style={inp} min="0" value={procForm.refundAmount} onChange={e=>setProcForm(f=>({...f,refundAmount:Number(e.target.value)}))}/>
-                        <div style={{ fontSize:11,color:'var(--text-muted)',marginTop:4 }}>Max: ₦{selected.totalValue?.toLocaleString()}</div>
+                        <div style={{ fontSize:11,color:'var(--text-muted)',marginTop:4 }}>Max: ₦{Number(selected.refund_amount||0).toLocaleString()}</div>
                       </div>
                       <div>
                         <label style={LBL}>Refund Method</label>
@@ -509,50 +511,34 @@ export default function Refunds() {
 
       {/* VIEW MODAL */}
       {activeModal==='view'&&selected&&(
-        <Modal title={selected.ref} onClose={closeModal} maxWidth={680}>
+        <Modal title={selected.refund_ref||selected.id} onClose={closeModal} maxWidth={680}>
           <div style={{ padding:24 }}>
             <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:20 }}>
               <Badge cfg={STATUS_CFG[selected.status]}/>
-              <span style={{ fontSize:13,color:'var(--text-muted)' }}>{selected.date} · {selected.customer}</span>
+              <span style={{ fontSize:13,color:'var(--text-muted)' }}>{selected.created_at?new Date(selected.created_at).toISOString().slice(0,10):'—'} · {selected.customer_name}</span>
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
               <div style={{ border:'1px solid var(--border)',borderRadius:10,padding:16,fontSize:13 }}>
                 <div style={{ fontSize:11,fontWeight:700,color:'var(--text-muted)',marginBottom:12 }}>RETURN DETAILS</div>
-                {[['Product',selected.product],['Qty Returned',`${selected.qty} ${selected.unit}`],['Unit Price',`₦${selected.unitPrice?.toLocaleString()}`],['Total Value',`₦${selected.totalValue?.toLocaleString()}`],['Order Ref',selected.ordRef||'—'],['Reason',selected.reason]].map(([k,v],i)=>(
+                {[['Product',productName(selected.product_id)],['Qty Returned',`${selQty}`],['Unit Price',`₦${selUnitPrice.toLocaleString()}`],['Total Value',`₦${Number(selected.refund_amount||0).toLocaleString()}`],['Order Ref',selected.order_id||'—'],['Reason',selected.reason||'—']].map(([k,v],i)=>(
                   <div key={i} style={{ display:'flex',justifyContent:'space-between',marginBottom:8,gap:16 }}>
                     <span style={{ color:'var(--text-muted)' }}>{k}</span>
                     <span style={{ fontWeight:k==='Total Value'?700:500,color:k==='Total Value'?'#f06548':'var(--text-primary)',textAlign:'right' }}>{v}</span>
                   </div>
                 ))}
-                {selected.notes&&(
-                  <div style={{ marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)' }}>
-                    <div style={{ fontSize:11,color:'var(--text-muted)',marginBottom:6 }}>CUSTOMER NOTES</div>
-                    <div style={{ fontStyle:'italic' }}>"{selected.notes}"</div>
-                  </div>
-                )}
               </div>
               <div style={{ border:'1px solid var(--border)',borderRadius:10,padding:16,fontSize:13 }}>
-                <div style={{ fontSize:11,fontWeight:700,color:'var(--text-muted)',marginBottom:12 }}>INSPECTION & REFUND</div>
-                <div style={{ display:'flex',justifyContent:'space-between',marginBottom:8 }}>
-                  <span style={{ color:'var(--text-muted)' }}>Goods Condition</span>
-                  <Badge cfg={CONDITION_CFG[selected.condition]||CONDITION_CFG.pending_check}/>
-                </div>
-                {selected.condition==='partial'&&<>
-                  <div style={{ display:'flex',justifyContent:'space-between',marginBottom:8 }}><span style={{ color:'var(--text-muted)' }}>Back to Stock</span><span style={{ fontWeight:600,color:'#16a34a' }}>{selected.resalableQty} {selected.unit}</span></div>
-                  <div style={{ display:'flex',justifyContent:'space-between',marginBottom:8 }}><span style={{ color:'var(--text-muted)' }}>Written Off</span><span style={{ fontWeight:600,color:'#991b1b' }}>{selected.writeOffQty} {selected.unit}</span></div>
-                </>}
-                {selected.condition==='resalable'&&selected.resalableQty>0&&<div style={{ display:'flex',justifyContent:'space-between',marginBottom:8 }}><span style={{ color:'var(--text-muted)' }}>Back to Stock</span><span style={{ fontWeight:600,color:'#16a34a' }}>{selected.resalableQty} {selected.unit}</span></div>}
-                {selected.condition==='damaged'&&<div style={{ display:'flex',justifyContent:'space-between',marginBottom:8 }}><span style={{ color:'var(--text-muted)' }}>Written Off</span><span style={{ fontWeight:600,color:'#991b1b' }}>{selected.writeOffQty} {selected.unit}</span></div>}
-                {[['Refund Amount',selected.refundAmount>0?`₦${selected.refundAmount.toLocaleString()}`:'—'],['Refund Method',selected.refundMethod||'—'],selected.refundRef&&['Ref / Receipt',selected.refundRef],['Processed By',selected.processedBy||'—'],['Processed On',selected.processedOn||'—']].filter(Boolean).map(([k,v])=>(
+                <div style={{ fontSize:11,fontWeight:700,color:'var(--text-muted)',marginBottom:12 }}>REFUND</div>
+                {[['Refund Amount',Number(selected.refund_amount||0)>0?`₦${Number(selected.refund_amount).toLocaleString()}`:'—'],['Refund Method',selected.refund_method||'—']].map(([k,v])=>(
                   <div key={k} style={{ display:'flex',justifyContent:'space-between',marginBottom:8 }}>
                     <span style={{ color:'var(--text-muted)' }}>{k}</span>
                     <span style={{ fontWeight:k==='Refund Amount'?700:400,color:k==='Refund Amount'?'#f06548':'var(--text-primary)' }}>{v}</span>
                   </div>
                 ))}
-                {selected.inspectionNotes&&(
+                {selected.description&&(
                   <div style={{ marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)' }}>
-                    <div style={{ fontSize:11,color:'var(--text-muted)',marginBottom:6 }}>INSPECTION NOTES</div>
-                    <div style={{ fontStyle:'italic',color:'var(--text-muted)' }}>"{selected.inspectionNotes}"</div>
+                    <div style={{ fontSize:11,color:'var(--text-muted)',marginBottom:6 }}>NOTES</div>
+                    <div style={{ fontStyle:'italic',color:'var(--text-muted)' }}>"{selected.description}"</div>
                   </div>
                 )}
               </div>

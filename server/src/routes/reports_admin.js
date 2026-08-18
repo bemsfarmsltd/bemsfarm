@@ -19,7 +19,7 @@ const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 
 router.use(protect);
-router.use(requireRole("superadmin", "manager", "admin"));
+router.use(requireRole("superadmin", "manager", "admin", "accountant"));
 
 // ── DATE HELPERS ─────────────────────────────────────────────────────────────
 function defaultDates(query) {
@@ -421,7 +421,7 @@ router.get("/customers", async (req, res, next) => {
                  SUM(total) AS total_spend
           FROM orders WHERE status NOT IN ('cancelled','failed') GROUP BY user_id
         ) sub ON sub.user_id = u.id
-        WHERE u.role = 'customer' OR u.role IS NULL
+        WHERE u.role = 'user' OR u.role IS NULL
       `, [from, to]),
 
       // Customer sign-ups over time
@@ -431,7 +431,7 @@ router.get("/customers", async (req, res, next) => {
           COUNT(*) AS new_signups
         FROM users
         WHERE created_at::DATE BETWEEN $1 AND $2
-          AND (role='customer' OR role IS NULL)
+          AND (role='user' OR role IS NULL)
         GROUP BY period ORDER BY period
       `, [from, to, trunc]),
 

@@ -223,7 +223,10 @@ router.get("/me", protect, async (req, res, next) => {
 
     const user = result.rows[0];
 
-    if (user.status !== "active") {
+    // Mirror login's blocking rule — only suspended/inactive accounts are
+    // rejected here, so a staff member marked "on_leave" doesn't get bounced
+    // straight back out on the very next /me call after logging in.
+    if (user.status === "suspended" || user.status === "inactive") {
       return res.status(403).json({ message: "Account is not active" });
     }
 

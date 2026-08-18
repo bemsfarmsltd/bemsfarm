@@ -12,11 +12,11 @@ const PAY_METHODS = ['Monnify', 'Bank Transfer', 'Cash', 'POS Terminal', 'Wallet
 const BLANK_FORM = {
   date: new Date().toISOString().split('T')[0],
   reference: '', source: '', category: 'Sales', payment_method: 'Monnify',
-  status: 'paid', amount: '', description: '', notes: '', bank_account_id: '', currency: 'NGN',
+  status: 'completed', amount: '', description: '', notes: '', bank_account_id: '', currency: 'NGN',
 }
 
 const STATUS_CFG = {
-  paid:    { label:'Paid',    bg:'var(--bg-green-faint)', color:'#22c55e' },
+  completed: { label:'Paid',    bg:'var(--bg-green-faint)', color:'#22c55e' },
   pending: { label:'Pending', bg:'var(--bg-yellow-faint)', color:'#f59e0b' },
   failed:  { label:'Failed',  bg:'var(--bg-red-faint)', color:'#ef4444' },
 }
@@ -74,7 +74,7 @@ export default function Income() {
       source: r.source || '',
       category: r.category || 'Sales',
       payment_method: r.payment_method || 'Monnify',
-      status: r.status || 'paid',
+      status: r.status || 'completed',
       amount: r.amount || '',
       description: r.description || '',
       notes: r.notes || '',
@@ -123,7 +123,7 @@ export default function Income() {
 
   // Categories breakdown stats based on loaded page records
   const breakdown = records.reduce((acc, r) => {
-    if (r.status === 'paid') {
+    if (r.status === 'completed') {
       acc[r.category] = (acc[r.category] || 0) + Number(r.amount || 0)
     }
     return acc
@@ -218,7 +218,7 @@ export default function Income() {
             </select>
             <select style={{ ...inpStyle, width: '130px' }} value={filterSt} onChange={e => setFiltSt(e.target.value)}>
               <option value="all">All Status</option>
-              <option value="paid">Paid</option>
+              <option value="completed">Paid</option>
               <option value="pending">Pending</option>
               <option value="failed">Failed</option>
             </select>
@@ -305,7 +305,7 @@ export default function Income() {
                     Showing {records.length} of {meta.total} records
                   </td>
                   <td style={{ ...tdStyle, textAlign: 'right', color: '#22c55e', fontSize: '14px' }}>
-                    +{fmt(records.filter(r=>r.status==='paid').reduce((s,r)=>s+Number(r.amount||0),0))}
+                    +{fmt(records.filter(r=>r.status==='completed').reduce((s,r)=>s+Number(r.amount||0),0))}
                   </td>
                   <td style={tdStyle} />
                 </tr>
@@ -431,7 +431,7 @@ export default function Income() {
                   <div>
                     <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Status</label>
                     <select style={inpStyle} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                      <option value="paid">Paid</option>
+                      <option value="completed">Paid</option>
                       <option value="pending">Pending</option>
                       <option value="failed">Failed</option>
                     </select>

@@ -31,7 +31,7 @@ export default function PurchasePayments() {
   const fetchPurchaseOrders = useCallback(async () => {
     try {
       const res = await api.get('/admin/purchases', { params: { limit: 200 } })
-      setPurchaseOrders(res.data.orders || [])
+      setPurchaseOrders(res.data.purchase_orders || [])
     } catch { /* non-fatal */ }
   }, [])
 

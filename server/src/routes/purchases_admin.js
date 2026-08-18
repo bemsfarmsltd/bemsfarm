@@ -121,7 +121,14 @@ router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper"), as
       params.push(`%${search}%`);
       where.push(`(po.reference ILIKE $${params.length} OR s.name ILIKE $${params.length})`);
     }
-    if (status)         { params.push(status);              where.push(`po.status = $${params.length}`);         }
+    if (status) {
+      // Comma-separated multi-status filter (e.g. "received,partial", used by
+      // PurchaseReturns.jsx to find POs with returnable items) — = ANY(...)
+      // handles both a single value and several transparently.
+      const statuses = status.split(",").map(s => s.trim()).filter(Boolean);
+      params.push(statuses);
+      where.push(`po.status = ANY($${params.length})`);
+    }
     if (payment_status) { params.push(payment_status);      where.push(`po.payment_status = $${params.length}`); }
     if (supplier_id)    { params.push(parseInt(supplier_id)); where.push(`po.supplier_id = $${params.length}`);  }
 
@@ -287,10 +294,12 @@ router.post("/:id/receive", requireRole("superadmin", "manager", "admin", "store
 
     let allReceived = true;
     let anyReceived = false;
+    let processedAny = false;
 
     for (const it of items) {
       const qty = parseInt(it.quantity_received);
       if (!qty || qty <= 0) continue;
+      processedAny = true;
 
       const item = await client.query(
         "SELECT * FROM purchase_order_items WHERE id=$1 AND purchase_order_id=$2 FOR UPDATE",
@@ -325,8 +334,11 @@ router.post("/:id/receive", requireRole("superadmin", "manager", "admin", "store
       anyReceived = true;
     }
 
-    // Update PO status
-    const newStatus = allReceived ? "received" : anyReceived ? "partial" : po.rows[0].status;
+    // Update PO status — only if something was actually processed this call;
+    // previously `allReceived` started true and was never flipped when every
+    // item was skipped (bad qty), so an empty/no-op submission still forced
+    // status to "received" regardless of anyReceived.
+    const newStatus = !processedAny ? po.rows[0].status : (allReceived ? "received" : "partial");
     await client.query(
       "UPDATE purchase_orders SET status=$1, received_date=CASE WHEN $1='received' THEN CURRENT_DATE ELSE received_date END, updated_at=NOW() WHERE id=$2",
       [newStatus, req.params.id]

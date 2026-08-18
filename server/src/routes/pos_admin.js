@@ -332,6 +332,11 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), vali
       }
     }
 
+    // "Pay Later" hands the goods over now but collects payment on credit —
+    // everything else about the sale (stock deduction, receipt, items) is
+    // identical, only the payment/order status differ from a paid-in-full sale.
+    const isPayLater = payment_method === "Pay Later";
+
     // Create order — `id` has no DB default, so it must be supplied explicitly
     // (the `reference` value, e.g. "POS-1001", doubles as the order id).
     const order = await client.query(
@@ -339,12 +344,13 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), vali
          (id, order_ref, customer_id, customer_name, subtotal, discount_amount, tax_amount,
           total, payment_method, payment_status, status, source, pos_session_id,
           notes, created_by, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'paid','completed','Physical Store (POS)',$10,$11,$12,NOW(),NOW())
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'Physical Store (POS)',$12,$13,$14,NOW(),NOW())
        RETURNING *`,
       [
         reference, reference, customer_id || null, customer_name,
         subtotal, finalDiscount, tax_amount, total,
-        payment_method, session_id || null, notes || null, req.user.id,
+        payment_method, isPayLater ? "unpaid" : "paid", isPayLater ? "pending" : "completed",
+        session_id || null, notes || null, req.user.id,
       ]
     );
     const orderId = order.rows[0].id;

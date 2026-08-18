@@ -15,6 +15,8 @@ const returnStatus = z.object({
     error: "status must be one of: pending, inspecting, approved, rejected, refunded",
   }),
   description: z.string().optional(),
+  refund_amount: z.coerce.number().min(0).optional(),
+  refund_method: z.string().trim().max(50).optional(),
 });
 
 const resolveDispute = z.object({

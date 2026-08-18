@@ -428,7 +428,10 @@ router.patch("/:id/status", requireRole("superadmin", "manager"), validate(staff
 
     await Promise.all([
       pool.query("UPDATE staff SET status=$1, updated_at=NOW() WHERE id=$2", [status, req.params.id]),
-      pool.query("UPDATE users SET status=$1 WHERE id=$2", [status === "active" ? "active" : "inactive", cur.rows[0].user_id]),
+      // Mirror the staff status straight across — collapsing "on_leave" into
+      // "inactive" here used to lock a temporarily-away employee out of login
+      // entirely, the same as a real deactivation.
+      pool.query("UPDATE users SET status=$1 WHERE id=$2", [status, cur.rows[0].user_id]),
     ]);
 
     res.json({ message: `Staff member ${status}` });

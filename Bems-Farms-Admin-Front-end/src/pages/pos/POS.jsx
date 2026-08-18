@@ -300,7 +300,7 @@ export default function POS() {
     setCart(prev => prev.map(i => i.id === id ? { ...i, qty } : i))
   }
   function updateNote(id, note) { setCart(prev => prev.map(i => i.id === id ? { ...i, note } : i)) }
-  function clearCart() { setCart([]); setDiscountPct(0); setOrderNote(''); setCustomer(null); setOrderId(genOrderId()) }
+  function clearCart() { setCart([]); setDiscountPct(0); setOrderNote(''); setCustomer(null); setOrderId(genOrderId()); setPayLaterCust(''); setPayLaterDate('') }
 
   function scannerAddProduct(code) {
     const trimmed = code.trim().toUpperCase()
@@ -373,14 +373,16 @@ export default function POS() {
     if (method === 'Split Payment' && splitMismatch) return
     setConfirmingPayment(true)
     try {
+      const isPayLater = method === 'Pay Later'
+      const payLaterNote = isPayLater && payLaterDate ? `Pay Later — due ${payLaterDate}` : undefined
       const { data } = await api.post('/admin/pos/sale', {
         items: cart.map(i => ({ product_id: i.id, quantity: i.qty })),
         customer_id: customer?.id || null,
-        customer_name: customer?.name || 'Walk-in Customer',
+        customer_name: customer?.name || (isPayLater && payLaterCust ? payLaterCust : 'Walk-in Customer'),
         payment_method: method,
         amount_tendered: method === 'Cash' && cashReceived ? Number(cashReceived) : undefined,
         discount_amount: discountAmt,
-        notes: orderNote || undefined,
+        notes: [orderNote, payLaterNote].filter(Boolean).join(' — ') || undefined,
         split_payments: method === 'Split Payment'
           ? splitRows.filter(r => Number(r.amount) > 0).map(r => ({ method: r.method, amount: Number(r.amount) }))
           : undefined,
@@ -1271,7 +1273,7 @@ export default function POS() {
             <div style={{ marginBottom:24 }}><label style={LBL}>Due Date</label><input type="date" style={inp} value={payLaterDate} onChange={e=>setPayLaterDate(e.target.value)}/></div>
             <div style={{ display:'flex', gap:12 }}>
               <button style={{ ...btnL, flex:1 }} onClick={closeModal}>Cancel</button>
-              <button style={{ ...btnP, flex:1 }} onClick={()=>{ showToast('Pay-later order saved!','success','⏰'); closeModal() }}>Confirm</button>
+              <button style={{ ...btnP, flex:1 }} disabled={!payLaterCust.trim()||confirmingPayment} onClick={()=>confirmPayment('Pay Later')}>{confirmingPayment?'Processing…':'Confirm'}</button>
             </div>
           </div>
         </ModalBox>

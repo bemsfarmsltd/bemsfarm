@@ -105,13 +105,13 @@ export default function SalesReport() {
           {/* KPI Cards */}
           <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14,marginBottom:20 }}>
             <KpiCard label="Total Orders"    value={Number(data.summary?.total_orders||0).toLocaleString()} icon="ri-shopping-cart-2-line" color="#1B4332" bg="#dcfce7"/>
-            <KpiCard label="Total Revenue"   value={ngn(data.summary?.total_revenue)}                        icon="ri-money-dollar-circle-line" color="#0369a1" bg="#e0f2fe"/>
+            <KpiCard label="Total Revenue"   value={ngn(data.summary?.gross_revenue)}                        icon="ri-money-dollar-circle-line" color="#0369a1" bg="#e0f2fe"/>
             <KpiCard label="Avg Order Value" value={ngn(data.summary?.avg_order_value)}                      icon="ri-bar-chart-line" color="#b45309" bg="#fef3c7"/>
-            <KpiCard label="Total Customers" value={Number(data.summary?.total_customers||0).toLocaleString()} icon="ri-user-3-line" color="#7c3aed" bg="#ede9fe"/>
+            <KpiCard label="Total Customers" value={Number(data.summary?.unique_customers||0).toLocaleString()} icon="ri-user-3-line" color="#7c3aed" bg="#ede9fe"/>
           </div>
 
           {/* Breakdown Table */}
-          {data.chart && data.chart.length > 0 && (
+          {data.timeline && data.timeline.length > 0 && (
             <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',marginBottom:20 }}>
               <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14 }}>
                 {filters.group_by.charAt(0).toUpperCase()+filters.group_by.slice(1)}ly Breakdown
@@ -120,9 +120,9 @@ export default function SalesReport() {
                 <table style={{ width:'100%',borderCollapse:'collapse' }}>
                   <thead><tr>{['Period','Orders','Revenue'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
                   <tbody>
-                    {data.chart.map((row,i)=>(
+                    {data.timeline.map((row,i)=>(
                       <tr key={i}>
-                        <td style={{ ...TD,fontWeight:600 }}>{row.date}</td>
+                        <td style={{ ...TD,fontWeight:600 }}>{row.label}</td>
                         <td style={TD}>{Number(row.orders||0).toLocaleString()}</td>
                         <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{ngn(row.revenue)}</td>
                       </tr>
@@ -145,7 +145,7 @@ export default function SalesReport() {
                       <tr key={i}>
                         <td style={{ ...TD,color:S,width:40 }}>{i+1}</td>
                         <td style={{ ...TD,fontWeight:600 }}>{p.name}</td>
-                        <td style={TD}>{Number(p.qty||0).toLocaleString()}</td>
+                        <td style={TD}>{Number(p.units_sold||0).toLocaleString()}</td>
                         <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{ngn(p.revenue)}</td>
                       </tr>
                     ))}

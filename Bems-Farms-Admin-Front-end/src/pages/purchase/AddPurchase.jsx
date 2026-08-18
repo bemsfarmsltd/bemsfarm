@@ -103,11 +103,19 @@ export default function AddPurchase() {
     try {
       await api.post('/admin/purchases', {
         ...form,
+        // Backend column (and every read path — PurchaseList's View/Receive
+        // modals) is quantity_ordered, not quantity — sending the wrong name
+        // meant every item was silently skipped server-side.
         items: validItems.map(i => ({
           product_id: i.product_id,
-          quantity: Number(i.quantity),
+          quantity_ordered: Number(i.quantity),
           unit_cost: Number(i.unit_cost),
         })),
+        // Skip draft/pending/approved — this UI has no screens for those
+        // intermediate states (StatusBadge only knows draft/ordered/received/
+        // partial/cancelled), so a PO created as "draft" could never reach
+        // "ordered", the only status that reveals the Receive button.
+        status: 'ordered',
       })
       toast.success('Purchase order created successfully')
       navigate('/purchase')

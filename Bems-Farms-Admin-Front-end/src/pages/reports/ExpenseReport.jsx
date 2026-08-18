@@ -80,24 +80,24 @@ export default function ExpenseReport() {
               </div>
               <div>
                 <div style={{ fontSize:11,color:S,fontWeight:600,marginBottom:2 }}>Total Expenses</div>
-                <div style={{ fontSize:22,fontWeight:800,color:'#991b1b' }}>{ngn(data.summary?.total)}</div>
+                <div style={{ fontSize:22,fontWeight:800,color:'#991b1b' }}>{ngn(data.kpis?.total_paid)}</div>
               </div>
             </div>
           </div>
 
           {/* By Category */}
-          {data.summary?.by_category?.length > 0 && (
+          {data.by_category?.length > 0 && (
             <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',marginBottom:20 }}>
               <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Expenses by Category</div>
               <table style={{ width:'100%',borderCollapse:'collapse' }}>
                 <thead><tr>{['Category','Amount','% of Total'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
                 <tbody>
-                  {data.summary.by_category.map((r,i)=>{
-                    const pct = data.summary.total > 0 ? ((r.amount/data.summary.total)*100).toFixed(1) : 0
+                  {data.by_category.map((r,i)=>{
+                    const pct = data.kpis?.total_paid > 0 ? ((r.paid/data.kpis.total_paid)*100).toFixed(1) : 0
                     return (
                       <tr key={i}>
                         <td style={{ ...TD,fontWeight:600 }}>{r.category}</td>
-                        <td style={{ ...TD,fontWeight:600,color:'#991b1b' }}>{ngn(r.amount)}</td>
+                        <td style={{ ...TD,fontWeight:600,color:'#991b1b' }}>{ngn(r.paid)}</td>
                         <td style={TD}>
                           <div style={{ display:'flex',alignItems:'center',gap:8 }}>
                             <div style={{ flex:1,height:6,borderRadius:3,background:'var(--bg-muted)',overflow:'hidden' }}>
@@ -115,18 +115,18 @@ export default function ExpenseReport() {
           )}
 
           {/* Expense list */}
-          {data.expenses?.length > 0 && (
+          {data.pending_list?.length > 0 && (
             <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
-              <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Expense Entries</div>
+              <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Pending Expenses</div>
               <div style={{ overflowX:'auto' }}>
                 <table style={{ width:'100%',borderCollapse:'collapse' }}>
                   <thead>
                     <tr>
-                      {Object.keys(data.expenses[0]||{}).map(k=><th key={k} style={TH}>{k.replace(/_/g,' ')}</th>)}
+                      {Object.keys(data.pending_list[0]||{}).map(k=><th key={k} style={TH}>{k.replace(/_/g,' ')}</th>)}
                     </tr>
                   </thead>
                   <tbody>
-                    {data.expenses.map((e,i)=>(
+                    {data.pending_list.map((e,i)=>(
                       <tr key={i}>
                         {Object.values(e).map((v,j)=>(
                           <td key={j} style={TD}>{typeof v === 'number' && j > 0 ? ngn(v) : String(v||'—')}</td>

@@ -6,13 +6,27 @@ import PageHeader from '../../components/ui/PageHeader'
 const fmt  = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const fmtD = s => s ? new Date(s).toLocaleDateString('en-NG', { day:'2-digit', month:'short', year:'numeric' }) : '—'
 
-const CATEGORIES  = ['Staff Salary','Fuel & Transport','Packaging Materials','Utilities','Cold Storage',
-  'Vehicle Maintenance','Produce Purchase','Marketing','Office Rent','Software & IT','Security','Other']
+// Values must match the DB's expenses_category_check enum exactly
+// (server/src/schemas/accountsAdminSchemas.js EXPENSE_CATEGORIES) — labels
+// are just for display, several old Title-Case options that had no backend
+// equivalent (Cold Storage, Office Rent, Software & IT, Security) are
+// consolidated into the closest real category below.
+const CATEGORIES = [
+  { value: 'produce_purchase', label: 'Produce Purchase' },
+  { value: 'staff_salary',     label: 'Staff Salary' },
+  { value: 'fuel_transport',   label: 'Fuel & Transport' },
+  { value: 'packaging',        label: 'Packaging Materials' },
+  { value: 'utilities_rent',   label: 'Utilities & Rent' },
+  { value: 'maintenance',      label: 'Maintenance' },
+  { value: 'marketing',        label: 'Marketing' },
+  { value: 'other',            label: 'Other' },
+]
+const CATEGORY_LABELS = Object.fromEntries(CATEGORIES.map(c => [c.value, c.label]))
 const PAY_METHODS = ['Bank Transfer','Cash','POS Terminal','Online']
 
 const BLANK_FORM = {
   date: new Date().toISOString().split('T')[0],
-  description: '', category: 'Staff Salary', payment_method: 'Bank Transfer',
+  description: '', category: 'staff_salary', payment_method: 'Bank Transfer',
   supplier_name: '', status: 'pending', amount: '', notes: '', due_date: '', bank_account_id: '', currency: 'NGN',
 }
 
@@ -24,10 +38,9 @@ const STATUS_CFG = {
 }
 
 const CAT_COLORS = {
-  'Staff Salary':'#3b82f6','Fuel & Transport':'#f59e0b','Packaging Materials':'#8b5cf6',
-  'Utilities':'#0ea5e9','Cold Storage':'#06b6d4','Vehicle Maintenance':'#f97316',
-  'Produce Purchase':'#22c55e','Marketing':'#ec4899','Office Rent':'#6366f1',
-  'Software & IT':'#64748b','Security':'#ef4444','Other':'#94a3b8',
+  produce_purchase:'#22c55e', staff_salary:'#3b82f6', fuel_transport:'#f59e0b',
+  packaging:'#8b5cf6', utilities_rent:'#0ea5e9', maintenance:'#f97316',
+  marketing:'#ec4899', other:'#94a3b8',
 }
 
 export default function Expenses() {
@@ -76,7 +89,7 @@ export default function Expenses() {
     setForm({
       date: e.date?.split('T')[0] || '',
       description: e.description || '',
-      category: e.category || 'Staff Salary',
+      category: e.category || 'staff_salary',
       payment_method: e.payment_method || 'Bank Transfer',
       supplier_name: e.supplier_name || '',
       status: e.status || 'pending',
@@ -117,7 +130,10 @@ export default function Expenses() {
     if (!selected) return
     setSaving(true)
     try {
-      await api.patch(`/admin/accounts/expenses/${selected.id}/approve`)
+      // No dedicated /approve route exists — the generic update endpoint
+      // already handles status transitions (stamping approved_by, and for
+      // "paid" debiting the bank account), so drive it via status instead.
+      await api.patch(`/admin/accounts/expenses/${selected.id}`, { status: 'approved' })
       toast.success('Expense approved successfully')
       fetchExpenses()
       closeModal()
@@ -132,7 +148,9 @@ export default function Expenses() {
     if (!selected || !rejectReason) return
     setSaving(true)
     try {
-      await api.patch(`/admin/accounts/expenses/${selected.id}/reject`, { reason: rejectReason })
+      // No dedicated /reject route exists — drive it through the generic
+      // update endpoint; notes is the free-text field that carries the reason.
+      await api.patch(`/admin/accounts/expenses/${selected.id}`, { status: 'rejected', notes: rejectReason })
       toast.success('Expense rejected')
       fetchExpenses()
       closeModal()
@@ -146,7 +164,9 @@ export default function Expenses() {
   const markPaid = async (e) => {
     setLoading(true)
     try {
-      await api.patch(`/admin/accounts/expenses/${e.id}/pay`)
+      // No dedicated /pay route exists — the generic update endpoint stamps
+      // paid_by and debits the record's bank account when status -> 'paid'.
+      await api.patch(`/admin/accounts/expenses/${e.id}`, { status: 'paid' })
       toast.success('Expense marked as Paid')
       fetchExpenses()
     } catch (err) {
@@ -236,7 +256,7 @@ export default function Expenses() {
             </div>
             <select style={{ ...inpStyle, width: '150px' }} value={filterCat} onChange={e => setFiltCat(e.target.value)}>
               <option value="all">All Categories</option>
-              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
             <select style={{ ...inpStyle, width: '130px' }} value={filterSt} onChange={e => setFiltSt(e.target.value)}>
               <option value="all">All Status</option>
@@ -285,7 +305,7 @@ export default function Expenses() {
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: CAT_COLORS[e.category] || '#94a3b8' }} />
-                      <span>{e.category}</span>
+                      <span>{CATEGORY_LABELS[e.category] || e.category}</span>
                     </div>
                   </td>
                   <td style={tdStyle}>
@@ -395,7 +415,7 @@ export default function Expenses() {
                 {[
                   ['Voucher ID', selected.reference || selected.id],
                   ['Description', selected.description],
-                  ['Category', selected.category],
+                  ['Category', CATEGORY_LABELS[selected.category] || selected.category],
                   ['Payment Method', selected.payment_method],
                   ['Supplier', selected.supplier_name || '—'],
                   ['Date', fmtD(selected.date)],
@@ -442,7 +462,7 @@ export default function Expenses() {
                   <div>
                     <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Category</label>
                     <select style={inpStyle} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                      {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                      {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                     </select>
                   </div>
                 </div>
@@ -521,7 +541,7 @@ export default function Expenses() {
                 <h5 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>Approve this expense?</h5>
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '16px' }}>
                   <strong>{selected.description}</strong><br />
-                  <strong>{fmt(selected.amount)}</strong> · {selected.category}
+                  <strong>{fmt(selected.amount)}</strong> · {CATEGORY_LABELS[selected.category] || selected.category}
                   <br /><span style={{ fontSize: '11px', color: 'var(--text-light)' }}>{fmtD(selected.date)}</span>
                 </p>
                 <div style={{ background: 'var(--bg-green-faint)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'left', marginBottom: '24px' }}>

@@ -61,7 +61,7 @@ async function logTrackingEvent(
 }
 
 // ── GET /api/admin/orders ─────────────────────────────────────────
-router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
+router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager", "accountant", "cashier", "kitchen_staff"), async (req, res, next) => {
   try {
     const {
       page = 1,
@@ -240,7 +240,7 @@ router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
 });
 
 // ── GET /api/admin/orders/invoices ─────────────────────────────────────────
-router.get("/invoices", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+router.get("/invoices", requireRole("superadmin", "manager", "admin", "delivery_manager", "accountant", "cashier", "kitchen_staff"), async (req, res, next) => {
   try {
     const { page = 1, limit: limitRaw = 20, search = "", status = "" } = req.query;
     const limit = clampLimit(limitRaw, 20);
@@ -551,15 +551,83 @@ router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req
 
 // ── PATCH /api/admin/orders/returns/:id/status ───────────────────────────
 router.patch("/returns/:id/status", requireRole("superadmin", "manager", "admin"), validate(orderAdminSchemas.returnStatus), async (req, res, next) => {
+  const client = await pool.connect();
   try {
-    const { status, description } = req.body;
-    await pool.query(
-      `UPDATE returns SET status = $1, description = COALESCE($2, description) WHERE id = $3 OR refund_ref = $3::text`,
-      [status, description || null, req.params.id]
+    await client.query("BEGIN");
+
+    const existing = await client.query(
+      `SELECT id, status, order_id, refund_amount, refund_method FROM returns WHERE id = $1 OR refund_ref = $1::text`,
+      [req.params.id]
     );
-    res.json({ message: "Return updated", status });
+    if (!existing.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Return not found" });
+    }
+    const ret = existing.rows[0];
+    const { status, description, refund_amount, refund_method } = req.body;
+
+    // The Process modal lets staff confirm/edit the refund amount and method
+    // at decision time — persist those overrides onto the record itself
+    // rather than silently discarding them.
+    const finalRefundAmount = refund_amount != null ? refund_amount : ret.refund_amount;
+    const finalRefundMethod = refund_method || ret.refund_method;
+
+    // Moving a return to "refunded" used to just flip the status text — no
+    // Monnify call, no money actually moved. Same honest treatment as the
+    // dispute-resolution refund flow: only auto-refund orders paid via
+    // Monnify (payment_ref set); everything else needs a manual refund.
+    let refundOutcome = null;
+    if (status === "refunded" && ret.status !== "refunded") {
+      const amountToRefund = parseFloat(finalRefundAmount || 0);
+      const orderRes = ret.order_id
+        ? await client.query("SELECT payment_ref FROM orders WHERE id = $1", [ret.order_id])
+        : { rows: [] };
+      const paymentRef = orderRes.rows[0]?.payment_ref;
+
+      if (paymentRef && amountToRefund > 0) {
+        try {
+          const refundReference = `BF-RTN-${ret.id}-${Date.now().toString(36).toUpperCase()}`;
+          await initiateMonnifyRefund({
+            transactionReference: paymentRef,
+            refundReference,
+            refundAmount: amountToRefund,
+            refundReason: `Return ${req.params.id} refund`,
+            customerNote: "BemsFarms return refund",
+          });
+          refundOutcome = "initiated";
+        } catch (refundErr) {
+          console.error("[Return Refund] Monnify refund failed:", refundErr.response?.data || refundErr.message);
+          refundOutcome = "failed";
+        }
+      } else {
+        refundOutcome = "manual";
+      }
+    }
+
+    const refundNote = refundOutcome === "initiated"
+      ? `Refund of ₦${finalRefundAmount} initiated via Monnify.`
+      : refundOutcome === "failed"
+        ? "Refund approved but the Monnify refund call failed — needs manual follow-up."
+        : refundOutcome === "manual"
+          ? `No online payment reference on this order — process the ₦${finalRefundAmount} refund manually (${finalRefundMethod || "method not set"}).`
+          : null;
+    const finalDescription = refundNote
+      ? [description, refundNote].filter(Boolean).join(" ")
+      : description;
+
+    await client.query(
+      `UPDATE returns SET status = $1, description = COALESCE($2, description),
+              refund_amount = $3, refund_method = $4 WHERE id = $5`,
+      [status, finalDescription || null, finalRefundAmount, finalRefundMethod, ret.id]
+    );
+
+    await client.query("COMMIT");
+    res.json({ message: "Return updated", status, refund_outcome: refundOutcome });
   } catch (err) {
+    await client.query("ROLLBACK");
     next(err);
+  } finally {
+    client.release();
   }
 });
 
@@ -589,7 +657,7 @@ router.delete("/returns/:id", requireRole("superadmin", "manager", "admin"), asy
 
 
 // ── GET /api/admin/orders/:id ─────────────────────────────────────
-router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
+router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manager", "accountant", "cashier", "kitchen_staff"), async (req, res, next) => {
   try {
     const order = await pool.query(
       `

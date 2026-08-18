@@ -54,7 +54,7 @@ export default function PurchaseReturns() {
   const fetchPurchaseOrders = async () => {
     try {
       const res = await api.get('/admin/purchases', { params: { limit: 200, status: 'received,partial' } })
-      setPurchaseOrders(res.data.orders || [])
+      setPurchaseOrders(res.data.purchase_orders || [])
     } catch { setPurchaseOrders([]) }
   }
 

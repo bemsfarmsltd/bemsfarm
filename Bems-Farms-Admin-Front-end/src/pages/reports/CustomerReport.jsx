@@ -68,10 +68,10 @@ export default function CustomerReport() {
         <>
           <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:14,marginBottom:20 }}>
             {[
-              { label:'Total Customers',    value:Number(data.summary?.total||0).toLocaleString(),          color:'#1B4332', bg:'#dcfce7', icon:'ri-group-line' },
-              { label:'New Customers',      value:Number(data.summary?.new_customers||0).toLocaleString(),  color:'#0369a1', bg:'#e0f2fe', icon:'ri-user-add-line' },
-              { label:'Returning',          value:Number(data.summary?.returning||0).toLocaleString(),      color:'#b45309', bg:'#fef3c7', icon:'ri-user-follow-line' },
-              { label:'Top Spender',        value:data.summary?.top_spender||'—',                           color:'#7c3aed', bg:'#ede9fe', icon:'ri-vip-crown-line' },
+              { label:'Total Customers',    value:Number(data.kpis?.total_customers||0).toLocaleString(),          color:'#1B4332', bg:'#dcfce7', icon:'ri-group-line' },
+              { label:'New Customers',      value:Number(data.kpis?.new_customers||0).toLocaleString(),  color:'#0369a1', bg:'#e0f2fe', icon:'ri-user-add-line' },
+              { label:'Returning',          value:Number(data.new_vs_returning?.find(r=>r.customer_type==='returning')?.buyers||0).toLocaleString(),      color:'#b45309', bg:'#fef3c7', icon:'ri-user-follow-line' },
+              { label:'Top Spender',        value:data.top_spenders?.[0]?.name||'—',                           color:'#7c3aed', bg:'#ede9fe', icon:'ri-vip-crown-line' },
             ].map(k=>(
               <div key={k.label} style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:18,display:'flex',alignItems:'center',gap:12 }}>
                 <div style={{ width:40,height:40,borderRadius:10,background:k.bg,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
@@ -87,20 +87,20 @@ export default function CustomerReport() {
 
           <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
             {/* Top Customers */}
-            {data.top_customers?.length > 0 && (
+            {data.top_spenders?.length > 0 && (
               <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
                 <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Top Customers</div>
                 <table style={{ width:'100%',borderCollapse:'collapse' }}>
                   <thead><tr>{['Customer','Orders','Total Spent'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
                   <tbody>
-                    {data.top_customers.map((c,i)=>(
+                    {data.top_spenders.map((c,i)=>(
                       <tr key={i}>
                         <td style={TD}>
                           <div style={{ fontWeight:600 }}>{c.name}</div>
                           <div style={{ fontSize:11,color:S }}>{c.email}</div>
                         </td>
-                        <td style={TD}>{Number(c.orders||0).toLocaleString()}</td>
-                        <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{ngn(c.total_spent)}</td>
+                        <td style={TD}>{Number(c.order_count||0).toLocaleString()}</td>
+                        <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{ngn(c.total_spend)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -109,16 +109,16 @@ export default function CustomerReport() {
             )}
 
             {/* By Month */}
-            {data.by_month?.length > 0 && (
+            {data.timeline?.length > 0 && (
               <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
                 <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>New Customers by Month</div>
                 <table style={{ width:'100%',borderCollapse:'collapse' }}>
                   <thead><tr>{['Month','New Customers'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
                   <tbody>
-                    {data.by_month.map((r,i)=>(
+                    {data.timeline.map((r,i)=>(
                       <tr key={i}>
-                        <td style={{ ...TD,fontWeight:600 }}>{r.month}</td>
-                        <td style={TD}>{Number(r.new_customers||0).toLocaleString()}</td>
+                        <td style={{ ...TD,fontWeight:600 }}>{new Date(r.period).toLocaleDateString('en-NG',{month:'short',year:'numeric'})}</td>
+                        <td style={TD}>{Number(r.new_signups||0).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>

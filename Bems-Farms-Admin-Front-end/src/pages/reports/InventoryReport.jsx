@@ -64,7 +64,7 @@ export default function InventoryReport() {
           <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:14,marginBottom:20 }}>
             {[
               { label:'Total Products',  value:Number(data.summary?.total_products||0).toLocaleString(),   color:'#1B4332', bg:'#dcfce7', icon:'ri-box-3-line' },
-              { label:'Total Value',     value:ngn(data.summary?.total_value),                              color:'#0369a1', bg:'#e0f2fe', icon:'ri-money-dollar-circle-line' },
+              { label:'Total Value',     value:ngn(data.summary?.stock_value),                              color:'#0369a1', bg:'#e0f2fe', icon:'ri-money-dollar-circle-line' },
               { label:'Low Stock Items', value:Number(data.summary?.low_stock_count||0).toLocaleString(),   color:'#b45309', bg:'#fef3c7', icon:'ri-alarm-warning-line' },
               { label:'Out of Stock',    value:Number(data.summary?.out_of_stock_count||0).toLocaleString(),color:'#991b1b', bg:'#fee2e2', icon:'ri-close-circle-line' },
             ].map(k=>(
@@ -81,17 +81,17 @@ export default function InventoryReport() {
           </div>
 
           <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
-            {data.by_category?.length > 0 && (
+            {data.stock_by_category?.length > 0 && (
               <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
                 <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Stock by Category</div>
                 <table style={{ width:'100%',borderCollapse:'collapse' }}>
                   <thead><tr>{['Category','Items','Value'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
                   <tbody>
-                    {data.by_category.map((c,i)=>(
+                    {data.stock_by_category.map((c,i)=>(
                       <tr key={i}>
                         <td style={{ ...TD,fontWeight:600 }}>{c.category}</td>
-                        <td style={TD}>{Number(c.count||0).toLocaleString()}</td>
-                        <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{ngn(c.value)}</td>
+                        <td style={TD}>{Number(c.products||0).toLocaleString()}</td>
+                        <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{ngn(c.stock_value)}</td>
                       </tr>
                     ))}
                   </tbody>

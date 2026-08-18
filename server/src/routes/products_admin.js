@@ -55,7 +55,7 @@ async function syncToCatalogue(client, product) {
 
 // ── GET /api/admin/products ───────────────────────────────────────
 // Paginated product list with filters
-router.get("/", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), async (req, res, next) => {
   try {
     const {
       page = 1,
@@ -139,7 +139,7 @@ router.get("/", requireRole("superadmin", "manager", "admin"), async (req, res, 
 
 // ── GET /api/admin/products/form-data ────────────────────────────
 // Returns categories, brands, units for dropdowns
-router.get("/form-data", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+router.get("/form-data", requireRole("superadmin", "manager", "admin", "kitchen_staff"), async (req, res, next) => {
   try {
     const [categories, subCategories, units] = await Promise.all([
       pool.query(
@@ -164,7 +164,7 @@ router.get("/form-data", requireRole("superadmin", "manager", "admin"), async (r
 });
 
 // ── GET /api/admin/products/:id ───────────────────────────────────
-router.get("/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+router.get("/:id", requireRole("superadmin", "manager", "admin", "kitchen_staff"), async (req, res, next) => {
   try {
     const result = await pool.query(
       `
@@ -200,7 +200,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin"), async (req, re
 // ── POST /api/admin/products ──────────────────────────────────────
 router.post(
   "/",
-  requireRole("superadmin", "manager", "admin"),
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
   async (req, res, next) => {
     const client = await pool.connect();
     try {
@@ -424,7 +424,7 @@ router.post(
 // independently so one bad row doesn't roll back the rest of the batch.
 router.post(
   "/bulk-import",
-  requireRole("superadmin", "manager", "admin"),
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
   async (req, res, next) => {
     const { type, rows } = req.body;
     if (!["products", "categories", "sub_categories"].includes(type)) {
@@ -520,7 +520,7 @@ router.post(
 // ── PATCH /api/admin/products/:id ────────────────────────────────
 router.patch(
   "/:id",
-  requireRole("superadmin", "manager", "admin"),
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
   async (req, res, next) => {
     const client = await pool.connect();
     try {
@@ -711,7 +711,7 @@ router.patch(
 // ── DELETE /api/admin/products/:id (soft delete) ─────────────────
 router.delete(
   "/:id",
-  requireRole("superadmin", "manager", "admin"),
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
   async (req, res, next) => {
     try {
       await pool.query(
@@ -739,7 +739,7 @@ router.delete(
 // ── PATCH /api/admin/products/:id/featured ────────────────────────
 router.patch(
   "/:id/featured",
-  requireRole("superadmin", "manager", "admin"),
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
   async (req, res, next) => {
     try {
       const result = await pool.query(

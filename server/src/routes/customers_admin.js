@@ -12,7 +12,7 @@ const { clampLimit } = require("../utils/pagination");
 router.use(protect);
 
 // ── GET /api/admin/customers ──────────────────────────────────────
-router.get("/", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cashier"), async (req, res, next) => {
   try {
     const {
       page = 1,
@@ -441,7 +441,7 @@ router.get("/site-activity", requireRole("superadmin", "manager"), async (req, r
 });
 
 // ── GET /api/admin/customers/:id ──────────────────────────────────
-router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "cashier"), async (req, res, next) => {
   try {
     const isCode = req.params.id.startsWith("CUS-");
     const whereCol = isCode ? "c.customer_code" : "c.id";

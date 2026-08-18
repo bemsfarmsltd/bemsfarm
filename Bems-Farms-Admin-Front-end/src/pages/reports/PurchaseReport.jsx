@@ -86,14 +86,14 @@ export default function PurchaseReport() {
         <>
           {/* KPI Cards */}
           <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14,marginBottom:20 }}>
-            <KpiCard label="Total Orders"    value={Number(data.summary?.total_orders||0).toLocaleString()} icon="ri-file-list-3-line"     color="#1B4332" bg="#dcfce7"/>
-            <KpiCard label="Total Value"     value={ngn(data.summary?.total_value)}                          icon="ri-money-dollar-circle-line" color="#0369a1" bg="#e0f2fe"/>
-            <KpiCard label="Paid"            value={ngn(data.summary?.paid)}                                 icon="ri-checkbox-circle-line"  color="#166534" bg="#dcfce7"/>
-            <KpiCard label="Pending"         value={ngn(data.summary?.pending)}                              icon="ri-time-line"             color="#b45309" bg="#fef3c7"/>
+            <KpiCard label="Total Orders"    value={Number(data.kpis?.total_orders||0).toLocaleString()} icon="ri-file-list-3-line"     color="#1B4332" bg="#dcfce7"/>
+            <KpiCard label="Total Value"     value={ngn(data.kpis?.total_value)}                          icon="ri-money-dollar-circle-line" color="#0369a1" bg="#e0f2fe"/>
+            <KpiCard label="Paid"            value={ngn(data.kpis?.total_paid)}                                 icon="ri-checkbox-circle-line"  color="#166534" bg="#dcfce7"/>
+            <KpiCard label="Pending"         value={ngn(data.kpis?.outstanding)}                              icon="ri-time-line"             color="#b45309" bg="#fef3c7"/>
           </div>
 
           {/* By Supplier Table */}
-          {data.by_supplier && data.by_supplier.length > 0 && (
+          {data.top_suppliers && data.top_suppliers.length > 0 && (
             <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
               <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14 }}>
                 Purchases by Supplier
@@ -104,11 +104,11 @@ export default function PurchaseReport() {
                     <tr>{['Supplier','Orders','Total Value'].map(h=><th key={h} style={TH}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {data.by_supplier.map((row,i)=>(
+                    {data.top_suppliers.map((row,i)=>(
                       <tr key={i}>
-                        <td style={{ ...TD,fontWeight:600 }}>{row.supplier}</td>
+                        <td style={{ ...TD,fontWeight:600 }}>{row.supplier_name}</td>
                         <td style={TD}>{Number(row.orders||0).toLocaleString()}</td>
-                        <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{ngn(row.total)}</td>
+                        <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{ngn(row.total_purchased)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -118,7 +118,7 @@ export default function PurchaseReport() {
           )}
 
           {/* Empty result state */}
-          {(!data.by_supplier || data.by_supplier.length === 0) && (
+          {(!data.top_suppliers || data.top_suppliers.length === 0) && (
             <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:40,textAlign:'center',color:S }}>
               <i className="ri-inbox-line" style={{ fontSize:43,display:'block',marginBottom:8 }}/>
               <div style={{ fontSize:13 }}>No purchase data found for the selected period.</div>

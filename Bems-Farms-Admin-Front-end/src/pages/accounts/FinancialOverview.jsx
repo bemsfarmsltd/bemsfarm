@@ -52,8 +52,9 @@ export default function FinancialOverview() {
   }, [fetchOverview])
 
   const kpis = overview?.kpis || {}
-  const incomeByMonth = overview?.charts?.income_by_month || []
-  const expensesByMonth = overview?.charts?.expenses_by_month || []
+  const monthlyData = overview?.charts?.last_6_months || []
+  const incomeByMonth = monthlyData.map(d => ({ month: d.month, amount: d.income }))
+  const expensesByMonth = monthlyData.map(d => ({ month: d.month, amount: d.expenses }))
   const bankAccounts = overview?.bank_accounts || []
 
   const months = incomeByMonth.map(d => d.month)
@@ -127,12 +128,11 @@ export default function FinancialOverview() {
     tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => fmt(v) } },
   }), [bankAccounts.length, isDark])
 
-  const revenue = Number(kpis.total_income || 0)
-  const expenses = Number(kpis.total_expenses || 0)
-  const profit = Number(kpis.net_profit || revenue - expenses)
+  const revenue = Number(kpis.revenue_month || 0)
+  const expenses = Number(kpis.expenses_month || 0)
+  const profit = Number(kpis.net_profit ?? (revenue - expenses))
   const margin = revenue ? ((profit / revenue) * 100).toFixed(1) : '0.0'
-  const cashInBank = Number(kpis.bank_balance || 0)
-  const pendingTxf = Number(kpis.pending_transfers || 0)
+  const cashInBank = Number(kpis.total_bank_balance || 0)
 
   const cardStyle = {
     background: 'var(--bg-card)',
@@ -170,7 +170,6 @@ export default function FinancialOverview() {
           { label: 'Total Expenses', val: fmt(expenses), sub: 'All outflows', subColor: '#ef4444', icon: 'ri-arrow-down-circle-line', color: '#ef4444', bg: 'var(--bg-red-faint)' },
           { label: 'Net Profit', val: fmt(profit), sub: `${margin}% margin`, subColor: '#22c55e', icon: 'ri-line-chart-line', color: '#22c55e', bg: 'var(--bg-green-faint)' },
           { label: 'Cash in All Banks', val: fmt(cashInBank), sub: `${bankAccounts.length} account${bankAccounts.length !== 1 ? 's' : ''}`, subColor: 'var(--text-muted)', icon: 'ri-bank-line', color: '#8b5cf6', bg: 'var(--bg-muted)' },
-          { label: 'Pending Transfers', val: fmt(pendingTxf), sub: 'In transit', subColor: '#f59e0b', icon: 'ri-time-line', color: '#0ea5e9', bg: 'var(--bg-yellow-faint)' },
         ].map((k, i) => (
           <div key={i} style={{
             background: 'var(--bg-card)',

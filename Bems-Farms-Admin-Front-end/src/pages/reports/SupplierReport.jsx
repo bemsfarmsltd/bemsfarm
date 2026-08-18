@@ -26,6 +26,15 @@ function paymentStatusBadge(status) {
   )
 }
 
+// The backend doesn't compute a payment_status field (no due-date tracking
+// to derive "overdue" from) — paid/partial/pending is inferred here from the
+// real balance/total_paid figures it does return.
+function derivePaymentStatus(s) {
+  if (Number(s.balance||0) <= 0) return 'paid'
+  if (Number(s.total_paid||0) > 0) return 'partial'
+  return 'pending'
+}
+
 const today = new Date().toISOString().slice(0,10)
 const monthStart = today.slice(0,7)+'-01'
 
@@ -87,9 +96,9 @@ export default function SupplierReport() {
       {data && !loading && (
         <>
           {/* Summary count badge */}
-          {data.suppliers && data.suppliers.length > 0 && (
+          {data.top_suppliers && data.top_suppliers.length > 0 && (
             <div style={{ marginBottom:14,fontSize:13,color:S }}>
-              Showing <strong style={{ color:'var(--text-primary)' }}>{data.suppliers.length}</strong> supplier{data.suppliers.length!==1?'s':''} for selected period.
+              Showing <strong style={{ color:'var(--text-primary)' }}>{data.top_suppliers.length}</strong> supplier{data.top_suppliers.length!==1?'s':''} for selected period.
             </div>
           )}
 
@@ -98,7 +107,7 @@ export default function SupplierReport() {
             <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14 }}>
               Supplier Summary
             </div>
-            {(!data.suppliers || data.suppliers.length === 0) ? (
+            {(!data.top_suppliers || data.top_suppliers.length === 0) ? (
               <div style={{ padding:60,textAlign:'center',color:S }}>
                 <i className="ri-inbox-line" style={{ fontSize:43,display:'block',marginBottom:8 }}/>
                 <div style={{ fontSize:13 }}>No supplier data found for the selected period.</div>
@@ -114,15 +123,15 @@ export default function SupplierReport() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.suppliers.map((s,i)=>(
+                    {data.top_suppliers.map((s,i)=>(
                       <tr key={i}>
                         <td style={{ ...TD,color:S,width:40,fontWeight:600 }}>{i+1}</td>
                         <td style={{ ...TD,fontWeight:600 }}>{s.name}</td>
-                        <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{ngn(s.total_purchased)}</td>
-                        <td style={{ ...TD,fontWeight:600,color:Number(s.balance_due||0)>0?'#991b1b':'#166534' }}>
-                          {ngn(s.balance_due)}
+                        <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{ngn(s.total_purchases)}</td>
+                        <td style={{ ...TD,fontWeight:600,color:Number(s.balance||0)>0?'#991b1b':'#166534' }}>
+                          {ngn(s.balance)}
                         </td>
-                        <td style={TD}>{paymentStatusBadge(s.payment_status)}</td>
+                        <td style={TD}>{paymentStatusBadge(derivePaymentStatus(s))}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -130,10 +139,10 @@ export default function SupplierReport() {
                     <tr style={{ background:'var(--bg-subtle)' }}>
                       <td colSpan={2} style={{ ...TD,fontWeight:700,color:'var(--text-primary)',borderTop:'2px solid var(--border)' }}>TOTAL</td>
                       <td style={{ ...TD,fontWeight:700,color:'#1B4332',borderTop:'2px solid var(--border)' }}>
-                        {ngn(data.suppliers.reduce((acc,s)=>acc+Number(s.total_purchased||0),0))}
+                        {ngn(data.top_suppliers.reduce((acc,s)=>acc+Number(s.total_purchases||0),0))}
                       </td>
                       <td style={{ ...TD,fontWeight:700,color:'#991b1b',borderTop:'2px solid var(--border)' }}>
-                        {ngn(data.suppliers.reduce((acc,s)=>acc+Number(s.balance_due||0),0))}
+                        {ngn(data.top_suppliers.reduce((acc,s)=>acc+Number(s.balance||0),0))}
                       </td>
                       <td style={{ ...TD,borderTop:'2px solid var(--border)' }}/>
                     </tr>

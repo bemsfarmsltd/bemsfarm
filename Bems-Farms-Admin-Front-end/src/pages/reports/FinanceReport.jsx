@@ -70,9 +70,9 @@ export default function FinanceReport() {
           {/* Summary cards */}
           <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:14,marginBottom:20 }}>
             {[
-              { label:'Total Income',  value:ngn(data.income?.total),   color:'#166534', bg:'#dcfce7', icon:'ri-arrow-up-circle-line' },
-              { label:'Total Expenses',value:ngn(data.expenses?.total), color:'#991b1b', bg:'#fee2e2', icon:'ri-arrow-down-circle-line' },
-              { label:'Net Profit',    value:ngn(data.net_profit),       color:data.net_profit>=0?'#166534':'#991b1b', bg:data.net_profit>=0?'#dcfce7':'#fee2e2', icon:'ri-line-chart-line' },
+              { label:'Total Income',  value:ngn(data.kpis?.total_income),   color:'#166534', bg:'#dcfce7', icon:'ri-arrow-up-circle-line' },
+              { label:'Total Expenses',value:ngn(data.kpis?.total_expenses), color:'#991b1b', bg:'#fee2e2', icon:'ri-arrow-down-circle-line' },
+              { label:'Net Profit',    value:ngn(data.kpis?.net_profit),       color:data.kpis?.net_profit>=0?'#166534':'#991b1b', bg:data.kpis?.net_profit>=0?'#dcfce7':'#fee2e2', icon:'ri-line-chart-line' },
             ].map(k=>(
               <div key={k.label} style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:20,display:'flex',alignItems:'center',gap:14 }}>
                 <div style={{ width:44,height:44,borderRadius:12,background:k.bg,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
@@ -88,16 +88,16 @@ export default function FinanceReport() {
 
           <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16 }}>
             {/* Income by category */}
-            {data.income?.by_category?.length > 0 && (
+            {data.income_by_source?.length > 0 && (
               <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
-                <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13,color:'#166534' }}>Income by Category</div>
+                <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13,color:'#166534' }}>Income by Source</div>
                 <table style={{ width:'100%',borderCollapse:'collapse' }}>
-                  <thead><tr>{['Category','Amount'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
+                  <thead><tr>{['Source','Amount'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
                   <tbody>
-                    {data.income.by_category.map((r,i)=>(
+                    {data.income_by_source.map((r,i)=>(
                       <tr key={i}>
-                        <td style={TD}>{r.category}</td>
-                        <td style={{ ...TD,fontWeight:600,color:'#166534' }}>{ngn(r.amount)}</td>
+                        <td style={TD}>{r.source}</td>
+                        <td style={{ ...TD,fontWeight:600,color:'#166534' }}>{ngn(r.total)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -106,16 +106,16 @@ export default function FinanceReport() {
             )}
 
             {/* Expenses by category */}
-            {data.expenses?.by_category?.length > 0 && (
+            {data.expense_by_category?.length > 0 && (
               <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
                 <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13,color:'#991b1b' }}>Expenses by Category</div>
                 <table style={{ width:'100%',borderCollapse:'collapse' }}>
                   <thead><tr>{['Category','Amount'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
                   <tbody>
-                    {data.expenses.by_category.map((r,i)=>(
+                    {data.expense_by_category.map((r,i)=>(
                       <tr key={i}>
                         <td style={TD}>{r.category}</td>
-                        <td style={{ ...TD,fontWeight:600,color:'#991b1b' }}>{ngn(r.amount)}</td>
+                        <td style={{ ...TD,fontWeight:600,color:'#991b1b' }}>{ngn(r.total)}</td>
                       </tr>
                     ))}
                   </tbody>
