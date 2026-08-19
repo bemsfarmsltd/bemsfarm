@@ -521,7 +521,7 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
         .status(400)
         .json({ message: "Could not get email from Google" });
 
-    let userResult = await pool.query("SELECT * FROM users WHERE email = $1", [
+    let userResult = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [
       email,
     ]);
     let user;

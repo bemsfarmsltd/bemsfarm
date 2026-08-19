@@ -58,7 +58,7 @@ function SettingsNav() {
   )
 }
 
-const BLANK = { shop_name:'', shop_email:'', shop_phone:'', shop_address:'', shop_logo:'', timezone:'Africa/Lagos', default_currency:'NGN' }
+const BLANK = { store_name:'', store_email:'', store_phone:'', store_address:'', store_logo_url:'', store_timezone:'Africa/Lagos', store_currency:'NGN' }
 
 export default function GeneralSettings() {
   const [form, setForm]     = useState(BLANK)
@@ -101,25 +101,25 @@ export default function GeneralSettings() {
         <form onSubmit={handleSave}>
           <Card title="Store & Business Information" subtitle="Displayed on receipts, and customer-facing documents.">
             <Row label="Shop Name" desc="Appears on all receipts.">
-              <input style={inp} value={form.shop_name} onChange={e=>set('shop_name',e.target.value)} placeholder="Bems Farms"/>
+              <input style={inp} value={form.store_name} onChange={e=>set('store_name',e.target.value)} placeholder="Bems Farms"/>
             </Row>
             <Row label="Shop Email" desc="Receives system alerts and notifications.">
-              <input type="email" style={inp} value={form.shop_email} onChange={e=>set('shop_email',e.target.value)} placeholder="info@bemsfarms.com"/>
+              <input type="email" style={inp} value={form.store_email} onChange={e=>set('store_email',e.target.value)} placeholder="info@bemsfarms.com"/>
             </Row>
             <Row label="Shop Phone" desc="Used for customer support communication.">
-              <input style={inp} value={form.shop_phone} onChange={e=>set('shop_phone',e.target.value)} placeholder="+234 802 345 6789"/>
+              <input style={inp} value={form.store_phone} onChange={e=>set('store_phone',e.target.value)} placeholder="+234 802 345 6789"/>
             </Row>
             <Row label="Shop Address" desc="Printed on receipts and delivery notes.">
-              <textarea style={{ ...inp,resize:'vertical' }} rows={2} value={form.shop_address} onChange={e=>set('shop_address',e.target.value)} placeholder="14 Farm Road, Epe, Lagos"/>
+              <textarea style={{ ...inp,resize:'vertical' }} rows={2} value={form.store_address} onChange={e=>set('store_address',e.target.value)} placeholder="14 Farm Road, Epe, Lagos"/>
             </Row>
             <Row label="Logo URL" desc="URL to your store logo (PNG/SVG). Shown on receipts.">
-              <input style={inp} value={form.shop_logo} onChange={e=>set('shop_logo',e.target.value)} placeholder="https://..."/>
-              {form.shop_logo && (
-                <img src={form.shop_logo} alt="logo preview" style={{ marginTop:8,height:40,objectFit:'contain',borderRadius:6,border:`1px solid ${B}` }}/>
+              <input style={inp} value={form.store_logo_url} onChange={e=>set('store_logo_url',e.target.value)} placeholder="https://..."/>
+              {form.store_logo_url && (
+                <img src={form.store_logo_url} alt="logo preview" style={{ marginTop:8,height:40,objectFit:'contain',borderRadius:6,border:`1px solid ${B}` }}/>
               )}
             </Row>
             <Row label="Timezone" desc="Used for timestamps, reports and scheduled tasks.">
-              <select style={inp} value={form.timezone} onChange={e=>set('timezone',e.target.value)}>
+              <select style={inp} value={form.store_timezone} onChange={e=>set('store_timezone',e.target.value)}>
                 <option value="Africa/Lagos">Africa/Lagos (WAT +01:00)</option>
                 <option value="UTC">UTC</option>
                 <option value="Africa/Accra">Africa/Accra</option>
@@ -128,7 +128,7 @@ export default function GeneralSettings() {
               </select>
             </Row>
             <Row label="Default Currency" desc="Applied to all pricing and billing.">
-              <select style={inp} value={form.default_currency} onChange={e=>set('default_currency',e.target.value)}>
+              <select style={inp} value={form.store_currency} onChange={e=>set('store_currency',e.target.value)}>
                 <option value="NGN">NGN — Nigerian Naira (₦)</option>
                 <option value="USD">USD — US Dollar ($)</option>
                 <option value="GBP">GBP — British Pound (£)</option>

@@ -307,10 +307,12 @@ router.get("/manager", requireRole("superadmin", "manager"), async (req, res, ne
 
     const adminRoles = ["superadmin", "manager", "admin", "cashier", "storekeeper", "delivery_manager"];
     const result = await pool.query(
-      `SELECT id, name, email, role, status, avatar_url, store_id, last_login, created_at
-       FROM users
-       WHERE role = ANY($1)
-       ORDER BY role, name
+      `SELECT u.id, u.name, u.email, u.role, u.status, u.avatar_url, u.store_id,
+              s.store_name, u.last_login, u.created_at
+       FROM users u
+       LEFT JOIN stores s ON s.id = u.store_id
+       WHERE u.role = ANY($1)
+       ORDER BY u.role, u.name
        LIMIT $2 OFFSET $3`,
       [adminRoles, parseInt(limit), offset]
     );
@@ -375,6 +377,11 @@ router.post("/manager", requireRole("superadmin"), async (req, res, next) => {
 
 router.patch("/manager/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
+    const validRoles = ["superadmin", "manager", "admin", "cashier", "storekeeper", "delivery_manager"];
+    if (req.body.role !== undefined && !validRoles.includes(req.body.role)) {
+      return res.status(400).json({ message: `Invalid role. Allowed: ${validRoles.join(", ")}` });
+    }
+
     const allowed = ["role", "status", "store_id", "name"];
     const sets = []; const params = [];
 

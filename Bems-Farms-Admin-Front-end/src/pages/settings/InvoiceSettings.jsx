@@ -58,7 +58,7 @@ function SettingsNav() {
   )
 }
 
-const BLANK = { invoice_prefix:'BEMS-INV', next_invoice_number:1001, invoice_footer:'Thank you for your business!', invoice_notes:'', due_days:7 }
+const BLANK = { invoice_prefix:'BEMS-INV', invoice_next_number:1001, invoice_footer:'Thank you for your business!', invoice_notes:'', due_days:7 }
 
 export default function InvoiceSettings() {
   const [form, setForm]     = useState(BLANK)
@@ -104,10 +104,10 @@ export default function InvoiceSettings() {
               <input style={inp} value={form.invoice_prefix} onChange={e=>set('invoice_prefix',e.target.value)} placeholder="BEMS-INV"/>
             </Row>
             <Row label="Next Receipt Number" desc="The next number in the auto-increment sequence.">
-              <input type="number" style={inp} min={1} value={form.next_invoice_number} onChange={e=>set('next_invoice_number',parseInt(e.target.value)||1)}/>
+              <input type="number" style={inp} min={1} value={form.invoice_next_number} onChange={e=>set('invoice_next_number',parseInt(e.target.value)||1)}/>
             </Row>
             <div style={{ padding:'10px 14px',background:'#f0f4ff',borderRadius:8,fontSize:12,color:'#405189' }}>
-              <i className="ri-information-line"/> Preview: <strong>{form.invoice_prefix}-{String(form.next_invoice_number).padStart(4,'0')}</strong>
+              <i className="ri-information-line"/> Preview: <strong>{form.invoice_prefix}-{String(form.invoice_next_number).padStart(4,'0')}</strong>
             </div>
           </Card>
 

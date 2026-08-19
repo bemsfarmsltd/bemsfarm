@@ -618,7 +618,7 @@ router.post("/transfers", requireRole("superadmin", "manager"), accountsControll
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/commissions", requireRole("superadmin", "manager", "accountant"), async (req, res, next) => {
   try {
-    const { page = 1, limit: limitRaw = 20, status = "", driver_id = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, status = "", driver_id = "", search = "" } = req.query;
     const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
@@ -626,9 +626,26 @@ router.get("/commissions", requireRole("superadmin", "manager", "accountant"), a
 
     if (status)    { params.push(status);              where.push(`dc.status = $${params.length}`);    }
     if (driver_id) { params.push(parseInt(driver_id)); where.push(`dc.driver_id = $${params.length}`); }
+    if (search)    { params.push(`%${search}%`);       where.push(`d.name ILIKE $${params.length}`);   }
 
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
-    const countRes    = await pool.query(`SELECT COUNT(*) FROM driver_commissions dc ${whereClause}`, params);
+
+    // Aggregate totals over every matching row, not just the current page —
+    // the KPI cards on the page are meant to summarize the whole filtered
+    // set, not whatever 20 rows happen to be visible.
+    const [countRes, statsRes] = await Promise.all([
+      pool.query(`SELECT COUNT(*) FROM driver_commissions dc LEFT JOIN drivers d ON dc.driver_id = d.id ${whereClause}`, params),
+      pool.query(`
+        SELECT
+          COALESCE(SUM(dc.net_payout) FILTER (WHERE dc.status != 'paid'), 0) AS total_unpaid,
+          COALESCE(SUM(dc.net_payout) FILTER (WHERE dc.status = 'paid'), 0)  AS total_paid,
+          COALESCE(SUM(dc.deliveries), 0)                                    AS total_deliveries,
+          COUNT(*) FILTER (WHERE dc.status = 'pending')                      AS pending_count
+        FROM driver_commissions dc
+        LEFT JOIN drivers d ON dc.driver_id = d.id
+        ${whereClause}
+      `, params),
+    ]);
 
     params.push(parseInt(limit));
     params.push(offset);
@@ -650,6 +667,12 @@ router.get("/commissions", requireRole("superadmin", "manager", "accountant"), a
       total: parseInt(countRes.rows[0].count),
       page: parseInt(page),
       pages: Math.ceil(parseInt(countRes.rows[0].count) / parseInt(limit)),
+      stats: {
+        total_unpaid: parseFloat(statsRes.rows[0].total_unpaid),
+        total_paid: parseFloat(statsRes.rows[0].total_paid),
+        total_deliveries: parseInt(statsRes.rows[0].total_deliveries),
+        pending_count: parseInt(statsRes.rows[0].pending_count),
+      },
     });
   } catch (err) {
     next(err);

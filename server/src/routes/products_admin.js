@@ -746,7 +746,8 @@ router.patch(
         "UPDATE products SET is_featured = NOT is_featured, updated_at=NOW() WHERE id=$1 RETURNING is_featured",
         [req.params.id],
       );
-      res.json({ is_featured: result.rows[0]?.is_featured });
+      if (!result.rows.length) return res.status(404).json({ message: "Product not found" });
+      res.json({ is_featured: result.rows[0].is_featured });
     } catch (err) {
       next(err);
     }

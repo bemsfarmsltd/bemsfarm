@@ -369,7 +369,7 @@ export default function OrdersList() {
                         {order.status==="delivery_attempted"&&(
                           <button title="Reschedule" onClick={()=>openModal("reschedule",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:`1px solid ${B}`, background:'none', color:'var(--text-secondary)', cursor:'pointer', fontSize:14 }}><i className="ri-calendar-line"/></button>
                         )}
-                        {["paid","new_order","pending","processing","packed_ready","packed","driver_assigned","assigned"].includes(order.status)&&(
+                        {["paid","new_order","pending","processing","packed_ready","packed","driver_assigned","assigned","delivery_attempted"].includes(order.status)&&(
                           <button title="Cancel" onClick={()=>openModal("cancel",order)} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:32, height:32, border:'none', borderRight:isSuperAdmin?`1px solid ${B}`:'none', background:'none', color:'#ef4444', cursor:'pointer', fontSize:14 }}><i className="ri-close-circle-line"/></button>
                         )}
                         {isSuperAdmin&&(
@@ -723,8 +723,8 @@ function OrderViewModal({ order, onClose, onProcess, onPack, onAssign, onDispute
                     <button style={{ ...btnP2,background:"#d97706" }} onClick={()=>onAssign("manual_reassign")}><i className="ri-user-follow-line"/>Reassign Driver</button>
                   )}
                   {o.status==="dispute"&&<button style={{ ...btnP2,background:"#dc2626" }} onClick={onDispute}><i className="ri-shield-check-line"/>Resolve Dispute</button>}
-                  {o.status==="delivery_attempted"&&<button style={btnL2} onClick={onReschedule}><i className="ri-calendar-line"/>Reschedule / Cancel</button>}
-                  {["paid","new_order","pending","processing","packed_ready","packed","driver_assigned","assigned"].includes(o.status)&&(
+                  {o.status==="delivery_attempted"&&<button style={btnL2} onClick={onReschedule}><i className="ri-calendar-line"/>Reschedule</button>}
+                  {["paid","new_order","pending","processing","packed_ready","packed","driver_assigned","assigned","delivery_attempted"].includes(o.status)&&(
                     <button style={{ ...btnL2,color:"#991b1b",borderColor:"#fca5a5" }} onClick={onCancel}><i className="ri-close-circle-line"/>Cancel Order</button>
                   )}
                 </div>

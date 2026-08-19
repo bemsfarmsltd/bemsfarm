@@ -151,22 +151,21 @@ router.patch(
         return res.status(404).json({ message: "Delivery not found" });
       }
 
-      const patch = { status };
-      if (status === "out_for_delivery") patch.dispatched_at = "NOW()";
-      if (status === "delivered") patch.delivered_at = "NOW()";
-
       await client.query(
         `UPDATE deliveries SET status=$1, updated_at=NOW()
-       ${status === "out_for_delivery" ? ", dispatched_at=NOW()" : ""}
+       ${status === "en_route" ? ", dispatched_at=NOW()" : ""}
        ${status === "delivered" ? ", delivered_at=NOW()" : ""}
        WHERE id=$2`,
         [status, req.params.id],
       );
 
-      // Mirror status on order
+      // Mirror status on order — awaiting_pickup/en_route are delivery-level
+      // states that don't have exact 1:1 order-status names, so they map to
+      // the closest existing order status instead of being dropped silently.
       const orderStatus = {
         assigned: "driver_assigned",
-        out_for_delivery: "out_for_delivery",
+        awaiting_pickup: "driver_assigned",
+        en_route: "out_for_delivery",
         delivery_attempted: "delivery_attempted",
         delivered: "delivered",
         cancelled: "cancelled",
@@ -380,6 +379,7 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
         dr.primary_zone_id AS zone_id,
         dz.zone_name AS zone,
         COUNT(DISTINCT d.id) FILTER (WHERE d.status = 'delivered') AS total_deliveries,
+        COUNT(DISTINCT d.id)                                       AS total_assigned,
         COALESCE(AVG(df.rating), 0)                                AS rating,
         COALESCE(dr.total_earnings, 0)                              AS earnings,
         (SELECT o.id FROM deliveries d2
@@ -566,7 +566,12 @@ router.get("/zones", requireRole("superadmin", "manager", "admin", "delivery_man
       FROM delivery_zones dz
       LEFT JOIN deliveries d ON d.zone_id = dz.zone_id
       LEFT JOIN orders o ON d.order_id = o.id
-      LEFT JOIN drivers dr ON dr.primary_zone_id = dz.zone_id AND dr.status NOT IN ('suspended','off_duty')
+      -- Only exclude suspended drivers here, not off-duty ones — a driver who
+      -- is temporarily off duty is still assigned to this zone, and excluding
+      -- them from driver_ids made the edit form's pre-fill wrongly show them
+      -- as unassigned, so saving any unrelated zone edit silently dropped
+      -- their assignment.
+      LEFT JOIN drivers dr ON dr.primary_zone_id = dz.zone_id AND dr.status != 'suspended'
       GROUP BY dz.zone_id
       ORDER BY (dz.status = 'active') DESC, dz.zone_name ASC
     `);

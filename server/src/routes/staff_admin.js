@@ -762,14 +762,20 @@ router.patch("/holidays/:id/approve", requireRole("superadmin", "manager"), asyn
       const h = result.rows[0];
       const cur = new Date(h.start_date);
       const end = new Date(h.end_date);
+      // Only mark weekdays absent — matches the working_days count computed
+      // when the request was created (POST /holidays), which already
+      // excludes weekends. Marking every calendar day was inflating
+      // days_absent beyond what the approved leave actually covered.
       while (cur <= end) {
-        const dateStr = cur.toISOString().slice(0, 10);
-        await pool.query(
-          `INSERT INTO staff_attendance (staff_id, date, status, notes, created_by, created_at)
-           VALUES ($1,$2,'absent',$3,$4,NOW())
-           ON CONFLICT (staff_id, date) DO UPDATE SET status='absent', notes=EXCLUDED.notes`,
-          [h.staff_id, dateStr, `Approved ${h.type} leave`, req.user.id]
-        );
+        if (cur.getDay() !== 0 && cur.getDay() !== 6) {
+          const dateStr = cur.toISOString().slice(0, 10);
+          await pool.query(
+            `INSERT INTO staff_attendance (staff_id, date, status, notes, created_by, created_at)
+             VALUES ($1,$2,'absent',$3,$4,NOW())
+             ON CONFLICT (staff_id, date) DO UPDATE SET status='absent', notes=EXCLUDED.notes`,
+            [h.staff_id, dateStr, `Approved ${h.type} leave`, req.user.id]
+          );
+        }
         cur.setDate(cur.getDate() + 1);
       }
     }

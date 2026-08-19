@@ -93,7 +93,7 @@ router.get("/", async (req, res, next) => {
     }
 
     if (status === "active") {
-      where.push("c.is_active=true AND (c.end_date IS NULL OR c.end_date >= CURRENT_DATE)");
+      where.push("c.is_active=true AND (c.start_date IS NULL OR c.start_date <= CURRENT_DATE) AND (c.end_date IS NULL OR c.end_date >= CURRENT_DATE)");
     } else if (status === "expired") {
       where.push("(c.is_active=false OR c.end_date < CURRENT_DATE)");
     } else if (status === "exhausted") {

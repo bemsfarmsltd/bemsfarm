@@ -149,7 +149,13 @@ export default function Invoices() {
     } catch { toast.error("Failed to update status") }
   }
 
-  const markAsPaid = ()=>updateStatus('paid', markPaidRef||'Manual')
+  // The backend only preserves the invoice's existing notes when this is
+  // null (COALESCE) — sending the payment ref/"Manual" here used to
+  // permanently overwrite whatever notes were entered at creation instead
+  // of appending to them.
+  const markAsPaid = ()=>updateStatus('paid', markPaidRef
+    ? [selected?.notes, `Paid via ${markPaidRef}`].filter(Boolean).join(' — ')
+    : undefined)
   const sendInvoice   = ()=>updateStatus('sent')
   const cancelInvoice = ()=>updateStatus('cancelled')
 
@@ -167,10 +173,10 @@ export default function Invoices() {
         {[
           { label:'Total Invoices',    value:stats.total,                         color:'#6366f1',icon:'ri-file-list-3-line',        filter:'all'     },
           { label:'Paid',              value:stats.paid,                           color:'#22c55e',icon:'ri-checkbox-circle-line',    filter:'paid'    },
-          { label:'Sent / Draft',      value:stats.outstanding,                   color:'#3b82f6',icon:'ri-send-plane-line',          filter:'sent'    },
+          { label:'Sent / Draft',      value:stats.outstanding,                   color:'#3b82f6',icon:'ri-send-plane-line',          filter:'sent,draft' },
           { label:'Overdue',           value:stats.overdue,                       color:'#ef4444',icon:'ri-error-warning-line',       filter:'overdue' },
           { label:'Total Collected',   value:fmt(stats.revenue),                  color:'#10b981',icon:'ri-money-dollar-circle-line', filter:null      },
-          { label:'Outstanding Value', value:fmt(stats.outstanding_value),        color:'#f59e0b',icon:'ri-time-line',                filter:'overdue' },
+          { label:'Outstanding Value', value:fmt(stats.outstanding_value),        color:'#f59e0b',icon:'ri-time-line',                filter:'sent,overdue' },
         ].map(c=>(
           <div key={c.label} onClick={()=>c.filter&&setFilterStatus(c.filter)}
             style={{ background:'var(--bg-card)',borderRadius:12,border:'1px solid var(--border)',borderLeft:`3px solid ${c.color}`,padding:'14px 16px',display:'flex',alignItems:'center',gap:10,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',cursor:c.filter?'pointer':'default' }}>

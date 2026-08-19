@@ -25,7 +25,7 @@ const getProducts = async (req, res, next) => {
     const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 200));
     const offset = (page - 1) * limit;
 
-    let where = "WHERE 1=1";
+    let where = "WHERE p.status != 'archived'";
     const params = [];
 
     // Filter by category
@@ -90,7 +90,7 @@ const getProductById = async (req, res, next) => {
          SELECT product_id, AVG(rating) AS avg_rating, COUNT(*) AS review_count
          FROM product_reviews WHERE status = 'approved' GROUP BY product_id
        ) pr ON pr.product_id = p.id
-       WHERE p.id = $1`,
+       WHERE p.id = $1 AND p.status != 'archived'`,
       [id],
     );
 
@@ -110,7 +110,7 @@ const getProductById = async (req, res, next) => {
          SELECT product_id, AVG(rating) AS avg_rating, COUNT(*) AS review_count
          FROM product_reviews WHERE status = 'approved' GROUP BY product_id
        ) pr ON pr.product_id = p.id
-       WHERE p.category_id = $1 AND p.id != $2
+       WHERE p.category_id = $1 AND p.id != $2 AND p.status != 'archived'
        LIMIT 4`,
       [result.rows[0].category_id, id],
     );
@@ -132,7 +132,7 @@ const getFeaturedProducts = async (req, res, next) => {
       `SELECT p.*, c.name as category_name 
        FROM products p
        LEFT JOIN categories c ON p.category_id = c.id
-       WHERE p.is_featured = true
+       WHERE p.is_featured = true AND p.status != 'archived'
        ORDER BY p.id ASC`,
     );
 

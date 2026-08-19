@@ -62,7 +62,7 @@ export default function MoneyTransfer() {
       const res = await api.get('/admin/accounts/bank-accounts')
       setAccounts(res.data.bank_accounts || res.data.accounts || [])
     } catch {
-      // silently ignore
+      toast.error('Failed to load bank accounts')
     }
   }, [])
 

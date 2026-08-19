@@ -36,7 +36,7 @@ function SettingsNav() {
   )
 }
 
-const BLANK_FORM = { code:'', name:'', symbol:'', rate:0, is_default:false, is_active:true }
+const BLANK_FORM = { code:'', name:'', symbol:'', exchange_rate:0, is_default:false, is_enabled:true }
 
 export default function CurrencySettings() {
   const [currencies, setCurrencies] = useState([])
@@ -62,7 +62,7 @@ export default function CurrencySettings() {
   )
 
   function openAdd() { setForm({ ...BLANK_FORM }); setModal('add') }
-  function openEdit(c) { setForm({ code:c.code,name:c.name,symbol:c.symbol,rate:c.rate,is_default:c.is_default,is_active:c.is_active }); setModal(c) }
+  function openEdit(c) { setForm({ code:c.code,name:c.name,symbol:c.symbol,exchange_rate:c.exchange_rate,is_default:c.is_default,is_enabled:c.is_enabled }); setModal(c) }
   function closeModal() { setModal(null); setForm(BLANK_FORM) }
 
   async function handleSave(e) {
@@ -125,15 +125,15 @@ export default function CurrencySettings() {
                     <td style={TD}>
                       {c.is_default
                         ? <span style={{ background:'#dcfce7',color:'#166534',borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}>Base</span>
-                        : <span style={{ fontWeight:600 }}>₦{Number(c.rate).toLocaleString()} <span style={{ fontSize:11,color:S,fontWeight:400 }}>per 1 {c.code}</span></span>
+                        : <span style={{ fontWeight:600 }}>₦{Number(c.exchange_rate).toLocaleString()} <span style={{ fontSize:11,color:S,fontWeight:400 }}>per 1 {c.code}</span></span>
                       }
                     </td>
                     <td style={TD}>
                       {c.is_default && <span style={{ background:'#dcfce7',color:'#166534',borderRadius:50,padding:'3px 8px',fontSize:10,fontWeight:700 }}>DEFAULT</span>}
                     </td>
                     <td style={TD}>
-                      <span style={{ background:c.is_active?'#dcfce7':'var(--border)',color:c.is_active?'#166534':S,borderRadius:50,padding:'3px 8px',fontSize:11,fontWeight:600 }}>
-                        {c.is_active?'Active':'Inactive'}
+                      <span style={{ background:c.is_enabled?'#dcfce7':'var(--border)',color:c.is_enabled?'#166534':S,borderRadius:50,padding:'3px 8px',fontSize:11,fontWeight:600 }}>
+                        {c.is_enabled?'Active':'Inactive'}
                       </span>
                     </td>
                     <td style={TD}>
@@ -182,11 +182,11 @@ export default function CurrencySettings() {
                 </div>
                 <div style={{ marginBottom:14 }}>
                   <label style={LBL}>Exchange Rate <span style={{ fontSize:11,fontWeight:400,color:S }}>(₦ per 1 unit)</span></label>
-                  <input type="number" style={inp} min={0} step={0.01} value={form.rate} onChange={e=>setForm(f=>({...f,rate:parseFloat(e.target.value)||0}))} placeholder="e.g. 1650"/>
+                  <input type="number" style={inp} min={0} step={0.01} value={form.exchange_rate} onChange={e=>setForm(f=>({...f,exchange_rate:parseFloat(e.target.value)||0}))} placeholder="e.g. 1650"/>
                 </div>
                 <div style={{ display:'flex',gap:20,marginBottom:24 }}>
                   <label style={{ display:'flex',alignItems:'center',gap:8,fontSize:13,cursor:'pointer' }}>
-                    <input type="checkbox" checked={form.is_active} onChange={()=>setForm(f=>({...f,is_active:!f.is_active}))} style={{ accentColor:'#1B4332',width:16,height:16 }}/>
+                    <input type="checkbox" checked={form.is_enabled} onChange={()=>setForm(f=>({...f,is_enabled:!f.is_enabled}))} style={{ accentColor:'#1B4332',width:16,height:16 }}/>
                     Active
                   </label>
                   <label style={{ display:'flex',alignItems:'center',gap:8,fontSize:13,cursor:'pointer' }}>

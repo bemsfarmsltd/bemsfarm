@@ -24,7 +24,11 @@ const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-
 const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
 const B = 'var(--border)', S = '#6b7280'
 
-const ROLES = ['admin','manager','cashier','viewer']
+// Must match the backend's validRoles in settings_admin.js POST /manager
+// exactly — superadmin is deliberately excluded there (creating another
+// superadmin isn't allowed through this route), and 'viewer' was never a
+// real role.
+const ROLES = ['manager','admin','cashier','storekeeper','delivery_manager']
 const STATUS_OPTS = ['active','inactive','suspended']
 
 function SettingsNav() {
@@ -68,7 +72,7 @@ export default function ManagerSettings() {
   const load = useCallback(() => {
     setLoading(true)
     api.get('/admin/settings/manager')
-      .then(r => setManagers(r.data.managers || []))
+      .then(r => setManagers(r.data.users || []))
       .catch(() => toast.error('Failed to load managers'))
       .finally(() => setLoading(false))
   }, [])

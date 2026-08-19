@@ -87,8 +87,20 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
       where.push(`o.status = $${params.length}`);
     }
     if (channel) {
-      params.push(channel);
-      where.push(`o.source = $${params.length}`);
+      // orders.source is a free-text label ("Web App", "Physical Store
+      // (POS)", "online", ...) that has drifted across a few different
+      // literal spellings over time — match by the same keyword the admin
+      // UI's own channel badge classifier uses (getChannelCfg), instead of
+      // an exact string match that only ever matches one spelling.
+      const CHANNEL_PATTERNS = {
+        online:       ["%online%", "%web%"],
+        chef_bems_ai: ["%chef%", "%ai%", "%agent%"],
+        pos:          ["%physical%", "%pos%", "%store%"],
+        mobile_app:   ["%mobile%"],
+      };
+      const patterns = CHANNEL_PATTERNS[channel] || [`%${channel}%`];
+      const clauses = patterns.map((p) => { params.push(p); return `o.source ILIKE $${params.length}`; });
+      where.push(`(${clauses.join(" OR ")})`);
     }
 
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
@@ -253,8 +265,11 @@ router.get("/invoices", requireRole("superadmin", "manager", "admin", "delivery_
       where.push(`(invoice_ref ILIKE $${params.length} OR order_id ILIKE $${params.length} OR customer_name ILIKE $${params.length})`);
     }
     if (status && status !== "all") {
-      params.push(status);
-      where.push(`status = $${params.length}`);
+      // Supports a comma-separated list so a stat card covering more than
+      // one status (e.g. "Sent / Draft") can filter to exactly what it counted.
+      const statuses = status.split(",").map((s) => s.trim()).filter(Boolean);
+      params.push(statuses);
+      where.push(`status = ANY($${params.length})`);
     }
 
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";

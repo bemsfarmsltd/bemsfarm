@@ -65,7 +65,7 @@ function SettingsNav() {
   )
 }
 
-const BLANK = { tax_enabled:true, tax_rate:7.5, tax_name:'VAT', tax_number:'', prices_include_tax:false }
+const BLANK = { tax_enabled:true, tax_rate:7.5, tax_label:'VAT', tax_number:'', tax_inclusive:false }
 
 export default function TaxSettings() {
   const [form, setForm]     = useState(BLANK)
@@ -119,7 +119,7 @@ export default function TaxSettings() {
                 <Toggle value={form.tax_enabled} onChange={()=>set('tax_enabled',!form.tax_enabled)}/>
               </Row>
               <Row label="Tax Name / Label" desc="Label shown on receipts (e.g. VAT, GST).">
-                <input style={inp} value={form.tax_name} onChange={e=>set('tax_name',e.target.value)} placeholder="VAT"/>
+                <input style={inp} value={form.tax_label} onChange={e=>set('tax_label',e.target.value)} placeholder="VAT"/>
               </Row>
               <Row label="Tax Rate (%)" desc="Nigerian standard VAT is 7.5%.">
                 <div style={{ display:'flex',alignItems:'center',gap:8 }}>
@@ -131,7 +131,7 @@ export default function TaxSettings() {
                 <input style={inp} value={form.tax_number} onChange={e=>set('tax_number',e.target.value)} placeholder="12345678-0001"/>
               </Row>
               <Row label="Prices Include Tax" desc="Whether product prices are entered inclusive of tax.">
-                <Toggle value={form.prices_include_tax} onChange={()=>set('prices_include_tax',!form.prices_include_tax)}/>
+                <Toggle value={form.tax_inclusive} onChange={()=>set('tax_inclusive',!form.tax_inclusive)}/>
               </Row>
             </Card>
 

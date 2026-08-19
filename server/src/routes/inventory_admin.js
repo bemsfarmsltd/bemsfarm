@@ -834,7 +834,7 @@ router.get(
       const lowStockRes = await pool.query(
         `SELECT id, name, sku, stock, low_stock_threshold
          FROM products
-         WHERE stock <= low_stock_threshold AND status = 'active'
+         WHERE stock > 0 AND stock <= low_stock_threshold AND status = 'active'
          ORDER BY stock ASC`
       );
 

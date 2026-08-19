@@ -106,7 +106,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     const productIds = [...requested.keys()];
     const productRows = await client.query(
       `SELECT id, name, price, stock, available_for_sale
-       FROM products WHERE id = ANY($1::int[]) FOR UPDATE`,
+       FROM products WHERE id = ANY($1::int[]) AND status != 'archived' FOR UPDATE`,
       [productIds],
     );
     const productsById = new Map(productRows.rows.map((p) => [p.id, p]));
@@ -380,24 +380,30 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
     const { id } = req.params;
     const { reason } = req.body;
 
+    await client.query("BEGIN");
+
+    // Lock the row and re-check status inside the transaction — without
+    // this, two concurrent cancel requests for the same order (e.g. a
+    // double-submitted click) could both pass the status check before
+    // either commits, restoring stock twice for one order.
     const order = await client.query(
-      `SELECT * FROM orders WHERE id = $1 AND user_id = $2`,
+      `SELECT * FROM orders WHERE id = $1 AND user_id = $2 FOR UPDATE`,
       [id, req.user.id],
     );
 
     if (!order.rows.length) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ message: "Order not found" });
     }
 
     const o = order.rows[0];
 
     if (!["pending", "confirmed"].includes(o.status)) {
+      await client.query("ROLLBACK");
       return res.status(400).json({
         message: "This order can no longer be cancelled",
       });
     }
-
-    await client.query("BEGIN");
 
     await client.query(
       `UPDATE orders

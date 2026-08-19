@@ -1,4 +1,5 @@
 const pool = require("../db/pool");
+const { clampLimit } = require("../utils/pagination");
 
 // Ensure return_items table exists (runs once on first call, safe to repeat)
 async function ensureReturnItemsTable(client) {
@@ -41,8 +42,6 @@ const submitReturn = async (req, res, next) => {
         return res.status(400).json({ message: "Product ID is required for each item" });
       if (!item.returned_quantity || item.returned_quantity <= 0)
         return res.status(400).json({ message: `Returned quantity must be greater than 0 for ${item.product_name || "an item"}` });
-      if (item.returned_quantity > item.ordered_quantity)
-        return res.status(400).json({ message: `Returned quantity cannot exceed ordered quantity for ${item.product_name || "an item"}` });
       if (!VALID_CONDITIONS.includes(item.condition))
         return res.status(400).json({ message: `Invalid condition for ${item.product_name || "an item"}. Must be reusable, damaged, or partial_goods` });
     }
@@ -56,6 +55,23 @@ const submitReturn = async (req, res, next) => {
       return res.status(404).json({ message: "Order not found" });
     if (order.rows[0].status !== "delivered")
       return res.status(400).json({ message: "Only delivered orders can be returned" });
+
+    // ── Verify each returned item actually belongs to this order, and cap
+    // the returned quantity at what the order really contains — the client
+    // can send whatever `ordered_quantity` it wants, so that field is never
+    // trusted for the actual limit check.
+    const realItems = await pool.query(
+      "SELECT product_id, quantity FROM order_items WHERE order_id=$1",
+      [order_id]
+    );
+    const realQtyByProduct = new Map(realItems.rows.map((r) => [String(r.product_id), r.quantity]));
+    for (const item of items) {
+      const orderedQty = realQtyByProduct.get(String(item.product_id));
+      if (orderedQty === undefined)
+        return res.status(400).json({ message: `${item.product_name || "This item"} was not part of order ${order_id}` });
+      if (item.returned_quantity > orderedQty)
+        return res.status(400).json({ message: `Returned quantity cannot exceed the ${orderedQty} ordered for ${item.product_name || "this item"}` });
+    }
 
     // ── 7-day return window ──────────────────────────────────────
     // Counted from delivery (updated_at, bumped when status flips to
@@ -90,7 +106,7 @@ const submitReturn = async (req, res, next) => {
           returnId,
           item.product_id,
           item.product_name  || "",
-          item.ordered_quantity,
+          realQtyByProduct.get(String(item.product_id)),
           item.returned_quantity,
           item.condition,
           item.remarks?.trim() || null,
@@ -141,14 +157,22 @@ const getUserReturns = async (req, res, next) => {
 
 const getAllReturns = async (req, res, next) => {
   try {
+    const { page = 1, limit: limitRaw = 20 } = req.query;
+    const limit = clampLimit(limitRaw, 20);
+    const offset = (parseInt(page) - 1) * limit;
+
+    const countRes = await pool.query("SELECT COUNT(*) FROM returns");
     const returns = await pool.query(
       `SELECT r.*, u.name AS customer_name, u.email AS customer_email
        FROM returns r
        LEFT JOIN users u ON u.id = r.user_id
-       ORDER BY r.created_at DESC`
+       ORDER BY r.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
     );
 
-    if (!returns.rows.length) return res.json({ returns: [] });
+    const total = parseInt(countRes.rows[0].count);
+    if (!returns.rows.length) return res.json({ returns: [], total, page: parseInt(page), pages: Math.ceil(total / limit) });
 
     const returnIds = returns.rows.map((r) => r.id);
     const items = await pool.query(
@@ -163,20 +187,26 @@ const getAllReturns = async (req, res, next) => {
     }
 
     const list = returns.rows.map((r) => ({ ...r, items: itemsMap[r.id] || [] }));
-    res.json({ returns: list });
+    res.json({ returns: list, total, page: parseInt(page), pages: Math.ceil(total / limit) });
   } catch (err) {
     next(err);
   }
 };
 
+const RETURN_STATUSES = ["pending", "approved", "rejected", "resolved"];
+
 const updateReturn = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, resolution } = req.body;
-    await pool.query(
-      "UPDATE returns SET status=$1, resolution=$2, resolved_at=NOW() WHERE id=$3",
-      [status, resolution, id]
+    if (status && !RETURN_STATUSES.includes(status)) {
+      return res.status(400).json({ message: `status must be one of: ${RETURN_STATUSES.join(", ")}` });
+    }
+    const result = await pool.query(
+      "UPDATE returns SET status=COALESCE($1,status), resolution=$2, resolved_at=NOW() WHERE id=$3 RETURNING id",
+      [status || null, resolution, id]
     );
+    if (!result.rows.length) return res.status(404).json({ message: "Return not found" });
     res.json({ message: "Return updated" });
   } catch (err) {
     next(err);

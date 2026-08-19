@@ -44,7 +44,7 @@ function SettingsNav() {
   )
 }
 
-const BLANK_EDIT = { name:'', public_key:'', secret_key:'', webhook_url:'', is_active:false }
+const BLANK_EDIT = { name:'', public_key:'', secret_key:'', webhook_url:'', is_enabled:false }
 
 export default function PaymentSettings() {
   const [gateways, setGateways]   = useState([])
@@ -65,7 +65,7 @@ export default function PaymentSettings() {
   useEffect(() => { load() }, [load])
 
   function openEdit(gw) {
-    setEditForm({ name:gw.name, public_key:gw.public_key||'', secret_key:'', webhook_url:gw.webhook_url||'', is_active:gw.is_active })
+    setEditForm({ name:gw.name, public_key:gw.public_key||'', secret_key:'', webhook_url:gw.webhook_url||'', is_enabled:gw.is_enabled })
     setModal(gw)
   }
 
@@ -88,8 +88,8 @@ export default function PaymentSettings() {
 
   async function toggleActive(gw) {
     try {
-      await api.post(`/admin/settings/payment/${gw.slug}`, { ...gw, is_active: !gw.is_active })
-      toast.success(`${gw.name} ${gw.is_active?'disabled':'enabled'}`)
+      await api.post(`/admin/settings/payment/${gw.slug}`, { ...gw, is_enabled: !gw.is_enabled })
+      toast.success(`${gw.name} ${gw.is_enabled?'disabled':'enabled'}`)
       load()
     } catch {
       toast.error('Failed to toggle gateway')
@@ -107,7 +107,7 @@ export default function PaymentSettings() {
       <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
         <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
           <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14 }}>Payment Gateways</span>
-          <span style={{ fontSize:12,color:S }}>{gateways.filter(g=>g.is_active).length} of {gateways.length} active</span>
+          <span style={{ fontSize:12,color:S }}>{gateways.filter(g=>g.is_enabled).length} of {gateways.length} active</span>
         </div>
 
         {loading ? (
@@ -133,7 +133,7 @@ export default function PaymentSettings() {
                     <td style={{ ...TD,fontSize:12,color:S,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis' }}>
                       {gw.webhook_url ? <span title={gw.webhook_url}>{gw.webhook_url.slice(0,28)}…</span> : <span style={{ color:'var(--border-strong)' }}>Not set</span>}
                     </td>
-                    <td style={TD}><Toggle value={gw.is_active} onChange={()=>toggleActive(gw)}/></td>
+                    <td style={TD}><Toggle value={gw.is_enabled} onChange={()=>toggleActive(gw)}/></td>
                     <td style={TD}>
                       <button onClick={()=>openEdit(gw)} style={{ display:'inline-flex',alignItems:'center',gap:5,padding:'6px 12px',borderRadius:7,border:`1px solid ${B}`,background:'#f0f4ff',color:'#405189',cursor:'pointer',fontSize:12,fontWeight:600 }}>
                         <i className="ri-settings-3-line"/>Configure
@@ -187,7 +187,7 @@ export default function PaymentSettings() {
                 </div>
                 <div style={{ marginBottom:24,display:'flex',alignItems:'center',gap:10 }}>
                   <label style={{ fontWeight:600,fontSize:13,color:'var(--text-secondary)' }}>Active</label>
-                  <Toggle value={editForm.is_active} onChange={()=>setEditForm(f=>({...f,is_active:!f.is_active}))}/>
+                  <Toggle value={editForm.is_enabled} onChange={()=>setEditForm(f=>({...f,is_enabled:!f.is_enabled}))}/>
                 </div>
                 <div style={{ display:'flex',gap:10 }}>
                   <button type="button" style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>

@@ -69,8 +69,10 @@ export default function Transactions() {
     setSearch(''); setType('all'); setDateFrom(''); setDateTo(''); setBankAccId('')
   }
 
-  const totalIn  = transactions.filter(t => Number(t.amount) > 0 || t.type === 'credit').reduce((s, t) => s + Number(t.amount || 0), 0)
-  const totalOut = transactions.filter(t => Number(t.amount) < 0 || t.type === 'debit').reduce((s, t) => s + Math.abs(Number(t.amount || 0)), 0)
+  // amount is always stored as a positive magnitude — direction lives only
+  // in `type`, so that's the only thing these can key off of.
+  const totalIn  = transactions.filter(t => t.type === 'credit').reduce((s, t) => s + Number(t.amount || 0), 0)
+  const totalOut = transactions.filter(t => t.type === 'debit').reduce((s, t) => s + Math.abs(Number(t.amount || 0)), 0)
   const netFlow  = totalIn - totalOut
   const pending  = transactions.filter(t => t.status === 'pending').length
 
@@ -80,7 +82,7 @@ export default function Transactions() {
     return TYPE_CFG[t.type] || TYPE_CFG.credit
   }
 
-  const isCredit = (t) => t.type === 'credit' || Number(t.amount) > 0
+  const isCredit = (t) => t.type === 'credit'
 
   const cardStyle = {
     background: 'var(--bg-card)',
@@ -304,7 +306,7 @@ export default function Transactions() {
                       {t.description}
                     </td>
                     <td style={tdStyle}>
-                      {bankAccounts.find(a => a.id === t.bank_account_id)?.bank_name || t.bank_account_id || '—'}
+                      {t.bank_name || bankAccounts.find(a => a.id === t.bank_account_id)?.bank_name || '—'}
                     </td>
                     <td style={tdStyle}>
                       {t.payment_method || '—'}

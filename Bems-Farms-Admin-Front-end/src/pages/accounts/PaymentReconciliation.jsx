@@ -100,6 +100,9 @@ export default function PaymentReconciliation() {
     }
   }, [activeTab, fetchPayments, fetchWebhooks])
 
+  useEffect(() => { setPayPage(1) }, [paySearch, payStatus])
+  useEffect(() => { setWebPage(1) }, [webStatus])
+
   const handleManualReconcile = async (e) => {
     e.preventDefault()
     if (!manualForm.payment_ref || !manualForm.order_id) {
@@ -472,7 +475,7 @@ export default function PaymentReconciliation() {
               
               <div style={{ marginBottom: '24px' }}>
                 <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Order ID (Database Primary Key)</label>
-                <input type="number" style={inpStyle} placeholder="e.g. 45" value={manualForm.order_id} onChange={e => setManualForm({ ...manualForm, order_id: e.target.value })} required />
+                <input type="text" style={inpStyle} placeholder="e.g. BF-1A2B3C" value={manualForm.order_id} onChange={e => setManualForm({ ...manualForm, order_id: e.target.value })} required />
               </div>
               
               <div style={{ display: 'flex', gap: '10px' }}>

@@ -95,6 +95,10 @@ export default function BankAccounts() {
       toast.error('Account Name and Account Number are required')
       return
     }
+    if (form.account_number.length !== 10) {
+      toast.error('Nigerian bank account numbers must be 10 digits')
+      return
+    }
     setSaving(true)
     try {
       await api.patch(`/admin/accounts/bank-accounts/${editModal.id}`, {

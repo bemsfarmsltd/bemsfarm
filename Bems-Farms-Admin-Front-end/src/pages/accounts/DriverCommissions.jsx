@@ -20,6 +20,7 @@ export default function DriverCommissions() {
   const [loading, setLoading]         = useState(false)
   const [saving, setSaving]           = useState(false)
   const [meta, setMeta]               = useState({ total: 0, page: 1, pages: 1 })
+  const [stats, setStats]             = useState(null)
   const [page, setPage]               = useState(1)
   const [search, setSearch]           = useState('')
   const [filterSt, setFilterSt]       = useState('all')
@@ -28,6 +29,8 @@ export default function DriverCommissions() {
   const [generateModal, setGenerateModal] = useState(false)
   const [payNote, setPayNote]         = useState('')
   const [payConfirm, setPayConfirm]   = useState(false)
+  const [bankAccounts, setBankAccounts] = useState([])
+  const [payAccountId, setPayAccountId] = useState('')
   const [genForm, setGenForm]         = useState({
     period_from: '',
     period_to: new Date().toISOString().split('T')[0],
@@ -48,6 +51,7 @@ export default function DriverCommissions() {
       })
       setCommissions(res.data.commissions || [])
       setMeta({ total: res.data.total, page: res.data.page, pages: res.data.pages })
+      setStats(res.data.stats || null)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load commissions')
     } finally {
@@ -57,11 +61,23 @@ export default function DriverCommissions() {
 
   useEffect(() => { fetchCommissions() }, [fetchCommissions])
   useEffect(() => { setPage(1) }, [search, filterSt])
+  useEffect(() => {
+    api.get('/admin/accounts/bank-accounts')
+      .then(res => {
+        const accounts = res.data.bank_accounts || res.data.accounts || []
+        setBankAccounts(accounts)
+        setPayAccountId(prev => prev || accounts.find(a => a.is_primary)?.id || accounts[0]?.id || '')
+      })
+      .catch(() => {})
+  }, [])
 
-  const totalUnpaid    = commissions.filter(c => c.status !== 'paid').reduce((s, c) => s + Number(c.net_payout || 0), 0)
-  const totalPaid      = commissions.filter(c => c.status === 'paid').reduce((s, c) => s + Number(c.net_payout || 0), 0)
-  const totalDeliveries= commissions.reduce((s, c) => s + Number(c.deliveries || 0), 0)
-  const pendingCount   = commissions.filter(c => c.status === 'pending').length
+  // These come from the backend's aggregate over every matching row, not
+  // just the current page — page-local reduce() previously made the KPI
+  // cards silently change value as the admin paged through the table.
+  const totalUnpaid    = stats?.total_unpaid ?? 0
+  const totalPaid      = stats?.total_paid ?? 0
+  const totalDeliveries= stats?.total_deliveries ?? 0
+  const pendingCount   = stats?.pending_count ?? 0
 
   const handleUpdateCommission = async () => {
     if (!editModal) return
@@ -79,11 +95,13 @@ export default function DriverCommissions() {
   }
 
   const handleMarkPaid = async (commission) => {
+    if (!payAccountId) { toast.error('Select a bank account to pay from'); return }
     setSaving(true)
     try {
       await api.patch(`/admin/accounts/commissions/${commission.id}`, {
         status: 'paid',
         payment_ref: payNote || `PAY-${Date.now()}`,
+        bank_account_id: payAccountId,
       })
       toast.success(`Commission paid to ${commission.driver_name}`)
       fetchCommissions()
@@ -369,7 +387,15 @@ export default function DriverCommissions() {
                 </div>
               ))}
 
-              <div style={{ marginTop: '16px', marginBottom: '24px' }}>
+              <div style={{ marginTop: '16px', marginBottom: '14px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Pay From</label>
+                <select style={inpStyle} value={payAccountId} onChange={e => setPayAccountId(e.target.value)}>
+                  <option value="">Select a bank account…</option>
+                  {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} — {a.account_name}</option>)}
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
                 <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Payment Reference (optional)</label>
                 <input style={inpStyle} placeholder="e.g. TXN-2026-0099" value={payNote} onChange={e => setPayNote(e.target.value)} />
               </div>

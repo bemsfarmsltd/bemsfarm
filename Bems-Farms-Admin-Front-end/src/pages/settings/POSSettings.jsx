@@ -66,7 +66,9 @@ function SettingsNav() {
   )
 }
 
-const BLANK = { pos_enabled:true, receipt_footer:'Thank you for shopping with Bems Farms!', print_receipt:true, ask_customer_name:false, allow_discount:true, max_discount_percent:20 }
+// pos_print_receipt/pos_receipt_footer are the real backend-persisted keys;
+// the rest have no backend consumer yet and stay local-only settings.
+const BLANK = { pos_enabled:true, pos_receipt_footer:'Thank you for shopping with Bems Farms!', pos_print_receipt:true, ask_customer_name:false, allow_discount:true, max_discount_percent:20 }
 
 export default function POSSettings() {
   const [form, setForm]     = useState(BLANK)
@@ -112,7 +114,7 @@ export default function POSSettings() {
               <Toggle value={form.pos_enabled} onChange={()=>set('pos_enabled',!form.pos_enabled)}/>
             </Row>
             <Row label="Print Receipt" desc="Automatically print receipt after every completed sale.">
-              <Toggle value={form.print_receipt} onChange={()=>set('print_receipt',!form.print_receipt)}/>
+              <Toggle value={form.pos_print_receipt} onChange={()=>set('pos_print_receipt',!form.pos_print_receipt)}/>
             </Row>
             <Row label="Ask Customer Name" desc="Prompt cashier to enter customer name at checkout.">
               <Toggle value={form.ask_customer_name} onChange={()=>set('ask_customer_name',!form.ask_customer_name)}/>
@@ -131,7 +133,7 @@ export default function POSSettings() {
           <Card title="Receipt Settings" subtitle="Customize the POS receipt footer message.">
             <div>
               <label style={LBL}>Receipt Footer Message</label>
-              <textarea style={{ ...inp,resize:'vertical' }} rows={3} value={form.receipt_footer} onChange={e=>set('receipt_footer',e.target.value)} placeholder="Thank you for shopping with us!"/>
+              <textarea style={{ ...inp,resize:'vertical' }} rows={3} value={form.pos_receipt_footer} onChange={e=>set('pos_receipt_footer',e.target.value)} placeholder="Thank you for shopping with us!"/>
               <div style={{ fontSize:11,color:S,marginTop:4 }}>This text is printed at the bottom of every receipt.</div>
             </div>
           </Card>

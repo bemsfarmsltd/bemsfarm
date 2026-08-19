@@ -67,7 +67,12 @@ function SettingsNav() {
   )
 }
 
-const BLANK = { email_orders:true, email_low_stock:true, email_new_customer:true, sms_enabled:false, sms_orders:false, push_enabled:true }
+// notif_email_enabled/notif_sms_enabled/notif_order_email/notif_low_stock are
+// the real, backend-consumed keys (notif_low_stock + notif_email_enabled
+// directly gate the low-stock alert email in inventory_admin.js). The other
+// toggles here (email_new_customer, sms_orders, push_enabled) have no
+// backend consumer yet and are kept as local-only settings.
+const BLANK = { notif_order_email:true, notif_low_stock:true, email_new_customer:true, notif_sms_enabled:false, sms_orders:false, push_enabled:true, notif_email_enabled:true }
 
 export default function NotificationSettings() {
   const [settings, setSettings] = useState(BLANK)
@@ -114,9 +119,9 @@ export default function NotificationSettings() {
           <Card title="Notification Channels" subtitle="Enable or disable notification delivery methods.">
             <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12 }}>
               {[
-                { key:'email_orders', label:'Email (Orders)',   icon:'ri-mail-line',           color:'#405189', desc:'Order alerts by email'   },
-                { key:'sms_enabled',  label:'SMS',             icon:'ri-smartphone-line',      color:'#0ab39c', desc:'SMS notifications'       },
-                { key:'push_enabled', label:'Push',            icon:'ri-notification-3-line',  color:'#f57c00', desc:'Browser push alerts'     },
+                { key:'notif_email_enabled', label:'Email',    icon:'ri-mail-line',           color:'#405189', desc:'Order alerts by email'   },
+                { key:'notif_sms_enabled',   label:'SMS',      icon:'ri-smartphone-line',      color:'#0ab39c', desc:'SMS notifications'       },
+                { key:'push_enabled',        label:'Push',     icon:'ri-notification-3-line',  color:'#f57c00', desc:'Browser push alerts'     },
               ].map(c=>(
                 <div key={c.key} onClick={()=>toggle(c.key)}
                   style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'16px 12px',borderRadius:12,border:`2px solid ${settings[c.key]?c.color:B}`,background:settings[c.key]?`${c.color}08`:'var(--bg-card)',cursor:'pointer',transition:'all .15s',textAlign:'center' }}>
@@ -130,8 +135,8 @@ export default function NotificationSettings() {
 
           {/* Email Notifications */}
           <Card title="Email Notifications" subtitle="Control which events trigger email alerts.">
-            <NotifRow label="New Order Email" desc="Send email when a new order is placed" value={settings.email_orders} onChange={()=>toggle('email_orders')}/>
-            <NotifRow label="Low Stock Alert Email" desc="Email when stock falls below reorder level" value={settings.email_low_stock} onChange={()=>toggle('email_low_stock')}/>
+            <NotifRow label="New Order Email" desc="Send email when a new order is placed" value={settings.notif_order_email} onChange={()=>toggle('notif_order_email')}/>
+            <NotifRow label="Low Stock Alert Email" desc="Email when stock falls below reorder level" value={settings.notif_low_stock} onChange={()=>toggle('notif_low_stock')}/>
             <div style={{ paddingBottom:0,borderBottom:'none' }}>
               <NotifRow label="New Customer Email" desc="Email when a new customer registers" value={settings.email_new_customer} onChange={()=>toggle('email_new_customer')}/>
             </div>
@@ -139,10 +144,10 @@ export default function NotificationSettings() {
 
           {/* SMS Notifications */}
           <Card title="SMS Notifications" subtitle="SMS alerts (requires SMS channel to be enabled above).">
-            <div style={{ marginBottom:8,fontSize:12,color:settings.sms_enabled?S:'#f59e0b',background:settings.sms_enabled?'transparent':'#fffbeb',padding:settings.sms_enabled?0:'8px 12px',borderRadius:6 }}>
-              {!settings.sms_enabled && <><i className="ri-alert-line"/> Enable SMS channel above to activate SMS alerts.</>}
+            <div style={{ marginBottom:8,fontSize:12,color:settings.notif_sms_enabled?S:'#f59e0b',background:settings.notif_sms_enabled?'transparent':'#fffbeb',padding:settings.notif_sms_enabled?0:'8px 12px',borderRadius:6 }}>
+              {!settings.notif_sms_enabled && <><i className="ri-alert-line"/> Enable SMS channel above to activate SMS alerts.</>}
             </div>
-            <div style={{ opacity:settings.sms_enabled?1:0.5,pointerEvents:settings.sms_enabled?'auto':'none' }}>
+            <div style={{ opacity:settings.notif_sms_enabled?1:0.5,pointerEvents:settings.notif_sms_enabled?'auto':'none' }}>
               <NotifRow label="SMS Order Alerts" desc="Receive SMS for new orders" value={settings.sms_orders} onChange={()=>toggle('sms_orders')}/>
             </div>
           </Card>

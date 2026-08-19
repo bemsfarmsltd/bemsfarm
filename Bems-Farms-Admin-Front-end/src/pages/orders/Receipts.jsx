@@ -100,7 +100,8 @@ export default function Receipts() {
       )
     }
     if (filterStatus !== 'all') {
-      list = list.filter(i => i.status === filterStatus)
+      const statuses = filterStatus.split(',')
+      list = list.filter(i => statuses.includes(i.status))
     }
     return list.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at))
   }, [invoices, search, filterStatus])
@@ -171,7 +172,13 @@ export default function Receipts() {
     }
   }
 
-  const markAsPaid = ()=>updateStatus('paid', markPaidRef||'Manual')
+  // The backend only preserves the invoice's existing notes when this is
+  // null (COALESCE) — sending the payment ref/"Manual" here used to
+  // permanently overwrite whatever notes were entered at creation instead
+  // of appending to them.
+  const markAsPaid = ()=>updateStatus('paid', markPaidRef
+    ? [selected?.notes, `Paid via ${markPaidRef}`].filter(Boolean).join(' — ')
+    : undefined)
   const sendInvoice   = ()=>updateStatus('sent')
   const cancelInvoice = ()=>updateStatus('cancelled')
 
@@ -205,10 +212,10 @@ export default function Receipts() {
         {[
           { label:'Total Receipts',    value:stats.total,                         color:'#405189',icon:'ri-file-text-line',          filter:'all'     },
           { label:'Paid',              value:stats.paid,                           color:'#10b981',icon:'ri-checkbox-circle-line',    filter:'paid'    },
-          { label:'Sent / Draft',      value:stats.outstanding,                   color:'#299cdb',icon:'ri-send-plane-line',          filter:'sent'    },
+          { label:'Sent / Draft',      value:stats.outstanding,                   color:'#299cdb',icon:'ri-send-plane-line',          filter:'sent,draft' },
           { label:'Overdue',           value:stats.overdue,                       color:'#ef4444',icon:'ri-error-warning-line',       filter:'overdue' },
           { label:'Total Collected',   value:fmt(stats.revenue),                  color:'#059669',icon:'ri-coins-line',              filter:null      },
-          { label:'Outstanding Value', value:fmt(stats.outstanding_value),        color:'#f7b84b',icon:'ri-time-line',                filter:'overdue' },
+          { label:'Outstanding Value', value:fmt(stats.outstanding_value),        color:'#f7b84b',icon:'ri-time-line',                filter:'sent,overdue' },
         ].map(c=>(
           <div key={c.label} onClick={()=>c.filter&&setFilterStatus(c.filter)}
             style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,borderLeft:`3px solid ${c.color}`,padding:'14px 16px',display:'flex',alignItems:'center',gap:10,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',cursor:c.filter?'pointer':'default' }}>

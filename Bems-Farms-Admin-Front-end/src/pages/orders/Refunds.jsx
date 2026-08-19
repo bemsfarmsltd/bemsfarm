@@ -469,7 +469,7 @@ export default function Refunds() {
                     <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:16 }}>
                       <div>
                         <label style={LBL}>Refund Amount (₦)</label>
-                        <input type="number" style={inp} min="0" value={procForm.refundAmount} onChange={e=>setProcForm(f=>({...f,refundAmount:Number(e.target.value)}))}/>
+                        <input type="number" style={inp} min="0" max={Number(selected.refund_amount||0)} value={procForm.refundAmount} onChange={e=>setProcForm(f=>({...f,refundAmount:Math.min(Number(e.target.value),Number(selected.refund_amount||0))}))}/>
                         <div style={{ fontSize:11,color:'var(--text-muted)',marginTop:4 }}>Max: ₦{Number(selected.refund_amount||0).toLocaleString()}</div>
                       </div>
                       <div>

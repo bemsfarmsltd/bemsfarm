@@ -190,7 +190,7 @@ export default function CouponSettings() {
           <div style={{ display:'flex',gap:6 }}>
             <button style={{ ...btnL,padding:'4px 10px',fontSize:12 }} disabled={page<=1} onClick={()=>setPage(p=>p-1)}>Prev</button>
             <span style={{ padding:'4px 8px',fontSize:12,color:S }}>Page {page}</span>
-            <button style={{ ...btnL,padding:'4px 10px',fontSize:12 }} disabled={coupons.length<20} onClick={()=>setPage(p=>p+1)}>Next</button>
+            <button style={{ ...btnL,padding:'4px 10px',fontSize:12 }} disabled={page*20>=total} onClick={()=>setPage(p=>p+1)}>Next</button>
           </div>
         </div>
       </div>
@@ -212,7 +212,10 @@ export default function CouponSettings() {
                 <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
                   <div>
                     <label style={LBL}>Coupon Code <span style={{ color:'#f06548' }}>*</span></label>
-                    <input style={inp} required value={form.code} onChange={e=>setForm(f=>({...f,code:e.target.value.toUpperCase()}))} placeholder="HARVEST15"/>
+                    {/* Code can't be changed after creation — the backend's
+                        PATCH doesn't accept it, so editing it here would
+                        silently be discarded on save. */}
+                    <input style={{ ...inp, ...(modal!=='add'?{background:'var(--bg-subtle)',cursor:'not-allowed'}:{}) }} required disabled={modal!=='add'} value={form.code} onChange={e=>setForm(f=>({...f,code:e.target.value.toUpperCase()}))} placeholder="HARVEST15"/>
                   </div>
                   <div>
                     <label style={LBL}>Applies To</label>

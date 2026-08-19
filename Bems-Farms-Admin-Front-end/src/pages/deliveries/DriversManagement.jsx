@@ -222,7 +222,7 @@ export default function DriversManagement() {
               )}
               {!loading && filtered.map(driver => {
                 const cfg = STATUS_CFG[driver.status] || STATUS_CFG.off_duty
-                const successRate = driver.total_deliveries>0 ? Math.round((parseInt(driver.total_deliveries)/Math.max(parseInt(driver.total_deliveries),1))*100) : 0
+                const successRate = driver.total_assigned>0 ? Math.round((parseInt(driver.total_deliveries)/parseInt(driver.total_assigned))*100) : 0
                 return (
                   <tr key={driver.id}>
                     <TD>
