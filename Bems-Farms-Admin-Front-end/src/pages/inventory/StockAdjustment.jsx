@@ -35,7 +35,7 @@ export default function StockAdjustment() {
   const [loading,    setLoading]   = useState(false)
   const [page,       setPage]      = useState(1)
   const [search,     setSearch]    = useState('')
-  const [meta,       setMeta]      = useState({ total:0, pages:1 })
+  const [meta,       setMeta]      = useState({ total:0, pages:1, stats:{ added:0, deducted:0 } })
   const [products,   setProducts]  = useState([])
   const [warehouses, setWarehouses]= useState([])
   const [showForm,   setShowForm]  = useState(false)
@@ -51,7 +51,7 @@ export default function StockAdjustment() {
       const params = { page, limit:20, type:'adjustment', search }
       const res = await api.get('/admin/inventory/movements', { params })
       setMovements(res.data.movements || [])
-      setMeta({ total: res.data.total || 0, pages: res.data.pages || 1 })
+      setMeta({ total: res.data.total || 0, pages: res.data.pages || 1, stats: res.data.stats || { added: 0, deducted: 0 } })
     } catch (err) { 
       toast.error(err.response?.data?.message || 'Failed to load adjustments') 
     } finally { 
@@ -71,8 +71,11 @@ export default function StockAdjustment() {
   }, [])
 
   useEffect(() => { fetchLookups() }, [fetchLookups])
-  useEffect(() => { fetchMovements() }, [fetchMovements])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchMovements() }, [page])
   useEffect(() => { setPage(1) }, [search, filterType])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { const t = setTimeout(() => fetchMovements(), 400); return () => clearTimeout(t) }, [search])
 
   function openForm() { setForm(BLANK_FORM); setReason(REASONS[0]); setAdjType('subtract'); setShowForm(true) }
   function close()    { setShowForm(false) }
@@ -114,23 +117,13 @@ export default function StockAdjustment() {
     })
   }, [movements, filterType])
 
-  const statValues = useMemo(() => {
-    let added = 0
-    let deducted = 0
-    movements.forEach(m => {
-      const notes = m.notes || ''
-      if (notes.includes('+Addition')) {
-        added += Math.abs(m.quantity || 0)
-      } else if (notes.includes('-Deduction')) {
-        deducted += Math.abs(m.quantity || 0)
-      }
-    })
-    return {
-      total: meta.total || 0,
-      added: `+${added}`,
-      deducted: `-${deducted}`,
-    }
-  }, [movements, meta])
+  // added/deducted now come from the backend, computed across every
+  // matching row (not just the 20 on this page) from before_qty/after_qty.
+  const statValues = useMemo(() => ({
+    total: meta.total || 0,
+    added: `+${meta.stats?.added || 0}`,
+    deducted: `-${meta.stats?.deducted || 0}`,
+  }), [meta])
 
   function formatDate(d) {
     if (!d) return '—'

@@ -68,7 +68,9 @@ export default function LostItems() {
     setLoading(true)
     setError(null)
     try {
-      const params = { page, limit:20 }
+      // "confirmed loss" is the display label for the backend's 'approved' status.
+      const statusParam = filterStatus === 'confirmed loss' ? 'approved' : filterStatus
+      const params = { page, limit:20, search, status: statusParam }
       const res = await api.get('/admin/inventory/lost-items', { params })
       setItems(res.data.items || [])
       setMeta({ total: res.data.total || 0, pages: res.data.pages || 1 })
@@ -94,8 +96,14 @@ export default function LostItems() {
   }, [])
 
   useEffect(() => { fetchLookups() }, [fetchLookups])
-  useEffect(() => { fetchItems() }, [fetchItems])
+  // Split so typing in the search box only triggers the debounced call below
+  // — `fetchItems` is deliberately left out of these deps since its identity
+  // changes on every keystroke (it closes over `search`).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchItems() }, [page, filterStatus])
   useEffect(() => { setPage(1) }, [search, filterStatus])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { const t = setTimeout(() => fetchItems(), 400); return () => clearTimeout(t) }, [search])
 
   // The backend (see PATCH /admin/inventory/lost-items/:id/approve) only
   // ever sets status to 'pending', 'approved', or 'rejected' — no

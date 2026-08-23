@@ -168,7 +168,7 @@ export default function StockAlerts() {
                       <div style={{ fontWeight:600 }}>{a.name}</div>
                     </td>
                     <td style={TD}><code style={{ fontSize:12, background:'var(--bg-muted)', padding:'2px 6px', borderRadius:4 }}>{a.sku}</code></td>
-                    <td style={TD}><span style={{ background:'var(--bg-subtle)', color:'var(--text-secondary)', border:'1px solid var(--border)', borderRadius:50, padding:'3px 10px', fontSize:11, fontWeight:600 }}>{a.category_name || '—'}</span></td>
+                    <td style={TD}><span style={{ background:'var(--bg-subtle)', color:'var(--text-secondary)', border:'1px solid var(--border)', borderRadius:50, padding:'3px 10px', fontSize:11, fontWeight:600 }}>{a.category || '—'}</span></td>
                     <td style={TD}>{a.warehouse_name || '—'}</td>
                     <td style={TD}><span style={{ fontWeight:700, color: a.stock_quantity === 0 ? '#f06548' : '#f7b84b' }}>{a.stock_quantity}</span></td>
                     <td style={TD}>

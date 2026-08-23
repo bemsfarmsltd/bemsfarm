@@ -322,7 +322,7 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin", "kitchen_
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/movements", requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"), async (req, res, next) => {
   try {
-    const { page = 1, limit: limitRaw = 20, product_id = "", type = "", from = "", to = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, product_id = "", type = "", from = "", to = "", search = "" } = req.query;
     const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
@@ -339,11 +339,29 @@ router.get("/movements", requireRole("superadmin", "manager", "admin", "storekee
     }
     if (from)       { params.push(from); where.push(`sm.created_at >= $${params.length}`); }
     if (to)         { params.push(to);   where.push(`sm.created_at <= $${params.length} + INTERVAL '1 day'`); }
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(p.name ILIKE $${params.length} OR p.sku ILIKE $${params.length} OR sm.reference ILIKE $${params.length})`);
+    }
 
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
 
-    const countRes = await pool.query(`SELECT COUNT(*) FROM stock_movements sm ${whereClause}`, params);
+    const countRes = await pool.query(
+      `SELECT COUNT(*) FROM stock_movements sm LEFT JOIN products p ON sm.product_id = p.id ${whereClause}`,
+      params
+    );
     const total    = parseInt(countRes.rows[0].count);
+
+    // Real added/deducted totals across every matching row, not just the
+    // current page — before_qty/after_qty (not quantity, which is always
+    // stored as a positive magnitude) is what actually encodes direction.
+    const statsRes = await pool.query(
+      `SELECT
+         COALESCE(SUM(GREATEST(sm.after_qty - sm.before_qty, 0)), 0) AS added,
+         COALESCE(SUM(GREATEST(sm.before_qty - sm.after_qty, 0)), 0) AS deducted
+       FROM stock_movements sm LEFT JOIN products p ON sm.product_id = p.id ${whereClause}`,
+      params
+    );
 
     params.push(parseInt(limit));
     params.push(offset);
@@ -369,6 +387,10 @@ router.get("/movements", requireRole("superadmin", "manager", "admin", "storekee
       total,
       page: parseInt(page),
       pages: Math.ceil(total / parseInt(limit)),
+      stats: {
+        added: parseInt(statsRes.rows[0].added),
+        deducted: parseInt(statsRes.rows[0].deducted),
+      },
     });
   } catch (err) {
     next(err);
@@ -646,14 +668,22 @@ router.delete("/batches/:id", requireRole("superadmin", "manager"), async (req, 
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/lost-items", requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"), async (req, res, next) => {
   try {
-    const { page = 1, limit: limitRaw = 20, status = "" } = req.query;
+    const { page = 1, limit: limitRaw = 20, status = "", search = "" } = req.query;
     const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    const where  = status ? ["li.status = $1"] : [];
-    const params = status ? [status] : [];
+    const where  = [];
+    const params = [];
+    if (status) { params.push(status); where.push(`li.status = $${params.length}`); }
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(p.name ILIKE $${params.length} OR li.reason ILIKE $${params.length} OR li.id::text ILIKE $${params.length})`);
+    }
 
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
-    const countRes    = await pool.query(`SELECT COUNT(*) FROM lost_items li ${whereClause}`, params);
+    const countRes    = await pool.query(
+      `SELECT COUNT(*) FROM lost_items li LEFT JOIN products p ON li.product_id = p.id ${whereClause}`,
+      params
+    );
 
     params.push(parseInt(limit));
     params.push(offset);
@@ -662,12 +692,13 @@ router.get("/lost-items", requireRole("superadmin", "manager", "admin", "storeke
       SELECT
         li.id, li.quantity, li.reason, li.estimated_value,
         li.notes, li.status, li.created_at,
-        p.name AS product_name, p.sku,
+        p.name AS product_name, p.sku, c.name AS category_name,
         w.name AS warehouse_name,
         r.name AS reported_by_name,
         a.name AS approved_by_name
       FROM lost_items li
       LEFT JOIN products   p ON li.product_id   = p.id
+      LEFT JOIN categories c ON p.category_id    = c.id
       LEFT JOIN warehouses w ON li.warehouse_id  = w.id
       LEFT JOIN users      r ON li.reported_by   = r.id
       LEFT JOIN users      a ON li.approved_by   = a.id

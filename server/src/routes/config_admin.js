@@ -243,54 +243,77 @@ function convertToCSV(headers, rows) {
 }
 
 // ── GET /api/admin/config/export ─────────────────────────────────────
+// Every column the export UI lets an admin pick a field for, per type —
+// used to both validate the `fields` query param (whitelist, no raw column
+// names ever reach SQL) and to build the SELECT/headers for just the
+// columns that were actually requested.
+const EXPORT_COLUMNS = {
+  products: {
+    table: "p", from: "products p LEFT JOIN categories c ON p.category_id = c.id",
+    columns: {
+      name: "p.name", sku: "p.sku", barcode: "p.barcode", category: "c.name",
+      unit_price: "COALESCE(p.unit_price, p.price, 0)", cost_price: "COALESCE(p.cost_price, 0)",
+      stock: "p.stock", status: "p.status", created_at: "p.created_at",
+    },
+    order: "p.id DESC",
+  },
+  categories: {
+    from: "categories",
+    columns: { name: "name", code: "code", status: "status", created_at: "created_at" },
+    order: "id DESC",
+  },
+  sub_categories: {
+    from: "subcategories s LEFT JOIN categories c ON s.category_id = c.id",
+    columns: { name: "s.name", parent_category: "c.name", code: "s.code", status: "s.status", created_at: "s.created_at" },
+    order: "s.id DESC",
+  },
+  units: {
+    from: "units",
+    columns: { name: "name", short: "short", type: "type", step: "step", status: "status", created_at: "created_at" },
+    order: "id DESC",
+  },
+  inventory: {
+    from: "products",
+    columns: { name: "name", sku: "sku", stock: "stock", low_stock_threshold: "low_stock_threshold", status: "status" },
+    order: "id DESC",
+  },
+};
+// products/inventory both read the products table, so both filter on it directly.
+const EXPORT_STATUS_COL = { products: "p.status", categories: "status", sub_categories: "s.status", units: "status", inventory: "status" };
+const EXPORT_DATE_COL   = { products: "p.created_at", categories: "created_at", sub_categories: "s.created_at", units: "created_at", inventory: "created_at" };
+
 router.get("/export", async (req, res, next) => {
   try {
-    const { type } = req.query;
-    let queryStr = "";
-    let headers = [];
+    const { type, fields, status, date_from, date_to } = req.query;
+    const config = EXPORT_COLUMNS[type];
+    if (!config) return res.status(400).json({ message: "Invalid export type" });
 
-    if (type === "products") {
-      queryStr = `
-        SELECT p.name, p.sku, p.barcode, c.name as category,
-               COALESCE(p.unit_price, p.price, 0) as unit_price,
-               COALESCE(p.cost_price, 0) as cost_price,
-               p.stock, p.status, p.created_at
-        FROM products p
-        LEFT JOIN categories c ON p.category_id = c.id
-        ORDER BY p.id DESC`;
-      headers = ["name", "sku", "barcode", "category", "unit_price", "cost_price", "stock", "status", "created_at"];
-    } else if (type === "categories") {
-      queryStr = `
-        SELECT name, code, status, created_at
-        FROM categories
-        ORDER BY id DESC`;
-      headers = ["name", "code", "status", "created_at"];
-    } else if (type === "sub_categories") {
-      queryStr = `
-        SELECT s.name, c.name as parent_category, s.code, s.status, s.created_at
-        FROM subcategories s
-        LEFT JOIN categories c ON s.category_id = c.id
-        ORDER BY s.id DESC`;
-      headers = ["name", "parent_category", "code", "status", "created_at"];
-    } else if (type === "units") {
-      queryStr = `
-        SELECT name, short, type, step, status, created_at
-        FROM units
-        ORDER BY id DESC`;
-      headers = ["name", "short", "type", "step", "status", "created_at"];
-    } else if (type === "inventory") {
-      queryStr = `
-        SELECT name, sku, stock, low_stock_threshold, status
-        FROM products
-        ORDER BY id DESC`;
-      headers = ["name", "sku", "stock", "low_stock_threshold", "status"];
-    } else {
-      return res.status(400).json({ message: "Invalid export type" });
+    const requested = fields ? String(fields).split(",").filter((f) => config.columns[f]) : Object.keys(config.columns);
+    const headers = requested.length ? requested : Object.keys(config.columns);
+    const selectList = headers.map((h) => `${config.columns[h]} AS ${h}`).join(", ");
+
+    const where = [];
+    const params = [];
+    if (status && status !== "all") {
+      params.push(status);
+      where.push(`${EXPORT_STATUS_COL[type]} = $${params.length}`);
     }
+    if (date_from) {
+      params.push(date_from);
+      where.push(`${EXPORT_DATE_COL[type]} >= $${params.length}`);
+    }
+    if (date_to) {
+      params.push(date_to);
+      where.push(`${EXPORT_DATE_COL[type]} < ($${params.length}::date + INTERVAL '1 day')`);
+    }
+    const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-    const result = await pool.query(queryStr);
+    const result = await pool.query(
+      `SELECT ${selectList} FROM ${config.from} ${whereClause} ORDER BY ${config.order}`,
+      params
+    );
     const csvContent = convertToCSV(headers, result.rows);
-    
+
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", `attachment; filename="${type}_export_${Date.now()}.csv"`);
     res.status(200).send(csvContent);

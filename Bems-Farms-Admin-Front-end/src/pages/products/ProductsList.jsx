@@ -57,8 +57,14 @@ export default function ProductsList() {
     finally { setLoading(false) }
   }, [page, search, category, status, stock])
 
-  useEffect(() => { load() }, [load])
+  // Split into two effects so a keystroke in the search box only ever
+  // triggers the debounced load below, not an extra immediate one — `load`
+  // itself is deliberately left out of these dependency arrays since its
+  // identity changes on every keystroke (it closes over `search`).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load() }, [page, category, status, stock])
   useEffect(() => { api.get('/admin/products/form-data').then(r=>setCategories(r.data.categories||[])).catch(()=>{}) }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { const t=setTimeout(()=>{ setPage(1); load() },400); return ()=>clearTimeout(t) }, [search])
 
   const handleDelete = async () => {

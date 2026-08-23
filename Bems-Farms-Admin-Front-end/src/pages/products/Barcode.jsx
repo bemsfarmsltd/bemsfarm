@@ -120,7 +120,6 @@ export default function Barcode() {
   const [selectedList, setSelectedList] = useState([])
   
   const [selectedCategory, setSelectedCategory] = useState('')
-  const [selectedBrand, setSelectedBrand]       = useState('')
   
   const [barcodeType, setBarcodeType]   = useState('code128')
   const [encodeValue, setEncodeValue]   = useState('sku')
@@ -257,14 +256,6 @@ export default function Barcode() {
                 <select style={inp} value={selectedCategory} onChange={e=>setSelectedCategory(e.target.value)}>
                   <option value="">— All Categories —</option>
                   {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={LBL}>Brand</label>
-                <select style={inp} value={selectedBrand} onChange={e=>setSelectedBrand(e.target.value)}>
-                  <option value="">— All Brands —</option>
-                  <option value="bems_farms">Bems Farms</option>
-                  <option value="other">Other</option>
                 </select>
               </div>
             </div>

@@ -2,12 +2,20 @@ import { useState, useMemo } from 'react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
+// Field labels are limited to columns the export endpoint actually returns
+// (EXPORT_COLUMNS in config_admin.js) — a label here that had no backing
+// column used to sit in the picker with zero effect on the download.
 const EXPORT_TYPES = [
-  { key:'products',       label:'Products',        icon:'ri-box-3-line',       color:'#0ab39c', fields:['Name','SKU','Barcode','Category','Sub-Category','Unit Price','Cost Price','Stock','Unit','Low Stock Alert','Tax %','Status','Description','Created'] },
-  { key:'categories',     label:'Categories',      icon:'ri-folder-line',      color:'#405189', fields:['Name','Code','Products','Status','Created'] },
-  { key:'sub_categories', label:'Sub-Categories',  icon:'ri-folder-open-line', color:'#299cdb', fields:['Name','Parent Category','Code','POS Visible','Status','Created'] },
-  { key:'units',          label:'Units',           icon:'ri-ruler-2-line',     color:'#a78bfa', fields:['Name','Short Name','Type','Step','Products','Status','Created'] },
-  { key:'inventory',      label:'Inventory Report',icon:'ri-stock-line',       color:'#f06548', fields:['Product','SKU','Stock','Unit','Low Stock Threshold','Last Restocked','Status'] },
+  { key:'products',       label:'Products',        icon:'ri-box-3-line',       color:'#0ab39c',
+    fields:[['Name','name'],['SKU','sku'],['Barcode','barcode'],['Category','category'],['Unit Price','unit_price'],['Cost Price','cost_price'],['Stock','stock'],['Status','status'],['Created','created_at']] },
+  { key:'categories',     label:'Categories',      icon:'ri-folder-line',      color:'#405189',
+    fields:[['Name','name'],['Code','code'],['Status','status'],['Created','created_at']] },
+  { key:'sub_categories', label:'Sub-Categories',  icon:'ri-folder-open-line', color:'#299cdb',
+    fields:[['Name','name'],['Parent Category','parent_category'],['Code','code'],['Status','status'],['Created','created_at']] },
+  { key:'units',          label:'Units',           icon:'ri-ruler-2-line',     color:'#a78bfa',
+    fields:[['Name','name'],['Short Name','short'],['Type','type'],['Step','step'],['Status','status'],['Created','created_at']] },
+  { key:'inventory',      label:'Inventory Report',icon:'ri-stock-line',       color:'#f06548',
+    fields:[['Product','name'],['SKU','sku'],['Stock','stock'],['Low Stock Threshold','low_stock_threshold'],['Status','status']] },
 ]
 
 const FORMATS = ['CSV','XLSX','PDF']
@@ -52,9 +60,9 @@ export default function BulkExport() {
 
   // Shared by the main "Export" button and each history row's re-download —
   // both trigger a real CSV fetch + browser download for the given type.
-  async function downloadExport(type) {
+  async function downloadExport(type, params = {}) {
     const res = await api.get(`/admin/config/export`, {
-      params: { type },
+      params: { type, ...params },
       responseType: 'blob'
     })
     const blob = new Blob([res.data], { type: 'text/csv' })
@@ -77,7 +85,12 @@ export default function BulkExport() {
     }
     setExporting(true)
     try {
-      const { filename, blob } = await downloadExport(selectedType)
+      const { filename, blob } = await downloadExport(selectedType, {
+        fields: fields.map(f => f[1]).join(','),
+        status: filterStatus,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+      })
       setHistory(p => [{
         type: selectedType,
         file: filename,
@@ -140,15 +153,15 @@ export default function BulkExport() {
               <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Select Fields ({fields.length}/{typeConfig.fields.length})</span>
               <div style={{ display:'flex',gap:8 }}>
                 <button style={{ ...btnL,padding:'5px 10px',fontSize:12 }} onClick={()=>setSelectedFields([...typeConfig.fields])}>All</button>
-                <button style={{ ...btnL,padding:'5px 10px',fontSize:12 }} onClick={()=>setSelectedFields([typeConfig.fields[0]])}>Reset</button>
+                <button style={{ ...btnL,padding:'5px 10px',fontSize:12 }} onClick={()=>setSelectedFields(null)}>Reset</button>
               </div>
             </div>
             <div style={{ padding:16,display:'flex',flexWrap:'wrap',gap:8 }}>
               {typeConfig.fields.map(f=>(
-                <button key={f} onClick={()=>toggleField(f)}
+                <button key={f[1]} onClick={()=>toggleField(f)}
                   style={{ display:'inline-flex',alignItems:'center',gap:5,padding:'5px 12px',borderRadius:20,border:`1.5px solid ${fields.includes(f)?typeConfig.color:B}`,background:fields.includes(f)?`${typeConfig.color}12`:'var(--bg-card)',color:fields.includes(f)?typeConfig.color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontSize:12,fontWeight:600 }}>
                   {fields.includes(f)&&<i className="ri-check-line" style={{ fontSize:15 }}/>}
-                  {f}
+                  {f[0]}
                 </button>
               ))}
             </div>

@@ -166,7 +166,7 @@ export default function StockList() {
                     </td>
                     <td style={TD}>
                       <span style={{ background:'var(--bg-subtle)', color:'var(--text-secondary)', border:`1px solid ${B}`, borderRadius:4, padding:'3px 10px', fontSize:11, fontWeight:600 }}>
-                        {p.category_name || '—'}
+                        {p.category || '—'}
                       </span>
                     </td>
                     <td style={TD}>

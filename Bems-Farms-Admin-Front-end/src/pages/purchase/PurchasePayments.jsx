@@ -30,7 +30,9 @@ export default function PurchasePayments() {
 
   const fetchPurchaseOrders = useCallback(async () => {
     try {
-      const res = await api.get('/admin/purchases', { params: { limit: 200 } })
+      // Only orders that can actually carry a payment — draft/cancelled
+      // orders were never invoiced, so they shouldn't be payable targets.
+      const res = await api.get('/admin/purchases', { params: { limit: 200, status: 'ordered,received,partial' } })
       setPurchaseOrders(res.data.purchase_orders || [])
     } catch { /* non-fatal */ }
   }, [])
@@ -62,9 +64,17 @@ export default function PurchasePayments() {
     if (!form.amount || Number(form.amount) <= 0) { toast.error('Enter a valid amount'); return }
     if (!form.payment_date) { toast.error('Please select a payment date'); return }
 
+    const po = purchaseOrders.find(o => String(o.id) === String(form.purchase_order_id))
+    if (!po) { toast.error('Select a valid purchase order'); return }
+
     setSaving(true)
     try {
-      await api.post('/admin/purchases/payments', form)
+      // No standalone "record a purchase payment" endpoint exists — this
+      // reuses the real supplier-payment endpoint, linked back to the PO.
+      const { purchase_order_id, amount, payment_method, payment_date, reference, notes } = form
+      await api.post(`/admin/suppliers/${po.supplier_id}/payments`, {
+        purchase_order_id, amount, payment_method, payment_date, reference, notes,
+      })
       toast.success('Payment recorded successfully')
       setShowAdd(false)
       setForm({ purchase_order_id: '', amount: '', payment_method: 'bank_transfer', payment_date: '', reference: '', notes: '' })

@@ -50,10 +50,10 @@ export default function StockValuation() {
     units:       acc.units       + p.stock_quantity,
   }), { costValue:0, retailValue:0, profit:0, units:0 }), [enriched])
 
-  const categories = useMemo(() => [...new Set(products.map(p => p.category_name).filter(Boolean))], [products])
+  const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))], [products])
 
   const byCategory = useMemo(() => categories.map((cat, i) => {
-    const items    = enriched.filter(p => p.category_name === cat)
+    const items    = enriched.filter(p => p.category === cat)
     const catCost  = items.reduce((s,p) => s + p.costValue, 0)
     const catValue = items.reduce((s,p) => s + p.retailValue, 0)
     const totalQty = items.reduce((s,p) => s + p.stock_quantity, 0)
@@ -181,7 +181,7 @@ export default function StockValuation() {
                   </td>
                   <td style={TD}>
                     <span style={{ background:'var(--bg-subtle)', color:'var(--text-secondary)', border:`1px solid ${B}`, borderRadius:4, padding:'3px 10px', fontSize:11, fontWeight:600 }}>
-                      {p.category_name || '—'}
+                      {p.category || '—'}
                     </span>
                   </td>
                   <td style={{ ...TD, fontWeight:600 }}>{p.stock_quantity}</td>

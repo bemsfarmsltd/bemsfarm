@@ -388,7 +388,7 @@ router.post(
     try {
       await client.query("BEGIN");
 
-      const { amount, payment_method, bank_account_id, purchase_order_id, payment_date, notes } = req.body;
+      const { amount, payment_method, bank_account_id, purchase_order_id, payment_date, reference, notes } = req.body;
 
       const suppRow = await client.query("SELECT * FROM suppliers WHERE id=$1 FOR UPDATE", [req.params.id]);
       if (!suppRow.rows.length) {
@@ -396,7 +396,7 @@ router.post(
         return res.status(404).json({ message: "Supplier not found" });
       }
 
-      const ref    = `SPAY-${Date.now()}`;
+      const ref    = reference || `SPAY-${Date.now()}`;
       const txDate = payment_date || new Date().toISOString().slice(0, 10);
       const amt    = parseFloat(amount);
 

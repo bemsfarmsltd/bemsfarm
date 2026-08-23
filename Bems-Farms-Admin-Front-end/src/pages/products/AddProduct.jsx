@@ -300,14 +300,6 @@ export default function AddProduct() {
                       {filteredSubs.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
-                  <div>
-                    <label style={LBL}>Brand</label>
-                    <select style={inp} defaultValue="">
-                      <option value="">— Select brand —</option>
-                      <option value="bems_farms">Bems Farms</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
                 </div>
                 <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12 }}>
                   <div>

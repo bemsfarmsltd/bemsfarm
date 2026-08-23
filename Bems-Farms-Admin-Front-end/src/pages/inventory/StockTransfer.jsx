@@ -218,7 +218,7 @@ export default function StockTransfer() {
                         <i className="ri-store-3-line"/>{dest}
                       </span>
                     </td>
-                    <td style={{ ...TD, fontWeight:600 }}>{m.product_name || 'Chicken, Fresh Milk'}</td>
+                    <td style={{ ...TD, fontWeight:600 }}>{m.product_name || '—'}</td>
                     <td style={{ ...TD, fontWeight:700 }}>{m.quantity}</td>
                     <td style={TD}>
                       <span style={{ background:sc.bg, color:sc.color, borderRadius:4, padding:'3px 10px', fontSize:11, fontWeight:700 }}>

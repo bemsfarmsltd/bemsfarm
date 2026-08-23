@@ -45,6 +45,7 @@ const recordPayment = z.object({
   bank_account_id: z.coerce.number().int().optional(),
   purchase_order_id: z.coerce.number().int().optional(),
   payment_date: z.string().optional(),
+  reference: z.string().trim().max(100).optional(),
   notes: z.string().trim().max(2000).optional(),
 });
 

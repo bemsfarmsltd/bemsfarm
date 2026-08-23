@@ -103,7 +103,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
     const rows = await pool.query(
       `
       SELECT
-        p.id, p.name, p.sku, p.image_url,
+        p.id, p.name, p.sku, p.image_url, p.barcode, p.category_id,
         p.unit_price, p.cost_price, p.price,
         p.stock, p.low_stock_threshold,
         p.status, p.is_featured, p.available_for_sale,
