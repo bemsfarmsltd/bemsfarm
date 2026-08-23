@@ -105,8 +105,15 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
+    // locked_until is compared against NOW() here rather than pulled into
+    // JS and compared with `new Date()` — locked_until is a timezone-naive
+    // column, and node-postgres reads/writes naive timestamps using the
+    // process's local timezone, which silently drifted the effective lock
+    // window whenever the app server's timezone wasn't UTC (accounts could
+    // stay "locked" well past the intended 15 minutes). Comparing entirely
+    // inside Postgres sidesteps that mismatch.
     const result = await pool.query(
-      "SELECT * FROM users WHERE LOWER(email) = LOWER($1)",
+      "SELECT *, (locked_until IS NOT NULL AND locked_until > NOW()) AS is_locked FROM users WHERE LOWER(email) = LOWER($1)",
       [email.trim()],
     );
     const user = result.rows[0];
@@ -128,7 +135,7 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
     }
 
     // Check lockout
-    if (user.locked_until && new Date(user.locked_until) > new Date()) {
+    if (user.is_locked) {
       return res
         .status(403)
         .json({ message: "Account temporarily locked. Try again later." });
@@ -137,13 +144,15 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
     const valid = await bcrypt.compare(password, user.password);
 
     if (!valid) {
-      // Increment failed attempts
+      // Increment failed attempts — the lock window itself is computed by
+      // Postgres (NOW() + INTERVAL) rather than in JS, for the same reason
+      // the check above moved into SQL.
       const attempts = (user.failed_login_attempts || 0) + 1;
-      const lockUntil =
-        attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
       await pool.query(
-        "UPDATE users SET failed_login_attempts=$1, locked_until=$2 WHERE id=$3",
-        [attempts, lockUntil, user.id],
+        attempts >= 5
+          ? "UPDATE users SET failed_login_attempts=$1, locked_until = NOW() + INTERVAL '15 minutes' WHERE id=$2"
+          : "UPDATE users SET failed_login_attempts=$1, locked_until=NULL WHERE id=$2",
+        [attempts, user.id],
       );
       return res.status(401).json({ message: "Invalid credentials" });
     }
