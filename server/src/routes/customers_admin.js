@@ -5,6 +5,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { CUSTOMER_ROLE } = require("../config/roles");
 const validate = require("../middleware/validate");
 const customerAdminSchemas = require("../schemas/customerAdminSchemas");
 const { clampLimit } = require("../utils/pagination");
@@ -162,14 +163,14 @@ router.get(
               COUNT(DISTINCT CASE WHEN DATE_TRUNC('month', u.created_at) = DATE_TRUNC('month', NOW()) THEN u.id END) AS new_this_month,
               COUNT(DISTINCT CASE WHEN o_active.last_order > NOW() - INTERVAL '30 days' THEN u.id END) AS active,
               COALESCE(AVG(o.total), 0)                                                  AS avg_order_value
-            FROM users u
-            LEFT JOIN orders o ON o.user_id = u.id AND o.status NOT IN ('cancelled', 'pending')
+            FROM customers u
+            LEFT JOIN orders o ON o.customer_id = u.id AND o.status NOT IN ('cancelled', 'pending')
             LEFT JOIN (
-              SELECT user_id, MAX(created_at) AS last_order FROM orders
+              SELECT customer_id, MAX(created_at) AS last_order FROM orders
               WHERE status NOT IN ('cancelled', 'pending')
-              GROUP BY user_id
-            ) o_active ON o_active.user_id = u.id
-            WHERE u.role = 'customer'
+              GROUP BY customer_id
+            ) o_active ON o_active.customer_id = u.id
+            WHERE u.status = 'active'
           `),
 
           // Customer list
@@ -180,9 +181,9 @@ router.get(
                COALESCE(SUM(o.total), 0)     AS total_spending,
                COALESCE(AVG(o.total), 0)     AS avg_order_value,
                MAX(o.created_at)             AS last_purchase
-             FROM users u
-             LEFT JOIN orders o ON o.user_id = u.id AND o.status NOT IN ('cancelled', 'pending')
-             WHERE u.role = 'customer' ${searchCond} ${dateCond}
+             FROM customers u
+             LEFT JOIN orders o ON o.customer_id = u.id AND o.status NOT IN ('cancelled', 'pending')
+             WHERE 1=1 ${searchCond} ${dateCond}
              GROUP BY u.id
              ORDER BY ${orderBy}
              LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
@@ -191,8 +192,8 @@ router.get(
 
           // Total count for pagination
           pool.query(
-            `SELECT COUNT(*) FROM users u
-             WHERE u.role = 'customer' ${searchCond} ${dateCond}`,
+            `SELECT COUNT(*) FROM customers u
+             WHERE 1=1 ${searchCond} ${dateCond}`,
             params,
           ),
 
@@ -207,9 +208,8 @@ router.get(
                 u.id,
                 COUNT(o.id)       AS order_count,
                 MAX(o.created_at) AS last_purchase
-              FROM users u
-              LEFT JOIN orders o ON o.user_id = u.id AND o.status NOT IN ('cancelled')
-              WHERE u.role = 'customer'
+              FROM customers u
+              LEFT JOIN orders o ON o.customer_id = u.id AND o.status NOT IN ('cancelled')
               GROUP BY u.id
             ) t
           `),
@@ -219,7 +219,7 @@ router.get(
             SELECT
               COUNT(CASE WHEN DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())                        THEN 1 END) AS this_month,
               COUNT(CASE WHEN DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW() - INTERVAL '1 month')   THEN 1 END) AS last_month
-            FROM users WHERE role = 'customer'
+            FROM customers
           `),
         ]);
 
@@ -575,6 +575,18 @@ router.post(
           .json({
             message: "A customer with this phone number already exists",
           });
+      }
+
+      // Check duplicate email
+      if (email) {
+        const existsEmail = await client.query(
+          "SELECT id FROM customers WHERE email=$1",
+          [email],
+        );
+        if (existsEmail.rows.length) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({ message: "A customer with this email address already exists" });
+        }
       }
 
       // Generate customer code — MAX of the existing numeric suffix, not

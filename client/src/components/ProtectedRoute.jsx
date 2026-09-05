@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 // system with the storefront — kept in sync with the admin app's
 // lib/roles.js ROLES enum. "user" (the default customer role) is
 // deliberately excluded from this list.
-const STAFF_ROLES = ["superadmin", "manager", "accountant", "delivery_manager", "cashier", "kitchen_staff"];
+const STAFF_ROLES = ["superadmin", "admin", "manager", "accountant", "delivery_manager", "cashier", "storekeeper", "kitchen_staff"];
 
 export default function ProtectedRoute({ children, allowedRoles }) {
   const { isLoggedIn, user } = useAuth();

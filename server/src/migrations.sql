@@ -31,6 +31,33 @@ ALTER TABLE orders
   ADD COLUMN IF NOT EXISTS notes           TEXT,
   ADD COLUMN IF NOT EXISTS updated_at      TIMESTAMP DEFAULT NOW();
 
+-- Monnify payment references are idempotency keys. The route also takes a
+-- transaction advisory lock for concurrent callbacks; this partial index is
+-- the durable database invariant once existing duplicate data is cleared.
+-- Run the duplicate check below before creating it in production.
+-- SELECT payment_ref, COUNT(*) FROM orders WHERE payment_ref IS NOT NULL
+-- GROUP BY payment_ref HAVING COUNT(*) > 1;
+-- CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS orders_payment_ref_unique
+-- ON orders (payment_ref) WHERE payment_ref IS NOT NULL;
+
+-- Server-owned checkout snapshots allow payment recovery after browser loss.
+CREATE TABLE IF NOT EXISTS checkout_intents (
+  id           VARCHAR(100) PRIMARY KEY,
+  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  payment_ref  VARCHAR(100) NOT NULL UNIQUE,
+  items        JSONB NOT NULL,
+  coupon_code  VARCHAR(100),
+  address      TEXT NOT NULL,
+  total        DECIMAL(12,2) NOT NULL,
+  status       VARCHAR(20) NOT NULL DEFAULT 'pending',
+  expires_at   TIMESTAMP NOT NULL,
+  completed_at TIMESTAMP,
+  created_at   TIMESTAMP DEFAULT NOW(),
+  updated_at   TIMESTAMP DEFAULT NOW(),
+  CONSTRAINT checkout_intents_status_check CHECK (status IN ('pending', 'completed', 'expired', 'cancelled'))
+);
+CREATE INDEX IF NOT EXISTS checkout_intents_user_status_idx ON checkout_intents (user_id, status, created_at DESC);
+
 -- order_items
 ALTER TABLE order_items
   ADD COLUMN IF NOT EXISTS product_name VARCHAR(255),

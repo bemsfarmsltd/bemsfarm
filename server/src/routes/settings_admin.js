@@ -61,6 +61,7 @@ const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { ALL_ROLES, STAFF_ROLES } = require("../config/roles");
 const { clampLimit } = require("../utils/pagination");
 
 router.use(protect);
@@ -305,7 +306,7 @@ router.get("/manager", requireRole("superadmin", "manager"), async (req, res, ne
     const limit = clampLimit(limitRaw, 50);
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    const adminRoles = ["superadmin", "manager", "admin", "cashier", "storekeeper", "delivery_manager"];
+    const adminRoles = STAFF_ROLES;
     const result = await pool.query(
       `SELECT u.id, u.name, u.email, u.role, u.status, u.avatar_url, u.store_id,
               s.store_name, u.last_login, u.created_at
@@ -343,7 +344,7 @@ router.post("/manager", requireRole("superadmin"), async (req, res, next) => {
       return res.status(400).json({ message: "name, email, password, role required" });
     }
 
-    const validRoles = ["manager","admin","cashier","storekeeper","delivery_manager"];
+    const validRoles = STAFF_ROLES.filter((role) => role !== "superadmin");
     if (!validRoles.includes(role)) {
       await client.query("ROLLBACK");
       return res.status(400).json({ message: `Invalid role. Allowed: ${validRoles.join(", ")}` });
@@ -377,7 +378,7 @@ router.post("/manager", requireRole("superadmin"), async (req, res, next) => {
 
 router.patch("/manager/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
-    const validRoles = ["superadmin", "manager", "admin", "cashier", "storekeeper", "delivery_manager"];
+    const validRoles = ALL_ROLES.filter((role) => role !== "user");
     if (req.body.role !== undefined && !validRoles.includes(req.body.role)) {
       return res.status(400).json({ message: `Invalid role. Allowed: ${validRoles.join(", ")}` });
     }

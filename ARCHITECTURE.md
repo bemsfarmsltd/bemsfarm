@@ -60,7 +60,7 @@ chance to handle the request.
 - **`requireRole(...roles)`** — explicit allow-list, e.g. `requireRole("superadmin", "manager")`. This is the current standard; use it for anything new.
 - **`adminOnly`** — legacy fixed alias for `superadmin`/`admin`/`manager`. Only used by `routes/admin.js` now. Don't add new usages; use `requireRole` instead so the allowed set is visible at the call site.
 - **`superadminOnly`** — fixed alias for `superadmin` only.
-- **Roles in use** (as of this audit): `user` (default customer role), `superadmin`, `admin`, `manager`, `delivery_manager`, `storekeeper`, `accountant`, `cashier`, `kitchen_staff`. There's no central enum — this list was compiled by grepping every `requireRole(...)` call. If you add a new role, it only exists in the `requireRole()` calls that reference it; there's no schema-level constraint.
+- **Roles in use**: `user` (the customer role), `superadmin`, `admin`, `manager`, `delivery_manager`, `storekeeper`, `accountant`, `cashier`, `kitchen_staff`. The canonical server registry is `server/src/config/roles.js`; new role checks should use its exported groups rather than introducing another inline role array.
 - **`users.token_version`** (INT, default 0) — embedded in every access token as `tokenVersion`. `protect` rejects a token if its `tokenVersion` doesn't match the live DB value. `routes/auth.js`'s `/reset-password` increments it (and clears `refresh_token`), so a stolen access *and* refresh token pair both die the moment a user resets their password, instead of surviving up to the JWT's natural 7-day/30-day expiry. Tokens issued before this existed carry no claim, treated as version 0 — doesn't break already-logged-in sessions on rollout.
 
 ## Cleanup log (2026-07-30 audit)

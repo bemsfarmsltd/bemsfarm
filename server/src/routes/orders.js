@@ -1,4 +1,5 @@
 const express = require("express");
+const crypto = require("crypto");
 const router = express.Router();
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
@@ -36,13 +37,108 @@ function getDeliveryFee(subtotal) {
   return subtotal > FREE_DELIVERY_THRESHOLD ? 0 : STANDARD_DELIVERY_FEE;
 }
 
+// Create the server-owned payment snapshot before the customer opens
+// Monnify. The browser may disappear after payment; this record preserves the
+// exact item/price/total context needed to retry order creation safely.
+router.post("/checkout-intent", protect, validate(orderSchemas.createCheckoutIntent), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const requested = new Map();
+    for (const item of req.body.items) {
+      const productId = parseInt(item.product_id);
+      const quantity = parseInt(item.quantity);
+      if (!Number.isInteger(productId) || !Number.isInteger(quantity) || quantity <= 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Invalid item in checkout" });
+      }
+      requested.set(productId, (requested.get(productId) || 0) + quantity);
+    }
+
+    const rows = await client.query(
+      `SELECT id, name, price, stock, available_for_sale
+       FROM products WHERE id = ANY($1::int[]) AND status != 'archived' FOR UPDATE`,
+      [[...requested.keys()]],
+    );
+    const products = new Map(rows.rows.map((product) => [product.id, product]));
+    const items = [];
+    let subtotal = 0;
+    for (const [productId, quantity] of requested) {
+      const product = products.get(productId);
+      if (!product || product.available_for_sale === false) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: `Product ${productId} is no longer available` });
+      }
+      if (quantity > (product.stock ?? 0)) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: `Only ${product.stock ?? 0} of "${product.name}" left in stock` });
+      }
+      const price = parseFloat(product.price) * NAIRA_PER_UNIT;
+      subtotal += price * quantity;
+      items.push({ product_id: productId, quantity, price });
+    }
+
+    let discount = 0;
+    if (req.body.coupon_code) {
+      const coupon = await validateCoupon(client, {
+        code: req.body.coupon_code,
+        subtotal,
+        userId: req.user.id,
+      });
+      if (!coupon.ok) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: coupon.message });
+      }
+      discount = coupon.discount;
+    }
+
+    const id = crypto.randomUUID();
+    const total = subtotal - discount + getDeliveryFee(subtotal);
+    await client.query(
+      `INSERT INTO checkout_intents
+       (id, user_id, payment_ref, items, coupon_code, address, total, status, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', NOW() + INTERVAL '30 minutes')`,
+      [id, req.user.id, req.body.payment_ref, JSON.stringify(items), req.body.coupon_code || null, req.body.address, total],
+    );
+    await client.query("COMMIT");
+    res.status(201).json({ intentId: id, total, expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+// Return only the authenticated user's own pending intent. This gives the
+// storefront a safe recovery handoff after a browser interruption without
+// trusting any cart data supplied by the browser.
+router.get("/checkout-intent/:id", protect, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, payment_ref, items, address, total, status, expires_at
+       FROM checkout_intents
+       WHERE id = $1 AND user_id = $2`,
+      [req.params.id, req.user.id],
+    );
+    if (!result.rows.length) return res.status(404).json({ message: "Checkout not found" });
+    const intent = result.rows[0];
+    if (intent.status !== "pending" || new Date(intent.expires_at) <= new Date()) {
+      return res.status(400).json({ message: "Checkout has expired or was already completed" });
+    }
+    res.json({ intent });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─────────────────────────────────────────────
 // CREATE ORDER
 // Prices/total are ALWAYS recomputed here from the products table.
 // Client-supplied price/total values are never trusted.
 // ─────────────────────────────────────────────
 router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, next) => {
-  const { items, payment_method, payment_ref, address, source, coupon_code } = req.body;
+  let { items, payment_method, payment_ref, address, source, coupon_code, checkout_intent_id } = req.body;
 
   const method = payment_method || "monnify";
   if (!VALID_PAYMENT_METHODS.includes(method)) {
@@ -88,8 +184,31 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
   try {
     await client.query("BEGIN");
 
+    if (checkout_intent_id) {
+      const intent = await client.query(
+        `SELECT * FROM checkout_intents
+         WHERE id = $1 AND user_id = $2 FOR UPDATE`,
+        [checkout_intent_id, req.user.id],
+      );
+      if (!intent.rows.length || intent.rows[0].status !== "pending" || new Date(intent.rows[0].expires_at) <= new Date()) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Checkout has expired. Please start checkout again." });
+      }
+      if (intent.rows[0].payment_ref !== payment_ref) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Payment reference does not match checkout." });
+      }
+      items = intent.rows[0].items;
+      address = intent.rows[0].address;
+      coupon_code = intent.rows[0].coupon_code || undefined;
+    }
+
     // Idempotency: don't let the same Monnify payment fund two orders
     if (method === "monnify") {
+      // Serialize concurrent callbacks for the same payment reference. A
+      // duplicate SELECT without this lock can race before either request
+      // commits and create two orders for one successful payment.
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [payment_ref]);
       const dup = await client.query(
         "SELECT id FROM orders WHERE payment_ref = $1",
         [payment_ref],
@@ -202,6 +321,13 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
 
     if (appliedCoupon) {
       await recordCouponUsage(client, { coupon: appliedCoupon, discount: couponDiscount, userId: req.user.id, orderId });
+    }
+
+    if (checkout_intent_id) {
+      await client.query(
+        "UPDATE checkout_intents SET status = 'completed', completed_at = NOW(), updated_at = NOW() WHERE id = $1",
+        [checkout_intent_id],
+      );
     }
 
     // Monnify's webhook can arrive before this order row exists (it fires the

@@ -12,6 +12,7 @@ import ProductDetail from "./pages/ProductDetail";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrderConfirmation from "./pages/OrderConfirmation";
+import PaymentRecoveryPage from "./pages/PaymentRecoveryPage";
 import OrdersPage from "./pages/OrdersPage";
 import OrderDetailPage from "./pages/OrderDetailPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -96,6 +97,14 @@ function App() {
           element={
             <P>
               <OrderConfirmation />
+            </P>
+          }
+        />
+        <Route
+          path="/payment-recovery"
+          element={
+            <P>
+              <PaymentRecoveryPage />
             </P>
           }
         />

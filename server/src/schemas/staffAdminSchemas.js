@@ -1,11 +1,12 @@
 const { z } = require("zod");
+const { STAFF_ROLES } = require("../config/roles");
 
 // shift/system_role/status enums mirror the real CHECK constraints on the
 // staff table (staff_shift_check, staff_system_role_check, staff_status_check)
 // — the route's old manual checks didn't match these exactly (e.g. allowed
 // a "suspended" status the DB itself rejects).
 const SHIFTS = ["morning", "afternoon", "evening"];
-const SYSTEM_ROLES = ["superadmin", "manager", "accountant", "delivery_manager", "cashier", "kitchen_staff"];
+const SYSTEM_ROLES = STAFF_ROLES;
 const STAFF_STATUSES = ["active", "inactive", "on_leave"];
 
 const createStaff = z.object({

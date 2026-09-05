@@ -89,6 +89,8 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [monnifyLoaded, setMonnifyLoaded] = useState(false);
+  const [paymentRecoveryAvailable, setPaymentRecoveryAvailable] = useState(false);
+  const finalizingReference = useRef(null);
 
   const DELIVERY = getDeliveryFee(cartSubtotal);
   const discount = appliedCoupon?.discount || 0;
@@ -180,13 +182,53 @@ export default function CheckoutPage() {
     return items;
   };
 
-  const createOrder = async (ref) => {
-    const items = buildOrderItems();
+  const prepareCheckout = async () => {
+    const localItems = buildOrderItems();
+    const refreshedItems = await Promise.all(localItems.map(async (item) => {
+      const response = await api.get(`/products/${item.product_id}`);
+      const product = response.data.product;
+      const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+
+      if (product.available_for_sale === false || stock < item.quantity) {
+        throw new Error(`"${product.name}" is no longer available in the requested quantity.`);
+      }
+
+      return {
+        product_id: Number(product.id),
+        quantity: item.quantity,
+        price: Number(product.price),
+      };
+    }));
+
+    const subtotal = refreshedItems.reduce(
+      (sum, item) => sum + item.price * NAIRA_PER_UNIT * item.quantity,
+      0,
+    );
+    let discount = 0;
+    if (appliedCoupon?.code) {
+      const couponResponse = await api.post("/admin/coupons/validate", {
+        code: appliedCoupon.code,
+        order_total: subtotal,
+      });
+      if (!couponResponse.data.valid) {
+        throw new Error(couponResponse.data.message || "The coupon is no longer valid.");
+      }
+      discount = Number(couponResponse.data.discount) || 0;
+    }
+
+    return {
+      items: refreshedItems,
+      total: subtotal + getDeliveryFee(subtotal) - discount,
+    };
+  };
+
+  const createOrder = async (ref, checkout) => {
     const payload = {
-      items,
-      total: parseFloat(total),
+      items: checkout.items,
+      total: checkout.total,
       payment_method: payMethod,
       payment_ref: ref || null,
+      checkout_intent_id: checkout.intentId || undefined,
       address: `${form.address}, ${form.city}, ${form.state}`,
       coupon_code: appliedCoupon?.code || undefined,
       behavior_metrics: {
@@ -200,7 +242,7 @@ export default function CheckoutPage() {
   };
 
   // ── MONNIFY PAYMENT ─────────────────────────────────────────
-  const handleMonnify = (e) => {
+  const handleMonnify = async (e) => {
     e.preventDefault();
     const err = validate();
     if (err) {
@@ -208,10 +250,23 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Validate cart items BEFORE opening Monnify — catch nested-shape
-    // or NaN problems before the customer is ever charged.
+    // Refresh product prices, stock, and coupon validity before opening the
+    // gateway. Local cart snapshots are only a convenience, not an authority.
+    let checkout;
+    const paymentReference = `BF-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     try {
-      buildOrderItems();
+      checkout = await prepareCheckout();
+      const intent = await api.post("/orders/checkout-intent", {
+        items: checkout.items,
+        payment_ref: paymentReference,
+        address: `${form.address}, ${form.city}, ${form.state}`,
+        coupon_code: appliedCoupon?.code || undefined,
+      });
+      checkout = { ...checkout, intentId: intent.data.intentId, total: Number(intent.data.total) };
+      localStorage.setItem("bems_pending_checkout", JSON.stringify({
+        intentId: checkout.intentId,
+        paymentRef: paymentReference,
+      }));
     } catch (cartErr) {
       setError(cartErr.message);
       return;
@@ -230,9 +285,14 @@ export default function CheckoutPage() {
     // transactionReference (not our own paymentReference) is what the
     // server's verify call and webhook key off of — see utils/monnify.js.
     const finalizeOrderAfterPayment = async (transactionReference) => {
+      if (!transactionReference || finalizingReference.current === transactionReference) return;
+      finalizingReference.current = transactionReference;
+      localStorage.setItem("bems_pending_payment_ref", transactionReference);
       try {
-        const orderId = await createOrder(transactionReference);
+        const orderId = await createOrder(transactionReference, checkout);
         clearCart();
+        localStorage.removeItem("bems_pending_payment_ref");
+        localStorage.removeItem("bems_pending_checkout");
         setTimeout(() => {
           setLoading(false);
           navigate("/order-confirmed", { state: { orderId, reference: transactionReference } });
@@ -245,14 +305,15 @@ export default function CheckoutPage() {
           `Payment was received (ref: ${transactionReference}) but order creation failed: ${detail}. ` +
             `Please contact support with this reference number — your payment is safe.`,
         );
+        setPaymentRecoveryAvailable(true);
       }
     };
 
     try {
       window.MonnifySDK.initialize({
-        amount: total, // Monnify amounts are plain Naira, not kobo
+        amount: checkout.total, // Monnify amounts are plain Naira, not kobo
         currency: "NGN",
-        reference: `BF-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        reference: paymentReference,
         customerFullName: form.fullName,
         customerEmail: form.email,
         apiKey: MONNIFY_API_KEY,
@@ -294,7 +355,8 @@ export default function CheckoutPage() {
     setLoading(true);
     setError(null);
     try {
-      const orderId = await createOrder(null);
+      const checkout = await prepareCheckout();
+      const orderId = await createOrder(null, checkout);
       clearCart();
       navigate("/order-confirmed", {
         state: { orderId, paymentMethod: "COD" },
@@ -446,7 +508,14 @@ export default function CheckoutPage() {
               }}
             >
               <span style={{fontSize:'1.35em'}}>⚠️</span>
-              <span>{error}</span>
+              <span>
+                {error}
+                {paymentRecoveryAvailable && (
+                  <button type="button" onClick={() => navigate("/payment-recovery")} style={{ display: "block", marginTop: 8, border: 0, background: "transparent", color: "#991B1B", textDecoration: "underline", cursor: "pointer", padding: 0 }}>
+                    Try payment recovery
+                  </button>
+                )}
+              </span>
             </motion.div>
           )}
 

@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const pool = require("../db/pool");
+const { ADMIN_ROLES } = require("../config/roles");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -92,8 +93,7 @@ const requireRole =
 // Legacy — kept for backward compat with existing routes
 // Allows: superadmin, admin, manager
 const adminOnly = (req, res, next) => {
-  const allowed = ["superadmin", "admin", "manager"];
-  if (!allowed.includes(req.user?.role)) {
+  if (!ADMIN_ROLES.includes(req.user?.role)) {
     return res.status(403).json({ message: "Admin access required" });
   }
   next();

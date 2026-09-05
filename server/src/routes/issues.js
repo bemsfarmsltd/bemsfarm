@@ -47,10 +47,11 @@ const router = express.Router();
 const pool = require("../db/pool");
 const { clampLimit } = require("../utils/pagination");
 const { protect, requireRole } = require("../middleware/authMiddleware");
+const { ADMIN_ROLES } = require("../config/roles");
 const { SMS } = require("../services/smsService");
 const { initiateMonnifyRefund } = require("../utils/monnify");
 
-const STAFF_ROLES = ["superadmin", "admin", "manager"];
+const STAFF_ROLES = ADMIN_ROLES;
 const VALID_STATUSES = [
   "open",
   "under_review",

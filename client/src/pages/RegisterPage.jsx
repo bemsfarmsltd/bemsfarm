@@ -50,7 +50,6 @@ export default function RegisterPage() {
     email: "",
     confirmEmail: "",
     phone: "",
-    confirmPhone: "",
     password: "",
     confirm: "",
   });
@@ -82,8 +81,6 @@ export default function RegisterPage() {
     if (form.email.toLowerCase().trim() !== form.confirmEmail.toLowerCase().trim())
       return setError("Email addresses do not match");
     if (!form.phone.trim()) return setError("Please enter your phone number");
-    if (form.phone.trim() !== form.confirmPhone.trim())
-      return setError("Phone numbers do not match");
     if (form.password.length < 6)
       return setError("Password must be at least 6 characters");
     if (form.password !== form.confirm)
@@ -238,34 +235,19 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Phone Fields Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    placeholder="+234..."
-                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                    Confirm Phone
-                  </label>
-                  <input
-                    type="tel"
-                    value={form.confirmPhone}
-                    onChange={(e) => handleInputChange("confirmPhone", e.target.value)}
-                    placeholder="+234..."
-                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
-                    required
-                  />
-                </div>
+              {/* Phone Field */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  placeholder="+234..."
+                  className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
+                  required
+                />
               </div>
 
               {/* Password Fields Row */}

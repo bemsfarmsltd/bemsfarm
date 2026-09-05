@@ -17,7 +17,10 @@ const path = require("path");
 
 const PORT = 5099;
 const BASE_URL = `http://localhost:${PORT}`;
-const BOOT_TIMEOUT_MS = 15000;
+// Route loading includes several integration modules and can exceed 15s on
+// a cold Windows install. Keep this generous enough for CI and local runs;
+// request timeouts below still fail a hung server quickly.
+const BOOT_TIMEOUT_MS = 30000;
 
 function get(urlPath) {
   return new Promise((resolve, reject) => {

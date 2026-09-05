@@ -5,6 +5,7 @@ import Layout from './components/layout/Layout'
 import {
   FINANCE_ROLES, DELIVERY_ROLES,
   POS_ROLES, ORDER_ROLES, CUSTOMER_ROLES, PRODUCT_ROLES,
+  INVENTORY_ROLES,
   REPORT_ROLES, AI_ROLES, STAFF_ROLES, SETTINGS_ROLES,
   PURCHASE_ROLES, SUPPLIER_ROLES, MULTISTORE_ROLES, ADMIN_ONLY, SUPERADMIN_ONLY,
 } from './lib/roles'
@@ -143,7 +144,7 @@ function App() {
             {/* Dashboard — everyone */}
             <Route path="/dashboard" element={<Dashboard />} />
 
-            {/* ── Products & Inventory ── superadmin, manager, kitchen_staff */}
+            {/* ── Products ── superadmin, admin, manager, kitchen_staff */}
             <Route element={<ProtectedRoute allowedRoles={PRODUCT_ROLES} />}>
               <Route path="/products"                element={<ProductsList />} />
               <Route path="/products/add"            element={<AddProduct />} />
@@ -156,6 +157,10 @@ function App() {
               <Route path="/products/warranty"       element={<Warranty />} />
               <Route path="/products/import"         element={<BulkImport />} />
 
+            </Route>
+
+            {/* ── Inventory ── superadmin, admin, manager, storekeeper, kitchen_staff */}
+            <Route element={<ProtectedRoute allowedRoles={INVENTORY_ROLES} />}>
               <Route path="/inventory/stock"      element={<StockList />} />
               <Route path="/inventory/adjustment" element={<StockAdjustment />} />
               <Route path="/inventory/transfer"   element={<StockTransfer />} />

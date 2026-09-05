@@ -76,6 +76,9 @@
 //
 // -- Add warehouse_id to products if not already there:
 // ALTER TABLE products ADD COLUMN IF NOT EXISTS warehouse_id INT REFERENCES warehouses(id) ON DELETE SET NULL;
+// 
+// -- Negative stock constraint
+// ALTER TABLE products ADD CONSTRAINT check_stock_non_negative CHECK (stock >= 0);
 //
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -187,6 +190,73 @@ router.get("/", requireRole("superadmin", "manager", "admin", "storekeeper", "ki
     next(err);
   }
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+// STOCK TRANSFER  ──  POST /api/admin/inventory/transfer
+// ════════════════════════════════════════════════════════════════════════════
+router.post(
+  "/transfer",
+  requireRole("superadmin", "manager", "admin", "storekeeper"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      const { product_id, from_warehouse_id, to_warehouse_id, quantity, notes } = req.body;
+      const qty = parseInt(quantity);
+      
+      if (!product_id || !from_warehouse_id || !to_warehouse_id || isNaN(qty) || qty <= 0) {
+        return res.status(400).json({ message: "Invalid transfer parameters" });
+      }
+      if (from_warehouse_id === to_warehouse_id) {
+        return res.status(400).json({ message: "Source and destination warehouses must be different" });
+      }
+
+      await client.query("BEGIN");
+
+      // Lock the product row to ensure integrity and check global stock
+      const prodRes = await client.query("SELECT stock, cost_price, unit_price FROM products WHERE id=$1 FOR UPDATE", [product_id]);
+      if (!prodRes.rows.length) {
+        throw new Error("Product not found");
+      }
+      
+      const currentStock = parseInt(prodRes.rows[0].stock) || 0;
+      if (currentStock < qty) {
+        throw new Error(\`Insufficient stock. Only \${currentStock} available.\`);
+      }
+
+      const unitCost = prodRes.rows[0].cost_price || prodRes.rows[0].unit_price || 0;
+
+      // 1. Insert transfer_out for source warehouse
+      await client.query(
+        \`INSERT INTO stock_movements
+           (product_id, warehouse_id, type, quantity, before_qty, after_qty, reference, notes, unit_cost, created_by, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())\`,
+        [product_id, from_warehouse_id, 'transfer_out', qty, currentStock, currentStock, 'TRANSFER', notes || null, unitCost, req.user.id]
+      );
+
+      // 2. Insert transfer_in for destination warehouse
+      await client.query(
+        \`INSERT INTO stock_movements
+           (product_id, warehouse_id, type, quantity, before_qty, after_qty, reference, notes, unit_cost, created_by, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())\`,
+        [product_id, to_warehouse_id, 'transfer_in', qty, currentStock, currentStock, 'TRANSFER', notes || null, unitCost, req.user.id]
+      );
+
+      // Note: global products.stock doesn't change during an internal transfer, so we don't UPDATE products.stock
+      // We rely on the constraint \`check_stock_non_negative\` added in the schema for ultimate DB-level protection
+
+      await client.query("COMMIT");
+      res.json({ success: true, message: "Transfer completed successfully" });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      if (err.message.includes("Insufficient") || err.message.includes("not found")) {
+        return res.status(400).json({ message: err.message });
+      }
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
 
 // ════════════════════════════════════════════════════════════════════════════
 // STOCK ALERTS  ──  GET /api/admin/inventory/alerts

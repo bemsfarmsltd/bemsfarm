@@ -8,6 +8,25 @@
 //   - POS-specific product and customer lookup
 //
 // Uses existing tables: pos_sessions, pos_held_orders, orders, products
+//
+// -- Run once to create pos_returns table:
+// CREATE TABLE IF NOT EXISTS pos_returns (
+//   id SERIAL PRIMARY KEY,
+//   return_ref VARCHAR(50) UNIQUE NOT NULL,
+//   session_id INT REFERENCES pos_sessions(id) ON DELETE SET NULL,
+//   product_id INT REFERENCES products(id),
+//   quantity INT NOT NULL,
+//   unit_price DECIMAL(10,2) NOT NULL,
+//   total DECIMAL(10,2) NOT NULL,
+//   reason VARCHAR(255),
+//   condition VARCHAR(50),
+//   refund_method VARCHAR(50),
+//   customer_name VARCHAR(100),
+//   phone VARCHAR(20),
+//   notes TEXT,
+//   processed_by INT REFERENCES users(id),
+//   created_at TIMESTAMP DEFAULT NOW()
+// );
 // ───────────────────────────────────────────────────────────────────────────
 
 const express = require("express");
@@ -55,17 +74,29 @@ router.post("/session/open", requireRole("superadmin","manager","admin","cashier
   try {
     await client.query("BEGIN");
 
+    const { opening_cash = 0, store_id, terminal_id } = req.body;
+
     // Check no already-open session for this user
-    const open = await client.query(
+    const openUser = await client.query(
       "SELECT id FROM pos_sessions WHERE cashier_id=$1 AND status='open'",
       [req.user.id]
     );
-    if (open.rows.length) {
+    if (openUser.rows.length) {
       await client.query("ROLLBACK");
-      return res.status(400).json({ message: "You already have an open POS session", session_id: open.rows[0].id });
+      return res.status(400).json({ message: "You already have an open POS session", session_id: openUser.rows[0].id });
     }
 
-    const { opening_cash = 0, store_id, terminal_id } = req.body;
+    // Check no already-open session for this terminal (if provided)
+    if (terminal_id) {
+      const openTerminal = await client.query(
+        "SELECT id, cashier_id FROM pos_sessions WHERE terminal_id=$1 AND status='open'",
+        [terminal_id]
+      );
+      if (openTerminal.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "This terminal is already in use by another cashier", session_id: openTerminal.rows[0].id });
+      }
+    }
     const sessionRef = await nextSessionRef(client);
 
     const result = await client.query(
@@ -686,6 +717,70 @@ router.get("/session/:id/orders", requireRole("superadmin", "manager", "admin", 
     res.json({ orders: result.rows });
   } catch (err) {
     next(err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// GOODS RETURN  ──  POST /api/admin/pos/returns
+// ════════════════════════════════════════════════════════════════════════════
+router.post("/returns", requireRole("superadmin","manager","admin","cashier"), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const { ref, product_id, quantity, unit_price, reason, condition, refund_method, customer_name, phone, notes } = req.body;
+    if (!ref || !product_id || !quantity || !unit_price) {
+      return res.status(400).json({ message: "Missing required return fields" });
+    }
+    
+    await client.query("BEGIN");
+    
+    // 1. Idempotency Check
+    const existing = await client.query("SELECT id FROM pos_returns WHERE return_ref=$1", [ref]);
+    if (existing.rows.length) {
+      await client.query("ROLLBACK");
+      return res.json({ success: true, message: "Return already processed", return_id: existing.rows[0].id });
+    }
+
+    // 2. Insert Return Record
+    const total = parseFloat(quantity) * parseFloat(unit_price);
+    
+    const activeSession = await client.query("SELECT id FROM pos_sessions WHERE cashier_id=$1 AND status='open'", [req.user.id]);
+    const sessionId = activeSession.rows.length ? activeSession.rows[0].id : null;
+
+    const retResult = await client.query(
+      `INSERT INTO pos_returns
+         (return_ref, session_id, product_id, quantity, unit_price, total, reason, condition, refund_method, customer_name, phone, notes, processed_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
+      [ref, sessionId, product_id, parseInt(quantity), parseFloat(unit_price), total, reason, condition, refund_method, customer_name || null, phone || null, notes || null, req.user.id]
+    );
+
+    // 3. Stock Restoration
+    if (condition === 'resalable') {
+      const prodRes = await client.query("SELECT stock FROM products WHERE id=$1 FOR UPDATE", [product_id]);
+      if (prodRes.rows.length) {
+        const currentStock = parseInt(prodRes.rows[0].stock) || 0;
+        const newStock = currentStock + parseInt(quantity);
+        await client.query("UPDATE products SET stock=$1, stock_quantity=$1, updated_at=NOW() WHERE id=$2", [newStock, product_id]);
+        
+        // Log movement
+        await client.query(
+          `INSERT INTO stock_movements (product_id, type, quantity, before_qty, after_qty, reference, notes, created_by, created_at)
+           VALUES ($1, 'return_in', $2, $3, $4, $5, $6, $7, NOW())`,
+          [product_id, parseInt(quantity), currentStock, newStock, ref, `Returned: ${reason}`, req.user.id]
+        );
+      }
+    }
+
+    await client.query("COMMIT");
+    res.json({ success: true, return_id: retResult.rows[0].id });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    // Ensure table exists gracefully (lazy schema init just in case)
+    if (err.message.includes('relation "pos_returns" does not exist')) {
+      return res.status(500).json({ message: "System error: pos_returns table not migrated yet." });
+    }
+    next(err);
+  } finally {
+    client.release();
   }
 });
 

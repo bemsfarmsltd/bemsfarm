@@ -988,5 +988,87 @@ router.delete("/roles/:id", requireRole("superadmin"), async (req, res, next) =>
     next(err);
   }
 });
+// ════════════════════════════════════════════════════════════════════════════
+// STAFF ATTENDANCE  ──  GET & POST
+// ════════════════════════════════════════════════════════════════════════════
+router.get("/attendance", requireRole("superadmin", "manager"), async (req, res, next) => {
+  try {
+    const { date, staff_id } = req.query;
+    const params = [];
+    const where = [];
+
+    if (date) {
+      params.push(date);
+      where.push(`sa.date = $${params.length}`);
+    }
+    if (staff_id) {
+      params.push(staff_id);
+      where.push(`sa.staff_id = $${params.length}`);
+    }
+
+    const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
+
+    const result = await pool.query(`
+      SELECT sa.*, s.employee_code, u.name, u.role
+      FROM staff_attendance sa
+      JOIN staff s ON sa.staff_id = s.id
+      JOIN users u ON s.user_id = u.id
+      ${whereClause}
+      ORDER BY sa.date DESC, sa.clock_in DESC
+      LIMIT 100
+    `, params);
+
+    res.json({ attendance: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/attendance/clock", requireRole("superadmin", "manager", "admin", "storekeeper", "cashier", "kitchen_staff"), async (req, res, next) => {
+  try {
+    const { action, staff_id } = req.body; // action: 'in' or 'out'
+    const today = new Date().toISOString().split('T')[0];
+
+    // Identify which staff record we are clocking
+    let targetStaffId = staff_id;
+    if (!targetStaffId) {
+      // Find staff record for current user
+      const staffRes = await pool.query("SELECT id FROM staff WHERE user_id=$1", [req.user.id]);
+      if (!staffRes.rows.length) return res.status(400).json({ message: "No staff record found for this user" });
+      targetStaffId = staffRes.rows[0].id;
+    } else {
+      // Ensure only admins/managers can clock in for others
+      if (!['superadmin', 'manager'].includes(req.user.role)) {
+        return res.status(403).json({ message: "You can only clock yourself in/out" });
+      }
+    }
+
+    if (action === 'in') {
+      const result = await pool.query(
+        `INSERT INTO staff_attendance (staff_id, date, clock_in, status, created_by, created_at)
+         VALUES ($1, $2, NOW(), 'present', $3, NOW())
+         ON CONFLICT (staff_id, date) DO UPDATE 
+         SET clock_in = COALESCE(staff_attendance.clock_in, EXCLUDED.clock_in)
+         RETURNING *`,
+        [targetStaffId, today, req.user.id]
+      );
+      return res.json({ message: "Clocked in successfully", attendance: result.rows[0] });
+    } else if (action === 'out') {
+      const result = await pool.query(
+        `UPDATE staff_attendance
+         SET clock_out = NOW()
+         WHERE staff_id = $1 AND date = $2
+         RETURNING *`,
+        [targetStaffId, today]
+      );
+      if (!result.rows.length) return res.status(400).json({ message: "Not clocked in today" });
+      return res.json({ message: "Clocked out successfully", attendance: result.rows[0] });
+    } else {
+      return res.status(400).json({ message: "Invalid action. Use 'in' or 'out'" });
+    }
+  } catch (err) {
+    next(err);
+  }
+});
 
 module.exports = router;

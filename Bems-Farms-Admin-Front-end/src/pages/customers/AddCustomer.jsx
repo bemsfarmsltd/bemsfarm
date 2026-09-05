@@ -40,7 +40,7 @@ export default function AddCustomer() {
   })
 
   useEffect(() => {
-    api.get('/admin/delivery-zones')
+    api.get('/admin/deliveries/zones')
       .then(r => setZones((r.data.zones||r.data||[]).map(z => z.zone_name||z.name)))
       .catch(() => setZones(['Lekki Phase 1','Victoria Island','Ikeja GRA','Surulere','Yaba','Gbagada','Ikorodu','Ajah']))
   }, [])
