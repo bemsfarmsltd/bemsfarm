@@ -220,24 +220,24 @@ router.post(
       
       const currentStock = parseInt(prodRes.rows[0].stock) || 0;
       if (currentStock < qty) {
-        throw new Error(\`Insufficient stock. Only \${currentStock} available.\`);
+        throw new Error(`Insufficient stock. Only ${currentStock} available.`);
       }
 
       const unitCost = prodRes.rows[0].cost_price || prodRes.rows[0].unit_price || 0;
 
       // 1. Insert transfer_out for source warehouse
       await client.query(
-        \`INSERT INTO stock_movements
+        `INSERT INTO stock_movements
            (product_id, warehouse_id, type, quantity, before_qty, after_qty, reference, notes, unit_cost, created_by, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())\`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())`,
         [product_id, from_warehouse_id, 'transfer_out', qty, currentStock, currentStock, 'TRANSFER', notes || null, unitCost, req.user.id]
       );
 
       // 2. Insert transfer_in for destination warehouse
       await client.query(
-        \`INSERT INTO stock_movements
+        `INSERT INTO stock_movements
            (product_id, warehouse_id, type, quantity, before_qty, after_qty, reference, notes, unit_cost, created_by, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())\`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())`,
         [product_id, to_warehouse_id, 'transfer_in', qty, currentStock, currentStock, 'TRANSFER', notes || null, unitCost, req.user.id]
       );
 
