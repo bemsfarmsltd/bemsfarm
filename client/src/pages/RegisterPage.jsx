@@ -246,7 +246,7 @@ export default function RegisterPage() {
                   Phone Number
                 </label>
                 <div className="flex">
-                  <span className="inline-flex items-center px-3 py-2.5 rounded-l-xl border-2 border-r-0 border-gray-100 bg-gray-100/50 text-gray-600 text-[13px] font-bold whitespace-nowrap">
+                  <span className="inline-flex items-center px-3 py-2.5 rounded-l-xl border-2 border-r-0 border-gray-100 bg-gray-100/50 text-gray-600 text-[13px] font-bold whitespace-nowrap shrink-0">
                     +234
                   </span>
                   <input
