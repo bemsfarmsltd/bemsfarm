@@ -81,6 +81,11 @@ export default function RegisterPage() {
     if (form.email.toLowerCase().trim() !== form.confirmEmail.toLowerCase().trim())
       return setError("Email addresses do not match");
     if (!form.phone.trim()) return setError("Please enter your phone number");
+    
+    const finalPhone = form.phone.trim().startsWith("+234") 
+      ? form.phone.trim() 
+      : `+234${form.phone.trim().replace(/^0+/, "")}`;
+
     if (form.password.length < 6)
       return setError("Password must be at least 6 characters");
     if (form.password !== form.confirm)
@@ -88,7 +93,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await register(form.name, form.email, form.password, form.phone, selectedTags);
+      await register(form.name, form.email, form.password, finalPhone, selectedTags);
       navigate("/onboarding");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed. Try again.");
@@ -240,14 +245,19 @@ export default function RegisterPage() {
                 <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
                   Phone Number
                 </label>
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                  placeholder="+234..."
-                  className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
-                  required
-                />
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 py-2.5 rounded-l-xl border-2 border-r-0 border-gray-100 bg-gray-100/50 text-gray-600 text-[13px] font-bold">
+                    +234
+                  </span>
+                  <input
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => handleInputChange("phone", e.target.value)}
+                    placeholder="801 234 5678"
+                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-r-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
+                    required
+                  />
+                </div>
               </div>
 
               {/* Password Fields Row */}
