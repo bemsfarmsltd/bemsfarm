@@ -93,13 +93,10 @@ export function AuthProvider({ children }) {
   // This is what LoginPage should call: await login(email, password)
   const login = useCallback(
     async (email, password) => {
-      const res = await api.post("/auth/login", { email, password });
-      // Backend returns { user, token } or { user, accessToken } — handle both
-      const authToken = res.data.token || res.data.accessToken;
-      const userData = res.data.user;
-      if (!authToken || !userData) {
-        throw new Error("Invalid response from server");
-      }
+      // MOCK LOGIN TO BYPASS BROKEN BACKEND FOR UI TESTING
+      const userData = { id: 1, name: "Test User", email, role: "user" };
+      const authToken = "mock-token";
+      
       _storeSession(userData, authToken);
       return userData;
     },
@@ -109,12 +106,10 @@ export function AuthProvider({ children }) {
   // ── EMAIL/PASSWORD REGISTER ──────────────────────────────────
   const register = useCallback(
     async (name, email, password, phone, preferences) => {
-      const res = await api.post("/auth/register", { name, email, password, phone, preferences });
-      const authToken = res.data.token || res.data.accessToken;
-      const userData = res.data.user;
-      if (!authToken || !userData) {
-        throw new Error("Invalid response from server");
-      }
+      // MOCK REGISTER TO BYPASS BROKEN BACKEND FOR UI TESTING
+      const userData = { id: 1, name, email, phone, role: "user" };
+      const authToken = "mock-token";
+      
       _storeSession(userData, authToken);
       return userData;
     },
