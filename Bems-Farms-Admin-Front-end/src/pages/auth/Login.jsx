@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { isStaff, STAFF_HOME, handoff } from '../../../../shared/authRouting'
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -53,11 +55,18 @@ function Spinner() {
 }
 
 export default function Login() {
-  const { login }  = useAuth()
+  const { login, user, loading: authLoading } = useAuth()
   const navigate   = useNavigate()
   const [form, setForm]     = useState({ email: '', password: '' })
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    if (isStaff(user.role)) navigate(STAFF_HOME[user.role], { replace: true });
+    else if (user.role === 'user') handoff('client');
+    else navigate('/unauthorized', { replace: true });
+  }, [user, authLoading, navigate]);
 
   const fill = (email, password) => setForm({ email, password })
 
@@ -67,7 +76,7 @@ export default function Login() {
     try {
       await login(form.email, form.password)
       toast.success('Welcome back!')
-      navigate('/dashboard')
+
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid credentials')
     } finally {
@@ -92,7 +101,7 @@ export default function Login() {
 
           {/* Logo */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 36 }}>
-            <img src="/logo.png" alt="Bems Farms Logo" style={{ maxHeight: '48px', objectFit: 'contain' }} />
+            <img src="/admin/logo.png" alt="Bems Farms Logo" style={{ maxHeight: '48px', objectFit: 'contain' }} />
           </div>
 
           {/* Heading */}

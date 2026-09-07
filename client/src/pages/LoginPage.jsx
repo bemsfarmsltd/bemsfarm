@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { GoogleLogin } from "@react-oauth/google";
+
+import { isStaff, handoff, customerHome } from "../../../shared/authRouting";
 
 const AUTH_CSS = `
 .auth-grain {
@@ -41,12 +43,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, user } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from || "/home";
+  const from = customerHome(location.state?.from);
+  useEffect(() => {
+    if (!user) return;
+    if (isStaff(user.role)) handoff('admin');
+    else if (user.role === 'user') navigate(from, { replace: true });
+    else setError('Your account has no supported role. Please contact support.');
+  }, [user, from, navigate]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -57,7 +65,6 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate(from, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || "Invalid email or password");
     } finally {
@@ -70,7 +77,6 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await loginWithGoogle(credentialResponse.credential);
-      navigate(from, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || "Google sign-in failed.");
     } finally {

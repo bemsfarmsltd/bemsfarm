@@ -1,19 +1,19 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
 
-// Production Vercel deployments set VITE_API_URL explicitly. The fallback is
-// only for local development and matches the API server's default port.
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+// Use the existing API for local previews and production; VITE_API_URL can override it.
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.bemsfarms.com/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 60000,
+  withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 })
 
 // Attach JWT token to every request
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('bems_token')
+  const token = localStorage.getItem('token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -22,9 +22,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('bems_token')
-      localStorage.removeItem('bems_user')
+    if (error.response?.status === 401 && !/\/auth\/(login|refresh|me)/.test(error.config?.url || '')) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
       window.location.href = '/login'
     } else if (error.response?.status >= 500) {
       toast.error('Server error. Please try again.')

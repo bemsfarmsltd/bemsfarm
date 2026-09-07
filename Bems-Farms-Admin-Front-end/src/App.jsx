@@ -11,7 +11,6 @@ import {
 } from './lib/roles'
 
 // Public
-import Landing      from './pages/landing/Landing'
 import Login        from './pages/auth/Login'
 import Unauthorized from './pages/errors/Unauthorized'
 
@@ -127,7 +126,7 @@ function App() {
     <AuthProvider>
       <Routes>
         {/* ── Public ── */}
-        <Route path="/"            element={<Landing />} />
+        <Route path="/"            element={<Navigate to="/login" replace />} />
         <Route path="/login"       element={<Login />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
