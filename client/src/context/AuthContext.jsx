@@ -107,13 +107,33 @@ export function AuthProvider({ children }) {
   const register = useCallback(
     async (name, email, password, phone, preferences) => {
       const { data } = await api.post('/auth/register', { name, email, password, phone, preferences });
+      
+      // Do NOT log the user in immediately. They must verify their email.
+      return { email, ...data };
+    },
+    [],
+  );
+
+  // ── VERIFY EMAIL ─────────────────────────────────────────────
+  const verifyEmail = useCallback(
+    async (email, token) => {
+      const { data } = await api.post('/auth/verify-email', { email, token });
       const { user: userData, token: authToken } = data;
-      if (!userData?.id || !authToken) throw new Error('Invalid registration response');
+      if (!userData?.id || !authToken) throw new Error('Invalid verification response');
       
       _storeSession(userData, authToken);
       return userData;
     },
     [_storeSession],
+  );
+
+  // ── RESEND VERIFICATION ──────────────────────────────────────
+  const resendVerification = useCallback(
+    async (email) => {
+      const { data } = await api.post('/auth/resend-verification', { email });
+      return data;
+    },
+    [],
   );
 
   // ── GOOGLE OAUTH LOGIN ───────────────────────────────────────
@@ -175,6 +195,8 @@ export function AuthProvider({ children }) {
         isLoggedIn: !!user && !!token,
         login, // call as: await login(email, password)
         register, // call as: await register(name, email, password)
+        verifyEmail,
+        resendVerification,
         loginWithGoogle, // call as: await loginWithGoogle(credential)
         logout,
         updateUser, // call as: updateUser({ name, phone, ... }) to merge a patch in

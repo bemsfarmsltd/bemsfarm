@@ -106,9 +106,9 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(fullName, form.email, form.password, finalPhone, selectedTags);
-      navigate("/onboarding");
+      navigate("/verify-email", { state: { email: form.email } });
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed. Try again.");
+      setError(err.response?.data?.message || err.message || "Registration failed. Try again.");
     } finally {
       setLoading(false);
     }

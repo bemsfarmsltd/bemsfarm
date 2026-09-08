@@ -44,6 +44,15 @@ const resetPassword = z.object({
   password: z.string({ error: "Password must be at least 6 characters" }).min(6, "Password must be at least 6 characters"),
 });
 
+const verifyEmail = z.object({
+  email: z.string({ error: "Email required" }).trim().email("Valid email required"),
+  token: z.string({ error: "Verification code required" }).trim().min(6, "Invalid code"),
+});
+
+const resendVerification = z.object({
+  email: z.string({ error: "Email required" }).trim().email("Valid email required"),
+});
+
 const google = z.object({
   credential: z.string({ error: "Google credential required" }).min(1, "Google credential required"),
 });
@@ -56,5 +65,7 @@ module.exports = {
   changePassword,
   forgotPassword,
   resetPassword,
+  verifyEmail,
+  resendVerification,
   google,
 };

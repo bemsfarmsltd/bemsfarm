@@ -75,7 +75,7 @@ const footer = `
 
 // ── Email functions ───────────────────────────────────────────────────────────
 
-async function sendWelcomeEmail(user, verifyUrl) {
+async function sendWelcomeEmail(user, otp) {
   return sendMail({
     to: user.email,
     subject: "🌿 Welcome to BemsFarms — Verify Your Email",
@@ -83,15 +83,14 @@ async function sendWelcomeEmail(user, verifyUrl) {
       ${header(`Welcome, ${user.name}! 👋`)}
       <p style="color: #4B5563; line-height: 1.7;">
         Thank you for joining BemsFarms — Nigeria's freshest farm marketplace.
-        Please verify your email to get started and claim your
+        Please verify your email using the verification code below to get started and claim your
         <strong style="color: #F59E0B;">10% welcome discount</strong>.
       </p>
-      <div style="text-align: center; margin: 24px 0;">
-        <a href="${verifyUrl}" style="background: #40916C; color: white; padding: 14px 32px;
-          border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 15px;
-          display: inline-block;">Verify My Email →</a>
+      <div style="background: #F8FAF9; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
+        <p style="font-size: 14px; color: #6B7280; margin: 0 0 8px;">Your verification code is:</p>
+        <p style="font-size: 36px; font-weight: 900; color: #1B4332; margin: 0; letter-spacing: 6px;">${otp}</p>
       </div>
-      <p style="color: #9CA3AF; font-size: 12px;">This link expires in 24 hours.</p>
+      <p style="color: #9CA3AF; font-size: 12px;">This code expires in 15 minutes.</p>
       ${footer}
     </div>`,
   });

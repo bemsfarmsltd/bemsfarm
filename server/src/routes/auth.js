@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const pool = require("../db/pool");
 const { protect } = require("../middleware/authMiddleware");
 const { upsertContext, trackActivity } = require("../utils/aiContext");
-const { sendPasswordResetEmail } = require("../services/emailService");
+const { sendPasswordResetEmail, sendWelcomeEmail } = require("../services/emailService");
 const validate = require("../middleware/validate");
 const authSchemas = require("../schemas/authSchemas");
 
@@ -53,28 +53,16 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
       return res.status(400).json({ message: "Email already exists" });
 
     const hashedPw = await bcrypt.hash(password, 12);
+    const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit OTP
+
     const result = await pool.query(
-      `INSERT INTO users (name, email, password, phone, role, created_at)
-       VALUES ($1, $2, $3, $4, 'user', NOW())
+      `INSERT INTO users (name, email, password, phone, role, verification_token, created_at)
+       VALUES ($1, $2, $3, $4, 'user', $5, NOW())
        RETURNING id, name, email, phone, role`,
-      [name.trim(), email.toLowerCase().trim(), hashedPw, phone.trim()],
+      [name.trim(), email.toLowerCase().trim(), hashedPw, phone.trim(), otp],
     );
 
     const user = result.rows[0];
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user.id);
-
-    await pool.query("UPDATE users SET refresh_token=$1 WHERE id=$2", [
-      refreshToken,
-      user.id,
-    ]);
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
 
     // Seed AI context record for new user (fire-and-forget)
     upsertContext(user.id, {
@@ -88,7 +76,11 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
     });
     trackActivity(user.id, "registered", { ip: req.ip });
 
-    res.status(201).json({ token: accessToken, user });
+    sendWelcomeEmail(user, otp).catch((err) =>
+      console.error(`Welcome email failed for ${email}:`, err.message),
+    );
+
+    res.status(201).json({ message: "Registration successful. Please verify your email.", requiresVerification: true });
   } catch (err) {
     next(err);
   }
@@ -120,6 +112,10 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
 
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (!user.email_verified && user.password !== 'GOOGLE_AUTH') {
+       return res.status(403).json({ message: "Please verify your email before logging in.", requiresVerification: true });
     }
 
     // Check account status
@@ -487,6 +483,93 @@ router.post("/reset-password", validate(authSchemas.resetPassword), async (req, 
     );
 
     res.json({ message: "Password reset successful" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─────────────────────────────────────────────
+// VERIFY EMAIL
+// ─────────────────────────────────────────────
+router.post("/verify-email", validate(authSchemas.verifyEmail), async (req, res, next) => {
+  try {
+    const { email, token } = req.body;
+    const result = await pool.query(
+      "SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND verification_token = $2",
+      [email.trim(), token.trim()]
+    );
+    
+    if (!result.rows.length) {
+      return res.status(400).json({ message: "Invalid verification code" });
+    }
+    
+    const user = result.rows[0];
+    
+    await pool.query(
+      "UPDATE users SET email_verified = true, verification_token = NULL WHERE id = $1",
+      [user.id]
+    );
+    
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user.id);
+
+    await pool.query(
+      "UPDATE users SET refresh_token=$1, last_login=NOW() WHERE id=$2",
+      [refreshToken, user.id],
+    );
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    const nameParts = (user.name || "").trim().split(" ");
+    const userPayload = {
+      id: user.id,
+      name: user.name,
+      first_name: nameParts[0] || "",
+      last_name: nameParts.slice(1).join(" ") || "",
+      email: user.email,
+      role: user.role,
+      avatar_url: user.avatar_url || null,
+      store_id: user.store_id || null,
+      status: user.status,
+    };
+
+    res.json({ message: "Email verified successfully", token: accessToken, user: userPayload });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─────────────────────────────────────────────
+// RESEND VERIFICATION EMAIL
+// ─────────────────────────────────────────────
+router.post("/resend-verification", validate(authSchemas.resendVerification), async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const result = await pool.query(
+      "SELECT * FROM users WHERE LOWER(email) = LOWER($1)",
+      [email.trim()]
+    );
+    
+    if (!result.rows.length || result.rows[0].email_verified) {
+      return res.json({ message: "If your email is unverified, a new code has been sent." });
+    }
+    
+    const user = result.rows[0];
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    await pool.query(
+      "UPDATE users SET verification_token = $1 WHERE id = $2",
+      [otp, user.id]
+    );
+    
+    sendWelcomeEmail(user, otp).catch(console.error);
+    
+    res.json({ message: "If your email is unverified, a new code has been sent." });
   } catch (err) {
     next(err);
   }
