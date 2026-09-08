@@ -174,7 +174,7 @@ export default function CartPage() {
           }}
         >
           <button
-            onClick={() => navigate("/home")}
+            onClick={() => navigate("/products")}
             style={{
               background: "none",
               border: "none",
@@ -182,7 +182,7 @@ export default function CartPage() {
               color: "#9AA0A6",
             }}
           >
-            Home
+            Shop
           </button>
           <span>/</span>
           <span style={{ color: "#202124", fontWeight: 600 }}>Cart</span>

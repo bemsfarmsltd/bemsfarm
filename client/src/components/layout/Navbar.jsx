@@ -22,10 +22,12 @@ const NAVBAR_CSS = `
 .bf-navbar-logo { height: 32px; }
 .bf-navbar-inner { padding: 0 14px; gap: 10px; height: 56px; }
 .bf-search-full { display: none; }
+.bf-navbar-guest-join { display: none; }
 
 @media (min-width: 640px) {
   .bf-navbar-logo { height: 36px; }
   .bf-navbar-inner { padding: 0 20px; height: 60px; }
+  .bf-navbar-guest-join { display: block; }
 }
 
 @media (min-width: 768px) {
@@ -872,6 +874,26 @@ export default function Navbar() {
           ) : (
             <div style={{ display: "flex", gap: "6px" }}>
               <button
+                onClick={() => navigate("/cart")}
+                aria-label={cartCount > 0 ? `View cart, ${cartCount} item${cartCount === 1 ? "" : "s"}` : "View cart"}
+                style={{
+                  position: "relative",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "7px",
+                  borderRadius: "10px",
+                  lineHeight: 1,
+                }}
+              >
+                <span style={{ fontSize: "24px" }}>🛒</span>
+                {cartCount > 0 && (
+                  <span style={{ position: "absolute", top: 0, right: 0, display: "grid", placeItems: "center", minWidth: 16, height: 16, padding: "0 3px", borderRadius: 999, backgroundColor: "#F57C00", color: "white", fontSize: 9, fontWeight: 800 }}>
+                    {cartCount > 9 ? "9+" : cartCount}
+                  </span>
+                )}
+              </button>
+              <button
                 onClick={() => navigate("/login")}
                 style={{
                   padding: "8px 14px",
@@ -889,6 +911,7 @@ export default function Navbar() {
                 Sign In
               </button>
               <button
+                className="bf-navbar-guest-join"
                 onClick={() => navigate("/register")}
                 style={{
                   padding: "8px 14px",
