@@ -373,9 +373,9 @@ export default function LandingPage() {
               <h1 className="font-display text-[clamp(2.75rem,6.5vw,5.8rem)] font-bold leading-[0.95] tracking-[-0.055em] text-[#143c2d]">Fresh harvests, <span className="text-[#d86d20]">our own brand.</span></h1>
               <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-600 lg:mx-0">Shop Bems Farms’ signature packaged staples, pure cooking oils and freshly harvested produce alongside everyday kitchen essentials—cultivated with care and paired with Chef Bems.</p>
               
-              <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
-                <a href="#featured-products" className="rounded-full bg-[#1d6b45] px-8 py-4 text-center text-base font-extrabold text-white shadow-xl shadow-emerald-900/20 transition hover:-translate-y-1 hover:bg-[#155637]">Explore Our Products <span aria-hidden="true">↓</span></a>
-                <Link to="/products" className="rounded-full border border-slate-300 bg-white/80 px-8 py-4 text-center text-base font-extrabold text-slate-800 transition hover:border-emerald-700 hover:text-emerald-800">Full Catalogue</Link>
+              <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
+                <Link to="/products" className="rounded-full bg-[#1d6b45] px-8 py-4 text-center text-base font-extrabold text-white shadow-xl shadow-emerald-900/20 transition hover:-translate-y-1 hover:bg-[#155637]">Start shopping <span aria-hidden="true">→</span></Link>
+                <a href="#how-it-works" className="rounded-full border border-slate-300 bg-white/80 px-8 py-4 text-center text-base font-extrabold text-slate-800 transition hover:border-emerald-700 hover:text-emerald-800">See how it works</a>
               </div>
               <div className="mt-9 flex flex-wrap justify-center gap-x-7 gap-y-3 text-sm font-bold text-slate-600 lg:justify-start">
                 <span>✓ Bems Farms Brand Originals</span>
