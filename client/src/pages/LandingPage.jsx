@@ -97,7 +97,7 @@ function HeroSlideBanner() {
 
   return (
     <div
-      className="relative aspect-[4/4.6] overflow-hidden rounded-[2.5rem] bg-[#dfeade] shadow-2xl shadow-emerald-950/20 sm:rounded-[3.5rem]"
+      className="relative aspect-[4/4.6] overflow-hidden rounded-[2.5rem] bg-[#143c2d]/10 shadow-2xl shadow-emerald-950/20 sm:rounded-[3.5rem]"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={() => setIsPaused(true)}
@@ -119,7 +119,7 @@ function HeroSlideBanner() {
       <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-emerald-950/80 via-emerald-950/35 to-transparent" />
 
       {/* Floating Top Tag */}
-      <div className="absolute left-5 top-5 rounded-full border border-white/40 bg-white/90 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-wider text-emerald-900 shadow-lg backdrop-blur sm:left-7 sm:top-7">
+      <div className="absolute left-5 top-5 rounded-full border border-white/40 bg-white/90 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-wider text-[#143c2d] shadow-lg backdrop-blur sm:left-7 sm:top-7">
         {slide.tag}
       </div>
 
@@ -146,10 +146,10 @@ function HeroSlideBanner() {
       {/* Slide Content Card Overlay */}
       <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between rounded-2xl border border-white/30 bg-white/95 p-4 shadow-xl backdrop-blur sm:bottom-7 sm:left-7 sm:right-7">
         <div className="min-w-0 pr-3">
-          <p className="text-xs font-extrabold uppercase tracking-wider text-emerald-700">{slide.eyebrow}</p>
+          <p className="text-xs font-extrabold uppercase tracking-wider text-[#143c2d]">{slide.eyebrow}</p>
           <p className="mt-0.5 truncate font-display text-base font-bold text-slate-900 sm:text-lg">{slide.heading}</p>
         </div>
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-orange-100 text-xl shadow-inner">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#143c2d]/10 text-xl shadow-inner">
           {slide.badgeIcon}
         </span>
       </div>
@@ -176,8 +176,8 @@ function SectionHeading({ eyebrow, title, text, align = "center" }) {
   const centered = align === "center";
   return (
     <div className={centered ? "mx-auto max-w-2xl text-center" : "max-w-xl"}>
-      <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">{eyebrow}</p>
-      <h2 className="font-display text-3xl font-bold leading-tight text-[#17352a] sm:text-4xl lg:text-5xl">{title}</h2>
+      <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.22em] text-[#143c2d]">{eyebrow}</p>
+      <h2 className="font-display text-3xl font-bold leading-tight text-[#143c2d] sm:text-4xl lg:text-5xl">{title}</h2>
       {text && <p className="mt-5 text-base leading-7 text-slate-600">{text}</p>}
     </div>
   );
@@ -196,23 +196,23 @@ function StoreProductCard({ product, added, onAdd }) {
 
   return (
     <article className="group min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg">
-      <Link to={`/product/${product.id}`} className="relative block aspect-[4/3] overflow-hidden bg-[#f5f4ee]" aria-label={`View ${product.name}`}>
+      <Link to={`/product/${product.id}`} className="relative block aspect-[4/3] overflow-hidden bg-[#FAF9F6]" aria-label={`View ${product.name}`}>
         <img
           src={getProductImage(product)}
           alt={product.name}
           className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
           loading="lazy"
         />
-        {product.is_featured && <span className="absolute left-3 top-3 rounded-full bg-orange-500 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white">Featured</span>}
-        {isBemsOriginal && <span className="absolute right-3 top-3 rounded-full bg-[#143c2d]/90 backdrop-blur px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">★ Bems Original</span>}
+        {product.is_featured && <span className="absolute left-3 top-3 rounded-full bg-[#143c2d] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white">Featured</span>}
+        {isBemsOriginal && <span className="absolute right-3 top-3 rounded-full bg-[#143c2d]/95 backdrop-blur px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">★ Bems Original</span>}
         {unavailable && <span className="absolute inset-x-3 bottom-3 rounded-full bg-slate-900/85 px-3 py-2 text-center text-xs font-bold text-white">Currently unavailable</span>}
       </Link>
       <div className="p-4">
-        <p className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-700">{product.category_name || "Farm produce"}</p>
-        <h3 className="mt-1.5 min-h-[2.5rem] font-display text-base font-bold leading-5 text-[#17352a]"><Link to={`/product/${product.id}`} className="transition hover:text-orange-600">{product.name}</Link></h3>
+        <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#143c2d]/80">{product.category_name || "Farm produce"}</p>
+        <h3 className="mt-1.5 min-h-[2.5rem] font-display text-base font-bold leading-5 text-[#143c2d]"><Link to={`/product/${product.id}`} className="transition hover:text-[#c85a17]">{product.name}</Link></h3>
         <p className="mt-1 truncate text-xs text-slate-500">{product.unit || "Per item"}</p>
         <div className="mt-2 flex min-h-4 items-center gap-1 text-[11px]">
-          {Number(product.review_count) > 0 ? <><span className="text-orange-500" aria-label={`${rating.toFixed(1)} out of 5 stars`}><span aria-hidden="true">{"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}</span></span><span className="text-slate-400">({product.review_count})</span></> : <span className="text-slate-400">New to the shop</span>}
+          {Number(product.review_count) > 0 ? <><span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}><span aria-hidden="true">{"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}</span></span><span className="text-slate-400">({product.review_count})</span></> : <span className="text-slate-400">New to the shop</span>}
         </div>
         <div className="mt-3 flex items-center justify-between gap-2">
           <p className="min-w-0 truncate text-base font-extrabold text-slate-900">₦{price.toLocaleString("en-NG")}</p>
@@ -220,7 +220,7 @@ function StoreProductCard({ product, added, onAdd }) {
             type="button"
             onClick={() => onAdd(product)}
             disabled={unavailable}
-            className={`h-9 shrink-0 rounded-full px-3 text-[11px] font-extrabold text-white transition ${added ? "bg-emerald-700" : "bg-orange-500 hover:bg-orange-600"} disabled:cursor-not-allowed disabled:bg-slate-300`}
+            className={`h-9 shrink-0 rounded-full px-3 text-[11px] font-extrabold text-white transition ${added ? "bg-[#1d6b45]" : "bg-[#143c2d] hover:bg-[#1a4e3b]"} disabled:cursor-not-allowed disabled:bg-slate-300`}
             aria-label={`Add ${product.name} to basket`}
           >
             {added ? "✓ Added" : "+ Add"}
@@ -697,8 +697,8 @@ function FullScreenCatalogueModal({
       </div>
 
       {/* Reassuring Notice Banner */}
-      <div className="relative z-10 border-b border-amber-200/80 bg-gradient-to-r from-amber-50 via-emerald-50 to-amber-50 px-4 py-2.5 text-center text-xs text-slate-700">
-        <span className="font-extrabold text-emerald-900">🛒 Add items freely to your basket!</span>{" "}
+      <div className="relative z-10 border-b border-slate-200 bg-[#F4F1EA] px-4 py-2.5 text-center text-xs text-slate-700">
+        <span className="font-extrabold text-[#143c2d]">🛒 Add items freely to your basket!</span>{" "}
         <span className="text-slate-600">
           Even after selecting goods and adding them to your basket, you will sign in (or register) to enter your delivery location and place your order.
         </span>
@@ -738,10 +738,10 @@ function FullScreenCatalogueModal({
       </div>
 
       {/* Sticky Bottom Dock: Basket & Place Order */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-emerald-950/10 bg-white/95 p-3.5 shadow-2xl backdrop-blur-lg sm:p-4">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 p-3.5 shadow-2xl backdrop-blur-lg sm:p-4">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-xl shadow-inner">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#143c2d]/10 text-xl shadow-inner">
               🛒
             </div>
             <div>
@@ -754,7 +754,7 @@ function FullScreenCatalogueModal({
             </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-bold text-emerald-900">
+          <div className="hidden md:flex items-center gap-2 rounded-full border border-slate-200 bg-[#FAF9F6] px-3.5 py-1.5 text-xs font-bold text-[#143c2d]">
             <span aria-hidden="true">🔒</span>
             <span>Login required to place order & choose delivery</span>
           </div>
@@ -762,14 +762,14 @@ function FullScreenCatalogueModal({
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
               to="/cart"
-              className="rounded-full border-2 border-slate-300 bg-white px-5 py-2.5 text-xs font-extrabold text-slate-800 transition hover:border-emerald-700 hover:text-emerald-800"
+              className="rounded-full border-2 border-slate-300 bg-white px-5 py-2.5 text-xs font-extrabold text-slate-800 transition hover:border-[#143c2d] hover:text-[#143c2d]"
             >
               View Basket
             </Link>
             <button
               type="button"
               onClick={onProceedToOrder}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#d86d20] to-[#f57c00] px-6 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white shadow-lg shadow-orange-950/20 transition hover:brightness-110 active:scale-95"
+              className="inline-flex items-center gap-2 rounded-full bg-[#143c2d] px-6 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white shadow-md transition hover:bg-[#1a4e3b] active:scale-95"
             >
               <span>Place Order</span>
               <span aria-hidden="true">→</span>
@@ -941,30 +941,30 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#fffdf8] text-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-[#FAF9F6] text-slate-900">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:shadow-lg">Skip to main content</a>
 
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-emerald-950/5 bg-[#fffdf8]/95 backdrop-blur-xl">
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/80 bg-[#FAF9F6]/95 backdrop-blur-xl">
         <nav className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12" aria-label="Main navigation">
           <Link to="/" className="shrink-0" aria-label="BemsFarms home" onClick={() => setMenuOpen(false)}>
             <img src={logo} alt="BemsFarms" className="h-10 w-auto" />
           </Link>
           <div className="hidden items-center gap-6 xl:flex">
-            <a href="#featured-products" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">Shop Products</a>
-            <a href="#categories" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">Categories</a>
-            <a href="#our-brand" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">Our Brand</a>
-            <a href="#how-it-works" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">How it works</a>
-            <Link to="/track-order" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">Track order</Link>
-            <a href="#chef-bems" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">Chef Bems</a>
-            <a href="#faq" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">FAQs</a>
+            <a href="#featured-products" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Shop Products</a>
+            <a href="#categories" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Categories</a>
+            <a href="#our-brand" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Our Brand</a>
+            <a href="#how-it-works" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">How it works</a>
+            <Link to="/track-order" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Track order</Link>
+            <a href="#chef-bems" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Chef Bems</a>
+            <a href="#faq" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">FAQs</a>
           </div>
           <div className="hidden items-center gap-3 sm:flex">
             <Link to="/cart" className="relative grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-lg" aria-label={`Basket with ${cartCount} items`}>
               <span aria-hidden="true">🛒</span>
-              {cartCount > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-orange-500 px-1 text-[10px] font-extrabold text-white">{cartCount}</span>}
+              {cartCount > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#143c2d] px-1 text-[10px] font-extrabold text-white">{cartCount}</span>}
             </Link>
-            <Link to="/login" className="rounded-full px-5 py-2.5 text-sm font-extrabold text-emerald-900 transition hover:bg-emerald-50">Sign in</Link>
-            <Link to="/register" className="rounded-full bg-[#1d6b45] px-6 py-3 text-sm font-extrabold text-white shadow-lg shadow-emerald-900/15 transition hover:-translate-y-0.5 hover:bg-[#155637]">Create account</Link>
+            <Link to="/login" className="rounded-full px-5 py-2.5 text-sm font-extrabold text-[#143c2d] transition hover:bg-[#143c2d]/5">Sign in</Link>
+            <Link to="/register" className="rounded-full bg-[#143c2d] px-6 py-3 text-sm font-extrabold text-white shadow-md shadow-emerald-950/10 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b]">Create account</Link>
           </div>
           <button type="button" className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-xl xl:hidden" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-label="Toggle navigation menu">{menuOpen ? "×" : "☰"}</button>
         </nav>
@@ -972,11 +972,11 @@ export default function LandingPage() {
           {menuOpen && (
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="border-t border-slate-100 bg-white px-5 pb-6 pt-4 shadow-xl xl:hidden">
               <div className="flex flex-col gap-1">
-                {[['#featured-products', 'Shop products'], ['#categories', 'Categories'], ['#our-brand', 'Our Brand'], ['#how-it-works', 'How it works'], ['#chef-bems', 'Chef Bems'], ['#faq', 'FAQs']].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-emerald-50">{label}</a>)}
-                <Link to="/track-order" onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-emerald-50">Track an order</Link>
+                {[['#featured-products', 'Shop products'], ['#categories', 'Categories'], ['#our-brand', 'Our Brand'], ['#how-it-works', 'How it works'], ['#chef-bems', 'Chef Bems'], ['#faq', 'FAQs']].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">{label}</a>)}
+                <Link to="/track-order" onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">Track an order</Link>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3"><Link to="/login" className="rounded-full border border-emerald-800 px-4 py-3 text-center text-sm font-extrabold text-emerald-900">Sign in</Link><Link to="/register" className="rounded-full bg-[#1d6b45] px-4 py-3 text-center text-sm font-extrabold text-white">Join now</Link></div>
-              <Link to="/cart" className="mt-3 flex items-center justify-between rounded-2xl bg-orange-50 px-4 py-3 text-sm font-extrabold text-orange-800"><span>🛒 View basket</span><span>{cartCount} {cartCount === 1 ? "item" : "items"}</span></Link>
+              <div className="mt-4 grid grid-cols-2 gap-3"><Link to="/login" className="rounded-full border border-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-[#143c2d]">Sign in</Link><Link to="/register" className="rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">Join now</Link></div>
+              <Link to="/cart" className="mt-3 flex items-center justify-between rounded-2xl bg-[#143c2d] px-4 py-3 text-sm font-extrabold text-white"><span>🛒 View basket</span><span>{cartCount} {cartCount === 1 ? "item" : "items"}</span></Link>
             </motion.div>
           )}
         </AnimatePresence>
@@ -988,22 +988,20 @@ export default function LandingPage() {
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%23143c2d' fill-opacity='0.07'/%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%23143c2d' fill-opacity='0.05'/%3E%3C/svg%3E")`,
               backgroundRepeat: "repeat",
               backgroundSize: "36px 36px",
             }}
           />
-          <div className="absolute -left-40 top-20 h-96 w-96 rounded-full bg-amber-200/30 blur-3xl" />
-          <div className="absolute -right-40 top-0 h-[520px] w-[520px] rounded-full bg-emerald-200/40 blur-3xl" />
           <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }} className="text-center lg:text-left">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-emerald-800 shadow-sm"><span className="h-2 w-2 rounded-full bg-orange-500" /> Direct from Bems Farms & Processing</div>
-              <h1 className="font-display text-[clamp(2.75rem,6.5vw,5.8rem)] font-bold leading-[0.95] tracking-[-0.055em] text-[#143c2d]">Fresh harvests, <span className="text-[#d86d20]">our own brand.</span></h1>
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-[#143c2d] shadow-sm"><span className="h-2 w-2 rounded-full bg-[#143c2d]" /> Direct from Bems Farms & Processing</div>
+              <h1 className="font-display text-[clamp(2.75rem,6.5vw,5.8rem)] font-bold leading-[0.95] tracking-[-0.055em] text-[#143c2d]">Fresh harvests, <span className="text-[#c85a17]">our own brand.</span></h1>
               <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-600 lg:mx-0">Shop Bems Farms’ signature packaged staples, pure cooking oils and freshly harvested produce alongside everyday kitchen essentials—cultivated with care and paired with Chef Bems.</p>
               
               <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
-                <Link to="/products" className="rounded-full bg-[#1d6b45] px-8 py-4 text-center text-base font-extrabold text-white shadow-xl shadow-emerald-900/20 transition hover:-translate-y-1 hover:bg-[#155637]">Start shopping <span aria-hidden="true">→</span></Link>
-                <a href="#how-it-works" className="rounded-full border border-slate-300 bg-white/80 px-8 py-4 text-center text-base font-extrabold text-slate-800 transition hover:border-emerald-700 hover:text-emerald-800">See how it works</a>
+                <Link to="/products" className="rounded-full bg-[#143c2d] px-8 py-4 text-center text-base font-extrabold text-white shadow-md shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b]">Start shopping <span aria-hidden="true">→</span></Link>
+                <a href="#how-it-works" className="rounded-full border border-slate-300 bg-white px-8 py-4 text-center text-base font-extrabold text-slate-800 transition hover:border-[#143c2d] hover:text-[#143c2d]">See how it works</a>
               </div>
               <div className="mt-9 flex flex-wrap justify-center gap-x-7 gap-y-3 text-sm font-bold text-slate-600 lg:justify-start">
                 <span>✓ Bems Farms Brand Originals</span>
@@ -1029,22 +1027,22 @@ export default function LandingPage() {
         </section>
 
         {/* ── OUR BRAND SPOTLIGHT ── */}
-        <section id="our-brand" className="scroll-mt-24 bg-[#faf8f2] px-5 py-16 sm:px-8 lg:px-12 lg:py-20 border-b border-emerald-900/10">
+        <section id="our-brand" className="scroll-mt-24 bg-white px-5 py-16 sm:px-8 lg:px-12 lg:py-20 border-b border-slate-200">
           <div className="mx-auto max-w-7xl">
             <div className="grid gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-orange-700">The Bems Farms Difference</p>
+                <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[#143c2d]">The Bems Farms Difference</p>
                 <h2 className="mt-3 font-display text-3xl font-bold text-[#143c2d] sm:text-4xl">Our Own Products. Straight from Our Farm to Your Kitchen.</h2>
                 <p className="mt-4 text-base leading-7 text-slate-600">Unlike ordinary markets, Bems Farms cultivates, sorts, and packages our own line of signature food staples and crops. Every bag of grains, bottle of oil, and fresh harvest is inspected for supreme quality and natural taste.</p>
                 <div className="mt-7 grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                  <div className="rounded-2xl border border-slate-200 bg-[#FAF9F6] p-4 shadow-sm">
                     <p className="text-xl">🌾</p>
-                    <h3 className="mt-2 font-display text-base font-bold text-[#17352a]">In-House Packaged</h3>
+                    <h3 className="mt-2 font-display text-base font-bold text-[#143c2d]">In-House Packaged</h3>
                     <p className="mt-1 text-xs leading-5 text-slate-500">Carefully sorted, stone-free grains and pure culinary oils.</p>
                   </div>
-                  <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                  <div className="rounded-2xl border border-slate-200 bg-[#FAF9F6] p-4 shadow-sm">
                     <p className="text-xl">🚜</p>
-                    <h3 className="mt-2 font-display text-base font-bold text-[#17352a]">Harvested Daily</h3>
+                    <h3 className="mt-2 font-display text-base font-bold text-[#143c2d]">Harvested Daily</h3>
                     <p className="mt-1 text-xs leading-5 text-slate-500">Crops harvested at peak freshness with zero artificial tampering.</p>
                   </div>
                 </div>
@@ -1080,7 +1078,7 @@ export default function LandingPage() {
                 </button>
 
                 {/* Search Bar right inside Catalogue section */}
-                <form onSubmit={handleSearch} className="flex w-full sm:w-80 md:w-96 items-center rounded-full border border-slate-300 bg-[#faf8f2] p-1.5 shadow-sm focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-600/20">
+                <form onSubmit={handleSearch} className="flex w-full sm:w-80 md:w-96 items-center rounded-full border border-slate-300 bg-[#FAF9F6] p-1.5 shadow-sm focus-within:border-[#143c2d] focus-within:ring-2 focus-within:ring-emerald-600/20">
                   <label htmlFor="catalogue-search" className="sr-only">Search products</label>
                   <span className="ml-3 text-slate-400" aria-hidden="true">🔍</span>
                   <input
@@ -1103,28 +1101,28 @@ export default function LandingPage() {
               <button
                 type="button"
                 onClick={() => { setCatalogueView("all"); if (appliedSearch) { setSearch(""); loadProducts(); } }}
-                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "all" && !appliedSearch ? "bg-[#17352a] text-white" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
+                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "all" && !appliedSearch ? "bg-[#143c2d] text-white" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
               >
                 All Products
               </button>
               <button
                 type="button"
                 onClick={() => setCatalogueView("bems_originals")}
-                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "bems_originals" ? "bg-emerald-800 text-amber-300 ring-2 ring-amber-400/40" : "border border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"}`}
+                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "bems_originals" ? "bg-[#143c2d] text-amber-300 ring-2 ring-amber-400/40" : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}
               >
                 ★ Bems Originals
               </button>
               <button
                 type="button"
                 onClick={() => setCatalogueView("featured")}
-                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "featured" ? "bg-[#17352a] text-white" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
+                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "featured" ? "bg-[#143c2d] text-white" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
               >
                 Featured
               </button>
               <button
                 type="button"
                 onClick={() => setCatalogueView("newest")}
-                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "newest" ? "bg-[#17352a] text-white" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
+                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "newest" ? "bg-[#143c2d] text-white" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
               >
                 New Arrivals
               </button>
@@ -1132,7 +1130,7 @@ export default function LandingPage() {
                 <button
                   type="button"
                   onClick={() => { setSearch(""); loadProducts(); }}
-                  className="ml-auto rounded-full border border-orange-300 bg-orange-50 px-4 py-1.5 text-xs font-extrabold text-orange-800 hover:bg-orange-100"
+                  className="ml-auto rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs font-extrabold text-slate-700 hover:bg-slate-50"
                 >
                   Clear search ({appliedSearch}) ✕
                 </button>
@@ -1140,7 +1138,7 @@ export default function LandingPage() {
               <button
                 type="button"
                 onClick={() => setFullScreenModalOpen(true)}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-emerald-800 bg-emerald-50 px-4 py-1.5 text-xs font-extrabold text-emerald-900 transition hover:bg-emerald-100"
+                className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs font-extrabold text-slate-700 transition hover:border-[#143c2d] hover:text-[#143c2d]"
               >
                 <span aria-hidden="true">⛶</span> Open Full Screen
               </button>
@@ -1224,21 +1222,21 @@ export default function LandingPage() {
               </>
             )}
 
-            <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl bg-[#f3f0e6] px-6 py-5 sm:flex-row">
+            <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-[#FAF9F6] px-6 py-5 sm:flex-row">
               <p className="text-center text-sm font-bold text-slate-700 sm:text-left">Your basket is saved while you create an account.</p>
               <div className="flex flex-wrap items-center justify-center gap-3">
-                <span className="text-sm font-extrabold text-emerald-800">{cartCount} {cartCount === 1 ? "item" : "items"}</span>
+                <span className="text-sm font-extrabold text-[#143c2d]">{cartCount} {cartCount === 1 ? "item" : "items"}</span>
                 <button
                   type="button"
                   onClick={() => setFullScreenModalOpen(true)}
-                  className="rounded-full border border-emerald-900 bg-white px-5 py-2.5 text-sm font-extrabold text-emerald-900 transition hover:bg-emerald-50"
+                  className="rounded-full border border-[#143c2d] bg-white px-5 py-2.5 text-sm font-extrabold text-[#143c2d] transition hover:bg-[#FAF9F6]"
                 >
                   ⛶ Open Full Screen
                 </button>
-                <Link to="/products" className="rounded-full border border-emerald-900 px-5 py-2.5 text-sm font-extrabold text-emerald-900">
+                <Link to="/products" className="rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-extrabold text-slate-800 transition hover:border-[#143c2d]">
                   View catalogue page
                 </Link>
-                <Link to={cartCount ? "/cart" : "/register"} className="rounded-full bg-[#17352a] px-5 py-2.5 text-sm font-extrabold text-white">
+                <Link to={cartCount ? "/cart" : "/register"} className="rounded-full bg-[#143c2d] px-5 py-2.5 text-sm font-extrabold text-white transition hover:bg-[#1a4e3b]">
                   {cartCount ? "View basket" : "Create account"}
                 </Link>
               </div>
@@ -1246,28 +1244,28 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="categories" className="scroll-mt-24 px-5 py-20 sm:px-8 lg:px-12 lg:py-28"><div className="mx-auto max-w-7xl"><SectionHeading eyebrow="Explore the pantry" title="Shop by category" text="Jump into the part of the market you need and discover useful choices for the way you cook." /><div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{categories.map((category, index) => <motion.article key={category.name} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ delay: index * 0.06 }} className="group overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"><Link to={`/products?category=${encodeURIComponent(category.name)}`} className="block"><div className="h-56 overflow-hidden"><img src={category.image} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" /></div><div className="p-6"><h3 className="font-display text-xl font-bold text-[#17352a]">{category.name}</h3><p className="mt-2 min-h-12 text-sm leading-6 text-slate-600">{category.detail}</p><span className="mt-5 inline-flex text-sm font-extrabold text-emerald-700 group-hover:text-orange-700">Explore category <span className="ml-2" aria-hidden="true">→</span></span></div></Link></motion.article>)}</div><div className="mt-9 text-center"><Link to="/products" className="inline-flex rounded-full border border-emerald-900 px-6 py-3 text-sm font-extrabold text-emerald-900 transition hover:bg-emerald-900 hover:text-white">Browse every category →</Link></div></div></section>
+        <section id="categories" className="scroll-mt-24 bg-[#FAF9F6] px-5 py-20 sm:px-8 lg:px-12 lg:py-28"><div className="mx-auto max-w-7xl"><SectionHeading eyebrow="Explore the pantry" title="Shop by category" text="Jump into the part of the market you need and discover useful choices for the way you cook." /><div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{categories.map((category, index) => <motion.article key={category.name} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ delay: index * 0.06 }} className="group overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"><Link to={`/products?category=${encodeURIComponent(category.name)}`} className="block"><div className="h-56 overflow-hidden"><img src={category.image} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" /></div><div className="p-6"><h3 className="font-display text-xl font-bold text-[#143c2d]">{category.name}</h3><p className="mt-2 min-h-12 text-sm leading-6 text-slate-600">{category.detail}</p><span className="mt-5 inline-flex text-sm font-extrabold text-[#143c2d] group-hover:text-[#c85a17]">Explore category <span className="ml-2" aria-hidden="true">→</span></span></div></Link></motion.article>)}</div><div className="mt-9 text-center"><Link to="/products" className="inline-flex rounded-full border border-[#143c2d] px-6 py-3 text-sm font-extrabold text-[#143c2d] transition hover:bg-[#143c2d] hover:text-white">Browse every category →</Link></div></div></section>
 
-        <section aria-labelledby="shopping-details-title" className="border-y border-emerald-900/10 bg-white px-5 py-14 sm:px-8 lg:px-12">
+        <section aria-labelledby="shopping-details-title" className="border-y border-slate-200 bg-white px-5 py-14 sm:px-8 lg:px-12">
           <div className="mx-auto max-w-7xl">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div><p className="text-xs font-extrabold uppercase tracking-[0.2em] text-emerald-700">Shop with clarity</p><h2 id="shopping-details-title" className="mt-2 font-display text-2xl font-bold text-[#17352a] sm:text-3xl">Know what happens after you add to basket</h2></div>
-              <a href="mailto:info@bemsfarms.com" className="text-sm font-extrabold text-orange-700 hover:text-orange-800">Contact support →</a>
+              <div><p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#143c2d]">Shop with clarity</p><h2 id="shopping-details-title" className="mt-2 font-display text-2xl font-bold text-[#143c2d] sm:text-3xl">Know what happens after you add to basket</h2></div>
+              <a href="mailto:info@bemsfarms.com" className="text-sm font-extrabold text-[#c85a17] hover:underline">Contact support →</a>
             </div>
             <div className="mt-8 grid gap-px overflow-hidden rounded-3xl border border-slate-200 bg-slate-200 sm:grid-cols-2 lg:grid-cols-4">
-              {shoppingDetails.map((item) => <article key={item.title} className="bg-[#fffdf8] p-6"><span className="text-2xl" aria-hidden="true">{item.icon}</span><h3 className="mt-4 font-display text-lg font-bold text-[#17352a]">{item.title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{item.text}</p></article>)}
+              {shoppingDetails.map((item) => <article key={item.title} className="bg-[#FAF9F6] p-6"><span className="text-2xl" aria-hidden="true">{item.icon}</span><h3 className="mt-4 font-display text-lg font-bold text-[#143c2d]">{item.title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{item.text}</p></article>)}
             </div>
           </div>
         </section>
 
-        <section id="how-it-works" className="scroll-mt-24 bg-[#f3f0e6] px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
+        <section id="how-it-works" className="scroll-mt-24 bg-white px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
           <div className="mx-auto max-w-7xl">
             <SectionHeading eyebrow="A smarter shopping journey" title="From meal idea to doorstep" text="Shop at your own pace, with Chef Bems ready to help when you need inspiration." />
             <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {steps.map((step) => <article key={step.number} className={`relative overflow-hidden rounded-3xl p-6 shadow-sm ${step.accent ? "bg-[#143c2d] text-white" : "bg-white"}`}>
-                {step.accent && <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-400/20 blur-2xl" />}
-                <div className="relative flex items-center justify-between"><p className={`font-display text-3xl font-bold ${step.accent ? "text-amber-300" : "text-orange-500"}`}>{step.number}</p><span className={`grid h-11 w-11 place-items-center rounded-2xl text-lg ${step.accent ? "bg-white/10" : "bg-emerald-50 text-emerald-800"}`} aria-hidden="true">{step.icon}</span></div>
-                <h3 className={`relative mt-8 font-display text-xl font-bold ${step.accent ? "text-white" : "text-[#17352a]"}`}>{step.title}</h3>
+              {steps.map((step) => <article key={step.number} className={`relative overflow-hidden rounded-3xl border border-slate-200 p-6 shadow-sm ${step.accent ? "bg-[#143c2d] text-white border-[#143c2d]" : "bg-[#FAF9F6]"}`}>
+                {step.accent && <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl" />}
+                <div className="relative flex items-center justify-between"><p className={`font-display text-3xl font-bold ${step.accent ? "text-amber-300" : "text-[#143c2d]"}`}>{step.number}</p><span className={`grid h-11 w-11 place-items-center rounded-2xl text-lg ${step.accent ? "bg-white/10" : "bg-white text-[#143c2d] border border-slate-200"}`} aria-hidden="true">{step.icon}</span></div>
+                <h3 className={`relative mt-8 font-display text-xl font-bold ${step.accent ? "text-white" : "text-[#143c2d]"}`}>{step.title}</h3>
                 <p className={`relative mt-3 text-sm leading-6 ${step.accent ? "text-emerald-50/75" : "text-slate-600"}`}>{step.text}</p>
                 {step.accent && <Link to="/register" className="relative mt-5 inline-flex text-xs font-extrabold text-amber-300 hover:text-white">Meet Chef Bems →</Link>}
               </article>)}
@@ -1275,18 +1273,17 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="px-5 py-20 sm:px-8 lg:px-12 lg:py-28"><div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-2 lg:items-center"><div className="relative"><img src="/jollof_rice_hero.png" alt="Jollof rice served with grilled chicken and plantain" className="aspect-square w-full rounded-[2.5rem] object-cover shadow-xl" loading="lazy" /><div className="absolute -bottom-5 right-5 max-w-[240px] rounded-2xl bg-orange-500 p-5 text-white shadow-xl sm:right-8"><p className="font-display text-xl font-bold">Made for the meals you love.</p></div></div><div><SectionHeading align="left" eyebrow="Why BemsFarms" title="More confidence in every basket" text="A thoughtful shopping experience that helps you move from food inspiration to a completed order without confusion." /><div className="mt-9 grid gap-5 sm:grid-cols-2">{promises.map((item) => <article key={item.title} className="rounded-2xl border border-slate-200 bg-white p-5"><span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 font-bold text-emerald-800">{item.icon}</span><h3 className="mt-4 font-display text-lg font-bold text-[#17352a]">{item.title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{item.text}</p></article>)}</div></div></div></section>
+        <section className="bg-[#FAF9F6] px-5 py-20 sm:px-8 lg:px-12 lg:py-28"><div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-2 lg:items-center"><div className="relative"><img src="/jollof_rice_hero.png" alt="Jollof rice served with grilled chicken and plantain" className="aspect-square w-full rounded-[2.5rem] object-cover shadow-xl" loading="lazy" /><div className="absolute -bottom-5 right-5 max-w-[240px] rounded-2xl bg-[#143c2d] p-5 text-white shadow-xl sm:right-8"><p className="font-display text-xl font-bold">Made for the meals you love.</p></div></div><div><SectionHeading align="left" eyebrow="Why BemsFarms" title="More confidence in every basket" text="A thoughtful shopping experience that helps you move from food inspiration to a completed order without confusion." /><div className="mt-9 grid gap-5 sm:grid-cols-2">{promises.map((item) => <article key={item.title} className="rounded-2xl border border-slate-200 bg-white p-5"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#FAF9F6] font-bold text-[#143c2d]">{item.icon}</span><h3 className="mt-4 font-display text-lg font-bold text-[#143c2d]">{item.title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{item.text}</p></article>)}</div></div></div></section>
 
-        <section id="chef-bems" className="scroll-mt-24 px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
+        <section id="chef-bems" className="scroll-mt-24 bg-white px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
           <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-[#143c2d] px-6 py-12 text-white sm:px-10 lg:px-16 lg:py-16">
-            <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-500/20 blur-3xl" />
             <div className="relative grid gap-12 lg:grid-cols-[1.05fr_.95fr] lg:items-center">
               <div>
                 <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-amber-300">Your food companion</p>
                 <h2 className="mt-4 font-display text-4xl font-bold leading-tight sm:text-5xl">Meet Chef Bems</h2>
                 <p className="mt-5 max-w-xl text-base leading-7 text-emerald-50/75">Need meal inspiration or help building a useful shopping list? Chef Bems connects your cooking ideas with ingredients you can find in the store.</p>
                 <div className="mt-8 grid gap-3 sm:grid-cols-2"><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold">🍲 Meal and recipe ideas</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold">🛒 Smarter shopping lists</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold">🥕 Ingredient alternatives</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold">💬 Conversational guidance</p></div>
-                <Link to="/register" className="mt-9 inline-flex rounded-full bg-amber-300 px-7 py-3.5 text-sm font-extrabold text-emerald-950 transition hover:bg-white">Join to meet Chef Bems</Link>
+                <Link to="/register" className="mt-9 inline-flex rounded-full bg-amber-300 px-7 py-3.5 text-sm font-extrabold text-[#143c2d] transition hover:bg-white">Join to meet Chef Bems</Link>
               </div>
               <div className="relative mx-auto w-full max-w-md">
                 <div className="aspect-square overflow-hidden rounded-[2rem] border border-white/15 bg-white/10 shadow-2xl">
@@ -1308,37 +1305,36 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="px-5 pb-20 sm:px-8 lg:px-12 lg:pb-28" aria-labelledby="track-delivery-title">
-          <div className="mx-auto grid max-w-7xl gap-7 overflow-hidden rounded-[2rem] bg-[#edf5ed] p-6 sm:p-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center lg:p-10">
-            <div><p className="text-xs font-extrabold uppercase tracking-[0.2em] text-orange-700">Already ordered?</p><h2 id="track-delivery-title" className="mt-2 font-display text-2xl font-bold text-[#17352a] sm:text-3xl">Track your delivery</h2><p className="mt-2 text-sm leading-6 text-slate-600">Use the order reference from your confirmation. No login is required.</p></div>
-            <form onSubmit={handleTracking} className="flex flex-col gap-3 rounded-3xl bg-white p-3 shadow-lg shadow-emerald-950/5 sm:flex-row">
+        <section className="bg-[#FAF9F6] px-5 pb-20 sm:px-8 lg:px-12 lg:pb-28" aria-labelledby="track-delivery-title">
+          <div className="mx-auto grid max-w-7xl gap-7 overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 sm:p-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center lg:p-10 shadow-sm">
+            <div><p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#143c2d]">Already ordered?</p><h2 id="track-delivery-title" className="mt-2 font-display text-2xl font-bold text-[#143c2d] sm:text-3xl">Track your delivery</h2><p className="mt-2 text-sm leading-6 text-slate-600">Use the order reference from your confirmation. No login is required.</p></div>
+            <form onSubmit={handleTracking} className="flex flex-col gap-3 rounded-3xl bg-[#FAF9F6] p-3 border border-slate-200 sm:flex-row">
               <label htmlFor="landing-tracking-code" className="sr-only">Delivery code</label>
-              <input id="landing-tracking-code" value={trackingCode} onChange={(event) => setTrackingCode(event.target.value.toUpperCase())} placeholder="Delivery code, e.g. BF-ABC12345" autoComplete="off" spellCheck="false" className="min-w-0 flex-1 rounded-2xl bg-slate-50 px-5 py-4 font-mono text-sm font-bold uppercase tracking-wide outline-none ring-emerald-600 transition focus:ring-2" />
-              <button type="submit" className="rounded-2xl bg-[#17352a] px-7 py-4 text-sm font-extrabold text-white transition hover:bg-emerald-700">Track delivery →</button>
+              <input id="landing-tracking-code" value={trackingCode} onChange={(event) => setTrackingCode(event.target.value.toUpperCase())} placeholder="Delivery code, e.g. BF-ABC12345" autoComplete="off" spellCheck="false" className="min-w-0 flex-1 rounded-2xl bg-white px-5 py-4 font-mono text-sm font-bold uppercase tracking-wide outline-none ring-[#143c2d] transition focus:ring-2" />
+              <button type="submit" className="rounded-2xl bg-[#143c2d] px-7 py-4 text-sm font-extrabold text-white transition hover:bg-[#1a4e3b]">Track delivery →</button>
             </form>
           </div>
         </section>
 
-        <section id="faq" className="scroll-mt-24 bg-white px-5 py-20 sm:px-8 lg:px-12 lg:py-28"><div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[.8fr_1.2fr]"><SectionHeading align="left" eyebrow="Good to know" title="Questions before your first order?" text="Here are quick answers to the things new customers usually want to understand." /><div className="divide-y divide-slate-200 border-y border-slate-200">{faqs.map((item, index) => { const isOpen = openFaq === index; return <div key={item.question}><button type="button" onClick={() => setOpenFaq(isOpen ? -1 : index)} className="flex w-full items-center justify-between gap-6 py-6 text-left" aria-expanded={isOpen}><span className="font-display text-lg font-bold text-[#17352a]">{item.question}</span><span className="text-2xl text-emerald-700" aria-hidden="true">{isOpen ? "−" : "+"}</span></button><AnimatePresence initial={false}>{isOpen && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden"><p className="pb-6 pr-10 text-sm leading-7 text-slate-600">{item.answer}</p></motion.div>}</AnimatePresence></div>; })}</div></div></section>
+        <section id="faq" className="scroll-mt-24 bg-white px-5 py-20 sm:px-8 lg:px-12 lg:py-28"><div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[.8fr_1.2fr]"><SectionHeading align="left" eyebrow="Good to know" title="Questions before your first order?" text="Here are quick answers to the things new customers usually want to understand." /><div className="divide-y divide-slate-200 border-y border-slate-200">{faqs.map((item, index) => { const isOpen = openFaq === index; return <div key={item.question}><button type="button" onClick={() => setOpenFaq(isOpen ? -1 : index)} className="flex w-full items-center justify-between gap-6 py-6 text-left" aria-expanded={isOpen}><span className="font-display text-lg font-bold text-[#143c2d]">{item.question}</span><span className="text-2xl text-[#143c2d]" aria-hidden="true">{isOpen ? "−" : "+"}</span></button><AnimatePresence initial={false}>{isOpen && <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden"><p className="pb-6 pr-10 text-sm leading-7 text-slate-600">{item.answer}</p></motion.div>}</AnimatePresence></div>; })}</div></div></section>
 
-        <section className="px-5 py-20 sm:px-8 lg:px-12"><div className="mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-orange-100 px-6 py-12 sm:px-10 lg:flex lg:items-center lg:justify-between lg:gap-12 lg:px-16"><div className="max-w-xl"><p className="text-xs font-extrabold uppercase tracking-[0.22em] text-orange-700">Harvest notes</p><h2 className="mt-3 font-display text-3xl font-bold text-[#17352a] sm:text-4xl">Fresh updates for your inbox</h2><p className="mt-3 text-sm leading-6 text-slate-600">Receive product news, seasonal ideas and practical inspiration from BemsFarms.</p></div><form onSubmit={handleSubscribe} className="mt-8 w-full max-w-xl lg:mt-0"><div className="flex flex-col gap-3 sm:flex-row"><label htmlFor="newsletter-email" className="sr-only">Email address</label><input id="newsletter-email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Your email address" className="min-w-0 flex-1 rounded-full border border-orange-200 bg-white px-6 py-4 text-sm outline-none ring-emerald-600 transition focus:ring-2" /><button type="submit" disabled={subscribeState === "loading"} className="rounded-full bg-[#17352a] px-7 py-4 text-sm font-extrabold text-white transition hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">{subscribeState === "loading" ? "Joining…" : "Keep me updated"}</button></div>{subscribeMessage && <p role="status" className={`mt-3 text-sm font-bold ${subscribeState === "error" ? "text-red-700" : "text-emerald-800"}`}>{subscribeMessage}</p>}</form></div></section>
+        <section className="bg-[#FAF9F6] px-5 py-20 sm:px-8 lg:px-12"><div className="mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white px-6 py-12 sm:px-10 lg:flex lg:items-center lg:justify-between lg:gap-12 lg:px-16 shadow-sm"><div className="max-w-xl"><p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[#143c2d]">Harvest notes</p><h2 className="mt-3 font-display text-3xl font-bold text-[#143c2d] sm:text-4xl">Fresh updates for your inbox</h2><p className="mt-3 text-sm leading-6 text-slate-600">Receive product news, seasonal ideas and practical inspiration from BemsFarms.</p></div><form onSubmit={handleSubscribe} className="mt-8 w-full max-w-xl lg:mt-0"><div className="flex flex-col gap-3 sm:flex-row"><label htmlFor="newsletter-email" className="sr-only">Email address</label><input id="newsletter-email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Your email address" className="min-w-0 flex-1 rounded-full border border-slate-300 bg-[#FAF9F6] px-6 py-4 text-sm outline-none ring-[#143c2d] transition focus:ring-2" /><button type="submit" disabled={subscribeState === "loading"} className="rounded-full bg-[#143c2d] px-7 py-4 text-sm font-extrabold text-white transition hover:bg-[#1a4e3b] disabled:cursor-wait disabled:opacity-60">{subscribeState === "loading" ? "Joining…" : "Keep me updated"}</button></div>{subscribeMessage && <p role="status" className={`mt-3 text-sm font-bold ${subscribeState === "error" ? "text-red-700" : "text-[#143c2d]"}`}>{subscribeMessage}</p>}</form></div></section>
 
-        <section className="px-5 pb-20 pt-8 text-center sm:px-8 lg:px-12 lg:pb-28"><div className="mx-auto max-w-3xl"><p className="text-xs font-extrabold uppercase tracking-[0.22em] text-emerald-700">Ready when you are</p><h2 className="mt-4 font-display text-4xl font-bold leading-tight text-[#17352a] sm:text-5xl">Bring something fresh to the table.</h2><p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-600">Create your BemsFarms account and start building a basket that fits your kitchen.</p><Link to="/register" className="mt-8 inline-flex rounded-full bg-[#1d6b45] px-9 py-4 text-base font-extrabold text-white shadow-xl shadow-emerald-900/15 transition hover:-translate-y-1 hover:bg-[#155637]">Create your account <span className="ml-2" aria-hidden="true">→</span></Link></div></section>
+        <section className="bg-white px-5 pb-20 pt-8 text-center sm:px-8 lg:px-12 lg:pb-28"><div className="mx-auto max-w-3xl"><p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[#143c2d]">Ready when you are</p><h2 className="mt-4 font-display text-4xl font-bold leading-tight text-[#143c2d] sm:text-5xl">Bring something fresh to the table.</h2><p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-600">Create your BemsFarms account and start building a basket that fits your kitchen.</p><Link to="/register" className="mt-8 inline-flex rounded-full bg-[#143c2d] px-9 py-4 text-base font-extrabold text-white shadow-md shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b]">Create your account <span className="ml-2" aria-hidden="true">→</span></Link></div></section>
       </main>
 
-      <footer className="relative overflow-hidden bg-[#0b281e] px-5 pb-8 pt-14 text-emerald-50/70 sm:px-8 lg:px-12">
-        <div className="absolute -right-24 top-0 h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
+      <footer className="relative overflow-hidden bg-[#0e241c] px-5 pb-8 pt-14 text-emerald-50/70 sm:px-8 lg:px-12">
         <div className="relative mx-auto max-w-7xl">
           <div className="grid items-center gap-8 rounded-[2rem] border border-white/10 bg-white/[0.06] p-7 sm:p-10 lg:grid-cols-[1fr_auto]">
             <div><p className="text-xs font-extrabold uppercase tracking-[0.22em] text-amber-300">Fresh ideas meet fresh food</p><h2 className="mt-3 max-w-2xl font-display text-3xl font-bold leading-tight text-white sm:text-4xl">Find the ingredients. Ask Chef Bems. Make something memorable.</h2></div>
-            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col"><Link to="/products" className="rounded-full bg-amber-300 px-7 py-3.5 text-center text-sm font-extrabold text-emerald-950 transition hover:bg-white">Shop the catalogue</Link><Link to="/register" className="rounded-full border border-white/25 px-7 py-3.5 text-center text-sm font-extrabold text-white transition hover:bg-white/10">Meet Chef Bems</Link></div>
+            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col"><Link to="/products" className="rounded-full bg-amber-300 px-7 py-3.5 text-center text-sm font-extrabold text-[#143c2d] transition hover:bg-white">Shop the catalogue</Link><Link to="/register" className="rounded-full border border-white/25 px-7 py-3.5 text-center text-sm font-extrabold text-white transition hover:bg-white/10">Meet Chef Bems</Link></div>
           </div>
 
           <div className="grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-[1.35fr_.75fr_.75fr_.9fr]">
             <div><img src={logo} alt="BemsFarms" className="h-10 w-auto brightness-0 invert" /><p className="mt-5 max-w-sm text-sm leading-7">Fresh Nigerian food, everyday kitchen essentials and practical meal inspiration in one welcoming marketplace.</p><div className="mt-6 flex flex-wrap gap-2"><span className="rounded-full border border-white/10 px-3 py-1.5 text-xs">🌱 Fresh selection</span><span className="rounded-full border border-white/10 px-3 py-1.5 text-xs">🔒 Secure checkout</span></div></div>
             <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Shop</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/products" className="hover:text-white">All products</Link><a href="#categories" className="hover:text-white">Categories</a><a href="#featured-products" className="hover:text-white">Fresh picks</a><a href="#chef-bems" className="hover:text-white">Chef Bems</a></div></div>
             <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Help</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/track-order" className="hover:text-white">Track an order</Link><a href="#how-it-works" className="hover:text-white">How it works</a><a href="#faq" className="hover:text-white">FAQs</a><a href="mailto:info@bemsfarms.com" className="hover:text-white">Contact support</a></div></div>
-            <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Your account</h2><p className="mt-5 text-sm leading-6">Keep delivery details, orders and preferences together.</p><div className="mt-5 flex flex-wrap gap-3"><Link to="/login" className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-white/10">Sign in</Link><Link to="/register" className="rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-emerald-600">Join</Link></div></div>
+            <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Your account</h2><p className="mt-5 text-sm leading-6">Keep delivery details, orders and preferences together.</p><div className="mt-5 flex flex-wrap gap-3"><Link to="/login" className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-white/10">Sign in</Link><Link to="/register" className="rounded-full bg-[#143c2d] border border-white/20 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-[#1a4e3b]">Join</Link></div></div>
           </div>
 
           <div className="flex flex-col gap-3 border-t border-white/10 pt-7 text-xs sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} BemsFarms Limited. All rights reserved.</p><p>Fresh food · Smart help · Easier shopping</p></div>
