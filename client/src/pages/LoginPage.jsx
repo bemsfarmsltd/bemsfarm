@@ -66,7 +66,18 @@ export default function LoginPage() {
     try {
       await login(email, password);
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid email or password");
+      if (err.response?.data?.requiresVerification) {
+        setError(
+          <span>
+            {err.response?.data?.message}{" "}
+            <Link to="/verify-email" state={{ email: err.response.data.email || email }} className="underline font-bold text-red-800 hover:text-red-900 ml-1">
+              Verify Now
+            </Link>
+          </span>
+        );
+      } else {
+        setError(err.response?.data?.message || "Invalid email or password");
+      }
     } finally {
       setLoading(false);
     }
