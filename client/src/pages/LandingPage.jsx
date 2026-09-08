@@ -97,7 +97,11 @@ function HeroSlideBanner() {
 
   return (
     <div
-      className="relative aspect-[4/4.6] overflow-hidden rounded-[2.5rem] bg-[#143c2d]/10 shadow-2xl shadow-emerald-950/20 sm:rounded-[3.5rem]"
+      className="relative aspect-[4/4.6] overflow-hidden rounded-[2.5rem] bg-[#EDE5D5] shadow-2xl shadow-emerald-950/20 sm:rounded-[3.5rem]"
+      style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M0 14 L14 0 L28 14 L14 28 Z' fill='none' stroke='%23143c2d' stroke-width='1.2' stroke-opacity='0.16'/%3E%3Ccircle cx='14' cy='14' r='1.5' fill='%23143c2d' fill-opacity='0.22'/%3E%3C/svg%3E")`,
+        backgroundSize: "28px 28px",
+      }}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={() => setIsPaused(true)}
@@ -984,13 +988,13 @@ export default function LandingPage() {
 
       <main id="main-content">
         <section className="relative overflow-hidden px-5 pb-20 pt-32 sm:px-8 lg:min-h-[760px] lg:px-12 lg:pb-24 lg:pt-36">
-          {/* Pattern background */}
+          {/* Pattern background across hero banner section */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%23143c2d' fill-opacity='0.05'/%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cpath d='M0 22 L22 0 L44 22 L22 44 Z' fill='none' stroke='%23143c2d' stroke-width='1' stroke-opacity='0.12'/%3E%3Ccircle cx='22' cy='22' r='2' fill='%23143c2d' fill-opacity='0.16'/%3E%3Ccircle cx='0' cy='0' r='1.5' fill='%23143c2d' fill-opacity='0.14'/%3E%3Ccircle cx='44' cy='0' r='1.5' fill='%23143c2d' fill-opacity='0.14'/%3E%3Ccircle cx='0' cy='44' r='1.5' fill='%23143c2d' fill-opacity='0.14'/%3E%3Ccircle cx='44' cy='44' r='1.5' fill='%23143c2d' fill-opacity='0.14'/%3E%3C/svg%3E")`,
               backgroundRepeat: "repeat",
-              backgroundSize: "36px 36px",
+              backgroundSize: "44px 44px",
             }}
           />
           <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
@@ -1010,13 +1014,34 @@ export default function LandingPage() {
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.12 }} className="relative mx-auto w-full max-w-[580px]">
+              {/* Pattern Background Backdrop at the back of the banner */}
+              <div
+                className="absolute -inset-3 sm:-inset-5 rounded-[2.8rem] sm:rounded-[3.8rem] bg-[#EDE5D5] border-2 border-dashed border-[#143c2d]/25 shadow-lg -rotate-1 pointer-events-none"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M0 14 L14 0 L28 14 L14 28 Z' fill='none' stroke='%23143c2d' stroke-width='1.2' stroke-opacity='0.18'/%3E%3Ccircle cx='14' cy='14' r='1.5' fill='%23143c2d' fill-opacity='0.22'/%3E%3C/svg%3E")`,
+                  backgroundSize: "28px 28px",
+                }}
+              />
+              {/* Decorative Corner Badge */}
+              <div className="absolute -top-3 -right-3 z-10 hidden sm:flex items-center gap-1.5 rounded-full bg-[#143c2d] px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-wider text-amber-300 shadow-lg rotate-2 border border-amber-300/30">
+                <span>🌾</span> Fresh Harvest
+              </div>
               <HeroSlideBanner />
             </motion.div>
           </div>
         </section>
 
-        <section className="border-y border-emerald-900/10 bg-[#143c2d] px-5 py-7 text-white sm:px-8 lg:px-12">
-          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 text-center md:grid-cols-4">
+        <section className="relative overflow-hidden border-y border-emerald-900/10 bg-[#143c2d] px-5 py-7 text-white sm:px-8 lg:px-12">
+          {/* Subtle agricultural pattern overlay on green stats banner */}
+          <div
+            className="absolute inset-0 pointer-events-none opacity-15"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M0 14 L14 0 L28 14 L14 28 Z' fill='none' stroke='%23ffffff' stroke-width='1'/%3E%3Ccircle cx='14' cy='14' r='1.5' fill='%23ffffff'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "repeat",
+              backgroundSize: "28px 28px",
+            }}
+          />
+          <div className="relative mx-auto grid max-w-7xl grid-cols-2 gap-6 text-center md:grid-cols-4">
             {[['Our Farm', 'branded products'], ['Fresh', 'harvest selections'], ['Helpful', 'meal inspiration'], ['Simple', 'order tracking']].map(([lead, text]) => (
               <div key={lead}>
                 <p className="font-display text-xl font-bold text-amber-300 sm:text-2xl">{lead}</p>
