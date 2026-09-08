@@ -43,6 +43,135 @@ const faqs = [
   { question: "Can I review my order after payment?", answer: "Yes. Signed-in customers can follow order progress and review previous purchases from their account." },
 ];
 
+const HERO_SLIDES = [
+  {
+    image: "/hero_food_2.jpg",
+    alt: "Bems Farms fresh vegetables, peppers and harvest produce",
+    tag: "🌱 100% Farm-Fresh",
+    eyebrow: "Bems Farms Harvests",
+    heading: "Fresh from our farm, delivered with care.",
+    badgeIcon: "🥬",
+  },
+  {
+    image: "/hero_food_1.jpg",
+    alt: "Bems Farms premium sorted grains, rice and pantry staples",
+    tag: "🌾 Bems Brand Staples",
+    eyebrow: "In-House Packaged",
+    heading: "Stone-free grains & everyday pantry staples.",
+    badgeIcon: "🍚",
+  },
+  {
+    image: "/hero_food_3.jpg",
+    alt: "Bems Farms pure cooking oils and natural seasonings",
+    tag: "✨ Pure & Unadulterated",
+    eyebrow: "Bems Signature Oils",
+    heading: "Healthy, authentic oils for familiar meals.",
+    badgeIcon: "🫒",
+  },
+  {
+    image: "/jollof_rice_hero.png",
+    alt: "Delicious Nigerian meals made with Bems Farms ingredients",
+    tag: "👨‍🍳 Chef Bems Approved",
+    eyebrow: "Farm-to-Kitchen",
+    heading: "Everything you need for the food you love.",
+    badgeIcon: "🍲",
+  },
+];
+
+function HeroSlideBanner() {
+  const [current, setCurrent] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 4500);
+    return () => clearInterval(interval);
+  }, [isPaused]);
+
+  const nextSlide = () => setCurrent((prev) => (prev + 1) % HERO_SLIDES.length);
+  const prevSlide = () => setCurrent((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+
+  const slide = HERO_SLIDES[current];
+
+  return (
+    <div
+      className="relative aspect-[4/4.6] overflow-hidden rounded-[2.5rem] bg-[#dfeade] shadow-2xl shadow-emerald-950/20 sm:rounded-[3.5rem]"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={() => setIsPaused(true)}
+      onTouchEnd={() => setIsPaused(false)}
+    >
+      <AnimatePresence mode="wait">
+        <motion.img
+          key={slide.image}
+          src={slide.image}
+          alt={slide.alt}
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.65, ease: "easeOut" }}
+          className="h-full w-full object-cover"
+        />
+      </AnimatePresence>
+
+      <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-emerald-950/80 via-emerald-950/35 to-transparent" />
+
+      {/* Floating Top Tag */}
+      <div className="absolute left-5 top-5 rounded-full border border-white/40 bg-white/90 px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-wider text-emerald-900 shadow-lg backdrop-blur sm:left-7 sm:top-7">
+        {slide.tag}
+      </div>
+
+      {/* Manual Prev / Next Buttons */}
+      <div className="absolute right-4 top-4 flex gap-1.5 sm:right-6 sm:top-6">
+        <button
+          type="button"
+          onClick={prevSlide}
+          aria-label="Previous slide"
+          className="grid h-9 w-9 place-items-center rounded-full border border-white/40 bg-white/85 text-sm font-bold text-slate-800 shadow-md backdrop-blur transition hover:bg-white active:scale-95"
+        >
+          ‹
+        </button>
+        <button
+          type="button"
+          onClick={nextSlide}
+          aria-label="Next slide"
+          className="grid h-9 w-9 place-items-center rounded-full border border-white/40 bg-white/85 text-sm font-bold text-slate-800 shadow-md backdrop-blur transition hover:bg-white active:scale-95"
+        >
+          ›
+        </button>
+      </div>
+
+      {/* Slide Content Card Overlay */}
+      <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between rounded-2xl border border-white/30 bg-white/95 p-4 shadow-xl backdrop-blur sm:bottom-7 sm:left-7 sm:right-7">
+        <div className="min-w-0 pr-3">
+          <p className="text-xs font-extrabold uppercase tracking-wider text-emerald-700">{slide.eyebrow}</p>
+          <p className="mt-0.5 truncate font-display text-base font-bold text-slate-900 sm:text-lg">{slide.heading}</p>
+        </div>
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-orange-100 text-xl shadow-inner">
+          {slide.badgeIcon}
+        </span>
+      </div>
+
+      {/* Slide Indicators / Dots */}
+      <div className="absolute bottom-24 left-0 right-0 flex justify-center gap-1.5 sm:bottom-28">
+        {HERO_SLIDES.map((_, index) => (
+          <button
+            key={index}
+            type="button"
+            onClick={() => setCurrent(index)}
+            aria-label={`Go to slide ${index + 1}`}
+            className={`h-2 rounded-full transition-all duration-300 ${
+              index === current ? "w-7 bg-amber-300 shadow-sm" : "w-2 bg-white/60 hover:bg-white"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SectionHeading({ eyebrow, title, text, align = "center" }) {
   const centered = align === "center";
   return (
@@ -59,6 +188,11 @@ function StoreProductCard({ product, added, onAdd }) {
   const unavailable = stock <= 0 || product.available_for_sale === false;
   const price = Number(product.price || 0) * NAIRA_PER_UNIT;
   const rating = Math.min(5, Math.max(0, Number(product.avg_rating) || 0));
+  const isBemsOriginal = Boolean(
+    product.name?.toLowerCase().includes("bems") ||
+    product.brand?.toLowerCase().includes("bems") ||
+    product.is_bems_brand
+  );
 
   return (
     <article className="group min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg">
@@ -70,6 +204,7 @@ function StoreProductCard({ product, added, onAdd }) {
           loading="lazy"
         />
         {product.is_featured && <span className="absolute left-3 top-3 rounded-full bg-orange-500 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white">Featured</span>}
+        {isBemsOriginal && <span className="absolute right-3 top-3 rounded-full bg-[#143c2d]/90 backdrop-blur px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">★ Bems Original</span>}
         {unavailable && <span className="absolute inset-x-3 bottom-3 rounded-full bg-slate-900/85 px-3 py-2 text-center text-xs font-bold text-white">Currently unavailable</span>}
       </Link>
       <div className="p-4">
@@ -111,7 +246,7 @@ export default function LandingPage() {
   const [search, setSearch] = useState("");
   const [trackingCode, setTrackingCode] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
-  const [catalogueView, setCatalogueView] = useState("featured");
+  const [catalogueView, setCatalogueView] = useState("all");
   const [addedProducts, setAddedProducts] = useState({});
 
   useEffect(() => {
@@ -154,10 +289,21 @@ export default function LandingPage() {
     window.setTimeout(() => setAddedProducts((current) => ({ ...current, [product.id]: false })), 1200);
   };
 
-  const displayedProducts = [...products].sort((a, b) => {
-    if (catalogueView === "newest") return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-    return Number(Boolean(b.is_featured)) - Number(Boolean(a.is_featured));
-  });
+  const displayedProducts = [...products]
+    .filter((product) => {
+      if (catalogueView === "bems_originals") {
+        return (
+          product.name?.toLowerCase().includes("bems") ||
+          product.brand?.toLowerCase().includes("bems") ||
+          product.is_bems_brand
+        );
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (catalogueView === "newest") return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      return Number(Boolean(b.is_featured)) - Number(Boolean(a.is_featured));
+    });
 
   const handleSubscribe = async (event) => {
     event.preventDefault();
@@ -185,8 +331,9 @@ export default function LandingPage() {
             <img src={logo} alt="BemsFarms" className="h-10 w-auto" />
           </Link>
           <div className="hidden items-center gap-6 xl:flex">
-            <a href="#featured-products" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">Shop</a>
+            <a href="#featured-products" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">Shop Products</a>
             <a href="#categories" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">Categories</a>
+            <a href="#our-brand" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">Our Brand</a>
             <a href="#how-it-works" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">How it works</a>
             <Link to="/track-order" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">Track order</Link>
             <a href="#chef-bems" className="text-sm font-bold text-slate-600 transition hover:text-emerald-800">Chef Bems</a>
@@ -206,7 +353,7 @@ export default function LandingPage() {
           {menuOpen && (
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="border-t border-slate-100 bg-white px-5 pb-6 pt-4 shadow-xl xl:hidden">
               <div className="flex flex-col gap-1">
-                {[['#featured-products', 'Shop products'], ['#categories', 'Categories'], ['#how-it-works', 'How it works'], ['#chef-bems', 'Chef Bems'], ['#faq', 'FAQs']].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-emerald-50">{label}</a>)}
+                {[['#featured-products', 'Shop products'], ['#categories', 'Categories'], ['#our-brand', 'Our Brand'], ['#how-it-works', 'How it works'], ['#chef-bems', 'Chef Bems'], ['#faq', 'FAQs']].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-emerald-50">{label}</a>)}
                 <Link to="/track-order" onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-emerald-50">Track an order</Link>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-3"><Link to="/login" className="rounded-full border border-emerald-800 px-4 py-3 text-center text-sm font-extrabold text-emerald-900">Sign in</Link><Link to="/register" className="rounded-full bg-[#1d6b45] px-4 py-3 text-center text-sm font-extrabold text-white">Join now</Link></div>
@@ -217,49 +364,163 @@ export default function LandingPage() {
       </header>
 
       <main id="main-content">
-        <section className="relative overflow-hidden px-5 pb-20 pt-32 sm:px-8 lg:min-h-[800px] lg:px-12 lg:pb-28 lg:pt-40">
+        <section className="relative overflow-hidden px-5 pb-20 pt-32 sm:px-8 lg:min-h-[760px] lg:px-12 lg:pb-24 lg:pt-36">
           <div className="absolute -left-40 top-20 h-96 w-96 rounded-full bg-amber-200/30 blur-3xl" />
           <div className="absolute -right-40 top-0 h-[520px] w-[520px] rounded-full bg-emerald-200/40 blur-3xl" />
-          <div className="relative mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1.02fr_.98fr]">
+          <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }} className="text-center lg:text-left">
-              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-emerald-800 shadow-sm"><span className="h-2 w-2 rounded-full bg-orange-500" /> Fresh food, thoughtfully sourced</div>
-              <h1 className="font-display text-[clamp(3rem,7vw,6.5rem)] font-bold leading-[0.93] tracking-[-0.055em] text-[#143c2d]">Good food starts <span className="text-[#d86d20]">closer to the farm.</span></h1>
-              <p className="mx-auto mt-7 max-w-xl text-lg leading-8 text-slate-600 lg:mx-0">Shop fresh Nigerian produce, pantry staples and everyday kitchen essentials in one welcoming place—supported by smart meal ideas from Chef Bems.</p>
-              <form onSubmit={handleSearch} className="mx-auto mt-7 flex max-w-xl items-center rounded-full border border-slate-200 bg-white p-2 shadow-lg shadow-slate-900/5 lg:mx-0">
-                <label htmlFor="landing-search" className="sr-only">Search the BemsFarms catalogue</label>
-                <span className="ml-3 text-lg" aria-hidden="true">⌕</span>
-                <input id="landing-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search rice, beans, vegetables…" className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-slate-400" />
-                <button type="submit" className="rounded-full bg-orange-500 px-5 py-3 text-xs font-extrabold text-white transition hover:bg-orange-600">Search</button>
-              </form>
-              <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start"><Link to="/products" className="rounded-full bg-[#1d6b45] px-8 py-4 text-center text-base font-extrabold text-white shadow-xl shadow-emerald-900/20 transition hover:-translate-y-1 hover:bg-[#155637]">Start shopping <span aria-hidden="true">→</span></Link><a href="#how-it-works" className="rounded-full border border-slate-300 bg-white/80 px-8 py-4 text-center text-base font-extrabold text-slate-800 transition hover:border-emerald-700 hover:text-emerald-800">See how it works</a></div>
-              <div className="mt-10 flex flex-wrap justify-center gap-x-7 gap-y-3 text-sm font-bold text-slate-600 lg:justify-start"><span>✓ Fresh selection</span><span>✓ Flexible delivery</span><span>✓ Secure checkout</span></div>
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-emerald-800 shadow-sm"><span className="h-2 w-2 rounded-full bg-orange-500" /> Direct from Bems Farms & Processing</div>
+              <h1 className="font-display text-[clamp(2.75rem,6.5vw,5.8rem)] font-bold leading-[0.95] tracking-[-0.055em] text-[#143c2d]">Fresh harvests, <span className="text-[#d86d20]">our own brand.</span></h1>
+              <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-600 lg:mx-0">Shop Bems Farms’ signature packaged staples, pure cooking oils and freshly harvested produce alongside everyday kitchen essentials—cultivated with care and paired with Chef Bems.</p>
+              
+              <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
+                <a href="#featured-products" className="rounded-full bg-[#1d6b45] px-8 py-4 text-center text-base font-extrabold text-white shadow-xl shadow-emerald-900/20 transition hover:-translate-y-1 hover:bg-[#155637]">Explore Our Products <span aria-hidden="true">↓</span></a>
+                <Link to="/products" className="rounded-full border border-slate-300 bg-white/80 px-8 py-4 text-center text-base font-extrabold text-slate-800 transition hover:border-emerald-700 hover:text-emerald-800">Full Catalogue</Link>
+              </div>
+              <div className="mt-9 flex flex-wrap justify-center gap-x-7 gap-y-3 text-sm font-bold text-slate-600 lg:justify-start">
+                <span>✓ Bems Farms Brand Originals</span>
+                <span>✓ Direct Farm Quality</span>
+                <span>✓ Fast & Reliable Delivery</span>
+              </div>
             </motion.div>
-            <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.12 }} className="relative mx-auto w-full max-w-[610px]">
-              <div className="relative aspect-[4/4.6] overflow-hidden rounded-[2.5rem] bg-[#dfeade] shadow-2xl shadow-emerald-950/15 sm:rounded-[3.5rem]"><img src="/hero_food_2.jpg" alt="A colourful selection of fresh Nigerian vegetables and ingredients" className="h-full w-full object-cover" fetchPriority="high" /><div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-emerald-950/45 to-transparent" /><div className="absolute bottom-5 left-5 right-5 flex items-center justify-between rounded-2xl border border-white/30 bg-white/90 p-4 shadow-lg backdrop-blur sm:bottom-7 sm:left-7 sm:right-auto sm:w-[290px]"><div><p className="text-xs font-extrabold uppercase tracking-wider text-emerald-700">From basket to table</p><p className="mt-1 font-display text-lg font-bold text-slate-900">Fresh choices, less stress.</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-orange-100 text-xl">🌱</span></div></div>
-              <div className="absolute -right-3 top-10 hidden rounded-2xl border border-white bg-[#fff9ed] p-4 shadow-xl sm:block lg:-right-10"><p className="text-2xl">🥬</p><p className="mt-2 text-xs font-extrabold uppercase tracking-wider text-slate-500">Seasonal picks</p></div>
+            <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.12 }} className="relative mx-auto w-full max-w-[580px]">
+              <HeroSlideBanner />
             </motion.div>
           </div>
         </section>
 
-        <section className="border-y border-emerald-900/10 bg-[#143c2d] px-5 py-7 text-white sm:px-8 lg:px-12"><div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 text-center md:grid-cols-4">{[['Fresh', 'produce selections'], ['Easy', 'online ordering'], ['Helpful', 'meal inspiration'], ['Simple', 'order tracking']].map(([lead, text]) => <div key={lead}><p className="font-display text-xl font-bold text-amber-300 sm:text-2xl">{lead}</p><p className="mt-1 text-xs font-bold uppercase tracking-wider text-emerald-100/70">{text}</p></div>)}</div></section>
+        <section className="border-y border-emerald-900/10 bg-[#143c2d] px-5 py-7 text-white sm:px-8 lg:px-12">
+          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 text-center md:grid-cols-4">
+            {[['Our Farm', 'branded products'], ['Fresh', 'harvest selections'], ['Helpful', 'meal inspiration'], ['Simple', 'order tracking']].map(([lead, text]) => (
+              <div key={lead}>
+                <p className="font-display text-xl font-bold text-amber-300 sm:text-2xl">{lead}</p>
+                <p className="mt-1 text-xs font-bold uppercase tracking-wider text-emerald-100/70">{text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
-        <section id="featured-products" className="scroll-mt-24 bg-white px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
+        {/* ── OUR BRAND SPOTLIGHT ── */}
+        <section id="our-brand" className="scroll-mt-24 bg-[#faf8f2] px-5 py-16 sm:px-8 lg:px-12 lg:py-20 border-b border-emerald-900/10">
           <div className="mx-auto max-w-7xl">
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-              <SectionHeading align="left" eyebrow="Shop the farm" title={appliedSearch ? `Results for “${appliedSearch}”` : "Fresh picks for your basket"} text="Real products and current prices from the BemsFarms catalogue." />
-              <div className="flex flex-wrap gap-2">
-                {!appliedSearch && <><button type="button" onClick={() => setCatalogueView("featured")} className={`rounded-full px-5 py-2.5 text-sm font-extrabold ${catalogueView === "featured" ? "bg-[#17352a] text-white" : "border border-slate-300 text-slate-700"}`}>Featured</button><button type="button" onClick={() => setCatalogueView("newest")} className={`rounded-full px-5 py-2.5 text-sm font-extrabold ${catalogueView === "newest" ? "bg-[#17352a] text-white" : "border border-slate-300 text-slate-700"}`}>New arrivals</button></>}
-                {appliedSearch && <button type="button" onClick={() => { setSearch(""); loadProducts(); }} className="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-extrabold text-slate-700 hover:border-emerald-700 hover:text-emerald-800">Clear search</button>}
+            <div className="grid gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-orange-700">The Bems Farms Difference</p>
+                <h2 className="mt-3 font-display text-3xl font-bold text-[#143c2d] sm:text-4xl">Our Own Products. Straight from Our Farm to Your Kitchen.</h2>
+                <p className="mt-4 text-base leading-7 text-slate-600">Unlike ordinary markets, Bems Farms cultivates, sorts, and packages our own line of signature food staples and crops. Every bag of grains, bottle of oil, and fresh harvest is inspected for supreme quality and natural taste.</p>
+                <div className="mt-7 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                    <p className="text-xl">🌾</p>
+                    <h3 className="mt-2 font-display text-base font-bold text-[#17352a]">In-House Packaged</h3>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">Carefully sorted, stone-free grains and pure culinary oils.</p>
+                  </div>
+                  <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+                    <p className="text-xl">🚜</p>
+                    <h3 className="mt-2 font-display text-base font-bold text-[#17352a]">Harvested Daily</h3>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">Crops harvested at peak freshness with zero artificial tampering.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-3xl border border-emerald-900/10 bg-[#143c2d] p-7 text-white shadow-xl sm:p-9">
+                <p className="text-xs font-extrabold uppercase tracking-widest text-amber-300">Bems Guarantee</p>
+                <h3 className="mt-2 font-display text-2xl font-bold">Look for the “Bems Original” Badge</h3>
+                <p className="mt-3 text-sm leading-6 text-emerald-100/80">When browsing our catalogue, look out for items marked with the <span className="font-bold text-amber-300">★ Bems Original</span> badge—our promise of direct farm origin, honest weighing, and premium quality.</p>
+                <div className="mt-6">
+                  <a href="#featured-products" onClick={() => setCatalogueView("bems_originals")} className="inline-flex rounded-full bg-amber-300 px-6 py-3 text-xs font-extrabold uppercase tracking-wider text-emerald-950 transition hover:bg-white">View Bems Originals →</a>
+                </div>
               </div>
             </div>
+          </div>
+        </section>
 
-            {productsLoading && <div className="mt-12 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">{Array.from({ length: 12 }).map((_, index) => <div key={index} className="overflow-hidden rounded-2xl border border-slate-100 bg-white"><div className="aspect-[4/3] animate-pulse bg-slate-100" /><div className="space-y-3 p-4"><div className="h-3 w-20 animate-pulse rounded bg-slate-100" /><div className="h-5 w-3/4 animate-pulse rounded bg-slate-100" /><div className="h-9 animate-pulse rounded bg-slate-100" /></div></div>)}</div>}
+        {/* ── CATALOGUE WITH PROMINENT SEARCH ── */}
+        <section id="featured-products" className="scroll-mt-24 bg-white px-5 py-20 sm:px-8 lg:px-12 lg:py-24">
+          <div className="mx-auto max-w-7xl">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <SectionHeading align="left" eyebrow="Shop the farm" title={appliedSearch ? `Results for “${appliedSearch}”` : "Fresh picks for your basket"} text="Explore our in-house brand items and full catalogue with live stock and prices." />
+              
+              {/* Search Bar right inside Catalogue section */}
+              <form onSubmit={handleSearch} className="flex w-full max-w-md items-center rounded-full border border-slate-300 bg-[#faf8f2] p-1.5 shadow-sm focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-600/20">
+                <label htmlFor="catalogue-search" className="sr-only">Search products</label>
+                <span className="ml-3 text-slate-400" aria-hidden="true">🔍</span>
+                <input
+                  id="catalogue-search"
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search rice, oils, peppers, Bems items…"
+                  className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-slate-400"
+                />
+                <button type="submit" className="rounded-full bg-[#143c2d] px-5 py-2.5 text-xs font-extrabold text-white transition hover:bg-[#1a4e3b]">
+                  Search
+                </button>
+              </form>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="mt-8 flex flex-wrap items-center gap-2 border-b border-slate-100 pb-4">
+              <button
+                type="button"
+                onClick={() => { setCatalogueView("all"); if (appliedSearch) { setSearch(""); loadProducts(); } }}
+                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "all" && !appliedSearch ? "bg-[#17352a] text-white" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
+              >
+                All Products
+              </button>
+              <button
+                type="button"
+                onClick={() => setCatalogueView("bems_originals")}
+                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "bems_originals" ? "bg-emerald-800 text-amber-300 ring-2 ring-amber-400/40" : "border border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"}`}
+              >
+                ★ Bems Originals
+              </button>
+              <button
+                type="button"
+                onClick={() => setCatalogueView("featured")}
+                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "featured" ? "bg-[#17352a] text-white" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
+              >
+                Featured
+              </button>
+              <button
+                type="button"
+                onClick={() => setCatalogueView("newest")}
+                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "newest" ? "bg-[#17352a] text-white" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
+              >
+                New Arrivals
+              </button>
+              {appliedSearch && (
+                <button
+                  type="button"
+                  onClick={() => { setSearch(""); loadProducts(); }}
+                  className="ml-auto rounded-full border border-orange-300 bg-orange-50 px-4 py-1.5 text-xs font-extrabold text-orange-800 hover:bg-orange-100"
+                >
+                  Clear search ({appliedSearch}) ✕
+                </button>
+              )}
+            </div>
+
+            {productsLoading && <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">{Array.from({ length: 12 }).map((_, index) => <div key={index} className="overflow-hidden rounded-2xl border border-slate-100 bg-white"><div className="aspect-[4/3] animate-pulse bg-slate-100" /><div className="space-y-3 p-4"><div className="h-3 w-20 animate-pulse rounded bg-slate-100" /><div className="h-5 w-3/4 animate-pulse rounded bg-slate-100" /><div className="h-9 animate-pulse rounded bg-slate-100" /></div></div>)}</div>}
 
             {!productsLoading && productsError && <div role="alert" className="mt-10 flex flex-col items-center rounded-3xl border border-orange-200 bg-orange-50 px-6 py-10 text-center"><p className="font-display text-xl font-bold text-slate-900">{productsError}</p><button type="button" onClick={() => loadProducts(search)} className="mt-4 rounded-full bg-[#17352a] px-6 py-3 text-sm font-extrabold text-white">Try again</button></div>}
 
-            {!productsLoading && !productsError && products.length === 0 && <div role="status" className="mt-10 rounded-3xl border border-slate-200 bg-slate-50 px-6 py-12 text-center"><p className="font-display text-xl font-bold text-slate-900">No products matched that search.</p><p className="mt-2 text-sm text-slate-600">Try a broader ingredient or browse the categories below.</p></div>}
+            {!productsLoading && !productsError && displayedProducts.length === 0 && (
+              <div role="status" className="mt-10 rounded-3xl border border-slate-200 bg-slate-50 px-6 py-12 text-center">
+                <p className="font-display text-xl font-bold text-slate-900">
+                  {catalogueView === "bems_originals" ? "No Bems Original products currently listed." : "No products matched that query."}
+                </p>
+                <p className="mt-2 text-sm text-slate-600">Try a broader ingredient or browse all products.</p>
+                <button type="button" onClick={() => { setCatalogueView("all"); setSearch(""); loadProducts(); }} className="mt-4 rounded-full bg-[#143c2d] px-6 py-2.5 text-xs font-extrabold text-white">
+                  Reset view
+                </button>
+              </div>
+            )}
 
-            {!productsLoading && !productsError && products.length > 0 && <div className="mt-12 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 xl:gap-4">{displayedProducts.map((product) => <StoreProductCard key={product.id} product={product} added={Boolean(addedProducts[product.id])} onAdd={handleAdd} />)}</div>}
+            {!productsLoading && !productsError && displayedProducts.length > 0 && (
+              <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 xl:gap-4">
+                {displayedProducts.map((product) => (
+                  <StoreProductCard key={product.id} product={product} added={Boolean(addedProducts[product.id])} onAdd={handleAdd} />
+                ))}
+              </div>
+            )}
 
             <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl bg-[#f3f0e6] px-6 py-5 sm:flex-row">
               <p className="text-center text-sm font-bold text-slate-700 sm:text-left">Your basket is saved while you create an account.</p>
