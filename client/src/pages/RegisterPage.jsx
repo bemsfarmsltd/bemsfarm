@@ -63,6 +63,17 @@ export default function RegisterPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const getPasswordStrength = (pass) => {
+    if (!pass) return 0;
+    let strength = 0;
+    if (pass.length >= 8) strength++;
+    if (/[A-Z]/.test(pass)) strength++;
+    if (/[0-9]/.test(pass)) strength++;
+    if (/[^A-Za-z0-9]/.test(pass)) strength++;
+    return strength;
+  };
+  const passStrength = getPasswordStrength(form.password);
+
   const toggleTag = (id) => {
     if (selectedTags.includes(id)) {
       setSelectedTags((prev) => prev.filter((t) => t !== id));
@@ -76,15 +87,15 @@ export default function RegisterPage() {
     setError("");
 
     if (!form.name.trim()) return setError("Please enter your full name");
-    if (!form.email.trim()) return setError("Please enter your email");
-    if (!form.phone.trim()) return setError("Please enter your phone number");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return setError("Please enter a valid email address");
     
-    const finalPhone = form.phone.trim().startsWith("+234") 
-      ? form.phone.trim() 
-      : `+234${form.phone.trim().replace(/^0+/, "")}`;
+    const cleanPhone = form.phone.replace(/\D/g, "");
+    if (cleanPhone.length !== 10) return setError("Phone number must be exactly 10 digits");
+    
+    const finalPhone = `+234${cleanPhone}`;
 
-    if (form.password.length < 6)
-      return setError("Password must be at least 6 characters");
+    if (passStrength < 4)
+      return setError("Password is not strong enough. See requirements below.");
     if (form.password !== form.confirm)
       return setError("Passwords do not match");
 
@@ -251,12 +262,16 @@ export default function RegisterPage() {
                   <input
                     type="tel"
                     value={form.phone}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    placeholder="801 234 5678"
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      handleInputChange("phone", val);
+                    }}
+                    placeholder="8012345678"
                     className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-r-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
                     required
                   />
                 </div>
+                <p className="text-[10px] text-gray-400 mt-1 ml-1">Enter exactly 10 digits (e.g. 8012345678)</p>
               </div>
 
               {/* Password Fields Row */}
@@ -269,10 +284,20 @@ export default function RegisterPage() {
                     type="password"
                     value={form.password}
                     onChange={(e) => handleInputChange("password", e.target.value)}
-                    placeholder="••••••"
+                    placeholder="••••••••"
                     className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
                     required
                   />
+                  {form.password && (
+                    <div className="mt-1.5 flex gap-1 h-1">
+                      {[1, 2, 3, 4].map(level => (
+                        <div key={level} className={`h-full flex-1 rounded-full ${passStrength >= level ? (passStrength < 4 ? 'bg-amber-400' : 'bg-emerald-500') : 'bg-gray-200'}`} />
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-gray-400 mt-1.5 leading-tight">
+                    Min 8 chars, 1 uppercase, 1 number, 1 symbol
+                  </p>
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
@@ -282,7 +307,7 @@ export default function RegisterPage() {
                     type="password"
                     value={form.confirm}
                     onChange={(e) => handleInputChange("confirm", e.target.value)}
-                    placeholder="••••••"
+                    placeholder="••••••••"
                     className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
                     required
                   />
