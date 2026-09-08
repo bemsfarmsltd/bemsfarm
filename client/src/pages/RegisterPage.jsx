@@ -132,6 +132,15 @@ export default function RegisterPage() {
         style={{ width: 260, height: 260, bottom: -80, left: -60, background: "radial-gradient(circle, rgba(245,158,11,0.14), transparent 70%)" }}
       />
 
+      {/* Top Floating Back Button */}
+      <Link
+        to="/"
+        className="absolute top-4 left-4 md:top-6 md:left-6 z-30 inline-flex items-center gap-2 rounded-full border border-emerald-950/10 bg-white/90 px-4 py-2 text-xs font-extrabold uppercase tracking-wider text-emerald-900 shadow-md backdrop-blur transition hover:bg-white hover:shadow-lg hover:-translate-y-0.5"
+        aria-label="Back to home"
+      >
+        <span aria-hidden="true">←</span> Back to Home
+      </Link>
+
       {/* Outer Card Container */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -180,6 +189,14 @@ export default function RegisterPage() {
         <div className="flex-1 p-6 md:p-10 flex flex-col justify-between overflow-y-auto">
 
           <div className="w-full max-w-sm mx-auto my-auto text-left">
+            <div className="flex items-center justify-between mb-3">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-emerald-800 hover:text-emerald-950 transition"
+              >
+                <span aria-hidden="true">←</span> Back to Landing Page
+              </Link>
+            </div>
             <h1 className="text-2xl font-extrabold text-gray-900 mb-1 font-display">Sign up</h1>
             <p className="text-gray-500 text-[13px] mb-6 font-medium">
               Already have an account?{" "}
