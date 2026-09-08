@@ -957,17 +957,17 @@ export default function LandingPage() {
       <style>{`
         @keyframes driftPattern {
           0% { background-position: 0px 0px; }
-          100% { background-position: 88px 88px; }
+          100% { background-position: 56px 56px; }
         }
         @keyframes driftBacking {
           0% { background-position: 0px 0px; }
-          100% { background-position: -52px 52px; }
+          100% { background-position: -56px 56px; }
         }
         .animate-pattern-drift {
-          animation: driftPattern 24s linear infinite;
+          animation: driftPattern 32s linear infinite;
         }
         .animate-backing-drift {
-          animation: driftBacking 18s linear infinite;
+          animation: driftBacking 24s linear infinite;
         }
       `}</style>
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:shadow-lg">Skip to main content</a>
@@ -1016,11 +1016,11 @@ export default function LandingPage() {
           <div
             className="animate-pattern-drift absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cpath d='M0 22 L22 0 L44 22 L22 44 Z' fill='none' stroke='%23143c2d' stroke-width='1' stroke-opacity='0.12'/%3E%3Ccircle cx='22' cy='22' r='2' fill='%23143c2d' fill-opacity='0.15'/%3E%3Ccircle cx='0' cy='0' r='1.5' fill='%23143c2d' fill-opacity='0.12'/%3E%3Ccircle cx='44' cy='0' r='1.5' fill='%23143c2d' fill-opacity='0.12'/%3E%3Ccircle cx='0' cy='44' r='1.5' fill='%23143c2d' fill-opacity='0.12'/%3E%3Ccircle cx='44' cy='44' r='1.5' fill='%23143c2d' fill-opacity='0.12'/%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cpath d='M0 28 L28 0 L56 28 L28 56 Z' fill='none' stroke='%23143c2d' stroke-width='0.75' stroke-opacity='0.04'/%3E%3Ccircle cx='28' cy='28' r='1' fill='%23143c2d' fill-opacity='0.04'/%3E%3Ccircle cx='0' cy='0' r='0.8' fill='%23143c2d' fill-opacity='0.03'/%3E%3Ccircle cx='56' cy='0' r='0.8' fill='%23143c2d' fill-opacity='0.03'/%3E%3Ccircle cx='0' cy='56' r='0.8' fill='%23143c2d' fill-opacity='0.03'/%3E%3Ccircle cx='56' cy='56' r='0.8' fill='%23143c2d' fill-opacity='0.03'/%3E%3C/svg%3E")`,
               backgroundRepeat: "repeat",
-              backgroundSize: "44px 44px",
-              WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.2) 85%, transparent 100%)",
-              maskImage: "linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.2) 85%, transparent 100%)",
+              backgroundSize: "56px 56px",
+              WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,0.06) 70%, transparent 92%)",
+              maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,0.06) 70%, transparent 92%)",
             }}
           />
           <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
@@ -1042,12 +1042,12 @@ export default function LandingPage() {
             <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.12 }} className="relative mx-auto w-full max-w-[580px]">
               {/* Soft Moving Pattern Backdrop Frame at the back of the banner */}
               <div
-                className="animate-backing-drift absolute -inset-4 sm:-inset-6 lg:-inset-7 rounded-[2.8rem] sm:rounded-[3.8rem] bg-[#EDE5D5] border-2 border-dashed border-[#143c2d]/25 shadow-lg -rotate-1 pointer-events-none"
+                className="animate-backing-drift absolute -inset-4 sm:-inset-6 lg:-inset-7 rounded-[2.8rem] sm:rounded-[3.8rem] bg-[#F3EDE2] border-2 border-dashed border-[#143c2d]/15 shadow-md -rotate-1 pointer-events-none"
                 style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'%3E%3Cpath d='M0 13 L13 0 L26 13 L13 26 Z' fill='none' stroke='%23143c2d' stroke-width='1.1' stroke-opacity='0.16'/%3E%3Ccircle cx='13' cy='13' r='1.6' fill='%23143c2d' fill-opacity='0.20'/%3E%3C/svg%3E")`,
-                  backgroundSize: "26px 26px",
-                  WebkitMaskImage: "radial-gradient(ellipse at center, rgba(0,0,0,1) 70%, rgba(0,0,0,0.7) 90%, transparent 100%)",
-                  maskImage: "radial-gradient(ellipse at center, rgba(0,0,0,1) 70%, rgba(0,0,0,0.7) 90%, transparent 100%)",
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M0 14 L14 0 L28 14 L14 28 Z' fill='none' stroke='%23143c2d' stroke-width='0.75' stroke-opacity='0.06'/%3E%3Ccircle cx='14' cy='14' r='1' fill='%23143c2d' fill-opacity='0.07'/%3E%3C/svg%3E")`,
+                  backgroundSize: "28px 28px",
+                  WebkitMaskImage: "radial-gradient(ellipse at center, rgba(0,0,0,0.85) 60%, rgba(0,0,0,0.4) 85%, transparent 100%)",
+                  maskImage: "radial-gradient(ellipse at center, rgba(0,0,0,0.85) 60%, rgba(0,0,0,0.4) 85%, transparent 100%)",
                 }}
               />
               {/* Decorative Corner Badge */}
@@ -1062,7 +1062,7 @@ export default function LandingPage() {
         <section className="relative overflow-hidden border-y border-emerald-900/10 bg-[#143c2d] px-5 py-7 text-white sm:px-8 lg:px-12">
           {/* Subtle agricultural pattern overlay on green stats banner */}
           <div
-            className="absolute inset-0 pointer-events-none opacity-15"
+            className="absolute inset-0 pointer-events-none opacity-[0.05]"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M0 14 L14 0 L28 14 L14 28 Z' fill='none' stroke='%23ffffff' stroke-width='1'/%3E%3Ccircle cx='14' cy='14' r='1.5' fill='%23ffffff'/%3E%3C/svg%3E")`,
               backgroundRepeat: "repeat",
