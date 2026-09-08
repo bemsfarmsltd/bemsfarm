@@ -207,8 +207,16 @@ function StoreProductCard({ product, added, onAdd }) {
           className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
           loading="lazy"
         />
-        {product.is_featured && <span className="absolute left-3 top-3 rounded-full bg-[#143c2d] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white">Featured</span>}
-        {isBemsOriginal && <span className="absolute right-3 top-3 rounded-full bg-[#143c2d]/95 backdrop-blur px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">★ Bems Original</span>}
+        {/* Prioritize Bems Original over generic Featured to prevent badge overlap */}
+        {isBemsOriginal ? (
+          <span className="absolute right-3 top-3 rounded-full bg-[#143c2d]/95 backdrop-blur px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">
+            ★ Bems Original
+          </span>
+        ) : product.is_featured ? (
+          <span className="absolute left-3 top-3 rounded-full bg-[#143c2d] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white">
+            Featured
+          </span>
+        ) : null}
         {unavailable && <span className="absolute inset-x-3 bottom-3 rounded-full bg-slate-900/85 px-3 py-2 text-center text-xs font-bold text-white">Currently unavailable</span>}
       </Link>
       <div className="p-4">
@@ -218,8 +226,8 @@ function StoreProductCard({ product, added, onAdd }) {
         <div className="mt-2 flex min-h-4 items-center gap-1 text-[11px]">
           {Number(product.review_count) > 0 ? <><span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}><span aria-hidden="true">{"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}</span></span><span className="text-slate-400">({product.review_count})</span></> : <span className="text-slate-400">New to the shop</span>}
         </div>
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-base font-extrabold text-slate-900">₦{price.toLocaleString("en-NG")}</p>
+        <div className="mt-3 flex items-center justify-between gap-1.5">
+          <p className="font-extrabold text-slate-900 text-sm xl:text-base whitespace-nowrap">₦{price.toLocaleString("en-NG")}</p>
           <button
             type="button"
             onClick={() => onAdd(product)}
