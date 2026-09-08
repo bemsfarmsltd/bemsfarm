@@ -1160,13 +1160,6 @@ export default function LandingPage() {
                   Clear search ({appliedSearch}) ✕
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => setFullScreenModalOpen(true)}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-[#DDD3BF] bg-white px-4 py-1.5 text-xs font-extrabold text-slate-700 transition hover:border-[#143c2d] hover:text-[#143c2d]"
-              >
-                <span aria-hidden="true">⛶</span> Open Full Screen
-              </button>
             </div>
 
             {productsLoading && <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">{Array.from({ length: 12 }).map((_, index) => <div key={index} className="overflow-hidden rounded-2xl border border-slate-100 bg-white"><div className="aspect-[4/3] animate-pulse bg-slate-100" /><div className="space-y-3 p-4"><div className="h-3 w-20 animate-pulse rounded bg-slate-100" /><div className="h-5 w-3/4 animate-pulse rounded bg-slate-100" /><div className="h-9 animate-pulse rounded bg-slate-100" /></div></div>)}</div>}
@@ -1251,13 +1244,6 @@ export default function LandingPage() {
               <p className="text-center text-sm font-bold text-slate-700 sm:text-left">Your basket is saved while you create an account.</p>
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <span className="text-sm font-extrabold text-[#143c2d]">{cartCount} {cartCount === 1 ? "item" : "items"}</span>
-                <button
-                  type="button"
-                  onClick={() => setFullScreenModalOpen(true)}
-                  className="rounded-full border border-[#143c2d] bg-white px-5 py-2.5 text-sm font-extrabold text-[#143c2d] transition hover:bg-[#F3EDE2]"
-                >
-                  ⛶ Open Full Screen
-                </button>
                 <Link to="/products" className="rounded-full border border-[#DDD3BF] bg-white px-5 py-2.5 text-sm font-extrabold text-slate-800 transition hover:border-[#143c2d]">
                   View catalogue page
                 </Link>
