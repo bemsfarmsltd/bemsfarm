@@ -992,7 +992,7 @@ export default function LandingPage() {
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cpath d='M0 22 L22 0 L44 22 L22 44 Z' fill='none' stroke='%23143c2d' stroke-width='1' stroke-opacity='0.12'/%3E%3Ccircle cx='22' cy='22' r='2' fill='%23143c2d' fill-opacity='0.16'/%3E%3Ccircle cx='0' cy='0' r='1.5' fill='%23143c2d' fill-opacity='0.14'/%3E%3Ccircle cx='44' cy='0' r='1.5' fill='%23143c2d' fill-opacity='0.14'/%3E%3Ccircle cx='0' cy='44' r='1.5' fill='%23143c2d' fill-opacity='0.14'/%3E%3Ccircle cx='44' cy='44' r='1.5' fill='%23143c2d' fill-opacity='0.14'/%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'%3E%3Cpath d='M0 22 L22 0 L44 22 L22 44 Z' fill='none' stroke='%23143c2d' stroke-width='1.2' stroke-opacity='0.20'/%3E%3Ccircle cx='22' cy='22' r='2.2' fill='%23143c2d' fill-opacity='0.26'/%3E%3Ccircle cx='0' cy='0' r='1.8' fill='%23143c2d' fill-opacity='0.22'/%3E%3Ccircle cx='44' cy='0' r='1.8' fill='%23143c2d' fill-opacity='0.22'/%3E%3Ccircle cx='0' cy='44' r='1.8' fill='%23143c2d' fill-opacity='0.22'/%3E%3Ccircle cx='44' cy='44' r='1.8' fill='%23143c2d' fill-opacity='0.22'/%3E%3C/svg%3E")`,
               backgroundRepeat: "repeat",
               backgroundSize: "44px 44px",
             }}
@@ -1014,16 +1014,16 @@ export default function LandingPage() {
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.12 }} className="relative mx-auto w-full max-w-[580px]">
-              {/* Pattern Background Backdrop at the back of the banner */}
+              {/* Distinct High-Contrast Pattern Backdrop Frame at the back of the banner */}
               <div
-                className="absolute -inset-3 sm:-inset-5 rounded-[2.8rem] sm:rounded-[3.8rem] bg-[#EDE5D5] border-2 border-dashed border-[#143c2d]/25 shadow-lg -rotate-1 pointer-events-none"
+                className="absolute -inset-4 sm:-inset-6 lg:-inset-7 rounded-[2.8rem] sm:rounded-[3.8rem] bg-[#E8DEC8] border-2 border-dashed border-[#143c2d]/35 shadow-xl -rotate-1 pointer-events-none"
                 style={{
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Cpath d='M0 14 L14 0 L28 14 L14 28 Z' fill='none' stroke='%23143c2d' stroke-width='1.2' stroke-opacity='0.18'/%3E%3Ccircle cx='14' cy='14' r='1.5' fill='%23143c2d' fill-opacity='0.22'/%3E%3C/svg%3E")`,
-                  backgroundSize: "28px 28px",
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'%3E%3Cpath d='M0 13 L13 0 L26 13 L13 26 Z' fill='none' stroke='%23143c2d' stroke-width='1.3' stroke-opacity='0.28'/%3E%3Ccircle cx='13' cy='13' r='1.8' fill='%23143c2d' fill-opacity='0.35'/%3E%3C/svg%3E")`,
+                  backgroundSize: "26px 26px",
                 }}
               />
               {/* Decorative Corner Badge */}
-              <div className="absolute -top-3 -right-3 z-10 hidden sm:flex items-center gap-1.5 rounded-full bg-[#143c2d] px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-wider text-amber-300 shadow-lg rotate-2 border border-amber-300/30">
+              <div className="absolute -top-3 -right-2 z-10 hidden sm:flex items-center gap-1.5 rounded-full bg-[#143c2d] px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider text-amber-300 shadow-xl rotate-2 border border-amber-300/40">
                 <span>🌾</span> Fresh Harvest
               </div>
               <HeroSlideBanner />
