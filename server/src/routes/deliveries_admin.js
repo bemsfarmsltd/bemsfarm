@@ -151,6 +151,21 @@ router.patch(
         return res.status(404).json({ message: "Delivery not found" });
       }
 
+      const currentStatus = del.rows[0].status;
+      const validTransitions = {
+        pending: ["assigned", "cancelled"],
+        assigned: ["en_route", "cancelled"],
+        en_route: ["delivery_attempted", "delivered", "cancelled"],
+        delivery_attempted: ["en_route", "delivered", "cancelled"],
+        delivered: [], // Terminal state
+        cancelled: []  // Terminal state
+      };
+
+      if (validTransitions[currentStatus] && !validTransitions[currentStatus].includes(status)) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: `Invalid state transition from ${currentStatus} to ${status}` });
+      }
+
       await client.query(
         `UPDATE deliveries SET status=$1, updated_at=NOW()
        ${status === "en_route" ? ", dispatched_at=NOW()" : ""}

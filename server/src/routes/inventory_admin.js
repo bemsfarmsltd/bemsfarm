@@ -526,52 +526,6 @@ router.post(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
-// STOCK TRANSFER  ──  POST /api/admin/inventory/transfer
-// Moves stock between two warehouses (no net change to product.stock)
-// ════════════════════════════════════════════════════════════════════════════
-router.post(
-  "/transfer",
-  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
-  async (req, res, next) => {
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-
-      const { product_id, from_warehouse_id, to_warehouse_id, quantity, notes } = req.body;
-
-      if (!product_id)       { await client.query("ROLLBACK"); return res.status(400).json({ message: "product_id required" }); }
-      if (!from_warehouse_id) { await client.query("ROLLBACK"); return res.status(400).json({ message: "from_warehouse_id required" }); }
-      if (!to_warehouse_id)  { await client.query("ROLLBACK"); return res.status(400).json({ message: "to_warehouse_id required" }); }
-      if (!quantity || parseInt(quantity) <= 0) { await client.query("ROLLBACK"); return res.status(400).json({ message: "quantity must be > 0" }); }
-      if (from_warehouse_id === to_warehouse_id) { await client.query("ROLLBACK"); return res.status(400).json({ message: "From and To warehouses must be different" }); }
-
-      const ref = `TRF-${Date.now()}`;
-      const qty = parseInt(quantity);
-
-      await client.query(
-        `INSERT INTO stock_movements (product_id, warehouse_id, type, quantity, reference, notes, created_by, created_at)
-         VALUES ($1,$2,'transfer_out',$3,$4,$5,$6,NOW())`,
-        [parseInt(product_id), parseInt(from_warehouse_id), qty, ref, notes || null, req.user.id]
-      );
-
-      await client.query(
-        `INSERT INTO stock_movements (product_id, warehouse_id, type, quantity, reference, notes, created_by, created_at)
-         VALUES ($1,$2,'transfer_in',$3,$4,$5,$6,NOW())`,
-        [parseInt(product_id), parseInt(to_warehouse_id), qty, ref, notes || null, req.user.id]
-      );
-
-      await client.query("COMMIT");
-      res.json({ message: "Transfer recorded", reference: ref, quantity: qty });
-    } catch (err) {
-      await client.query("ROLLBACK");
-      next(err);
-    } finally {
-      client.release();
-    }
-  }
-);
-
-// ════════════════════════════════════════════════════════════════════════════
 // WAREHOUSES
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/warehouses", requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"), async (req, res, next) => {
