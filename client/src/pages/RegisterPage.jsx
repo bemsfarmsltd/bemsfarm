@@ -46,7 +46,8 @@ const AUTH_CSS = `
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     password: "",
@@ -86,8 +87,11 @@ export default function RegisterPage() {
     e?.preventDefault();
     setError("");
 
-    if (!form.name.trim()) return setError("Please enter your full name");
+    if (!form.firstName.trim()) return setError("Please enter your first name");
+    if (!form.lastName.trim()) return setError("Please enter your last name");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return setError("Please enter a valid email address");
+    
+    const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`;
     
     const cleanPhone = form.phone.replace(/\D/g, "");
     if (cleanPhone.length !== 10) return setError("Phone number must be exactly 10 digits");
@@ -101,7 +105,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await register(form.name, form.email, form.password, finalPhone, selectedTags);
+      await register(fullName, form.email, form.password, finalPhone, selectedTags);
       navigate("/onboarding");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed. Try again.");
@@ -220,19 +224,34 @@ export default function RegisterPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-3.5 max-h-[380px] overflow-y-auto pr-2 hide-scrollbar">
-              {/* Name */}
-              <div>
-                <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  placeholder="John Doe"
-                  className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
-                  required
-                />
+              {/* Name Fields Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    value={form.firstName}
+                    onChange={(e) => handleInputChange("firstName", e.target.value)}
+                    placeholder="John"
+                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    value={form.lastName}
+                    onChange={(e) => handleInputChange("lastName", e.target.value)}
+                    placeholder="Doe"
+                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
+                    required
+                  />
+                </div>
               </div>
 
               {/* Email Field */}
