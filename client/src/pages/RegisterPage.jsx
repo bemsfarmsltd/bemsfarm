@@ -327,9 +327,14 @@ export default function RegisterPage() {
                     value={form.confirm}
                     onChange={(e) => handleInputChange("confirm", e.target.value)}
                     placeholder="••••••••"
-                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
+                    className={`auth-input w-full px-4 py-2.5 border-2 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50 ${form.confirm && form.password !== form.confirm ? 'border-red-300' : 'border-gray-100'}`}
                     required
                   />
+                  {form.confirm && (
+                    <p className={`text-[10px] mt-1.5 font-semibold ${form.password === form.confirm ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {form.password === form.confirm ? '✓ Passwords match' : '✗ Passwords do not match'}
+                    </p>
+                  )}
                 </div>
               </div>
 
