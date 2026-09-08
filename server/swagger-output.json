@@ -5,11 +5,11 @@
     "description": "Complete API Documentation for Bems Farms (Client & Admin)",
     "version": "1.0.0"
   },
-  "host": "localhost:5000",
+  "host": "localhost:3000",
   "basePath": "/",
   "schemes": [
-    "http",
-    "https"
+    "https",
+    "http"
   ],
   "securityDefinitions": {
     "bearerAuth": {

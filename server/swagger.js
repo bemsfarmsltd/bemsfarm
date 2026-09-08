@@ -6,8 +6,7 @@ const doc = {
     description: 'Complete API Documentation for Bems Farms (Client & Admin)',
     version: '1.0.0',
   },
-  host: 'localhost:5000',
-  schemes: ['http', 'https'],
+  schemes: ['https', 'http'],
   securityDefinitions: {
     bearerAuth: {
       type: 'apiKey',
