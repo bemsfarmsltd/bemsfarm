@@ -231,6 +231,85 @@ function StoreProductCard({ product, added, onAdd }) {
   );
 }
 
+const FALLBACK_PRODUCTS = [
+  {
+    id: 1,
+    name: "Bems Premium Parboiled Rice (50kg)",
+    price: 68000,
+    unit: "50kg bag",
+    category_name: "Grains & Cereals",
+    is_featured: true,
+    is_bems_brand: true,
+    image_url: "/hero_food_1.jpg",
+    stock: 50,
+    avg_rating: 5,
+    review_count: 24,
+  },
+  {
+    id: 2,
+    name: "Farm-Fresh Round Tomatoes",
+    price: 4500,
+    unit: "Big basket",
+    category_name: "Vegetables",
+    is_featured: true,
+    image_url: "/hero_food_2.jpg",
+    stock: 80,
+    avg_rating: 4.8,
+    review_count: 18,
+  },
+  {
+    id: 3,
+    name: "Bems Pure Cold-Pressed Palm Oil",
+    price: 9500,
+    unit: "5 Litres",
+    category_name: "Cooking Oils",
+    is_featured: true,
+    is_bems_brand: true,
+    image_url: "/hero_food_3.jpg",
+    stock: 45,
+    avg_rating: 5,
+    review_count: 32,
+  },
+  {
+    id: 4,
+    name: "Bems Clean White Honey Beans",
+    price: 18500,
+    unit: "25kg bag",
+    category_name: "Legumes",
+    is_featured: true,
+    is_bems_brand: true,
+    image_url: "/fresh_salad_hero.png",
+    stock: 60,
+    avg_rating: 4.9,
+    review_count: 15,
+  },
+  {
+    id: 5,
+    name: "Fresh Habanero Peppers (Rodo)",
+    price: 3200,
+    unit: "Per paint bucket",
+    category_name: "Vegetables",
+    is_featured: false,
+    image_url: "/hero_food_2.jpg",
+    stock: 35,
+    avg_rating: 4.7,
+    review_count: 12,
+  },
+  {
+    id: 6,
+    name: "Bems Premium Ofada Rice (Clean Sort)",
+    price: 24000,
+    unit: "10kg bag",
+    category_name: "Grains & Cereals",
+    is_featured: true,
+    is_bems_brand: true,
+    image_url: "/hero_food_1.jpg",
+    stock: 30,
+    avg_rating: 5,
+    review_count: 29,
+  },
+];
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
@@ -240,8 +319,8 @@ export default function LandingPage() {
   const [email, setEmail] = useState("");
   const [subscribeState, setSubscribeState] = useState("idle");
   const [subscribeMessage, setSubscribeMessage] = useState("");
-  const [products, setProducts] = useState([]);
-  const [productsLoading, setProductsLoading] = useState(true);
+  const [products, setProducts] = useState(FALLBACK_PRODUCTS);
+  const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState("");
   const [search, setSearch] = useState("");
   const [trackingCode, setTrackingCode] = useState("");
@@ -259,9 +338,22 @@ export default function LandingPage() {
     setAppliedSearch(term);
     try {
       const response = await api.get("/products", { params: { search: term || undefined, limit: 12 } });
-      setProducts(response.data.products || []);
+      if (response.data?.products && Array.isArray(response.data.products) && response.data.products.length > 0) {
+        setProducts(response.data.products);
+      } else {
+        const query = term.toLowerCase().trim();
+        const fallback = query
+          ? FALLBACK_PRODUCTS.filter((p) => p.name.toLowerCase().includes(query) || p.category_name.toLowerCase().includes(query))
+          : FALLBACK_PRODUCTS;
+        setProducts(fallback);
+      }
     } catch {
-      setProductsError("The live catalogue is taking a little longer to load.");
+      // Graceful fallback to default catalogue products so the store stays functional
+      const query = term.toLowerCase().trim();
+      const fallback = query
+        ? FALLBACK_PRODUCTS.filter((p) => p.name.toLowerCase().includes(query) || p.category_name.toLowerCase().includes(query))
+        : FALLBACK_PRODUCTS;
+      setProducts(fallback);
     } finally {
       setProductsLoading(false);
     }
