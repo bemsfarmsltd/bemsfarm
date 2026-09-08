@@ -5,6 +5,8 @@ const cors = require("cors");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
+const swaggerUi = require('swagger-ui-express');
+const fs = require('fs');
 const app = express();
 
 app.set("trust proxy", 1);
@@ -158,6 +160,14 @@ app.use("/api/advanced-ai", aiLimiter, advancedAiRoutes);
 app.get("/api", (req, res) => res.json({ status: "OK", name: "Bems Farms API", version: "1.0", time: new Date() }));
 app.get("/health", (req, res) => res.json({ status: "OK", time: new Date() }));
 app.get("/test", (req, res) => res.json({ message: "server works" }));
+
+try {
+  const swaggerDocument = require('../swagger-output.json');
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  console.log("Swagger UI available at /api/docs");
+} catch (error) {
+  console.log("Swagger UI not loaded: swagger-output.json not found. Run 'node swagger.js' to generate.");
+}
 
 const errorHandler = require("./middleware/errorHandler");
 app.use(errorHandler);

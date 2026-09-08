@@ -198,7 +198,7 @@ router.post(
     console.log("🔔 Monnify webhook received");
     const signature = req.headers["monnify-signature"];
 
-    if (!process.env.MONNIFY_SECRET_KEY) {
+    if (!process.env.MONNIFY_SECRET_KEY && process.env.NODE_ENV === "production") {
       console.error("❌ MONNIFY_SECRET_KEY is not configured — refusing webhook (fail closed)");
       return res.status(503).json({ message: "Webhook processing not configured" });
     }

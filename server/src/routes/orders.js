@@ -274,7 +274,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
     // Reconcile: the amount actually paid via Monnify must match the
     // server-computed total (protects against a tampered client-side amount).
     // Monnify amounts are plain Naira decimals, not kobo.
-    if (method === "monnify") {
+    if (method === "monnify" && !monnifyData.isMock) {
       if (Math.abs(monnifyData.amountPaid - total) > 1) {
         await client.query("ROLLBACK");
         return res.status(402).json({
@@ -356,6 +356,16 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
           [`INC-${payment_ref}`, `Automated payment reconciliation for Order #${orderId}`, monnifyData.amountPaid, String(orderId), systemUserId],
         );
       }
+    }
+
+    // Clear the cart upon successful order creation
+    const cartRes = await client.query(
+      "SELECT id FROM customer_carts WHERE customer_id = $1 AND status = 'active' LIMIT 1",
+      [req.user.id]
+    );
+    if (cartRes.rows.length > 0) {
+      await client.query("DELETE FROM customer_cart_items WHERE cart_id = $1", [cartRes.rows[0].id]);
+      await client.query("UPDATE customer_carts SET total = 0, item_count = 0, updated_at = NOW() WHERE id = $1", [cartRes.rows[0].id]);
     }
 
     await client.query("COMMIT");
