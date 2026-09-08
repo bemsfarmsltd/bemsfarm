@@ -93,9 +93,9 @@ export function AuthProvider({ children }) {
   // This is what LoginPage should call: await login(email, password)
   const login = useCallback(
     async (email, password) => {
-      // MOCK LOGIN TO BYPASS BROKEN BACKEND FOR UI TESTING
-      const userData = { id: 1, name: "Test User", email, role: "user" };
-      const authToken = "mock-token";
+      const { data } = await api.post('/auth/login', { email, password });
+      const { user: userData, token: authToken } = data;
+      if (!userData?.id || !authToken) throw new Error('Invalid login response');
       
       _storeSession(userData, authToken);
       return userData;
@@ -106,9 +106,9 @@ export function AuthProvider({ children }) {
   // ── EMAIL/PASSWORD REGISTER ──────────────────────────────────
   const register = useCallback(
     async (name, email, password, phone, preferences) => {
-      // MOCK REGISTER TO BYPASS BROKEN BACKEND FOR UI TESTING
-      const userData = { id: 1, name, email, phone, role: "user" };
-      const authToken = "mock-token";
+      const { data } = await api.post('/auth/register', { name, email, password, phone, preferences });
+      const { user: userData, token: authToken } = data;
+      if (!userData?.id || !authToken) throw new Error('Invalid registration response');
       
       _storeSession(userData, authToken);
       return userData;

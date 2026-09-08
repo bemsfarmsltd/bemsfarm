@@ -1,59 +1,74 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../context/CartContext";
 import { useState } from "react";
 import PageWrapper from "../components/layout/PageWrapper";
-import { getProductEmoji, getProductBg } from "../components/ui/ProductCard";
+import { getProductImage } from "../utils/productImages";
 import api from "../services/api";
 import { NAIRA_PER_UNIT } from "../utils/currency";
 import { getDeliveryFee, FREE_DELIVERY_THRESHOLD } from "../utils/delivery";
 
-/*
-  ── RESPONSIVE STRATEGY ──────────────────────────────────────
-  Old version drove the cart-row grid with JS isMobile boolean,
-  collapsing straight from a cramped 4-column desktop grid to a
-  stacked mobile layout with nothing in between — broke badly on
-  tablets (768-1023px) where 4 columns were still forced or the
-  jump to full-stack wasted huge horizontal space.
-
-  New breakpoints:
-    <640px    : fully stacked card layout (image+name on top row,
-                price/qty/subtotal below) — no grid at all
-    640-899px : 2-column summary below cart (not sidebar), simpler
-                3-col item grid (Product / Qty / Subtotal, price
-                folded into product line)
-    >=900px   : original 4-column grid + sticky sidebar summary
-*/
-const CART_CSS = `
-.bf-cart-blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-  pointer-events: none;
-  z-index: 0;
-}
-.bf-cart-page-pad { padding: 20px 16px; }
-.bf-cart-grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
-.bf-cart-row-header { display: none; }
-.bf-cart-row { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
-.bf-cart-row-product { display: flex; align-items: center; gap: 12px; }
-.bf-cart-row-meta { display: flex; justify-content: space-between; align-items: center; }
-.bf-cart-summary { position: static; }
-.bf-cart-actions { flex-direction: column; align-items: stretch; gap: 16px; }
-
-@media (min-width: 640px) {
-  .bf-cart-row-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 16px; }
-  .bf-cart-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 16px; align-items: center; }
-  .bf-cart-row-meta { display: contents; }
-  .bf-cart-actions { flex-direction: row; align-items: center; }
-}
-
-@media (min-width: 900px) {
-  .bf-cart-page-pad { padding: 32px 24px; }
-  .bf-cart-grid { grid-template-columns: 1fr 360px; gap: 32px; align-items: flex-start; }
-  .bf-cart-summary { position: sticky; top: 90px; }
-}
+const CSS = `
+  .bf-basket-wrap { background:#f7f5f0; min-height:80vh; position:relative; overflow:hidden; }
+  .bf-basket-pattern {
+    position:absolute; inset:0; pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%23143c2d' fill-opacity='0.05'/%3E%3C/svg%3E");
+    background-repeat:repeat; background-size:36px 36px;
+  }
+  .bf-basket-inner { position:relative; z-index:1; max-width:1200px; margin:0 auto; padding:28px 20px 60px; }
+  @media(min-width:900px){ .bf-basket-inner{padding:40px 32px 80px;} }
+  .bf-basket-grid { display:grid; gap:28px; }
+  @media(min-width:900px){ .bf-basket-grid{grid-template-columns:1fr 380px; align-items:flex-start;} }
+  .bf-item-card {
+    background:rgba(255,255,255,0.92); border:1px solid rgba(20,60,45,0.09); border-radius:20px;
+    padding:18px; margin-bottom:14px; display:grid; grid-template-columns:80px 1fr; gap:16px;
+    align-items:center; backdrop-filter:blur(6px);
+  }
+  @media(min-width:540px){ .bf-item-card{grid-template-columns:96px 1fr;} }
+  .bf-item-img { width:80px; height:80px; border-radius:14px; object-fit:cover; background:#e8f4ed; flex-shrink:0; display:block; }
+  @media(min-width:540px){ .bf-item-img{width:96px;height:96px;} }
+  .bf-item-body { display:flex; flex-direction:column; gap:10px; min-width:0; }
+  .bf-item-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .bf-item-bottom { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  .bf-qty-pill { display:flex; align-items:center; gap:2px; background:#f3f4f6; border-radius:999px; border:1px solid #e5e7eb; padding:3px; }
+  .bf-qty-btn { width:32px; height:32px; border-radius:50%; border:none; cursor:pointer; font-size:17px; font-weight:700; display:flex; align-items:center; justify-content:center; transition:background 0.15s; }
+  .bf-qty-btn-minus { background:white; color:#374151; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+  .bf-qty-btn-minus:hover { background:#fee2e2; color:#dc2626; }
+  .bf-qty-btn-plus { background:#17352a; color:white; box-shadow:0 2px 8px rgba(23,53,42,0.3); }
+  .bf-qty-btn-plus:hover { background:#0f2319; }
+  .bf-qty-num { width:34px; text-align:center; font-size:15px; font-weight:700; color:#111827; }
+  .bf-summary-card {
+    background:rgba(255,255,255,0.92); border:1px solid rgba(20,60,45,0.09); border-radius:24px;
+    padding:26px; backdrop-filter:blur(8px); position:sticky; top:84px;
+  }
+  .bf-delivery-bar-bg { height:8px; background:#e5e7eb; border-radius:99px; overflow:hidden; margin:10px 0 6px; }
+  .bf-delivery-bar-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#17352a,#2d9b6f); transition:width 0.5s ease; }
+  .bf-trust-strip { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:18px; }
+  .bf-trust-badge { display:flex; align-items:center; gap:5px; font-size:11px; font-weight:700; color:#4b5563; background:#f3f4f6; border-radius:999px; padding:5px 10px; }
 `;
+
+function EmptyBasket() {
+  const navigate = useNavigate();
+  return (
+    <PageWrapper>
+      <style>{CSS}</style>
+      <div className="bf-basket-wrap">
+        <div className="bf-basket-pattern" />
+        <div style={{ maxWidth:520, margin:"0 auto", textAlign:"center", padding:"100px 24px 60px", position:"relative", zIndex:1 }}>
+          <motion.div animate={{ y:[0,-10,0] }} transition={{ duration:2.8, repeat:Infinity, ease:"easeInOut" }} style={{ fontSize:72, lineHeight:1, marginBottom:20 }}>🛒</motion.div>
+          <h1 style={{ fontFamily:"var(--heading-font,serif)", fontSize:"clamp(22px,4vw,30px)", fontWeight:800, color:"#111827", marginBottom:10 }}>Your basket is empty</h1>
+          <p style={{ color:"#6b7280", fontSize:15, lineHeight:1.7, marginBottom:32 }}>Browse our fresh Nigerian produce, Bems Farms brand staples and everyday kitchen essentials.</p>
+          <motion.button whileHover={{ scale:1.03, y:-2 }} whileTap={{ scale:0.97 }} onClick={() => navigate("/products")} style={{ backgroundColor:"#17352a", color:"white", border:"none", borderRadius:999, padding:"15px 36px", fontSize:15, fontWeight:800, cursor:"pointer", boxShadow:"0 6px 20px rgba(23,53,42,0.3)" }}>Start Shopping →</motion.button>
+          <div className="bf-trust-strip" style={{ justifyContent:"center", marginTop:28 }}>
+            {[["🚚","Nationwide Delivery"],["🔒","Secure Payment"],["↩","7-day Returns"]].map(([icon,label]) => (
+              <span key={label} className="bf-trust-badge">{icon} {label}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </PageWrapper>
+  );
+}
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -61,20 +76,22 @@ export default function CartPage() {
   const delivery = getDeliveryFee(cartSubtotal);
   const discount = appliedCoupon?.discount || 0;
   const total = cartSubtotal + delivery - discount;
+  const freeDeliveryProgress = Math.min(100, (cartSubtotal / FREE_DELIVERY_THRESHOLD) * 100);
+  const remaining = Math.max(0, FREE_DELIVERY_THRESHOLD - cartSubtotal);
+  const totalQty = cartItems.reduce((a, i) => a + i.quantity, 0);
+
   const [coupon, setCoupon] = useState("");
   const [couponMsg, setCouponMsg] = useState("");
   const [couponValid, setCouponValid] = useState(null);
   const [validating, setValidating] = useState(false);
+  const [removingId, setRemovingId] = useState(null);
 
   const applyCoupon = async () => {
     const code = coupon.toUpperCase().trim();
     if (!code) return;
     setValidating(true);
     try {
-      const { data } = await api.post("/admin/coupons/validate", {
-        code,
-        order_total: cartSubtotal,
-      });
+      const { data } = await api.post("/admin/coupons/validate", { code, order_total: cartSubtotal });
       if (data.valid) {
         setAppliedCoupon({ code, discount: data.discount, type: data.coupon.type, value: data.coupon.value });
         setCouponMsg(`✅ Coupon applied! You saved ₦${data.discount.toLocaleString()}`);
@@ -93,557 +110,178 @@ export default function CartPage() {
     }
   };
 
-  const removeCoupon = () => {
-    setAppliedCoupon(null);
-    setCoupon("");
-    setCouponMsg("");
-    setCouponValid(null);
+  const removeCoupon = () => { setAppliedCoupon(null); setCoupon(""); setCouponMsg(""); setCouponValid(null); };
+
+  const handleRemove = (id) => {
+    setRemovingId(id);
+    setTimeout(() => { removeFromCart(id); setRemovingId(null); }, 300);
   };
 
-  if (cartItems.length === 0)
-    return (
-      <PageWrapper>
-        <style>{CART_CSS}</style>
-        <div style={{ backgroundColor: "#FBF8F3", position: "relative", overflow: "hidden", minHeight: "70vh" }}>
-          <div className="bf-cart-blob" style={{ width: 320, height: 320, top: -100, left: -100, background: "radial-gradient(circle, rgba(46,125,50,0.12), transparent 70%)" }} />
-          <div
-            style={{
-              maxWidth: "600px",
-              margin: "0 auto",
-              textAlign: "center",
-              padding: "80px 20px",
-              position: "relative",
-              zIndex: 1,
-            }}
-          >
-            <motion.img
-              src="https://res.cloudinary.com/dyzkjerez/image/upload/v1786166844/Gemini_Generated_Image_ez0fcxez0fcxez0f_atfxkk.png"
-              alt=""
-              animate={{ y: [0, -12, 0] }}
-              transition={{ duration: 2.5, repeat: Infinity }}
-              style={{ width: "120px", height: "120px", margin: "0 auto 20px", display: "block" }}
-            />
-            <h2
-              style={{ fontSize: "22px", fontWeight: 800, marginBottom: "10px", fontFamily: "var(--heading-font)" }}
-            >
-              Your cart is empty
-            </h2>
-            <p style={{ color: "#9AA0A6", marginBottom: "20px" }}>
-              Looks like you haven't added any Nigerian foods yet!
-            </p>
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={() => navigate("/products")}
-              style={{
-                backgroundColor: "#2E7D32",
-                color: "white",
-                border: "none",
-                borderRadius: "999px",
-                padding: "14px 32px",
-                fontSize: "15px",
-                fontWeight: 700,
-                cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(46,125,50,0.3)",
-              }}
-            >
-              Browse Products 🌾
-            </motion.button>
-          </div>
-        </div>
-      </PageWrapper>
-    );
+  if (cartItems.length === 0) return <EmptyBasket />;
 
   return (
     <PageWrapper>
-      <style>{CART_CSS}</style>
-      <div style={{ backgroundColor: "#FBF8F3", position: "relative", overflow: "hidden" }}>
-        <div className="bf-cart-blob" style={{ width: 320, height: 320, top: -100, left: -100, background: "radial-gradient(circle, rgba(46,125,50,0.10), transparent 70%)" }} />
-        <div className="bf-cart-blob" style={{ width: 260, height: 260, bottom: -80, right: -80, background: "radial-gradient(circle, rgba(245,158,11,0.10), transparent 70%)" }} />
-      <div
-        className="bf-cart-page-pad"
-        style={{ maxWidth: "1100px", margin: "0 auto", position: "relative", zIndex: 1 }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            marginBottom: "18px",
-            fontSize: "13px",
-            color: "#9AA0A6",
-          }}
-        >
-          <button
-            onClick={() => navigate("/home")}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "#9AA0A6",
-            }}
-          >
-            Home
-          </button>
-          <span>/</span>
-          <span style={{ color: "#202124", fontWeight: 600 }}>Cart</span>
-        </div>
+      <style>{CSS}</style>
+      <div className="bf-basket-wrap">
+        <div className="bf-basket-pattern" />
+        <div className="bf-basket-inner">
 
-        <h1
-          style={{
-            fontSize: "clamp(22px, 5vw, 28px)",
-            fontWeight: 800,
-            marginBottom: "20px",
-            fontFamily: "var(--heading-font)",
-          }}
-        >
-          My Cart
-        </h1>
+          {/* Breadcrumb */}
+          <nav style={{ display:"flex", alignItems:"center", gap:6, fontSize:13, color:"#9ca3af", marginBottom:24 }}>
+            <Link to="/" style={{ color:"#9ca3af", textDecoration:"none" }}>Home</Link>
+            <span>/</span>
+            <Link to="/products" style={{ color:"#9ca3af", textDecoration:"none" }}>Shop</Link>
+            <span>/</span>
+            <span style={{ color:"#111827", fontWeight:600 }}>Basket</span>
+          </nav>
 
-        <div className="bf-cart-grid">
-          {/* Cart Items */}
-          <div>
-            <div
-              className="bf-cart-row-header"
-              style={{
-                padding: "12px 16px",
-                backgroundColor: "#F8F9FA",
-                borderRadius: "12px",
-                marginBottom: "12px",
-                fontSize: "13px",
-                fontWeight: 600,
-                color: "#9AA0A6",
-              }}
-            >
-              <span>Product</span>
-              <span style={{ textAlign: "center" }}>Price</span>
-              <span style={{ textAlign: "center" }}>Quantity</span>
-              <span style={{ textAlign: "right" }}>Subtotal</span>
+          {/* Heading */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:28, flexWrap:"wrap", gap:12 }}>
+            <div>
+              <h1 style={{ fontFamily:"var(--heading-font,serif)", fontSize:"clamp(22px,4vw,30px)", fontWeight:900, color:"#111827", margin:0 }}>🛒 Your Basket</h1>
+              <p style={{ margin:"4px 0 0", fontSize:14, color:"#6b7280" }}>{totalQty} {totalQty === 1 ? "item" : "items"} ready to checkout</p>
+            </div>
+            <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate("/products")} style={{ background:"white", border:"1.5px solid #e5e7eb", borderRadius:999, padding:"9px 20px", fontSize:13, fontWeight:700, cursor:"pointer", color:"#374151" }}>
+              ← Continue Shopping
+            </motion.button>
+          </div>
+
+          <div className="bf-basket-grid">
+            {/* LEFT — Item list */}
+            <div>
+              {delivery > 0 && (
+                <motion.div initial={{ opacity:0, y:-8 }} animate={{ opacity:1, y:0 }} style={{ background:"linear-gradient(135deg,#f0fdf4,#ecfdf5)", border:"1.5px solid #bbf7d0", borderRadius:16, padding:"14px 18px", marginBottom:20 }}>
+                  <p style={{ fontSize:13, fontWeight:700, color:"#166534", margin:0 }}>🚚 Add <strong>₦{remaining.toLocaleString()}</strong> more to get <strong>FREE delivery</strong>!</p>
+                  <div className="bf-delivery-bar-bg"><div className="bf-delivery-bar-fill" style={{ width:`${freeDeliveryProgress}%` }} /></div>
+                  <p style={{ fontSize:11, color:"#4b7563", margin:0 }}>₦{cartSubtotal.toLocaleString()} / ₦{FREE_DELIVERY_THRESHOLD.toLocaleString()} for free delivery</p>
+                </motion.div>
+              )}
+              {delivery === 0 && (
+                <motion.div initial={{ opacity:0, y:-8 }} animate={{ opacity:1, y:0 }} style={{ background:"linear-gradient(135deg,#f0fdf4,#dcfce7)", border:"1.5px solid #86efac", borderRadius:16, padding:"14px 18px", marginBottom:20, display:"flex", alignItems:"center", gap:10 }}>
+                  <span style={{ fontSize:22 }}>🎉</span>
+                  <p style={{ fontSize:13, fontWeight:800, color:"#166534", margin:0 }}>You qualify for FREE delivery!</p>
+                </motion.div>
+              )}
+
+              <AnimatePresence mode="popLayout">
+                {cartItems.map(({ product, quantity }) => {
+                  const imgSrc = product.image_url?.startsWith("http") ? product.image_url : getProductImage(product);
+                  const lineTotal = product.price * NAIRA_PER_UNIT * quantity;
+                  const isRemoving = removingId === product.id;
+                  return (
+                    <motion.div
+                      key={product.id} layout
+                      initial={{ opacity:0, scale:0.97, y:10 }}
+                      animate={{ opacity: isRemoving ? 0 : 1, scale: isRemoving ? 0.95 : 1, y:0 }}
+                      exit={{ opacity:0, scale:0.95, y:-8 }}
+                      transition={{ duration:0.3 }}
+                      className="bf-item-card"
+                    >
+                      <div style={{ position:"relative" }}>
+                        <img src={imgSrc} alt={product.name} className="bf-item-img"
+                          onError={(e) => { e.target.style.display="none"; if(e.target.nextSibling) e.target.nextSibling.style.display="flex"; }}
+                        />
+                        <div style={{ display:"none", width:80, height:80, borderRadius:14, background:"#e8f4ed", alignItems:"center", justifyContent:"center", fontSize:36, flexShrink:0 }}>🌾</div>
+                      </div>
+
+                      <div className="bf-item-body">
+                        <div className="bf-item-top">
+                          <div style={{ minWidth:0 }}>
+                            <p style={{ fontWeight:800, fontSize:15, color:"#111827", margin:"0 0 2px", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:"calc(100vw - 220px)" }}>{product.name}</p>
+                            <p style={{ fontSize:12, color:"#9ca3af", margin:0 }}>{product.unit}</p>
+                          </div>
+                          <motion.button whileTap={{ scale:0.85 }} onClick={() => handleRemove(product.id)} aria-label={`Remove ${product.name}`}
+                            style={{ flexShrink:0, width:30, height:30, borderRadius:"50%", border:"1.5px solid #e5e7eb", background:"white", cursor:"pointer", fontSize:14, color:"#9ca3af", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</motion.button>
+                        </div>
+                        <div className="bf-item-bottom">
+                          <div className="bf-qty-pill">
+                            <button className="bf-qty-btn bf-qty-btn-minus" onClick={() => updateQuantity(product.id, quantity - 1)} aria-label="Decrease">−</button>
+                            <span className="bf-qty-num">{quantity}</span>
+                            <button className="bf-qty-btn bf-qty-btn-plus" onClick={() => updateQuantity(product.id, quantity + 1)} aria-label="Increase">+</button>
+                          </div>
+                          <div style={{ textAlign:"right" }}>
+                            <p style={{ margin:0, fontSize:12, color:"#9ca3af" }}>₦{(product.price * NAIRA_PER_UNIT).toLocaleString()} each</p>
+                            <p style={{ margin:0, fontSize:17, fontWeight:900, color:"#17352a" }}>₦{lineTotal.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+
+              <div className="bf-trust-strip" style={{ justifyContent:"flex-start", marginTop:24 }}>
+                {[["🔒","Secure Payment"],["🚚","Nationwide Delivery"],["↩","7-day Returns"],["📞","24/7 Support"]].map(([icon,label]) => (
+                  <span key={label} className="bf-trust-badge">{icon} {label}</span>
+                ))}
+              </div>
             </div>
 
-            <AnimatePresence>
-              {cartItems.map(({ product, quantity }) => (
-                <motion.div
-                  key={product.id}
-                  className="bf-cart-row"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20, height: 0 }}
-                  style={{
-                    padding: "16px",
-                    backgroundColor: "rgba(255,255,255,0.85)",
-                    borderRadius: "20px",
-                    marginBottom: "12px",
-                    border: "1px solid rgba(27,67,50,0.08)",
-                  }}
-                >
-                  {/* Product */}
-                  <div className="bf-cart-row-product">
-                    <div style={{ position: "relative" }}>
-                      <motion.button
-                        whileTap={{ scale: 0.8 }}
-                        onClick={() => removeFromCart(product.id)}
-                        aria-label={`Remove ${product.name} from cart`}
-                        style={{
-                          position: "absolute",
-                          top: "-8px",
-                          left: "-8px",
-                          width: "20px",
-                          height: "20px",
-                          borderRadius: "50%",
-                          backgroundColor: "#F44336",
-                          border: "none",
-                          cursor: "pointer",
-                          color: "white",
-                          fontSize: "12px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          zIndex: 1,
-                        }}
-                      >
-                        ✕
-                      </motion.button>
-                      <div
-                        style={{
-                          width: "56px",
-                          height: "56px",
-                          borderRadius: "12px",
-                          backgroundColor: getProductBg(product.name),
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "28px",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {getProductEmoji(product.name)}
-                      </div>
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <p
-                        style={{
-                          fontWeight: 600,
-                          fontSize: "14px",
-                          color: "#202124",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {product.name}
-                      </p>
-                      <p style={{ fontSize: "12px", color: "#9AA0A6" }}>
-                        {product.unit}
-                      </p>
-                    </div>
-                  </div>
+            {/* RIGHT — Summary */}
+            <div className="bf-summary-card">
+              <h2 style={{ fontFamily:"var(--heading-font,serif)", fontSize:20, fontWeight:800, color:"#111827", margin:"0 0 20px" }}>Order Summary</h2>
 
-                  {/* On mobile: price + subtotal share a row; on >=640px these become real grid cells */}
-                  <div className="bf-cart-row-meta">
-                    <p
-                      style={{
-                        fontWeight: 600,
-                        color: "#5F6368",
-                        fontSize: "13px",
-                        textAlign: "center",
-                        margin: 0,
-                      }}
-                    >
-                      <span style={{ display: "inline" }}>
-                        ₦{(product.price * NAIRA_PER_UNIT).toLocaleString()} each
-                      </span>
-                    </p>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
+                <span style={{ fontSize:14, color:"#6b7280" }}>Subtotal ({totalQty} {totalQty===1?"item":"items"})</span>
+                <span style={{ fontSize:15, fontWeight:700, color:"#111827" }}>₦{cartSubtotal.toLocaleString()}</span>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
+                <span style={{ fontSize:14, color:"#6b7280" }}>Delivery</span>
+                <span style={{ fontSize:14, fontWeight:700, color: delivery===0 ? "#16a34a" : "#374151" }}>{delivery===0 ? "🎉 Free" : `₦${delivery.toLocaleString()}`}</span>
+              </div>
+              {discount > 0 && (
+                <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
+                  <span style={{ fontSize:14, color:"#16a34a" }}>Discount ({appliedCoupon?.code})</span>
+                  <span style={{ fontSize:14, fontWeight:700, color:"#16a34a" }}>−₦{discount.toLocaleString()}</span>
+                </div>
+              )}
 
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        justifyContent: "center",
-                        backgroundColor: "#F8F9FA",
-                        borderRadius: "999px",
-                        padding: "6px 10px",
-                        border: "1px solid #E8EAED",
-                      }}
-                    >
-                      <motion.button
-                        whileTap={{ scale: 0.8 }}
-                        onClick={() => updateQuantity(product.id, quantity - 1)}
-                        aria-label={`Decrease quantity of ${product.name}`}
-                        style={{
-                          width: "26px",
-                          height: "26px",
-                          borderRadius: "50%",
-                          border: "1px solid #E8EAED",
-                          backgroundColor: "white",
-                          cursor: "pointer",
-                          fontWeight: 700,
-                          fontSize: "15px",
-                          color: "#5F6368",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        −
-                      </motion.button>
-                      <span
-                        style={{
-                          fontSize: "14px",
-                          fontWeight: 700,
-                          minWidth: "20px",
-                          textAlign: "center",
-                        }}
-                      >
-                        {quantity}
-                      </span>
-                      <motion.button
-                        whileTap={{ scale: 0.8 }}
-                        onClick={() => updateQuantity(product.id, quantity + 1)}
-                        aria-label={`Increase quantity of ${product.name}`}
-                        style={{
-                          width: "26px",
-                          height: "26px",
-                          borderRadius: "50%",
-                          border: "none",
-                          backgroundColor: "#F57C00",
-                          cursor: "pointer",
-                          fontWeight: 700,
-                          fontSize: "15px",
-                          color: "white",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        +
-                      </motion.button>
-                    </div>
+              <div style={{ borderTop:"2px solid #f3f4f6", margin:"16px 0" }} />
 
-                    <p
-                      style={{
-                        textAlign: "right",
-                        fontWeight: 800,
-                        fontSize: "15px",
-                        color: "#2E7D32",
-                        margin: 0,
-                      }}
-                    >
-                      ₦{(product.price * NAIRA_PER_UNIT * quantity).toLocaleString()}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:22 }}>
+                <span style={{ fontSize:16, fontWeight:800, color:"#111827" }}>Total</span>
+                <span style={{ fontSize:22, fontWeight:900, color:"#17352a" }}>₦{total.toLocaleString()}</span>
+              </div>
 
-            {/* Actions */}
-            <div
-              className="bf-cart-actions"
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginTop: "16px",
-              }}
-            >
               <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() => navigate("/products")}
-                style={{
-                  padding: "12px 24px",
-                  borderRadius: "999px",
-                  border: "1px solid #E8EAED",
-                  backgroundColor: "white",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                }}
+                whileHover={{ scale:1.02, y:-2 }} whileTap={{ scale:0.97 }}
+                onClick={() => navigate("/checkout")}
+                style={{ width:"100%", background:"linear-gradient(135deg,#d86d20,#f57c00)", color:"white", border:"none", borderRadius:999, padding:"17px 0", fontSize:16, fontWeight:900, cursor:"pointer", boxShadow:"0 6px 24px rgba(213,109,32,0.35)", letterSpacing:"0.01em" }}
               >
-                ← Return to Shop
+                Proceed to Checkout →
               </motion.button>
+              <p style={{ textAlign:"center", fontSize:12, color:"#9ca3af", margin:"12px 0 20px" }}>🔒 Payments secured by Monnify</p>
 
-              <div>
-                <div
-                  style={{ display: "flex", gap: "8px", marginBottom: "8px" }}
-                >
+              <div style={{ borderTop:"1px solid #f3f4f6", paddingTop:20 }}>
+                <p style={{ fontSize:13, fontWeight:700, color:"#374151", marginBottom:10, marginTop:0 }}>Have a coupon?</p>
+                <div style={{ display:"flex", gap:8 }}>
                   <input
                     value={coupon}
                     disabled={!!appliedCoupon || validating}
-                    onChange={(e) => {
-                      setCoupon(e.target.value);
-                      setCouponMsg("");
-                      setCouponValid(null);
-                    }}
+                    onChange={(e) => { setCoupon(e.target.value); setCouponMsg(""); setCouponValid(null); }}
                     onKeyDown={(e) => e.key === "Enter" && applyCoupon()}
                     placeholder="Coupon code"
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      padding: "12px 16px",
-                      border: `1px solid ${couponValid === true ? "#2E7D32" : couponValid === false ? "#C62828" : "#E8EAED"}`,
-                      borderRadius: "999px",
-                      fontSize: "14px",
-                      outline: "none",
-                    }}
+                    style={{ flex:1, minWidth:0, padding:"11px 14px", border:`1.5px solid ${couponValid===true?"#16a34a":couponValid===false?"#dc2626":"#e5e7eb"}`, borderRadius:12, fontSize:14, outline:"none", background:"white", color:"#111827" }}
                   />
                   {appliedCoupon ? (
-                    <motion.button
-                      whileTap={{ scale: 0.97 }}
-                      onClick={removeCoupon}
-                      style={{
-                        padding: "12px 20px",
-                        borderRadius: "999px",
-                        backgroundColor: "white",
-                        border: "1px solid #E8EAED",
-                        color: "#C62828",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        fontSize: "14px",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Remove
-                    </motion.button>
+                    <button onClick={removeCoupon} style={{ padding:"11px 16px", borderRadius:12, background:"#fef2f2", border:"1.5px solid #fecaca", color:"#dc2626", fontWeight:700, cursor:"pointer", fontSize:13, whiteSpace:"nowrap" }}>Remove</button>
                   ) : (
-                    <motion.button
-                      whileTap={{ scale: 0.97 }}
-                      onClick={applyCoupon}
-                      disabled={validating}
-                      style={{
-                        padding: "12px 20px",
-                        borderRadius: "999px",
-                        backgroundColor: "#F57C00",
-                        border: "none",
-                        color: "white",
-                        fontWeight: 700,
-                        cursor: validating ? "not-allowed" : "pointer",
-                        fontSize: "14px",
-                        whiteSpace: "nowrap",
-                        opacity: validating ? 0.7 : 1,
-                        boxShadow: "0 4px 12px rgba(245,124,0,0.3)",
-                      }}
-                    >
-                      {validating ? "Checking..." : "Apply"}
-                    </motion.button>
+                    <button onClick={applyCoupon} disabled={validating} style={{ padding:"11px 16px", borderRadius:12, background:"#17352a", border:"none", color:"white", fontWeight:700, cursor: validating?"not-allowed":"pointer", fontSize:13, opacity: validating?0.7:1, whiteSpace:"nowrap" }}>{validating ? "..." : "Apply"}</button>
                   )}
                 </div>
                 {couponMsg && (
-                  <motion.p
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{
-                      fontSize: "13px",
-                      color: couponValid ? "#2E7D32" : "#C62828",
-                      fontWeight: 500,
-                      margin: 0,
-                    }}
-                  >
-                    {couponMsg}
-                  </motion.p>
+                  <motion.p initial={{ opacity:0, y:-4 }} animate={{ opacity:1, y:0 }} style={{ fontSize:12, fontWeight:600, color: couponValid?"#16a34a":"#dc2626", margin:"8px 0 0" }}>{couponMsg}</motion.p>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* Summary */}
-          <div
-            className="bf-cart-summary"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.7)",
-              backdropFilter: "blur(10px)",
-              borderRadius: "20px",
-              padding: "22px",
-              border: "1px solid rgba(27,67,50,0.08)",
-            }}
-          >
-            <h3
-              style={{
-                fontSize: "17px",
-                fontWeight: 700,
-                marginBottom: "18px",
-                fontFamily: "var(--heading-font)",
-              }}
-            >
-              Cart Total
-            </h3>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: "12px",
-                paddingBottom: "12px",
-                borderBottom: "1px solid #F1F3F4",
-              }}
-            >
-              <span style={{ color: "#5F6368", fontSize: "14px" }}>
-                Subtotal:
-              </span>
-              <span
-                style={{ fontWeight: 800, fontSize: "18px", color: "#2E7D32" }}
-              >
-                ₦{cartSubtotal.toLocaleString()}
-              </span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: "14px",
-                paddingBottom: "14px",
-                borderBottom: "1px solid #F1F3F4",
-              }}
-            >
-              <span style={{ color: "#5F6368", fontSize: "14px" }}>
-                Shipping:
-              </span>
-              <span
-                style={{
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  color: delivery === 0 ? "#2E7D32" : "#202124",
-                }}
-              >
-                {delivery === 0 ? "Free 🎉" : `₦${delivery.toLocaleString()}`}
-              </span>
-            </div>
-            {delivery === 0 && (
-              <p
-                style={{
-                  fontSize: "12px",
-                  color: "#2E7D32",
-                  backgroundColor: "#E8F5E9",
-                  padding: "8px 12px",
-                  borderRadius: "8px",
-                  marginBottom: "14px",
-                }}
-              >
-                🎉 You qualified for free shipping!
-              </p>
-            )}
-            {delivery > 0 && (
-              <p
-                style={{
-                  fontSize: "12px",
-                  color: "#9AA0A6",
-                  marginBottom: "14px",
-                }}
-              >
-                Add ₦{(FREE_DELIVERY_THRESHOLD - cartSubtotal).toLocaleString()} more for free
-                shipping
-              </p>
-            )}
-            {discount > 0 && (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "10px",
-                }}
-              >
-                <span style={{ color: "#2E7D32", fontSize: "14px" }}>
-                  Discount
-                </span>
-                <span style={{ fontWeight: 600, color: "#2E7D32" }}>
-                  -₦{discount.toLocaleString()}
-                </span>
+              <div style={{ borderTop:"1px solid #f3f4f6", marginTop:20, paddingTop:16 }}>
+                <Link to="/products" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, fontSize:13, fontWeight:700, color:"#17352a", textDecoration:"none", borderRadius:12, padding:"10px 0", border:"1.5px solid #d1fae5", background:"#f0fdf4" }}>
+                  🛍️ Continue Shopping
+                </Link>
               </div>
-            )}
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: "20px",
-              }}
-            >
-              <span style={{ fontWeight: 700, fontSize: "15px" }}>Total:</span>
-              <span
-                style={{ fontWeight: 800, fontSize: "18px", color: "#2E7D32" }}
-              >
-                ₦{total.toLocaleString()}
-              </span>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => navigate("/checkout")}
-              style={{
-                width: "100%",
-                backgroundColor: "#F57C00",
-                color: "white",
-                border: "none",
-                borderRadius: "999px",
-                padding: "16px",
-                fontSize: "15px",
-                fontWeight: 800,
-                cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(245,124,0,0.35)",
-              }}
-            >
-              Proceed to Checkout →
-            </motion.button>
           </div>
         </div>
-      </div>
       </div>
     </PageWrapper>
   );

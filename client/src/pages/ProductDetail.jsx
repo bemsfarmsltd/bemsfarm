@@ -174,7 +174,7 @@ export default function ProductDetail() {
           }}
         >
           <button
-            onClick={() => navigate("/home")}
+            onClick={() => navigate("/")}
             style={{
               background: "none",
               border: "none",
@@ -182,11 +182,11 @@ export default function ProductDetail() {
               color: "#9AA0A6",
             }}
           >
-            Home
+            Store
           </button>
           <span>/</span>
           <button
-            onClick={() => navigate("/products")}
+            onClick={() => navigate(`/products?category=${encodeURIComponent(product.category_name || "")}`)}
             style={{
               background: "none",
               border: "none",

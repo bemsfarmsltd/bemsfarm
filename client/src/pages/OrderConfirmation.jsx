@@ -124,7 +124,7 @@ export default function OrderConfirmation() {
                 marginBottom: "4px",
               }}
             >
-              Order Reference
+              Delivery Tracking Code
             </p>
             <p
               style={{
@@ -219,7 +219,7 @@ export default function OrderConfirmation() {
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => navigate("/orders")}
+              onClick={() => navigate(orderId ? `/track-order?code=${encodeURIComponent(orderId)}` : "/track-order")}
               style={{
                 backgroundColor: "#2E7D32",
                 color: "white",

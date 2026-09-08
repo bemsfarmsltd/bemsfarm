@@ -1,0 +1,20 @@
+{
+  "framework": null,
+  "installCommand": "npm ci && npm ci --prefix client && npm ci --prefix Bems-Farms-Admin-Front-end",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/admin",
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/index.html"
+    }
+  ]
+}

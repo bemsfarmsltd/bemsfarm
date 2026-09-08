@@ -12,7 +12,7 @@ import App from './App.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename="/admin">
       <ThemeProvider>
         <App />
         <Toaster position="top-right" toastOptions={{ duration: 3000 }} />

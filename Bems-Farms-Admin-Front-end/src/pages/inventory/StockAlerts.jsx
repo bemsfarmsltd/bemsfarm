@@ -186,7 +186,7 @@ export default function StockAlerts() {
                       </span>
                     </td>
                     <td style={TD}>
-                      <a href="/inventory/stock-in" title="Reorder" style={{ width:30, height:30, borderRadius:7, border:'none', background:'#dbeafe', color:'#1d4ed8', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', textDecoration:'none' }}>
+                      <a href="/admin/inventory/stock" title="Reorder" style={{ width:30, height:30, borderRadius:7, border:'none', background:'#dbeafe', color:'#1d4ed8', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', textDecoration:'none' }}>
                         <i className="ri-shopping-cart-add-line"/>
                       </a>
                     </td>

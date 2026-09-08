@@ -32,6 +32,7 @@ export default function Footer() {
       heading: "Shop",
       links: [
         { label: "All Products", path: "/products" },
+        { label: "Track an Order", path: "/track-order" },
         { label: "Chef Bems AI", path: "/chef-chat" },
         { label: "My Cart", path: "/cart" },
       ],
@@ -55,7 +56,7 @@ export default function Footer() {
   ];
 
   return (
-    <footer style={{ backgroundColor: "#111827", color: "white" }}>
+    <footer style={{ backgroundColor: "#0B281E", color: "white", position: "relative", overflow: "hidden" }}>
       <style>{FOOTER_CSS}</style>
       <div
         style={{
@@ -65,7 +66,30 @@ export default function Footer() {
             "clamp(36px, 6vw, 56px) clamp(16px, 4vw, 24px) clamp(24px, 4vw, 36px)",
         }}
       >
-        <div className="bf-footer-grid" style={{ marginBottom: "44px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 24,
+            padding: "clamp(24px, 4vw, 38px)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 28,
+            background: "rgba(255,255,255,0.055)",
+          }}
+        >
+          <div style={{ maxWidth: 650 }}>
+            <p style={{ margin: "0 0 8px", color: "#FCD34D", fontSize: 11, fontWeight: 800, letterSpacing: "0.18em", textTransform: "uppercase" }}>Fresh ideas meet fresh food</p>
+            <h2 style={{ margin: 0, color: "white", fontFamily: "var(--heading-font)", fontSize: "clamp(24px, 4vw, 36px)", lineHeight: 1.2 }}>Find the ingredients. Make something memorable.</h2>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+            <Link to="/products" style={{ padding: "12px 22px", borderRadius: 999, background: "#FCD34D", color: "#123A2B", fontSize: 13, fontWeight: 800, textDecoration: "none" }}>Shop products</Link>
+            <Link to="/register" style={{ padding: "12px 22px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.25)", color: "white", fontSize: 13, fontWeight: 800, textDecoration: "none" }}>Meet Chef Bems</Link>
+          </div>
+        </div>
+
+        <div className="bf-footer-grid" style={{ marginTop: "44px", marginBottom: "44px" }}>
           {/* Brand col */}
           <div>
             {/* Logo is now a real transparent PNG — sits cleanly on the
@@ -100,7 +124,7 @@ export default function Footer() {
             </p>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-              {["🤖 AI Search", "💰 Smart Pricing", "🛡️ Secure"].map((b, i) => (
+              {["🌱 Fresh selection", "👨‍🍳 Chef Bems", "🛡️ Secure"].map((b, i) => (
                 <span
                   key={i}
                   style={{

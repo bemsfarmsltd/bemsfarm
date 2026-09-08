@@ -5,25 +5,18 @@ const AuthContext = createContext(null)
 
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      const stored = localStorage.getItem('bems_user')
-      return stored ? JSON.parse(stored) : null
-    } catch {
-      return null
-    }
-  })
+  const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('bems_token')
+    const token = localStorage.getItem('token')
     if (!token) { setLoading(false); return }
 
     api.get('/auth/me')
       .then((res) => setUser(res.data.user))
       .catch(() => {
-        localStorage.removeItem('bems_token')
-        localStorage.removeItem('bems_user')
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
         setUser(null)
       })
       .finally(() => setLoading(false))
@@ -32,15 +25,15 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const res = await api.post('/auth/login', { email, password })
     const { token, user: userData } = res.data
-    localStorage.setItem('bems_token', token)
-    localStorage.setItem('bems_user', JSON.stringify(userData))
+    localStorage.setItem('token', token)
+    localStorage.setItem('user', JSON.stringify(userData))
     setUser(userData)
     return userData
   }, [])
 
   const logout = useCallback(() => {
-    localStorage.removeItem('bems_token')
-    localStorage.removeItem('bems_user')
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
     setUser(null)
   }, [])
 

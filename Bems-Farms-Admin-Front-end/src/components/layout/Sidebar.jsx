@@ -386,7 +386,7 @@ export default function Sidebar({ mobileOpen = false }) {
         flexShrink: 0,
       }}>
         <Link to="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', borderRadius: '8px', padding: '6px 12px' }}>
-          <img src="/logo.png" alt="Bems Farms Logo" style={{ maxHeight: '32px', objectFit: 'contain' }} />
+          <img src="/admin/logo.png" alt="Bems Farms Logo" style={{ maxHeight: '32px', objectFit: 'contain' }} />
         </Link>
       </div>
 

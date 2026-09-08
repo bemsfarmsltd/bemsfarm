@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { GoogleLogin } from "@react-oauth/google";
+
+import { isStaff, handoff, customerHome } from "../../../shared/authRouting";
 
 const AUTH_CSS = `
 .auth-grain {
@@ -41,12 +43,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, user } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from || "/home";
+  const from = customerHome(location.state?.from);
+  useEffect(() => {
+    if (!user) return;
+    if (isStaff(user.role)) handoff('admin');
+    else if (user.role === 'user') navigate(from, { replace: true });
+    else setError('Your account has no supported role. Please contact support.');
+  }, [user, from, navigate]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -57,7 +65,6 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate(from, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || "Invalid email or password");
     } finally {
@@ -70,7 +77,6 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await loginWithGoogle(credentialResponse.credential);
-      navigate(from, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || "Google sign-in failed.");
     } finally {
@@ -98,6 +104,15 @@ export default function LoginPage() {
         className="auth-blob"
         style={{ width: 260, height: 260, bottom: -80, right: -60, background: "radial-gradient(circle, rgba(245,158,11,0.14), transparent 70%)" }}
       />
+
+      {/* Top Floating Back Button */}
+      <Link
+        to="/"
+        className="absolute top-4 left-4 md:top-6 md:left-6 z-30 inline-flex items-center gap-2 rounded-full border border-emerald-950/10 bg-white/90 px-4 py-2 text-xs font-extrabold uppercase tracking-wider text-emerald-900 shadow-md backdrop-blur transition hover:bg-white hover:shadow-lg hover:-translate-y-0.5"
+        aria-label="Back to home"
+      >
+        <span aria-hidden="true">←</span> Back to Home
+      </Link>
 
       {/* Outer Card Container */}
       <motion.div
@@ -147,6 +162,14 @@ export default function LoginPage() {
         <div className="flex-1 p-6 md:p-12 flex flex-col justify-between overflow-y-auto">
 
           <div className="w-full max-w-sm mx-auto my-auto text-left">
+            <div className="flex items-center justify-between mb-3">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-emerald-800 hover:text-emerald-950 transition"
+              >
+                <span aria-hidden="true">←</span> Back to Landing Page
+              </Link>
+            </div>
             <h1 className="text-3xl font-extrabold text-gray-900 mb-2 font-display">Sign in</h1>
             <p className="text-gray-500 text-[14px] mb-8 font-medium">
               Don't have an account?{" "}

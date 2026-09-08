@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
-import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { NAIRA_PER_UNIT } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
@@ -164,6 +163,7 @@ const DASHBOARD_CSS = `
   min-height: 180px;
   box-shadow: 0 10px 30px rgba(27,67,50,0.15);
 }
+.bp-catalogue-video { height: 260px; }
 .bp-promo-info {
   max-width: 60%;
   z-index: 2;
@@ -292,6 +292,7 @@ const DASHBOARD_CSS = `
     flex-direction: column;
     align-items: flex-start;
   }
+  .bp-catalogue-video { height: 190px; }
   .bp-promo-info {
     max-width: 100%;
   }
@@ -308,7 +309,6 @@ const DASHBOARD_CSS = `
 export default function ProductsPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { user } = useAuth();
   const { addToCart } = useCart();
 
   const [products, setProducts] = useState([]);
@@ -349,6 +349,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setSearch(params.get("search") || "");
+    setActiveCat(params.get("category") || "All");
   }, [params]);
 
   const toggleFavorite = (productId, e) => {
@@ -384,8 +385,27 @@ export default function ProductsPage() {
 
         <div className="bp-container">
 
+        <div className="bp-header">
+          <div className="bp-greeting">
+            <h2>Shop BemsFarms</h2>
+            <p>Search, filter and add farm produce to your basket.</p>
+          </div>
+          <label className="bp-search-wrap">
+            <span aria-hidden="true">⌕</span>
+            <span className="sr-only">Search products</span>
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search rice, beans, vegetables…"
+              className="bp-search-input"
+            />
+            {search && <button type="button" onClick={() => setSearch("")} className="bp-search-btn" aria-label="Clear product search">×</button>}
+          </label>
+        </div>
+
         {/* ── 2. PROMO CARD BANNER ── */}
-        <div className="bp-promo-card" style={{ position: "relative", overflow: "hidden", background: "none", padding: 0, height: "480px" }}>
+        <div className="bp-promo-card bp-catalogue-video" style={{ position: "relative", overflow: "hidden", background: "none", padding: 0 }}>
           <video
             autoPlay
             loop
@@ -429,7 +449,7 @@ export default function ProductsPage() {
         {/* ── 4. PRODUCT CATALOG GRID ── */}
         <div>
           <div className="bp-section-title">
-            <h3>Best sellers</h3>
+            <h3>{activeCat === "All" ? "All products" : activeCat}</h3>
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value)}

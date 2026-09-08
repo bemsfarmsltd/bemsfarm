@@ -432,6 +432,62 @@ router.get("/returns", protect, getUserReturns);
 router.post("/returns", protect, submitReturn);
 
 // ─────────────────────────────────────────────
+// PUBLIC ORDER TRACKING
+// Exposes delivery progress only. Personal, payment and item data are excluded;
+// active driver coordinates are rounded so the public map remains approximate.
+// ─────────────────────────────────────────────
+router.get("/track/:code", async (req, res, next) => {
+  try {
+    const code = String(req.params.code || "").trim().toUpperCase();
+    if (!/^BF-[A-Z0-9]{6,27}$/.test(code)) {
+      return res.status(400).json({ message: "Enter a valid BemsFarms delivery code" });
+    }
+
+    const result = await pool.query(
+      `SELECT
+         id,
+         status,
+         CASE
+           WHEN tracking_status IS NULL OR tracking_status = 'order_placed' THEN status
+           ELSE tracking_status
+         END AS tracking_status,
+         created_at,
+         updated_at,
+         delivery.eta_minutes,
+         ROUND(location.latitude::numeric, 3) AS driver_lat,
+         ROUND(location.longitude::numeric, 3) AS driver_lng,
+         location.recorded_at AS location_updated_at
+       FROM orders
+       LEFT JOIN LATERAL (
+         SELECT d.driver_id, d.eta_minutes
+         FROM deliveries d
+         WHERE d.order_id = orders.id
+         ORDER BY d.created_at DESC
+         LIMIT 1
+       ) delivery ON true
+       LEFT JOIN LATERAL (
+         SELECT dl.latitude, dl.longitude, dl.recorded_at
+         FROM driver_locations dl
+         WHERE dl.driver_id = delivery.driver_id
+         ORDER BY dl.recorded_at DESC
+         LIMIT 1
+       ) location ON true
+       WHERE UPPER(id) = $1
+       LIMIT 1`,
+      [code],
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ message: "We could not find an order with that delivery code" });
+    }
+
+    res.json({ order: result.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─────────────────────────────────────────────
 // GET SINGLE ORDER
 // ─────────────────────────────────────────────
 router.get("/:id", protect, async (req, res, next) => {

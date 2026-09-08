@@ -1,30 +1,31 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute, { STAFF_ROLES } from "./components/ProtectedRoute";
 
-import ComingSoonPage from "./pages/ComingSoonPage";
-import LandingPage from "./pages/LandingPage";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import OnboardingPage from "./pages/OnboardingPage";
-import HomePage from "./pages/HomePage";
-import ProductsPage from "./pages/ProductsPage";
-import ProductDetail from "./pages/ProductDetail";
-import CartPage from "./pages/CartPage";
-import CheckoutPage from "./pages/CheckoutPage";
-import OrderConfirmation from "./pages/OrderConfirmation";
-import PaymentRecoveryPage from "./pages/PaymentRecoveryPage";
-import OrdersPage from "./pages/OrdersPage";
-import OrderDetailPage from "./pages/OrderDetailPage";
-import ProfilePage from "./pages/ProfilePage";
-import AboutPage from "./pages/AboutPage";
-import ContactPage from "./pages/ContactPage";
-import AdminPage from "./pages/AdminPage";
-import ReturnsPage from "./pages/ReturnsPage";
-import ChefBemsPage from "./pages/ChefBemsPage";
-import DynamicPricingPage from "./pages/DynamicPricingPage";
-import FraudDetectionPage from "./pages/FraudDetectionPage";
-import DemandForecastingPage from "./pages/DemandForecastingPage";
-import NotFoundPage from "./pages/NotFoundPage";
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/RegisterPage"));
+const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
+const HomePage = lazy(() => import("./pages/HomePage"));
+const ProductsPage = lazy(() => import("./pages/ProductsPage"));
+const ProductDetail = lazy(() => import("./pages/ProductDetail"));
+const CartPage = lazy(() => import("./pages/CartPage"));
+const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
+const OrderConfirmation = lazy(() => import("./pages/OrderConfirmation"));
+const PaymentRecoveryPage = lazy(() => import("./pages/PaymentRecoveryPage"));
+const OrdersPage = lazy(() => import("./pages/OrdersPage"));
+const OrderDetailPage = lazy(() => import("./pages/OrderDetailPage"));
+const TrackOrderPage = lazy(() => import("./pages/TrackOrderPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const ReturnsPage = lazy(() => import("./pages/ReturnsPage"));
+const ChefBemsPage = lazy(() => import("./pages/ChefBemsPage"));
+const DynamicPricingPage = lazy(() => import("./pages/DynamicPricingPage"));
+const FraudDetectionPage = lazy(() => import("./pages/FraudDetectionPage"));
+const DemandForecastingPage = lazy(() => import("./pages/DemandForecastingPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
 const P = ({ children }) => <ProtectedRoute>{children}</ProtectedRoute>;
 // Internal/staff-only tooling — same auth system as the storefront, but a
@@ -34,13 +35,18 @@ const Staff = ({ children }) => <ProtectedRoute allowedRoles={STAFF_ROLES}>{chil
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <Suspense fallback={<div className="grid min-h-screen place-items-center bg-[#faf8f2] px-6 text-center font-bold text-[#17352a]" role="status">Loading BemsFarms…</div>}>
+        <Routes>
         {/* Public */}
-        <Route path="/" element={<ComingSoonPage />} />
-        <Route path="/launch" element={<LandingPage />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/launch" element={<Navigate to="/" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route path="/products" element={<ProductsPage />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/track-order" element={<TrackOrderPage />} />
 
         <Route
           path="/returns"
@@ -57,30 +63,6 @@ function App() {
           element={
             <P>
               <HomePage />
-            </P>
-          }
-        />
-        <Route
-          path="/products"
-          element={
-            <P>
-              <ProductsPage />
-            </P>
-          }
-        />
-        <Route
-          path="/product/:id"
-          element={
-            <P>
-              <ProductDetail />
-            </P>
-          }
-        />
-        <Route
-          path="/cart"
-          element={
-            <P>
-              <CartPage />
             </P>
           }
         />
@@ -206,7 +188,8 @@ function App() {
 
         {/* Catch-all — must stay last */}
         <Route path="*" element={<NotFoundPage />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
