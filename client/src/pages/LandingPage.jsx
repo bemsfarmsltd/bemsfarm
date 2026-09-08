@@ -460,11 +460,334 @@ const FALLBACK_PRODUCTS = [
   },
 ];
 
+function LoginPromptModal({ isOpen, onClose, cartCount, cartSubtotal, onLogin, onRegister }) {
+  if (!isOpen) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 10 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 10 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-3xl border border-emerald-900/10 bg-[#fffdf8] p-6 shadow-2xl sm:p-8"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Sign in required to place order"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-2xl shadow-inner">
+            🔒
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            aria-label="Close dialog"
+          >
+            ✕
+          </button>
+        </div>
+
+        <h3 className="mt-4 font-display text-2xl font-bold text-[#143c2d]">
+          Sign in to place your order
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Your selected goods ({cartCount} {cartCount === 1 ? "item" : "items"}, worth <span className="font-extrabold text-slate-900">₦{cartSubtotal.toLocaleString()}</span>) are securely saved in your basket.
+        </p>
+        <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3.5 text-xs font-bold leading-5 text-emerald-900">
+          💡 An account is needed so we can verify your delivery address, provide live tracking, and protect your order details.
+        </div>
+
+        <div className="mt-6 flex flex-col gap-2.5">
+          <button
+            type="button"
+            onClick={onLogin}
+            className="w-full rounded-full bg-[#143c2d] py-3.5 text-center text-sm font-extrabold text-white shadow-lg shadow-emerald-950/20 transition hover:bg-[#1a4e3b]"
+          >
+            Sign in & place order →
+          </button>
+          <button
+            type="button"
+            onClick={onRegister}
+            className="w-full rounded-full border-2 border-[#143c2d] bg-white py-3 text-center text-sm font-extrabold text-[#143c2d] transition hover:bg-emerald-50"
+          >
+            Create an account
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="py-1.5 text-center text-xs font-bold text-slate-500 hover:text-slate-800"
+          >
+            Keep browsing catalogue
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function FullScreenCatalogueModal({
+  isOpen,
+  onClose,
+  products,
+  addedProducts,
+  onAdd,
+  cartCount,
+  cartSubtotal,
+  onProceedToOrder,
+}) {
+  const [modalSearch, setModalSearch] = useState("");
+  const [modalFilter, setModalFilter] = useState("all");
+
+  if (!isOpen) return null;
+
+  const categoriesList = [
+    { key: "all", label: "All Items" },
+    { key: "bems_originals", label: "★ Bems Originals" },
+    { key: "Grains & Cereals", label: "🌾 Grains & Cereals" },
+    { key: "Vegetables", label: "🥕 Vegetables" },
+    { key: "Cooking Oils", label: "🫙 Cooking Oils" },
+    { key: "Legumes", label: "🫘 Legumes" },
+    { key: "Tubers & Roots", label: "🍠 Tubers & Roots" },
+    { key: "featured", label: "Featured" },
+    { key: "newest", label: "New Arrivals" },
+  ];
+
+  const filtered = products
+    .filter((p) => {
+      if (modalFilter === "bems_originals") {
+        return (
+          p.name?.toLowerCase().includes("bems") ||
+          p.brand?.toLowerCase().includes("bems") ||
+          p.is_bems_brand
+        );
+      }
+      if (modalFilter === "featured") return Boolean(p.is_featured);
+      if (modalFilter === "all" || modalFilter === "newest") return true;
+      return (
+        p.category_name?.toLowerCase() === modalFilter.toLowerCase()
+      );
+    })
+    .filter((p) => {
+      if (!modalSearch.trim()) return true;
+      const q = modalSearch.toLowerCase().trim();
+      return (
+        p.name?.toLowerCase().includes(q) ||
+        p.category_name?.toLowerCase().includes(q) ||
+        p.unit?.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      if (modalFilter === "newest") return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      return Number(Boolean(b.is_featured)) - Number(Boolean(a.is_featured));
+    });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-[1000] flex flex-col bg-[#faf8f2] text-slate-900"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Full Screen Store Catalogue"
+    >
+      {/* Background dot pattern */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-40"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%23143c2d' fill-opacity='0.08'/%3E%3C/svg%3E")`,
+          backgroundRepeat: "repeat",
+          backgroundSize: "36px 36px",
+        }}
+      />
+
+      {/* Top Bar Header */}
+      <div className="relative z-10 border-b border-emerald-950/10 bg-white/95 px-4 py-3.5 backdrop-blur-md sm:px-8">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <img src={logo} alt="BemsFarms" className="h-9 w-auto" />
+            <div className="hidden sm:block">
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-emerald-900">
+                Full Screen Store Catalogue
+              </span>
+            </div>
+          </div>
+
+          {/* Live Search Input */}
+          <div className="relative flex-1 max-w-md min-w-[220px]">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" aria-hidden="true">🔍</span>
+            <input
+              type="search"
+              value={modalSearch}
+              onChange={(e) => setModalSearch(e.target.value)}
+              placeholder="Search rice, oils, peppers, Bems items…"
+              className="w-full rounded-full border border-slate-300 bg-[#faf8f2] py-2 pl-9 pr-8 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20"
+              autoFocus
+            />
+            {modalSearch && (
+              <button
+                type="button"
+                onClick={() => setModalSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-700"
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              to="/cart"
+              className="relative inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-extrabold text-slate-700 shadow-sm hover:bg-slate-50"
+              aria-label={`View basket with ${cartCount} items`}
+            >
+              <span aria-hidden="true">🛒</span>
+              <span>Basket</span>
+              {cartCount > 0 && (
+                <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-extrabold text-white">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2 text-xs font-extrabold text-white shadow-md transition hover:bg-slate-800 active:scale-95"
+              aria-label="Close full screen catalogue"
+            >
+              <span>✕</span>
+              <span>Close (Esc)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Category Pills */}
+        <div className="mx-auto mt-3 flex max-w-7xl items-center gap-2 overflow-x-auto pb-1 text-xs">
+          {categoriesList.map((cat) => (
+            <button
+              key={cat.key}
+              type="button"
+              onClick={() => setModalFilter(cat.key)}
+              className={`shrink-0 rounded-full px-4 py-1.5 font-extrabold transition ${
+                modalFilter === cat.key
+                  ? cat.key === "bems_originals"
+                    ? "bg-emerald-800 text-amber-300 ring-2 ring-amber-400/40"
+                    : "bg-[#17352a] text-white"
+                  : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+          <span className="ml-auto shrink-0 text-[11px] font-bold text-slate-500">
+            {filtered.length} {filtered.length === 1 ? "product" : "products"}
+          </span>
+        </div>
+      </div>
+
+      {/* Reassuring Notice Banner */}
+      <div className="relative z-10 border-b border-amber-200/80 bg-gradient-to-r from-amber-50 via-emerald-50 to-amber-50 px-4 py-2.5 text-center text-xs text-slate-700">
+        <span className="font-extrabold text-emerald-900">🛒 Add items freely to your basket!</span>{" "}
+        <span className="text-slate-600">
+          Even after selecting goods and adding them to your basket, you will sign in (or register) to enter your delivery location and place your order.
+        </span>
+      </div>
+
+      {/* Scrollable Products Grid */}
+      <div className="relative z-10 flex-1 overflow-y-auto p-4 pb-28 sm:p-6 sm:pb-32 lg:p-8 lg:pb-32">
+        <div className="mx-auto max-w-7xl">
+          {filtered.length === 0 ? (
+            <div className="mt-16 rounded-3xl border border-slate-200 bg-white p-12 text-center shadow-sm">
+              <p className="font-display text-2xl font-bold text-slate-800">No products matched that filter</p>
+              <p className="mt-2 text-sm text-slate-500">Try clearing your search or selecting another category.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setModalSearch("");
+                  setModalFilter("all");
+                }}
+                className="mt-5 rounded-full bg-[#143c2d] px-6 py-2.5 text-xs font-extrabold text-white"
+              >
+                Reset filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 sm:gap-4">
+              {filtered.map((product) => (
+                <StoreProductCard
+                  key={product.id}
+                  product={product}
+                  added={Boolean(addedProducts[product.id])}
+                  onAdd={onAdd}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Sticky Bottom Dock: Basket & Place Order */}
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-emerald-950/10 bg-white/95 p-3.5 shadow-2xl backdrop-blur-lg sm:p-4">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-xl shadow-inner">
+              🛒
+            </div>
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                Basket: {cartCount} {cartCount === 1 ? "item" : "items"}
+              </p>
+              <p className="font-display text-lg font-bold text-[#143c2d]">
+                Subtotal: ₦{cartSubtotal.toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          <div className="hidden md:flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-bold text-emerald-900">
+            <span aria-hidden="true">🔒</span>
+            <span>Login required to place order & choose delivery</span>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              to="/cart"
+              className="rounded-full border-2 border-slate-300 bg-white px-5 py-2.5 text-xs font-extrabold text-slate-800 transition hover:border-emerald-700 hover:text-emerald-800"
+            >
+              View Basket
+            </Link>
+            <button
+              type="button"
+              onClick={onProceedToOrder}
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#d86d20] to-[#f57c00] px-6 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white shadow-lg shadow-orange-950/20 transition hover:brightness-110 active:scale-95"
+            >
+              <span>Place Order</span>
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
-  const { addToCart, cartCount } = useCart();
+  const { addToCart, cartCount, cartSubtotal } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [fullScreenModalOpen, setFullScreenModalOpen] = useState(false);
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
   const [email, setEmail] = useState("");
   const [subscribeState, setSubscribeState] = useState("idle");
@@ -483,6 +806,42 @@ export default function LandingPage() {
   useEffect(() => {
     if (isLoggedIn) navigate("/home", { replace: true });
   }, [isLoggedIn, navigate]);
+
+  // Lock body scroll when full screen catalogue modal is open
+  useEffect(() => {
+    if (fullScreenModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [fullScreenModalOpen]);
+
+  // Listen for Escape key to close modal or login prompt
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (loginPromptOpen) setLoginPromptOpen(false);
+        else if (fullScreenModalOpen) setFullScreenModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [fullScreenModalOpen, loginPromptOpen]);
+
+  const handleProceedToOrder = () => {
+    if (cartCount === 0) {
+      alert("Your basket is currently empty. Please add items to your basket first.");
+      return;
+    }
+    if (!isLoggedIn) {
+      setLoginPromptOpen(true);
+    } else {
+      navigate("/checkout");
+    }
+  };
 
   // Reset to page 1 when filtering or searching
   useEffect(() => {
@@ -708,22 +1067,35 @@ export default function LandingPage() {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <SectionHeading align="left" eyebrow="Shop the farm" title={appliedSearch ? `Results for “${appliedSearch}”` : "Fresh picks for your basket"} text="Explore our in-house brand items and full catalogue with live stock and prices." />
               
-              {/* Search Bar right inside Catalogue section */}
-              <form onSubmit={handleSearch} className="flex w-full max-w-md items-center rounded-full border border-slate-300 bg-[#faf8f2] p-1.5 shadow-sm focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-600/20">
-                <label htmlFor="catalogue-search" className="sr-only">Search products</label>
-                <span className="ml-3 text-slate-400" aria-hidden="true">🔍</span>
-                <input
-                  id="catalogue-search"
-                  type="search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search rice, oils, peppers, Bems items…"
-                  className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-slate-400"
-                />
-                <button type="submit" className="rounded-full bg-[#143c2d] px-5 py-2.5 text-xs font-extrabold text-white transition hover:bg-[#1a4e3b]">
-                  Search
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {/* Prominent Full Screen Button */}
+                <button
+                  type="button"
+                  onClick={() => setFullScreenModalOpen(true)}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#143c2d] bg-[#143c2d] px-5 py-3 text-xs font-extrabold uppercase tracking-wider text-amber-300 shadow-md shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b] hover:text-white active:scale-95"
+                  aria-label="Open full screen catalogue modal"
+                >
+                  <span className="text-base" aria-hidden="true">⛶</span>
+                  <span>Full Screen Catalogue</span>
                 </button>
-              </form>
+
+                {/* Search Bar right inside Catalogue section */}
+                <form onSubmit={handleSearch} className="flex w-full sm:w-80 md:w-96 items-center rounded-full border border-slate-300 bg-[#faf8f2] p-1.5 shadow-sm focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-600/20">
+                  <label htmlFor="catalogue-search" className="sr-only">Search products</label>
+                  <span className="ml-3 text-slate-400" aria-hidden="true">🔍</span>
+                  <input
+                    id="catalogue-search"
+                    type="search"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search rice, oils, peppers…"
+                    className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-slate-400"
+                  />
+                  <button type="submit" className="rounded-full bg-[#143c2d] px-5 py-2.5 text-xs font-extrabold text-white transition hover:bg-[#1a4e3b]">
+                    Search
+                  </button>
+                </form>
+              </div>
             </div>
 
             {/* Filter Tabs */}
@@ -765,6 +1137,13 @@ export default function LandingPage() {
                   Clear search ({appliedSearch}) ✕
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => setFullScreenModalOpen(true)}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-emerald-800 bg-emerald-50 px-4 py-1.5 text-xs font-extrabold text-emerald-900 transition hover:bg-emerald-100"
+              >
+                <span aria-hidden="true">⛶</span> Open Full Screen
+              </button>
             </div>
 
             {productsLoading && <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">{Array.from({ length: 12 }).map((_, index) => <div key={index} className="overflow-hidden rounded-2xl border border-slate-100 bg-white"><div className="aspect-[4/3] animate-pulse bg-slate-100" /><div className="space-y-3 p-4"><div className="h-3 w-20 animate-pulse rounded bg-slate-100" /><div className="h-5 w-3/4 animate-pulse rounded bg-slate-100" /><div className="h-9 animate-pulse rounded bg-slate-100" /></div></div>)}</div>}
@@ -847,7 +1226,22 @@ export default function LandingPage() {
 
             <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl bg-[#f3f0e6] px-6 py-5 sm:flex-row">
               <p className="text-center text-sm font-bold text-slate-700 sm:text-left">Your basket is saved while you create an account.</p>
-              <div className="flex flex-wrap items-center justify-center gap-3"><span className="text-sm font-extrabold text-emerald-800">{cartCount} {cartCount === 1 ? "item" : "items"}</span><Link to="/products" className="rounded-full border border-emerald-900 px-5 py-2.5 text-sm font-extrabold text-emerald-900">View full catalogue</Link><Link to={cartCount ? "/cart" : "/register"} className="rounded-full bg-[#17352a] px-5 py-2.5 text-sm font-extrabold text-white">{cartCount ? "View basket" : "Create account"}</Link></div>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <span className="text-sm font-extrabold text-emerald-800">{cartCount} {cartCount === 1 ? "item" : "items"}</span>
+                <button
+                  type="button"
+                  onClick={() => setFullScreenModalOpen(true)}
+                  className="rounded-full border border-emerald-900 bg-white px-5 py-2.5 text-sm font-extrabold text-emerald-900 transition hover:bg-emerald-50"
+                >
+                  ⛶ Open Full Screen
+                </button>
+                <Link to="/products" className="rounded-full border border-emerald-900 px-5 py-2.5 text-sm font-extrabold text-emerald-900">
+                  View catalogue page
+                </Link>
+                <Link to={cartCount ? "/cart" : "/register"} className="rounded-full bg-[#17352a] px-5 py-2.5 text-sm font-extrabold text-white">
+                  {cartCount ? "View basket" : "Create account"}
+                </Link>
+              </div>
             </div>
           </div>
         </section>
@@ -950,6 +1344,36 @@ export default function LandingPage() {
           <div className="flex flex-col gap-3 border-t border-white/10 pt-7 text-xs sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} BemsFarms Limited. All rights reserved.</p><p>Fresh food · Smart help · Easier shopping</p></div>
         </div>
       </footer>
+
+      {/* Full Screen Store Catalogue Modal */}
+      <AnimatePresence>
+        {fullScreenModalOpen && (
+          <FullScreenCatalogueModal
+            isOpen={fullScreenModalOpen}
+            onClose={() => setFullScreenModalOpen(false)}
+            products={products}
+            addedProducts={addedProducts}
+            onAdd={handleAdd}
+            cartCount={cartCount}
+            cartSubtotal={cartSubtotal}
+            onProceedToOrder={handleProceedToOrder}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sign In Required Modal when placing order */}
+      <AnimatePresence>
+        {loginPromptOpen && (
+          <LoginPromptModal
+            isOpen={loginPromptOpen}
+            onClose={() => setLoginPromptOpen(false)}
+            cartCount={cartCount}
+            cartSubtotal={cartSubtotal}
+            onLogin={() => navigate("/login", { state: { from: "/checkout" } })}
+            onRegister={() => navigate("/register", { state: { from: "/checkout" } })}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
