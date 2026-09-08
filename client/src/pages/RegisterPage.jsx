@@ -48,7 +48,6 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    confirmEmail: "",
     phone: "",
     password: "",
     confirm: "",
@@ -78,8 +77,6 @@ export default function RegisterPage() {
 
     if (!form.name.trim()) return setError("Please enter your full name");
     if (!form.email.trim()) return setError("Please enter your email");
-    if (form.email.toLowerCase().trim() !== form.confirmEmail.toLowerCase().trim())
-      return setError("Email addresses do not match");
     if (!form.phone.trim()) return setError("Please enter your phone number");
     
     const finalPhone = form.phone.trim().startsWith("+234") 
@@ -210,34 +207,19 @@ export default function RegisterPage() {
                 />
               </div>
 
-              {/* Email Fields Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    placeholder="you@example.com"
-                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                    Confirm Email
-                  </label>
-                  <input
-                    type="email"
-                    value={form.confirmEmail}
-                    onChange={(e) => handleInputChange("confirmEmail", e.target.value)}
-                    placeholder="you@example.com"
-                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
-                    required
-                  />
-                </div>
+              {/* Email Field */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  placeholder="you@example.com"
+                  className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
+                  required
+                />
               </div>
 
               {/* Phone Field */}
