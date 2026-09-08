@@ -4,13 +4,6 @@ import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { GoogleLogin } from "@react-oauth/google";
 
-const PREF_TAGS = [
-  { id: "grains", label: "Grains & Cereals 🌾" },
-  { id: "veg", label: "Vegetables 🥬" },
-  { id: "oils", label: "Oils & Fats 🛢️" },
-  { id: "tubers", label: "Tubers & Roots 🥔" },
-  { id: "spices", label: "Spices & Seasonings 🌶️" },
-];
 
 const AUTH_CSS = `
 .auth-grain {
@@ -53,7 +46,7 @@ export default function RegisterPage() {
     password: "",
     confirm: "",
   });
-  const [selectedTags, setSelectedTags] = useState(["grains", "veg"]);
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { register, loginWithGoogle } = useAuth();
@@ -75,13 +68,6 @@ export default function RegisterPage() {
   };
   const passStrength = getPasswordStrength(form.password);
 
-  const toggleTag = (id) => {
-    if (selectedTags.includes(id)) {
-      setSelectedTags((prev) => prev.filter((t) => t !== id));
-    } else {
-      setSelectedTags((prev) => [...prev, id]);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -105,7 +91,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await register(fullName, form.email, form.password, finalPhone, selectedTags);
+      await register(fullName, form.email, form.password, finalPhone);
       navigate("/verify-email", { state: { email: form.email } });
     } catch (err) {
       setError(err.response?.data?.message || err.message || "Registration failed. Try again.");
@@ -338,32 +324,6 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              {/* Preferences selector tags */}
-              <div>
-                <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase tracking-wider">
-                  Select Preferences
-                </label>
-                <div className="flex flex-wrap gap-2 py-1">
-                  {PREF_TAGS.map((tag) => {
-                    const isSelected = selectedTags.includes(tag.id);
-                    return (
-                      <button
-                        key={tag.id}
-                        type="button"
-                        onClick={() => toggleTag(tag.id)}
-                        className={`text-xs px-3.5 py-1.5 rounded-full border transition-all font-semibold flex items-center gap-1.5 ${
-                          isSelected
-                            ? "bg-emerald-50 border-emerald-500 text-emerald-800"
-                            : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"
-                        }`}
-                      >
-                        {tag.label}
-                        {isSelected && <span style={{fontSize:'1.35em'}} className="text-[10px] text-emerald-600">✕</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
 
               {/* Submit button */}
               <button
