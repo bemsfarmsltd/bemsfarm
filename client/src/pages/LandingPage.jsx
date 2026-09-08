@@ -477,10 +477,17 @@ export default function LandingPage() {
   const [appliedSearch, setAppliedSearch] = useState("");
   const [catalogueView, setCatalogueView] = useState("all");
   const [addedProducts, setAddedProducts] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   useEffect(() => {
     if (isLoggedIn) navigate("/home", { replace: true });
   }, [isLoggedIn, navigate]);
+
+  // Reset to page 1 when filtering or searching
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [catalogueView, appliedSearch]);
 
   const loadProducts = async (term = "") => {
     setProductsLoading(true);
@@ -546,6 +553,17 @@ export default function LandingPage() {
       if (catalogueView === "newest") return new Date(b.created_at || 0) - new Date(a.created_at || 0);
       return Number(Boolean(b.is_featured)) - Number(Boolean(a.is_featured));
     });
+
+  const totalPages = Math.ceil(displayedProducts.length / itemsPerPage) || 1;
+  const paginatedProducts = displayedProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const goToPage = (pageNumber) => {
+    setCurrentPage(pageNumber);
+    document.getElementById("featured-products")?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const handleSubscribe = async (event) => {
     event.preventDefault();
@@ -757,11 +775,65 @@ export default function LandingPage() {
             )}
 
             {!productsLoading && !productsError && displayedProducts.length > 0 && (
-              <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 xl:gap-4">
-                {displayedProducts.map((product) => (
-                  <StoreProductCard key={product.id} product={product} added={Boolean(addedProducts[product.id])} onAdd={handleAdd} />
-                ))}
-              </div>
+              <>
+                <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 xl:gap-4">
+                  {paginatedProducts.map((product) => (
+                    <StoreProductCard key={product.id} product={product} added={Boolean(addedProducts[product.id])} onAdd={handleAdd} />
+                  ))}
+                </div>
+
+                {/* Pagination Controls (Previous / Next + Numbers) */}
+                {totalPages > 1 && (
+                  <div className="mt-9 flex flex-col items-center justify-between gap-4 border-t border-slate-100 pt-6 sm:flex-row">
+                    <p className="text-xs font-bold text-slate-500">
+                      Showing <span className="font-extrabold text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span>–<span className="font-extrabold text-slate-900">{Math.min(currentPage * itemsPerPage, displayedProducts.length)}</span> of <span className="font-extrabold text-slate-900">{displayedProducts.length}</span> products
+                    </p>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => goToPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-extrabold text-slate-700 shadow-sm transition hover:border-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-35"
+                        aria-label="Previous page"
+                      >
+                        <span aria-hidden="true">‹</span> Previous
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }).map((_, index) => {
+                          const pageNum = index + 1;
+                          return (
+                            <button
+                              key={pageNum}
+                              type="button"
+                              onClick={() => goToPage(pageNum)}
+                              className={`h-8 w-8 rounded-full text-xs font-extrabold transition ${
+                                currentPage === pageNum
+                                  ? "bg-[#143c2d] text-white shadow-md"
+                                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                              }`}
+                              aria-label={`Go to page ${pageNum}`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-extrabold text-slate-700 shadow-sm transition hover:border-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-35"
+                        aria-label="Next page"
+                      >
+                        Next <span aria-hidden="true">›</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl bg-[#f3f0e6] px-6 py-5 sm:flex-row">
