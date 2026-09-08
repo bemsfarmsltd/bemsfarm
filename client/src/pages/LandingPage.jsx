@@ -625,6 +625,15 @@ export default function LandingPage() {
 
       <main id="main-content">
         <section className="relative overflow-hidden px-5 pb-20 pt-32 sm:px-8 lg:min-h-[760px] lg:px-12 lg:pb-24 lg:pt-36">
+          {/* Pattern background */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%23143c2d' fill-opacity='0.07'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "repeat",
+              backgroundSize: "36px 36px",
+            }}
+          />
           <div className="absolute -left-40 top-20 h-96 w-96 rounded-full bg-amber-200/30 blur-3xl" />
           <div className="absolute -right-40 top-0 h-[520px] w-[520px] rounded-full bg-emerald-200/40 blur-3xl" />
           <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
