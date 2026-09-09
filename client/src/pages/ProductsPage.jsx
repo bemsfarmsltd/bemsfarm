@@ -136,7 +136,7 @@ function ShopVideoSlider() {
 
   return (
     <div
-      className="relative w-full aspect-video sm:aspect-[16/10] max-w-[480px] lg:max-w-none rounded-2xl sm:rounded-3xl overflow-hidden border border-white/25 shadow-2xl bg-black/50 backdrop-blur-md group select-none"
+      className="relative w-full aspect-video sm:aspect-[16/10] md:aspect-[4/3] lg:aspect-[16/10] max-w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-white/25 shadow-2xl bg-black/50 backdrop-blur-md group select-none"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -378,7 +378,7 @@ export default function ProductsPage() {
               style={{
                 background: "linear-gradient(135deg, #051a11 0%, #0d3322 35%, #144931 70%, #082418 100%)",
               }}
-              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 text-white shadow-xl border border-emerald-800/30 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center"
+              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-7 md:p-8 lg:p-10 text-white shadow-xl border border-emerald-800/30 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-6 lg:gap-8 items-center"
             >
               {/* Subtle Atmospheric Light Orbs */}
               <div
@@ -397,38 +397,47 @@ export default function ProductsPage() {
               />
 
               {/* Left Column: Editorial Store Header & Search Form */}
-              <div className="relative z-10 lg:col-span-7 flex flex-col justify-center">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300 border border-white/15 backdrop-blur-md shadow-xs w-fit">
+              <div className="relative z-10 md:col-span-7 flex flex-col justify-center">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300 border border-white/15 backdrop-blur-md shadow-xs w-fit">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400" />
                   <span>Farm-To-Door Catalogue</span>
                 </div>
 
-                <h1 className="mt-3 font-display text-2xl sm:text-4xl lg:text-5xl font-black leading-tight text-white drop-shadow-sm">
+                <h1 className="mt-2.5 sm:mt-3 font-display text-2xl sm:text-3xl md:text-3xl lg:text-4xl xl:text-5xl font-black leading-tight text-white drop-shadow-sm">
                   Fresh Produce &amp; Pantry Essentials
                 </h1>
 
-                <p className="mt-2 text-xs sm:text-sm md:text-base text-emerald-100/85 max-w-xl font-normal leading-relaxed">
+                <p className="mt-2 text-xs sm:text-sm text-emerald-100/90 font-normal leading-relaxed max-w-xl">
                   Explore 100% stone-free grains, authentic cold-pressed oils, farm tubers, and Nigerian staples delivered directly to your doorstep.
                 </p>
 
                 {/* Trust Highlight Chips */}
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-[10px] sm:text-[11px] font-semibold text-emerald-200/90">
-                  <span className="rounded-md bg-white/10 px-2.5 py-1 border border-white/10 backdrop-blur-xs">
+                <div className="mt-3.5 flex flex-wrap items-center gap-2 text-[10px] sm:text-[11px] font-semibold text-emerald-200/90">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 border border-white/10 backdrop-blur-xs">
+                    <svg className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
                     Stone-Free Guarantee
                   </span>
-                  <span className="rounded-md bg-white/10 px-2.5 py-1 border border-white/10 backdrop-blur-xs">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 border border-white/10 backdrop-blur-xs">
+                    <svg className="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25V3.75c0-.621-.504-1.125-1.125-1.125h-9.75C2.504 2.625 2 3.129 2 3.75v10.5c0 .621.504 1.125 1.125 1.125h1.5" />
+                    </svg>
                     Free Delivery over ₦15,000
                   </span>
-                  <span className="rounded-md bg-white/10 px-2.5 py-1 border border-white/10 backdrop-blur-xs">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 border border-white/10 backdrop-blur-xs">
+                    <svg className="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                     Same-Day Dispatch Available
                   </span>
                 </div>
 
                 {/* Search & Quick Filter Tags */}
-                <div className="mt-6 w-full max-w-lg">
+                <div className="mt-4 sm:mt-5 w-full max-w-xl">
                   <form
                     onSubmit={handleSearchSubmit}
-                    className="relative flex items-center w-full shadow-lg rounded-2xl overflow-hidden bg-white/10 border border-white/20 backdrop-blur-xl p-1.5"
+                    className="relative flex items-center w-full shadow-lg rounded-2xl overflow-hidden bg-white/10 border border-white/20 backdrop-blur-xl p-1 sm:p-1.5"
                   >
                     <div className="pl-3 pr-2 text-emerald-200/70 flex items-center">
                       <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -451,21 +460,21 @@ export default function ProductsPage() {
                           newParams.delete("search");
                           setParams(newParams);
                         }}
-                        className="px-2 text-white/60 hover:text-white text-sm font-bold"
+                        className="px-2 text-white/60 hover:text-white text-sm font-bold cursor-pointer"
                       >
                         ×
                       </button>
                     )}
                     <button
                       type="submit"
-                      className="rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0f3322] px-4 py-2 text-xs sm:text-sm font-black transition-all shadow-md shrink-0"
+                      className="rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0f3322] px-4 sm:px-5 py-2 text-xs sm:text-sm font-black transition-all shadow-md shrink-0 cursor-pointer"
                     >
                       Search
                     </button>
                   </form>
 
                   {/* Quick Keyword Suggestions */}
-                  <div className="mt-2.5 flex items-center gap-1.5 text-[10px] sm:text-xs text-white/70 overflow-x-auto">
+                  <div className="mt-2.5 flex items-center gap-1.5 text-[10px] sm:text-xs text-white/70 overflow-x-auto pb-0.5">
                     <span className="font-bold text-amber-300 shrink-0">Popular:</span>
                     {["Rice", "Yam", "Palm Oil", "Beans", "Pepper"].map((keyword) => (
                       <button
@@ -477,7 +486,7 @@ export default function ProductsPage() {
                           newParams.set("search", keyword);
                           setParams(newParams);
                         }}
-                        className="rounded-md bg-white/10 hover:bg-white/20 px-2 py-0.5 text-white/85 text-[10px] font-medium transition shrink-0"
+                        className="rounded-md bg-white/10 hover:bg-white/25 px-2.5 py-0.5 text-white/90 text-[10px] sm:text-[11px] font-medium transition shrink-0 cursor-pointer border border-white/10"
                       >
                         {keyword}
                       </button>
@@ -487,7 +496,7 @@ export default function ProductsPage() {
               </div>
 
               {/* Right Column: High Quality Farm Multi-Video Slide Container */}
-              <div className="relative z-10 lg:col-span-5 w-full flex justify-center lg:justify-end">
+              <div className="relative z-10 md:col-span-5 w-full flex justify-center md:justify-end">
                 <ShopVideoSlider />
               </div>
             </div>
