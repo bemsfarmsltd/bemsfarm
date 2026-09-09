@@ -9,16 +9,12 @@ import { getProductImage } from "../utils/productImages";
 import Toast from "../components/ui/Toast";
 import QuickViewModal from "../components/ui/QuickViewModal";
 
-const CATEGORY_META = {
-  "Vegetables": { emoji: "🥬" },
-  "Grains & Cereals": { emoji: "🌾" },
-  "Cooking Oils": { emoji: "🫒" },
-  "Legumes": { emoji: "🫘" },
-  "Tubers & Roots": { emoji: "🍠" },
-  "Spices & Seasonings": { emoji: "🌶️" },
-  "Fruits": { emoji: "🍉" },
-  "Leafy Greens": { emoji: "🥗" },
-};
+function getTimeGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 function ProductGridCard({
   product,
@@ -210,17 +206,13 @@ export default function HomePage() {
   } = useCart();
 
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [activeTab, setActiveTab] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("featured");
   const [addedProducts, setAddedProducts] = useState({});
   const [toast, setToast] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [trackingInput, setTrackingInput] = useState("");
   const [quickViewProduct, setQuickViewProduct] = useState(null);
-  const itemsPerPage = 12;
   const toastTimerRef = useRef(null);
 
   // Favorites stored in localStorage
@@ -251,15 +243,15 @@ export default function HomePage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [prodRes, catRes] = await Promise.all([
-        api.get("/products", { params: { limit: 200 } }),
-        api.get("/categories"),
+      const [prodRes, ordersRes] = await Promise.all([
+        api.get("/products", { params: { limit: 50 } }),
+        api.get("/orders").catch(() => ({ data: { orders: [] } })),
       ]);
       setProducts(prodRes.data?.products || []);
-      setCategories(catRes.data?.categories || []);
+      setOrders(ordersRes.data?.orders || []);
     } catch (err) {
-      console.error("Error loading home catalogue:", err);
-      setLoadError(err.response?.data?.message || "Failed to load catalogue. Please refresh.");
+      console.error("Error loading home hub:", err);
+      setLoadError(err.response?.data?.message || "Failed to load dashboard. Please refresh.");
     } finally {
       setLoading(false);
     }
@@ -268,11 +260,6 @@ export default function HomePage() {
   useEffect(() => {
     loadData();
   }, []);
-
-  // Reset pagination on filter or search change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab, searchQuery, sortBy]);
 
   const handleAdd = (product) => {
     const displayPrice = Number(product.price || 0) * NAIRA_PER_UNIT;
@@ -295,322 +282,268 @@ export default function HomePage() {
     }, 1200);
   };
 
-  const customerName = user?.first_name || user?.name || user?.email?.split("@")[0] || "there";
+  const handleTrackSubmit = (e) => {
+    e.preventDefault();
+    const code = trackingInput.trim().replace(/^#/, "").toUpperCase();
+    navigate(code ? `/track-order?code=${encodeURIComponent(code)}` : "/track-order");
+  };
 
-  // Available categories list
-  const categoryTabs = useMemo(() => {
-    const list = [{ id: "all", name: "All Produce", emoji: "🛒" }];
-    list.push({ id: "bems_originals", name: "★ Bems Originals", emoji: "🌾" });
+  const customerName = user?.first_name || user?.name || user?.email?.split("@")[0] || "Chef";
+  const greeting = getTimeGreeting();
 
-    categories.forEach((cat) => {
-      const meta = CATEGORY_META[cat.name] || { emoji: "🌱" };
-      list.push({ id: cat.name, name: cat.name, emoji: meta.emoji });
-    });
+  // Active / Recent Orders
+  const recentOrder = orders && orders.length > 0 ? orders[0] : null;
 
-    list.push({ id: "favorites", name: "My Wishlist", emoji: "❤️" });
-    list.push({ id: "featured", name: "Featured", emoji: "✨" });
-    return list;
-  }, [categories]);
-
-  // Filtered & Sorted Products
-  const filteredProducts = useMemo(() => {
-    let result = [...products];
-
-    // Category Filter
-    if (activeTab === "bems_originals") {
-      result = result.filter(
-        (p) => p.name?.toLowerCase().includes("bems") || p.brand?.toLowerCase().includes("bems") || p.is_bems_brand
-      );
-    } else if (activeTab === "favorites") {
-      result = result.filter((p) => Boolean(favorites[p.id]));
-    } else if (activeTab === "featured") {
-      result = result.filter((p) => p.is_featured);
-    } else if (activeTab !== "all") {
-      result = result.filter(
+  // Filter out staples for quick reorder (Grains, Tubers, Oils, Staples)
+  const staples = useMemo(() => {
+    return products
+      .filter(
         (p) =>
-          p.category_name?.toLowerCase() === activeTab.toLowerCase() ||
-          p.category_name?.toLowerCase().includes(activeTab.toLowerCase())
-      );
-    }
+          p.category_name?.toLowerCase().includes("grain") ||
+          p.category_name?.toLowerCase().includes("tuber") ||
+          p.category_name?.toLowerCase().includes("oil") ||
+          p.is_featured ||
+          p.name?.toLowerCase().includes("rice") ||
+          p.name?.toLowerCase().includes("yam")
+      )
+      .slice(0, 6);
+  }, [products]);
 
-    // Search Filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      result = result.filter(
-        (p) =>
-          p.name?.toLowerCase().includes(q) ||
-          p.category_name?.toLowerCase().includes(q) ||
-          p.brand?.toLowerCase().includes(q)
-      );
-    }
-
-    // Sort
-    result.sort((a, b) => {
-      if (sortBy === "price-low") {
-        return Number(a.price || 0) - Number(b.price || 0);
-      }
-      if (sortBy === "price-high") {
-        return Number(b.price || 0) - Number(a.price || 0);
-      }
-      if (sortBy === "rating") {
-        return Number(b.avg_rating || 0) - Number(a.avg_rating || 0);
-      }
-      if (sortBy === "newest") {
-        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-      }
-      return Number(Boolean(b.is_featured)) - Number(Boolean(a.is_featured));
-    });
-
-    return result;
-  }, [products, activeTab, searchQuery, sortBy, favorites]);
-
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
-  const paginatedProducts = filteredProducts.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Featured seasonal harvests
+  const featuredHarvests = useMemo(() => {
+    return products
+      .filter((p) => p.is_featured || p.brand?.toLowerCase().includes("bems") || p.is_bems_brand)
+      .slice(0, 8);
+  }, [products]);
 
   return (
     <PageWrapper>
       <div className="min-h-screen bg-[#F8F5EE] text-slate-900 pb-20">
-        {/* ── RICH BRAND HERO BANNER ── */}
-        <section className="px-3 pt-4 sm:pt-6 pb-2 sm:px-6 lg:px-10">
+        {/* ── 1. PERSONALIZED WELCOME & KPI SUMMARY ── */}
+        <section className="border-b border-[#DFD6C2] bg-linear-to-b from-[#EDE5D5]/70 via-[#F8F5EE] to-[#F8F5EE] px-3 pt-6 pb-6 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-7xl">
-            <div
-              style={{
-                background: "linear-gradient(135deg, #143c2d 0%, #1c523e 60%, #153e2f 100%)",
-              }}
-              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 text-white shadow-lg border border-[#143c2d]/20"
-            >
-              <div className="relative z-10 max-w-xl">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-amber-300 backdrop-blur-xs">
-                  <span>🌾</span>
-                  <span>Direct From Farm To Table</span>
-                </div>
-                <h1 className="mt-2.5 font-display text-xl sm:text-3xl md:text-4xl font-black leading-tight text-white">
-                  Fresh Farm Produce & 100% Stone-Free Grains
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#DFD6C2] bg-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#143c2d]">
+                  <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse" />
+                  Customer Hub
+                </span>
+                <h1 className="mt-2 font-display text-xl sm:text-2xl md:text-3xl font-black text-[#143c2d]">
+                  {greeting}, <span className="text-[#c85a17]">{customerName}</span>!
                 </h1>
-                <p className="mt-1.5 text-xs sm:text-sm text-emerald-100/90 leading-relaxed max-w-md">
-                  Welcome back, <strong className="text-amber-300">{customerName}</strong>! Shop sorted grains, unadulterated oils, and fresh harvests delivered to your doorstep.
+                <p className="mt-0.5 text-xs sm:text-sm text-slate-600">
+                  Manage your farm pantry, reorder weekly staples, or track doorstep deliveries.
                 </p>
-
-                {/* Quick Trust Badges */}
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-[10px] sm:text-xs font-bold text-white">
-                  <span className="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-1">
-                    🚚 Doorstep Delivery
-                  </span>
-                  <span className="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-1 text-amber-300">
-                    ✨ 100% Stone-Free
-                  </span>
-                  <span className="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-1">
-                    🔒 Monnify Encrypted
-                  </span>
-                </div>
               </div>
 
-              {/* Subtle Decorative Pattern */}
-              <div
-                className="absolute right-0 top-0 h-full w-1/2 opacity-15 pointer-events-none hidden md:block"
-                style={{
-                  backgroundImage: "radial-gradient(circle at 80% 50%, rgba(245,158,11,0.5) 0%, transparent 60%)",
-                }}
-              />
+              {/* Quick Action Buttons */}
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={openCartDrawer}
+                  className="flex items-center gap-2 rounded-xl border border-[#DFD6C2] bg-white px-3.5 py-2.5 text-xs font-bold text-slate-800 shadow-2xs transition hover:border-[#143c2d]"
+                >
+                  <span>🛒</span>
+                  <span>Basket:</span>
+                  <span className="font-extrabold text-[#143c2d]">
+                    {cartCount} ({cartCount === 1 ? "item" : "items"})
+                  </span>
+                </button>
+
+                <Link
+                  to="/orders"
+                  className="flex items-center gap-1.5 rounded-xl border border-[#DFD6C2] bg-white px-3.5 py-2.5 text-xs font-bold text-slate-800 shadow-2xs transition hover:border-[#143c2d]"
+                >
+                  <span>📦</span>
+                  <span>My Orders</span>
+                </Link>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* ── MAIN MARKETPLACE STOREFRONT ── */}
-        <section className="px-3 pt-4 sm:pt-6 pb-16 sm:px-6 lg:px-10">
+        {/* ── 2. ACTIVE DELIVERY TRACKER WIDGET ── */}
+        <section className="px-3 pt-5 pb-2 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-7xl">
-            {/* Header, Search & Sort Bar */}
-            <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between border-b border-[#DFD6C2] pb-4">
-              <div>
-                <h2 className="font-display text-lg sm:text-2xl font-black text-[#143c2d]">
-                  Shop Produce
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Showing {filteredProducts.length} {filteredProducts.length === 1 ? "item" : "items"} available for delivery
-                </p>
-              </div>
-
-              {/* Search & Sort Controls */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                {/* Search Bar */}
-                <div className="relative w-full sm:w-64 md:w-72">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" aria-hidden="true">🔍</span>
-                  <input
-                    type="search"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search rice, yam, pepper…"
-                    className="w-full rounded-full border border-slate-300 bg-white py-2 pl-9 pr-8 text-xs outline-none focus:border-[#143c2d] focus:ring-1 focus:ring-[#143c2d]"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-700"
-                    >
-                      ✕
-                    </button>
-                  )}
+            {recentOrder ? (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-4 sm:p-5 shadow-2xs">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-xl text-emerald-800">
+                    🚚
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black uppercase text-emerald-950">
+                        Recent Order #{recentOrder.order_number || recentOrder.id}
+                      </span>
+                      <span className="rounded-full bg-emerald-200/80 px-2 py-0.5 text-[10px] font-extrabold capitalize text-emerald-900">
+                        {recentOrder.status || "Processing"}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-emerald-900/80">
+                      Total: ₦{(Number(recentOrder.total_amount || recentOrder.total || 0) * NAIRA_PER_UNIT).toLocaleString()} • {recentOrder.items_count || recentOrder.items?.length || 1} produce items
+                    </p>
+                  </div>
                 </div>
 
-                {/* Sort Dropdown */}
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="rounded-full border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 outline-none focus:border-[#143c2d]"
+                <Link
+                  to={recentOrder.tracking_code ? `/track-order?code=${recentOrder.tracking_code}` : `/orders/${recentOrder.id}`}
+                  className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#143c2d] px-5 py-2 text-xs font-extrabold text-white transition hover:bg-[#0e2c21]"
                 >
-                  <option value="featured">Sort: Featured</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="rating">Highest Rated</option>
-                  <option value="newest">Newest Arrivals</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Category Filter Pills Carousel (Mobile-Smooth) */}
-            <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-              {categoryTabs.map((tab) => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-all ${
-                      isActive
-                        ? tab.id === "bems_originals"
-                          ? "bg-[#143c2d] text-amber-300 ring-2 ring-amber-400/40 shadow-sm"
-                          : "bg-[#143c2d] text-white shadow-sm"
-                        : "border border-[#DFD6C2] bg-white text-slate-700 hover:bg-slate-100"
-                    }`}
-                  >
-                    <span>{tab.emoji}</span>
-                    <span>{tab.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Product Grid State */}
-            {loadError && (
-              <div role="alert" className="mt-8 flex flex-col items-center rounded-3xl border border-red-200 bg-red-50 p-6 sm:p-8 text-center">
-                <p className="font-display text-base sm:text-lg font-bold text-red-900">{loadError}</p>
-                <button
-                  type="button"
-                  onClick={loadData}
-                  className="mt-4 rounded-full bg-[#143c2d] px-6 py-2.5 text-xs font-extrabold text-white"
-                >
-                  Try loading again
-                </button>
-              </div>
-            )}
-
-            {loading ? (
-              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-y-4">
-                {Array.from({ length: 8 }).map((_, index) => (
-                  <div key={index} className="overflow-hidden rounded-2xl border border-[#DFD6C2] bg-white shadow-xs">
-                    <div className="aspect-[4/3] animate-pulse bg-[#EDE5D5]" />
-                    <div className="space-y-2 p-3 sm:p-4">
-                      <div className="h-2.5 w-14 animate-pulse rounded-full bg-[#DFD6C2]" />
-                      <div className="h-4 w-4/5 animate-pulse rounded-md bg-[#DFD6C2]" />
-                      <div className="flex items-center justify-between pt-2">
-                        <div className="h-4 w-12 animate-pulse rounded-md bg-[#DFD6C2]" />
-                        <div className="h-7 w-12 animate-pulse rounded-full bg-[#143c2d]/20" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : filteredProducts.length === 0 ? (
-              <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-8 sm:p-12 text-center shadow-xs">
-                <p className="text-3xl">🌾</p>
-                <h3 className="mt-3 font-display text-lg sm:text-xl font-bold text-slate-800">No produce matched your selection</h3>
-                <p className="mt-1 text-xs text-slate-500">Try adjusting your search query or selecting another category.</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab("all");
-                    setSearchQuery("");
-                  }}
-                  className="mt-4 rounded-full bg-[#143c2d] px-6 py-2.5 text-xs font-extrabold text-white"
-                >
-                  Reset all filters
-                </button>
+                  <span>Track Status ➔</span>
+                </Link>
               </div>
             ) : (
-              <>
-                <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 sm:gap-4 md:gap-5">
-                  {paginatedProducts.map((product) => (
-                    <ProductGridCard
-                      key={product.id}
-                      product={product}
-                      onAdd={handleAdd}
-                      onUpdateQty={updateQuantity}
-                      cartQuantity={cart[product.id]?.quantity || 0}
-                      isAdded={Boolean(addedProducts[product.id])}
-                      onQuickView={(p) => setQuickViewProduct(p)}
-                      isFavorite={Boolean(favorites[product.id])}
-                      onToggleFavorite={toggleFavorite}
-                    />
-                  ))}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-[#DFD6C2] bg-white p-4 shadow-2xs">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">🚚</span>
+                  <div>
+                    <h3 className="text-xs font-black text-[#143c2d]">Track an active delivery</h3>
+                    <p className="text-[11px] text-slate-500">Enter your order code to see real-time dispatch progress</p>
+                  </div>
                 </div>
 
-                {/* Pagination Controls */}
-                {totalPages > 1 && (
-                  <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-[#DFD6C2] pt-6 sm:flex-row">
-                    <p className="text-xs font-bold text-slate-500">
-                      Showing <span className="font-extrabold text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span>–<span className="font-extrabold text-slate-900">{Math.min(currentPage * itemsPerPage, filteredProducts.length)}</span> of <span className="font-extrabold text-slate-900">{filteredProducts.length}</span> products
-                    </p>
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                        className="rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-extrabold text-slate-700 transition hover:border-[#143c2d] disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        ‹ Prev
-                      </button>
-
-                      {Array.from({ length: totalPages }).map((_, i) => {
-                        const pageNum = i + 1;
-                        return (
-                          <button
-                            key={pageNum}
-                            type="button"
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={`h-8 w-8 rounded-full text-xs font-extrabold transition ${
-                              currentPage === pageNum
-                                ? "bg-[#143c2d] text-white shadow-xs"
-                                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-
-                      <button
-                        type="button"
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                        className="rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-extrabold text-slate-700 transition hover:border-[#143c2d] disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        Next ›
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
+                <form onSubmit={handleTrackSubmit} className="flex items-center gap-2 w-full sm:w-auto">
+                  <input
+                    type="text"
+                    value={trackingInput}
+                    onChange={(e) => setTrackingInput(e.target.value.toUpperCase())}
+                    placeholder="Code, e.g. BF-12345"
+                    className="w-full sm:w-48 rounded-full border border-slate-300 bg-[#FDFBF7] px-3.5 py-1.5 text-xs font-mono font-bold uppercase outline-none focus:border-[#143c2d]"
+                  />
+                  <button
+                    type="submit"
+                    className="shrink-0 rounded-full bg-[#143c2d] px-4 py-1.5 text-xs font-extrabold text-white hover:bg-[#0e2c21]"
+                  >
+                    Track
+                  </button>
+                </form>
+              </div>
             )}
           </div>
         </section>
 
-        {/* ── CLEAN QUALITY & TRUST BAR ── */}
+        {/* ── 3. WEEKLY PANTRY STAPLES (QUICK RE-ORDER) ── */}
+        <section className="px-3 pt-6 pb-4 sm:px-6 lg:px-10">
+          <div className="mx-auto max-w-7xl">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="font-display text-base sm:text-xl font-bold text-[#143c2d]">
+                  Weekly Household Staples
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Quick 1-tap reorder of Nigerian kitchen essentials
+                </p>
+              </div>
+              <Link
+                to="/products"
+                className="text-xs font-bold text-[#c85a17] hover:underline"
+              >
+                View Full Shop →
+              </Link>
+            </div>
+
+            {loading ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-48 rounded-2xl bg-white border border-[#DFD6C2] animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                {staples.map((product) => (
+                  <ProductGridCard
+                    key={product.id}
+                    product={product}
+                    onAdd={handleAdd}
+                    onUpdateQty={updateQuantity}
+                    cartQuantity={cart[product.id]?.quantity || 0}
+                    isAdded={Boolean(addedProducts[product.id])}
+                    onQuickView={(p) => setQuickViewProduct(p)}
+                    isFavorite={Boolean(favorites[product.id])}
+                    onToggleFavorite={toggleFavorite}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── 4. FEATURED HARVESTS & BEMS ORIGINALS ── */}
+        <section className="px-3 pt-6 pb-12 sm:px-6 lg:px-10">
+          <div className="mx-auto max-w-7xl">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="font-display text-base sm:text-xl font-bold text-[#143c2d]">
+                  Fresh Seasonal Harvests & Bems Originals
+                </h2>
+                <p className="text-xs text-slate-500">
+                  100% stone-free grains and unadulterated oils direct from farm
+                </p>
+              </div>
+              <Link
+                to="/products?category=Grains%20%26%20Cereals"
+                className="text-xs font-bold text-[#143c2d] hover:underline"
+              >
+                See all grains →
+              </Link>
+            </div>
+
+            {loading ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-56 rounded-2xl bg-white border border-[#DFD6C2] animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 sm:gap-4 md:gap-5">
+                {featuredHarvests.map((product) => (
+                  <ProductGridCard
+                    key={product.id}
+                    product={product}
+                    onAdd={handleAdd}
+                    onUpdateQty={updateQuantity}
+                    cartQuantity={cart[product.id]?.quantity || 0}
+                    isAdded={Boolean(addedProducts[product.id])}
+                    onQuickView={(p) => setQuickViewProduct(p)}
+                    isFavorite={Boolean(favorites[product.id])}
+                    onToggleFavorite={toggleFavorite}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* ── 5. PROMO BANNER TO FULL SHOP ── */}
+            <div
+              style={{
+                background: "linear-gradient(135deg, #143c2d 0%, #1c523e 100%)",
+              }}
+              className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-3xl p-6 sm:p-8 text-white shadow-md"
+            >
+              <div className="max-w-md text-center sm:text-left">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-amber-300">
+                  🛒 Complete Inventory
+                </span>
+                <h3 className="mt-1 font-display text-lg sm:text-xl font-bold text-white">
+                  Looking for tubers, leafy greens, or bulk bags?
+                </h3>
+                <p className="mt-1 text-xs text-emerald-100/85 leading-relaxed">
+                  Browse our full catalogue with comprehensive category filtering, price sorting, and live stock in the Shop.
+                </p>
+              </div>
+
+              <Link
+                to="/products"
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-amber-300 px-6 py-3 text-xs font-black uppercase tracking-wider text-[#143c2d] shadow-md transition hover:bg-white active:scale-98"
+              >
+                <span>Explore Full Shop Catalogue</span>
+                <span>➔</span>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 6. CLEAN QUALITY & TRUST BAR ── */}
         <section className="border-t border-[#DFD6C2] bg-[#EFE8DC] px-3 py-8 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-7xl">
             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
