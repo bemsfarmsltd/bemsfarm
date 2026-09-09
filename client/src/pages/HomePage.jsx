@@ -45,7 +45,7 @@ function ProductGridCard({
 
   return (
     <article className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[#DFD6C2]/80 bg-white shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-[#143c2d]/40 hover:shadow-xl">
-      {/* Image & Badges */}
+      {/* Image Container */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#FAF9F6]">
         <Link to={`/product/${product.id}`} className="block h-full w-full" aria-label={`View ${product.name}`}>
           <img
@@ -61,23 +61,23 @@ function ProductGridCard({
         </Link>
 
         {/* Top Badges */}
-        <div className="absolute inset-x-2.5 top-2.5 flex items-center justify-between gap-1 pointer-events-none">
+        <div className="absolute inset-x-2 top-2 flex items-center justify-between gap-1 pointer-events-none">
           {isBemsOriginal ? (
-            <span className="rounded-full bg-[#143c2d]/95 backdrop-blur px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">
+            <span className="rounded-full bg-[#143c2d]/95 backdrop-blur px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">
               ★ Bems Original
             </span>
           ) : product.is_featured ? (
-            <span className="rounded-full bg-[#143c2d] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-md">
+            <span className="rounded-full bg-[#143c2d] px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-white shadow-md">
               Featured
             </span>
           ) : <span />}
 
-          <div className="flex items-center gap-1.5 pointer-events-auto">
-            {/* Wishlist Toggle Button */}
+          <div className="flex items-center gap-1 pointer-events-auto">
+            {/* Wishlist Heart Button */}
             <button
               type="button"
               onClick={(e) => onToggleFavorite(product.id, e)}
-              className={`flex h-7 w-7 items-center justify-center rounded-full bg-white/90 backdrop-blur shadow-xs transition hover:scale-110 ${
+              className={`flex h-7 w-7 items-center justify-center rounded-full bg-white/95 backdrop-blur shadow-xs transition hover:scale-110 ${
                 isFavorite ? "text-red-500" : "text-slate-400 hover:text-red-500"
               }`}
               aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
@@ -91,7 +91,7 @@ function ProductGridCard({
         <button
           type="button"
           onClick={() => onQuickView(product)}
-          className="absolute bottom-2.5 right-2.5 z-10 flex items-center gap-1 rounded-full bg-white/90 backdrop-blur px-2.5 py-1 text-[11px] font-bold text-slate-800 shadow-md transition-all duration-200 hover:bg-[#143c2d] hover:text-white"
+          className="absolute bottom-2 right-2 z-10 flex items-center gap-1 rounded-full bg-white/95 backdrop-blur px-2 py-1 text-[10px] sm:text-[11px] font-bold text-slate-800 shadow-md transition-all duration-200 hover:bg-[#143c2d] hover:text-white"
           aria-label={`Quick preview ${product.name}`}
         >
           <span>👁️</span>
@@ -99,7 +99,7 @@ function ProductGridCard({
         </button>
 
         {isLowStock && !isOutOfStock && (
-          <div className="absolute bottom-2.5 left-2.5 pointer-events-none">
+          <div className="absolute bottom-2 left-2 pointer-events-none">
             <span className="rounded-full bg-amber-500/95 px-2 py-0.5 text-[9px] font-extrabold text-white shadow-sm">
               Only {stock} left
             </span>
@@ -108,45 +108,45 @@ function ProductGridCard({
 
         {isOutOfStock && (
           <div className="absolute inset-0 grid place-items-center bg-slate-900/60 backdrop-blur-[2px]">
-            <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-slate-800 shadow-md">
+            <span className="rounded-full bg-white px-3 py-1 text-[10px] sm:text-[11px] font-bold text-slate-800 shadow-md">
               Out of stock
             </span>
           </div>
         )}
       </div>
 
-      {/* Content */}
-      <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-center justify-between gap-2 text-[10px] font-extrabold uppercase tracking-wider text-[#143c2d]/80">
-          <span>{product.category_name || "Farm Produce"}</span>
-          <span className="text-slate-400 font-medium normal-case">{product.unit || "Per item"}</span>
+      {/* Card Details */}
+      <div className="flex flex-1 flex-col p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-[#143c2d]/80">
+          <span className="truncate">{product.category_name || "Farm Produce"}</span>
+          <span className="text-slate-400 font-medium normal-case shrink-0">{product.unit || "Per item"}</span>
         </div>
 
-        <h3 className="mt-1.5 min-h-[2.4rem] font-display text-sm sm:text-base font-bold leading-snug text-slate-900">
-          <Link to={`/product/${product.id}`} className="transition hover:text-[#c85a17]">
+        <h3 className="mt-1 min-h-[2.2rem] font-display text-xs sm:text-sm md:text-base font-bold leading-snug text-slate-900">
+          <Link to={`/product/${product.id}`} className="transition hover:text-[#c85a17] line-clamp-2">
             {product.name}
           </Link>
         </h3>
 
         {/* Rating */}
-        <div className="mt-1.5 flex items-center gap-1.5 text-xs">
+        <div className="mt-1 flex items-center gap-1 text-[10px] sm:text-xs">
           {Number(product.review_count) > 0 ? (
             <>
               <span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
                 {"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}
               </span>
-              <span className="text-[11px] font-bold text-slate-400">({product.review_count})</span>
+              <span className="text-[10px] font-bold text-slate-400">({product.review_count})</span>
             </>
           ) : (
-            <span className="text-[11px] font-bold text-slate-400">Fresh Harvest</span>
+            <span className="text-[10px] font-bold text-slate-400">Fresh Harvest</span>
           )}
         </div>
 
         {/* Price & Add / Stepper */}
-        <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+        <div className="mt-3 flex items-center justify-between gap-1.5 border-t border-slate-100 pt-2.5">
           <div className="min-w-0">
-            <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Price</p>
-            <p className="font-display text-base font-bold text-slate-900 truncate">
+            <p className="text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Price</p>
+            <p className="font-display text-xs sm:text-sm md:text-base font-black text-slate-900 truncate">
               {invalidPrice ? "Unavailable" : `₦${price.toLocaleString("en-NG")}`}
             </p>
           </div>
@@ -157,19 +157,19 @@ function ProductGridCard({
               <button
                 type="button"
                 onClick={() => onUpdateQty(product.id, cartQuantity - 1)}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition"
+                className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition"
                 aria-label={`Decrease ${product.name} quantity`}
               >
                 -
               </button>
-              <span className="w-6 text-center text-xs font-black text-[#143c2d]">
+              <span className="w-5 sm:w-6 text-center text-xs font-black text-[#143c2d]">
                 {cartQuantity}
               </span>
               <button
                 type="button"
                 disabled={cartQuantity >= stock}
                 onClick={() => onUpdateQty(product.id, cartQuantity + 1)}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition disabled:opacity-40"
+                className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition disabled:opacity-40"
                 aria-label={`Increase ${product.name} quantity`}
               >
                 +
@@ -181,7 +181,7 @@ function ProductGridCard({
               type="button"
               onClick={() => onAdd(product)}
               disabled={isOutOfStock}
-              className={`inline-flex h-9 items-center justify-center rounded-full px-4 text-xs font-extrabold transition-all duration-200 active:scale-95 ${
+              className={`inline-flex h-7 sm:h-9 items-center justify-center rounded-full px-3 sm:px-4 text-[11px] sm:text-xs font-extrabold transition-all duration-200 active:scale-95 ${
                 isAdded
                   ? "bg-[#1d6b45] text-white shadow-md"
                   : "bg-[#143c2d] text-white shadow-xs hover:bg-[#1a4e3b] hover:shadow-md"
@@ -373,40 +373,46 @@ export default function HomePage() {
   return (
     <PageWrapper>
       <div className="min-h-screen bg-[#F8F5EE] text-slate-900 pb-20">
-        {/* ── CLEAN STOREFRONT PROMO BANNER ── */}
-        <section className="px-4 pt-6 pb-2 sm:px-8 lg:px-12">
+        {/* ── RICH BRAND HERO BANNER ── */}
+        <section className="px-3 pt-4 sm:pt-6 pb-2 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-7xl">
-            <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-[#143c2d] to-[#1e5843] p-6 sm:p-8 md:p-10 text-white shadow-md">
+            <div
+              style={{
+                background: "linear-gradient(135deg, #143c2d 0%, #1c523e 60%, #153e2f 100%)",
+              }}
+              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 text-white shadow-lg border border-[#143c2d]/20"
+            >
               <div className="relative z-10 max-w-xl">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-amber-300 backdrop-blur-xs">
-                  🌾 Direct From Our Farms
-                </span>
-                <h1 className="mt-3 font-display text-2xl sm:text-3xl md:text-4xl font-black leading-tight">
-                  Fresh Farm Groceries & 100% Stone-Free Staples
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-amber-300 backdrop-blur-xs">
+                  <span>🌾</span>
+                  <span>Direct From Farm To Table</span>
+                </div>
+                <h1 className="mt-2.5 font-display text-xl sm:text-3xl md:text-4xl font-black leading-tight text-white">
+                  Fresh Farm Produce & 100% Stone-Free Grains
                 </h1>
-                <p className="mt-2 text-xs sm:text-sm text-emerald-100/90 leading-relaxed max-w-md">
-                  Welcome back, <strong className="text-white">{customerName}</strong>! Order unadulterated cooking oils, sorted grains, and fresh harvests delivered straight to your home.
+                <p className="mt-1.5 text-xs sm:text-sm text-emerald-100/90 leading-relaxed max-w-md">
+                  Welcome back, <strong className="text-amber-300">{customerName}</strong>! Shop sorted grains, unadulterated oils, and fresh harvests delivered to your doorstep.
                 </p>
 
-                {/* Quick Delivery Guarantee Chips */}
-                <div className="mt-5 flex flex-wrap items-center gap-2.5 text-[11px] font-bold text-emerald-100">
-                  <span className="flex items-center gap-1 rounded-lg bg-black/20 px-2.5 py-1">
+                {/* Quick Trust Badges */}
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-[10px] sm:text-xs font-bold text-white">
+                  <span className="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-1">
                     🚚 Doorstep Delivery
                   </span>
-                  <span className="flex items-center gap-1 rounded-lg bg-black/20 px-2.5 py-1">
+                  <span className="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-1 text-amber-300">
                     ✨ 100% Stone-Free
                   </span>
-                  <span className="flex items-center gap-1 rounded-lg bg-black/20 px-2.5 py-1">
-                    🔒 Secure Payment
+                  <span className="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-1">
+                    🔒 Monnify Encrypted
                   </span>
                 </div>
               </div>
 
-              {/* Decorative Background Element */}
+              {/* Subtle Decorative Pattern */}
               <div
-                className="absolute right-0 top-0 h-full w-1/2 opacity-20 pointer-events-none hidden md:block"
+                className="absolute right-0 top-0 h-full w-1/2 opacity-15 pointer-events-none hidden md:block"
                 style={{
-                  backgroundImage: "radial-gradient(circle at center, rgba(245,158,11,0.3) 0%, transparent 70%)",
+                  backgroundImage: "radial-gradient(circle at 80% 50%, rgba(245,158,11,0.5) 0%, transparent 60%)",
                 }}
               />
             </div>
@@ -414,12 +420,12 @@ export default function HomePage() {
         </section>
 
         {/* ── MAIN MARKETPLACE STOREFRONT ── */}
-        <section className="px-4 pt-6 pb-16 sm:px-8 lg:px-12">
+        <section className="px-3 pt-4 sm:pt-6 pb-16 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-7xl">
             {/* Header, Search & Sort Bar */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-[#DFD6C2] pb-5">
+            <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between border-b border-[#DFD6C2] pb-4">
               <div>
-                <h2 className="font-display text-xl sm:text-2xl font-bold text-[#143c2d]">
+                <h2 className="font-display text-lg sm:text-2xl font-black text-[#143c2d]">
                   Shop Produce
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -428,15 +434,15 @@ export default function HomePage() {
               </div>
 
               {/* Search & Sort Controls */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
                 {/* Search Bar */}
-                <div className="relative min-w-[240px] sm:w-72">
+                <div className="relative w-full sm:w-64 md:w-72">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" aria-hidden="true">🔍</span>
                   <input
                     type="search"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search rice, garri, oils…"
+                    placeholder="Search rice, yam, pepper…"
                     className="w-full rounded-full border border-slate-300 bg-white py-2 pl-9 pr-8 text-xs outline-none focus:border-[#143c2d] focus:ring-1 focus:ring-[#143c2d]"
                   />
                   {searchQuery && (
@@ -454,7 +460,7 @@ export default function HomePage() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 outline-none focus:border-[#143c2d]"
+                  className="rounded-full border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 outline-none focus:border-[#143c2d]"
                 >
                   <option value="featured">Sort: Featured</option>
                   <option value="price-low">Price: Low to High</option>
@@ -465,8 +471,8 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Category Filter Pills */}
-            <div className="mt-5 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {/* Category Filter Pills Carousel (Mobile-Smooth) */}
+            <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
               {categoryTabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -474,7 +480,7 @@ export default function HomePage() {
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-extrabold transition-all ${
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-all ${
                       isActive
                         ? tab.id === "bems_originals"
                           ? "bg-[#143c2d] text-amber-300 ring-2 ring-amber-400/40 shadow-sm"
@@ -491,8 +497,8 @@ export default function HomePage() {
 
             {/* Product Grid State */}
             {loadError && (
-              <div role="alert" className="mt-8 flex flex-col items-center rounded-3xl border border-red-200 bg-red-50 p-8 text-center">
-                <p className="font-display text-lg font-bold text-red-900">{loadError}</p>
+              <div role="alert" className="mt-8 flex flex-col items-center rounded-3xl border border-red-200 bg-red-50 p-6 sm:p-8 text-center">
+                <p className="font-display text-base sm:text-lg font-bold text-red-900">{loadError}</p>
                 <button
                   type="button"
                   onClick={loadData}
@@ -504,26 +510,25 @@ export default function HomePage() {
             )}
 
             {loading ? (
-              <div className="mt-6 grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 sm:gap-5">
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-y-4">
                 {Array.from({ length: 8 }).map((_, index) => (
                   <div key={index} className="overflow-hidden rounded-2xl border border-[#DFD6C2] bg-white shadow-xs">
                     <div className="aspect-[4/3] animate-pulse bg-[#EDE5D5]" />
-                    <div className="space-y-2.5 p-4">
-                      <div className="h-2.5 w-16 animate-pulse rounded-full bg-[#DFD6C2]" />
+                    <div className="space-y-2 p-3 sm:p-4">
+                      <div className="h-2.5 w-14 animate-pulse rounded-full bg-[#DFD6C2]" />
                       <div className="h-4 w-4/5 animate-pulse rounded-md bg-[#DFD6C2]" />
-                      <div className="h-3 w-1/2 animate-pulse rounded-md bg-[#DFD6C2]/60" />
                       <div className="flex items-center justify-between pt-2">
-                        <div className="h-4 w-14 animate-pulse rounded-md bg-[#DFD6C2]" />
-                        <div className="h-7 w-14 animate-pulse rounded-full bg-[#143c2d]/20" />
+                        <div className="h-4 w-12 animate-pulse rounded-md bg-[#DFD6C2]" />
+                        <div className="h-7 w-12 animate-pulse rounded-full bg-[#143c2d]/20" />
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-12 text-center shadow-xs">
+              <div className="mt-10 rounded-3xl border border-slate-200 bg-white p-8 sm:p-12 text-center shadow-xs">
                 <p className="text-3xl">🌾</p>
-                <h3 className="mt-3 font-display text-xl font-bold text-slate-800">No produce matched your selection</h3>
+                <h3 className="mt-3 font-display text-lg sm:text-xl font-bold text-slate-800">No produce matched your selection</h3>
                 <p className="mt-1 text-xs text-slate-500">Try adjusting your search query or selecting another category.</p>
                 <button
                   type="button"
@@ -531,14 +536,14 @@ export default function HomePage() {
                     setActiveTab("all");
                     setSearchQuery("");
                   }}
-                  className="mt-5 rounded-full bg-[#143c2d] px-6 py-2.5 text-xs font-extrabold text-white"
+                  className="mt-4 rounded-full bg-[#143c2d] px-6 py-2.5 text-xs font-extrabold text-white"
                 >
                   Reset all filters
                 </button>
               </div>
             ) : (
               <>
-                <div className="mt-6 grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 sm:gap-5">
+                <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 sm:gap-4 md:gap-5">
                   {paginatedProducts.map((product) => (
                     <ProductGridCard
                       key={product.id}
@@ -606,38 +611,38 @@ export default function HomePage() {
         </section>
 
         {/* ── CLEAN QUALITY & TRUST BAR ── */}
-        <section className="border-t border-[#DFD6C2] bg-[#EFE8DC] px-4 py-10 sm:px-8 lg:px-12">
+        <section className="border-t border-[#DFD6C2] bg-[#EFE8DC] px-3 py-8 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-7xl">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="flex items-start gap-3 rounded-2xl bg-white p-4 shadow-2xs">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-lg text-[#143c2d]">🌾</span>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+              <div className="flex items-start gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-2xs">
+                <span className="grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-emerald-50 text-base sm:text-lg text-[#143c2d]">🌾</span>
                 <div>
-                  <h4 className="font-display text-xs font-bold text-[#143c2d]">100% Stone-Free</h4>
-                  <p className="mt-0.5 text-[11px] text-slate-600">Sorted grains and rice for clean cooking.</p>
+                  <h4 className="font-display text-xs sm:text-sm font-bold text-[#143c2d]">100% Stone-Free</h4>
+                  <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-600">Clean sorted grains.</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 rounded-2xl bg-white p-4 shadow-2xs">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 text-lg text-amber-700">🌱</span>
+              <div className="flex items-start gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-2xs">
+                <span className="grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-amber-50 text-base sm:text-lg text-amber-700">🌱</span>
                 <div>
-                  <h4 className="font-display text-xs font-bold text-[#143c2d]">Farm Freshness</h4>
-                  <p className="mt-0.5 text-[11px] text-slate-600">Fresh harvests from Oyo & Benue fields.</p>
+                  <h4 className="font-display text-xs sm:text-sm font-bold text-[#143c2d]">Farm Freshness</h4>
+                  <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-600">Direct from Oyo & Benue.</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 rounded-2xl bg-white p-4 shadow-2xs">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-lg text-blue-700">🔒</span>
+              <div className="flex items-start gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-2xs">
+                <span className="grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-blue-50 text-base sm:text-lg text-blue-700">🔒</span>
                 <div>
-                  <h4 className="font-display text-xs font-bold text-[#143c2d]">Monnify Secure</h4>
-                  <p className="mt-0.5 text-[11px] text-slate-600">Fast cards, transfer & USSD payments.</p>
+                  <h4 className="font-display text-xs sm:text-sm font-bold text-[#143c2d]">Monnify Secure</h4>
+                  <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-600">Cards, Transfer & USSD.</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 rounded-2xl bg-white p-4 shadow-2xs">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-purple-50 text-lg text-purple-700">🚚</span>
+              <div className="flex items-start gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-2xs">
+                <span className="grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-purple-50 text-base sm:text-lg text-purple-700">🚚</span>
                 <div>
-                  <h4 className="font-display text-xs font-bold text-[#143c2d]">Doorstep Dispatch</h4>
-                  <p className="mt-0.5 text-[11px] text-slate-600">Carefully packed food goods delivered to you.</p>
+                  <h4 className="font-display text-xs sm:text-sm font-bold text-[#143c2d]">Doorstep Dispatch</h4>
+                  <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-600">Fast doorstep delivery.</p>
                 </div>
               </div>
             </div>

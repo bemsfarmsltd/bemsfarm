@@ -81,7 +81,7 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ type: "spring", duration: 0.35 }}
-          className="relative flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-[#FDFBF7] shadow-2xl border border-[#DFD6C2] md:flex-row"
+          className="relative flex w-full max-w-2xl max-h-[92vh] overflow-y-auto flex-col rounded-3xl bg-[#FDFBF7] shadow-2xl border border-[#DFD6C2] md:flex-row"
           role="dialog"
           aria-modal="true"
           aria-label={`Quick view of ${product.name}`}
