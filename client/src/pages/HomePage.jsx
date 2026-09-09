@@ -351,16 +351,16 @@ export default function HomePage() {
   return (
     <PageWrapper>
       <div className="min-h-screen bg-[#F8F5EE] text-slate-900 pb-20">
-        {/* ── 1. COMPACT CLEAN STOREFRONT HEADER ── */}
+        {/* ── 1. LUXURY STOREFRONT HERO BANNER ── */}
         <section className="px-3 pt-4 sm:pt-6 pb-2 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-[1600px] w-full">
             <div
               style={{
-                background: "radial-gradient(ellipse at 85% 20%, #1e5a42 0%, #143c2d 50%, #0d281e 100%)",
+                background: "linear-gradient(135deg, #092016 0%, #0d2c20 30%, #133f2d 65%, #0a2419 100%)",
               }}
-              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-7 md:p-9 text-white shadow-xl border border-emerald-800/40 flex flex-col md:flex-row md:items-center md:justify-between gap-6"
+              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-7 md:p-9 lg:p-10 text-white shadow-2xl border border-emerald-800/40 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-7"
             >
-              {/* Organic Topographic & Botanical Background SVG Design Pattern */}
+              {/* Organic Topographic & Botanical Background SVG Pattern */}
               <svg
                 className="absolute inset-0 h-full w-full pointer-events-none opacity-20"
                 xmlns="http://www.w3.org/2000/svg"
@@ -368,70 +368,89 @@ export default function HomePage() {
                 viewBox="0 0 1000 300"
               >
                 <defs>
-                  <linearGradient id="hero-line-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <linearGradient id="hero-pattern-grad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#34d399" stopOpacity="0.4" />
-                    <stop offset="50%" stopColor="#fbbf24" stopOpacity="0.2" />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                    <stop offset="40%" stopColor="#fbbf24" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.05" />
                   </linearGradient>
                 </defs>
-                {/* Organic Farm Field Contour Waves */}
                 <path
-                  d="M0,80 C200,160 350,20 600,120 C850,220 950,50 1000,90 L1000,300 L0,300 Z"
+                  d="M0,60 C200,140 380,20 620,110 C860,200 950,40 1000,80 L1000,300 L0,300 Z"
                   fill="none"
-                  stroke="url(#hero-line-grad)"
+                  stroke="url(#hero-pattern-grad)"
                   strokeWidth="1.5"
                 />
                 <path
-                  d="M0,140 C250,220 400,80 650,180 C800,240 900,120 1000,160"
+                  d="M0,130 C240,210 420,70 660,170 C810,230 920,110 1000,150"
                   fill="none"
                   stroke="rgba(255,255,255,0.08)"
                   strokeWidth="1.5"
                   strokeDasharray="4 6"
                 />
                 <path
-                  d="M0,200 C300,280 500,140 750,230 C900,280 950,190 1000,220"
+                  d="M0,190 C290,270 510,130 760,220 C910,270 960,180 1000,210"
                   fill="none"
                   stroke="rgba(251,191,36,0.15)"
                   strokeWidth="1"
                 />
-                {/* Decorative Geometric Rings */}
-                <circle cx="850" cy="150" r="140" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-                <circle cx="850" cy="150" r="90" fill="none" stroke="rgba(251,191,36,0.08)" strokeWidth="1" />
+                <circle cx="850" cy="140" r="140" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                <circle cx="850" cy="140" r="90" fill="none" stroke="rgba(251,191,36,0.08)" strokeWidth="1" />
                 <circle cx="150" cy="40" r="110" fill="none" stroke="rgba(52,211,153,0.06)" strokeWidth="1" />
               </svg>
 
-              {/* Ambient Radiant Glow Highlights */}
+              {/* Ambient Radiant Lighting Orbs */}
               <div
-                className="absolute -right-16 -top-16 h-64 w-64 rounded-full pointer-events-none opacity-30"
+                className="absolute -right-12 -top-12 h-72 w-72 rounded-full pointer-events-none opacity-35"
                 style={{
-                  background: "radial-gradient(circle, rgba(245,158,11,0.6) 0%, transparent 70%)",
-                  filter: "blur(40px)",
+                  background: "radial-gradient(circle, rgba(245,158,11,0.65) 0%, transparent 70%)",
+                  filter: "blur(50px)",
                 }}
               />
               <div
-                className="absolute -left-10 -bottom-10 h-56 w-56 rounded-full pointer-events-none opacity-25"
+                className="absolute -left-10 -bottom-10 h-64 w-64 rounded-full pointer-events-none opacity-25"
                 style={{
-                  background: "radial-gradient(circle, rgba(52,211,153,0.5) 0%, transparent 70%)",
-                  filter: "blur(35px)",
+                  background: "radial-gradient(circle, rgba(52,211,153,0.55) 0%, transparent 70%)",
+                  filter: "blur(45px)",
                 }}
               />
 
-              {/* Left Side: Greeting & Trust Badges */}
-              <div className="relative z-10 max-w-lg">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-amber-300 border border-white/15 backdrop-blur-md shadow-xs">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              {/* Left Side: Editorial Typography & Actions */}
+              <div className="relative z-10 max-w-xl">
+                {/* Floating Farm Badge */}
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-amber-300 border border-white/15 backdrop-blur-md shadow-xs">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400" />
                   <span>🌾 Direct From Farm To Table</span>
                 </div>
-                <h1 className="mt-2.5 font-display text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black leading-tight text-white drop-shadow-xs">
+
+                {/* Main Headline */}
+                <h1 className="mt-3 font-display text-xl sm:text-3xl lg:text-4xl font-black leading-tight text-white drop-shadow-sm">
                   {greeting},{" "}
                   <span className="bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-transparent">
                     {customerName}
                   </span>
                   !
                 </h1>
-                <p className="mt-1.5 text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-normal">
-                  Shop 100% stone-free grains, cold-pressed oils, and fresh harvests delivered straight to your doorstep.
+
+                {/* Narrative Subtitle */}
+                <p className="mt-2 text-xs sm:text-sm md:text-base text-emerald-100/90 leading-relaxed font-normal">
+                  Shop 100% stone-free grains, authentic cold-pressed oils, and farm-fresh harvests delivered right to your doorstep.
                 </p>
+
+                {/* Action CTA & Free Delivery Promo */}
+                <div className="mt-4 sm:mt-5 flex flex-wrap items-center gap-3">
+                  <Link
+                    to="/products"
+                    className="inline-flex items-center gap-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-black text-[#143c2d] shadow-lg shadow-black/25 transition-all hover:scale-105 active:scale-95 text-decoration-none"
+                  >
+                    <span>Shop Fresh Harvests</span>
+                    <span>→</span>
+                  </Link>
+
+                  <div className="flex items-center gap-1.5 rounded-xl bg-black/25 px-3 py-2 backdrop-blur-xs border border-white/10 text-[11px] text-emerald-100 font-medium">
+                    <span>⚡</span>
+                    <span>Free delivery on orders above ₦15,000</span>
+                  </div>
+                </div>
 
                 {/* Quick Trust Badges */}
                 <div className="mt-4 flex flex-wrap items-center gap-2 text-[10px] sm:text-xs font-bold text-white">
@@ -439,7 +458,7 @@ export default function HomePage() {
                     🚚 Doorstep Delivery
                   </span>
                   <span className="flex items-center gap-1.5 rounded-full bg-black/30 border border-amber-400/20 px-3 py-1 text-amber-300 backdrop-blur-xs shadow-xs">
-                    ✨ 100% Stone-Free
+                    ✨ 100% Stone-Free Guarantee
                   </span>
                   <span className="flex items-center gap-1.5 rounded-full bg-black/30 border border-white/10 px-3 py-1 backdrop-blur-xs shadow-xs">
                     🔒 Secure Payment
@@ -447,46 +466,98 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Right Side: Visual Produce Showcase with Frosted Glass Styling */}
-              <div className="relative z-10 hidden md:flex items-center gap-3 lg:gap-4 shrink-0">
-                {/* Produce Card 1: Rice */}
-                <div className="group flex flex-col items-center rounded-2xl border border-white/25 bg-white/12 p-3 backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 hover:bg-white/20 hover:border-amber-300/40">
-                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:rotate-1 transition-transform">
-                    <img
-                      src="/hero_food_1.jpg"
-                      alt="Stone-Free Rice"
-                      className="h-full w-full object-cover"
-                    />
+              {/* Right Side: Interactive Luxury Produce Showcase */}
+              <div className="relative z-10 hidden md:flex flex-col items-end gap-2.5 shrink-0">
+                <div className="flex items-center gap-3 lg:gap-3.5">
+                  {/* Produce Card 1: Rice */}
+                  <div
+                    onClick={() => {
+                      const item = products.find((p) => p.name?.toLowerCase().includes("rice")) || {
+                        id: "rice-featured",
+                        name: "Stone-Free Parboiled Rice",
+                        category_name: "Grains & Cereals",
+                        unit: "1 kg bag",
+                        price: 3750,
+                        stock_quantity: 50,
+                        image_url: "/hero_food_1.jpg",
+                      };
+                      setQuickViewProduct(item);
+                    }}
+                    className="group relative flex flex-col items-center rounded-2xl border border-white/25 bg-white/15 p-3 backdrop-blur-xl shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/25 hover:border-amber-300/60 cursor-pointer"
+                  >
+                    <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:rotate-1 transition-transform">
+                      <img
+                        src="/hero_food_1.jpg"
+                        alt="Stone-Free Rice"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <span className="mt-2 text-[11px] font-black text-amber-300 group-hover:text-amber-200">Stone-Free Rice</span>
+                    <span className="text-[10px] text-white/80 font-medium">★ Bems Original</span>
+                    <span className="mt-1 rounded-full bg-black/40 px-2 py-0.5 text-[9px] font-extrabold text-white">₦3,750</span>
                   </div>
-                  <span className="mt-2 text-[11px] font-extrabold text-amber-300 group-hover:text-amber-200">Stone-Free Rice</span>
-                  <span className="text-[10px] text-white/80 font-medium">★ Bems Original</span>
+
+                  {/* Produce Card 2: Yam */}
+                  <div
+                    onClick={() => {
+                      const item = products.find((p) => p.name?.toLowerCase().includes("yam")) || {
+                        id: "yam-featured",
+                        name: "Abuja Yam Tubers (Puna)",
+                        category_name: "Tubers & Roots",
+                        unit: "1 tuber",
+                        price: 3000,
+                        stock_quantity: 40,
+                        image_url: "/hero_food_4.jpg",
+                      };
+                      setQuickViewProduct(item);
+                    }}
+                    className="group relative flex flex-col items-center rounded-2xl border border-white/25 bg-white/15 p-3 backdrop-blur-xl shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/25 hover:border-amber-300/60 cursor-pointer"
+                  >
+                    <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:-rotate-1 transition-transform">
+                      <img
+                        src="/hero_food_4.jpg"
+                        alt="Abuja Yam Tubers"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <span className="mt-2 text-[11px] font-black text-amber-300 group-hover:text-amber-200">Abuja Yam</span>
+                    <span className="text-[10px] text-white/80 font-medium">Fresh Harvest</span>
+                    <span className="mt-1 rounded-full bg-black/40 px-2 py-0.5 text-[9px] font-extrabold text-white">₦3,000</span>
+                  </div>
+
+                  {/* Produce Card 3: Palm Oil */}
+                  <div
+                    onClick={() => {
+                      const item = products.find((p) => p.name?.toLowerCase().includes("oil") || p.name?.toLowerCase().includes("palm")) || {
+                        id: "oil-featured",
+                        name: "Pure Cold-Pressed Palm Oil",
+                        category_name: "Cooking Oils",
+                        unit: "1 Litre bottle",
+                        price: 2500,
+                        stock_quantity: 35,
+                        image_url: "/hero_food_3.jpg",
+                      };
+                      setQuickViewProduct(item);
+                    }}
+                    className="group relative flex flex-col items-center rounded-2xl border border-white/25 bg-white/15 p-3 backdrop-blur-xl shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/25 hover:border-amber-300/60 cursor-pointer"
+                  >
+                    <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:rotate-1 transition-transform">
+                      <img
+                        src="/hero_food_3.jpg"
+                        alt="Pure Palm Oil"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <span className="mt-2 text-[11px] font-black text-amber-300 group-hover:text-amber-200">Pure Palm Oil</span>
+                    <span className="text-[10px] text-white/80 font-medium">Cold-Pressed</span>
+                    <span className="mt-1 rounded-full bg-black/40 px-2 py-0.5 text-[9px] font-extrabold text-white">₦2,500</span>
+                  </div>
                 </div>
 
-                {/* Produce Card 2: Yam */}
-                <div className="group flex flex-col items-center rounded-2xl border border-white/25 bg-white/12 p-3 backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 hover:bg-white/20 hover:border-amber-300/40">
-                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:-rotate-1 transition-transform">
-                    <img
-                      src="/hero_food_4.jpg"
-                      alt="Abuja Yam Tubers"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <span className="mt-2 text-[11px] font-extrabold text-amber-300 group-hover:text-amber-200">Abuja Yam</span>
-                  <span className="text-[10px] text-white/80 font-medium">Fresh Harvest</span>
-                </div>
-
-                {/* Produce Card 3: Palm Oil */}
-                <div className="group flex flex-col items-center rounded-2xl border border-white/25 bg-white/12 p-3 backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 hover:bg-white/20 hover:border-amber-300/40">
-                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:rotate-1 transition-transform">
-                    <img
-                      src="/hero_food_3.jpg"
-                      alt="Pure Palm Oil"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <span className="mt-2 text-[11px] font-extrabold text-amber-300 group-hover:text-amber-200">Pure Palm Oil</span>
-                  <span className="text-[10px] text-white/80 font-medium">Cold-Pressed</span>
-                </div>
+                {/* Subtle Tap Hint */}
+                <span className="text-[10px] font-semibold text-emerald-200/70 tracking-wide pr-1">
+                  💡 Tap any item for quick preview
+                </span>
               </div>
             </div>
           </div>
