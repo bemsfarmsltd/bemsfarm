@@ -377,7 +377,7 @@ export default function OnboardingPage() {
           }}
         >
           {/* Logo */}
-          <div style={{ marginBottom: "auto" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
             <div
               style={{
                 backgroundColor: "rgba(255,255,255,0.97)",
@@ -403,6 +403,7 @@ export default function OnboardingPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -18 }}
                 transition={{ duration: 0.45, ease: "easeOut" }}
+                style={{ margin: "auto 0", padding: "28px 0" }}
               >
                 <div
                   style={{
