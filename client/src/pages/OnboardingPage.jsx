@@ -90,33 +90,36 @@ const HEALTH_GOALS = [
 
 const FEATURE_CARDS = [
   {
-    img: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=500&q=80",
-    title: "AI-powered search",
-    desc: "Finds exactly what you need, in seconds",
-    featured: true,
+    icon: "⌕",
+    title: "Find products faster",
+    desc: "Search fresh produce and trusted brands in one place.",
+    background: "#EAF5EE",
   },
   {
-    img: "https://res.cloudinary.com/dyzkjerez/image/upload/v1780141430/ofada_rice_mhhzt2.jpg",
-    title: "Direct from farms",
-    desc: "No middlemen, better prices",
+    icon: "₦",
+    title: "Shop within budget",
+    desc: "See useful value picks for your weekly spend.",
+    background: "#FFF3D8",
   },
   {
-    img: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=300&q=80",
-    title: "Smart pricing",
-    desc: "Fair, transparent costs",
+    icon: "♨",
+    title: "Plan better meals",
+    desc: "Get practical ideas from Chef Bems.",
+    background: "#FBEBDD",
   },
   {
-    img: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&q=80",
-    title: "Recipe suggestions",
-    desc: "Cook better, eat fresher",
+    icon: "✓",
+    title: "Stay in control",
+    desc: "Track orders and update preferences anytime.",
+    background: "#E8F1EE",
   },
 ];
 
 const STEPS_META = [
   {
     eyebrow: "Welcome",
-    headline: "Fresh from Nigerian farms\nto your door",
-    sub: "BemsFarms uses AI to personalise your shopping — better prices, smarter picks, recipes you'll actually cook.",
+    headline: "Your easier grocery shop\nstarts here",
+    sub: "Tell us what fits your household so BemsFarms and Chef Bems can make shopping more useful from your first visit.",
   },
   {
     eyebrow: "Household",
@@ -161,24 +164,21 @@ const OB_CSS = `
 
 .ob-bento {
   display: grid;
-  grid-template-columns: 1.3fr 1fr;
-  grid-template-rows: repeat(3, 84px);
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
-.ob-bento-feature { grid-row: 1 / span 3; }
 
 .ob-pill-btn {
   transition: box-shadow 0.25s ease, transform 0.25s ease;
 }
 
 @media (max-width: 640px) {
-  .ob-bento { grid-template-columns: 1fr; grid-template-rows: 170px repeat(3, auto); }
-  .ob-bento-feature { grid-row: auto; }
+  .ob-bento { grid-template-columns: 1fr; }
 }
 
 @media (min-width: 768px) {
   .ob-panel { display: flex; }
-  .ob-content { padding: 52px 64px 60px; }
+  .ob-content { width: 100%; max-width: 900px; margin: 0 auto; padding: 44px 56px 52px; }
   .ob-topbar { display: none; }
   .ob-desktop-skip { display: flex; }
 }
@@ -299,7 +299,7 @@ export default function OnboardingPage() {
       <div
         className="ob-panel"
         style={{
-          width: "40%",
+          width: "36%",
           flexShrink: 0,
           position: "sticky",
           top: 0,
@@ -436,6 +436,16 @@ export default function OnboardingPage() {
                 >
                   {meta.sub}
                 </p>
+                {step === 0 && (
+                  <div style={{ display: "grid", gap: "11px", marginTop: "28px", maxWidth: "340px" }}>
+                    {["Fresh produce and trusted grocery brands", "Secure checkout and order tracking", "Preferences you can change anytime"].map((item) => (
+                      <div key={item} style={{ display: "flex", alignItems: "center", gap: "10px", color: "rgba(255,255,255,0.9)", fontSize: "13px", fontWeight: 700 }}>
+                        <span aria-hidden="true" style={{ display: "grid", width: "22px", height: "22px", flexShrink: 0, placeItems: "center", borderRadius: "50%", background: "rgba(255,211,122,0.18)", color: "#FFD37A" }}>✓</span>
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -547,10 +557,18 @@ export default function OnboardingPage() {
           <div
             className="ob-desktop-skip"
             style={{
-              justifyContent: "flex-end",
-              marginBottom: "36px",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "28px",
             }}
           >
+            <div aria-label="Account setup progress" style={{ display: "flex", alignItems: "center", gap: "10px", color: "#66736D", fontSize: "12px", fontWeight: 700 }}>
+              <span style={{ color: "#1B6B4A" }}>✓ Account</span>
+              <span aria-hidden="true" style={{ color: "#C9D2CD" }}>—</span>
+              <span style={{ color: "#1B6B4A" }}>✓ Email</span>
+              <span aria-hidden="true" style={{ color: "#C9D2CD" }}>—</span>
+              <span>Preferences</span>
+            </div>
             <button
               type="button"
               onClick={skip}
@@ -605,9 +623,9 @@ export default function OnboardingPage() {
                       maxWidth: "480px",
                     }}
                   >
-                    Answer three quick questions for more useful quantities, value picks and meal ideas. You can change these later.
+                    Your account is ready. Answer three quick questions for better quantities, value picks and meal ideas.
                   </p>
-                  <div className="ob-bento">
+                  <div className="ob-bento" aria-label="What your account includes">
                     {FEATURE_CARDS.map((card, i) => (
                       <motion.div
                         key={card.title}
@@ -615,64 +633,36 @@ export default function OnboardingPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.08, duration: 0.4 }}
                         whileHover={{ y: -3 }}
-                        className={card.featured ? "ob-bento-feature" : ""}
                         style={{
-                          position: "relative",
                           borderRadius: "18px",
-                          overflow: "hidden",
-                          boxShadow: "0 4px 18px rgba(0,0,0,0.08)",
+                          border: "1px solid rgba(27,67,50,0.10)",
+                          background: card.background,
+                          padding: "20px",
+                          minHeight: "142px",
+                          boxShadow: "0 8px 24px rgba(27,67,50,0.06)",
                         }}
                       >
-                        <img
-                          src={card.img}
-                          alt={card.title}
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
-                        />
-                        <div
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            background:
-                              "linear-gradient(to top, rgba(13,17,23,0.88) 0%, rgba(13,17,23,0.25) 55%, transparent 100%)",
-                          }}
-                        />
-                        <div
-                          style={{
-                            position: "relative",
-                            height: "100%",
-                            display: "flex",
-                            flexDirection: "column",
-                            justifyContent: "flex-end",
-                            padding: card.featured ? "20px" : "12px 14px",
-                          }}
-                        >
+                        <div aria-hidden="true" style={{ display: "grid", width: "42px", height: "42px", placeItems: "center", borderRadius: "13px", background: "#173F31", color: "white", fontSize: "20px", fontWeight: 800, marginBottom: "16px" }}>{card.icon}</div>
                           <p
                             style={{
                               fontFamily: "var(--heading-font)",
-                              fontSize: card.featured ? "17px" : "13px",
-                              fontWeight: 700,
-                              color: "white",
-                              marginBottom: "3px",
+                              fontSize: "16px",
+                              fontWeight: 800,
+                              color: "#17352A",
+                              marginBottom: "6px",
                             }}
                           >
                             {card.title}
                           </p>
                           <p
                             style={{
-                              fontSize: card.featured ? "12.5px" : "11px",
-                              color: "rgba(255,255,255,0.78)",
-                              lineHeight: 1.4,
+                              fontSize: "12.5px",
+                              color: "#5F6F68",
+                              lineHeight: 1.55,
                             }}
                           >
                             {card.desc}
                           </p>
-                        </div>
                       </motion.div>
                     ))}
                   </div>
