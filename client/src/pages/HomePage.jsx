@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
@@ -326,6 +327,71 @@ export default function HomePage() {
     }
   };
 
+  // Dynamic Real Products Slideshow Groups (3 products per slide)
+  const heroSlideGroups = useMemo(() => {
+    if (!products || products.length === 0) {
+      return [
+        [
+          {
+            id: "rice-featured",
+            name: "Stone-Free Parboiled Rice",
+            category_name: "Grains & Cereals",
+            unit: "1 kg bag",
+            price: 3750,
+            stock_quantity: 50,
+            image_url: "/hero_food_1.jpg",
+            is_bems_brand: true,
+          },
+          {
+            id: "yam-featured",
+            name: "Abuja Yam Tubers (Puna)",
+            category_name: "Tubers & Roots",
+            unit: "1 tuber",
+            price: 3000,
+            stock_quantity: 40,
+            image_url: "/hero_food_4.jpg",
+          },
+          {
+            id: "oil-featured",
+            name: "Pure Cold-Pressed Palm Oil",
+            category_name: "Cooking Oils",
+            unit: "1 Litre bottle",
+            price: 2500,
+            stock_quantity: 35,
+            image_url: "/hero_food_3.jpg",
+          },
+        ]
+      ];
+    }
+
+    const available = products.filter((p) => Number(p.stock_quantity ?? p.stock ?? 0) > 0 || p.is_featured);
+    const pool = available.length >= 3 ? available : products;
+
+    const groups = [];
+    for (let i = 0; i < pool.length; i += 3) {
+      const chunk = pool.slice(i, i + 3);
+      if (chunk.length === 3) {
+        groups.push(chunk);
+      } else if (chunk.length > 0 && groups.length > 0) {
+        // Pad the remainder to make 3
+        groups.push([...chunk, ...pool.slice(0, 3 - chunk.length)]);
+      }
+    }
+    return groups.slice(0, 5); // Up to 5 slides (15 real products)
+  }, [products]);
+
+  const [heroSlide, setHeroSlide] = useState(0);
+  const [heroHovered, setHeroHovered] = useState(false);
+
+  // Auto-advance hero product slideshow every 3.5 seconds
+  useEffect(() => {
+    if (heroSlideGroups.length <= 1 || heroHovered) return;
+    const timer = setInterval(() => {
+      setHeroSlide((prev) => (prev + 1) % heroSlideGroups.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [heroSlideGroups.length, heroHovered]);
+
   // Weekly Staples (Grains, Oils, Tubers, Peppers)
   const staples = useMemo(() => {
     return products
@@ -466,98 +532,105 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Right Side: Interactive Luxury Produce Showcase */}
-              <div className="relative z-10 hidden md:flex flex-col items-end gap-2.5 shrink-0">
-                <div className="flex items-center gap-3 lg:gap-3.5">
-                  {/* Produce Card 1: Rice */}
-                  <div
-                    onClick={() => {
-                      const item = products.find((p) => p.name?.toLowerCase().includes("rice")) || {
-                        id: "rice-featured",
-                        name: "Stone-Free Parboiled Rice",
-                        category_name: "Grains & Cereals",
-                        unit: "1 kg bag",
-                        price: 3750,
-                        stock_quantity: 50,
-                        image_url: "/hero_food_1.jpg",
-                      };
-                      setQuickViewProduct(item);
-                    }}
-                    className="group relative flex flex-col items-center rounded-2xl border border-white/25 bg-white/15 p-3 backdrop-blur-xl shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/25 hover:border-amber-300/60 cursor-pointer"
-                  >
-                    <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:rotate-1 transition-transform">
-                      <img
-                        src="/hero_food_1.jpg"
-                        alt="Stone-Free Rice"
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <span className="mt-2 text-[11px] font-black text-amber-300 group-hover:text-amber-200">Stone-Free Rice</span>
-                    <span className="text-[10px] text-white/80 font-medium">★ Bems Original</span>
-                    <span className="mt-1 rounded-full bg-black/40 px-2 py-0.5 text-[9px] font-extrabold text-white">₦3,750</span>
-                  </div>
+              {/* Right Side: Dynamic Real Product Slideshow (In Groups of 3) */}
+              <div
+                onMouseEnter={() => setHeroHovered(true)}
+                onMouseLeave={() => setHeroHovered(false)}
+                className="relative z-10 flex flex-col items-center lg:items-end gap-3 shrink-0 w-full lg:w-auto"
+              >
+                {/* Product 3-Cards Row with Animated Slide Transition */}
+                <div className="relative min-h-[160px] sm:min-h-[175px] w-full flex items-center justify-center">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={heroSlide}
+                      initial={{ opacity: 0, x: 25, scale: 0.98 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      exit={{ opacity: 0, x: -25, scale: 0.98 }}
+                      transition={{ duration: 0.4, ease: "easeInOut" }}
+                      className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-3.5"
+                    >
+                      {(heroSlideGroups[heroSlide] || heroSlideGroups[0] || []).map((product) => {
+                        const price = Number(product.price || 0) * NAIRA_PER_UNIT;
+                        const isBemsOriginal = Boolean(
+                          product.name?.toLowerCase().includes("bems") ||
+                          product.brand?.toLowerCase().includes("bems") ||
+                          product.is_bems_brand
+                        );
 
-                  {/* Produce Card 2: Yam */}
-                  <div
-                    onClick={() => {
-                      const item = products.find((p) => p.name?.toLowerCase().includes("yam")) || {
-                        id: "yam-featured",
-                        name: "Abuja Yam Tubers (Puna)",
-                        category_name: "Tubers & Roots",
-                        unit: "1 tuber",
-                        price: 3000,
-                        stock_quantity: 40,
-                        image_url: "/hero_food_4.jpg",
-                      };
-                      setQuickViewProduct(item);
-                    }}
-                    className="group relative flex flex-col items-center rounded-2xl border border-white/25 bg-white/15 p-3 backdrop-blur-xl shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/25 hover:border-amber-300/60 cursor-pointer"
-                  >
-                    <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:-rotate-1 transition-transform">
-                      <img
-                        src="/hero_food_4.jpg"
-                        alt="Abuja Yam Tubers"
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <span className="mt-2 text-[11px] font-black text-amber-300 group-hover:text-amber-200">Abuja Yam</span>
-                    <span className="text-[10px] text-white/80 font-medium">Fresh Harvest</span>
-                    <span className="mt-1 rounded-full bg-black/40 px-2 py-0.5 text-[9px] font-extrabold text-white">₦3,000</span>
-                  </div>
-
-                  {/* Produce Card 3: Palm Oil */}
-                  <div
-                    onClick={() => {
-                      const item = products.find((p) => p.name?.toLowerCase().includes("oil") || p.name?.toLowerCase().includes("palm")) || {
-                        id: "oil-featured",
-                        name: "Pure Cold-Pressed Palm Oil",
-                        category_name: "Cooking Oils",
-                        unit: "1 Litre bottle",
-                        price: 2500,
-                        stock_quantity: 35,
-                        image_url: "/hero_food_3.jpg",
-                      };
-                      setQuickViewProduct(item);
-                    }}
-                    className="group relative flex flex-col items-center rounded-2xl border border-white/25 bg-white/15 p-3 backdrop-blur-xl shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/25 hover:border-amber-300/60 cursor-pointer"
-                  >
-                    <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:rotate-1 transition-transform">
-                      <img
-                        src="/hero_food_3.jpg"
-                        alt="Pure Palm Oil"
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <span className="mt-2 text-[11px] font-black text-amber-300 group-hover:text-amber-200">Pure Palm Oil</span>
-                    <span className="text-[10px] text-white/80 font-medium">Cold-Pressed</span>
-                    <span className="mt-1 rounded-full bg-black/40 px-2 py-0.5 text-[9px] font-extrabold text-white">₦2,500</span>
-                  </div>
+                        return (
+                          <div
+                            key={product.id}
+                            onClick={() => setQuickViewProduct(product)}
+                            className="group relative flex flex-col items-center justify-between rounded-2xl border border-white/25 bg-white/15 p-2.5 sm:p-3 backdrop-blur-xl shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/25 hover:border-amber-300/60 cursor-pointer w-[96px] sm:w-[115px] lg:w-[125px]"
+                            title={`Click to view ${product.name}`}
+                          >
+                            <div className="h-14 w-14 sm:h-18 sm:w-18 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:rotate-1 transition-transform shrink-0">
+                              <img
+                                src={getProductImage(product)}
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = "/hero_food_4.jpg";
+                                }}
+                              />
+                            </div>
+                            <span className="mt-1.5 text-[10px] sm:text-[11px] font-black text-amber-300 group-hover:text-amber-200 line-clamp-1 text-center w-full">
+                              {product.name}
+                            </span>
+                            <span className="text-[9px] sm:text-[10px] text-white/80 font-medium line-clamp-1 text-center w-full">
+                              {isBemsOriginal ? "★ Bems Original" : product.category_name || "Fresh Harvest"}
+                            </span>
+                            <span className="mt-1 rounded-full bg-black/40 px-2 py-0.5 text-[9px] font-extrabold text-white">
+                              ₦{price.toLocaleString("en-NG")}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
 
-                {/* Subtle Tap Hint */}
-                <span className="text-[10px] font-semibold text-emerald-200/70 tracking-wide pr-1">
-                  💡 Tap any item for quick preview
-                </span>
+                {/* Slideshow Controls & Indicators */}
+                {heroSlideGroups.length > 1 && (
+                  <div className="flex items-center justify-between w-full pt-1 px-1">
+                    <div className="flex items-center gap-1.5">
+                      {heroSlideGroups.map((_, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setHeroSlide(idx)}
+                          className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                            heroSlide === idx
+                              ? "w-6 bg-amber-400 shadow-xs shadow-amber-400/50"
+                              : "w-2 bg-white/30 hover:bg-white/60"
+                          }`}
+                          aria-label={`Go to slide ${idx + 1}`}
+                        />
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-200/80">
+                      <button
+                        type="button"
+                        onClick={() => setHeroSlide((prev) => (prev === 0 ? heroSlideGroups.length - 1 : prev - 1))}
+                        className="h-6 w-6 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition cursor-pointer"
+                        aria-label="Previous products"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHeroSlide((prev) => (prev + 1) % heroSlideGroups.length)}
+                        className="h-6 w-6 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition cursor-pointer"
+                        aria-label="Next products"
+                      >
+                        ›
+                      </button>
+                      <span className="ml-1 text-[9px] text-white/60 hidden sm:inline">Tap to preview</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
