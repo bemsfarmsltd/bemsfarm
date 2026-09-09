@@ -303,7 +303,7 @@ function IssueDetailPanel({ issue, onClose, onUpdated }) {
               gap: 8,
             }}
           >
-            ✓ {success}
+             {success}
           </div>
         )}
 
@@ -569,31 +569,31 @@ function IssueDetailPanel({ issue, onClose, onUpdated }) {
                 {
                   value: "under_review",
                   label: "Mark as Under Review",
-                  icon: "🔍",
+                  icon: "",
                   desc: "Still investigating",
                 },
                 {
                   value: "resolved_refund",
                   label: "Approve Refund",
-                  icon: "💰",
+                  icon: "",
                   desc: "Process online refund",
                 },
                 {
                   value: "resolved_replacement",
                   label: "Send Replacement",
-                  icon: "📦",
+                  icon: "",
                   desc: "Reschedule delivery",
                 },
                 {
                   value: "resolved_no_action",
                   label: "Close — No Action",
-                  icon: "🚫",
+                  icon: "",
                   desc: "Reject the claim",
                 },
                 {
                   value: "closed",
                   label: "Close Issue",
-                  icon: "✓",
+                  icon: "",
                   desc: "Mark as fully resolved",
                 },
               ].map((opt) => (
@@ -825,7 +825,7 @@ function IssueDetailPanel({ issue, onClose, onUpdated }) {
                     ? "A"
                     : act.actor_type === "customer"
                       ? "C"
-                      : "⚙"}
+                      : ""}
                 </div>
                 <div style={{ flex: 1, paddingTop: 2 }}>
                   <div

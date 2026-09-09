@@ -5,17 +5,17 @@ import PageWrapper from "../components/layout/PageWrapper";
 import api from "../services/api";
 
 const RETURN_REASONS = [
-  { value: "damaged",      label: "🚫 Item arrived damaged",        desc: "Product was broken, crushed, or spoiled on arrival"     },
-  { value: "wrong_item",   label: "❓ Received wrong item",          desc: "I received a different product than what I ordered"     },
-  { value: "quality",      label: "😞 Quality not as expected",      desc: "The quality did not meet the description"               },
-  { value: "changed_mind", label: "💭 Changed my mind",              desc: "I no longer need this item"                            },
-  { value: "other",        label: "📝 Other reason",                 desc: "Something else — please describe below"                },
+  { value: "damaged",      label: " Item arrived damaged",        desc: "Product was broken, crushed, or spoiled on arrival"     },
+  { value: "wrong_item",   label: " Received wrong item",          desc: "I received a different product than what I ordered"     },
+  { value: "quality",      label: " Quality not as expected",      desc: "The quality did not meet the description"               },
+  { value: "changed_mind", label: " Changed my mind",              desc: "I no longer need this item"                            },
+  { value: "other",        label: " Other reason",                 desc: "Something else — please describe below"                },
 ];
 
 const CONDITION_OPTIONS = [
-  { value: "reusable",      label: "✅ Reusable",       desc: "Can go back to stock" },
-  { value: "damaged",       label: "❌ Damaged",         desc: "Write off to Lost & Damaged" },
-  { value: "partial_goods", label: "⚠️ Partial Goods",  desc: "Partially good — needs review" },
+  { value: "reusable",      label: " Reusable",       desc: "Can go back to stock" },
+  { value: "damaged",       label: " Damaged",         desc: "Write off to Lost & Damaged" },
+  { value: "partial_goods", label: " Partial Goods",  desc: "Partially good — needs review" },
 ];
 
 const card = {
@@ -248,7 +248,7 @@ export default function ReturnsPage() {
             /* ── Success state ─────────────────────────────────── */
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
               style={{ textAlign: "center", padding: "60px 20px", ...card }}>
-              <div style={{ fontSize: "108", marginBottom: "20px" }}>✅</div>
+              <div style={{ fontSize: "108", marginBottom: "20px" }}></div>
               <h2 style={{ fontFamily: "var(--heading-font)", fontSize: "24px", fontWeight: 800, color: "#1B4332", marginBottom: "12px" }}>
                 Return Request Submitted!
               </h2>
@@ -270,7 +270,7 @@ export default function ReturnsPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               {/* ── Return Policy Banner ───────────────────────── */}
               <div style={{ backgroundColor: "#F0FFF4", border: "1px solid #A7F3D0", borderRadius: "16px", padding: "16px 20px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
-                <span style={{ fontSize: "24px", flexShrink: 0 }}>ℹ️</span>
+                <span style={{ fontSize: "24px", flexShrink: 0 }}>ℹ</span>
                 <div>
                   <p style={{ fontWeight: 700, color: "#065F46", marginBottom: "6px", fontSize: "14px" }}>Return Policy</p>
                   <ul style={{ color: "#047857", fontSize: "13px", paddingLeft: "16px", lineHeight: 2 }}>
@@ -287,7 +287,7 @@ export default function ReturnsPage() {
                 <h3 style={stepTitle}>Step 1 — Select the Order</h3>
                 {orders.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "32px", color: "#9CA3AF" }}>
-                    <div style={{ fontSize: "65", marginBottom: "12px" }}>📦</div>
+                    <div style={{ fontSize: "65", marginBottom: "12px" }}></div>
                     <p style={{ fontSize: "14px" }}>No delivered orders eligible for return</p>
                     <p style={{ fontSize: "13px" }}>Only orders delivered within the last 7 days can be returned</p>
                   </div>
@@ -352,12 +352,12 @@ export default function ReturnsPage() {
                                 background: isOn ? "#40916C" : "white",
                                 display: "flex", alignItems: "center", justifyContent: "center",
                               }}>
-                                {isOn && <span style={{ color: "white", fontSize: "18", fontWeight: 900 }}>✓</span>}
+                                {isOn && <span style={{ color: "white", fontSize: "18", fontWeight: 900 }}></span>}
                               </div>
 
                               {/* Product icon */}
                               <div style={{ width: "40px", height: "40px", borderRadius: "10px", backgroundColor: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", flexShrink: 0 }}>
-                                🛒
+                                
                               </div>
 
                               {/* Name + qty */}
@@ -449,7 +449,7 @@ export default function ReturnsPage() {
                   {/* Selection summary */}
                   {selectedItemsList.length > 0 && (
                     <div style={{ marginTop: "14px", padding: "10px 14px", background: "#F0FFF4", borderRadius: "10px", border: "1px solid #A7F3D0", fontSize: "13px", color: "#065F46", fontWeight: 600 }}>
-                      ✓ {selectedItemsList.length} item{selectedItemsList.length !== 1 ? "s" : ""} selected for return
+                       {selectedItemsList.length} item{selectedItemsList.length !== 1 ? "s" : ""} selected for return
                     </div>
                   )}
                 </motion.div>
@@ -498,7 +498,7 @@ export default function ReturnsPage() {
                       />
                       {!description.trim() && (
                         <p style={{ fontSize: "12px", color: "#DC2626", marginTop: "4px" }}>
-                          ⚠️ This field is required when selecting "Other reason"
+                           This field is required when selecting "Other reason"
                         </p>
                       )}
                     </motion.div>
@@ -521,14 +521,14 @@ export default function ReturnsPage() {
                   {/* Inline validation hint */}
                   {validationError && reason && selectedItemsList.length > 0 && (
                     <div style={{ padding: "10px 14px", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: "10px", fontSize: "13px", color: "#991B1B", marginBottom: "16px" }}>
-                      ⚠️ {validationError}
+                       {validationError}
                     </div>
                   )}
 
                   {/* Submission error */}
                   {submitError && (
                     <div style={{ padding: "10px 14px", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: "10px", fontSize: "13px", color: "#991B1B", marginBottom: "16px" }}>
-                      ⚠️ {submitError}
+                       {submitError}
                     </div>
                   )}
 
@@ -557,11 +557,11 @@ export default function ReturnsPage() {
                   >
                     {submitting ? (
                       <>
-                        <motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>⏳</motion.span>
+                        <motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}></motion.span>
                         Submitting...
                       </>
                     ) : (
-                      `📤 Submit Return Request${selectedItemsList.length > 0 ? ` (${selectedItemsList.length} item${selectedItemsList.length !== 1 ? "s" : ""})` : ""}`
+                      ` Submit Return Request${selectedItemsList.length > 0 ? ` (${selectedItemsList.length} item${selectedItemsList.length !== 1 ? "s" : ""})` : ""}`
                     )}
                   </motion.button>
                 </motion.div>
@@ -575,7 +575,7 @@ export default function ReturnsPage() {
           <div>
             {myReturns.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 20px", ...card }}>
-                <div style={{ fontSize: "86", marginBottom: "16px" }}>📋</div>
+                <div style={{ fontSize: "86", marginBottom: "16px" }}></div>
                 <h3 style={{ fontFamily: "var(--heading-font)", fontSize: "20px", fontWeight: 700, marginBottom: "8px" }}>No Returns Yet</h3>
                 <p style={{ color: "#9CA3AF", marginBottom: "20px" }}>You haven't submitted any return requests</p>
                 <button onClick={() => setTab("new")} style={{ backgroundColor: "#1B4332", color: "white", border: "none", borderRadius: "12px", padding: "12px 28px", fontWeight: 700, cursor: "pointer" }}>

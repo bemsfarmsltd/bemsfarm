@@ -11,10 +11,10 @@ import { escapeHtml } from "../utils/sanitize";
 import { NAIRA_PER_UNIT } from "../utils/currency";
 
 const QUICK_PROMPTS = [
-  { icon: "🍲", text: "What can I cook with garri and tomatoes?" },
-  { icon: "🌾", text: "How do I make perfect Jollof rice?" },
-  { icon: "🥗", text: "Healthy Nigerian meal plan for the week" },
-  { icon: "🔄", text: "Substitute for palm oil in egusi soup?" },
+  { icon: "", text: "What can I cook with garri and tomatoes?" },
+  { icon: "", text: "How do I make perfect Jollof rice?" },
+  { icon: "", text: "Healthy Nigerian meal plan for the week" },
+  { icon: "", text: "Substitute for palm oil in egusi soup?" },
 ];
 
 function formatMessage(text) {
@@ -169,7 +169,7 @@ export default function ChefBemsPage() {
       const userMsg = {
         id: Date.now() + "-u",
         role: "user",
-        content: "📷 [Uploaded ingredient photo for visual scanning]",
+        content: " [Uploaded ingredient photo for visual scanning]",
         image: base64Data,
         timestamp: new Date().toISOString(),
       };
@@ -199,7 +199,7 @@ export default function ChefBemsPage() {
         addMessage({
           id: Date.now() + "-e",
           role: "assistant",
-          content: "⚠️ Visual scanner is taking a break. Make sure your GEMINI_API_KEY is configured properly.",
+          content: " Visual scanner is taking a break. Make sure your GEMINI_API_KEY is configured properly.",
           timestamp: new Date().toISOString(),
           isError: true,
         });
@@ -282,7 +282,7 @@ export default function ChefBemsPage() {
       addMessage({
         id: Date.now() + "-e",
         role: "assistant",
-        content: "⚠️ Chef Bems is taking a short break. Try again in a moment.",
+        content: " Chef Bems is taking a short break. Try again in a moment.",
         timestamp: new Date().toISOString(),
         isError: true,
       });
@@ -732,7 +732,7 @@ export default function ChefBemsPage() {
           {/* New Chat Button */}
           <div className="sidebar-header">
             <button className="btn-new-chat" onClick={handleStartNewChat}>
-              <span style={{fontSize:'1.35em'}}>➕</span> New Conversation
+              <span style={{fontSize:'1.35em'}}></span> New Conversation
             </button>
           </div>
 
@@ -754,7 +754,7 @@ export default function ChefBemsPage() {
                     onClick={() => handleSelectConversation(conv)}
                   >
                     <div className="conv-item-left">
-                      <span style={{fontSize:'1.35em'}}>💬</span>
+                      <span style={{fontSize:'1.35em'}}></span>
                       {isEditing ? (
                         <input
                           type="text"
@@ -789,14 +789,14 @@ export default function ChefBemsPage() {
                           onClick={(e) => handleStartEditing(e, conv)}
                           title="Rename thread"
                         >
-                          ✏️
+                          
                         </button>
                         <button 
                           className="btn-conv-action"
                           onClick={(e) => handleDeleteConversation(e, conv.id)}
                           title="Delete thread"
                         >
-                          🗑️
+                          
                         </button>
                       </div>
                     )}
@@ -807,7 +807,7 @@ export default function ChefBemsPage() {
                         onClick={(e) => handleSaveRename(e, conv.id)}
                         title="Save name"
                       >
-                        ✓
+                        
                       </button>
                     )}
                   </div>
@@ -865,7 +865,7 @@ export default function ChefBemsPage() {
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <h1 style={{ fontSize: "16px", fontWeight: "bold", margin: 0, color: "var(--gray-900)", fontFamily: "var(--heading-font)" }}>
-                  Chef Bems 👨‍🍳
+                  Chef Bems 
                 </h1>
                 <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>Online</span>
               </div>
@@ -887,7 +887,7 @@ export default function ChefBemsPage() {
                   gap: "4px"
                 }}
               >
-                🔄 New Chat
+                 New Chat
               </button>
             )}
           </div>
@@ -1001,7 +1001,7 @@ export default function ChefBemsPage() {
                         {/* Interactive shopping items */}
                         {isAI && msg.relatedProducts?.length > 0 && (
                           <div style={{ marginTop: "14px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                            <span style={{ fontSize: "11px", fontWeight: "bold", color: "#F59E0B" }}>🛒 Farm Ingredients available on BemsFarms:</span>
+                            <span style={{ fontSize: "11px", fontWeight: "bold", color: "#F59E0B" }}> Farm Ingredients available on BemsFarms:</span>
                             <div style={{
                               display: "grid",
                               gridTemplateColumns: "1fr 1fr",
@@ -1040,7 +1040,7 @@ export default function ChefBemsPage() {
                                       flexShrink: 0
                                     }}
                                   >
-                                    {addedIds[p.id] ? "✓ Added" : "Add"}
+                                    {addedIds[p.id] ? " Added" : "Add"}
                                   </button>
                                 </div>
                               ))}
@@ -1095,7 +1095,7 @@ export default function ChefBemsPage() {
                   disabled={loading}
                   title="Upload image for Visual Scanning"
                 >
-                  📸
+                  
                 </button>
 
                 <textarea
@@ -1115,7 +1115,7 @@ export default function ChefBemsPage() {
                   disabled={loading || !input.trim()}
                   title="Send message"
                 >
-                  🚀
+                  
                 </button>
               </div>
             </div>

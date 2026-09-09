@@ -9,12 +9,12 @@ import { getProductImage } from "../utils/productImages";
 import Toast from "../components/ui/Toast";
 
 const STATUS_CONFIG = {
-  pending: { color: "#D97706", bg: "#FEF3C7", label: "Pending", icon: "⏳" },
-  confirmed: { color: "#2563EB", bg: "#DBEAFE", label: "Confirmed", icon: "✅" },
-  processing: { color: "#7C3AED", bg: "#EDE9FE", label: "Processing", icon: "📦" },
-  shipped: { color: "#2E7D32", bg: "#E8F5E9", label: "Shipped", icon: "🚚" },
-  delivered: { color: "#2E7D32", bg: "#E8F5E9", label: "Delivered", icon: "🎉" },
-  cancelled: { color: "#DC2626", bg: "#FEF2F2", label: "Cancelled", icon: "❌" },
+  pending: { color: "#D97706", bg: "#FEF3C7", label: "Pending", icon: "" },
+  confirmed: { color: "#2563EB", bg: "#DBEAFE", label: "Confirmed", icon: "" },
+  processing: { color: "#7C3AED", bg: "#EDE9FE", label: "Processing", icon: "" },
+  shipped: { color: "#2E7D32", bg: "#E8F5E9", label: "Shipped", icon: "" },
+  delivered: { color: "#2E7D32", bg: "#E8F5E9", label: "Delivered", icon: "" },
+  cancelled: { color: "#DC2626", bg: "#FEF2F2", label: "Cancelled", icon: "" },
 };
 
 const ORDERS_CSS = `
@@ -486,7 +486,7 @@ export default function OrdersPage() {
               gap: "12px",
             }}
           >
-            <span style={{ fontSize: "27" }}>⚠️</span>
+            <span style={{ fontSize: "27" }}></span>
             <div>
               <p style={{ fontWeight: 700, color: "#DC2626", margin: "0 0 4px" }}>Failed to load orders</p>
               <p style={{ fontSize: "13px", color: "#DC2626", margin: 0 }}>{error}</p>
@@ -541,7 +541,7 @@ export default function OrdersPage() {
               border: "1px solid #E5E7EB",
             }}
           >
-            <div style={{ fontSize: "97", marginBottom: "20px" }}>📭</div>
+            <div style={{ fontSize: "97", marginBottom: "20px" }}></div>
             <h3 style={{ fontFamily: "var(--heading-font)", fontSize: "22px", fontWeight: 700, color: "#111827", margin: "0 0 10px" }}>
               {filter === "all" ? "No orders yet" : `No ${filter} orders`}
             </h3>
@@ -563,7 +563,7 @@ export default function OrdersPage() {
                 boxShadow: "0 4px 16px rgba(27,67,50,0.2)",
               }}
             >
-              🛒 Start Shopping
+               Start Shopping
             </button>
           </div>
         ) : (

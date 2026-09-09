@@ -39,21 +39,21 @@ export function getProductBg(name) {
 
 export function getProductEmoji(name) {
   const map = {
-    "Ofada Rice": "🌾",
-    "Long Grain Rice": "🍚",
-    "Palm Oil": "🛢️",
-    "Groundnut Oil": "🥜",
-    "Black-eyed Beans": "⚫",
-    "Brown Beans": "🟤",
-    "Garri (White)": "🍚",
-    "Garri (Yellow)": "🟡",
-    "Fresh Tomatoes": "🍅",
-    "Dried Crayfish": "🦐",
-    Cocoyam: "🍠",
-    "Ugu Leaves": "🥬",
+    "Ofada Rice": "",
+    "Long Grain Rice": "",
+    "Palm Oil": "",
+    "Groundnut Oil": "",
+    "Black-eyed Beans": "",
+    "Brown Beans": "",
+    "Garri (White)": "",
+    "Garri (Yellow)": "",
+    "Fresh Tomatoes": "",
+    "Dried Crayfish": "",
+    Cocoyam: "",
+    "Ugu Leaves": "",
   };
 
-  return map[name] || "🛒";
+  return map[name] || "";
 }
 
 /* ---------------- COMPONENT ---------------- */
@@ -131,7 +131,7 @@ export default function ProductCard({ product, index = 0 }) {
             zIndex: 2,
           }}
         >
-          ⭐ TOP
+           TOP
         </div>
       )}
 
@@ -178,7 +178,7 @@ export default function ProductCard({ product, index = 0 }) {
             zIndex: 5,
           }}
         >
-          ⚡ {product.stock_quantity} left
+           {product.stock_quantity} left
         </div>
       )}
 
@@ -223,7 +223,7 @@ export default function ProductCard({ product, index = 0 }) {
           }}
         >
           <span style={{ color: "white", fontWeight: 700, fontSize: "12px" }}>
-            {added ? "✓ Added!" : "🛒 Add to Cart"}
+            {added ? " Added!" : " Add to Cart"}
           </span>
         </motion.div>
       </div>
@@ -297,7 +297,7 @@ export default function ProductCard({ product, index = 0 }) {
               justifyContent: "center",
             }}
           >
-            {added ? "✓" : "+"}
+            {added ? "" : "+"}
           </motion.button>
         </div>
       </div>

@@ -159,7 +159,7 @@ function ProductGridCard({
           {Number(product.review_count) > 0 ? (
             <>
               <span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
-                {"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}
+                {"".repeat(Math.round(rating))}{"".repeat(5 - Math.round(rating))}
               </span>
               <span className="text-[10px] font-bold text-slate-400">({product.review_count})</span>
             </>
@@ -762,7 +762,7 @@ export default function HomePage() {
                 className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-amber-300 px-5 py-2.5 text-xs font-black uppercase tracking-wider text-[#143c2d] shadow-md transition hover:bg-white active:scale-98"
               >
                 <span>Explore Full Shop</span>
-                <span>➔</span>
+                <span></span>
               </Link>
             </div>
           </div>

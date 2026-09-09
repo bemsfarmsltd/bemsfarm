@@ -55,12 +55,12 @@ function EmptyBasket() {
       <div className="bf-basket-wrap">
         <div className="bf-basket-pattern" />
         <div style={{ maxWidth:520, margin:"0 auto", textAlign:"center", padding:"100px 24px 60px", position:"relative", zIndex:1 }}>
-          <motion.div animate={{ y:[0,-10,0] }} transition={{ duration:2.8, repeat:Infinity, ease:"easeInOut" }} style={{ fontSize:72, lineHeight:1, marginBottom:20 }}>🛒</motion.div>
+          <motion.div animate={{ y:[0,-10,0] }} transition={{ duration:2.8, repeat:Infinity, ease:"easeInOut" }} style={{ fontSize:72, lineHeight:1, marginBottom:20 }}></motion.div>
           <h1 style={{ fontFamily:"var(--heading-font,serif)", fontSize:"clamp(22px,4vw,30px)", fontWeight:800, color:"#111827", marginBottom:10 }}>Your basket is empty</h1>
           <p style={{ color:"#6b7280", fontSize:15, lineHeight:1.7, marginBottom:32 }}>Browse our fresh Nigerian produce, Bems Farms brand staples and everyday kitchen essentials.</p>
           <motion.button whileHover={{ scale:1.03, y:-2 }} whileTap={{ scale:0.97 }} onClick={() => navigate("/products")} style={{ backgroundColor:"#17352a", color:"white", border:"none", borderRadius:999, padding:"15px 36px", fontSize:15, fontWeight:800, cursor:"pointer", boxShadow:"0 6px 20px rgba(23,53,42,0.3)" }}>Start Shopping →</motion.button>
           <div className="bf-trust-strip" style={{ justifyContent:"center", marginTop:28 }}>
-            {[["🚚","Nationwide Delivery"],["🔒","Secure Payment"],["↩","7-day Returns"]].map(([icon,label]) => (
+            {[["","Nationwide Delivery"],["","Secure Payment"],["↩","7-day Returns"]].map(([icon,label]) => (
               <span key={label} className="bf-trust-badge">{icon} {label}</span>
             ))}
           </div>
@@ -94,16 +94,16 @@ export default function CartPage() {
       const { data } = await api.post("/admin/coupons/validate", { code, order_total: cartSubtotal });
       if (data.valid) {
         setAppliedCoupon({ code, discount: data.discount, type: data.coupon.type, value: data.coupon.value });
-        setCouponMsg(`✅ Coupon applied! You saved ₦${data.discount.toLocaleString()}`);
+        setCouponMsg(` Coupon applied! You saved ₦${data.discount.toLocaleString()}`);
         setCouponValid(true);
       } else {
         setAppliedCoupon(null);
-        setCouponMsg(`❌ ${data.message || "Invalid coupon code"}`);
+        setCouponMsg(` ${data.message || "Invalid coupon code"}`);
         setCouponValid(false);
       }
     } catch {
       setAppliedCoupon(null);
-      setCouponMsg("❌ Could not validate coupon. Please try again.");
+      setCouponMsg(" Could not validate coupon. Please try again.");
       setCouponValid(false);
     } finally {
       setValidating(false);
@@ -138,7 +138,7 @@ export default function CartPage() {
           {/* Heading */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:28, flexWrap:"wrap", gap:12 }}>
             <div>
-              <h1 style={{ fontFamily:"var(--heading-font,serif)", fontSize:"clamp(22px,4vw,30px)", fontWeight:900, color:"#111827", margin:0 }}>🛒 Your Basket</h1>
+              <h1 style={{ fontFamily:"var(--heading-font,serif)", fontSize:"clamp(22px,4vw,30px)", fontWeight:900, color:"#111827", margin:0 }}> Your Basket</h1>
               <p style={{ margin:"4px 0 0", fontSize:14, color:"#6b7280" }}>{totalQty} {totalQty === 1 ? "item" : "items"} ready to checkout</p>
             </div>
             <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate("/products")} style={{ background:"white", border:"1.5px solid #e5e7eb", borderRadius:999, padding:"9px 20px", fontSize:13, fontWeight:700, cursor:"pointer", color:"#374151" }}>
@@ -151,14 +151,14 @@ export default function CartPage() {
             <div>
               {delivery > 0 && (
                 <motion.div initial={{ opacity:0, y:-8 }} animate={{ opacity:1, y:0 }} style={{ background:"linear-gradient(135deg,#f0fdf4,#ecfdf5)", border:"1.5px solid #bbf7d0", borderRadius:16, padding:"14px 18px", marginBottom:20 }}>
-                  <p style={{ fontSize:13, fontWeight:700, color:"#166534", margin:0 }}>🚚 Add <strong>₦{remaining.toLocaleString()}</strong> more to get <strong>FREE delivery</strong>!</p>
+                  <p style={{ fontSize:13, fontWeight:700, color:"#166534", margin:0 }}> Add <strong>₦{remaining.toLocaleString()}</strong> more to get <strong>FREE delivery</strong>!</p>
                   <div className="bf-delivery-bar-bg"><div className="bf-delivery-bar-fill" style={{ width:`${freeDeliveryProgress}%` }} /></div>
                   <p style={{ fontSize:11, color:"#4b7563", margin:0 }}>₦{cartSubtotal.toLocaleString()} / ₦{FREE_DELIVERY_THRESHOLD.toLocaleString()} for free delivery</p>
                 </motion.div>
               )}
               {delivery === 0 && (
                 <motion.div initial={{ opacity:0, y:-8 }} animate={{ opacity:1, y:0 }} style={{ background:"linear-gradient(135deg,#f0fdf4,#dcfce7)", border:"1.5px solid #86efac", borderRadius:16, padding:"14px 18px", marginBottom:20, display:"flex", alignItems:"center", gap:10 }}>
-                  <span style={{ fontSize:22 }}>🎉</span>
+                  <span style={{ fontSize:22 }}></span>
                   <p style={{ fontSize:13, fontWeight:800, color:"#166534", margin:0 }}>You qualify for FREE delivery!</p>
                 </motion.div>
               )}
@@ -181,7 +181,7 @@ export default function CartPage() {
                         <img src={imgSrc} alt={product.name} className="bf-item-img"
                           onError={(e) => { e.target.style.display="none"; if(e.target.nextSibling) e.target.nextSibling.style.display="flex"; }}
                         />
-                        <div style={{ display:"none", width:80, height:80, borderRadius:14, background:"#e8f4ed", alignItems:"center", justifyContent:"center", fontSize:36, flexShrink:0 }}>🌾</div>
+                        <div style={{ display:"none", width:80, height:80, borderRadius:14, background:"#e8f4ed", alignItems:"center", justifyContent:"center", fontSize:36, flexShrink:0 }}></div>
                       </div>
 
                       <div className="bf-item-body">
@@ -191,7 +191,7 @@ export default function CartPage() {
                             <p style={{ fontSize:12, color:"#9ca3af", margin:0 }}>{product.unit}</p>
                           </div>
                           <motion.button whileTap={{ scale:0.85 }} onClick={() => handleRemove(product.id)} aria-label={`Remove ${product.name}`}
-                            style={{ flexShrink:0, width:30, height:30, borderRadius:"50%", border:"1.5px solid #e5e7eb", background:"white", cursor:"pointer", fontSize:14, color:"#9ca3af", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</motion.button>
+                            style={{ flexShrink:0, width:30, height:30, borderRadius:"50%", border:"1.5px solid #e5e7eb", background:"white", cursor:"pointer", fontSize:14, color:"#9ca3af", display:"flex", alignItems:"center", justifyContent:"center" }}></motion.button>
                         </div>
                         <div className="bf-item-bottom">
                           <div className="bf-qty-pill">
@@ -211,7 +211,7 @@ export default function CartPage() {
               </AnimatePresence>
 
               <div className="bf-trust-strip" style={{ justifyContent:"flex-start", marginTop:24 }}>
-                {[["🔒","Secure Payment"],["🚚","Nationwide Delivery"],["↩","7-day Returns"],["📞","24/7 Support"]].map(([icon,label]) => (
+                {[["","Secure Payment"],["","Nationwide Delivery"],["↩","7-day Returns"],["","24/7 Support"]].map(([icon,label]) => (
                   <span key={label} className="bf-trust-badge">{icon} {label}</span>
                 ))}
               </div>
@@ -227,7 +227,7 @@ export default function CartPage() {
               </div>
               <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
                 <span style={{ fontSize:14, color:"#6b7280" }}>Delivery</span>
-                <span style={{ fontSize:14, fontWeight:700, color: delivery===0 ? "#16a34a" : "#374151" }}>{delivery===0 ? "🎉 Free" : `₦${delivery.toLocaleString()}`}</span>
+                <span style={{ fontSize:14, fontWeight:700, color: delivery===0 ? "#16a34a" : "#374151" }}>{delivery===0 ? " Free" : `₦${delivery.toLocaleString()}`}</span>
               </div>
               {discount > 0 && (
                 <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
@@ -250,7 +250,7 @@ export default function CartPage() {
               >
                 Proceed to Checkout →
               </motion.button>
-              <p style={{ textAlign:"center", fontSize:12, color:"#9ca3af", margin:"12px 0 20px" }}>🔒 Secure 256-bit Encrypted Payments</p>
+              <p style={{ textAlign:"center", fontSize:12, color:"#9ca3af", margin:"12px 0 20px" }}> Secure 256-bit Encrypted Payments</p>
 
               <div style={{ borderTop:"1px solid #f3f4f6", paddingTop:20 }}>
                 <p style={{ fontSize:13, fontWeight:700, color:"#374151", marginBottom:10, marginTop:0 }}>Have a coupon?</p>
@@ -276,7 +276,7 @@ export default function CartPage() {
 
               <div style={{ borderTop:"1px solid #f3f4f6", marginTop:20, paddingTop:16 }}>
                 <Link to="/products" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, fontSize:13, fontWeight:700, color:"#17352a", textDecoration:"none", borderRadius:12, padding:"10px 0", border:"1.5px solid #d1fae5", background:"#f0fdf4" }}>
-                  🛍️ Continue Shopping
+                   Continue Shopping
                 </Link>
               </div>
             </div>

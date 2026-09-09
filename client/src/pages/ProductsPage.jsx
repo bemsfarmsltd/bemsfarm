@@ -10,14 +10,14 @@ import QuickViewModal from "../components/ui/QuickViewModal";
 import Toast from "../components/ui/Toast";
 
 const CATEGORY_EMOJIS = {
-  "Grains & Cereals": "🌾",
-  "Vegetables": "🥕",
-  "Cooking Oils": "🫙",
-  "Legumes": "🫘",
-  "Tubers & Roots": "🍠",
-  "Spices & Seasonings": "🌶️",
-  "Leafy Greens": "🥬",
-  "Fruits": "🍉"
+  "Grains & Cereals": "",
+  "Vegetables": "",
+  "Cooking Oils": "",
+  "Legumes": "",
+  "Tubers & Roots": "",
+  "Spices & Seasonings": "",
+  "Leafy Greens": "",
+  "Fruits": ""
 };
 
 const DASHBOARD_CSS = `
@@ -371,7 +371,7 @@ export default function ProductsPage() {
     if (Number(product.stock_quantity ?? product.stock ?? 0) === 0) return;
     addToCart(product);
     setToast({
-      message: `✓ Added ${product.name} to basket!`,
+      message: ` Added ${product.name} to basket!`,
       type: "success",
     });
     setTimeout(() => setToast(null), 2500);
@@ -411,7 +411,7 @@ export default function ProductsPage() {
             <p>Search, filter and add farm produce to your basket.</p>
           </div>
           <label className="bp-search-wrap">
-            <span aria-hidden="true">⌕</span>
+            <span aria-hidden="true"></span>
             <span className="sr-only">Search products</span>
             <input
               type="search"
@@ -451,7 +451,7 @@ export default function ProductsPage() {
 
           <div className="bp-categories-list">
             {cats.map((cat) => {
-              const emoji = CATEGORY_EMOJIS[cat] || "🌿";
+              const emoji = CATEGORY_EMOJIS[cat] || "";
               return (
                 <div
                   key={cat}
@@ -505,7 +505,7 @@ export default function ProductsPage() {
                 marginBottom: "20px",
               }}
             >
-              <span style={{ fontSize: "27" }}>⚠️</span>
+              <span style={{ fontSize: "27" }}></span>
               <div>
                 <p style={{ fontWeight: 700, color: "#DC2626", margin: "0 0 4px" }}>Failed to load products</p>
                 <p style={{ fontSize: "13px", color: "#DC2626", margin: 0 }}>{error}</p>
@@ -636,7 +636,7 @@ export default function ProductsPage() {
                         }}
                         aria-label="Toggle favorite"
                       >
-                        {isFavorite ? "❤️" : "🤍"}
+                        {isFavorite ? "" : ""}
                       </button>
 
                       {/* Quick View Button */}
@@ -660,7 +660,7 @@ export default function ProductsPage() {
                           gap: "3px"
                         }}
                       >
-                        <span>👁️</span>
+                        <span></span>
                         <span>Quick View</span>
                       </button>
                     </div>
@@ -690,7 +690,7 @@ export default function ProductsPage() {
                       {Number(product.review_count) > 0 ? (
                         <>
                           <span style={{ color: "#F57C00", fontSize: "12px" }}>
-                            {"★".repeat(Math.round(Number(product.avg_rating || 0)))}
+                            {"".repeat(Math.round(Number(product.avg_rating || 0)))}
                           </span>
                           <span style={{ fontSize: "10px", color: "#9CA3AF" }}>({product.review_count})</span>
                         </>

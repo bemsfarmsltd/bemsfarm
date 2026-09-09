@@ -107,7 +107,7 @@ export default function CartDrawer() {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-[#DFD6C2] px-6 py-4 bg-white/90 backdrop-blur-md">
               <div className="flex items-center gap-2.5">
-                <span className="text-xl">🧺</span>
+                <span className="text-xl"></span>
                 <div>
                   <h2 className="text-base font-black text-[#143c2d]">Your Fresh Basket</h2>
                   <p className="text-xs font-semibold text-slate-500">
@@ -121,7 +121,7 @@ export default function CartDrawer() {
                 className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
                 aria-label="Close cart drawer"
               >
-                ✕
+                
               </button>
             </div>
 
@@ -131,7 +131,7 @@ export default function CartDrawer() {
                 <span>
                   {remainingForFreeDelivery === 0 ? (
                     <span className="text-emerald-700 flex items-center gap-1">
-                      🎉 <span>FREE Doorstep Delivery Unlocked!</span>
+                       <span>FREE Doorstep Delivery Unlocked!</span>
                     </span>
                   ) : (
                     <span>
@@ -162,7 +162,7 @@ export default function CartDrawer() {
               {cartItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <div className="mb-4 grid h-20 w-20 place-items-center rounded-3xl bg-[#143c2d]/10 text-4xl">
-                    🌾
+                    
                   </div>
                   <h3 className="text-lg font-black text-[#143c2d]">Your basket is empty</h3>
                   <p className="mt-1 max-w-xs text-xs text-slate-600">
@@ -176,7 +176,7 @@ export default function CartDrawer() {
                     }}
                     className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#143c2d] px-6 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md transition-all hover:bg-[#0e2c21]"
                   >
-                    Start Shopping ➔
+                    Start Shopping 
                   </button>
                 </div>
               ) : (
@@ -244,7 +244,7 @@ export default function CartDrawer() {
                               className="text-slate-400 hover:text-red-500 transition-colors p-1"
                               aria-label={`Remove ${product.name} from basket`}
                             >
-                              🗑️
+                              
                             </button>
                           </div>
                         </div>
@@ -297,7 +297,7 @@ export default function CartDrawer() {
                                 : "bg-[#143c2d] text-white hover:bg-[#0e2c21]"
                             }`}
                           >
-                            {alreadyInCart ? "✓ Added" : "+ Add"}
+                            {alreadyInCart ? " Added" : "+ Add"}
                           </button>
                         </div>
                       );
@@ -340,7 +340,7 @@ export default function CartDrawer() {
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-[#143c2d] to-[#1c5540] py-3.5 text-xs font-black uppercase tracking-widest text-white shadow-lg transition-all hover:scale-[1.01] hover:brightness-110 active:scale-[0.99]"
                   >
                     <span>Proceed to Secure Checkout</span>
-                    <span>➔</span>
+                    <span></span>
                   </button>
 
                   <button
@@ -357,9 +357,9 @@ export default function CartDrawer() {
 
                 {/* Security Trust Badges */}
                 <div className="flex items-center justify-center gap-4 text-[10px] text-slate-500 font-semibold pt-1">
-                  <span>🔒 100% Secure Checkout</span>
+                  <span> 100% Secure Checkout</span>
                   <span>•</span>
-                  <span>🌾 100% Stone-Free Guarantee</span>
+                  <span> 100% Stone-Free Guarantee</span>
                 </div>
               </div>
             )}

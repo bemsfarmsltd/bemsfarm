@@ -82,9 +82,9 @@ const MILESTONES = [
 ];
 
 const VALUE_PROPS = [
-  { icon: "🌾", label: "Farm-direct sourcing" },
-  { icon: "💵", label: "Honest, fair pricing" },
-  { icon: "🤖", label: "AI-powered experience" },
+  { icon: "", label: "Farm-direct sourcing" },
+  { icon: "", label: "Honest, fair pricing" },
+  { icon: "", label: "AI-powered experience" },
 ];
 
 export default function AboutPage() {
@@ -274,9 +274,9 @@ export default function AboutPage() {
             {/* Honest value props instead of fabricated metrics */}
             <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
               {[
-                { icon: "🌾", label: "40+ Products" },
-                { icon: "🤖", label: "AI-Powered" },
-                { icon: "🇳🇬", label: "100% Nigerian" },
+                { icon: "", label: "40+ Products" },
+                { icon: "", label: "AI-Powered" },
+                { icon: "", label: "100% Nigerian" },
               ].map((stat) => (
                 <div key={stat.label}>
                   <div

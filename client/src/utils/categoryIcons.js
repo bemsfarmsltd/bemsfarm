@@ -5,23 +5,23 @@
 // falls back to a generic basket emoji for anything unmapped.
 
 export const CATEGORY_ICONS = {
-  "Grains & Cereals": "🌾",
-  Vegetables: "🥬",
-  "Cooking Oils": "🫒",
-  Legumes: "🫘",
-  "Tubers & Roots": "🍠",
-  "Spices & Seasonings": "🌶️",
-  "Leafy Greens": "🥦",
-  Fruits: "🍎",
-  Proteins: "🍗",
-  "Dairy & Eggs": "🥚",
-  Beverages: "🧃",
-  Snacks: "🍿",
-  Bakery: "🍞",
-  "Frozen Foods": "🧊",
-  "Condiments & Sauces": "🍯",
+  "Grains & Cereals": "",
+  Vegetables: "",
+  "Cooking Oils": "",
+  Legumes: "",
+  "Tubers & Roots": "",
+  "Spices & Seasonings": "",
+  "Leafy Greens": "",
+  Fruits: "",
+  Proteins: "",
+  "Dairy & Eggs": "",
+  Beverages: "",
+  Snacks: "",
+  Bakery: "",
+  "Frozen Foods": "",
+  "Condiments & Sauces": "",
 };
 
 export function getCategoryIcon(name) {
-  return CATEGORY_ICONS[name] || "🛒";
+  return CATEGORY_ICONS[name] || "";
 }

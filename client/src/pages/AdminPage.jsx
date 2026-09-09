@@ -25,12 +25,12 @@ const statusColors = {
   cancelled: { bg: "#FFEBEE", color: "#C62828" },
 };
 const tabs = [
-  { id: "overview", label: "Overview", emoji: "📊" },
-  { id: "orders", label: "Orders", emoji: "📦" },
-  { id: "products", label: "Products", emoji: "🌾" },
-  { id: "customers", label: "Customers", emoji: "👥" },
-  { id: "subscribers", label: "Subscribers", emoji: "📧" },
-  { id: "returns", label: "Returns", emoji: "↩️" },
+  { id: "overview", label: "Overview", emoji: "" },
+  { id: "orders", label: "Orders", emoji: "" },
+  { id: "products", label: "Products", emoji: "" },
+  { id: "customers", label: "Customers", emoji: "" },
+  { id: "subscribers", label: "Subscribers", emoji: "" },
+  { id: "returns", label: "Returns", emoji: "↩" },
 ];
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -223,9 +223,9 @@ export default function AdminPage() {
       setViewOrder((prev) =>
         prev && prev.id === orderId ? { ...prev, status: newStatus } : prev,
       );
-      console.log("✅ Order status updated:", orderId, "->", newStatus);
+      console.log(" Order status updated:", orderId, "->", newStatus);
     } catch (err) {
-      console.error("❌ Status update failed:", err);
+      console.error(" Status update failed:", err);
       alert("Failed to update status. Please try again.");
     }
   };
@@ -267,21 +267,21 @@ export default function AdminPage() {
           // throwing and white-screening the whole dashboard.
           value: `₦${(stats.totalRevenue ?? 0).toLocaleString()}`,
           change: "Live",
-          icon: "💰",
+          icon: "",
           color: "#2E7D32",
         },
         {
           label: "Total Orders",
           value: (stats.totalOrders ?? 0).toLocaleString(),
           change: "Live",
-          icon: "📦",
+          icon: "",
           color: "#1565C0",
         },
         {
           label: "Customers",
           value: (stats.totalCustomers ?? 0).toLocaleString(),
           change: "Live",
-          icon: "👥",
+          icon: "",
           color: "#6A1B9A",
         },
         {
@@ -297,7 +297,7 @@ export default function AdminPage() {
           // landed and triggered this re-render with the real data).
           value: (stats.activeProducts ?? 0).toLocaleString(),
           change: "Live",
-          icon: "🌾",
+          icon: "",
           color: "#E65100",
         },
       ]
@@ -306,28 +306,28 @@ export default function AdminPage() {
           label: "Total Revenue",
           value: "—",
           change: "Loading",
-          icon: "💰",
+          icon: "",
           color: "#2E7D32",
         },
         {
           label: "Total Orders",
           value: "—",
           change: "Loading",
-          icon: "📦",
+          icon: "",
           color: "#1565C0",
         },
         {
           label: "Customers",
           value: "—",
           change: "Loading",
-          icon: "👥",
+          icon: "",
           color: "#6A1B9A",
         },
         {
           label: "Products",
           value: products.length.toString(),
           change: "Live",
-          icon: "🌾",
+          icon: "",
           color: "#E65100",
         },
       ];
@@ -389,7 +389,7 @@ export default function AdminPage() {
                   flexShrink: 0,
                 }}
               >
-                🌿
+                
               </div>
               <div>
                 <span
@@ -478,7 +478,7 @@ export default function AdminPage() {
                   backgroundColor: "transparent",
                 }}
               >
-                <span style={{fontSize:'1.35em'}}>🏠</span> Back to Store
+                <span style={{fontSize:'1.35em'}}></span> Back to Store
               </button>
             </div>
           </nav>
@@ -589,7 +589,7 @@ export default function AdminPage() {
                 color: C.muted,
               }}
             >
-              🔄 Refresh
+               Refresh
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.03 }}
@@ -671,7 +671,7 @@ export default function AdminPage() {
                           borderRadius: "20px",
                         }}
                       >
-                        {s.change === "Live" ? "🟢 Live" : s.change}
+                        {s.change === "Live" ? " Live" : s.change}
                       </span>
                     </div>
                     {statsLoading ? (
@@ -835,7 +835,7 @@ export default function AdminPage() {
                         fontWeight: 600,
                       }}
                     >
-                      🟢 Live
+                       Live
                     </span>
                   </div>
                   {statsLoading
@@ -1043,7 +1043,7 @@ export default function AdminPage() {
                 ) : recentOrders.length === 0 ? (
                   <div style={{ padding: "40px", textAlign: "center" }}>
                     <div style={{ fontSize: "48px", marginBottom: "12px" }}>
-                      📭
+                      
                     </div>
                     <p style={{ color: C.muted, fontSize: "15px" }}>
                       No orders yet
@@ -1241,7 +1241,7 @@ export default function AdminPage() {
                   }}
                 >
                   <div style={{ fontSize: "64px", marginBottom: "16px" }}>
-                    📭
+                    
                   </div>
                   <h3
                     style={{
@@ -1484,7 +1484,7 @@ export default function AdminPage() {
                         "Category",
                         "Price",
                         "Stock",
-                        "⭐",
+                        "",
                         "Actions",
                       ].map((h) => (
                         <th
@@ -1625,7 +1625,7 @@ export default function AdminPage() {
                           style={{ padding: "14px 16px", textAlign: "center" }}
                         >
                           <span style={{ fontSize: "18px" }}>
-                            {p.is_featured ? "⭐" : "—"}
+                            {p.is_featured ? "" : "—"}
                           </span>
                         </td>
                         <td style={{ padding: "14px 16px" }}>
@@ -2008,7 +2008,7 @@ export default function AdminPage() {
             <div
               style={{ textAlign: "center", padding: "60px", color: C.muted }}
             >
-              <div style={{ fontSize: "48px", marginBottom: "12px" }}>↩️</div>
+              <div style={{ fontSize: "48px", marginBottom: "12px" }}>↩</div>
               <p>No return requests yet</p>
             </div>
           ) : (
@@ -2206,7 +2206,7 @@ export default function AdminPage() {
               gap: "3px",
             }}
           >
-            <span style={{ fontSize: "27" }}>🏠</span>
+            <span style={{ fontSize: "27" }}></span>
             <span style={{ fontSize: "10px" }}>Store</span>
           </button>
         </div>
@@ -2293,7 +2293,7 @@ export default function AdminPage() {
                           borderRadius: "8px",
                         }}
                       >
-                        📷 Change Photo
+                         Change Photo
                       </span>
                     </div>
                   </>
@@ -2308,7 +2308,7 @@ export default function AdminPage() {
                       gap: "8px",
                     }}
                   >
-                    <span style={{ fontSize: "49" }}>📷</span>
+                    <span style={{ fontSize: "49" }}></span>
                     <p
                       style={{
                         fontSize: "14px",
@@ -2482,7 +2482,7 @@ export default function AdminPage() {
                     accentColor: C.accent,
                   }}
                 />
-                Featured Product (shows ⭐ badge)
+                Featured Product (shows  badge)
               </label>
             </div>
             <div
@@ -2537,12 +2537,12 @@ export default function AdminPage() {
                         ease: "linear",
                       }}
                     >
-                      ⏳
+                      
                     </motion.span>{" "}
                     Saving...
                   </>
                 ) : saveSuccess ? (
-                  "✓ Saved!"
+                  " Saved!"
                 ) : (
                   "Save Changes"
                 )}
@@ -2556,7 +2556,7 @@ export default function AdminPage() {
         {deleteProduct && (
           <Modal onClose={() => setDeleteProduct(null)} title="">
             <div style={{ textAlign: "center", padding: "8px 0 20px" }}>
-              <div style={{ fontSize: "70", marginBottom: "14px" }}>⚠️</div>
+              <div style={{ fontSize: "70", marginBottom: "14px" }}></div>
               <h3
                 style={{
                   fontSize: "20px",
@@ -2806,7 +2806,7 @@ export default function AdminPage() {
                   />
                 ) : (
                   <>
-                    <span style={{ fontSize: "38" }}>📷</span>
+                    <span style={{ fontSize: "38" }}></span>
                     <p
                       style={{
                         fontSize: "13px",
@@ -3062,7 +3062,7 @@ export default function AdminPage() {
                         ease: "linear",
                       }}
                     >
-                      ⏳
+                      
                     </motion.span>{" "}
                     Adding...
                   </>
@@ -3129,7 +3129,7 @@ export default function AdminPage() {
                       color: viewCustomer.status === "active" ? C.primary : C.muted,
                     }}
                   >
-                    {viewCustomer.status === "active" ? "✅ Active Customer" : "⭕ Inactive"}
+                    {viewCustomer.status === "active" ? " Active Customer" : "⭕ Inactive"}
                   </p>
                 </div>
               </div>
@@ -3268,7 +3268,7 @@ function Modal({ children, onClose, title }) {
                 lineHeight: 1,
               }}
             >
-              ✕
+              
             </button>
           </div>
         )}
@@ -3279,18 +3279,18 @@ function Modal({ children, onClose, title }) {
 }
 function getEmoji(name) {
   const map = {
-    "Ofada Rice": "🌾",
-    "Long Grain Rice": "🍚",
-    "Palm Oil": "🛢️",
-    "Groundnut Oil": "🥜",
-    "Black-eyed Beans": "⚫",
-    "Brown Beans": "🟤",
-    "Garri (White)": "🍚",
-    "Garri (Yellow)": "🟡",
-    "Fresh Tomatoes": "🍅",
-    "Dried Crayfish": "🦐",
-    Cocoyam: "🍠",
-    "Ugu Leaves": "🥬",
+    "Ofada Rice": "",
+    "Long Grain Rice": "",
+    "Palm Oil": "",
+    "Groundnut Oil": "",
+    "Black-eyed Beans": "",
+    "Brown Beans": "",
+    "Garri (White)": "",
+    "Garri (Yellow)": "",
+    "Fresh Tomatoes": "",
+    "Dried Crayfish": "",
+    Cocoyam: "",
+    "Ugu Leaves": "",
   };
-  return map[name] || "🛒";
+  return map[name] || "";
 }

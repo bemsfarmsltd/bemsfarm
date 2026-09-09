@@ -4,7 +4,7 @@ import { persist } from "zustand/middleware";
 const WELCOME_MESSAGE = {
   id: "welcome",
   role: "assistant",
-  content: `Welcome! I'm **Chef Bems** 👨‍🍳 — your personal Nigerian kitchen AI.\n\nI can help you with:\n• Recipes for any Nigerian dish\n• What to cook with ingredients you have\n• Healthy meal planning\n• Cooking tips and substitutions\n\nWhat would you like to cook today?`,
+  content: `Welcome! I'm **Chef Bems**  — your personal Nigerian kitchen AI.\n\nI can help you with:\n• Recipes for any Nigerian dish\n• What to cook with ingredients you have\n• Healthy meal planning\n• Cooking tips and substitutions\n\nWhat would you like to cook today?`,
   timestamp: new Date().toISOString(),
 };
 

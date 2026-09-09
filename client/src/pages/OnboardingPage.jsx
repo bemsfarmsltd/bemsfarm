@@ -20,42 +20,42 @@ const FAMILY_SIZES = [
     value: "solo",
     label: "Just me",
     desc: "1 person",
-    emoji: "🧍",
+    emoji: "",
     img: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&q=80",
   },
   {
     value: "couple",
     label: "Couple",
     desc: "2 people",
-    emoji: "🧑‍🤝‍🧑",
+    emoji: "",
     img: "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=300&q=80",
   },
   {
     value: "small",
     label: "Small family",
     desc: "3–4 people",
-    emoji: "👨‍👩‍👧",
+    emoji: "",
     img: "https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=300&q=80",
   },
   {
     value: "large",
     label: "Large household",
     desc: "5+ people",
-    emoji: "👨‍👩‍👧‍👦",
+    emoji: "",
     img: "https://images.unsplash.com/photo-1544025162-d76694265947?w=300&q=80",
   },
   {
     value: "gathering",
     label: "Small gathering",
     desc: "6–15 guests",
-    emoji: "🥂",
+    emoji: "",
     img: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=500&q=80",
   },
   {
     value: "party",
     label: "Party or event",
     desc: "16+ guests",
-    emoji: "🎉",
+    emoji: "",
     img: "https://images.unsplash.com/photo-1507501336603-6e31db2be093?w=500&q=80",
   },
 ];
@@ -92,19 +92,19 @@ const BUDGETS = [
 ];
 
 const HEALTH_GOALS = [
-  { value: "general", label: "General health", emoji: "🌿" },
-  { value: "weight_loss", label: "Weight management", emoji: "⚖️" },
-  { value: "diabetes", label: "Diabetes-friendly", emoji: "🩺" },
-  { value: "heart_health", label: "Heart health", emoji: "❤️" },
-  { value: "pregnancy", label: "Pregnancy / nursing", emoji: "🤰" },
-  { value: "muscle_gain", label: "Muscle & fitness", emoji: "💪" },
-  { value: "children", label: "Kids & family", emoji: "🧒" },
-  { value: "hypertension", label: "Low sodium", emoji: "🧂" },
+  { value: "general", label: "General health", emoji: "" },
+  { value: "weight_loss", label: "Weight management", emoji: "" },
+  { value: "diabetes", label: "Diabetes-friendly", emoji: "" },
+  { value: "heart_health", label: "Heart health", emoji: "" },
+  { value: "pregnancy", label: "Pregnancy / nursing", emoji: "" },
+  { value: "muscle_gain", label: "Muscle & fitness", emoji: "" },
+  { value: "children", label: "Kids & family", emoji: "" },
+  { value: "hypertension", label: "Low sodium", emoji: "" },
 ];
 
 const FEATURE_CARDS = [
   {
-    icon: "⌕",
+    icon: "",
     title: "Find products faster",
     desc: "Search fresh produce and trusted brands in one place.",
     background: "#EAF5EE",
@@ -116,13 +116,13 @@ const FEATURE_CARDS = [
     background: "#FFF3D8",
   },
   {
-    icon: "♨",
+    icon: "",
     title: "Plan better meals",
     desc: "Get practical ideas from Chef Bems.",
     background: "#FBEBDD",
   },
   {
-    icon: "✓",
+    icon: "",
     title: "Stay in control",
     desc: "Track orders and update preferences anytime.",
     background: "#E8F1EE",
@@ -496,7 +496,7 @@ export default function OnboardingPage() {
                   <div style={{ display: "grid", gap: "11px", marginTop: "28px", maxWidth: "340px" }}>
                     {["Fresh produce and trusted grocery brands", "Secure checkout and order tracking", "Preferences you can change anytime"].map((item) => (
                       <div key={item} style={{ display: "flex", alignItems: "center", gap: "10px", color: "rgba(255,255,255,0.9)", fontSize: "13px", fontWeight: 700 }}>
-                        <span aria-hidden="true" style={{ display: "grid", width: "22px", height: "22px", flexShrink: 0, placeItems: "center", borderRadius: "50%", background: "rgba(255,211,122,0.18)", color: "#FFD37A" }}>✓</span>
+                        <span aria-hidden="true" style={{ display: "grid", width: "22px", height: "22px", flexShrink: 0, placeItems: "center", borderRadius: "50%", background: "rgba(255,211,122,0.18)", color: "#FFD37A" }}></span>
                         {item}
                       </div>
                     ))}
@@ -620,9 +620,9 @@ export default function OnboardingPage() {
             }}
           >
             <div aria-label="Account setup progress" style={{ display: "flex", alignItems: "center", gap: "10px", color: "#66736D", fontSize: "12px", fontWeight: 700 }}>
-              <span style={{ color: "#1B6B4A" }}>✓ Account</span>
+              <span style={{ color: "#1B6B4A" }}> Account</span>
               <span aria-hidden="true" style={{ color: "#C9D2CD" }}>—</span>
-              <span style={{ color: "#1B6B4A" }}>✓ Email</span>
+              <span style={{ color: "#1B6B4A" }}> Email</span>
               <span aria-hidden="true" style={{ color: "#C9D2CD" }}>—</span>
               <span>Preferences</span>
             </div>
@@ -837,7 +837,7 @@ export default function OnboardingPage() {
                                     fontWeight: 800,
                                   }}
                                 >
-                                  ✓
+                                  
                                 </span>
                               </motion.div>
                             )}
@@ -949,7 +949,7 @@ export default function OnboardingPage() {
                                   fontWeight: 800,
                                 }}
                               >
-                                ✓
+                                
                               </span>
                             </div>
                           )}
@@ -1078,7 +1078,7 @@ export default function OnboardingPage() {
                                 flexShrink: 0,
                               }}
                             >
-                              ✓
+                              
                             </motion.span>
                           )}
                         </motion.button>

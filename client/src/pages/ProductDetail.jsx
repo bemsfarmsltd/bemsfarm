@@ -270,7 +270,7 @@ export default function ProductDetail() {
                     borderRadius: "8px",
                   }}
                 >
-                  ⭐ FEATURED
+                   FEATURED
                 </div>
               )}
             </motion.div>
@@ -323,7 +323,7 @@ export default function ProductDetail() {
                       color: i < Math.round(reviewStats.average) ? "#F57C00" : "#E8EAED",
                     }}
                   >
-                    ★
+                    
                   </span>
                 ))}
               </div>
@@ -339,7 +339,7 @@ export default function ProductDetail() {
                   fontWeight: 600,
                 }}
               >
-                {product.stock_quantity === 0 ? "| Out of Stock" : "| In Stock ✓"}
+                {product.stock_quantity === 0 ? "| Out of Stock" : "| In Stock "}
               </span>
             </div>
 
@@ -417,7 +417,7 @@ export default function ProductDetail() {
                       fontSize: "13px",
                     }}
                   >
-                    ⚡ Only {product.stock_quantity} left!
+                     Only {product.stock_quantity} left!
                   </span>
                 </div>
               ) : (
@@ -627,7 +627,7 @@ export default function ProductDetail() {
                 {product.stock_quantity === 0
                   ? "Out of Stock"
                   : added
-                    ? "✓ Added to Cart!"
+                    ? " Added to Cart!"
                     : "Buy Now"}
               </motion.button>
               <motion.button
@@ -648,7 +648,7 @@ export default function ProductDetail() {
                   color: isFavorite ? "#F57C00" : "inherit",
                 }}
               >
-                {isFavorite ? "♥" : "♡"}
+                {isFavorite ? "" : ""}
               </motion.button>
             </div>
 
@@ -688,12 +688,12 @@ export default function ProductDetail() {
             >
               {[
                 {
-                  icon: "🚚",
+                  icon: "",
                   title: "Free Delivery",
                   desc: "On orders above ₦15,000",
                 },
                 {
-                  icon: "↩️",
+                  icon: "↩",
                   title: "Return Policy",
                   desc: "Free returns within 7 days",
                 },
@@ -795,7 +795,7 @@ export default function ProductDetail() {
                               : "#E8EAED",
                         }}
                       >
-                        ★
+                        
                       </span>
                     ))}
                   </div>
@@ -860,7 +860,7 @@ export default function ProductDetail() {
                               userSelect: "none",
                             }}
                           >
-                            ★
+                            
                           </span>
                         ))}
                       </div>
@@ -916,7 +916,7 @@ export default function ProductDetail() {
                               fontWeight: 600,
                             }}
                           >
-                            ✓ Thanks for your review!
+                             Thanks for your review!
                           </span>
                         )}
                       </div>
@@ -976,7 +976,7 @@ export default function ProductDetail() {
                                   color: i < r.rating ? "#F57C00" : "#E8EAED",
                                 }}
                               >
-                                ★
+                                
                               </span>
                             ))}
                           </div>
@@ -1034,7 +1034,7 @@ export default function ProductDetail() {
                       color: "#5F6368",
                     }}
                   >
-                    <span style={{ fontSize:'1.35em',  color: "#2E7D32" }}>✓</span> {item}
+                    <span style={{ fontSize:'1.35em',  color: "#2E7D32" }}></span> {item}
                   </div>
                 ))}
               </div>

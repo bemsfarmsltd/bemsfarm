@@ -42,16 +42,16 @@ export default function FraudDetectionPage() {
     setError(null);
 
     try {
-      console.log("🔐 Running fraud check for user:", userId);
+      console.log(" Running fraud check for user:", userId);
       const response = await api.post("/advanced-ai/fraud-check", {
         user_id: parseInt(userId),
         order_amount: parseInt(orderAmount),
         payment_method: paymentMethod,
       });
-      console.log("✅ Fraud check complete:", response.data);
+      console.log(" Fraud check complete:", response.data);
       setFraudCheck(response.data);
     } catch (err) {
-      console.error("❌ Error:", err);
+      console.error(" Error:", err);
       setError("Fraud check failed: " + err.message);
     } finally {
       setLoading(false);
@@ -89,7 +89,7 @@ export default function FraudDetectionPage() {
                 marginBottom: "8px",
               }}
             >
-              🔐 Fraud Detection System
+               Fraud Detection System
             </h1>
             <p
               style={{
@@ -145,7 +145,7 @@ export default function FraudDetectionPage() {
                     display: "block",
                   }}
                 >
-                  👤 User ID
+                   User ID
                 </label>
                 <input
                   type="number"
@@ -180,7 +180,7 @@ export default function FraudDetectionPage() {
                     display: "block",
                   }}
                 >
-                  💰 Order Amount (₦)
+                   Order Amount (₦)
                 </label>
                 <input
                   type="number"
@@ -215,7 +215,7 @@ export default function FraudDetectionPage() {
                     display: "block",
                   }}
                 >
-                  💳 Payment Method
+                   Payment Method
                 </label>
                 <select
                   value={paymentMethod}
@@ -263,7 +263,7 @@ export default function FraudDetectionPage() {
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? "🔍 Analyzing..." : "🔐 Run Fraud Check"}
+              {loading ? " Analyzing..." : " Run Fraud Check"}
             </motion.button>
           </motion.div>
 
@@ -282,7 +282,7 @@ export default function FraudDetectionPage() {
                 fontSize: "14px",
               }}
             >
-              ⚠️ {error}
+               {error}
             </motion.div>
           )}
 
@@ -416,7 +416,7 @@ export default function FraudDetectionPage() {
                         marginBottom: "16px",
                       }}
                     >
-                      ⚠️ Risk Factors Detected
+                       Risk Factors Detected
                     </h3>
 
                     <div style={{ display: "grid", gap: "12px" }}>
@@ -443,7 +443,7 @@ export default function FraudDetectionPage() {
                               fontSize: "18px",
                             }}
                           >
-                            ⚠️
+                            
                           </span>
                           <span
                             style={{
@@ -482,7 +482,7 @@ export default function FraudDetectionPage() {
                     marginBottom: "16px",
                   }}
                 >
-                  👤 User History & Statistics
+                   User History & Statistics
                 </h3>
 
                 <div
@@ -511,7 +511,7 @@ export default function FraudDetectionPage() {
                         fontWeight: 600,
                       }}
                     >
-                      📅 Account Age
+                       Account Age
                     </p>
                     <p
                       style={{
@@ -542,7 +542,7 @@ export default function FraudDetectionPage() {
                         fontWeight: 600,
                       }}
                     >
-                      💰 Average Order
+                       Average Order
                     </p>
                     <p
                       style={{
@@ -574,7 +574,7 @@ export default function FraudDetectionPage() {
                         fontWeight: 600,
                       }}
                     >
-                      🛍️ Current Order
+                       Current Order
                     </p>
                     <p
                       style={{
@@ -611,7 +611,7 @@ export default function FraudDetectionPage() {
                         fontWeight: 600,
                       }}
                     >
-                      ✓ Requires Verification
+                       Requires Verification
                     </p>
                     <p
                       style={{
@@ -624,8 +624,8 @@ export default function FraudDetectionPage() {
                       }}
                     >
                       {fraudCheck.should_require_verification
-                        ? "⚠️ Yes"
-                        : "✓ No"}
+                        ? " Yes"
+                        : " No"}
                     </p>
                   </div>
                 </div>
@@ -651,7 +651,7 @@ export default function FraudDetectionPage() {
                     marginBottom: "8px",
                   }}
                 >
-                  🔍 How Fraud Detection Works
+                   How Fraud Detection Works
                 </p>
                 <p
                   style={{

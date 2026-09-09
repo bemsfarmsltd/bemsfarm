@@ -875,7 +875,7 @@ export default function Navbar() {
                 }}
                 aria-label="Toggle navigation"
               >
-                {mobileNavOpen ? "✕" : "☰"}
+                {mobileNavOpen ? "" : ""}
               </button>
             </>
           ) : (

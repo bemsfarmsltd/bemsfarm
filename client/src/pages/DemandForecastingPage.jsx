@@ -29,7 +29,7 @@ export default function DemandForecastingPage() {
   }, []);
 
   const getTrendIcon = (t) =>
-    t === "INCREASING" ? "📈" : t === "DECREASING" ? "📉" : "➡️";
+    t === "INCREASING" ? "" : t === "DECREASING" ? "" : "";
   const getTrendColor = (t) =>
     t === "INCREASING" ? "#059669" : t === "DECREASING" ? "#DC2626" : "#F59E0B";
   const getTrendText = (t) =>
@@ -69,7 +69,7 @@ export default function DemandForecastingPage() {
                 marginBottom: "8px",
               }}
             >
-              📈 Demand Forecasting & Inventory
+               Demand Forecasting & Inventory
             </h1>
             <p style={{ color: "rgba(255,255,255,0.75)", fontSize: "15px" }}>
               Predict customer demand and optimize stock levels
@@ -91,7 +91,7 @@ export default function DemandForecastingPage() {
                 fontSize: "14px",
               }}
             >
-              ⚠️ {error}
+               {error}
             </motion.div>
           )}
 
@@ -106,7 +106,7 @@ export default function DemandForecastingPage() {
                 color: "#9CA3AF",
               }}
             >
-              <div style={{ fontSize: "64px", marginBottom: "16px" }}>⏳</div>
+              <div style={{ fontSize: "64px", marginBottom: "16px" }}></div>
               <p style={{ fontSize: "16px", fontWeight: 600 }}>
                 Loading forecast data...
               </p>
@@ -129,7 +129,7 @@ export default function DemandForecastingPage() {
                       marginBottom: "16px",
                     }}
                   >
-                    🚨 Inventory Alerts
+                     Inventory Alerts
                   </h2>
                   <div
                     style={{
@@ -158,7 +158,7 @@ export default function DemandForecastingPage() {
                           textTransform: "uppercase",
                         }}
                       >
-                        🔴 Critical - Restock Now
+                         Critical - Restock Now
                       </p>
                       <p
                         style={{
@@ -200,7 +200,7 @@ export default function DemandForecastingPage() {
                           textTransform: "uppercase",
                         }}
                       >
-                        🟡 Warning - Monitor
+                         Warning - Monitor
                       </p>
                       <p
                         style={{
@@ -247,7 +247,7 @@ export default function DemandForecastingPage() {
                             marginBottom: "12px",
                           }}
                         >
-                          ⚠️ Critical Products Need Restocking:
+                           Critical Products Need Restocking:
                         </p>
                         <div style={{ display: "grid", gap: "8px" }}>
                           {alerts.critical_alerts.map((product, i) => (
@@ -321,7 +321,7 @@ export default function DemandForecastingPage() {
                       marginBottom: "16px",
                     }}
                   >
-                    📊 Next Month Forecast
+                     Next Month Forecast
                   </h2>
                   <p
                     style={{
@@ -554,7 +554,7 @@ export default function DemandForecastingPage() {
                     marginBottom: "8px",
                   }}
                 >
-                  📊 How Demand Forecasting Works
+                   How Demand Forecasting Works
                 </p>
                 <p
                   style={{

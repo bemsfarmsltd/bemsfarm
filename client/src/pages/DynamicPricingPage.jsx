@@ -31,15 +31,15 @@ export default function DynamicPricingPage() {
     setError(null);
 
     try {
-      console.log("💰 Fetching dynamic price for product:", productId);
+      console.log(" Fetching dynamic price for product:", productId);
       const response = await api.post("/advanced-ai/dynamic-pricing", {
         product_id: productId,
       });
-      console.log("✅ Pricing data:", response.data);
+      console.log(" Pricing data:", response.data);
       setPricingData(response.data);
       setSelectedProductId(productId);
     } catch (err) {
-      console.error("❌ Pricing error:", err);
+      console.error(" Pricing error:", err);
       setError("Failed to fetch pricing: " + err.message);
     } finally {
       setLoading(false);
@@ -77,7 +77,7 @@ export default function DynamicPricingPage() {
                 marginBottom: "8px",
               }}
             >
-              💰 Dynamic Pricing
+               Dynamic Pricing
             </h1>
             <p
               style={{
@@ -168,7 +168,7 @@ export default function DynamicPricingPage() {
                 fontSize: "14px",
               }}
             >
-              ⚠️ {error}
+               {error}
             </motion.div>
           )}
 
@@ -183,7 +183,7 @@ export default function DynamicPricingPage() {
                 color: "#9CA3AF",
               }}
             >
-              <div style={{ fontSize: "48px", marginBottom: "12px" }}>⏳</div>
+              <div style={{ fontSize: "48px", marginBottom: "12px" }}></div>
               <p>Calculating dynamic pricing...</p>
             </motion.div>
           )}
@@ -286,7 +286,7 @@ export default function DynamicPricingPage() {
                         marginBottom: 0,
                       }}
                     >
-                      📉 {pricingData.discount_percent}% DISCOUNT
+                       {pricingData.discount_percent}% DISCOUNT
                     </motion.p>
                   )}
                   {pricingData.markup_percent > 0 && (
@@ -300,7 +300,7 @@ export default function DynamicPricingPage() {
                         marginBottom: 0,
                       }}
                     >
-                      📈 {pricingData.markup_percent}% HIGHER
+                       {pricingData.markup_percent}% HIGHER
                     </motion.p>
                   )}
                 </motion.div>
@@ -328,7 +328,7 @@ export default function DynamicPricingPage() {
                     marginBottom: "20px",
                   }}
                 >
-                  📊 What's Affecting the Price?
+                   What's Affecting the Price?
                 </h3>
 
                 <div
@@ -358,7 +358,7 @@ export default function DynamicPricingPage() {
                         fontWeight: 600,
                       }}
                     >
-                      🌾 Seasonality Impact ({pricingData.current_month})
+                       Seasonality Impact ({pricingData.current_month})
                     </p>
                     <p
                       style={{
@@ -402,7 +402,7 @@ export default function DynamicPricingPage() {
                         fontWeight: 600,
                       }}
                     >
-                      📦 Inventory Level
+                       Inventory Level
                     </p>
                     <p
                       style={{
@@ -446,7 +446,7 @@ export default function DynamicPricingPage() {
                         fontWeight: 600,
                       }}
                     >
-                      🔥 Demand Level
+                       Demand Level
                     </p>
                     <p
                       style={{
@@ -490,7 +490,7 @@ export default function DynamicPricingPage() {
                         fontWeight: 600,
                       }}
                     >
-                      💡 Final Impact
+                       Final Impact
                     </p>
                     {pricingData.markup_percent > 0 ? (
                       <div>
@@ -561,7 +561,7 @@ export default function DynamicPricingPage() {
                     marginBottom: "8px",
                   }}
                 >
-                  💚 Why Dynamic Pricing?
+                   Why Dynamic Pricing?
                 </p>
                 <p
                   style={{
@@ -575,7 +575,7 @@ export default function DynamicPricingPage() {
                   customers. During peak seasons, prices increase to compensate
                   farmers for peak demand. During abundance, we pass savings to
                   you. This keeps the platform sustainable while supporting
-                  Nigerian farmers. 🇳🇬
+                  Nigerian farmers. 
                 </p>
               </motion.div>
             </motion.div>

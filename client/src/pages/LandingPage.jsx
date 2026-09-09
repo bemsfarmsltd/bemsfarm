@@ -34,24 +34,24 @@ const DEFAULT_CATEGORIES = [
 
 
 const steps = [
-  { number: "01", icon: "⌕", title: "Browse the shop", text: "Explore fresh produce, pantry staples and kitchen favourites." },
-  { number: "02", icon: "👨‍🍳", title: "Ask Chef Bems", text: "Get meal ideas, ingredient alternatives and help building a useful shopping list.", accent: true },
-  { number: "03", icon: "🛒", title: "Fill your basket", text: "Open products for full details, choose what you need and review your basket." },
-  { number: "04", icon: "✓", title: "Checkout", text: "Sign in, add your delivery address and complete your secure payment." },
+  { number: "01", icon: "", title: "Browse the shop", text: "Explore fresh produce, pantry staples and kitchen favourites." },
+  { number: "02", icon: "", title: "Ask Chef Bems", text: "Get meal ideas, ingredient alternatives and help building a useful shopping list.", accent: true },
+  { number: "03", icon: "", title: "Fill your basket", text: "Open products for full details, choose what you need and review your basket." },
+  { number: "04", icon: "", title: "Checkout", text: "Sign in, add your delivery address and complete your secure payment." },
 ];
 
 const promises = [
-  { icon: "✦", title: "Carefully selected", text: "Products are chosen with freshness and quality in mind." },
-  { icon: "⌁", title: "Simple ordering", text: "Clear product details and an easy path from basket to checkout." },
+  { icon: "", title: "Carefully selected", text: "Products are chosen with freshness and quality in mind." },
+  { icon: "", title: "Simple ordering", text: "Clear product details and an easy path from basket to checkout." },
   { icon: "◌", title: "Helpful guidance", text: "Chef Bems helps turn available ingredients into practical meal ideas." },
-  { icon: "✓", title: "Secure checkout", text: "Payments are handled through a trusted payment provider." },
+  { icon: "", title: "Secure checkout", text: "Payments are handled through a trusted payment provider." },
 ];
 
 const shoppingDetails = [
-  { icon: "🚚", title: "Clear delivery costs", text: "Standard delivery is ₦1,500; orders over ₦15,000 qualify for free standard delivery." },
+  { icon: "", title: "Clear delivery costs", text: "Standard delivery is ₦1,500; orders over ₦15,000 qualify for free standard delivery." },
   { icon: "↩", title: "Eligible 7-day returns", text: "Eligible items can be submitted within 7 days of delivery; exclusions apply to some perishable goods." },
-  { icon: "🔒", title: "Protected payment", text: "Complete your online payment securely through our encrypted payment gateway." },
-  { icon: "✉", title: "Customer support", text: "Questions about shopping or an order? Email info@bemsfarms.com." },
+  { icon: "", title: "Protected payment", text: "Complete your online payment securely through our encrypted payment gateway." },
+  { icon: "", title: "Customer support", text: "Questions about shopping or an order? Email info@bemsfarms.com." },
 ];
 
 const faqs = [
@@ -65,34 +65,34 @@ const HERO_SLIDES = [
   {
     image: "/hero_food_2.jpg",
     alt: "Bems Farms fresh vegetables, peppers and harvest produce",
-    tag: "🌱 100% Farm-Fresh",
+    tag: " 100% Farm-Fresh",
     eyebrow: "Bems Farms Harvests",
     heading: "Fresh from our farm, delivered with care.",
-    badgeIcon: "🥬",
+    badgeIcon: "",
   },
   {
     image: "/hero_food_1.jpg",
     alt: "Bems Farms premium sorted grains, rice and pantry staples",
-    tag: "🌾 Bems Brand Staples",
+    tag: " Bems Brand Staples",
     eyebrow: "In-House Packaged",
     heading: "Stone-free grains & everyday pantry staples.",
-    badgeIcon: "🍚",
+    badgeIcon: "",
   },
   {
     image: "/hero_food_3.jpg",
     alt: "Bems Farms pure cooking oils and natural seasonings",
-    tag: "✨ Pure & Unadulterated",
+    tag: " Pure & Unadulterated",
     eyebrow: "Bems Signature Oils",
     heading: "Healthy, authentic oils for familiar meals.",
-    badgeIcon: "🫒",
+    badgeIcon: "",
   },
   {
     image: "/jollof_rice_hero.png",
     alt: "Delicious Nigerian meals made with Bems Farms ingredients",
-    tag: "👨‍🍳 Chef Bems Approved",
+    tag: " Chef Bems Approved",
     eyebrow: "Farm-to-Kitchen",
     heading: "Everything you need for the food you love.",
-    badgeIcon: "🍲",
+    badgeIcon: "",
   },
 ];
 
@@ -272,7 +272,7 @@ function StoreProductCard({ product, added, onAdd }) {
         {/* Prioritize Bems Original over generic Featured to prevent badge overlap */}
         {isBemsOriginal ? (
           <span className="absolute right-3 top-3 rounded-full bg-[#143c2d]/95 backdrop-blur px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">
-            ★ Bems Original
+             Bems Original
           </span>
         ) : product.is_featured ? (
           <span className="absolute left-3 top-3 rounded-full bg-[#143c2d] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white">
@@ -286,7 +286,7 @@ function StoreProductCard({ product, added, onAdd }) {
         <h3 className="mt-1.5 min-h-[2.5rem] font-display text-base font-bold leading-5 text-[#143c2d]"><Link to={`/product/${product.id}`} className="transition hover:text-[#c85a17]">{product.name}</Link></h3>
         <p className="mt-1 truncate text-xs text-slate-500">{product.unit || "Per item"}</p>
         <div className="mt-2 flex min-h-4 items-center gap-1 text-[11px]">
-          {Number(product.review_count) > 0 ? <><span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}><span aria-hidden="true">{"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}</span></span><span className="text-slate-400">({product.review_count})</span></> : <span className="text-slate-400">New to the shop</span>}
+          {Number(product.review_count) > 0 ? <><span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}><span aria-hidden="true">{"".repeat(Math.round(rating))}{"".repeat(5 - Math.round(rating))}</span></span><span className="text-slate-400">({product.review_count})</span></> : <span className="text-slate-400">New to the shop</span>}
         </div>
         <div className="mt-3 flex items-center justify-between gap-1.5">
           <p className="font-extrabold text-slate-900 text-sm xl:text-base whitespace-nowrap">{invalidPrice ? "Price unavailable" : `₦${price.toLocaleString("en-NG")}`}</p>
@@ -297,7 +297,7 @@ function StoreProductCard({ product, added, onAdd }) {
             className={`h-9 shrink-0 rounded-full px-3 text-[11px] font-extrabold text-white transition ${added ? "bg-[#1d6b45]" : "bg-[#143c2d] hover:bg-[#1a4e3b]"} disabled:cursor-not-allowed disabled:bg-slate-300`}
             aria-label={invalidPrice ? `${product.name} price is unavailable` : `Add ${product.name} to basket`}
           >
-            {invalidPrice ? "Reviewing" : added ? "✓ Added" : "+ Add"}
+            {invalidPrice ? "Reviewing" : added ? " Added" : "+ Add"}
           </button>
         </div>
       </div>
@@ -332,7 +332,7 @@ function LoginPromptModal({ isOpen, onClose, cartCount, cartSubtotal, onLogin, o
       >
         <div className="flex items-center justify-between">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-2xl shadow-inner">
-            🔒
+            
           </div>
           <button
             type="button"
@@ -340,7 +340,7 @@ function LoginPromptModal({ isOpen, onClose, cartCount, cartSubtotal, onLogin, o
             className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-800"
             aria-label="Close dialog"
           >
-            ✕
+            
           </button>
         </div>
 
@@ -351,7 +351,7 @@ function LoginPromptModal({ isOpen, onClose, cartCount, cartSubtotal, onLogin, o
           Your selected goods ({cartCount} {cartCount === 1 ? "item" : "items"}, worth <span className="font-extrabold text-slate-900">₦{cartSubtotal.toLocaleString()}</span>) are securely saved in your basket.
         </p>
         <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3.5 text-xs font-bold leading-5 text-emerald-900">
-          💡 An account is needed so we can verify your delivery address, provide live tracking, and protect your order details.
+           An account is needed so we can verify your delivery address, provide live tracking, and protect your order details.
         </div>
 
         <div className="mt-6 flex flex-col gap-2.5">
@@ -402,7 +402,7 @@ function FullScreenCatalogueModal({
   const liveCategories = [...new Set(products.map((product) => product.category_name).filter(Boolean))];
   const categoriesList = [
     { key: "all", label: "All Items" },
-    { key: "bems_originals", label: "★ Bems Originals" },
+    { key: "bems_originals", label: " Bems Originals" },
     ...liveCategories.map((category) => ({ key: category, label: category })),
     { key: "featured", label: "Featured" },
     { key: "newest", label: "New Arrivals" },
@@ -475,7 +475,7 @@ function FullScreenCatalogueModal({
 
           {/* Live Search Input */}
           <div className="relative flex-1 max-w-md min-w-[220px]">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" aria-hidden="true">🔍</span>
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" aria-hidden="true"></span>
             <input
               type="search"
               value={modalSearch}
@@ -491,7 +491,7 @@ function FullScreenCatalogueModal({
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-700"
                 aria-label="Clear search"
               >
-                ✕
+                
               </button>
             )}
           </div>
@@ -502,7 +502,7 @@ function FullScreenCatalogueModal({
               className="relative inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-extrabold text-slate-700 shadow-sm hover:bg-slate-50"
               aria-label={`View basket with ${cartCount} items`}
             >
-              <span aria-hidden="true">🛒</span>
+              <span aria-hidden="true"></span>
               <span>Basket</span>
               {cartCount > 0 && (
                 <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-extrabold text-white">
@@ -517,7 +517,7 @@ function FullScreenCatalogueModal({
               className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2 text-xs font-extrabold text-white shadow-md transition hover:bg-slate-800 active:scale-95"
               aria-label="Close full screen catalogue"
             >
-              <span>✕</span>
+              <span></span>
               <span>Close (Esc)</span>
             </button>
           </div>
@@ -549,7 +549,7 @@ function FullScreenCatalogueModal({
 
       {/* Reassuring Notice Banner */}
       <div className="relative z-10 border-b border-slate-200 bg-[#F4F1EA] px-4 py-2.5 text-center text-xs text-slate-700">
-        <span className="font-extrabold text-[#143c2d]">🛒 Add items freely to your basket!</span>{" "}
+        <span className="font-extrabold text-[#143c2d]"> Add items freely to your basket!</span>{" "}
         <span className="text-slate-600">
           Even after selecting goods and adding them to your basket, you will sign in (or register) to enter your delivery location and place your order.
         </span>
@@ -593,7 +593,7 @@ function FullScreenCatalogueModal({
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#143c2d]/10 text-xl shadow-inner">
-              🛒
+              
             </div>
             <div>
               <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
@@ -606,7 +606,7 @@ function FullScreenCatalogueModal({
           </div>
 
           <div className="hidden md:flex items-center gap-2 rounded-full border border-slate-200 bg-[#FAF9F6] px-3.5 py-1.5 text-xs font-bold text-[#143c2d]">
-            <span aria-hidden="true">🔒</span>
+            <span aria-hidden="true"></span>
             <span>Login required to place order & choose delivery</span>
           </div>
 
@@ -742,7 +742,7 @@ export default function LandingPage() {
 
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({
-      message: `✓ Added ${product.name} to basket`,
+      message: ` Added ${product.name} to basket`,
       type: "success",
     });
     toastTimerRef.current = setTimeout(() => {
@@ -852,7 +852,7 @@ export default function LandingPage() {
           </div>
           <div className="hidden items-center gap-3 xl:flex">
             <Link to="/cart" className="relative grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-lg" aria-label={`Basket with ${cartCount} items`}>
-              <span aria-hidden="true">🛒</span>
+              <span aria-hidden="true"></span>
               {cartCount > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#143c2d] px-1 text-[10px] font-extrabold text-white">{cartCount}</span>}
             </Link>
             {isLoggedIn ? (
@@ -864,7 +864,7 @@ export default function LandingPage() {
               </>
             )}
           </div>
-          <button type="button" className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-xl xl:hidden" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-label="Toggle navigation menu">{menuOpen ? "×" : "☰"}</button>
+          <button type="button" className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-xl xl:hidden" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-label="Toggle navigation menu">{menuOpen ? "×" : ""}</button>
         </nav>
         <AnimatePresence>
           {menuOpen && (
@@ -874,7 +874,7 @@ export default function LandingPage() {
                 <Link to="/track-order" onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">Track an order</Link>
               </div>
               {isLoggedIn ? <Link to="/home" className="mt-4 block rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">My account</Link> : <div className="mt-4 grid grid-cols-2 gap-3"><Link to="/login" className="rounded-full border border-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-[#143c2d]">Sign in</Link><Link to="/register" className="rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">Join now</Link></div>}
-              <Link to="/cart" className="mt-3 flex items-center justify-between rounded-2xl bg-[#143c2d] px-4 py-3 text-sm font-extrabold text-white"><span>🛒 View basket</span><span>{cartCount} {cartCount === 1 ? "item" : "items"}</span></Link>
+              <Link to="/cart" className="mt-3 flex items-center justify-between rounded-2xl bg-[#143c2d] px-4 py-3 text-sm font-extrabold text-white"><span> View basket</span><span>{cartCount} {cartCount === 1 ? "item" : "items"}</span></Link>
             </motion.div>
           )}
         </AnimatePresence>
@@ -904,9 +904,9 @@ export default function LandingPage() {
                 <a href="#how-it-works" className="rounded-full border border-slate-300 bg-white px-8 py-4 text-center text-base font-extrabold text-slate-800 transition hover:border-[#143c2d] hover:text-[#143c2d]">See how it works</a>
               </div>
               <div className="mt-9 flex flex-wrap justify-center gap-x-7 gap-y-3 text-sm font-bold text-slate-600 lg:justify-start">
-                <span>✓ Trusted Grocery Brands</span>
-                <span>✓ Bems Farms Originals</span>
-                <span>✓ Fast & Reliable Delivery</span>
+                <span> Trusted Grocery Brands</span>
+                <span> Bems Farms Originals</span>
+                <span> Fast & Reliable Delivery</span>
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.12 }} className="relative mx-auto w-full max-w-[580px]">
@@ -922,7 +922,7 @@ export default function LandingPage() {
               />
               {/* Decorative Corner Badge */}
               <div className="absolute -top-3 -right-2 z-10 hidden sm:flex items-center gap-1.5 rounded-full bg-[#143c2d] px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider text-amber-300 shadow-lg rotate-2 border border-amber-300/30">
-                <span>🌾</span> Fresh Harvest
+                <span></span> Fresh Harvest
               </div>
               <HeroSlideBanner />
             </motion.div>
@@ -959,12 +959,12 @@ export default function LandingPage() {
                 <p className="mt-4 text-base leading-7 text-slate-600">Unlike ordinary markets, Bems Farms cultivates, sorts, and packages our own line of signature food staples and crops. Every bag of grains, bottle of oil, and fresh harvest is inspected for supreme quality and natural taste.</p>
                 <div className="mt-7 grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl border border-[#DFD6C2] bg-white p-5 shadow-sm">
-                    <p className="text-xl">🌾</p>
+                    <p className="text-xl"></p>
                     <h3 className="mt-2 font-display text-base font-bold text-[#143c2d]">In-House Packaged</h3>
                     <p className="mt-1 text-xs leading-5 text-slate-500">Carefully sorted, stone-free grains and pure culinary oils.</p>
                   </div>
                   <div className="rounded-2xl border border-[#DFD6C2] bg-white p-5 shadow-sm">
-                    <p className="text-xl">🚜</p>
+                    <p className="text-xl"></p>
                     <h3 className="mt-2 font-display text-base font-bold text-[#143c2d]">Harvested Daily</h3>
                     <p className="mt-1 text-xs leading-5 text-slate-500">Crops harvested at peak freshness with zero artificial tampering.</p>
                   </div>
@@ -973,7 +973,7 @@ export default function LandingPage() {
               <div className="rounded-3xl border border-emerald-900/10 bg-[#143c2d] p-7 text-white shadow-xl sm:p-9">
                 <p className="text-xs font-extrabold uppercase tracking-widest text-amber-300">Bems Guarantee</p>
                 <h3 className="mt-2 font-display text-2xl font-bold">Look for the “Bems Original” Badge</h3>
-                <p className="mt-3 text-sm leading-6 text-emerald-100/80">Our catalogue includes products from a range of trusted brands. Items marked with the <span className="font-bold text-amber-300">★ Bems Original</span> badge are produced or packaged by Bems Farms.</p>
+                <p className="mt-3 text-sm leading-6 text-emerald-100/80">Our catalogue includes products from a range of trusted brands. Items marked with the <span className="font-bold text-amber-300"> Bems Original</span> badge are produced or packaged by Bems Farms.</p>
                 <div className="mt-6">
                   <a href="#featured-products" onClick={() => setCatalogueView("bems_originals")} className="inline-flex rounded-full bg-amber-300 px-6 py-3 text-xs font-extrabold uppercase tracking-wider text-emerald-950 transition hover:bg-white">View Bems Originals →</a>
                 </div>
@@ -997,14 +997,14 @@ export default function LandingPage() {
                   className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#143c2d] bg-[#143c2d] px-5 py-3 text-xs font-extrabold uppercase tracking-wider text-amber-300 shadow-md shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b] hover:text-white active:scale-95"
                   aria-label="Open full screen catalogue modal"
                 >
-                  <span className="text-base" aria-hidden="true">⛶</span>
+                  <span className="text-base" aria-hidden="true"></span>
                   <span>Full Screen Catalogue</span>
                 </button>
 
                 {/* Search Bar right inside Catalogue section */}
                 <form onSubmit={handleSearch} className="flex w-full sm:w-80 md:w-96 items-center rounded-full border border-[#DDD3BF] bg-white p-1.5 shadow-sm focus-within:border-[#143c2d] focus-within:ring-2 focus-within:ring-emerald-600/20">
                   <label htmlFor="catalogue-search" className="sr-only">Search products</label>
-                  <span className="ml-3 text-slate-400" aria-hidden="true">🔍</span>
+                  <span className="ml-3 text-slate-400" aria-hidden="true"></span>
                   <input
                     id="catalogue-search"
                     type="search"
@@ -1034,7 +1034,7 @@ export default function LandingPage() {
                 onClick={() => setCatalogueView("bems_originals")}
                 className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "bems_originals" ? "bg-[#143c2d] text-amber-300 ring-2 ring-amber-400/40" : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}
               >
-                ★ Bems Originals
+                 Bems Originals
               </button>
               <button
                 type="button"
@@ -1056,7 +1056,7 @@ export default function LandingPage() {
                   onClick={() => { setSearch(""); loadProducts(); }}
                   className="ml-auto rounded-full border border-[#DDD3BF] bg-white px-4 py-1.5 text-xs font-extrabold text-slate-700 hover:bg-[#F3EDE2]"
                 >
-                  Clear search ({appliedSearch}) ✕
+                  Clear search ({appliedSearch}) 
                 </button>
               )}
             </div>
@@ -1214,7 +1214,7 @@ export default function LandingPage() {
                 <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-amber-300">Your food companion</p>
                 <h2 className="mt-4 font-display text-4xl font-bold leading-tight sm:text-5xl">Meet Chef Bems</h2>
                 <p className="mt-5 max-w-xl text-base leading-7 text-emerald-50/75">Need meal inspiration or help building a useful shopping list? Chef Bems connects your cooking ideas with ingredients you can find in the store.</p>
-                <div className="mt-8 grid gap-3 sm:grid-cols-2"><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold">🍲 Meal and recipe ideas</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold">🛒 Smarter shopping lists</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold">🥕 Ingredient alternatives</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold">💬 Conversational guidance</p></div>
+                <div className="mt-8 grid gap-3 sm:grid-cols-2"><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold"> Meal and recipe ideas</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold"> Smarter shopping lists</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold"> Ingredient alternatives</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold"> Conversational guidance</p></div>
                 <Link to="/chef-chat" className="mt-9 inline-flex rounded-full bg-amber-300 px-7 py-3.5 text-sm font-extrabold text-[#143c2d] transition hover:bg-white">Open Chef Bems</Link>
               </div>
               <div className="relative mx-auto w-full max-w-md">
@@ -1250,7 +1250,7 @@ export default function LandingPage() {
           <div className="mx-auto grid max-w-7xl gap-7 overflow-hidden rounded-[2rem] border border-[#DDD3BF] bg-[#EFE8DC] p-6 sm:p-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center lg:p-10 shadow-sm">
             <div>
               <div className="inline-flex items-center gap-1.5 rounded-full border border-[#DDD3BF] bg-white px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-[#143c2d]">
-                <span>🚚</span> Real-time tracking
+                <span></span> Real-time tracking
               </div>
               <h2 id="track-delivery-title" className="mt-3 font-display text-2xl font-bold text-[#143c2d] sm:text-3xl">Track your harvest delivery</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">Use the order reference from your confirmation. No password or login required.</p>
@@ -1331,7 +1331,7 @@ export default function LandingPage() {
           <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-[#143c2d] px-6 py-12 text-white sm:px-10 lg:flex lg:items-center lg:justify-between lg:gap-12 lg:px-16 shadow-2xl">
             <div className="relative z-10 max-w-xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-white/10 px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider text-amber-300">
-                <span>🌾</span> Harvest Notes & Updates
+                <span></span> Harvest Notes & Updates
               </div>
               <h2 className="mt-4 font-display text-3xl font-bold sm:text-4xl text-white">
                 Fresh updates straight to your inbox
@@ -1340,9 +1340,9 @@ export default function LandingPage() {
                 Receive product news, seasonal produce alerts, Chef Bems recipes, and practical food inspiration from BemsFarms.
               </p>
               <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold text-emerald-100/70">
-                <span className="rounded-full bg-white/10 px-3 py-1">✓ Weekly harvest updates</span>
-                <span className="rounded-full bg-white/10 px-3 py-1">✓ Chef Bems meal tips</span>
-                <span className="rounded-full bg-white/10 px-3 py-1">✓ Zero spam</span>
+                <span className="rounded-full bg-white/10 px-3 py-1"> Weekly harvest updates</span>
+                <span className="rounded-full bg-white/10 px-3 py-1"> Chef Bems meal tips</span>
+                <span className="rounded-full bg-white/10 px-3 py-1"> Zero spam</span>
               </div>
             </div>
 

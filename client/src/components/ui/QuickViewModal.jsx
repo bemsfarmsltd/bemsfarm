@@ -93,7 +93,7 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
             className="absolute top-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md transition hover:bg-white hover:text-slate-950"
             aria-label="Close modal"
           >
-            ✕
+            
           </button>
 
           {/* Left: Product Image */}
@@ -111,11 +111,11 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
             <div className="absolute top-4 left-4 flex flex-col gap-1.5">
               {isBemsOriginal && (
                 <span className="rounded-full bg-[#143c2d] px-3 py-1 text-[10px] font-black uppercase tracking-wider text-amber-300 shadow-md">
-                  ★ Bems Original
+                   Bems Original
                 </span>
               )}
               <span className="rounded-full bg-white/95 px-2.5 py-0.5 text-[10px] font-bold text-slate-800 shadow-xs">
-                🌾 100% Stone-Free
+                 100% Stone-Free
               </span>
             </div>
           </div>
@@ -149,7 +149,7 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
                   </span>
                 ) : (
                   <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-extrabold text-emerald-800">
-                    ✓ In Stock
+                     In Stock
                   </span>
                 )}
               </div>
@@ -157,7 +157,7 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
               {/* Chef Bems Tip */}
               <div className="mt-4 rounded-2xl border border-amber-200/80 bg-amber-50/60 p-3.5 text-xs">
                 <div className="flex items-center gap-1.5 font-bold text-amber-900 mb-1">
-                  <span>👨‍🍳</span>
+                  <span></span>
                   <span>Chef Bems Culinary Note:</span>
                 </div>
                 <p className="text-amber-950/80 leading-relaxed">
@@ -209,12 +209,12 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
                 >
                   {added ? (
                     <>
-                      <span>✓</span>
+                      <span></span>
                       <span>Added to Basket!</span>
                     </>
                   ) : (
                     <>
-                      <span>🧺</span>
+                      <span></span>
                       <span>Add {qty} to Basket • ₦{(price * qty).toLocaleString()}</span>
                     </>
                   )}

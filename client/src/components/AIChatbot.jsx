@@ -51,7 +51,7 @@ export default function AIChatbot() {
     {
       role: "assistant",
       content:
-        "Welcome to BemsFarms! 👨‍🍳 I'm Chef Bems, your personal AI kitchen chef.\n\nAsk me anything — recipes, cooking tips, what to cook with your ingredients, or the best foods for your health goals. I'm here to help you eat well the Nigerian way! 🌿",
+        "Welcome to BemsFarms!  I'm Chef Bems, your personal AI kitchen chef.\n\nAsk me anything — recipes, cooking tips, what to cook with your ingredients, or the best foods for your health goals. I'm here to help you eat well the Nigerian way! ",
     },
   ]);
   const [input, setInput] = useState("");
@@ -116,7 +116,7 @@ export default function AIChatbot() {
         {
           role: "assistant",
           content:
-            "Sorry, I couldn't reach my kitchen brain right now 🍳 Please check your connection and try again.",
+            "Sorry, I couldn't reach my kitchen brain right now  Please check your connection and try again.",
         },
       ]);
     } finally {
@@ -297,7 +297,7 @@ export default function AIChatbot() {
                   justifyContent: "center",
                 }}
               >
-                ✕
+                
               </button>
             </div>
 

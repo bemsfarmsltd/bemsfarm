@@ -25,22 +25,22 @@ const HERO_IMAGES = [
 
 const TEASER_FEATURES = [
   {
-    icon: "🌾",
+    icon: "",
     label: "Farm-direct produce",
     desc: "Straight from Nigerian farms, no middlemen",
   },
   {
-    icon: "🤖",
+    icon: "",
     label: "AI-powered shopping",
     desc: "Smart search, recommendations & recipe help",
   },
   {
-    icon: "🚚",
+    icon: "",
     label: "Fast local delivery",
     desc: "Fresh food to your door across Lagos & beyond",
   },
   {
-    icon: "💳",
+    icon: "",
     label: "Secure payments",
     desc: "Instant, bank-grade encrypted checkout",
   },
@@ -116,7 +116,7 @@ export default function ComingSoonPage() {
     {
       key: "whatsapp",
       label: "WhatsApp",
-      icon: "💬",
+      icon: "",
       color: "#25D366",
       href: `https://wa.me/?text=${encodeURIComponent(`${referralShareText} ${referralUrl}`)}`,
     },
@@ -137,14 +137,14 @@ export default function ComingSoonPage() {
     {
       key: "telegram",
       label: "Telegram",
-      icon: "✈️",
+      icon: "",
       color: "#229ED9",
       href: `https://t.me/share/url?url=${encodeURIComponent(referralUrl)}&text=${encodeURIComponent(referralShareText)}`,
     },
     {
       key: "email",
       label: "Email",
-      icon: "✉️",
+      icon: "",
       color: "#6B7280",
       href: `mailto:?subject=${encodeURIComponent("Join me on BemsFarms")}&body=${encodeURIComponent(`${referralShareText}\n\n${referralUrl}`)}`,
     },
@@ -309,7 +309,7 @@ export default function ComingSoonPage() {
                 color: "white",
               }}
             >
-              🌿 BemsFarms
+               BemsFarms
             </span>
           </motion.div>
 
@@ -350,7 +350,7 @@ export default function ComingSoonPage() {
               letterSpacing: "1px",
             }}
           >
-            🚀 LAUNCHING SOON
+             LAUNCHING SOON
           </div>
         </nav>
 
@@ -401,7 +401,7 @@ export default function ComingSoonPage() {
                 letterSpacing: "0.5px",
               }}
             >
-              🌱 Nigeria's freshest farm marketplace is on its way
+               Nigeria's freshest farm marketplace is on its way
             </span>
           </motion.div>
 
@@ -454,7 +454,7 @@ export default function ComingSoonPage() {
                 marginBottom: "40px",
               }}
             >
-              🚀 We're just about ready — launching any moment now!
+               We're just about ready — launching any moment now!
             </motion.p>
           ) : (
           <motion.div
@@ -584,7 +584,7 @@ export default function ComingSoonPage() {
                 </form>
                 {error && (
                   <p style={{ color: "#EF4444", fontSize: "12px", marginTop: "8px", textAlign: "center" }}>
-                    ⚠️ {error}
+                     {error}
                   </p>
                 )}
               </>
@@ -602,7 +602,7 @@ export default function ComingSoonPage() {
                   backdropFilter: "blur(10px)"
                 }}
               >
-                <p style={{ fontSize: "32", margin: "0 0 8px 0" }}>🎉</p>
+                <p style={{ fontSize: "32", margin: "0 0 8px 0" }}></p>
                 <p
                   style={{
                     color: "white",
@@ -621,7 +621,7 @@ export default function ComingSoonPage() {
                 {/* Referral Link Box */}
                 <div style={{ backgroundColor: "rgba(0,0,0,0.2)", borderRadius: "12px", padding: "14px", margin: "16px 0", textAlign: "left" }}>
                   <p style={{ color: "#A5D6A7", fontWeight: 700, fontSize: "12px", margin: "0 0 6px 0", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    📣 Invite friends to earn more:
+                     Invite friends to earn more:
                   </p>
                   <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "11px", margin: "0 0 10px 0" }}>
                     Share your unique link. When 3 friends subscribe, unlock 20% off!
@@ -656,7 +656,7 @@ export default function ComingSoonPage() {
                         whiteSpace: "nowrap"
                       }}
                     >
-                      {copied ? "Copied! ✓" : "Copy"}
+                      {copied ? "Copied! " : "Copy"}
                     </button>
                   </div>
 
@@ -727,14 +727,14 @@ export default function ComingSoonPage() {
                   {/* Milestones */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "10px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", opacity: myReferralCount >= 3 ? 1 : 0.6 }}>
-                      <span style={{fontSize:'1.35em'}}>🎟️</span>
+                      <span style={{fontSize:'1.35em'}}></span>
                       <span style={{ flex: 1 }}>Refer 3 friends (<strong>20% off</strong>)</span>
-                      <span style={{ fontWeight: 700 }}>{myReferralCount >= 3 ? "✅" : `${myReferralCount}/3`}</span>
+                      <span style={{ fontWeight: 700 }}>{myReferralCount >= 3 ? "" : `${myReferralCount}/3`}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", opacity: myReferralCount >= 5 ? 1 : 0.6 }}>
-                      <span style={{fontSize:'1.35em'}}>👑</span>
+                      <span style={{fontSize:'1.35em'}}></span>
                       <span style={{ flex: 1 }}>Refer 5 friends (<strong>30% off</strong>)</span>
-                      <span style={{ fontWeight: 700 }}>{myReferralCount >= 5 ? "✅" : `${myReferralCount}/5`}</span>
+                      <span style={{ fontWeight: 700 }}>{myReferralCount >= 5 ? "" : `${myReferralCount}/5`}</span>
                     </div>
                   </div>
                 </div>
@@ -822,7 +822,7 @@ export default function ComingSoonPage() {
               margin: 0,
             }}
           >
-            © 2026 BemsFarms. Made with 🌿 in Nigeria
+            © 2026 BemsFarms. Made with  in Nigeria
           </p>
         </div>
       </div>

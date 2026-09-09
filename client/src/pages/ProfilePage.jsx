@@ -400,7 +400,7 @@ export default function ProfilePage() {
     return (
       <PageWrapper>
         <div style={{ maxWidth: "500px", margin: "80px auto", textAlign: "center", padding: "40px 24px" }}>
-          <div style={{ fontSize: "108", marginBottom: "20px" }}>🔐</div>
+          <div style={{ fontSize: "108", marginBottom: "20px" }}></div>
           <h2 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "12px", fontFamily: "var(--heading-font)" }}>Please Sign In</h2>
           <p style={{ color: "#9CA3AF", marginBottom: "24px", fontFamily: "var(--body-font)" }}>You need to be logged in to view your profile settings</p>
           <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
@@ -699,7 +699,7 @@ export default function ProfilePage() {
                       <label className="p-label">Mobile Number *</label>
                       <div className="p-tel-wrapper">
                         <div className="p-tel-flag">
-                          <span>🇳🇬</span>
+                          <span></span>
                           <span>+234</span>
                         </div>
                         <input
@@ -763,7 +763,7 @@ export default function ProfilePage() {
                       <label className="p-label">Tax Identification Country</label>
                       <div className="p-tel-wrapper">
                         <div className="p-tel-flag">
-                          <span>🇳🇬</span>
+                          <span></span>
                         </div>
                         <input
                           className="p-input"
@@ -789,7 +789,7 @@ export default function ProfilePage() {
                   {saveError && <p style={{ color: "#EF4444", fontSize: "13px", marginBottom: "8px" }}>{saveError}</p>}
                   <div className="p-actions">
                     <button className="p-save-btn" onClick={handleSaveFields}>
-                      {saved ? "✓ Changes Saved!" : "Save Changes"}
+                      {saved ? " Changes Saved!" : "Save Changes"}
                     </button>
                   </div>
                 </motion.div>
@@ -820,7 +820,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="p-actions">
                     <button className="p-save-btn" onClick={handleChangePassword} disabled={passwordSaving}>
-                      {passwordSaving ? "Updating…" : saved ? "✓ Updated!" : "Update Password"}
+                      {passwordSaving ? "Updating…" : saved ? " Updated!" : "Update Password"}
                     </button>
                   </div>
                 </motion.div>
@@ -840,7 +840,7 @@ export default function ProfilePage() {
                         {addr.is_default && <span style={{ position: "absolute", top: "10px", right: "10px", backgroundColor: "#E8F5E9", color: "#2E7D32", fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "20px" }}>Default</span>}
                         <p style={{ fontWeight: 700, marginBottom: "6px", fontSize: "14px" }}>{addr.label}</p>
                         <p style={{ fontSize: "13px", color: "#6B7280", marginBottom: "4px" }}>{addr.street_address}{addr.city ? `, ${addr.city}` : ""}{addr.state ? `, ${addr.state}` : ""}</p>
-                        <p style={{ fontSize: "13px", color: "#6B7280", marginBottom: "16px" }}>🇳🇬 {addr.receiver_phone || "—"}</p>
+                        <p style={{ fontSize: "13px", color: "#6B7280", marginBottom: "16px" }}> {addr.receiver_phone || "—"}</p>
                         <div style={{ display: "flex", gap: "12px" }}>
                           <button onClick={() => openEditAddress(addr)} style={{ color: "#F57C00", border: "none", background: "none", cursor: "pointer", fontWeight: 700, fontSize: "13px" }}>Edit</button>
                           <button onClick={() => deleteAddress(addr.id)} style={{ color: "#EF4444", border: "none", background: "none", cursor: "pointer", fontWeight: 500, fontSize: "13px" }}>Delete</button>
@@ -907,7 +907,7 @@ export default function ProfilePage() {
                       color: "#6B7280",
                     }}
                   >
-                    <div style={{ fontSize: "43", marginBottom: "10px" }}>💳</div>
+                    <div style={{ fontSize: "43", marginBottom: "10px" }}></div>
                     <p style={{ fontWeight: 700, color: "#111827", margin: "0 0 6px" }}>No saved cards</p>
                     <p style={{ fontSize: "13px", margin: 0 }}>
                       BemsFarms doesn't store your card details — you'll enter them
@@ -927,7 +927,7 @@ export default function ProfilePage() {
                   <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "var(--heading-font)" }}>My Wishlist</h3>
                   {wishlistProducts.length === 0 ? (
                     <p style={{ color: "#9CA3AF", fontSize: "14px" }}>
-                      No saved items yet. Tap the ♡ on any product to save it here.
+                      No saved items yet. Tap the  on any product to save it here.
                     </p>
                   ) : (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "20px" }}>
@@ -940,7 +940,7 @@ export default function ProfilePage() {
                             title="Remove from wishlist"
                             style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", backgroundColor: "rgba(255,255,255,0.9)", color: "#EF4444", cursor: "pointer", fontSize: "14px" }}
                           >
-                            ✕
+                            
                           </button>
                         </div>
                         <div style={{ padding: "14px", flex: 1, display: "flex", flexDirection: "column" }}>
@@ -1011,15 +1011,15 @@ export default function ProfilePage() {
                   )}
                   {myReturns.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 20px" }}>
-                    <div style={{ fontSize: "56px", marginBottom: "16px" }}>↩️</div>
+                    <div style={{ fontSize: "56px", marginBottom: "16px" }}>↩</div>
                     <h4 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 700 }}>No Returns Yet</h4>
                     <p style={{ color: "#9CA3AF", fontSize: "14px", margin: "0 0 24px" }}>You can request a return within 7 days of delivery.</p>
                     <div style={{ backgroundColor: "#F4FDF4", border: "1px solid #D1E7DD", borderRadius: "14px", padding: "20px", textAlign: "left", maxWidth: "480px", margin: "0 auto" }}>
                       <p style={{ color: "#2E7D32", fontWeight: 700, margin: "0 0 12px" }}>Return Policy Details</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}>✓ Returns accepted within 7 days of delivery</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}>✓ Items must be in original packaging and condition</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}>✓ Refund will be processed in 3-5 business days</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0" }}>✓ Contact info@bemsfarms.com for assistance</p>
+                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}> Returns accepted within 7 days of delivery</p>
+                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}> Items must be in original packaging and condition</p>
+                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}> Refund will be processed in 3-5 business days</p>
+                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0" }}> Contact info@bemsfarms.com for assistance</p>
                     </div>
                   </div>
                   )}
@@ -1058,15 +1058,15 @@ export default function ProfilePage() {
                   )}
                   {cancelledOrders.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 20px" }}>
-                    <div style={{ fontSize: "76", marginBottom: "16px" }}>❌</div>
+                    <div style={{ fontSize: "76", marginBottom: "16px" }}></div>
                     <h4 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 700 }}>No Cancelled Orders</h4>
                     <p style={{ color: "#9CA3AF", fontSize: "14px", margin: "0 0 24px" }}>Orders can be cancelled any time before they're prepared for delivery.</p>
                     <div style={{ backgroundColor: "#FFF8F2", border: "1px solid #FFE6D5", borderRadius: "14px", padding: "20px", textAlign: "left", maxWidth: "480px", margin: "0 auto" }}>
                       <p style={{ color: "#F57C00", fontWeight: 700, margin: "0 0 12px" }}>Cancellation Policy Details</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}>✓ Cancel any time while the order is pending or confirmed</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}>✓ Orders already prepared/dispatched cannot be cancelled</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}>✓ Full refund for eligible cancellations</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0" }}>✓ Contact support immediately to cancel</p>
+                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}> Cancel any time while the order is pending or confirmed</p>
+                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}> Orders already prepared/dispatched cannot be cancelled</p>
+                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}> Full refund for eligible cancellations</p>
+                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0" }}> Contact support immediately to cancel</p>
                     </div>
                   </div>
                   )}

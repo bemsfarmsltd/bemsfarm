@@ -106,7 +106,7 @@ export default function CheckoutPage() {
     s.src = "https://sdk.monnify.com/plugin/monnify.js";
     s.async = true;
     s.onload = () => setMonnifyLoaded(true);
-    s.onerror = () => console.warn("⚠️ Monnify script failed to load");
+    s.onerror = () => console.warn(" Monnify script failed to load");
     document.body.appendChild(s);
   }, []);
 
@@ -298,7 +298,7 @@ export default function CheckoutPage() {
           navigate("/order-confirmed", { state: { orderId, reference: transactionReference } });
         }, 400);
       } catch (orderErr) {
-        console.error("❌ Order creation after payment failed:", orderErr);
+        console.error(" Order creation after payment failed:", orderErr);
         setLoading(false);
         const detail = orderErr?.response?.data?.message || orderErr.message;
         setError(
@@ -320,24 +320,24 @@ export default function CheckoutPage() {
         contractCode: MONNIFY_CONTRACT_CODE,
         paymentDescription: "BemsFarms order",
         paymentMethods: ["CARD", "ACCOUNT_TRANSFER", "USSD"],
-        onLoadStart: () => console.log("ℹ️ Monnify checkout opened"),
+        onLoadStart: () => console.log("ℹ Monnify checkout opened"),
         onComplete: (response) => {
           if (response.paymentStatus !== "PAID" && response.status !== "SUCCESS") {
             setLoading(false);
             setError("Payment was not completed. Try again or use Cash on Delivery.");
             return;
           }
-          console.log("✅ Monnify success:", response.transactionReference);
+          console.log(" Monnify success:", response.transactionReference);
           finalizeOrderAfterPayment(response.transactionReference);
         },
         onClose: () => {
-          console.log("ℹ️ Monnify modal closed");
+          console.log("ℹ Monnify modal closed");
           setLoading(false);
           setError("Payment was cancelled. Try again or use Cash on Delivery.");
         },
       });
     } catch (mfErr) {
-      console.error("❌ Monnify setup error:", mfErr);
+      console.error(" Monnify setup error:", mfErr);
       setLoading(false);
       setError("Could not open payment modal. Please try Cash on Delivery.");
     }
@@ -362,7 +362,7 @@ export default function CheckoutPage() {
         state: { orderId, paymentMethod: "COD" },
       });
     } catch (codErr) {
-      console.error("❌ COD order error:", codErr);
+      console.error(" COD order error:", codErr);
       const detail = codErr?.response?.data?.message || codErr.message;
       setError(detail || "Order failed. Please try again.");
       setLoading(false);
@@ -383,7 +383,7 @@ export default function CheckoutPage() {
             padding: "40px 20px",
           }}
         >
-          <span style={{ fontSize: "86" }}>🛒</span>
+          <span style={{ fontSize: "86" }}></span>
           <h2
             style={{
               fontFamily: "var(--heading-font)",
@@ -507,7 +507,7 @@ export default function CheckoutPage() {
                 gap: "8px",
               }}
             >
-              <span style={{fontSize:'1.35em'}}>⚠️</span>
+              <span style={{fontSize:'1.35em'}}></span>
               <span>
                 {error}
                 {paymentRecoveryAvailable && (
@@ -732,13 +732,13 @@ export default function CheckoutPage() {
                   {[
                     {
                       id: "monnify",
-                      icon: "💳",
+                      icon: "",
                       label: "Card / Bank Transfer / USSD",
                       desc: "Visa, Mastercard, USSD, Bank Transfer",
                     },
                     {
                       id: "cod",
-                      icon: "💵",
+                      icon: "",
                       label: "Cash on Delivery",
                       desc: "Pay when your order arrives",
                     },
@@ -852,14 +852,14 @@ export default function CheckoutPage() {
                         }}
                         style={{ display: "inline-block" }}
                       >
-                        ⏳
+                        
                       </motion.span>
                       Processing…
                     </>
                   ) : payMethod === "monnify" ? (
-                    <>🔒 Pay ₦{total.toLocaleString()} Securely</>
+                    <> Pay ₦{total.toLocaleString()} Securely</>
                   ) : (
-                    <>📦 Confirm Order · ₦{total.toLocaleString()}</>
+                    <> Confirm Order · ₦{total.toLocaleString()}</>
                   )}
                 </motion.button>
 
@@ -872,7 +872,7 @@ export default function CheckoutPage() {
                     marginBottom: 0,
                   }}
                 >
-                  🔒 Your payment info is encrypted and secure
+                   Your payment info is encrypted and secure
                 </p>
               </div>
             </div>

@@ -153,7 +153,7 @@ export default function LoginPage() {
               className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-white/90 px-3.5 py-1.5 rounded-full"
               style={{ background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.25)", backdropFilter: "blur(6px)" }}
             >
-              🌿 Farm-to-table
+               Farm-to-table
             </span>
           </div>
 
@@ -191,7 +191,7 @@ export default function LoginPage() {
 
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3.5 text-xs font-semibold mb-6 flex items-center gap-2">
-                <span style={{fontSize:'1.35em'}}>⚠️</span> {error}
+                <span style={{fontSize:'1.35em'}}></span> {error}
               </div>
             )}
 

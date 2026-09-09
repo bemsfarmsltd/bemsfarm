@@ -68,7 +68,7 @@ export default function OrderConfirmation() {
               transition={{ delay: 0.3, type: "spring" }}
               style={{ fontSize: isMobile ? "36px" : "48px", color: "white" }}
             >
-              ✓
+              
             </motion.span>
           </motion.div>
         </div>
@@ -87,7 +87,7 @@ export default function OrderConfirmation() {
               fontFamily: "var(--heading-font)",
             }}
           >
-            Order Confirmed! 🎉
+            Order Confirmed! 
           </h1>
           <p
             style={{
@@ -151,10 +151,10 @@ export default function OrderConfirmation() {
             }}
           >
             {[
-              { icon: "✅", label: "Order Placed" },
-              { icon: "📦", label: "Being Packed" },
-              { icon: "🚚", label: "Out for Delivery" },
-              { icon: "🏠", label: "Delivered" },
+              { icon: "", label: "Order Placed" },
+              { icon: "", label: "Being Packed" },
+              { icon: "", label: "Out for Delivery" },
+              { icon: "", label: "Delivered" },
             ].map((step, i) => (
               <div
                 key={step.label}
@@ -233,7 +233,7 @@ export default function OrderConfirmation() {
                 flex: isMobile ? "1 1 auto" : "none",
               }}
             >
-              Track Order 📦
+              Track Order 
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.02 }}

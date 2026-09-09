@@ -213,7 +213,7 @@ export function AuthProvider({ children }) {
           }}
         >
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "54", marginBottom: "12px" }}>🌿</div>
+            <div style={{ fontSize: "54", marginBottom: "12px" }}></div>
             <p style={{ color: "#9CA3AF", fontSize: "14px" }}>
               Loading BemsFarms...
             </p>

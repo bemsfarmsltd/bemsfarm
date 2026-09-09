@@ -175,7 +175,7 @@ export default function RegisterPage() {
               className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-white/90 px-3.5 py-1.5 rounded-full"
               style={{ background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.25)", backdropFilter: "blur(6px)" }}
             >
-              🌱 Join BemsFarms
+               Join BemsFarms
             </span>
           </div>
 
@@ -221,7 +221,7 @@ export default function RegisterPage() {
 
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3 text-xs font-semibold mb-4 flex items-center gap-2">
-                <span style={{fontSize:'1.35em'}}>⚠️</span> {error}
+                <span style={{fontSize:'1.35em'}}></span> {error}
               </div>
             )}
 
@@ -334,7 +334,7 @@ export default function RegisterPage() {
                   />
                   {form.confirm && (
                     <p className={`text-[10px] mt-1.5 font-semibold ${form.password === form.confirm ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {form.password === form.confirm ? '✓ Passwords match' : '✗ Passwords do not match'}
+                      {form.password === form.confirm ? ' Passwords match' : ' Passwords do not match'}
                     </p>
                   )}
                 </div>

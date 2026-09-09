@@ -47,7 +47,7 @@ export default function ContactPage() {
 
   const contactCards = [
     {
-      icon: "📞",
+      icon: "",
       title: "Call Us",
       color: "#E8F5E9",
       iconBg: "#2E7D32",
@@ -62,7 +62,7 @@ export default function ContactPage() {
       ],
     },
     {
-      icon: "📧",
+      icon: "",
       title: "Write To Us",
       color: "#E3F2FD",
       iconBg: "#1565C0",
@@ -76,7 +76,7 @@ export default function ContactPage() {
       ],
     },
     {
-      icon: "📍",
+      icon: "",
       title: "Visit Us",
       color: "#FFF3E0",
       iconBg: "#E65100",
@@ -151,7 +151,7 @@ export default function ContactPage() {
                 letterSpacing: "1.5px",
               }}
             >
-              📞 WE'RE HERE TO HELP
+               WE'RE HERE TO HELP
             </span>
           </div>
           <h1
@@ -292,7 +292,7 @@ export default function ContactPage() {
                               gap: "6px",
                             }}
                           >
-                            📞 {line.text}
+                             {line.text}
                           </a>
                           <motion.button
                             whileTap={{ scale: 0.9 }}
@@ -312,7 +312,7 @@ export default function ContactPage() {
                               fontWeight: 600,
                             }}
                           >
-                            {copied === line.value ? "✓ Copied" : "Copy"}
+                            {copied === line.value ? " Copied" : "Copy"}
                           </motion.button>
                         </div>
                       );
@@ -333,7 +333,7 @@ export default function ContactPage() {
                             gap: "6px",
                           }}
                         >
-                          💬 {line.text}
+                           {line.text}
                         </a>
                       );
                     if (line.type === "email")
@@ -355,7 +355,7 @@ export default function ContactPage() {
                               textDecoration: "none",
                             }}
                           >
-                            ✉️ {line.value}
+                             {line.value}
                           </a>
                           <motion.button
                             whileTap={{ scale: 0.9 }}
@@ -375,7 +375,7 @@ export default function ContactPage() {
                               fontWeight: 600,
                             }}
                           >
-                            {copied === line.value ? "✓ Copied" : "Copy"}
+                            {copied === line.value ? " Copied" : "Copy"}
                           </motion.button>
                         </div>
                       );
@@ -396,7 +396,7 @@ export default function ContactPage() {
                             gap: "6px",
                           }}
                         >
-                          🗺️ {line.text}
+                           {line.text}
                           <span
                             style={{
                               fontSize: "11px",
@@ -433,7 +433,7 @@ export default function ContactPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 style={{ textAlign: "center", padding: "40px 20px" }}
               >
-                <div style={{ fontSize: "108", marginBottom: "20px" }}>✅</div>
+                <div style={{ fontSize: "108", marginBottom: "20px" }}></div>
                 <h3
                   style={{
                     fontSize: "24px",
@@ -545,7 +545,7 @@ export default function ContactPage() {
                       fontSize: "14px",
                     }}
                   >
-                    ⚠️ {error}
+                     {error}
                   </div>
                 )}
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -579,7 +579,7 @@ export default function ContactPage() {
                             ease: "linear",
                           }}
                         >
-                          ⏳
+                          
                         </motion.span>{" "}
                         Sending...
                       </>
