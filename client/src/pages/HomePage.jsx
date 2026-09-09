@@ -9,6 +9,17 @@ import { getProductImage } from "../utils/productImages";
 import Toast from "../components/ui/Toast";
 import QuickViewModal from "../components/ui/QuickViewModal";
 
+const CATEGORY_META = {
+  "Vegetables": { emoji: "🥬" },
+  "Grains & Cereals": { emoji: "🌾" },
+  "Cooking Oils": { emoji: "🫒" },
+  "Legumes": { emoji: "🫘" },
+  "Tubers & Roots": { emoji: "🍠" },
+  "Spices & Seasonings": { emoji: "🌶️" },
+  "Fruits": { emoji: "🍉" },
+  "Leafy Greens": { emoji: "🥗" },
+};
+
 function getTimeGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";
@@ -59,11 +70,11 @@ function ProductGridCard({
         {/* Top Badges */}
         <div className="absolute inset-x-2 top-2 flex items-center justify-between gap-1 pointer-events-none">
           {isBemsOriginal ? (
-            <span className="rounded-full bg-[#143c2d]/95 backdrop-blur px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">
-              ★ Bems Original
+            <span className="rounded-full bg-[#143c2d]/95 backdrop-blur px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">
+              ★ Original
             </span>
           ) : product.is_featured ? (
-            <span className="rounded-full bg-[#143c2d] px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-white shadow-md">
+            <span className="rounded-full bg-[#143c2d] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-white shadow-md">
               Featured
             </span>
           ) : <span />}
@@ -73,25 +84,25 @@ function ProductGridCard({
             <button
               type="button"
               onClick={(e) => onToggleFavorite(product.id, e)}
-              className={`flex h-7 w-7 items-center justify-center rounded-full bg-white/95 backdrop-blur shadow-xs transition hover:scale-110 ${
+              className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white/95 backdrop-blur shadow-xs transition hover:scale-110 ${
                 isFavorite ? "text-red-500" : "text-slate-400 hover:text-red-500"
               }`}
               aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
             >
-              {isFavorite ? "❤️" : "🤍"}
+              <span className="text-xs sm:text-sm">{isFavorite ? "❤️" : "🤍"}</span>
             </button>
           </div>
         </div>
 
-        {/* Quick View Button on Image */}
+        {/* Quick View Button on Desktop Hover Only (Hidden on Mobile) */}
         <button
           type="button"
           onClick={() => onQuickView(product)}
-          className="absolute bottom-2 right-2 z-10 flex items-center gap-1 rounded-full bg-white/95 backdrop-blur px-2 py-1 text-[10px] sm:text-[11px] font-bold text-slate-800 shadow-md transition-all duration-200 hover:bg-[#143c2d] hover:text-white"
+          className="absolute bottom-2.5 right-2.5 z-10 hidden md:flex items-center gap-1 rounded-full bg-white/95 backdrop-blur px-2.5 py-1 text-[11px] font-bold text-slate-800 shadow-md transition-all duration-200 hover:bg-[#143c2d] hover:text-white"
           aria-label={`Quick preview ${product.name}`}
         >
           <span>👁️</span>
-          <span className="hidden sm:inline">Quick View</span>
+          <span>Quick View</span>
         </button>
 
         {isLowStock && !isOutOfStock && (
@@ -104,7 +115,7 @@ function ProductGridCard({
 
         {isOutOfStock && (
           <div className="absolute inset-0 grid place-items-center bg-slate-900/60 backdrop-blur-[2px]">
-            <span className="rounded-full bg-white px-3 py-1 text-[10px] sm:text-[11px] font-bold text-slate-800 shadow-md">
+            <span className="rounded-full bg-white px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-slate-800 shadow-md">
               Out of stock
             </span>
           </div>
@@ -112,20 +123,20 @@ function ProductGridCard({
       </div>
 
       {/* Card Details */}
-      <div className="flex flex-1 flex-col p-3 sm:p-4">
+      <div className="flex flex-1 flex-col p-2.5 sm:p-3.5">
         <div className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-[#143c2d]/80">
-          <span className="truncate">{product.category_name || "Farm Produce"}</span>
+          <span className="truncate">{product.category_name || "Produce"}</span>
           <span className="text-slate-400 font-medium normal-case shrink-0">{product.unit || "Per item"}</span>
         </div>
 
-        <h3 className="mt-1 min-h-[2.2rem] font-display text-xs sm:text-sm md:text-base font-bold leading-snug text-slate-900">
+        <h3 className="mt-1 min-h-[2.1rem] font-display text-xs sm:text-sm font-bold leading-snug text-slate-900">
           <Link to={`/product/${product.id}`} className="transition hover:text-[#c85a17] line-clamp-2">
             {product.name}
           </Link>
         </h3>
 
         {/* Rating */}
-        <div className="mt-1 flex items-center gap-1 text-[10px] sm:text-xs">
+        <div className="mt-0.5 flex items-center gap-1 text-[10px]">
           {Number(product.review_count) > 0 ? (
             <>
               <span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
@@ -139,9 +150,9 @@ function ProductGridCard({
         </div>
 
         {/* Price & Add / Stepper */}
-        <div className="mt-3 flex items-center justify-between gap-1.5 border-t border-slate-100 pt-2.5">
+        <div className="mt-2.5 flex items-center justify-between gap-1 border-t border-slate-100 pt-2">
           <div className="min-w-0">
-            <p className="text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Price</p>
+            <p className="text-[8px] sm:text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Price</p>
             <p className="font-display text-xs sm:text-sm md:text-base font-black text-slate-900 truncate">
               {invalidPrice ? "Unavailable" : `₦${price.toLocaleString("en-NG")}`}
             </p>
@@ -158,7 +169,7 @@ function ProductGridCard({
               >
                 -
               </button>
-              <span className="w-5 sm:w-6 text-center text-xs font-black text-[#143c2d]">
+              <span className="w-4 sm:w-6 text-center text-xs font-black text-[#143c2d]">
                 {cartQuantity}
               </span>
               <button
@@ -177,7 +188,7 @@ function ProductGridCard({
               type="button"
               onClick={() => onAdd(product)}
               disabled={isOutOfStock}
-              className={`inline-flex h-7 sm:h-9 items-center justify-center rounded-full px-3 sm:px-4 text-[11px] sm:text-xs font-extrabold transition-all duration-200 active:scale-95 ${
+              className={`inline-flex h-7 sm:h-8 items-center justify-center rounded-full px-3 sm:px-3.5 text-[11px] sm:text-xs font-extrabold transition-all duration-200 active:scale-95 ${
                 isAdded
                   ? "bg-[#1d6b45] text-white shadow-md"
                   : "bg-[#143c2d] text-white shadow-xs hover:bg-[#1a4e3b] hover:shadow-md"
@@ -206,12 +217,14 @@ export default function HomePage() {
   } = useCart();
 
   const [products, setProducts] = useState([]);
-  const [orders, setOrders] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("featured");
   const [addedProducts, setAddedProducts] = useState({});
   const [toast, setToast] = useState(null);
-  const [trackingInput, setTrackingInput] = useState("");
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const toastTimerRef = useRef(null);
 
@@ -243,15 +256,15 @@ export default function HomePage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [prodRes, ordersRes] = await Promise.all([
-        api.get("/products", { params: { limit: 50 } }),
-        api.get("/orders").catch(() => ({ data: { orders: [] } })),
+      const [prodRes, catRes] = await Promise.all([
+        api.get("/products", { params: { limit: 100 } }),
+        api.get("/categories"),
       ]);
       setProducts(prodRes.data?.products || []);
-      setOrders(ordersRes.data?.orders || []);
+      setCategories(catRes.data?.categories || []);
     } catch (err) {
       console.error("Error loading home hub:", err);
-      setLoadError(err.response?.data?.message || "Failed to load dashboard. Please refresh.");
+      setLoadError(err.response?.data?.message || "Failed to load produce. Please refresh.");
     } finally {
       setLoading(false);
     }
@@ -282,19 +295,10 @@ export default function HomePage() {
     }, 1200);
   };
 
-  const handleTrackSubmit = (e) => {
-    e.preventDefault();
-    const code = trackingInput.trim().replace(/^#/, "").toUpperCase();
-    navigate(code ? `/track-order?code=${encodeURIComponent(code)}` : "/track-order");
-  };
-
-  const customerName = user?.first_name || user?.name || user?.email?.split("@")[0] || "Chef";
+  const customerName = user?.first_name || user?.name || user?.email?.split("@")[0] || "there";
   const greeting = getTimeGreeting();
 
-  // Active / Recent Orders
-  const recentOrder = orders && orders.length > 0 ? orders[0] : null;
-
-  // Filter out staples for quick reorder (Grains, Tubers, Oils, Staples)
+  // Weekly Staples (Grains, Oils, Tubers, Peppers)
   const staples = useMemo(() => {
     return products
       .filter(
@@ -319,138 +323,72 @@ export default function HomePage() {
   return (
     <PageWrapper>
       <div className="min-h-screen bg-[#F8F5EE] text-slate-900 pb-20">
-        {/* ── 1. PERSONALIZED WELCOME & KPI SUMMARY ── */}
-        <section className="border-b border-[#DFD6C2] bg-linear-to-b from-[#EDE5D5]/70 via-[#F8F5EE] to-[#F8F5EE] px-3 pt-6 pb-6 sm:px-6 lg:px-10">
+        {/* ── 1. COMPACT CLEAN STOREFRONT HEADER ── */}
+        <section className="px-3 pt-4 sm:pt-6 pb-2 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-[1600px] w-full">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#DFD6C2] bg-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#143c2d]">
-                  <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse" />
-                  Customer Hub
-                </span>
-                <h1 className="mt-2 font-display text-xl sm:text-2xl md:text-3xl font-black text-[#143c2d]">
-                  {greeting}, <span className="text-[#c85a17]">{customerName}</span>!
+            <div
+              style={{
+                background: "linear-gradient(135deg, #143c2d 0%, #1c523e 60%, #153e2f 100%)",
+              }}
+              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-7 md:p-9 text-white shadow-md border border-[#143c2d]/20"
+            >
+              <div className="relative z-10 max-w-xl">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 backdrop-blur-xs">
+                  <span>🌾</span>
+                  <span>Direct From Farm</span>
+                </div>
+                <h1 className="mt-2 font-display text-lg sm:text-2xl md:text-3xl font-black leading-tight text-white">
+                  {greeting}, <span className="text-amber-300">{customerName}</span>!
                 </h1>
-                <p className="mt-0.5 text-xs sm:text-sm text-slate-600">
-                  Manage your farm pantry, reorder weekly staples, or track doorstep deliveries.
+                <p className="mt-1 text-xs sm:text-sm text-emerald-100/90 leading-relaxed max-w-md">
+                  Shop 100% stone-free grains, cold-pressed oils, and fresh harvests delivered to your doorstep.
                 </p>
-              </div>
 
-              {/* Quick Action Buttons */}
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={openCartDrawer}
-                  className="flex items-center gap-2 rounded-xl border border-[#DFD6C2] bg-white px-3.5 py-2.5 text-xs font-bold text-slate-800 shadow-2xs transition hover:border-[#143c2d]"
-                >
-                  <span>🛒</span>
-                  <span>Basket:</span>
-                  <span className="font-extrabold text-[#143c2d]">
-                    {cartCount} ({cartCount === 1 ? "item" : "items"})
+                {/* Quick Trust Badges */}
+                <div className="mt-3.5 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs font-bold text-white">
+                  <span className="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-0.5">
+                    🚚 Doorstep Delivery
                   </span>
-                </button>
-
-                <Link
-                  to="/orders"
-                  className="flex items-center gap-1.5 rounded-xl border border-[#DFD6C2] bg-white px-3.5 py-2.5 text-xs font-bold text-slate-800 shadow-2xs transition hover:border-[#143c2d]"
-                >
-                  <span>📦</span>
-                  <span>My Orders</span>
-                </Link>
+                  <span className="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-0.5 text-amber-300">
+                    ✨ 100% Stone-Free
+                  </span>
+                  <span className="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-0.5">
+                    🔒 Monnify Verified
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ── 2. ACTIVE DELIVERY TRACKER WIDGET ── */}
-        <section className="px-3 pt-5 pb-2 sm:px-6 lg:px-10">
+        {/* ── 2. WEEKLY PANTRY STAPLES (QUICK RE-ORDER) ── */}
+        <section className="px-3 pt-5 pb-3 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-[1600px] w-full">
-            {recentOrder ? (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-4 sm:p-5 shadow-2xs">
-                <div className="flex items-start gap-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-xl text-emerald-800">
-                    🚚
-                  </span>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black uppercase text-emerald-950">
-                        Recent Order #{recentOrder.order_number || recentOrder.id}
-                      </span>
-                      <span className="rounded-full bg-emerald-200/80 px-2 py-0.5 text-[10px] font-extrabold capitalize text-emerald-900">
-                        {recentOrder.status || "Processing"}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-xs text-emerald-900/80">
-                      Total: ₦{(Number(recentOrder.total_amount || recentOrder.total || 0) * NAIRA_PER_UNIT).toLocaleString()} • {recentOrder.items_count || recentOrder.items?.length || 1} produce items
-                    </p>
-                  </div>
-                </div>
-
-                <Link
-                  to={recentOrder.tracking_code ? `/track-order?code=${recentOrder.tracking_code}` : `/orders/${recentOrder.id}`}
-                  className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#143c2d] px-5 py-2 text-xs font-extrabold text-white transition hover:bg-[#0e2c21]"
-                >
-                  <span>Track Status ➔</span>
-                </Link>
-              </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-[#DFD6C2] bg-white p-4 shadow-2xs">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xl">🚚</span>
-                  <div>
-                    <h3 className="text-xs font-black text-[#143c2d]">Track an active delivery</h3>
-                    <p className="text-[11px] text-slate-500">Enter your order code to see real-time dispatch progress</p>
-                  </div>
-                </div>
-
-                <form onSubmit={handleTrackSubmit} className="flex items-center gap-2 w-full sm:w-auto">
-                  <input
-                    type="text"
-                    value={trackingInput}
-                    onChange={(e) => setTrackingInput(e.target.value.toUpperCase())}
-                    placeholder="Code, e.g. BF-12345"
-                    className="w-full sm:w-48 rounded-full border border-slate-300 bg-[#FDFBF7] px-3.5 py-1.5 text-xs font-mono font-bold uppercase outline-none focus:border-[#143c2d]"
-                  />
-                  <button
-                    type="submit"
-                    className="shrink-0 rounded-full bg-[#143c2d] px-4 py-1.5 text-xs font-extrabold text-white hover:bg-[#0e2c21]"
-                  >
-                    Track
-                  </button>
-                </form>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ── 3. WEEKLY PANTRY STAPLES (QUICK RE-ORDER) ── */}
-        <section className="px-3 pt-6 pb-4 sm:px-6 lg:px-10">
-          <div className="mx-auto max-w-[1600px] w-full">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div>
-                <h2 className="font-display text-base sm:text-xl font-bold text-[#143c2d]">
+                <h2 className="font-display text-sm sm:text-lg font-black text-[#143c2d]">
                   Weekly Household Staples
                 </h2>
-                <p className="text-xs text-slate-500">
+                <p className="text-[11px] sm:text-xs text-slate-500">
                   Quick 1-tap reorder of Nigerian kitchen essentials
                 </p>
               </div>
               <Link
                 to="/products"
-                className="text-xs font-bold text-[#c85a17] hover:underline"
+                className="text-[11px] sm:text-xs font-bold text-[#c85a17] hover:underline"
               >
                 View Full Shop →
               </Link>
             </div>
 
             {loading ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-48 rounded-2xl bg-white border border-[#DFD6C2] animate-pulse" />
+                  <div key={i} className="h-44 rounded-2xl bg-white border border-[#DFD6C2] animate-pulse" />
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6 sm:gap-3.5">
                 {staples.map((product) => (
                   <ProductGridCard
                     key={product.id}
@@ -469,34 +407,34 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ── 4. FEATURED HARVESTS & BEMS ORIGINALS ── */}
-        <section className="px-3 pt-6 pb-12 sm:px-6 lg:px-10">
+        {/* ── 3. FEATURED HARVESTS & BEMS ORIGINALS ── */}
+        <section className="px-3 pt-5 pb-10 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-[1600px] w-full">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div>
-                <h2 className="font-display text-base sm:text-xl font-bold text-[#143c2d]">
-                  Fresh Seasonal Harvests & Bems Originals
+                <h2 className="font-display text-sm sm:text-lg font-black text-[#143c2d]">
+                  Fresh Seasonal Harvests
                 </h2>
-                <p className="text-xs text-slate-500">
+                <p className="text-[11px] sm:text-xs text-slate-500">
                   100% stone-free grains and unadulterated oils direct from farm
                 </p>
               </div>
               <Link
                 to="/products?category=Grains%20%26%20Cereals"
-                className="text-xs font-bold text-[#143c2d] hover:underline"
+                className="text-[11px] sm:text-xs font-bold text-[#143c2d] hover:underline"
               >
                 See all grains →
               </Link>
             </div>
 
             {loading ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-56 rounded-2xl bg-white border border-[#DFD6C2] animate-pulse" />
+                  <div key={i} className="h-52 rounded-2xl bg-white border border-[#DFD6C2] animate-pulse" />
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 sm:gap-4 md:gap-5">
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 sm:gap-4 md:gap-5">
                 {featuredHarvests.map((product) => (
                   <ProductGridCard
                     key={product.id}
@@ -513,69 +451,69 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* ── 5. PROMO BANNER TO FULL SHOP ── */}
+            {/* ── 4. LINK TO FULL SHOP CATALOGUE ── */}
             <div
               style={{
                 background: "linear-gradient(135deg, #143c2d 0%, #1c523e 100%)",
               }}
-              className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-3xl p-6 sm:p-8 text-white shadow-md"
+              className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-3.5 rounded-2xl sm:rounded-3xl p-4 sm:p-7 text-white shadow-md"
             >
               <div className="max-w-md text-center sm:text-left">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-amber-300">
-                  🛒 Complete Inventory
+                <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-amber-300">
+                  🛒 Complete Store Inventory
                 </span>
-                <h3 className="mt-1 font-display text-lg sm:text-xl font-bold text-white">
+                <h3 className="mt-0.5 font-display text-sm sm:text-lg font-bold text-white">
                   Looking for tubers, leafy greens, or bulk bags?
                 </h3>
-                <p className="mt-1 text-xs text-emerald-100/85 leading-relaxed">
-                  Browse our full catalogue with comprehensive category filtering, price sorting, and live stock in the Shop.
+                <p className="mt-0.5 text-[11px] sm:text-xs text-emerald-100/85 leading-relaxed">
+                  Browse our full catalogue with comprehensive category filtering and live stock in the Shop.
                 </p>
               </div>
 
               <Link
                 to="/products"
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-amber-300 px-6 py-3 text-xs font-black uppercase tracking-wider text-[#143c2d] shadow-md transition hover:bg-white active:scale-98"
+                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-amber-300 px-5 py-2.5 text-xs font-black uppercase tracking-wider text-[#143c2d] shadow-md transition hover:bg-white active:scale-98"
               >
-                <span>Explore Full Shop Catalogue</span>
+                <span>Explore Full Shop</span>
                 <span>➔</span>
               </Link>
             </div>
           </div>
         </section>
 
-        {/* ── 6. CLEAN QUALITY & TRUST BAR ── */}
-        <section className="border-t border-[#DFD6C2] bg-[#EFE8DC] px-3 py-8 sm:px-6 lg:px-10">
+        {/* ── 5. CLEAN QUALITY & TRUST BAR ── */}
+        <section className="border-t border-[#DFD6C2] bg-[#EFE8DC] px-3 py-6 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-[1600px] w-full">
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-              <div className="flex items-start gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-2xs">
-                <span className="grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-emerald-50 text-base sm:text-lg text-[#143c2d]">🌾</span>
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
+              <div className="flex items-start gap-2 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
+                <span className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-emerald-50 text-sm sm:text-lg text-[#143c2d]">🌾</span>
                 <div>
-                  <h4 className="font-display text-xs sm:text-sm font-bold text-[#143c2d]">100% Stone-Free</h4>
-                  <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-600">Clean sorted grains.</p>
+                  <h4 className="font-display text-[11px] sm:text-sm font-bold text-[#143c2d]">100% Stone-Free</h4>
+                  <p className="text-[9px] sm:text-[11px] text-slate-600">Clean sorted grains.</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-2xs">
-                <span className="grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-amber-50 text-base sm:text-lg text-amber-700">🌱</span>
+              <div className="flex items-start gap-2 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
+                <span className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-amber-50 text-sm sm:text-lg text-amber-700">🌱</span>
                 <div>
-                  <h4 className="font-display text-xs sm:text-sm font-bold text-[#143c2d]">Farm Freshness</h4>
-                  <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-600">Direct from Oyo & Benue.</p>
+                  <h4 className="font-display text-[11px] sm:text-sm font-bold text-[#143c2d]">Farm Freshness</h4>
+                  <p className="text-[9px] sm:text-[11px] text-slate-600">Direct from Oyo & Benue.</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-2xs">
-                <span className="grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-blue-50 text-base sm:text-lg text-blue-700">🔒</span>
+              <div className="flex items-start gap-2 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
+                <span className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-blue-50 text-sm sm:text-lg text-blue-700">🔒</span>
                 <div>
-                  <h4 className="font-display text-xs sm:text-sm font-bold text-[#143c2d]">Monnify Secure</h4>
-                  <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-600">Cards, Transfer & USSD.</p>
+                  <h4 className="font-display text-[11px] sm:text-sm font-bold text-[#143c2d]">Monnify Secure</h4>
+                  <p className="text-[9px] sm:text-[11px] text-slate-600">Cards, Transfer & USSD.</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-2xs">
-                <span className="grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-purple-50 text-base sm:text-lg text-purple-700">🚚</span>
+              <div className="flex items-start gap-2 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
+                <span className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-purple-50 text-sm sm:text-lg text-purple-700">🚚</span>
                 <div>
-                  <h4 className="font-display text-xs sm:text-sm font-bold text-[#143c2d]">Doorstep Dispatch</h4>
-                  <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-600">Fast doorstep delivery.</p>
+                  <h4 className="font-display text-[11px] sm:text-sm font-bold text-[#143c2d]">Doorstep Dispatch</h4>
+                  <p className="text-[9px] sm:text-[11px] text-slate-600">Fast doorstep delivery.</p>
                 </div>
               </div>
             </div>
