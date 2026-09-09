@@ -485,7 +485,7 @@ export default function ProductsPage() {
                   const cartQty = cart[product.id]?.quantity || 0;
                   const stock = Number(product.stock_quantity ?? product.stock ?? 0);
                   const price = Number(product.price || 0) * NAIRA_PER_UNIT;
-                  const isOutOfStock = stock === 0 || product.available_for_sale === false;
+                  const isOutOfStock = stock <= 0 || product.available_for_sale === false || product.status === "out_of_stock";
                   const isLowStock = stock > 0 && stock <= 5;
                   const isBemsOriginal = Boolean(
                     product.name?.toLowerCase().includes("bems") ||

@@ -40,8 +40,7 @@ function ProductGridCard({
 }) {
   const stock = Number(product.stock_quantity ?? product.stock ?? 0);
   const price = Number(product.price || 0) * NAIRA_PER_UNIT;
-  const invalidPrice = !Number.isFinite(price) || price <= 0 || price > 1_000_000;
-  const isOutOfStock = stock <= 0 || product.available_for_sale === false || invalidPrice;
+  const isOutOfStock = stock <= 0 || product.available_for_sale === false || product.status === "out_of_stock";
   const isLowStock = stock > 0 && stock <= 5;
   const rating = Math.min(5, Math.max(0, Number(product.avg_rating) || 0));
 
