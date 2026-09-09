@@ -11,23 +11,23 @@ import Toast from "../components/ui/Toast";
 
 const DEFAULT_CATEGORIES = [
   {
-    name: "Fresh Vegetables & Peppers",
-    detail: "Hand-picked farm fresh tomatoes, tatase, rodo, leafy greens and vegetables.",
+    name: "Vegetables",
+    detail: "Hand-picked farm fresh tomatoes, tatase, rodo, leafy greens and peppers.",
     image: "/hero_food_2.jpg",
   },
   {
-    name: "Grains & Rice",
+    name: "Grains & Cereals",
     detail: "Stone-free Nigerian rice, premium brown rice, and wholesome grains.",
     image: "/hero_food_1.jpg",
   },
   {
-    name: "Cooking Oils & Seasonings",
-    detail: "Pure unadulterated palm oil, groundnut oil, and natural spices.",
+    name: "Cooking Oils",
+    detail: "Pure unadulterated palm oil, groundnut oil, and natural culinary oils.",
     image: "/hero_food_3.jpg",
   },
   {
-    name: "Pantry Staples & Flours",
-    detail: "Quality garri, yam flour (elubo), beans, and daily kitchen necessities.",
+    name: "Legumes",
+    detail: "Quality honey beans, white beans, and daily pantry staples.",
     image: "/fresh_salad_hero.png",
   },
 ];
@@ -1157,14 +1157,19 @@ export default function LandingPage() {
             )}
 
             <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl border border-[#DDD3BF] bg-[#EFE8DC] px-6 py-5 sm:flex-row shadow-sm">
-              <p className="text-center text-sm font-bold text-slate-700 sm:text-left">Your basket is saved while you create an account.</p>
+              <p className="text-center text-sm font-bold text-slate-700 sm:text-left">
+                {isLoggedIn ? "Your basket items are securely saved to your account." : "Your basket is saved while you create an account."}
+              </p>
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <span className="text-sm font-extrabold text-[#143c2d]">{cartCount} {cartCount === 1 ? "item" : "items"}</span>
                 <Link to="/products" className="rounded-full border border-[#DDD3BF] bg-white px-5 py-2.5 text-sm font-extrabold text-slate-800 transition hover:border-[#143c2d]">
                   View catalogue page
                 </Link>
-                <Link to={cartCount ? "/cart" : "/register"} className="rounded-full bg-[#143c2d] px-5 py-2.5 text-sm font-extrabold text-white transition hover:bg-[#1a4e3b]">
-                  {cartCount ? "View basket" : "Create account"}
+                <Link
+                  to={cartCount ? "/cart" : isLoggedIn ? "/products" : "/register"}
+                  className="rounded-full bg-[#143c2d] px-5 py-2.5 text-sm font-extrabold text-white transition hover:bg-[#1a4e3b]"
+                >
+                  {cartCount ? "View basket" : isLoggedIn ? "Browse catalogue" : "Create account"}
                 </Link>
               </div>
             </div>
@@ -1226,7 +1231,16 @@ export default function LandingPage() {
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <div className="absolute -bottom-4 -left-3 rounded-2xl border border-white/20 bg-white/95 p-4 text-slate-900 shadow-xl"><p className="text-xs font-bold text-slate-500">Try asking</p><p className="mt-1 text-sm font-extrabold">“What can I cook tonight?”</p></div>
+                <Link
+                  to="/chef-chat"
+                  className="group absolute -bottom-4 -left-3 rounded-2xl border border-white/20 bg-white/95 p-4 text-slate-900 shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl"
+                  aria-label="Ask Chef Bems: What can I cook tonight?"
+                >
+                  <p className="text-xs font-bold text-slate-500">Try asking</p>
+                  <p className="mt-1 text-sm font-extrabold text-[#143c2d] group-hover:text-[#c85a17]">
+                    “What can I cook tonight?” →
+                  </p>
+                </Link>
               </div>
             </div>
           </div>
@@ -1362,7 +1376,42 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="border-t border-[#DDD3BF] bg-[#F8F5EE] px-5 pb-20 pt-16 text-center sm:px-8 lg:px-12 lg:pb-28"><div className="mx-auto max-w-3xl"><p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[#143c2d]">Ready when you are</p><h2 className="mt-4 font-display text-4xl font-bold leading-tight text-[#143c2d] sm:text-5xl">Bring something fresh to the table.</h2><p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-600">Create your BemsFarms account and start building a basket that fits your kitchen.</p><Link to="/register" className="mt-8 inline-flex rounded-full bg-[#143c2d] px-9 py-4 text-base font-extrabold text-white shadow-md shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b]">Create your account <span className="ml-2" aria-hidden="true">→</span></Link></div></section>
+        <section className="border-t border-[#DDD3BF] bg-[#F8F5EE] px-5 pb-20 pt-16 text-center sm:px-8 lg:px-12 lg:pb-28">
+          <div className="mx-auto max-w-3xl">
+            <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[#143c2d]">Ready when you are</p>
+            <h2 className="mt-4 font-display text-4xl font-bold leading-tight text-[#143c2d] sm:text-5xl">
+              Bring something fresh to the table.
+            </h2>
+            <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-600">
+              {isLoggedIn
+                ? "Explore today's fresh harvests and pantry staples for your kitchen."
+                : "Create your BemsFarms account and start building a basket that fits your kitchen."}
+            </p>
+            {isLoggedIn ? (
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <Link
+                  to="/products"
+                  className="inline-flex rounded-full bg-[#143c2d] px-9 py-4 text-base font-extrabold text-white shadow-md shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b]"
+                >
+                  Shop the catalogue <span className="ml-2" aria-hidden="true">→</span>
+                </Link>
+                <Link
+                  to="/home"
+                  className="inline-flex rounded-full border-2 border-[#143c2d] bg-white px-8 py-3.5 text-base font-extrabold text-[#143c2d] transition hover:bg-[#143c2d]/5"
+                >
+                  Go to my account
+                </Link>
+              </div>
+            ) : (
+              <Link
+                to="/register"
+                className="mt-8 inline-flex rounded-full bg-[#143c2d] px-9 py-4 text-base font-extrabold text-white shadow-md shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b]"
+              >
+                Create your account <span className="ml-2" aria-hidden="true">→</span>
+              </Link>
+            )}
+          </div>
+        </section>
       </main>
 
       <footer className="relative overflow-hidden bg-[#0e241c] px-5 pb-8 pt-14 text-emerald-50/70 sm:px-8 lg:px-12">
@@ -1376,7 +1425,27 @@ export default function LandingPage() {
             <div><img src={logo} alt="BemsFarms" className="h-10 w-auto brightness-0 invert" /><p className="mt-5 max-w-sm text-sm leading-7">Fresh Nigerian food, everyday kitchen essentials and practical meal inspiration in one welcoming marketplace.</p><div className="mt-6 flex flex-wrap gap-2"><span className="rounded-full border border-white/10 px-3 py-1.5 text-xs">🌱 Fresh selection</span><span className="rounded-full border border-white/10 px-3 py-1.5 text-xs">🔒 Secure checkout</span></div></div>
             <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Shop</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/products" className="hover:text-white">All products</Link><a href="#categories" className="hover:text-white">Categories</a><a href="#featured-products" className="hover:text-white">Fresh picks</a><a href="#chef-bems" className="hover:text-white">Chef Bems</a></div></div>
             <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Help</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/track-order" className="hover:text-white">Track an order</Link><Link to="/contact" className="hover:text-white">Contact support</Link><Link to="/shipping" className="hover:text-white">Shipping & delivery</Link><Link to="/returns-policy" className="hover:text-white">Returns & refunds</Link></div></div>
-            <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Your account</h2><p className="mt-5 text-sm leading-6">Keep delivery details, orders and preferences together.</p><div className="mt-5 flex flex-wrap gap-3"><Link to="/login" className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-white/10">Sign in</Link><Link to="/register" className="rounded-full bg-[#143c2d] border border-white/20 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-[#1a4e3b]">Join</Link></div></div>
+            <div>
+              <h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Your account</h2>
+              <p className="mt-5 text-sm leading-6">
+                {isLoggedIn
+                  ? "Manage your orders, profile and saved delivery details."
+                  : "Keep delivery details, orders and preferences together."}
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                {isLoggedIn ? (
+                  <>
+                    <Link to="/home" className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-white/10">My account</Link>
+                    <Link to="/orders" className="rounded-full bg-[#143c2d] border border-white/20 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-[#1a4e3b]">Orders</Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/login" className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-white/10">Sign in</Link>
+                    <Link to="/register" className="rounded-full bg-[#143c2d] border border-white/20 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-[#1a4e3b]">Join</Link>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-3 border-t border-white/10 pt-7 text-xs sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} BemsFarms Limited. All rights reserved.</p><p>Fresh food · Smart help · Easier shopping</p></div>

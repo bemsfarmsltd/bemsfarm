@@ -363,7 +363,11 @@ export default function ProductsPage() {
 
   const filtered = products
     .filter((p) => {
-      const matchCat = activeCat === "All" || p.category_name === activeCat;
+      const matchCat =
+        activeCat === "All" ||
+        p.category_name?.toLowerCase() === activeCat?.toLowerCase() ||
+        p.category_name?.toLowerCase().includes(activeCat?.toLowerCase()) ||
+        activeCat?.toLowerCase().includes(p.category_name?.toLowerCase());
       const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
       return matchCat && matchSearch;
     })
