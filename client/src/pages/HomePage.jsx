@@ -158,7 +158,7 @@ function ProductGridCard({
           {Number(product.review_count) > 0 ? (
             <>
               <span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
-                {"".repeat(Math.round(rating))}{"".repeat(5 - Math.round(rating))}
+                {"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}
               </span>
               <span className="text-[10px] font-bold text-slate-400">({product.review_count})</span>
             </>

@@ -286,7 +286,7 @@ function StoreProductCard({ product, added, onAdd }) {
         <h3 className="mt-1.5 min-h-[2.5rem] font-display text-base font-bold leading-5 text-[#143c2d]"><Link to={`/product/${product.id}`} className="transition hover:text-[#c85a17]">{product.name}</Link></h3>
         <p className="mt-1 truncate text-xs text-slate-500">{product.unit || "Per item"}</p>
         <div className="mt-2 flex min-h-4 items-center gap-1 text-[11px]">
-          {Number(product.review_count) > 0 ? <><span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}><span aria-hidden="true">{"".repeat(Math.round(rating))}{"".repeat(5 - Math.round(rating))}</span></span><span className="text-slate-400">({product.review_count})</span></> : <span className="text-slate-400">New to the shop</span>}
+          {Number(product.review_count) > 0 ? <><span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}><span aria-hidden="true">{"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}</span></span><span className="text-slate-400">({product.review_count})</span></> : <span className="text-slate-400">New to the shop</span>}
         </div>
         <div className="mt-3 flex items-center justify-between gap-1.5">
           {unavailable ? (

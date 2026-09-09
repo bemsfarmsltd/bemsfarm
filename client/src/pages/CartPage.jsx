@@ -191,7 +191,12 @@ export default function CartPage() {
                             <p style={{ fontSize:12, color:"#9ca3af", margin:0 }}>{product.unit}</p>
                           </div>
                           <motion.button whileTap={{ scale:0.85 }} onClick={() => handleRemove(product.id)} aria-label={`Remove ${product.name}`}
-                            style={{ flexShrink:0, width:30, height:30, borderRadius:"50%", border:"1.5px solid #e5e7eb", background:"white", cursor:"pointer", fontSize:14, color:"#9ca3af", display:"flex", alignItems:"center", justifyContent:"center" }}></motion.button>
+                            style={{ flexShrink:0, width:30, height:30, borderRadius:"50%", border:"1.5px solid #e5e7eb", background:"white", cursor:"pointer", fontSize:14, color:"#9ca3af", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                          </motion.button>
                         </div>
                         <div className="bf-item-bottom">
                           <div className="bf-qty-pill">

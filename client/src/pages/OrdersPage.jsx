@@ -669,7 +669,12 @@ export default function OrdersPage() {
                   {/* Delivery date footer */}
                   {order.status !== "cancelled" && (
                     <div className="op-card-footer">
-                      <i className="ri-truck-line" style={{ color: "#2E7D32", fontSize: "15px" }} />
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <rect x="1" y="3" width="15" height="13"></rect>
+                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                        <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                        <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                      </svg>
                       <span>{deliveredDate ? "Delivered:" : "Estimated Delivery:"}</span>
                       <span style={{ color: "#111827" }}>{deliveredDate || estDelivery}</span>
                     </div>

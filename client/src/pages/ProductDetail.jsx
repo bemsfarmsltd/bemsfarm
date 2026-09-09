@@ -323,7 +323,7 @@ export default function ProductDetail() {
                       color: i < Math.round(reviewStats.average) ? "#F57C00" : "#E8EAED",
                     }}
                   >
-                    
+                    ★
                   </span>
                 ))}
               </div>
@@ -795,7 +795,7 @@ export default function ProductDetail() {
                               : "#E8EAED",
                         }}
                       >
-                        
+                        ★
                       </span>
                     ))}
                   </div>
@@ -854,13 +854,13 @@ export default function ProductDetail() {
                               cursor: "pointer",
                               color:
                                 star <= (hoverRating || selectedRating)
-                                  ? "#F57C00"
-                                  : "#E8EAED",
+                                    ? "#F57C00"
+                                    : "#E8EAED",
                               transition: "color 0.15s",
                               userSelect: "none",
                             }}
                           >
-                            
+                            ★
                           </span>
                         ))}
                       </div>
@@ -976,7 +976,7 @@ export default function ProductDetail() {
                                   color: i < r.rating ? "#F57C00" : "#E8EAED",
                                 }}
                               >
-                                
+                                ★
                               </span>
                             ))}
                           </div>
