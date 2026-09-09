@@ -43,6 +43,7 @@ const ROUTE_META = {
   "/login": ["Sign In | BemsFarms", "Sign in to your BemsFarms account to manage orders, delivery details and preferences."],
   "/register": ["Create an Account | BemsFarms", "Create a BemsFarms account to order groceries, save delivery details and access Chef Bems."],
   "/cart": ["Your Basket | BemsFarms", "Review the farm produce and pantry essentials in your BemsFarms basket."],
+  "/chef-chat": ["Chef Bems — Culinary AI Assistant | BemsFarms", "Get personalized Nigerian recipe ideas, ingredient alternatives and smart shopping lists with Chef Bems."],
 };
 
 function RouteMetadata() {
@@ -162,11 +163,7 @@ function App() {
         />
         <Route
           path="/chef-chat"
-          element={
-            <P>
-              <ChefBemsPage />
-            </P>
-          }
+          element={<ChefBemsPage />}
         />
         <Route
           path="/dynamic-pricing"

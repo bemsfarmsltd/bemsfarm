@@ -7,6 +7,30 @@ import api from "../services/api";
 import { NAIRA_PER_UNIT } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
 import logo from "../assets/bemsfarms_logo_compact.png";
+import Toast from "../components/ui/Toast";
+
+const DEFAULT_CATEGORIES = [
+  {
+    name: "Fresh Vegetables & Peppers",
+    detail: "Hand-picked farm fresh tomatoes, tatase, rodo, leafy greens and vegetables.",
+    image: "/hero_food_2.jpg",
+  },
+  {
+    name: "Grains & Rice",
+    detail: "Stone-free Nigerian rice, premium brown rice, and wholesome grains.",
+    image: "/hero_food_1.jpg",
+  },
+  {
+    name: "Cooking Oils & Seasonings",
+    detail: "Pure unadulterated palm oil, groundnut oil, and natural spices.",
+    image: "/hero_food_3.jpg",
+  },
+  {
+    name: "Pantry Staples & Flours",
+    detail: "Quality garri, yam flour (elubo), beans, and daily kitchen necessities.",
+    image: "/fresh_salad_hero.png",
+  },
+];
 
 
 const steps = [
@@ -629,8 +653,17 @@ export default function LandingPage() {
   const [catalogueView, setCatalogueView] = useState("all");
   const [addedProducts, setAddedProducts] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
   const catalogueTriggerRef = useRef(null);
   const itemsPerPage = 6;
+
+  // Cleanup toast timer on unmount
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
   // Lock body scroll while either modal is open.
   useEffect(() => {
@@ -706,15 +739,26 @@ export default function LandingPage() {
     if (!Number.isFinite(displayPrice) || displayPrice <= 0 || displayPrice > 1_000_000) return;
     addToCart(product);
     setAddedProducts((current) => ({ ...current, [product.id]: true }));
+
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({
+      message: `✓ Added ${product.name} to basket`,
+      type: "success",
+    });
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null);
+    }, 2500);
+
     window.setTimeout(() => setAddedProducts((current) => ({ ...current, [product.id]: false })), 1200);
   };
 
   const categoryImages = ["/hero_food_1.jpg", "/hero_food_2.jpg", "/hero_food_3.jpg", "/fresh_salad_hero.png", "/hero_food_4.jpg"];
-  const categoryCards = [...new Set(products.map((product) => product.category_name).filter(Boolean))].map((name, index) => ({
+  const dynamicCategories = [...new Set(products.map((product) => product.category_name).filter(Boolean))].map((name, index) => ({
     name,
     detail: `Browse available ${name.toLowerCase()} from the live BemsFarms catalogue.`,
     image: categoryImages[index % categoryImages.length],
   }));
+  const categoryCards = dynamicCategories.length > 0 ? dynamicCategories : DEFAULT_CATEGORIES;
 
   const displayedProducts = [...products]
     .filter((product) => {
@@ -1017,7 +1061,24 @@ export default function LandingPage() {
               )}
             </div>
 
-            {productsLoading && <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">{Array.from({ length: 12 }).map((_, index) => <div key={index} className="overflow-hidden rounded-2xl border border-slate-100 bg-white"><div className="aspect-[4/3] animate-pulse bg-slate-100" /><div className="space-y-3 p-4"><div className="h-3 w-20 animate-pulse rounded bg-slate-100" /><div className="h-5 w-3/4 animate-pulse rounded bg-slate-100" /><div className="h-9 animate-pulse rounded bg-slate-100" /></div></div>)}</div>}
+            {productsLoading && (
+              <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 xl:gap-4">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="overflow-hidden rounded-2xl border border-[#DFD6C2] bg-white shadow-sm">
+                    <div className="aspect-[4/3] animate-pulse bg-[#EDE5D5]" />
+                    <div className="space-y-2.5 p-4">
+                      <div className="h-2.5 w-16 animate-pulse rounded-full bg-[#DFD6C2]" />
+                      <div className="h-4 w-4/5 animate-pulse rounded-md bg-[#DFD6C2]" />
+                      <div className="h-3 w-1/2 animate-pulse rounded-md bg-[#DFD6C2]/60" />
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="h-4 w-14 animate-pulse rounded-md bg-[#DFD6C2]" />
+                        <div className="h-7 w-14 animate-pulse rounded-full bg-[#143c2d]/20" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {!productsLoading && productsError && <div role="alert" className="mt-10 flex flex-col items-center rounded-3xl border border-orange-200 bg-orange-50 px-6 py-10 text-center"><p className="font-display text-xl font-bold text-slate-900">{productsError}</p><button type="button" onClick={() => loadProducts(search)} className="mt-4 rounded-full bg-[#17352a] px-6 py-3 text-sm font-extrabold text-white">Try again</button></div>}
 
@@ -1353,6 +1414,9 @@ export default function LandingPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Toast Notification for Basket Actions */}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 }
