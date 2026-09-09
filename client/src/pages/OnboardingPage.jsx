@@ -178,9 +178,24 @@ const OB_CSS = `
 
 @media (min-width: 768px) {
   .ob-panel { display: flex; }
-  .ob-content { width: 100%; max-width: 900px; margin: 0 auto; padding: 44px 56px 52px; }
+  .ob-content {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 112px 56px 64px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
   .ob-topbar { display: none; }
-  .ob-desktop-skip { display: flex; }
+  .ob-desktop-skip {
+    display: flex;
+    position: absolute;
+    top: 44px;
+    left: 56px;
+    right: 56px;
+    margin: 0 !important;
+  }
 }
 `;
 
