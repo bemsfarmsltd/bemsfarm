@@ -11,14 +11,14 @@ import Toast from "../components/ui/Toast";
 import QuickViewModal from "../components/ui/QuickViewModal";
 
 const CATEGORY_META = {
-  "Vegetables": { emoji: "🥬" },
-  "Grains & Cereals": { emoji: "🌾" },
-  "Cooking Oils": { emoji: "🫒" },
-  "Legumes": { emoji: "🫘" },
-  "Tubers & Roots": { emoji: "🍠" },
-  "Spices & Seasonings": { emoji: "🌶️" },
-  "Fruits": { emoji: "🍉" },
-  "Leafy Greens": { emoji: "🥗" },
+  "Vegetables": {},
+  "Grains & Cereals": {},
+  "Cooking Oils": {},
+  "Legumes": {},
+  "Tubers & Roots": {},
+  "Spices & Seasonings": {},
+  "Fruits": {},
+  "Leafy Greens": {},
 };
 
 function getTimeGreeting() {
@@ -75,7 +75,7 @@ function ProductGridCard({
         <div className="absolute inset-x-2 top-2 flex items-center justify-between gap-1 pointer-events-none">
           {isBemsOriginal ? (
             <span className="rounded-full bg-[#143c2d]/95 backdrop-blur px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">
-              ★ Original
+              Original
             </span>
           ) : product.is_featured ? (
             <span className="rounded-full bg-[#143c2d] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-white shadow-md">
@@ -96,7 +96,15 @@ function ProductGridCard({
               }`}
               aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
             >
-              <span className="text-xs sm:text-sm">{isFavorite ? "❤️" : "🤍"}</span>
+              <svg
+                className="h-3.5 w-3.5 sm:h-4 sm:w-4"
+                fill={isFavorite ? "currentColor" : "none"}
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+              </svg>
             </button>
           </div>
         </div>
@@ -111,7 +119,10 @@ function ProductGridCard({
           className="absolute bottom-2.5 right-2.5 z-10 hidden md:flex items-center gap-1 rounded-full bg-white/95 backdrop-blur px-2.5 py-1 text-[11px] font-bold text-slate-800 shadow-md transition-all duration-200 hover:bg-[#143c2d] hover:text-white"
           aria-label={`Quick preview ${product.name}`}
         >
-          <span>👁️</span>
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
           <span>Quick View</span>
         </button>
 
@@ -215,7 +226,7 @@ function ProductGridCard({
               } disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none`}
               aria-label={`Add ${product.name} to basket`}
             >
-              {isAdded ? "✓ Added" : "+ Add"}
+              {isAdded ? "Added" : "+ Add"}
             </button>
           )}
         </div>
@@ -303,7 +314,7 @@ export default function HomePage() {
 
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({
-      message: `✓ Added ${product.name} to basket!`,
+      message: `Added ${product.name} to basket`,
       type: "success",
     });
     toastTimerRef.current = setTimeout(() => {
@@ -604,8 +615,10 @@ export default function HomePage() {
               onSubmit={handleSearchSubmit}
               className="relative flex items-center w-full"
             >
-              <div className="pointer-events-none absolute left-3.5 sm:left-4 flex items-center text-slate-400 text-base sm:text-lg">
-                🔍
+              <div className="pointer-events-none absolute left-3.5 sm:left-4 flex items-center text-slate-400">
+                <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
               </div>
               <input
                 type="text"
@@ -734,7 +747,7 @@ export default function HomePage() {
             >
               <div className="max-w-md text-center sm:text-left">
                 <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-amber-300">
-                  🛒 Complete Store Inventory
+                  Complete Store Inventory
                 </span>
                 <h3 className="mt-0.5 font-display text-sm sm:text-lg font-bold text-white">
                   Looking for tubers, leafy greens, or bulk bags?
@@ -759,32 +772,48 @@ export default function HomePage() {
         <section className="border-t border-[#DFD6C2] bg-[#EFE8DC] px-3 py-6 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-[1600px] w-full">
             <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
-              <div className="flex items-start gap-2 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
-                <span className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-emerald-50 text-sm sm:text-lg text-[#143c2d]">🌾</span>
+              <div className="flex items-start gap-2.5 sm:gap-3.5 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
+                <div className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-800">
+                  <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+                  </svg>
+                </div>
                 <div>
                   <h4 className="font-display text-[11px] sm:text-sm font-bold text-[#143c2d]">100% Stone-Free</h4>
                   <p className="text-[9px] sm:text-[11px] text-slate-600">Clean sorted grains.</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-2 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
-                <span className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-amber-50 text-sm sm:text-lg text-amber-700">🌱</span>
+              <div className="flex items-start gap-2.5 sm:gap-3.5 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
+                <div className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-amber-50 text-amber-700">
+                  <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                  </svg>
+                </div>
                 <div>
                   <h4 className="font-display text-[11px] sm:text-sm font-bold text-[#143c2d]">Farm Freshness</h4>
                   <p className="text-[9px] sm:text-[11px] text-slate-600">Direct from Oyo & Benue.</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-2 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
-                <span className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-blue-50 text-sm sm:text-lg text-blue-700">🔒</span>
+              <div className="flex items-start gap-2.5 sm:gap-3.5 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
+                <div className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-blue-50 text-blue-700">
+                  <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                  </svg>
+                </div>
                 <div>
                   <h4 className="font-display text-[11px] sm:text-sm font-bold text-[#143c2d]">Secure Payment</h4>
                   <p className="text-[9px] sm:text-[11px] text-slate-600">Cards, Transfer & USSD.</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-2 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
-                <span className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-purple-50 text-sm sm:text-lg text-purple-700">🚚</span>
+              <div className="flex items-start gap-2.5 sm:gap-3.5 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
+                <div className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-purple-50 text-purple-700">
+                  <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.125 1.125 0 00-.987 1.106v7.635m12-6.676v6.676" />
+                  </svg>
+                </div>
                 <div>
                   <h4 className="font-display text-[11px] sm:text-sm font-bold text-[#143c2d]">Doorstep Dispatch</h4>
                   <p className="text-[9px] sm:text-[11px] text-slate-600">Fast doorstep delivery.</p>

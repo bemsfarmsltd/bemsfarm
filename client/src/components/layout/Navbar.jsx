@@ -492,19 +492,19 @@ export default function Navbar() {
   const canAccessStaffTools = STAFF_ROLES.includes(user?.role);
 
   const DROPDOWN_ITEMS = [
-    { icon: "👤", label: "My Profile", path: "/profile" },
-    { icon: "📦", label: "My Orders", path: "/orders" },
-    { icon: "↩️", label: "Returns", path: "/returns" },
+    { label: "My Profile", path: "/profile" },
+    { label: "My Orders", path: "/orders" },
+    { label: "Returns", path: "/returns" },
     ...(isAdmin
       ? [
-          { icon: "⚙️", label: "Admin Panel", path: ADMIN_PANEL_URL },
+          { label: "Admin Panel", path: ADMIN_PANEL_URL },
           ...(canAccessStaffTools
             ? [
-                { icon: "🔐", label: "Fraud Monitor", path: "/fraud-detection" },
-                { icon: "📈", label: "Forecasting", path: "/demand-forecasting" },
+                { label: "Fraud Monitor", path: "/fraud-detection" },
+                { label: "Forecasting", path: "/demand-forecasting" },
               ]
             : []),
-          { icon: "👨‍🍳", label: "AI Chef", path: "/chef-chat" },
+          { label: "AI Chef", path: "/chef-chat" },
         ]
       : []),
   ];
@@ -642,7 +642,17 @@ export default function Navbar() {
                   lineHeight: 1,
                 }}
               >
-                <span style={{ fontSize: "26" }}>🛒</span>
+                <svg
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="#1B4332"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  style={{ display: "block" }}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                </svg>
                 {cartCount > 0 && (
                   <span
                     style={{
@@ -802,7 +812,6 @@ export default function Navbar() {
                               "transparent")
                           }
                         >
-                          <span style={{fontSize:'1.35em'}}>{item.icon}</span>
                           <span>{item.label}</span>
                         </button>
                       ))}
@@ -841,7 +850,9 @@ export default function Navbar() {
                             "transparent")
                         }
                       >
-                        <span style={{fontSize:'1.35em'}}>🚪</span>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                        </svg>
                         <span>Sign Out</span>
                       </button>
                     </motion.div>
@@ -882,7 +893,17 @@ export default function Navbar() {
                   lineHeight: 1,
                 }}
               >
-                <span style={{ fontSize: "24px" }}>🛒</span>
+                <svg
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="#1B4332"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  style={{ display: "block" }}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                </svg>
                 {cartCount > 0 && (
                   <span style={{ position: "absolute", top: 0, right: 0, display: "grid", placeItems: "center", minWidth: 16, height: 16, padding: "0 3px", borderRadius: 999, backgroundColor: "#F57C00", color: "white", fontSize: 9, fontWeight: 800 }}>
                     {cartCount > 9 ? "9+" : cartCount}
