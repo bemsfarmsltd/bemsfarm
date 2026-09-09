@@ -502,33 +502,39 @@ export default function HomePage() {
                   Shop 100% stone-free grains, authentic cold-pressed oils, and farm-fresh harvests delivered right to your doorstep.
                 </p>
 
-                {/* Action CTA & Free Delivery Promo */}
-                <div className="mt-4 sm:mt-5 flex flex-wrap items-center gap-3">
+                {/* Navigation Action Buttons in Banner (Shop, Delivery, Chef Bems, My Orders — Excluding Home) */}
+                <div className="mt-5 flex flex-wrap items-center gap-2 sm:gap-2.5">
                   <Link
                     to="/products"
-                    className="inline-flex items-center gap-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-black text-[#143c2d] shadow-lg shadow-black/25 transition-all hover:scale-105 active:scale-95 text-decoration-none"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-[#143c2d] px-4 py-2 text-xs sm:text-sm font-black shadow-lg shadow-black/20 transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
                   >
-                    <span>Shop Fresh Harvests</span>
-                    <span>→</span>
+                    <span>🛒</span>
+                    <span>Shop</span>
                   </Link>
 
-                  <div className="flex items-center gap-1.5 rounded-xl bg-black/25 px-3 py-2 backdrop-blur-xs border border-white/10 text-[11px] text-emerald-100 font-medium">
-                    <span>⚡</span>
-                    <span>Free delivery on orders above ₦15,000</span>
-                  </div>
-                </div>
+                  <Link
+                    to="/track-order"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-black/30 hover:bg-black/45 border border-white/20 hover:border-white/40 text-white px-4 py-2 text-xs sm:text-sm font-bold backdrop-blur-md shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
+                  >
+                    <span>🚚</span>
+                    <span>Delivery</span>
+                  </Link>
 
-                {/* Quick Trust Badges */}
-                <div className="mt-4 flex flex-wrap items-center gap-2 text-[10px] sm:text-xs font-bold text-white">
-                  <span className="flex items-center gap-1.5 rounded-full bg-black/30 border border-white/10 px-3 py-1 backdrop-blur-xs shadow-xs">
-                    🚚 Doorstep Delivery
-                  </span>
-                  <span className="flex items-center gap-1.5 rounded-full bg-black/30 border border-amber-400/20 px-3 py-1 text-amber-300 backdrop-blur-xs shadow-xs">
-                    ✨ 100% Stone-Free Guarantee
-                  </span>
-                  <span className="flex items-center gap-1.5 rounded-full bg-black/30 border border-white/10 px-3 py-1 backdrop-blur-xs shadow-xs">
-                    🔒 Secure Payment
-                  </span>
+                  <Link
+                    to="/chef-chat"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-black/30 hover:bg-black/45 border border-amber-400/30 hover:border-amber-400/60 text-amber-300 hover:text-amber-200 px-4 py-2 text-xs sm:text-sm font-bold backdrop-blur-md shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
+                  >
+                    <span>👨‍🍳</span>
+                    <span>Chef Bems</span>
+                  </Link>
+
+                  <Link
+                    to="/orders"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-black/30 hover:bg-black/45 border border-white/20 hover:border-white/40 text-white px-4 py-2 text-xs sm:text-sm font-bold backdrop-blur-md shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
+                  >
+                    <span>📦</span>
+                    <span>My Orders</span>
+                  </Link>
                 </div>
               </div>
 

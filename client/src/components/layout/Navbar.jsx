@@ -473,9 +473,11 @@ export default function Navbar() {
   };
 
   const NAV_LINKS = [
-    { label: "Doorstep Delivery", icon: "🚚", path: "/track-order", special: false },
-    { label: "100% Stone-Free Guarantee", icon: "✨", path: "/about", special: true },
-    { label: "Secure Payment", icon: "🔒", path: "/commerce-policy", special: false },
+    { label: "Home", path: "/home" },
+    { label: "Shop", path: "/products" },
+    { label: "Delivery", path: "/track-order" },
+    { label: "Chef Bems", path: "/chef-chat" },
+    { label: "My Orders", path: "/orders" },
   ];
 
   const ADMIN_PANEL_URL = import.meta.env.DEV
@@ -563,84 +565,52 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* DESKTOP NAV LINKS (Pill Navigation Buttons) */}
+        {/* DESKTOP NAV LINKS (Natural Compact Width) */}
         {user && (
           <div
             className="bf-navbar-links"
             style={{
               alignItems: "center",
               justifyContent: "center",
-              gap: "8px",
+              gap: "4px",
               margin: "0 auto",
               flexShrink: 0,
             }}
           >
-            {NAV_LINKS.map(({ label, icon, path, special }) => {
-              const active = isActive(path);
-              return (
-                <Link
-                  key={path}
-                  to={path}
+            {NAV_LINKS.map(({ label, path }) => (
+              <Link
+                key={path}
+                to={path}
+                style={{
+                  textDecoration: "none",
+                }}
+              >
+                <div
                   style={{
-                    textDecoration: "none",
+                    padding: "6px 14px",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    fontWeight: isActive(path) ? 700 : 500,
+                    color: isActive(path) ? "#2E7D32" : "#6B7280",
+                    backgroundColor: isActive(path) ? "rgba(46, 125, 50, 0.08)" : "transparent",
+                    fontFamily: "var(--body-font)",
+                    transition: "all 0.15s",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive(path))
+                      e.currentTarget.style.backgroundColor = "#F9FAFB";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive(path))
+                      e.currentTarget.style.backgroundColor = "transparent";
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      padding: "6px 14px",
-                      borderRadius: "9999px",
-                      fontSize: "13px",
-                      fontWeight: active ? 700 : 600,
-                      color: special
-                        ? (active ? "#92400E" : "#B45309")
-                        : (active ? "#1B4332" : "#374151"),
-                      backgroundColor: special
-                        ? (active ? "#FEF3C7" : "rgba(245, 158, 11, 0.09)")
-                        : (active ? "rgba(46, 125, 50, 0.10)" : "#F9FAFB"),
-                      border: special
-                        ? (active ? "1.5px solid #F59E0B" : "1.5px solid rgba(245, 158, 11, 0.35)")
-                        : (active ? "1.5px solid #2E7D32" : "1.5px solid #E5E7EB"),
-                      fontFamily: "var(--body-font)",
-                      transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!active) {
-                        e.currentTarget.style.transform = "translateY(-1px)";
-                        e.currentTarget.style.boxShadow = "0 3px 10px rgba(0,0,0,0.06)";
-                        if (special) {
-                          e.currentTarget.style.backgroundColor = "#FEF3C7";
-                          e.currentTarget.style.borderColor = "#F59E0B";
-                        } else {
-                          e.currentTarget.style.backgroundColor = "#F3F4F6";
-                          e.currentTarget.style.borderColor = "#D1D5DB";
-                        }
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!active) {
-                        e.currentTarget.style.transform = "none";
-                        e.currentTarget.style.boxShadow = "none";
-                        if (special) {
-                          e.currentTarget.style.backgroundColor = "rgba(245, 158, 11, 0.09)";
-                          e.currentTarget.style.borderColor = "rgba(245, 158, 11, 0.35)";
-                        } else {
-                          e.currentTarget.style.backgroundColor = "#F9FAFB";
-                          e.currentTarget.style.borderColor = "#E5E7EB";
-                        }
-                      }
-                    }}
-                  >
-                    <span style={{ fontSize: "14px" }}>{icon}</span>
-                    <span>{label}</span>
-                  </div>
-                </Link>
-              );
-            })}
+                  {label}
+                </div>
+              </Link>
+            ))}
           </div>
         )}
 
@@ -977,29 +947,22 @@ export default function Navbar() {
                 gap: "4px",
               }}
             >
-              {NAV_LINKS.map(({ label, icon, path, special }) => (
+              {NAV_LINKS.map(({ label, path }) => (
                 <Link key={path} to={path} style={{ textDecoration: "none" }}>
                   <div
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
-                      padding: "10px 14px",
+                      padding: "12px 14px",
                       borderRadius: "10px",
-                      fontSize: "14px",
-                      fontWeight: isActive(path) ? 700 : 600,
-                      color: special
-                        ? (isActive(path) ? "#92400E" : "#B45309")
-                        : (isActive(path) ? "#1B4332" : "#374151"),
-                      backgroundColor: special
-                        ? (isActive(path) ? "#FEF3C7" : "rgba(245, 158, 11, 0.09)")
-                        : (isActive(path) ? "#F0FFF4" : "transparent"),
-                      border: special ? "1.5px solid rgba(245, 158, 11, 0.3)" : "1.5px solid transparent",
+                      fontSize: "15px",
+                      fontWeight: isActive(path) ? 700 : 500,
+                      color: isActive(path) ? "#1B4332" : "#374151",
+                      backgroundColor: isActive(path)
+                        ? "#F0FFF4"
+                        : "transparent",
                       fontFamily: "var(--body-font)",
                     }}
                   >
-                    <span style={{ fontSize: "16px" }}>{icon}</span>
-                    <span>{label}</span>
+                    {label}
                   </div>
                 </Link>
               ))}
