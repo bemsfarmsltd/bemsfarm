@@ -39,10 +39,24 @@ const FAMILY_SIZES = [
   },
   {
     value: "large",
-    label: "Large family",
+    label: "Large household",
     desc: "5+ people",
     emoji: "👨‍👩‍👧‍👦",
     img: "https://images.unsplash.com/photo-1544025162-d76694265947?w=300&q=80",
+  },
+  {
+    value: "gathering",
+    label: "Small gathering",
+    desc: "6–15 guests",
+    emoji: "🥂",
+    img: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=500&q=80",
+  },
+  {
+    value: "party",
+    label: "Party or event",
+    desc: "16+ guests",
+    emoji: "🎉",
+    img: "https://images.unsplash.com/photo-1507501336603-6e31db2be093?w=500&q=80",
   },
 ];
 
@@ -122,9 +136,9 @@ const STEPS_META = [
     sub: "Tell us what fits your household so BemsFarms and Chef Bems can make shopping more useful from your first visit.",
   },
   {
-    eyebrow: "Household",
+    eyebrow: "Shopping size",
     headline: "Who are you\nshopping for?",
-    sub: "We'll suggest the right quantities and bundle deals for your household.",
+    sub: "Tell us whether this shop is for your household, a gathering or a larger event.",
   },
   {
     eyebrow: "Budget",
@@ -172,8 +186,11 @@ const OB_CSS = `
   transition: box-shadow 0.25s ease, transform 0.25s ease;
 }
 
+.ob-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+
 @media (max-width: 640px) {
   .ob-bento { grid-template-columns: 1fr; }
+  .ob-choice-grid { grid-template-columns: 1fr; }
 }
 
 @media (min-width: 768px) {
@@ -217,6 +234,7 @@ const OB_CSS = `
     right: 56px;
     margin: 0 !important;
   }
+  .ob-choice-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 `;
 
@@ -711,7 +729,7 @@ export default function OnboardingPage() {
               {/* STEP 1: FAMILY SIZE */}
               {step === 1 && (
                 <div>
-                  <Chip>Household</Chip>
+                  <Chip>Shopping size</Chip>
                   <h1
                     style={{
                       fontFamily: "var(--heading-font)",
@@ -731,14 +749,10 @@ export default function OnboardingPage() {
                       marginBottom: "28px",
                     }}
                   >
-                    We'll suggest the right quantities for your household.
+                    We'll tailor quantities for your household, gathering or event.
                   </p>
                   <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "14px",
-                    }}
+                    className="ob-choice-grid"
                   >
                     {FAMILY_SIZES.map((opt) => {
                       const selected = familySize === opt.value;
