@@ -537,18 +537,16 @@ export default function Navbar() {
         {/* LOGO (Left Aligned) */}
         <div
           style={{
-            flex: "1 1 0%",
+            flexShrink: 0,
             display: "flex",
             alignItems: "center",
-            justifyContent: "flex-start",
-            minWidth: 0,
+            marginRight: "16px",
           }}
         >
           <Link
             to={user ? "/home" : "/"}
             style={{
               textDecoration: "none",
-              flexShrink: 0,
               display: "flex",
               alignItems: "center",
             }}
@@ -567,23 +565,35 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* DESKTOP NAV LINKS (Center Aligned) */}
+        {/* DESKTOP NAV LINKS (Stretched Left to Right) */}
         {user && (
           <div
             className="bf-navbar-links"
             style={{
               alignItems: "center",
-              justifyContent: "center",
-              gap: "6px",
-              flex: "2 1 0%",
+              justifyContent: "space-between",
+              gap: "8px",
+              flex: "1 1 auto",
+              margin: "0 16px",
               minWidth: 0,
             }}
           >
             {NAV_LINKS.map(({ label, path }) => (
-              <Link key={path} to={path} style={{ textDecoration: "none" }}>
+              <Link
+                key={path}
+                to={path}
+                style={{
+                  textDecoration: "none",
+                  flex: "1 1 0%",
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
                 <div
                   style={{
-                    padding: "6px 14px",
+                    width: "100%",
+                    textAlign: "center",
+                    padding: "7px 10px",
                     borderRadius: "8px",
                     fontSize: "14px",
                     fontWeight: isActive(path) ? 700 : 500,
@@ -613,12 +623,12 @@ export default function Navbar() {
         {/* RIGHT SIDE ACTIONS (Right Aligned) */}
         <div
           style={{
-            flex: "1 1 0%",
+            flexShrink: 0,
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-end",
             gap: "8px",
-            minWidth: 0,
+            marginLeft: "16px",
           }}
         >
           {user ? (
