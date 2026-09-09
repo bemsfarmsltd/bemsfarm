@@ -177,15 +177,36 @@ const OB_CSS = `
 }
 
 @media (min-width: 768px) {
-  .ob-panel { display: flex; }
+  .ob-layout {
+    width: 100%;
+    max-width: 1720px;
+    margin: 0 auto;
+    padding: 32px;
+    align-items: center;
+    gap: 18px;
+  }
+  .ob-panel {
+    display: flex;
+    height: min(900px, calc(100vh - 64px)) !important;
+    border-radius: 28px !important;
+    box-shadow: 0 24px 70px rgba(16, 55, 40, 0.18);
+  }
+  .ob-main {
+    min-height: min(900px, calc(100vh - 64px)) !important;
+    max-height: min(900px, calc(100vh - 64px));
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.48);
+    box-shadow: 0 24px 70px rgba(16, 55, 40, 0.08);
+  }
   .ob-content {
     width: 100%;
     max-width: 900px;
     margin: 0 auto;
-    padding: 112px 56px 64px;
+    padding: 110px 56px 54px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
   }
   .ob-topbar { display: none; }
   .ob-desktop-skip {
@@ -385,6 +406,7 @@ export default function OnboardingPage() {
                 borderRadius: "12px",
                 padding: "8px 14px",
                 display: "inline-block",
+                alignSelf: "flex-start",
                 marginBottom: "36px",
                 boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
               }}
@@ -488,6 +510,7 @@ export default function OnboardingPage() {
 
       {/* ── RIGHT PANEL ─────────────────────────────────────── */}
       <div
+        className="ob-main"
         style={{
           flex: 1,
           display: "flex",
