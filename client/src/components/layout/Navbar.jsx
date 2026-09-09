@@ -16,7 +16,7 @@ import { NAIRA_PER_UNIT } from "../../utils/currency";
 import { STAFF_ROLES } from "../ProtectedRoute";
 
 const NAVBAR_CSS = `
-.bf-navbar-links { display: none; }
+.bf-navbar-links { display: none !important; }
 .bf-navbar-burger { display: flex; }
 .bf-navbar-user-name { display: none; }
 .bf-navbar-logo { height: 32px; }
@@ -31,7 +31,7 @@ const NAVBAR_CSS = `
 }
 
 @media (min-width: 768px) {
-  .bf-navbar-links { display: flex; }
+  .bf-navbar-links { display: flex !important; }
   .bf-navbar-burger { display: none; }
   .bf-navbar-user-name { display: block; }
   .bf-navbar-logo { height: 40px; }
@@ -572,7 +572,6 @@ export default function Navbar() {
             className="bf-navbar-links"
             onMouseLeave={() => setHoveredNav(null)}
             style={{
-              display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: "2px",
