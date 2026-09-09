@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import PageWrapper from "../components/layout/PageWrapper";
+import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 
 const STEPS = [
@@ -66,12 +67,15 @@ function DeliveryMap({ latitude, longitude }) {
 }
 
 export default function TrackOrderPage() {
+  const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const initialCode = cleanCode(params.get("code") || "");
   const [code, setCode] = useState(initialCode);
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const homePath = user ? "/home" : "/";
 
   const showPreview = () => {
     setCode("BF-PREVIEW01");
@@ -135,7 +139,10 @@ export default function TrackOrderPage() {
     <PageWrapper>
       <section className="min-h-[70vh] border-t border-slate-100 bg-white px-5 py-12 sm:px-8 lg:px-12 lg:py-16">
         <div className="mx-auto max-w-5xl">
-          <Link to="/" className="text-sm font-bold text-emerald-800 hover:text-orange-700">← Back to shop</Link>
+          <Link to={homePath} className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-800 hover:text-orange-700 transition">
+            <span>←</span>
+            <span>Back to {user ? "Home" : "Shop"}</span>
+          </Link>
 
           <div className="mt-12 grid gap-10 border-b border-slate-200 pb-12 lg:grid-cols-[1fr_300px] lg:gap-20">
             <div>
