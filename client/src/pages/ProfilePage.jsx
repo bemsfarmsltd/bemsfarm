@@ -497,6 +497,9 @@ export default function ProfilePage() {
 
   // Password change
   const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
+  const [showPasswordCurrent, setShowPasswordCurrent] = useState(false);
+  const [showPasswordNext, setShowPasswordNext] = useState(false);
+  const [showPasswordConfirm, setShowConfirm] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState(null);
   const handleChangePassword = async () => {
@@ -807,15 +810,96 @@ export default function ProfilePage() {
                     {passwordError && <p style={{ color: "#EF4444", fontSize: "13px", margin: 0 }}>{passwordError}</p>}
                     <div className="p-field">
                       <label className="p-label">Current Password</label>
-                      <input className="p-input" type="password" placeholder="Current Password" value={passwordForm.current} onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })} />
+                      <div style={{ position: "relative" }}>
+                        <input
+                          className="p-input"
+                          style={{ paddingRight: "44px" }}
+                          type={showPasswordCurrent ? "text" : "password"}
+                          placeholder="Current Password"
+                          value={passwordForm.current}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswordCurrent((prev) => !prev)}
+                          style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center" }}
+                          aria-label={showPasswordCurrent ? "Hide current password" : "Show current password"}
+                        >
+                          {showPasswordCurrent ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                              <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     </div>
                     <div className="p-field">
                       <label className="p-label">New Password</label>
-                      <input className="p-input" type="password" placeholder="New Password" value={passwordForm.next} onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })} />
+                      <div style={{ position: "relative" }}>
+                        <input
+                          className="p-input"
+                          style={{ paddingRight: "44px" }}
+                          type={showPasswordNext ? "text" : "password"}
+                          placeholder="New Password"
+                          value={passwordForm.next}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPasswordNext((prev) => !prev)}
+                          style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center" }}
+                          aria-label={showPasswordNext ? "Hide new password" : "Show new password"}
+                        >
+                          {showPasswordNext ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                              <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     </div>
                     <div className="p-field">
                       <label className="p-label">Confirm New Password</label>
-                      <input className="p-input" type="password" placeholder="Confirm New Password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} />
+                      <div style={{ position: "relative" }}>
+                        <input
+                          className="p-input"
+                          style={{ paddingRight: "44px" }}
+                          type={showPasswordConfirm ? "text" : "password"}
+                          placeholder="Confirm New Password"
+                          value={passwordForm.confirm}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirm((prev) => !prev)}
+                          style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center" }}
+                          aria-label={showPasswordConfirm ? "Hide confirm password" : "Show confirm password"}
+                        >
+                          {showPasswordConfirm ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                              <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                              <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="p-actions">
