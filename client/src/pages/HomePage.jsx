@@ -482,10 +482,10 @@ export default function HomePage() {
 
               {/* Left Side: Editorial Typography & Actions */}
               <div className="relative z-10 max-w-xl">
-                {/* Floating Farm Badge */}
+                {/* Floating Farm Badge (No emoji) */}
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-amber-300 border border-white/15 backdrop-blur-md shadow-xs">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400" />
-                  <span>🌾 Direct From Farm To Table</span>
+                  <span>Direct From Farm To Table</span>
                 </div>
 
                 {/* Main Headline */}
@@ -502,58 +502,54 @@ export default function HomePage() {
                   Shop 100% stone-free grains, authentic cold-pressed oils, and farm-fresh harvests delivered right to your doorstep.
                 </p>
 
-                {/* Navigation Action Buttons in Banner (Shop, Delivery, Chef Bems, My Orders — Excluding Home) */}
+                {/* Navigation Action Buttons in Banner (No Emojis — Shop, Delivery, Chef Bems, My Orders) */}
                 <div className="mt-5 flex flex-wrap items-center gap-2 sm:gap-2.5">
                   <Link
                     to="/products"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-[#143c2d] px-4 py-2 text-xs sm:text-sm font-black shadow-lg shadow-black/20 transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
+                    className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-[#143c2d] px-5 py-2.5 text-xs sm:text-sm font-black shadow-lg shadow-black/20 transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
                   >
-                    <span>🛒</span>
                     <span>Shop</span>
                   </Link>
 
                   <Link
                     to="/track-order"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-black/30 hover:bg-black/45 border border-white/20 hover:border-white/40 text-white px-4 py-2 text-xs sm:text-sm font-bold backdrop-blur-md shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
+                    className="inline-flex items-center justify-center rounded-full bg-black/30 hover:bg-black/45 border border-white/20 hover:border-white/40 text-white px-5 py-2.5 text-xs sm:text-sm font-bold backdrop-blur-md shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
                   >
-                    <span>🚚</span>
                     <span>Delivery</span>
                   </Link>
 
                   <Link
                     to="/chef-chat"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-black/30 hover:bg-black/45 border border-amber-400/30 hover:border-amber-400/60 text-amber-300 hover:text-amber-200 px-4 py-2 text-xs sm:text-sm font-bold backdrop-blur-md shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
+                    className="inline-flex items-center justify-center rounded-full bg-black/30 hover:bg-black/45 border border-amber-400/30 hover:border-amber-400/60 text-amber-300 hover:text-amber-200 px-5 py-2.5 text-xs sm:text-sm font-bold backdrop-blur-md shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
                   >
-                    <span>👨‍🍳</span>
                     <span>Chef Bems</span>
                   </Link>
 
                   <Link
                     to="/orders"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-black/30 hover:bg-black/45 border border-white/20 hover:border-white/40 text-white px-4 py-2 text-xs sm:text-sm font-bold backdrop-blur-md shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
+                    className="inline-flex items-center justify-center rounded-full bg-black/30 hover:bg-black/45 border border-white/20 hover:border-white/40 text-white px-5 py-2.5 text-xs sm:text-sm font-bold backdrop-blur-md shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
                   >
-                    <span>📦</span>
                     <span>My Orders</span>
                   </Link>
                 </div>
               </div>
 
-              {/* Right Side: Dynamic Real Product Slideshow (In Groups of 3) */}
+              {/* Right Side: Larger Dynamic Real Product Slideshow (In Groups of 3) */}
               <div
                 onMouseEnter={() => setHeroHovered(true)}
                 onMouseLeave={() => setHeroHovered(false)}
                 className="relative z-10 flex flex-col items-center lg:items-end gap-3 shrink-0 w-full lg:w-auto"
               >
                 {/* Product 3-Cards Row with Animated Slide Transition */}
-                <div className="relative min-h-[160px] sm:min-h-[175px] w-full flex items-center justify-center">
+                <div className="relative min-h-[200px] sm:min-h-[235px] lg:min-h-[260px] w-full flex items-center justify-center">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={heroSlide}
-                      initial={{ opacity: 0, x: 25, scale: 0.98 }}
+                      initial={{ opacity: 0, x: 30, scale: 0.98 }}
                       animate={{ opacity: 1, x: 0, scale: 1 }}
-                      exit={{ opacity: 0, x: -25, scale: 0.98 }}
-                      transition={{ duration: 0.4, ease: "easeInOut" }}
-                      className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-3.5"
+                      exit={{ opacity: 0, x: -30, scale: 0.98 }}
+                      transition={{ duration: 0.45, ease: "easeInOut" }}
+                      className="grid grid-cols-3 gap-2.5 sm:gap-4 lg:gap-4.5"
                     >
                       {(heroSlideGroups[heroSlide] || heroSlideGroups[0] || []).map((product) => {
                         const price = Number(product.price || 0) * NAIRA_PER_UNIT;
@@ -567,10 +563,10 @@ export default function HomePage() {
                           <div
                             key={product.id}
                             onClick={() => setQuickViewProduct(product)}
-                            className="group relative flex flex-col items-center justify-between rounded-2xl border border-white/25 bg-white/15 p-2.5 sm:p-3 backdrop-blur-xl shadow-xl transition-all duration-300 hover:scale-105 hover:bg-white/25 hover:border-amber-300/60 cursor-pointer w-[96px] sm:w-[115px] lg:w-[125px]"
+                            className="group relative flex flex-col items-center justify-between rounded-2xl sm:rounded-3xl border border-white/25 bg-white/15 p-3 sm:p-4 backdrop-blur-xl shadow-2xl transition-all duration-300 hover:scale-105 hover:bg-white/25 hover:border-amber-300/70 cursor-pointer w-[105px] sm:w-[140px] lg:w-[160px] xl:w-[170px]"
                             title={`Click to view ${product.name}`}
                           >
-                            <div className="h-14 w-14 sm:h-18 sm:w-18 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:rotate-1 transition-transform shrink-0">
+                            <div className="h-16 w-16 sm:h-24 sm:w-24 lg:h-28 lg:w-28 xl:h-32 xl:w-32 overflow-hidden rounded-xl sm:rounded-2xl bg-white shadow-md group-hover:rotate-1 transition-transform shrink-0">
                               <img
                                 src={getProductImage(product)}
                                 alt={product.name}
@@ -581,13 +577,13 @@ export default function HomePage() {
                                 }}
                               />
                             </div>
-                            <span className="mt-1.5 text-[10px] sm:text-[11px] font-black text-amber-300 group-hover:text-amber-200 line-clamp-1 text-center w-full">
+                            <span className="mt-2 text-[11px] sm:text-xs lg:text-sm font-black text-amber-300 group-hover:text-amber-200 line-clamp-1 text-center w-full">
                               {product.name}
                             </span>
-                            <span className="text-[9px] sm:text-[10px] text-white/80 font-medium line-clamp-1 text-center w-full">
-                              {isBemsOriginal ? "★ Bems Original" : product.category_name || "Fresh Harvest"}
+                            <span className="text-[10px] sm:text-[11px] text-white/80 font-medium line-clamp-1 text-center w-full">
+                              {isBemsOriginal ? "Bems Original" : product.category_name || "Fresh Harvest"}
                             </span>
-                            <span className="mt-1 rounded-full bg-black/40 px-2 py-0.5 text-[9px] font-extrabold text-white">
+                            <span className="mt-1.5 rounded-full bg-black/45 border border-white/10 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-black text-white shadow-xs">
                               ₦{price.toLocaleString("en-NG")}
                             </span>
                           </div>
@@ -597,30 +593,14 @@ export default function HomePage() {
                   </AnimatePresence>
                 </div>
 
-                {/* Slideshow Controls & Indicators */}
+                {/* Slideshow Arrow Controls Only (No dots, no tap hint) */}
                 {heroSlideGroups.length > 1 && (
-                  <div className="flex items-center justify-between w-full pt-1 px-1">
+                  <div className="flex items-center justify-end w-full pt-1 px-1">
                     <div className="flex items-center gap-1.5">
-                      {heroSlideGroups.map((_, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setHeroSlide(idx)}
-                          className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                            heroSlide === idx
-                              ? "w-6 bg-amber-400 shadow-xs shadow-amber-400/50"
-                              : "w-2 bg-white/30 hover:bg-white/60"
-                          }`}
-                          aria-label={`Go to slide ${idx + 1}`}
-                        />
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-200/80">
                       <button
                         type="button"
                         onClick={() => setHeroSlide((prev) => (prev === 0 ? heroSlideGroups.length - 1 : prev - 1))}
-                        className="h-6 w-6 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition cursor-pointer"
+                        className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-black/35 hover:bg-black/60 border border-white/20 text-white text-base sm:text-lg flex items-center justify-center transition hover:scale-105 cursor-pointer shadow-sm"
                         aria-label="Previous products"
                       >
                         ‹
@@ -628,12 +608,11 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => setHeroSlide((prev) => (prev + 1) % heroSlideGroups.length)}
-                        className="h-6 w-6 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition cursor-pointer"
+                        className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-black/35 hover:bg-black/60 border border-white/20 text-white text-base sm:text-lg flex items-center justify-center transition hover:scale-105 cursor-pointer shadow-sm"
                         aria-label="Next products"
                       >
                         ›
                       </button>
-                      <span className="ml-1 text-[9px] text-white/60 hidden sm:inline">Tap to preview</span>
                     </div>
                   </div>
                 )}
