@@ -1,420 +1,759 @@
-import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import api from "../services/api";
-import ProductCard from "../components/ui/ProductCard";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
+import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
+import api from "../services/api";
+import { NAIRA_PER_UNIT } from "../utils/currency";
+import { getProductImage } from "../utils/productImages";
+import Toast from "../components/ui/Toast";
 
-const HOME_CSS = `
-.home-grain {
-  position: absolute;
-  inset: 0;
-  opacity: 0.045;
-  mix-blend-mode: overlay;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-.home-blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-  z-index: 0;
-}
-.home-glass-card {
-  background: rgba(255,255,255,0.6);
-  border: 1px solid rgba(27,67,50,0.08);
-  backdrop-filter: blur(10px);
-}
-.hero-v2 {
-  background: radial-gradient(120% 100% at 100% 0%, #123626 0%, #0A1912 55%, #071008 100%);
-}
-.hero-topbar-chip {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.14);
-}
-.hero-video-blob-frame {
-  border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
-  animation: blobMorphA 18s ease-in-out infinite;
-  box-shadow: 0 40px 100px -30px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.06);
-}
-.hero-social-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255,255,255,0.7);
-  transition: all 0.2s ease;
-}
-.hero-social-icon:hover {
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.35);
-  color: #fff;
-}
-.hero-glass-blob {
-  position: absolute;
-  pointer-events: none;
-}
-.hero-glass-blob.tone-emerald {
-  background: linear-gradient(135deg, rgba(46,125,50,0.55), rgba(15,61,34,0.18));
-  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.08), inset -24px -24px 50px rgba(0,0,0,0.35);
-}
-.hero-glass-blob.tone-amber {
-  background: linear-gradient(135deg, rgba(245,124,0,0.4), rgba(43,27,0,0.14));
-  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.08), inset -24px -24px 50px rgba(0,0,0,0.3);
-}
-.hero-glass-blob.tone-frost {
-  background: linear-gradient(135deg, rgba(255,255,255,0.13), rgba(255,255,255,0.02));
-  box-shadow: inset 1px 1px 0 rgba(255,255,255,0.12), inset -24px -24px 50px rgba(0,0,0,0.25);
-}
-@keyframes blobMorphA {
-  0%, 100% { border-radius: 42% 58% 65% 35% / 45% 45% 55% 55%; }
-  33%      { border-radius: 60% 40% 30% 70% / 60% 35% 65% 40%; }
-  66%      { border-radius: 35% 65% 55% 45% / 40% 60% 40% 60%; }
-}
-@keyframes blobMorphB {
-  0%, 100% { border-radius: 65% 35% 45% 55% / 40% 55% 45% 60%; }
-  50%      { border-radius: 40% 60% 60% 40% / 60% 40% 55% 45%; }
-}
-/* Drifts a blob from its resting position out to (--float-x, --float-y) and
-   back — ease-in-out on a 0/50/100 keyframe gives it a natural slow-down/
-   reverse at each end, i.e. a ping-pong glide rather than a mechanical loop. */
-@keyframes blobFloat {
-  0%, 100% { transform: translate(0, 0); }
-  50%      { transform: translate(var(--float-x), var(--float-y)); }
-}
-`;
+const FREE_DELIVERY_THRESHOLD = 15000;
 
-// Large soft "frosted glass" blob panels forming the hero backdrop — sized,
-// positioned and timed by hand so the composition is stable across renders.
-// moveX/moveY/moveDur/moveDelay drive the ping-pong drift (blobFloat); each
-// blob gets its own direction, distance and speed so they desync naturally
-// instead of all bouncing in lockstep.
-const HERO_GLASS_BLOBS = [
-  { width: 340, height: 320, top: "-6%",  left: "38%", tone: "emerald", morph: "a", dur: 20, moveX: 70,  moveY: 50,  moveDur: 12, moveDelay: 0   },
-  { width: 460, height: 420, top: "8%",   left: "54%", tone: "frost",   morph: "b", dur: 26, moveX: -90, moveY: 60,  moveDur: 16, moveDelay: 1.5 },
-  { width: 300, height: 280, top: "48%",  left: "70%", tone: "amber",   morph: "a", dur: 22, moveX: 50,  moveY: -70, moveDur: 10, moveDelay: 3   },
-  { width: 150, height: 150, top: "4%",   left: "2%",  tone: "frost",   morph: "b", dur: 14, moveX: -40, moveY: 90,  moveDur: 8,  moveDelay: 0.7 },
+const CATEGORY_META = {
+  "Vegetables": { emoji: "🥬", bg: "#E8F5E9", color: "#2E7D32" },
+  "Grains & Cereals": { emoji: "🌾", bg: "#FFF8E1", color: "#F57F17" },
+  "Cooking Oils": { emoji: "🫒", bg: "#FFF3E0", color: "#E65100" },
+  "Legumes": { emoji: "🫘", bg: "#F3E5F5", color: "#7B1FA2" },
+  "Tubers & Roots": { emoji: "🍠", bg: "#EFEBE9", color: "#5D4037" },
+  "Spices & Seasonings": { emoji: "🌶️", bg: "#FFEBEE", color: "#C62828" },
+  "Fruits": { emoji: "🍉", bg: "#FCE4EC", color: "#AD1457" },
+  "Leafy Greens": { emoji: "🥗", bg: "#E8F5E9", color: "#1B5E20" },
+};
+
+const CHEF_PROMPTS = [
+  { icon: "🍲", text: "What can I cook with garri, tomatoes & eggs?" },
+  { icon: "🌾", text: "Authentic Nigerian Party Jollof recipe & ingredients" },
+  { icon: "🥗", text: "Healthy weekly Nigerian family meal plan" },
+  { icon: "🌶️", text: "Best seasoning substitutes for traditional soups" },
 ];
 
-function HeroGlassBlob({ b }) {
-  const morphName = b.morph === "b" ? "blobMorphB" : "blobMorphA";
+function getTimeGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function ProductGridCard({ product, onAdd, isAdded }) {
+  const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+  const price = Number(product.price || 0) * NAIRA_PER_UNIT;
+  const invalidPrice = !Number.isFinite(price) || price <= 0 || price > 1_000_000;
+  const isOutOfStock = stock <= 0 || product.available_for_sale === false || invalidPrice;
+  const isLowStock = stock > 0 && stock <= 5;
+  const rating = Math.min(5, Math.max(0, Number(product.avg_rating) || 0));
+
+  const isBemsOriginal = Boolean(
+    product.name?.toLowerCase().includes("bems") ||
+    product.brand?.toLowerCase().includes("bems") ||
+    product.is_bems_brand
+  );
+
   return (
-    <div
-      className={`hero-glass-blob tone-${b.tone}`}
-      style={{
-        width: b.width,
-        height: b.height,
-        top: b.top,
-        left: b.left,
-        "--float-x": `${b.moveX}px`,
-        "--float-y": `${b.moveY}px`,
-        animation: `${morphName} ${b.dur}s ease-in-out infinite, blobFloat ${b.moveDur}s ease-in-out infinite`,
-        animationDelay: `0s, ${b.moveDelay}s`,
-      }}
-    />
+    <article className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[#DFD6C2]/80 bg-white shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-[#143c2d]/40 hover:shadow-xl">
+      {/* Image & Badges */}
+      <Link to={`/product/${product.id}`} className="relative block aspect-[4/3] w-full overflow-hidden bg-[#FAF9F6]" aria-label={`View ${product.name}`}>
+        <img
+          src={getProductImage(product)}
+          alt={product.name}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = "/hero_food_4.jpg";
+          }}
+        />
+
+        {/* Top Badges */}
+        <div className="absolute inset-x-2.5 top-2.5 flex items-center justify-between gap-1 pointer-events-none">
+          {isBemsOriginal ? (
+            <span className="rounded-full bg-[#143c2d]/95 backdrop-blur px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">
+              ★ Bems Original
+            </span>
+          ) : product.is_featured ? (
+            <span className="rounded-full bg-[#143c2d] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-md">
+              Featured
+            </span>
+          ) : <span />}
+
+          {isLowStock && (
+            <span className="rounded-full bg-amber-500/90 px-2 py-0.5 text-[9px] font-extrabold text-white shadow-sm">
+              Only {stock} left
+            </span>
+          )}
+        </div>
+
+        {isOutOfStock && (
+          <div className="absolute inset-0 grid place-items-center bg-slate-900/60 backdrop-blur-[2px]">
+            <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-slate-800 shadow-md">
+              Out of stock
+            </span>
+          </div>
+        )}
+      </Link>
+
+      {/* Content */}
+      <div className="flex flex-1 flex-col p-4">
+        <div className="flex items-center justify-between gap-2 text-[10px] font-extrabold uppercase tracking-wider text-[#143c2d]/80">
+          <span>{product.category_name || "Farm Produce"}</span>
+          <span className="text-slate-400 font-medium normal-case">{product.unit || "Per item"}</span>
+        </div>
+
+        <h3 className="mt-1.5 min-h-[2.4rem] font-display text-sm sm:text-base font-bold leading-snug text-slate-900">
+          <Link to={`/product/${product.id}`} className="transition hover:text-[#c85a17]">
+            {product.name}
+          </Link>
+        </h3>
+
+        {/* Rating */}
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs">
+          {Number(product.review_count) > 0 ? (
+            <>
+              <span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
+                {"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}
+              </span>
+              <span className="text-[11px] font-bold text-slate-400">({product.review_count})</span>
+            </>
+          ) : (
+            <span className="text-[11px] font-bold text-slate-400">Fresh Harvest</span>
+          )}
+        </div>
+
+        {/* Price & Add to Cart */}
+        <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Price</p>
+            <p className="font-display text-base font-bold text-slate-900 truncate">
+              {invalidPrice ? "Unavailable" : `₦${price.toLocaleString("en-NG")}`}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onAdd(product)}
+            disabled={isOutOfStock}
+            className={`inline-flex h-9 items-center justify-center rounded-full px-4 text-xs font-extrabold transition-all duration-200 active:scale-95 ${
+              isAdded
+                ? "bg-[#1d6b45] text-white shadow-md"
+                : "bg-[#143c2d] text-white shadow-xs hover:bg-[#1a4e3b] hover:shadow-md"
+            } disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none`}
+            aria-label={`Add ${product.name} to basket`}
+          >
+            {isAdded ? "✓ Added" : "+ Add"}
+          </button>
+        </div>
+      </div>
+    </article>
   );
 }
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { addToCart, cartCount, cartSubtotal } = useCart();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [activeTab, setActiveTab] = useState("All");
+  const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("featured");
+  const [addedProducts, setAddedProducts] = useState({});
+  const [toast, setToast] = useState(null);
+  const [trackingCode, setTrackingCode] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+  const toastTimerRef = useRef(null);
 
-  // Load real catalog database products
-  const loadProducts = () => {
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
+  const loadData = async () => {
     setLoading(true);
     setLoadError(null);
-    Promise.all([api.get("/products"), api.get("/categories")])
-      .then(([p, c]) => {
-        setProducts(p.data.products || []);
-        const productCategoryIds = new Set(
-          (p.data.products || []).map((prod) => prod.category_id)
-        );
-        const categoriesWithStock = (c.data.categories || []).filter((cat) =>
-          productCategoryIds.has(cat.id)
-        );
-        setCategories(categoriesWithStock);
-      })
-      .catch((err) => {
-        console.error("Error loading products:", err);
-        setLoadError(err.response?.data?.message || "Failed to load products");
-      })
-      .finally(() => setLoading(false));
+    try {
+      const [prodRes, catRes] = await Promise.all([
+        api.get("/products", { params: { limit: 200 } }),
+        api.get("/categories"),
+      ]);
+      setProducts(prodRes.data?.products || []);
+      setCategories(catRes.data?.categories || []);
+    } catch (err) {
+      console.error("Error loading home dashboard:", err);
+      setLoadError(err.response?.data?.message || "Failed to load catalogue. Please refresh.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    loadProducts();
+    loadData();
   }, []);
 
-  // Hero showcase — real, currently-in-stock products (prefers featured ones)
-  // instead of hardcoded ids that could point at deleted/reseeded products.
-  const heroProducts = useMemo(() => {
-    const inStock = products.filter((p) => (p.stock ?? 1) > 0);
-    const featured = inStock.filter((p) => p.is_featured);
-    return (featured.length >= 3 ? featured : inStock).slice(0, 3);
-  }, [products]);
+  // Reset pagination on filter or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, sortBy]);
 
-  // Filtered products list
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    if (activeTab === "All") return matchesSearch;
-    return matchesSearch && categories.find((c) => c.name === activeTab)?.id === p.category_id;
-  });
+  const handleAdd = (product) => {
+    const displayPrice = Number(product.price || 0) * NAIRA_PER_UNIT;
+    if (!Number.isFinite(displayPrice) || displayPrice <= 0 || displayPrice > 1_000_000) return;
+
+    addToCart(product);
+    setAddedProducts((prev) => ({ ...prev, [product.id]: true }));
+
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({
+      message: `✓ Added ${product.name} to basket!`,
+      type: "success",
+    });
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null);
+    }, 2500);
+
+    setTimeout(() => {
+      setAddedProducts((prev) => ({ ...prev, [product.id]: false }));
+    }, 1200);
+  };
+
+  const handleTrackingSubmit = (e) => {
+    e.preventDefault();
+    const code = trackingCode.trim().replace(/^#/, "").toUpperCase();
+    navigate(code ? `/track-order?code=${encodeURIComponent(code)}` : "/track-order");
+  };
+
+  const handlePromptClick = (promptText) => {
+    navigate("/chef-chat", { state: { initialPrompt: promptText } });
+  };
+
+  // Customer identity
+  const customerName = user?.first_name || user?.name || user?.email?.split("@")[0] || "Chef";
+  const greeting = getTimeGreeting();
+
+  // Delivery progress
+  const freeDeliveryProgress = Math.min(100, Math.round((cartSubtotal / FREE_DELIVERY_THRESHOLD) * 100));
+  const amountToFreeDelivery = Math.max(0, FREE_DELIVERY_THRESHOLD - cartSubtotal);
+
+  // Available categories list
+  const categoryTabs = useMemo(() => {
+    const list = [{ id: "all", name: "All Products", emoji: "🛒" }];
+    list.push({ id: "bems_originals", name: "★ Bems Originals", emoji: "🌾" });
+
+    categories.forEach((cat) => {
+      const meta = CATEGORY_META[cat.name] || { emoji: "🌱" };
+      list.push({ id: cat.name, name: cat.name, emoji: meta.emoji });
+    });
+
+    list.push({ id: "featured", name: "Featured", emoji: "✨" });
+    return list;
+  }, [categories]);
+
+  // Filtered & Sorted Products
+  const filteredProducts = useMemo(() => {
+    let result = [...products];
+
+    // Category Filter
+    if (activeTab === "bems_originals") {
+      result = result.filter(
+        (p) => p.name?.toLowerCase().includes("bems") || p.brand?.toLowerCase().includes("bems") || p.is_bems_brand
+      );
+    } else if (activeTab === "featured") {
+      result = result.filter((p) => p.is_featured);
+    } else if (activeTab !== "all") {
+      result = result.filter(
+        (p) =>
+          p.category_name?.toLowerCase() === activeTab.toLowerCase() ||
+          p.category_name?.toLowerCase().includes(activeTab.toLowerCase())
+      );
+    }
+
+    // Search Filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (p) =>
+          p.name?.toLowerCase().includes(q) ||
+          p.category_name?.toLowerCase().includes(q) ||
+          p.brand?.toLowerCase().includes(q)
+      );
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      if (sortBy === "price-low") {
+        return Number(a.price || 0) - Number(b.price || 0);
+      }
+      if (sortBy === "price-high") {
+        return Number(b.price || 0) - Number(a.price || 0);
+      }
+      if (sortBy === "rating") {
+        return Number(b.avg_rating || 0) - Number(a.avg_rating || 0);
+      }
+      if (sortBy === "newest") {
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      }
+      return Number(Boolean(b.is_featured)) - Number(Boolean(a.is_featured));
+    });
+
+    return result;
+  }, [products, activeTab, searchQuery, sortBy]);
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   return (
     <PageWrapper>
-      <div className="min-h-screen text-gray-800 font-sans antialiased overflow-x-hidden" style={{ backgroundColor: "#FBF8F3" }}>
-        <style>{HOME_CSS}</style>
-
-        {/* ────────────────── HERO SECTION ────────────────── */}
-        <section className="hero-v2 relative z-0 overflow-hidden pt-10 pb-20 md:pt-12 md:pb-28">
-          <div className="home-grain" />
-
-          {/* Large frosted-glass blob composition, backing the video */}
-          <div className="absolute inset-0 z-[1] pointer-events-none overflow-hidden">
-            {HERO_GLASS_BLOBS.map((b, i) => (
-              <HeroGlassBlob key={i} b={b} />
-            ))}
-          </div>
-
-          <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10">
-
-            {/* Hero top row — small brand mark, echoing the reference template's logo lockup */}
-            <div className="flex items-center justify-center lg:justify-start mb-12 md:mb-16">
-              <span className="hero-topbar-chip inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-emerald-300 px-3.5 py-1.5 rounded-full">
-                🌾 Fresh from Nigerian farms
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-14 items-center">
-
-              {/* Hero Left Content */}
-              <div className="lg:col-span-6 text-center lg:text-left flex flex-col items-center lg:items-start">
-                <h1 className="uppercase text-[38px] md:text-[54px] lg:text-[62px] leading-[1.08] font-extrabold mb-6 font-display tracking-tight">
-                  <span className="text-white">From Food Barn</span>
-                  <br />
-                  <span className="text-[#FFC876]">to Your Door</span>
-                </h1>
-                <p className="text-white/55 text-[15px] md:text-[16px] leading-relaxed max-w-md mb-9 font-medium">
-                  Explore the endless possibilities of food with Savory. With exquisite local Nigerian cuisines, you'll never run out of options. Sign up now and embark on your delicious journey.
-                </p>
-
-                <div className="flex flex-wrap items-center gap-6 justify-center lg:justify-start w-full mb-10">
-                  <a
-                    href="#menu"
-                    className="bg-[#2E7D32] hover:bg-emerald-600 text-white font-bold text-[13px] uppercase tracking-wide px-8 py-3.5 rounded-full shadow-lg shadow-emerald-900/40 transition-all duration-200"
-                  >
-                    Order Now
-                  </a>
-                  <button
-                    onClick={() => navigate("/products")}
-                    className="text-white/70 hover:text-white font-semibold text-[14px] transition-colors duration-200"
-                  >
-                    Browse products →
-                  </button>
+      <div className="min-h-screen bg-[#F8F5EE] text-slate-900 pb-20">
+        {/* ── CUSTOMER HERO & WELCOME HUB ── */}
+        <section className="relative overflow-hidden border-b border-[#DFD6C2] bg-gradient-to-b from-[#EDE5D5]/80 via-[#F8F5EE] to-[#F8F5EE] px-5 pt-8 pb-12 sm:px-8 lg:px-12 lg:pt-10">
+          <div className="mx-auto max-w-7xl">
+            {/* Top row: Greeting & Quick KPI Bar */}
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#DFD6C2] bg-white px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-wider text-[#143c2d] shadow-2xs">
+                  <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse" />
+                  Farm-to-Doorstep Marketplace
                 </div>
-
+                <h1 className="mt-3 font-display text-3xl font-bold tracking-tight text-[#143c2d] sm:text-4xl lg:text-5xl">
+                  {greeting}, <span className="text-[#c85a17]">{customerName}</span>!
+                </h1>
+                <p className="mt-2 text-sm sm:text-base text-slate-600 max-w-xl">
+                  What are you cooking today? Explore fresh farm harvests, stone-free staples, or ask Chef Bems for recipes.
+                </p>
               </div>
 
-              {/* Hero Right Visual: farm video bleeding into the glass blobs */}
-              <div className="lg:col-span-6 relative w-full flex justify-center">
-                <div className="relative w-full max-w-[480px]">
-                  <div className="hero-video-blob-frame relative overflow-hidden aspect-[4/5]">
-                    <video
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      className="absolute inset-0 w-full h-full object-cover"
-                      src="https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_960/v1786166058/A_warm_sun_drenched_Nigerian_f7oi4i.mp4"
-                    />
+              {/* Live Basket & Order Status Chips */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-3 rounded-2xl border border-[#DFD6C2] bg-white p-3.5 shadow-sm">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#143c2d]/10 text-xl shadow-inner">
+                    🛒
                   </div>
+                  <div>
+                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Your Basket</p>
+                    <p className="font-display text-sm font-bold text-[#143c2d]">
+                      {cartCount} {cartCount === 1 ? "item" : "items"} · ₦{cartSubtotal.toLocaleString("en-NG")}
+                    </p>
+                  </div>
+                  <Link
+                    to="/cart"
+                    className="ml-2 rounded-full bg-[#143c2d] px-4 py-2 text-xs font-extrabold text-white transition hover:bg-[#1a4e3b]"
+                  >
+                    View
+                  </Link>
+                </div>
 
-                  {heroProducts.length > 0 && (
-                    <motion.div
-                      initial={{ y: 0 }}
-                      animate={{ y: [0, -8, 0] }}
-                      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                      className="hero-badge-card absolute -bottom-6 -left-4 md:-left-8 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl"
-                    >
-                      <div className="flex -space-x-3">
-                        {heroProducts.slice(0, 3).map((p) => (
-                          <div key={p.id} className="w-9 h-9 rounded-full border-2 border-white overflow-hidden bg-white shrink-0">
-                            <img src={p.image_url} alt="" className="w-full h-full object-cover" />
-                          </div>
-                        ))}
-                      </div>
-                      <div className="text-left">
-                        <div className="text-gray-800 text-[13px] font-bold leading-tight">Farm fresh, daily</div>
-                        <div className="text-gray-500 text-[11px] font-medium leading-tight">Straight from the source</div>
-                      </div>
-                    </motion.div>
+                <Link
+                  to="/orders"
+                  className="flex items-center gap-2.5 rounded-2xl border border-[#DFD6C2] bg-white px-4 py-3 text-xs font-extrabold text-slate-800 shadow-sm transition hover:border-[#143c2d] hover:text-[#143c2d]"
+                >
+                  <span>📦</span>
+                  <span>Order History</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Delivery Progress Bar */}
+            <div className="mt-8 rounded-2xl border border-[#DFD6C2] bg-white p-4 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-bold">
+                <div className="flex items-center gap-2 text-[#143c2d]">
+                  <span className="text-base">🚚</span>
+                  {cartSubtotal >= FREE_DELIVERY_THRESHOLD ? (
+                    <span className="font-extrabold text-emerald-800">
+                      🎉 You qualified for FREE standard delivery!
+                    </span>
+                  ) : (
+                    <span>
+                      Add <span className="font-extrabold text-[#c85a17]">₦{amountToFreeDelivery.toLocaleString("en-NG")}</span> more to unlock <span className="font-extrabold text-[#143c2d]">Free Delivery</span> (orders over ₦15,000)
+                    </span>
                   )}
+                </div>
+                <span className="text-slate-500">{freeDeliveryProgress}% of free delivery goal</span>
+              </div>
+              <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-[#143c2d] transition-all duration-500"
+                  style={{ width: `${freeDeliveryProgress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── QUICK ACTION BENTO GRID ── */}
+        <section className="px-5 py-8 sm:px-8 lg:px-12">
+          <div className="mx-auto grid max-w-7xl gap-5 sm:grid-cols-2 lg:grid-cols-12">
+            {/* Tile 1: Chef Bems Copilot (Spans 7 cols on desktop) */}
+            <div className="relative overflow-hidden rounded-3xl bg-[#143c2d] p-6 text-white shadow-lg lg:col-span-7 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-white/10 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-amber-300">
+                    👨‍🍳 Chef Bems AI Assistant
+                  </span>
+                  <span className="text-xs text-emerald-100/70 font-bold">Instant meal help</span>
+                </div>
+                <h2 className="mt-3 font-display text-2xl font-bold sm:text-3xl">
+                  Not sure what to cook tonight?
+                </h2>
+                <p className="mt-1 text-xs sm:text-sm leading-relaxed text-emerald-50/80">
+                  Ask Chef Bems for recipes, grocery list suggestions, or ingredient alternatives based on what’s fresh in our shop.
+                </p>
+              </div>
+
+              {/* Quick Prompt Pills */}
+              <div className="mt-5 space-y-2">
+                <p className="text-[11px] font-extrabold uppercase tracking-wider text-amber-300/90">Try asking:</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {CHEF_PROMPTS.map((prompt) => (
+                    <button
+                      key={prompt.text}
+                      type="button"
+                      onClick={() => handlePromptClick(prompt.text)}
+                      className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 p-2.5 text-left text-xs font-bold text-white transition hover:bg-white hover:text-[#143c2d]"
+                    >
+                      <span className="text-base shrink-0">{prompt.icon}</span>
+                      <span className="truncate">{prompt.text}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-between border-t border-white/10 pt-4">
+                <Link
+                  to="/chef-chat"
+                  className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-2.5 text-xs font-extrabold uppercase tracking-wider text-emerald-950 transition hover:bg-white"
+                >
+                  <span>Open Chef Bems</span>
+                  <span aria-hidden="true">→</span>
+                </Link>
+                <span className="text-xs text-emerald-100/70 font-semibold">Ready to help 24/7</span>
+              </div>
+            </div>
+
+            {/* Tile 2: Bems Originals & Signature Harvests (Spans 5 cols) */}
+            <div className="relative overflow-hidden rounded-3xl border border-[#DFD6C2] bg-gradient-to-br from-[#EFE8DC] to-white p-6 shadow-sm lg:col-span-5 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#143c2d]">
+                  <span>🌾</span> In-House Packaged
+                </div>
+                <h3 className="mt-2 font-display text-2xl font-bold text-[#143c2d]">
+                  Bems Farms Originals
+                </h3>
+                <p className="mt-2 text-xs sm:text-sm leading-relaxed text-slate-600">
+                  Stone-free rice, carefully sorted legumes, and pure unadulterated cooking oils direct from our cultivation farms.
+                </p>
+              </div>
+
+              {/* Fast Feature Bullets */}
+              <div className="mt-4 space-y-2 text-xs font-bold text-slate-700">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#143c2d]">✓</span> 100% Guaranteed Stone-Free Grains
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[#143c2d]">✓</span> Cold-Pressed & Natural Cooking Oils
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[#143c2d]">✓</span> Harvested at peak freshness
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("bems_originals");
+                    document.getElementById("marketplace-section")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="w-full rounded-full bg-[#143c2d] py-3 text-center text-xs font-extrabold uppercase tracking-wider text-amber-300 transition hover:bg-[#1a4e3b] hover:text-white"
+                >
+                  View Bems Originals →
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAST ORDER TRACKER CARD ── */}
+        <section className="px-5 py-2 sm:px-8 lg:px-12">
+          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 rounded-2xl border border-[#DFD6C2] bg-[#EFE8DC] p-5 sm:flex-row shadow-xs">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🚚</span>
+              <div>
+                <h4 className="font-display text-base font-bold text-[#143c2d]">Track an active harvest delivery</h4>
+                <p className="text-xs text-slate-600">Enter your order code to see driver progress in real-time.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleTrackingSubmit} className="flex w-full sm:w-auto items-center gap-2">
+              <input
+                type="text"
+                value={trackingCode}
+                onChange={(e) => setTrackingCode(e.target.value.toUpperCase())}
+                placeholder="Code, e.g. BF-ABC12345"
+                className="w-full sm:w-56 rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-mono font-bold uppercase outline-none focus:border-[#143c2d]"
+              />
+              <button
+                type="submit"
+                className="shrink-0 rounded-full bg-[#143c2d] px-5 py-2 text-xs font-extrabold text-white transition hover:bg-[#1a4e3b]"
+              >
+                Track →
+              </button>
+            </form>
+          </div>
+        </section>
+
+        {/* ── MAIN MARKETPLACE CATALOGUE ── */}
+        <section id="marketplace-section" className="scroll-mt-24 px-5 pt-12 pb-16 sm:px-8 lg:px-12">
+          <div className="mx-auto max-w-7xl">
+            {/* Header & Controls */}
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between border-b border-[#DFD6C2] pb-6">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#143c2d]">
+                  Farm Produce Catalogue
+                </p>
+                <h2 className="mt-1 font-display text-2xl sm:text-3xl font-bold text-slate-900">
+                  Fresh harvests for your kitchen
+                </h2>
+                <p className="mt-1 text-xs sm:text-sm text-slate-600">
+                  Showing {filteredProducts.length} {filteredProducts.length === 1 ? "product" : "products"} with live prices & stock
+                </p>
+              </div>
+
+              {/* Search & Sort Controls */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {/* Search Bar */}
+                <div className="relative min-w-[240px]">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" aria-hidden="true">🔍</span>
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search rice, tomatoes, oils…"
+                    className="w-full rounded-full border border-slate-300 bg-white py-2 pl-9 pr-8 text-xs outline-none focus:border-[#143c2d] focus:ring-1 focus:ring-[#143c2d]"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-700"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Sort Dropdown */}
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 outline-none focus:border-[#143c2d]"
+                >
+                  <option value="featured">Sort: Featured</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="rating">Highest Rated</option>
+                  <option value="newest">Newest Arrivals</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Category Filter Pills Carousel */}
+            <div className="mt-6 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+              {categoryTabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-extrabold transition-all ${
+                      isActive
+                        ? tab.id === "bems_originals"
+                          ? "bg-[#143c2d] text-amber-300 ring-2 ring-amber-400/40 shadow-sm"
+                          : "bg-[#143c2d] text-white shadow-sm"
+                        : "border border-[#DFD6C2] bg-white text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span>{tab.emoji}</span>
+                    <span>{tab.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Product Grid State */}
+            {loadError && (
+              <div role="alert" className="mt-8 flex flex-col items-center rounded-3xl border border-red-200 bg-red-50 p-8 text-center">
+                <p className="font-display text-lg font-bold text-red-900">{loadError}</p>
+                <button
+                  type="button"
+                  onClick={loadData}
+                  className="mt-4 rounded-full bg-[#143c2d] px-6 py-2.5 text-xs font-extrabold text-white"
+                >
+                  Try loading again
+                </button>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-y-6">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <div key={index} className="overflow-hidden rounded-2xl border border-[#DFD6C2] bg-white shadow-xs">
+                    <div className="aspect-[4/3] animate-pulse bg-[#EDE5D5]" />
+                    <div className="space-y-2.5 p-4">
+                      <div className="h-2.5 w-16 animate-pulse rounded-full bg-[#DFD6C2]" />
+                      <div className="h-4 w-4/5 animate-pulse rounded-md bg-[#DFD6C2]" />
+                      <div className="h-3 w-1/2 animate-pulse rounded-md bg-[#DFD6C2]/60" />
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="h-4 w-14 animate-pulse rounded-md bg-[#DFD6C2]" />
+                        <div className="h-7 w-14 animate-pulse rounded-full bg-[#143c2d]/20" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="mt-12 rounded-3xl border border-slate-200 bg-white p-12 text-center shadow-xs">
+                <p className="text-3xl">🌾</p>
+                <h3 className="mt-3 font-display text-xl font-bold text-slate-800">No products matched your selection</h3>
+                <p className="mt-1 text-xs text-slate-500">Try changing your search query or selecting another category.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("all");
+                    setSearchQuery("");
+                  }}
+                  className="mt-5 rounded-full bg-[#143c2d] px-6 py-2.5 text-xs font-extrabold text-white"
+                >
+                  Reset all filters
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="mt-8 grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 sm:gap-5">
+                  {paginatedProducts.map((product) => (
+                    <ProductGridCard
+                      key={product.id}
+                      product={product}
+                      onAdd={handleAdd}
+                      isAdded={Boolean(addedProducts[product.id])}
+                    />
+                  ))}
+                </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-[#DFD6C2] pt-6 sm:flex-row">
+                    <p className="text-xs font-bold text-slate-500">
+                      Showing <span className="font-extrabold text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span>–<span className="font-extrabold text-slate-900">{Math.min(currentPage * itemsPerPage, filteredProducts.length)}</span> of <span className="font-extrabold text-slate-900">{filteredProducts.length}</span> products
+                    </p>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-extrabold text-slate-700 transition hover:border-[#143c2d] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        ‹ Prev
+                      </button>
+
+                      {Array.from({ length: totalPages }).map((_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`h-8 w-8 rounded-full text-xs font-extrabold transition ${
+                              currentPage === pageNum
+                                ? "bg-[#143c2d] text-white shadow-xs"
+                                : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-extrabold text-slate-700 transition hover:border-[#143c2d] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Next ›
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Bottom Full Shop Link Banner */}
+            <div className="mt-12 flex flex-col items-center justify-between gap-4 rounded-3xl border border-[#DFD6C2] bg-white p-6 sm:flex-row shadow-sm">
+              <div>
+                <h4 className="font-display text-lg font-bold text-[#143c2d]">Looking for bulk grocery orders or specific staples?</h4>
+                <p className="mt-0.5 text-xs text-slate-600">Browse the entire store inventory on our dedicated catalogue page.</p>
+              </div>
+              <Link
+                to="/products"
+                className="inline-flex rounded-full bg-[#143c2d] px-6 py-3 text-xs font-extrabold uppercase tracking-wider text-white shadow-xs transition hover:bg-[#1a4e3b]"
+              >
+                Browse All Products →
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ── BUYER TRUST & FARM QUALITY GUARANTEE ── */}
+        <section className="border-t border-[#DFD6C2] bg-[#EFE8DC] px-5 py-12 sm:px-8 lg:px-12">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="flex items-start gap-3.5 rounded-2xl bg-white p-4 shadow-2xs">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-xl text-[#143c2d]">🌾</span>
+                <div>
+                  <h5 className="font-display text-sm font-bold text-[#143c2d]">100% Stone-Free</h5>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">Mechanically sorted grains and rice for clean, hassle-free cooking.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3.5 rounded-2xl bg-white p-4 shadow-2xs">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-xl text-amber-700">🌱</span>
+                <div>
+                  <h5 className="font-display text-sm font-bold text-[#143c2d]">Daily Farm Freshness</h5>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">Harvested and packaged with zero artificial ripening agents.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3.5 rounded-2xl bg-white p-4 shadow-2xs">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-xl text-blue-700">🔒</span>
+                <div>
+                  <h5 className="font-display text-sm font-bold text-[#143c2d]">Monnify Protected</h5>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">Fast and encrypted checkout supporting Cards, Bank Transfer & USSD.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3.5 rounded-2xl bg-white p-4 shadow-2xs">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-purple-50 text-xl text-purple-700">🚚</span>
+                <div>
+                  <h5 className="font-display text-sm font-bold text-[#143c2d]">Doorstep Dispatch</h5>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600">Live order tracking and careful packaging for all food goods.</p>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-      {/* ────────────────── WHY CHOOSE US? ────────────────── */}
-      <section id="why-choose-us" className="py-20 dark:bg-neutral-950 transition-colors duration-300" style={{ backgroundColor: "#FBF8F3" }}>
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
-
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-2xl md:text-3xl font-extrabold text-[#2E7D32] dark:text-emerald-400 tracking-tight uppercase mb-4 font-display">
-              Why Choose Us?
-            </h2>
-            <p className="text-gray-500 dark:text-neutral-400 font-medium text-[15px] leading-relaxed">
-              We are No.1 at preparing the best Nigerian delicacies that soothe your taste whether you are an indigene or a foreigner.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            {/* Box 1 */}
-            <div className="home-glass-card p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
-              <div style={{fontSize:'1.35em'}} className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">📁</div>
-              <h3 className="font-bold text-[16px] text-gray-800 dark:text-white mb-2">Best Quality</h3>
-              <p className="text-gray-500 dark:text-neutral-400 text-[12.5px] leading-relaxed">
-                We create the best dishes from fresh farm produce to give you healthy consumption as much as we can.
-              </p>
-            </div>
-
-            {/* Box 2 */}
-            <div className="home-glass-card p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
-              <div style={{fontSize:'1.35em'}} className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">🍲</div>
-              <h3 className="font-bold text-[16px] text-gray-800 dark:text-white mb-2">Variety of Dishes</h3>
-              <p className="text-gray-500 dark:text-neutral-400 text-[12.5px] leading-relaxed">
-                We bring to live several local cuisines from the deep roots of Nigeria to soothe your taste buds.
-              </p>
-            </div>
-
-            {/* Box 3 */}
-            <div className="home-glass-card p-8 rounded-3xl text-center flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
-              <div style={{fontSize:'1.35em'}} className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-[#2E7D32] dark:text-emerald-400 flex items-center justify-center text-xl mb-5">🎁</div>
-              <h3 className="font-bold text-[16px] text-gray-800 dark:text-white mb-2">Reusable Packs</h3>
-              <p className="text-gray-500 dark:text-neutral-400 text-[12.5px] leading-relaxed">
-                Our food packaging are durable and can be reused at home for food packs, we charge nothing for.
-              </p>
-            </div>
-
-          </div>
-
-        </div>
-      </section>
-
-      {/* ────────────────── REAL PRODUCT CATALOGUE (MAINTAINS SYSTEM FUNCTIONALITY) ────────────────── */}
-      <section id="menu" className="py-20 dark:bg-neutral-900 transition-colors duration-300" style={{ backgroundColor: "#F3EDE1" }}>
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
-
-          <div className="text-center mb-12">
-            <span className="text-xs font-bold tracking-widest text-[#F57C00] uppercase">Store Catalogue</span>
-            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mt-1 mb-2 font-display">Our Fresh Farm Products</h2>
-            <div className="w-12 h-1 bg-[#2E7D32] mx-auto rounded-full mb-8" />
-            
-            {/* Catalog search bar */}
-            <input
-              type="text"
-              placeholder="Search farm fresh ingredients..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-md w-full px-5 py-3 border-2 border-gray-150 dark:border-neutral-800 focus:border-[#2E7D32] rounded-full text-[14px] font-medium outline-none transition-all placeholder-gray-300 bg-white dark:bg-neutral-950 dark:text-white"
-            />
-          </div>
-
-          {/* Categories Tab selectors */}
-          <div className="flex justify-start md:justify-center gap-2 border-b border-gray-200/50 dark:border-neutral-800 pb-4 mb-8 overflow-x-auto hide-scrollbar">
-            <button
-              onClick={() => setActiveTab("All")}
-              className={`whitespace-nowrap shrink-0 text-xs px-4 py-2 rounded-full font-bold border transition-colors ${
-                activeTab === "All"
-                  ? "bg-[#2E7D32] border-[#2E7D32] text-white shadow-sm"
-                  : "bg-white dark:bg-neutral-950 border-gray-100 dark:border-neutral-800 text-gray-500 dark:text-neutral-450 hover:border-gray-200 dark:hover:border-neutral-700"
-              }`}
-            >
-              All Categories
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveTab(cat.name)}
-                className={`whitespace-nowrap shrink-0 text-xs px-4 py-2 rounded-full font-bold border transition-colors ${
-                  activeTab === cat.name
-                    ? "bg-[#2E7D32] border-[#2E7D32] text-white shadow-sm"
-                    : "bg-white dark:bg-neutral-950 border-gray-100 dark:border-neutral-800 text-gray-500 dark:text-neutral-450 hover:border-gray-200 dark:hover:border-neutral-700"
-                }`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
-
-          {/* Loader or Product grid */}
-          {loadError && (
-            <div
-              style={{
-                backgroundColor: "#FEF2F2",
-                border: "1px solid #FECACA",
-                borderRadius: "14px",
-                padding: "16px 20px",
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                marginBottom: "20px",
-              }}
-            >
-              <span style={{ fontSize: "27" }}>⚠️</span>
-              <div>
-                <p style={{ fontWeight: 700, color: "#DC2626", margin: "0 0 4px" }}>Failed to load products</p>
-                <p style={{ fontSize: "13px", color: "#DC2626", margin: 0 }}>{loadError}</p>
-              </div>
-              <button
-                onClick={loadProducts}
-                style={{
-                  marginLeft: "auto",
-                  padding: "8px 16px",
-                  backgroundColor: "#DC2626",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  fontSize: "13px",
-                }}
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-56 bg-gray-50 animate-pulse rounded-2xl" />
-              ))}
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <p className="text-center text-gray-400 font-semibold py-12">No products found matching filters.</p>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-              {filteredProducts.slice(0, 10).map((p, i) => (
-                <ProductCard key={p.id} product={p} index={i} />
-              ))}
-            </div>
-          )}
-
-        </div>
-      </section>
-
+        {/* Floating Toast Feedback */}
+        <Toast toast={toast} onClose={() => setToast(null)} />
       </div>
     </PageWrapper>
   );
