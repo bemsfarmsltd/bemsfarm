@@ -337,86 +337,138 @@ export default function HomePage() {
           <div className="mx-auto max-w-[1600px] w-full">
             <div
               style={{
-                background: "linear-gradient(135deg, #143c2d 0%, #1c523e 60%, #153e2f 100%)",
+                background: "radial-gradient(ellipse at 85% 20%, #1e5a42 0%, #143c2d 50%, #0d281e 100%)",
               }}
-              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-7 md:p-8 text-white shadow-md border border-[#143c2d]/20 flex flex-col md:flex-row md:items-center md:justify-between gap-6"
+              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-7 md:p-9 text-white shadow-xl border border-emerald-800/40 flex flex-col md:flex-row md:items-center md:justify-between gap-6"
             >
+              {/* Organic Topographic & Botanical Background SVG Design Pattern */}
+              <svg
+                className="absolute inset-0 h-full w-full pointer-events-none opacity-20"
+                xmlns="http://www.w3.org/2000/svg"
+                preserveAspectRatio="none"
+                viewBox="0 0 1000 300"
+              >
+                <defs>
+                  <linearGradient id="hero-line-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#34d399" stopOpacity="0.4" />
+                    <stop offset="50%" stopColor="#fbbf24" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                {/* Organic Farm Field Contour Waves */}
+                <path
+                  d="M0,80 C200,160 350,20 600,120 C850,220 950,50 1000,90 L1000,300 L0,300 Z"
+                  fill="none"
+                  stroke="url(#hero-line-grad)"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M0,140 C250,220 400,80 650,180 C800,240 900,120 1000,160"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.08)"
+                  strokeWidth="1.5"
+                  strokeDasharray="4 6"
+                />
+                <path
+                  d="M0,200 C300,280 500,140 750,230 C900,280 950,190 1000,220"
+                  fill="none"
+                  stroke="rgba(251,191,36,0.15)"
+                  strokeWidth="1"
+                />
+                {/* Decorative Geometric Rings */}
+                <circle cx="850" cy="150" r="140" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                <circle cx="850" cy="150" r="90" fill="none" stroke="rgba(251,191,36,0.08)" strokeWidth="1" />
+                <circle cx="150" cy="40" r="110" fill="none" stroke="rgba(52,211,153,0.06)" strokeWidth="1" />
+              </svg>
+
+              {/* Ambient Radiant Glow Highlights */}
+              <div
+                className="absolute -right-16 -top-16 h-64 w-64 rounded-full pointer-events-none opacity-30"
+                style={{
+                  background: "radial-gradient(circle, rgba(245,158,11,0.6) 0%, transparent 70%)",
+                  filter: "blur(40px)",
+                }}
+              />
+              <div
+                className="absolute -left-10 -bottom-10 h-56 w-56 rounded-full pointer-events-none opacity-25"
+                style={{
+                  background: "radial-gradient(circle, rgba(52,211,153,0.5) 0%, transparent 70%)",
+                  filter: "blur(35px)",
+                }}
+              />
+
               {/* Left Side: Greeting & Trust Badges */}
               <div className="relative z-10 max-w-lg">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 backdrop-blur-xs">
-                  <span>🌾</span>
-                  <span>Direct From Farm To Table</span>
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-amber-300 border border-white/15 backdrop-blur-md shadow-xs">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>🌾 Direct From Farm To Table</span>
                 </div>
-                <h1 className="mt-2 font-display text-lg sm:text-2xl md:text-3xl font-black leading-tight text-white">
-                  {greeting}, <span className="text-amber-300">{customerName}</span>!
+                <h1 className="mt-2.5 font-display text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black leading-tight text-white drop-shadow-xs">
+                  {greeting},{" "}
+                  <span className="bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-transparent">
+                    {customerName}
+                  </span>
+                  !
                 </h1>
-                <p className="mt-1 text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
+                <p className="mt-1.5 text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-normal">
                   Shop 100% stone-free grains, cold-pressed oils, and fresh harvests delivered straight to your doorstep.
                 </p>
 
                 {/* Quick Trust Badges */}
-                <div className="mt-3.5 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs font-bold text-white">
-                  <span className="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-0.5">
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-[10px] sm:text-xs font-bold text-white">
+                  <span className="flex items-center gap-1.5 rounded-full bg-black/30 border border-white/10 px-3 py-1 backdrop-blur-xs shadow-xs">
                     🚚 Doorstep Delivery
                   </span>
-                  <span className="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-0.5 text-amber-300">
+                  <span className="flex items-center gap-1.5 rounded-full bg-black/30 border border-amber-400/20 px-3 py-1 text-amber-300 backdrop-blur-xs shadow-xs">
                     ✨ 100% Stone-Free
                   </span>
-                  <span className="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-0.5">
+                  <span className="flex items-center gap-1.5 rounded-full bg-black/30 border border-white/10 px-3 py-1 backdrop-blur-xs shadow-xs">
                     🔒 Secure Payment
                   </span>
                 </div>
               </div>
 
-              {/* Right Side: Visual Produce Showcase */}
+              {/* Right Side: Visual Produce Showcase with Frosted Glass Styling */}
               <div className="relative z-10 hidden md:flex items-center gap-3 lg:gap-4 shrink-0">
                 {/* Produce Card 1: Rice */}
-                <div className="flex flex-col items-center rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-md shadow-lg transition-transform hover:scale-105">
-                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-xs">
+                <div className="group flex flex-col items-center rounded-2xl border border-white/25 bg-white/12 p-3 backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 hover:bg-white/20 hover:border-amber-300/40">
+                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:rotate-1 transition-transform">
                     <img
                       src="/hero_food_1.jpg"
                       alt="Stone-Free Rice"
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  <span className="mt-2 text-[11px] font-extrabold text-amber-300">Stone-Free Rice</span>
-                  <span className="text-[10px] text-white/80">★ Bems Original</span>
+                  <span className="mt-2 text-[11px] font-extrabold text-amber-300 group-hover:text-amber-200">Stone-Free Rice</span>
+                  <span className="text-[10px] text-white/80 font-medium">★ Bems Original</span>
                 </div>
 
                 {/* Produce Card 2: Yam */}
-                <div className="flex flex-col items-center rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-md shadow-lg transition-transform hover:scale-105">
-                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-xs">
+                <div className="group flex flex-col items-center rounded-2xl border border-white/25 bg-white/12 p-3 backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 hover:bg-white/20 hover:border-amber-300/40">
+                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:-rotate-1 transition-transform">
                     <img
                       src="/hero_food_4.jpg"
                       alt="Abuja Yam Tubers"
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  <span className="mt-2 text-[11px] font-extrabold text-amber-300">Abuja Yam</span>
-                  <span className="text-[10px] text-white/80">Fresh Harvest</span>
+                  <span className="mt-2 text-[11px] font-extrabold text-amber-300 group-hover:text-amber-200">Abuja Yam</span>
+                  <span className="text-[10px] text-white/80 font-medium">Fresh Harvest</span>
                 </div>
 
                 {/* Produce Card 3: Palm Oil */}
-                <div className="flex flex-col items-center rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-md shadow-lg transition-transform hover:scale-105">
-                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-xs">
+                <div className="group flex flex-col items-center rounded-2xl border border-white/25 bg-white/12 p-3 backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 hover:bg-white/20 hover:border-amber-300/40">
+                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-md group-hover:rotate-1 transition-transform">
                     <img
                       src="/hero_food_3.jpg"
                       alt="Pure Palm Oil"
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  <span className="mt-2 text-[11px] font-extrabold text-amber-300">Pure Palm Oil</span>
-                  <span className="text-[10px] text-white/80">Cold-Pressed</span>
+                  <span className="mt-2 text-[11px] font-extrabold text-amber-300 group-hover:text-amber-200">Pure Palm Oil</span>
+                  <span className="text-[10px] text-white/80 font-medium">Cold-Pressed</span>
                 </div>
               </div>
-
-              {/* Subtle Decorative Background Glow */}
-              <div
-                className="absolute right-0 top-0 h-full w-1/2 opacity-20 pointer-events-none hidden md:block"
-                style={{
-                  backgroundImage: "radial-gradient(circle at 80% 50%, rgba(245,158,11,0.5) 0%, transparent 60%)",
-                }}
-              />
             </div>
           </div>
         </section>
