@@ -45,7 +45,11 @@ export default function VerifyEmailPage() {
   const { verifyEmail, resendVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const email = location.state?.email || "";
+  const email = location.state?.email || sessionStorage.getItem("bemsfarms_pending_email") || "";
+  const requestedDestination = location.state?.from || sessionStorage.getItem("bemsfarms_post_auth_destination");
+  const destination = typeof requestedDestination === "string" && requestedDestination.startsWith("/") && !requestedDestination.startsWith("//")
+    ? requestedDestination
+    : "/home";
 
   useEffect(() => {
     if (!email) {
@@ -58,12 +62,13 @@ export default function VerifyEmailPage() {
     setError("");
     setSuccess("");
     if (!token.trim() || token.length < 6) {
-      return setError("Please enter a valid 6-digit code");
+      return setError("Enter the 6-digit code from your email.");
     }
     setLoading(true);
     try {
       await verifyEmail(email, token);
-      navigate("/onboarding");
+      sessionStorage.removeItem("bemsfarms_pending_email");
+      navigate("/onboarding", { replace: true, state: { from: destination } });
     } catch (err) {
       setError(err.response?.data?.message || "Verification failed. Invalid or expired code.");
     } finally {
@@ -154,6 +159,14 @@ export default function VerifyEmailPage() {
         <div className="flex-1 p-6 md:p-12 flex flex-col justify-between overflow-y-auto">
 
           <div className="w-full max-w-sm mx-auto my-auto text-left">
+            <div className="mb-5 flex items-center gap-2" aria-label="Account setup progress">
+              {["Account", "Verify", "Preferences"].map((label, index) => (
+                <div key={label} className="flex flex-1 items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${index <= 1 ? "bg-emerald-900 text-white" : "bg-gray-100"}`}>{index + 1}</span>
+                  <span className="hidden sm:inline">{label}</span>
+                </div>
+              ))}
+            </div>
             <div className="flex items-center justify-between mb-3">
               <Link
                 to="/register"
@@ -162,7 +175,7 @@ export default function VerifyEmailPage() {
                 <span aria-hidden="true">←</span> Back to Register
               </Link>
             </div>
-            <h1 className="text-3xl font-extrabold text-gray-900 mb-2 font-display">Verify Email</h1>
+            <h1 className="text-3xl font-extrabold text-gray-900 mb-2 font-display">Check your email</h1>
             <p className="text-gray-500 text-[14px] mb-8 font-medium">
               Sent to: <span className="font-bold text-gray-700">{email}</span>
             </p>
@@ -191,9 +204,14 @@ export default function VerifyEmailPage() {
                   onChange={(e) => setToken(e.target.value.replace(/\D/g, '').slice(0,6))}
                   placeholder="123456"
                   maxLength="6"
-                  className="auth-input w-full px-5 py-3.5 border-2 border-gray-100 focus:border-emerald-700 rounded-2xl text-[24px] tracking-[1rem] text-center font-bold outline-none placeholder-gray-300 bg-gray-50/50"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  aria-describedby="verification-help"
+                  className="auth-input w-full px-5 py-3.5 border-2 border-gray-100 focus:border-emerald-700 rounded-2xl text-[24px] tracking-[0.55rem] text-center font-bold outline-none placeholder-gray-300 bg-gray-50/50"
                   required
                 />
+                <p id="verification-help" className="mt-2 text-xs leading-5 text-gray-500">The code may take a minute to arrive. Check your spam folder if you do not see it.</p>
               </div>
 
               {/* Verify Button */}
@@ -202,7 +220,7 @@ export default function VerifyEmailPage() {
                 disabled={loading}
                 className="auth-pill-btn w-full bg-[#1B5E20] hover:bg-emerald-900 text-white font-bold py-4 rounded-2xl shadow-lg shadow-emerald-900/10 text-[15px] disabled:opacity-50 mt-2"
               >
-                {loading ? "Verifying..." : "Verify & Continue"}
+                {loading ? "Verifying…" : "Verify and continue"}
               </button>
             </form>
 
@@ -213,7 +231,7 @@ export default function VerifyEmailPage() {
                 disabled={resendLoading}
                 className="text-emerald-700 hover:text-emerald-800 text-sm font-bold transition-colors disabled:opacity-50"
               >
-                {resendLoading ? "Resending..." : "Didn't receive the code? Resend"}
+                {resendLoading ? "Sending…" : "Send a new code"}
               </button>
             </div>
           </div>

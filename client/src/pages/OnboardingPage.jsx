@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
-import logo from "../assets/bemsfarms_logo.png";
+import api from "../services/api";
+import logo from "../assets/bemsfarms_logo_compact.png";
 
 const TOTAL_STEPS = 4;
 
@@ -208,7 +209,12 @@ function Chip({ children }) {
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+  const requestedDestination = location.state?.from || sessionStorage.getItem("bemsfarms_post_auth_destination");
+  const destination = typeof requestedDestination === "string" && requestedDestination.startsWith("/") && !requestedDestination.startsWith("//")
+    ? requestedDestination
+    : "/home";
 
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -216,6 +222,16 @@ export default function OnboardingPage() {
   const [budget, setBudget] = useState(null);
   const [healthGoals, setHealthGoals] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  useEffect(() => {
+    api.get("/ai/context/me").then(({ data }) => {
+      const saved = data.onboarding;
+      if (!saved) return;
+      if (saved.business_size) setFamilySize(saved.business_size);
+      if (Array.isArray(saved.goals)) setHealthGoals(saved.goals);
+    }).catch(() => {});
+  }, []);
 
   const toggleGoal = (val) =>
     setHealthGoals((prev) =>
@@ -230,22 +246,30 @@ export default function OnboardingPage() {
     setDirection(-1);
     setStep((s) => Math.max(s - 1, 0));
   };
-  const skip = () => navigate("/home");
+  const completeSetup = async (includePreferences) => {
+    setSaveError("");
+    setSaving(true);
+    const preferences = includePreferences ? { familySize, budget, healthGoals } : {};
+    try {
+      await api.post("/ai/context/onboarding", {
+        business_size: includePreferences ? familySize : null,
+        goals: includePreferences ? healthGoals : [],
+        completed_steps: includePreferences ? ["household", "budget", "goals"] : ["skipped"],
+        onboarding_complete: true,
+      });
+      localStorage.setItem("bemsfarms_prefs", JSON.stringify({ ...preferences, completedAt: new Date().toISOString() }));
+      sessionStorage.removeItem("bemsfarms_post_auth_destination");
+      navigate(destination, { replace: true, state: { onboardingComplete: true } });
+    } catch (error) {
+      setSaveError(error.response?.data?.message || "We couldn't save your preferences. Check your connection and try again.");
+      setSaving(false);
+    }
+  };
+
+  const skip = () => completeSetup(false);
 
   const finish = async () => {
-    setSaving(true);
-    try {
-      localStorage.setItem(
-        "bemsfarms_prefs",
-        JSON.stringify({
-          familySize,
-          budget,
-          healthGoals,
-          completedAt: new Date().toISOString(),
-        }),
-      );
-    } catch (e) {}
-    setTimeout(() => navigate("/home"), 600);
+    await completeSetup(true);
   };
 
   const canContinue = () => {
@@ -489,7 +513,9 @@ export default function OnboardingPage() {
             />
           </div>
           <button
+            type="button"
             onClick={skip}
+            disabled={saving}
             style={{
               background: "none",
               border: "none",
@@ -500,7 +526,7 @@ export default function OnboardingPage() {
               fontFamily: "var(--body-font)",
             }}
           >
-            Skip →
+            {saving ? "Saving…" : "Skip for now"}
           </button>
         </div>
 
@@ -526,7 +552,9 @@ export default function OnboardingPage() {
             }}
           >
             <button
+              type="button"
               onClick={skip}
+              disabled={saving}
               style={{
                 background: "none",
                 border: "none",
@@ -537,7 +565,7 @@ export default function OnboardingPage() {
                 fontFamily: "var(--body-font)",
               }}
             >
-              Skip setup →
+              {saving ? "Saving…" : "Skip for now"}
             </button>
           </div>
 
@@ -566,7 +594,7 @@ export default function OnboardingPage() {
                       margin: "14px 0 10px",
                     }}
                   >
-                    Welcome to <span style={{ fontFamily: "var(--custom-font)", fontWeight: 400 }}>BemsFarms</span>
+                    Welcome{user?.first_name || user?.name ? `, ${(user.first_name || user.name).split(" ")[0]}` : ""}!
                   </h1>
                   <p
                     style={{
@@ -577,7 +605,7 @@ export default function OnboardingPage() {
                       maxWidth: "480px",
                     }}
                   >
-                    Let's personalise your experience in 3 quick questions.
+                    Answer three quick questions for more useful quantities, value picks and meal ideas. You can change these later.
                   </p>
                   <div className="ob-bento">
                     {FEATURE_CARDS.map((card, i) => (
@@ -1030,6 +1058,11 @@ export default function OnboardingPage() {
           </AnimatePresence>
 
           {/* NAVIGATION BUTTONS */}
+          {saveError && (
+            <div role="alert" style={{ marginTop: "24px", padding: "12px 16px", borderRadius: "12px", border: "1px solid #FECACA", background: "#FEF2F2", color: "#991B1B", fontSize: "13px", fontWeight: 700 }}>
+              {saveError}
+            </div>
+          )}
           <div style={{ display: "flex", gap: "12px", marginTop: "36px" }}>
             {step > 0 && (
               <motion.button
@@ -1081,11 +1114,11 @@ export default function OnboardingPage() {
               }}
             >
               {saving
-                ? "✨ Setting up..."
+                ? "Saving your preferences…"
                 : step === 0
-                  ? "Let's Go →"
+                  ? "Personalise my shopping →"
                   : step === TOTAL_STEPS - 1
-                    ? "Start Shopping 🚀"
+                    ? (destination === "/checkout" ? "Continue to checkout →" : "Enter BemsFarms →")
                     : "Continue →"}
             </motion.button>
           </div>

@@ -74,7 +74,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route path="/onboarding" element={<P><OnboardingPage /></P>} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/cart" element={<CartPage />} />

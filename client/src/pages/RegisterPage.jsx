@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { GoogleLogin } from "@react-oauth/google";
@@ -52,6 +52,11 @@ export default function RegisterPage() {
   const { register, loginWithGoogle } = useAuth();
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedDestination = location.state?.from;
+  const destination = typeof requestedDestination === "string" && requestedDestination.startsWith("/") && !requestedDestination.startsWith("//")
+    ? requestedDestination
+    : "/home";
 
   const handleInputChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -91,8 +96,11 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await register(fullName, form.email, form.password, finalPhone);
-      navigate("/verify-email", { state: { email: form.email } });
+      const email = form.email.trim().toLowerCase();
+      await register(fullName, email, form.password, finalPhone);
+      sessionStorage.setItem("bemsfarms_pending_email", email);
+      sessionStorage.setItem("bemsfarms_post_auth_destination", destination);
+      navigate("/verify-email", { state: { email, from: destination } });
     } catch (err) {
       setError(err.response?.data?.message || err.message || "Registration failed. Try again.");
     } finally {
@@ -105,7 +113,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await loginWithGoogle(credentialResponse.credential);
-      navigate("/home");
+      navigate("/onboarding", { replace: true, state: { from: destination } });
     } catch (err) {
       setError(err.response?.data?.message || "Google registration failed.");
     } finally {
@@ -178,7 +186,7 @@ export default function RegisterPage() {
               Free Account
             </h2>
             <p className="text-emerald-100/80 text-[13px] md:text-[15px] font-medium max-w-xs leading-relaxed">
-              Source premium, fresh Nigerian farm produce directly and support local growers!
+              Shop fresh produce and trusted grocery brands with an account built around your household.
             </p>
           </div>
         </div>
@@ -195,7 +203,15 @@ export default function RegisterPage() {
                 <span aria-hidden="true">←</span> Back to Landing Page
               </Link>
             </div>
-            <h1 className="text-2xl font-extrabold text-gray-900 mb-1 font-display">Sign up</h1>
+            <div className="mb-4 flex items-center gap-2" aria-label="Account setup progress">
+              {["Account", "Verify", "Preferences"].map((label, index) => (
+                <div key={label} className="flex flex-1 items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${index === 0 ? "bg-emerald-900 text-white" : "bg-gray-100"}`}>{index + 1}</span>
+                  <span className="hidden sm:inline">{label}</span>
+                </div>
+              ))}
+            </div>
+            <h1 className="text-2xl font-extrabold text-gray-900 mb-1 font-display">Create your account</h1>
             <p className="text-gray-500 text-[13px] mb-6 font-medium">
               Already have an account?{" "}
               <Link to="/login" className="text-emerald-700 hover:text-emerald-800 font-bold transition-colors">
@@ -337,10 +353,10 @@ export default function RegisterPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Creating Account...
+                    Creating account…
                   </>
                 ) : (
-                  "Create an Account"
+                  "Create account"
                 )}
               </button>
             </form>
@@ -369,7 +385,7 @@ export default function RegisterPage() {
 
           {/* Footer decoration */}
           <div className="mt-4 text-center text-[10px] text-gray-400 font-medium">
-            <span>© 2026 BemsFarms. Secure registration.</span>
+            <span>By continuing, you agree to our <Link to="/terms" className="underline">Terms</Link> and acknowledge our <Link to="/privacy" className="underline">Privacy Policy</Link>.</span>
           </div>
 
         </div>
