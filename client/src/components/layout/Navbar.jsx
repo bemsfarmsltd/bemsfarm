@@ -20,13 +20,13 @@ const NAVBAR_CSS = `
 .bf-navbar-burger { display: flex; }
 .bf-navbar-user-name { display: none; }
 .bf-navbar-logo { height: 32px; }
-.bf-navbar-inner { padding: 0 14px; gap: 10px; height: 56px; }
+.bf-navbar-inner { padding: 0 16px; height: 56px; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; }
 .bf-search-full { display: none; }
 .bf-navbar-guest-join { display: none; }
 
 @media (min-width: 640px) {
   .bf-navbar-logo { height: 36px; }
-  .bf-navbar-inner { padding: 0 20px; height: 60px; }
+  .bf-navbar-inner { padding: 0 24px; height: 60px; }
   .bf-navbar-guest-join { display: block; }
 }
 
@@ -35,12 +35,12 @@ const NAVBAR_CSS = `
   .bf-navbar-burger { display: none; }
   .bf-navbar-user-name { display: block; }
   .bf-navbar-logo { height: 40px; }
-  .bf-navbar-inner { padding: 0 32px; gap: 16px; height: 68px; }
+  .bf-navbar-inner { padding: 0 32px; height: 68px; }
   .bf-search-full { display: flex; }
 }
 
 @media (min-width: 1024px) {
-  .bf-navbar-inner { padding: 0 40px; gap: 24px; height: 72px; }
+  .bf-navbar-inner { padding: 0 40px; height: 72px; }
 }
 `;
 
@@ -529,11 +529,12 @@ export default function Navbar() {
         style={{
           width: "100%",
           display: "flex",
+          justifyContent: "space-between",
           alignItems: "center",
           minWidth: 0,
         }}
       >
-        {/* LOGO */}
+        {/* LOGO (Always Left) */}
         <Link
           to={user ? "/home" : "/"}
           style={{
@@ -556,11 +557,17 @@ export default function Navbar() {
           />
         </Link>
 
-        {/* DESKTOP NAV LINKS */}
+        {/* DESKTOP NAV LINKS (Flowing left to right) */}
         {user && (
           <div
             className="bf-navbar-links"
-            style={{ alignItems: "center", gap: "2px", flex: 1, minWidth: 0 }}
+            style={{
+              alignItems: "center",
+              gap: "4px",
+              marginLeft: "24px",
+              marginRight: "auto",
+              minWidth: 0,
+            }}
           >
             {NAV_LINKS.map(({ label, path }) => (
               <Link key={path} to={path} style={{ textDecoration: "none" }}>
@@ -592,14 +599,14 @@ export default function Navbar() {
             ))}
           </div>
         )}
-        {!user && <div style={{ flex: 1 }} />}
 
-        {/* RIGHT SIDE */}
+        {/* RIGHT SIDE ACTIONS (Always Right) */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "6px",
+            gap: "8px",
+            marginLeft: "auto",
             flexShrink: 0,
           }}
         >

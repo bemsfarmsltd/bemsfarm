@@ -330,18 +330,19 @@ export default function HomePage() {
               style={{
                 background: "linear-gradient(135deg, #143c2d 0%, #1c523e 60%, #153e2f 100%)",
               }}
-              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-4 sm:p-7 md:p-9 text-white shadow-md border border-[#143c2d]/20"
+              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-7 md:p-8 text-white shadow-md border border-[#143c2d]/20 flex flex-col md:flex-row md:items-center md:justify-between gap-6"
             >
-              <div className="relative z-10 max-w-xl">
+              {/* Left Side: Greeting & Trust Badges */}
+              <div className="relative z-10 max-w-lg">
                 <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 backdrop-blur-xs">
                   <span>🌾</span>
-                  <span>Direct From Farm</span>
+                  <span>Direct From Farm To Table</span>
                 </div>
                 <h1 className="mt-2 font-display text-lg sm:text-2xl md:text-3xl font-black leading-tight text-white">
                   {greeting}, <span className="text-amber-300">{customerName}</span>!
                 </h1>
-                <p className="mt-1 text-xs sm:text-sm text-emerald-100/90 leading-relaxed max-w-md">
-                  Shop 100% stone-free grains, cold-pressed oils, and fresh harvests delivered to your doorstep.
+                <p className="mt-1 text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
+                  Shop 100% stone-free grains, cold-pressed oils, and fresh harvests delivered straight to your doorstep.
                 </p>
 
                 {/* Quick Trust Badges */}
@@ -357,6 +358,56 @@ export default function HomePage() {
                   </span>
                 </div>
               </div>
+
+              {/* Right Side: Visual Produce Showcase */}
+              <div className="relative z-10 hidden md:flex items-center gap-3 lg:gap-4 shrink-0">
+                {/* Produce Card 1: Rice */}
+                <div className="flex flex-col items-center rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-md shadow-lg transition-transform hover:scale-105">
+                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-xs">
+                    <img
+                      src="/hero_food_1.jpg"
+                      alt="Stone-Free Rice"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <span className="mt-2 text-[11px] font-extrabold text-amber-300">Stone-Free Rice</span>
+                  <span className="text-[10px] text-white/80">★ Bems Original</span>
+                </div>
+
+                {/* Produce Card 2: Yam */}
+                <div className="flex flex-col items-center rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-md shadow-lg transition-transform hover:scale-105">
+                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-xs">
+                    <img
+                      src="/hero_food_4.jpg"
+                      alt="Abuja Yam Tubers"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <span className="mt-2 text-[11px] font-extrabold text-amber-300">Abuja Yam</span>
+                  <span className="text-[10px] text-white/80">Fresh Harvest</span>
+                </div>
+
+                {/* Produce Card 3: Palm Oil */}
+                <div className="flex flex-col items-center rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-md shadow-lg transition-transform hover:scale-105">
+                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-xs">
+                    <img
+                      src="/hero_food_3.jpg"
+                      alt="Pure Palm Oil"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <span className="mt-2 text-[11px] font-extrabold text-amber-300">Pure Palm Oil</span>
+                  <span className="text-[10px] text-white/80">Cold-Pressed</span>
+                </div>
+              </div>
+
+              {/* Subtle Decorative Background Glow */}
+              <div
+                className="absolute right-0 top-0 h-full w-1/2 opacity-20 pointer-events-none hidden md:block"
+                style={{
+                  backgroundImage: "radial-gradient(circle at 80% 50%, rgba(245,158,11,0.5) 0%, transparent 60%)",
+                }}
+              />
             </div>
           </div>
         </section>
