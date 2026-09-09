@@ -298,6 +298,15 @@ export default function HomePage() {
   const customerName = user?.first_name || user?.name || user?.email?.split("@")[0] || "there";
   const greeting = getTimeGreeting();
 
+  const handleSearchSubmit = (e) => {
+    e?.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate("/products");
+    }
+  };
+
   // Weekly Staples (Grains, Oils, Tubers, Peppers)
   const staples = useMemo(() => {
     return products
@@ -381,6 +390,69 @@ export default function HomePage() {
                   backgroundImage: "radial-gradient(circle at 80% 50%, rgba(245,158,11,0.5) 0%, transparent 60%)",
                 }}
               />
+            </div>
+          </div>
+        </section>
+
+        {/* ── 2. CATALOGUE PRODUCT SEARCH BAR ── */}
+        <section className="px-3 pt-3 pb-2 sm:px-6 lg:px-10">
+          <div className="mx-auto max-w-[1600px] w-full">
+            <div className="rounded-2xl sm:rounded-3xl bg-white p-3.5 sm:p-5 shadow-xs border border-[#DFD6C2]/80">
+              <form
+                onSubmit={handleSearchSubmit}
+                className="flex flex-col sm:flex-row items-stretch gap-2.5 sm:gap-3"
+              >
+                <div className="relative flex-1">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 sm:pl-4 text-slate-400 text-base sm:text-lg">
+                    🔍
+                  </div>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search fresh produce catalogue (e.g. Stone-Free Rice, Abuja Yam, Palm Oil, Pepper...)"
+                    className="w-full rounded-xl sm:rounded-2xl border border-slate-200 bg-[#FBF9F5] py-3 pl-11 pr-10 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#2E7D32] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/20 transition-all"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 text-sm font-bold"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  className="flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-[#143c2d] px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#1b4d3a] active:scale-98 transition-all shrink-0 cursor-pointer"
+                >
+                  <span>Search Shop</span>
+                  <span>→</span>
+                </button>
+              </form>
+
+              {/* Popular Search Tags */}
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs">
+                <span className="font-semibold text-slate-400">Popular:</span>
+                {[
+                  "Stone-Free Rice",
+                  "Abuja Yam",
+                  "Plantain",
+                  "Pure Palm Oil",
+                  "Honey Beans",
+                  "Dried Pepper",
+                ].map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => navigate(`/products?search=${encodeURIComponent(tag)}`)}
+                    className="rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-[#143c2d] hover:border-[#143c2d]/30 border border-transparent px-2.5 py-1 font-medium text-slate-600 transition-all cursor-pointer"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </section>
