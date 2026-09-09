@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
 import api from "../services/api";
@@ -9,310 +9,59 @@ import { getProductImage } from "../utils/productImages";
 import QuickViewModal from "../components/ui/QuickViewModal";
 import Toast from "../components/ui/Toast";
 
-const CATEGORY_EMOJIS = {
-  "Grains & Cereals": "",
-  "Vegetables": "",
-  "Cooking Oils": "",
-  "Legumes": "",
-  "Tubers & Roots": "",
-  "Spices & Seasonings": "",
-  "Leafy Greens": "",
-  "Fruits": ""
-};
-
-const DASHBOARD_CSS = `
-.bp-page {
-  background-color: #FBF8F3;
+const SHOP_CSS = `
+.bf-shop-page {
+  background-color: #F8F5EE;
+  min-height: 100vh;
   position: relative;
   overflow-x: hidden;
 }
-.bp-blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-  pointer-events: none;
-  z-index: 0;
-}
-.bp-container {
-  max-width: 1600px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 24px 20px 60px;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  position: relative;
-  z-index: 1;
-}
 
-/* Top Header Bar */
-.bp-header {
+.bf-categories-scroll {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-.bp-greeting h2 {
-  font-family: var(--heading-font), sans-serif;
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--gray-900);
-  margin: 0 0 4px;
-}
-.bp-greeting p {
-  color: var(--gray-500);
-  font-size: 14px;
-  margin: 0;
-}
-.bp-search-wrap {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background-color: var(--gray-50);
-  border: 1px solid var(--gray-200);
-  border-radius: 14px;
-  padding: 10px 16px;
-  flex: 1;
-  max-width: 480px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-}
-.bp-search-input {
-  border: none;
-  outline: none;
-  width: 100%;
-  font-size: 14px;
-  font-family: var(--body-font), sans-serif;
-  color: var(--gray-900);
-  background: transparent;
-}
-.bp-search-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #9CA3AF;
-  font-size: 18px;
-  padding: 0;
-}
-.bp-meta-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.bp-meta-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background-color: var(--gray-50);
-  border: 1px solid var(--gray-200);
-  border-radius: 12px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--gray-700);
-}
-.bp-meta-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background-color: var(--gray-50);
-  border: 1px solid var(--gray-200);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--gray-700);
-  font-size: 18px;
-  cursor: pointer;
-  position: relative;
-}
-.bp-meta-btn .dot {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 7px;
-  height: 7px;
-  background-color: #F57C00;
-  border-radius: 50%;
-}
-.bp-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 15px;
-  cursor: pointer;
-  border: 2px solid white;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}
-
-/* Promo Banner */
-.bp-promo-card {
-  background: linear-gradient(135deg, #1B4332 0%, #2D6A4F 100%);
-  border-radius: 24px;
-  padding: 32px 40px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-  overflow: hidden;
-  color: white;
-  min-height: 180px;
-  box-shadow: 0 10px 30px rgba(27,67,50,0.15);
-}
-.bp-catalogue-video { height: 260px; }
-.bp-promo-info {
-  max-width: 60%;
-  z-index: 2;
-}
-.bp-promo-info h3 {
-  font-family: var(--heading-font), sans-serif;
-  font-size: 32px;
-  font-weight: 800;
-  margin: 0 0 8px;
-  line-height: 1.2;
-}
-.bp-promo-info p {
-  color: rgba(255,255,255,0.85);
-  font-size: 14px;
-  margin: 0 0 20px;
-}
-.bp-promo-btn {
-  background-color: #ffffff;
-  color: #1B4332;
-  border: none;
-  border-radius: 12px;
-  padding: 10px 24px;
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-  font-family: var(--body-font), sans-serif;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  transition: all 0.2s;
-}
-.bp-promo-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-}
-.bp-promo-img {
-  position: absolute;
-  right: 40px;
-  bottom: -20px;
-  width: 240px;
-  height: 240px;
-  object-fit: contain;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* Category Slider */
-.bp-section-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-.bp-section-title h3 {
-  font-family: var(--heading-font), sans-serif;
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--gray-900);
-  margin: 0;
-}
-.bp-see-all {
-  color: #F57C00;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  text-decoration: none;
-}
-.bp-categories-list {
-  display: flex;
-  gap: 12px;
+  gap: 10px;
   overflow-x: auto;
   padding-bottom: 8px;
   scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
-.bp-categories-list::-webkit-scrollbar {
-  height: 5px;
+.bf-categories-scroll::-webkit-scrollbar {
+  height: 4px;
 }
-.bp-categories-list::-webkit-scrollbar-thumb {
-  background-color: var(--gray-200);
+.bf-categories-scroll::-webkit-scrollbar-thumb {
+  background-color: #DFD6C2;
   border-radius: 10px;
 }
-.bp-category-card {
-  flex-shrink: 0;
-  background-color: rgba(255,255,255,0.7);
-  backdrop-filter: blur(6px);
-  border: 1px solid var(--gray-200);
-  border-radius: 999px;
-  padding: 12px 18px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--gray-700);
-  font-family: var(--body-font), sans-serif;
-  transition: box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
-}
-.bp-category-card:hover {
-  background-color: var(--gray-50);
-  border-color: var(--gray-400);
-  transform: translateY(-1px);
-}
-.bp-category-card.active {
-  background-color: #1B5E20;
-  border-color: #1B5E20;
-  color: white;
-  box-shadow: 0 10px 24px -8px rgba(27,94,32,0.5);
-}
 
-/* Product Catalog Grid */
-.bp-products-grid {
+.bf-product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
-.bp-products-grid > * {
-  min-width: 0;
+@media (min-width: 640px) {
+  .bf-product-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
 }
-
-@media (max-width: 768px) {
-  .bp-container {
-    padding: 24px 16px 48px;
+@media (min-width: 1024px) {
+  .bf-product-grid {
+    grid-template-columns: repeat(4, 1fr);
     gap: 20px;
   }
-  .bp-promo-card {
-    padding: 24px;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .bp-catalogue-video { height: 190px; }
-  .bp-promo-info {
-    max-width: 100%;
-  }
-  .bp-promo-img {
-    display: none;
-  }
-  .bp-products-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+}
+@media (min-width: 1400px) {
+  .bf-product-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 22px;
   }
 }
 `;
 
 export default function ProductsPage() {
   const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const { cart, addToCart, updateQuantity, openCartDrawer } = useCart();
+  const [params, setParams] = useSearchParams();
+  const { cart, addToCart, updateQuantity } = useCart();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -323,8 +72,6 @@ export default function ProductsPage() {
   const [sort, setSort] = useState("featured");
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [toast, setToast] = useState(null);
-
-  // Favorites state persisted in localStorage
   const [favorites, setFavorites] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("favorites") || "{}");
@@ -338,12 +85,12 @@ export default function ProductsPage() {
     setError(null);
     Promise.all([api.get("/products"), api.get("/categories")])
       .then(([p, c]) => {
-        setProducts(p.data.products);
-        setCategories(c.data.categories);
+        setProducts(p.data?.products || []);
+        setCategories(c.data?.categories || []);
       })
       .catch((err) => {
         console.error("Failed to load products:", err);
-        setError(err.response?.data?.message || "Failed to load products");
+        setError(err.response?.data?.message || "Failed to load products. Please try again.");
       })
       .finally(() => setLoading(false));
   };
@@ -358,7 +105,7 @@ export default function ProductsPage() {
   }, [params]);
 
   const toggleFavorite = (productId, e) => {
-    e.stopPropagation();
+    e?.stopPropagation();
     setFavorites((prev) => {
       const updated = { ...prev, [productId]: !prev[productId] };
       localStorage.setItem("favorites", JSON.stringify(updated));
@@ -367,445 +114,525 @@ export default function ProductsPage() {
   };
 
   const handleAdd = (product, e) => {
-    e.stopPropagation();
-    if (Number(product.stock_quantity ?? product.stock ?? 0) === 0) return;
+    e?.stopPropagation();
+    const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+    if (stock === 0) return;
+
     addToCart(product);
     setToast({
-      message: ` Added ${product.name} to basket!`,
+      message: `Added ${product.name} to basket`,
       type: "success",
     });
     setTimeout(() => setToast(null), 2500);
   };
 
-  const filtered = products
-    .filter((p) => {
-      const matchCat =
-        activeCat === "All" ||
-        p.category_name?.toLowerCase() === activeCat?.toLowerCase() ||
-        p.category_name?.toLowerCase().includes(activeCat?.toLowerCase()) ||
-        activeCat?.toLowerCase().includes(p.category_name?.toLowerCase());
-      const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
-      return matchCat && matchSearch;
-    })
-    .sort((a, b) => {
-      if (sort === "price-asc") return a.price - b.price;
-      if (sort === "price-desc") return b.price - a.price;
-      if (sort === "name") return a.name.localeCompare(b.name);
-      return (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0);
-    });
+  const handleCategoryChange = (catName) => {
+    setActiveCat(catName);
+    const newParams = new URLSearchParams(params);
+    if (catName === "All") {
+      newParams.delete("category");
+    } else {
+      newParams.set("category", catName);
+    }
+    setParams(newParams);
+  };
 
-  const cats = ["All", ...categories.map((c) => c.name)];
+  const handleSearchSubmit = (e) => {
+    e?.preventDefault();
+    const newParams = new URLSearchParams(params);
+    if (search.trim()) {
+      newParams.set("search", search.trim());
+    } else {
+      newParams.delete("search");
+    }
+    setParams(newParams);
+  };
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setActiveCat("All");
+    setParams({});
+  };
+
+  const filtered = useMemo(() => {
+    return products
+      .filter((p) => {
+        const matchCat =
+          activeCat === "All" ||
+          p.category_name?.toLowerCase() === activeCat?.toLowerCase() ||
+          p.category_name?.toLowerCase().includes(activeCat?.toLowerCase()) ||
+          activeCat?.toLowerCase().includes(p.category_name?.toLowerCase());
+
+        const query = search.toLowerCase().trim();
+        const matchSearch =
+          !query ||
+          p.name?.toLowerCase().includes(query) ||
+          p.category_name?.toLowerCase().includes(query) ||
+          p.description?.toLowerCase().includes(query);
+
+        return matchCat && matchSearch;
+      })
+      .sort((a, b) => {
+        if (sort === "price-asc") return a.price - b.price;
+        if (sort === "price-desc") return b.price - a.price;
+        if (sort === "name") return a.name.localeCompare(b.name);
+        return (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0);
+      });
+  }, [products, activeCat, search, sort]);
+
+  const cats = useMemo(() => ["All", ...categories.map((c) => c.name)], [categories]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = { All: products.length };
+    products.forEach((p) => {
+      const cat = p.category_name;
+      if (cat) {
+        counts[cat] = (counts[cat] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [products]);
 
   return (
     <PageWrapper>
-      <div className="bp-page">
-        <style>{DASHBOARD_CSS}</style>
-        <div className="bp-blob" style={{ width: 340, height: 340, top: -100, left: -120, background: "radial-gradient(circle, rgba(46,125,50,0.10), transparent 70%)" }} />
-        <div className="bp-blob" style={{ width: 280, height: 280, top: 400, right: -140, background: "radial-gradient(circle, rgba(245,158,11,0.10), transparent 70%)" }} />
+      <div className="bf-shop-page">
+        <style>{SHOP_CSS}</style>
 
-        <div className="bp-container">
-
-        <div className="bp-header">
-          <div className="bp-greeting">
-            <h2>Shop BemsFarms</h2>
-            <p>Search, filter and add farm produce to your basket.</p>
-          </div>
-          <label className="bp-search-wrap">
-            <span aria-hidden="true"></span>
-            <span className="sr-only">Search products</span>
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search rice, beans, vegetables…"
-              className="bp-search-input"
-            />
-            {search && <button type="button" onClick={() => setSearch("")} className="bp-search-btn" aria-label="Clear product search">×</button>}
-          </label>
-        </div>
-
-        {/* ── 2. PROMO CARD BANNER ── */}
-        <div className="bp-promo-card bp-catalogue-video" style={{ position: "relative", overflow: "hidden", background: "none", padding: 0 }}>
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              pointerEvents: "none",
-              borderRadius: "24px"
-            }}
-            src="https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166618/A_vibrant_top_down_flat_lay_vi_xuitwq.mp4"
-          />
-        </div>
-
-        {/* ── 3. CATEGORIES CAROUSEL ── */}
-        <div>
-          <div className="bp-section-title">
-            <h3>Category</h3>
-            <span className="bp-see-all" onClick={() => setActiveCat("All")}>See all</span>
-          </div>
-
-          <div className="bp-categories-list">
-            {cats.map((cat) => {
-              const emoji = CATEGORY_EMOJIS[cat] || "";
-              return (
-                <div
-                  key={cat}
-                  className={`bp-category-card ${activeCat === cat ? "active" : ""}`}
-                  onClick={() => setActiveCat(cat)}
-                >
-                  <span>{emoji}</span>
-                  <span>{cat}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── 4. PRODUCT CATALOG GRID ── */}
-        <div>
-          <div className="bp-section-title">
-            <h3>{activeCat === "All" ? "All products" : activeCat}</h3>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              style={{
-                padding: "8px 16px",
-                border: "1px solid #E5E7EB",
-                borderRadius: "999px",
-                fontSize: "12px",
-                color: "#4B5563",
-                outline: "none",
-                backgroundColor: "rgba(255,255,255,0.8)",
-                fontFamily: "var(--body-font)",
-                cursor: "pointer"
-              }}
-            >
-              <option value="featured">Featured</option>
-              <option value="price-asc">Price Low-High</option>
-              <option value="price-desc">Price High-Low</option>
-              <option value="name">Alphabetical</option>
-            </select>
-          </div>
-
-          {error && (
+        {/* ── 1. LUXURY STOREFRONT SHOP HEADER BANNER ── */}
+        <section className="px-3 pt-4 sm:pt-6 pb-2 sm:px-6 lg:px-10">
+          <div className="mx-auto max-w-[1600px] w-full">
             <div
               style={{
-                backgroundColor: "#FEF2F2",
-                border: "1px solid #FECACA",
-                borderRadius: "14px",
-                padding: "16px 20px",
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                marginBottom: "20px",
+                background: "linear-gradient(135deg, #051a11 0%, #0d3322 35%, #144931 70%, #082418 100%)",
               }}
+              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 text-white shadow-xl border border-emerald-800/30 flex flex-col md:flex-row md:items-center md:justify-between gap-6"
             >
-              <span style={{ fontSize: "27" }}></span>
-              <div>
-                <p style={{ fontWeight: 700, color: "#DC2626", margin: "0 0 4px" }}>Failed to load products</p>
-                <p style={{ fontSize: "13px", color: "#DC2626", margin: 0 }}>{error}</p>
-              </div>
-              <button
-                onClick={loadData}
+              {/* Subtle Atmospheric Light Orbs */}
+              <div
+                className="absolute -right-16 -top-16 h-72 w-72 rounded-full pointer-events-none opacity-30"
                 style={{
-                  marginLeft: "auto",
-                  padding: "8px 16px",
-                  backgroundColor: "#DC2626",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  fontSize: "13px",
+                  background: "radial-gradient(circle, rgba(245,158,11,0.5) 0%, transparent 70%)",
+                  filter: "blur(50px)",
                 }}
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          {loading ? (
-            <div className="bp-products-grid">
-              {[...Array(8)].map((_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    height: "260px",
-                    backgroundColor: "white",
-                    borderRadius: "16px",
-                    border: "1px solid #E5E7EB",
-                    display: "flex",
-                    flexDirection: "column",
-                    padding: "12px",
-                    gap: "8px"
-                  }}
-                >
-                  <div style={{ flex: 1, backgroundColor: "#F3F4F6", borderRadius: "12px", animation: "pulse 1.5s infinite" }} />
-                  <div style={{ height: "12px", width: "70%", backgroundColor: "#F3F4F6", borderRadius: "4px" }} />
-                  <div style={{ height: "16px", width: "40%", backgroundColor: "#F3F4F6", borderRadius: "4px" }} />
-                </div>
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "60px 20px",
-                backgroundColor: "white",
-                borderRadius: "24px",
-                border: "1px solid #E5E7EB"
-              }}
-            >
-              <img
-                src="https://res.cloudinary.com/dyzkjerez/image/upload/v1786166844/Gemini_Generated_Image_ez0fcxez0fcxez0f_atfxkk.png"
-                alt=""
-                style={{ width: "72px", height: "72px", margin: "0 auto 12px", display: "block" }}
               />
-              <h4 style={{ margin: "0 0 6px", fontFamily: "var(--heading-font)", fontSize: "16px", fontWeight: 700 }}>No products found</h4>
-              <p style={{ color: "#9CA3AF", fontSize: "13px", margin: "0 0 16px" }}>Try searching something else</p>
-              <button
-                onClick={() => { setSearch(""); setActiveCat("All"); }}
+              <div
+                className="absolute -left-10 -bottom-10 h-64 w-64 rounded-full pointer-events-none opacity-25"
                 style={{
-                  backgroundColor: "#1B4332",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "999px",
-                  padding: "10px 20px",
-                  fontWeight: 700,
-                  fontSize: "13px",
-                  cursor: "pointer"
+                  background: "radial-gradient(circle, rgba(52,211,153,0.45) 0%, transparent 70%)",
+                  filter: "blur(45px)",
                 }}
-              >
-                Clear Filters
-              </button>
-            </div>
-          ) : (
-            <div className="bp-products-grid">
-              {filtered.map((product) => {
-                const isFavorite = !!favorites[product.id];
-                const cartQty = cart[product.id]?.quantity || 0;
-                const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+              />
 
-                return (
-                  <div
-                    key={product.id}
-                    onClick={() => setQuickViewProduct(product)}
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.85)",
-                      border: "1px solid rgba(27,67,50,0.08)",
-                      borderRadius: "20px",
-                      padding: "12px",
-                      display: "flex",
-                      flexDirection: "column",
-                      cursor: "pointer",
-                      position: "relative",
-                      transition: "all 0.25s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-4px)";
-                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.06)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "none";
-                      e.currentTarget.style.boxShadow = "none";
-                    }}
-                  >
-                    {/* Top Action Layer */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", position: "relative", zIndex: 5 }}>
-                      <button
-                        onClick={(e) => toggleFavorite(product.id, e)}
-                        style={{
-                          background: "white",
-                          border: "none",
-                          borderRadius: "50%",
-                          width: "28px",
-                          height: "28px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          color: isFavorite ? "#EF4444" : "#D1D5DB",
-                          boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
-                          fontSize: "14px",
-                          padding: 0
-                        }}
-                        aria-label="Toggle favorite"
-                      >
-                        {isFavorite ? "" : ""}
-                      </button>
+              {/* Left Column: Editorial Store Header */}
+              <div className="relative z-10 max-w-2xl">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300 border border-white/15 backdrop-blur-md shadow-xs">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400" />
+                  <span>Farm-To-Door Catalogue</span>
+                </div>
 
-                      {/* Quick View Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setQuickViewProduct(product);
-                        }}
-                        style={{
-                          background: "rgba(255,255,255,0.9)",
-                          border: "1px solid #E5E7EB",
-                          borderRadius: "999px",
-                          padding: "3px 8px",
-                          fontSize: "11px",
-                          fontWeight: 700,
-                          color: "#1F2937",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "3px"
-                        }}
-                      >
-                        <span></span>
-                        <span>Quick View</span>
-                      </button>
-                    </div>
+                <h1 className="mt-3 font-display text-2xl sm:text-4xl lg:text-5xl font-black leading-tight text-white drop-shadow-sm">
+                  Fresh Produce &amp; Pantry Essentials
+                </h1>
 
-                    {/* Product Image */}
-                    <div style={{ height: "120px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px", overflow: "hidden", borderRadius: "12px", position: "relative" }}>
-                      <img
-                        src={getProductImage(product)}
-                        alt={product.name}
-                        style={{ height: "100%", width: "100%", objectFit: "cover", filter: stock === 0 ? "grayscale(60%)" : "none", opacity: stock === 0 ? 0.6 : 1 }}
-                      />
-                      {stock === 0 && (
-                        <span style={{ position: "absolute", top: "8px", left: "8px", background: "#EF4444", color: "white", fontSize: "10px", fontWeight: 700, padding: "3px 9px", borderRadius: "50px" }}>
-                          Out of Stock
-                        </span>
-                      )}
-                    </div>
+                <p className="mt-2 text-xs sm:text-sm md:text-base text-emerald-100/85 max-w-xl font-normal leading-relaxed">
+                  Explore 100% stone-free grains, authentic cold-pressed oils, farm tubers, and Nigerian staples delivered directly to your doorstep.
+                </p>
 
-                    {/* Category & Title */}
-                    <p style={{ color: "#9CA3AF", fontSize: "11px", margin: "0 0 2px", fontWeight: 600 }}>{product.category_name}</p>
-                    <h4 style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: 700, color: "#111827", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: "36px", lineHeight: 1.3 }}>
-                      {product.name}
-                    </h4>
+                {/* Trust Highlight Chips */}
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-[10px] sm:text-[11px] font-semibold text-emerald-200/90">
+                  <span className="rounded-md bg-white/10 px-2.5 py-1 border border-white/10 backdrop-blur-xs">
+                    Stone-Free Guarantee
+                  </span>
+                  <span className="rounded-md bg-white/10 px-2.5 py-1 border border-white/10 backdrop-blur-xs">
+                    Free Delivery over ₦15,000
+                  </span>
+                  <span className="rounded-md bg-white/10 px-2.5 py-1 border border-white/10 backdrop-blur-xs">
+                    Same-Day Dispatch Available
+                  </span>
+                </div>
+              </div>
 
-                    {/* Rating */}
-                    <div style={{ display: "flex", alignItems: "center", gap: "4px", marginBottom: "8px", minHeight: "13px" }}>
-                      {Number(product.review_count) > 0 ? (
-                        <>
-                          <span style={{ color: "#F57C00", fontSize: "12px" }}>
-                            {"".repeat(Math.round(Number(product.avg_rating || 0)))}
-                          </span>
-                          <span style={{ fontSize: "10px", color: "#9CA3AF" }}>({product.review_count})</span>
-                        </>
-                      ) : (
-                        <span style={{ fontSize: "10px", color: "#9CA3AF" }}>Fresh Harvest</span>
-                      )}
-                    </div>
-
-                    {/* Footer Row */}
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "auto" }}>
-                      <div style={{ minWidth: 0, overflow: "hidden" }}>
-                        <span style={{ fontSize: "10px", color: "#9CA3AF" }}>{product.unit}</span>
-                        <div style={{ fontSize: "16px", fontWeight: 800, color: "#1B4332", fontFamily: "var(--heading-font)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          ₦{(product.price * NAIRA_PER_UNIT).toLocaleString()}
-                        </div>
-                      </div>
-
-                      {cartQty > 0 ? (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            background: "#E8F5E9",
-                            border: "1px solid #2E7D32",
-                            borderRadius: "999px",
-                            padding: "2px",
-                            marginLeft: "auto"
-                          }}
-                        >
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateQuantity(product.id, cartQty - 1);
-                            }}
-                            style={{
-                              width: "24px",
-                              height: "24px",
-                              borderRadius: "50%",
-                              border: "none",
-                              background: "white",
-                              color: "#2E7D32",
-                              fontWeight: 800,
-                              fontSize: "12px",
-                              cursor: "pointer"
-                            }}
-                          >
-                            -
-                          </button>
-                          <span style={{ minWidth: "20px", textAlign: "center", fontSize: "12px", fontWeight: 800, color: "#1B4332" }}>
-                            {cartQty}
-                          </span>
-                          <button
-                            type="button"
-                            disabled={cartQty >= stock}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateQuantity(product.id, cartQty + 1);
-                            }}
-                            style={{
-                              width: "24px",
-                              height: "24px",
-                              borderRadius: "50%",
-                              border: "none",
-                              background: "white",
-                              color: "#2E7D32",
-                              fontWeight: 800,
-                              fontSize: "12px",
-                              cursor: "pointer"
-                            }}
-                          >
-                            +
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          disabled={stock === 0}
-                          onClick={(e) => handleAdd(product, e)}
-                          style={{
-                            background: stock === 0 ? "#D1D5DB" : "#143c2d",
-                            border: "none",
-                            borderRadius: "10px",
-                            padding: "6px 14px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "white",
-                            cursor: stock === 0 ? "not-allowed" : "pointer",
-                            fontSize: "12px",
-                            fontWeight: 800,
-                            boxShadow: stock === 0 ? "none" : "0 2px 6px rgba(20,60,45,0.2)",
-                            marginLeft: "auto"
-                          }}
-                        >
-                          + Add
-                        </button>
-                      )}
-                    </div>
+              {/* Right Column: Search & Quick Navigation Form */}
+              <div className="relative z-10 w-full md:max-w-md shrink-0">
+                <form
+                  onSubmit={handleSearchSubmit}
+                  className="relative flex items-center w-full shadow-lg rounded-2xl overflow-hidden bg-white/10 border border-white/20 backdrop-blur-xl p-1.5"
+                >
+                  <div className="pl-3 pr-2 text-emerald-200/70 flex items-center">
+                    <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                    </svg>
                   </div>
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search rice, yam, palm oil, beans..."
+                    className="w-full bg-transparent text-xs sm:text-sm text-white placeholder:text-white/60 outline-none pr-2"
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearch("");
+                        const newParams = new URLSearchParams(params);
+                        newParams.delete("search");
+                        setParams(newParams);
+                      }}
+                      className="px-2 text-white/60 hover:text-white text-sm font-bold"
+                    >
+                      ×
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0f3322] px-4 py-2 text-xs sm:text-sm font-black transition-all shadow-md shrink-0"
+                  >
+                    Search
+                  </button>
+                </form>
+
+                {/* Quick Keyword Suggestions */}
+                <div className="mt-2.5 flex items-center gap-1.5 text-[10px] sm:text-xs text-white/70 overflow-x-auto">
+                  <span className="font-bold text-amber-300 shrink-0">Popular:</span>
+                  {["Rice", "Yam", "Palm Oil", "Beans", "Pepper"].map((keyword) => (
+                    <button
+                      key={keyword}
+                      type="button"
+                      onClick={() => {
+                        setSearch(keyword);
+                        const newParams = new URLSearchParams(params);
+                        newParams.set("search", keyword);
+                        setParams(newParams);
+                      }}
+                      className="rounded-md bg-white/10 hover:bg-white/20 px-2 py-0.5 text-white/85 text-[10px] font-medium transition shrink-0"
+                    >
+                      {keyword}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 2. CATEGORY FILTER TABS & CONTROL TOOLBAR ── */}
+        <section className="px-3 pt-4 pb-2 sm:px-6 lg:px-10">
+          <div className="mx-auto max-w-[1600px] w-full">
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <h2 className="font-display text-sm sm:text-base font-black text-[#143c2d]">
+                Filter by Produce Category
+              </h2>
+              {activeCat !== "All" && (
+                <button
+                  type="button"
+                  onClick={() => handleCategoryChange("All")}
+                  className="text-xs font-bold text-[#c85a17] hover:underline"
+                >
+                  Show All ({products.length})
+                </button>
+              )}
+            </div>
+
+            <div className="bf-categories-scroll">
+              {cats.map((cat) => {
+                const isActive = activeCat === cat;
+                const count = categoryCounts[cat] ?? 0;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => handleCategoryChange(cat)}
+                    className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer ${
+                      isActive
+                        ? "bg-[#143c2d] text-white shadow-md shadow-[#143c2d]/25 border border-[#143c2d]"
+                        : "bg-white text-slate-700 hover:bg-[#FAF9F6] border border-[#DFD6C2] hover:border-[#143c2d]/40 shadow-xs"
+                    }`}
+                  >
+                    <span>{cat}</span>
+                    <span
+                      className={`rounded-full px-2 py-0.2 text-[10px] font-extrabold ${
+                        isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
                 );
               })}
             </div>
-          )}
-        </div>
-        </div>
 
-        {/* Quick View Modal */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#DFD6C2]/60 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs sm:text-sm font-bold text-slate-700">
+                  {loading ? "Loading items…" : `${filtered.length} ${filtered.length === 1 ? "Product" : "Products"} Found`}
+                </span>
+                {(search || activeCat !== "All") && (
+                  <button
+                    type="button"
+                    onClick={handleClearFilters}
+                    className="inline-flex items-center gap-1 rounded-full bg-slate-200/80 px-2.5 py-0.5 text-[10px] sm:text-xs font-bold text-slate-700 hover:bg-slate-300 transition"
+                  >
+                    <span>Clear filters</span>
+                    <span>×</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500 hidden sm:inline">Sort by:</span>
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                  className="rounded-xl border border-[#DFD6C2] bg-white px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-[#143c2d] shadow-xs cursor-pointer"
+                >
+                  <option value="featured">Featured Picks</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="name">Alphabetical (A-Z)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 3. PRODUCT CATALOGUE GRID ── */}
+        <section className="px-3 pt-3 pb-16 sm:px-6 lg:px-10">
+          <div className="mx-auto max-w-[1600px] w-full">
+            {error && (
+              <div className="mb-6 flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-red-600" />
+                  <span>{error}</span>
+                </div>
+                <button
+                  onClick={loadData}
+                  className="rounded-xl bg-red-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="bf-product-grid">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col rounded-2xl border border-[#DFD6C2] bg-white p-3 shadow-xs animate-pulse"
+                  >
+                    <div className="aspect-[4/3] w-full rounded-xl bg-slate-200" />
+                    <div className="mt-3 h-3 w-1/3 rounded bg-slate-200" />
+                    <div className="mt-2 h-4 w-3/4 rounded bg-slate-200" />
+                    <div className="mt-4 flex items-center justify-between pt-2 border-t border-slate-100">
+                      <div className="h-4 w-1/3 rounded bg-slate-200" />
+                      <div className="h-7 w-16 rounded-full bg-slate-200" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-3xl border border-[#DFD6C2] bg-white p-12 text-center shadow-sm max-w-lg mx-auto mt-6">
+                <div className="grid h-16 w-16 place-items-center rounded-full bg-emerald-50 text-emerald-800 mb-4">
+                  <svg className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                </div>
+                <h3 className="font-display text-lg font-bold text-slate-900">No produce found</h3>
+                <p className="mt-1 text-xs text-slate-500 max-w-xs">
+                  We couldn't find anything matching "{search}". Try searching another item or clear your active filters.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  className="mt-5 rounded-full bg-[#143c2d] px-6 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md hover:bg-[#1a4e3b] transition"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            ) : (
+              <div className="bf-product-grid">
+                {filtered.map((product) => {
+                  const isFavorite = !!favorites[product.id];
+                  const cartQty = cart[product.id]?.quantity || 0;
+                  const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+                  const price = Number(product.price || 0) * NAIRA_PER_UNIT;
+                  const isOutOfStock = stock === 0 || product.available_for_sale === false;
+                  const isLowStock = stock > 0 && stock <= 5;
+                  const isBemsOriginal = Boolean(
+                    product.name?.toLowerCase().includes("bems") ||
+                    product.brand?.toLowerCase().includes("bems") ||
+                    product.is_bems_brand
+                  );
+
+                  return (
+                    <article
+                      key={product.id}
+                      onClick={() => setQuickViewProduct(product)}
+                      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[#DFD6C2]/80 bg-white shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-[#143c2d]/40 hover:shadow-xl cursor-pointer"
+                    >
+                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#FAF9F6]">
+                        <img
+                          src={getProductImage(product)}
+                          alt={product.name}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = "/hero_food_4.jpg";
+                          }}
+                        />
+                        <div className="absolute inset-x-2 top-2 flex items-center justify-between gap-1 pointer-events-none">
+                          {isBemsOriginal ? (
+                            <span className="rounded-full bg-[#143c2d]/95 backdrop-blur px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">
+                              Original
+                            </span>
+                          ) : product.is_featured ? (
+                            <span className="rounded-full bg-[#143c2d] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-white shadow-md">
+                              Featured
+                            </span>
+                          ) : (
+                            <span />
+                          )}
+                          <div className="flex items-center gap-1 pointer-events-auto">
+                            <button
+                              type="button"
+                              onClick={(e) => toggleFavorite(product.id, e)}
+                              className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white/95 backdrop-blur shadow-xs transition hover:scale-110 ${
+                                isFavorite ? "text-red-500" : "text-slate-400 hover:text-red-500"
+                              }`}
+                              aria-label={isFavorite ? "Remove from wishlist" : "Add to wishlist"}
+                            >
+                              <svg
+                                className="h-3.5 w-3.5 sm:h-4 sm:w-4"
+                                fill={isFavorite ? "currentColor" : "none"}
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuickViewProduct(product);
+                          }}
+                          className="absolute bottom-2.5 right-2.5 z-10 hidden md:flex items-center gap-1 rounded-full bg-white/95 backdrop-blur px-2.5 py-1 text-[11px] font-bold text-slate-800 shadow-md transition-all duration-200 hover:bg-[#143c2d] hover:text-white"
+                          aria-label={`Quick preview ${product.name}`}
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <span>Quick View</span>
+                        </button>
+
+                        {isLowStock && !isOutOfStock && (
+                          <div className="absolute bottom-2 left-2 pointer-events-none">
+                            <span className="rounded-full bg-amber-500/95 px-2 py-0.5 text-[9px] font-extrabold text-white shadow-sm">
+                              Only {stock} left
+                            </span>
+                          </div>
+                        )}
+
+                        {isOutOfStock && (
+                          <div className="absolute inset-0 grid place-items-center bg-slate-900/60 backdrop-blur-[2px]">
+                            <span className="rounded-full bg-white px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-slate-800 shadow-md">
+                              Out of stock
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-1 flex-col p-2.5 sm:p-3.5">
+                        <div className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-[#143c2d]/80">
+                          <span className="truncate">{product.category_name || "Produce"}</span>
+                          <span className="text-slate-400 font-medium normal-case shrink-0">{product.unit || "Per item"}</span>
+                        </div>
+
+                        <h3 className="mt-1 min-h-[2.1rem] font-display text-xs sm:text-sm font-bold leading-snug text-slate-900 group-hover:text-[#c85a17] transition-colors line-clamp-2">
+                          {product.name}
+                        </h3>
+
+                        <div className="mt-0.5 flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                          <span>Verified Quality</span>
+                          <span>•</span>
+                          <span>Farm Fresh</span>
+                        </div>
+
+                        <div className="mt-2.5 flex items-center justify-between gap-1 border-t border-slate-100 pt-2">
+                          <div className="min-w-0">
+                            <p className="text-[8px] sm:text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Price</p>
+                            <p className="font-display text-xs sm:text-sm md:text-base font-black text-slate-900 truncate">
+                              ₦{price.toLocaleString("en-NG")}
+                            </p>
+                          </div>
+
+                          {cartQty > 0 ? (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex items-center rounded-full border border-[#143c2d] bg-[#143c2d]/5 p-0.5 shadow-xs"
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateQuantity(product.id, cartQty - 1);
+                                }}
+                                className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition cursor-pointer"
+                                aria-label={`Decrease ${product.name} quantity`}
+                              >
+                                -
+                              </button>
+                              <span className="w-4 sm:w-6 text-center text-xs font-black text-[#143c2d]">
+                                {cartQty}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={cartQty >= stock}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateQuantity(product.id, cartQty + 1);
+                                }}
+                                className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition disabled:opacity-40 cursor-pointer"
+                                aria-label={`Increase ${product.name} quantity`}
+                              >
+                                +
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={isOutOfStock}
+                              onClick={(e) => handleAdd(product, e)}
+                              className="inline-flex h-7 sm:h-8 items-center justify-center rounded-full bg-[#143c2d] px-3 sm:px-3.5 text-[11px] sm:text-xs font-extrabold text-white shadow-xs transition-all duration-200 hover:bg-[#1a4e3b] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none cursor-pointer"
+                              aria-label={`Add ${product.name} to basket`}
+                            >
+                              + Add
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+
         <QuickViewModal
           product={quickViewProduct}
           isOpen={Boolean(quickViewProduct)}
           onClose={() => setQuickViewProduct(null)}
+          onAddToCart={handleAdd}
         />
 
-        {/* Toast Notification */}
         <Toast toast={toast} onClose={() => setToast(null)} />
       </div>
     </PageWrapper>
