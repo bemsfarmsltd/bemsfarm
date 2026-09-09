@@ -421,66 +421,41 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ── 2. CATALOGUE PRODUCT SEARCH BAR ── */}
+        {/* ── 2. CATALOGUE PRODUCT SEARCH BAR (SLEEK & CLEAN) ── */}
         <section className="px-3 pt-3 pb-2 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-[1600px] w-full">
-            <div className="rounded-2xl sm:rounded-3xl bg-white p-3.5 sm:p-5 shadow-xs border border-[#DFD6C2]/80">
-              <form
-                onSubmit={handleSearchSubmit}
-                className="flex flex-col sm:flex-row items-stretch gap-2.5 sm:gap-3"
-              >
-                <div className="relative flex-1">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 sm:pl-4 text-slate-400 text-base sm:text-lg">
-                    🔍
-                  </div>
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search fresh produce catalogue (e.g. Stone-Free Rice, Abuja Yam, Palm Oil, Pepper...)"
-                    className="w-full rounded-xl sm:rounded-2xl border border-slate-200 bg-[#FBF9F5] py-3 pl-11 pr-10 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#2E7D32] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/20 transition-all"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 text-sm font-bold"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-                <button
-                  type="submit"
-                  className="flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-[#143c2d] px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#1b4d3a] active:scale-98 transition-all shrink-0 cursor-pointer"
-                >
-                  <span>Search Shop</span>
-                  <span>→</span>
-                </button>
-              </form>
-
-              {/* Popular Search Tags */}
-              <div className="mt-3 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs">
-                <span className="font-semibold text-slate-400">Popular:</span>
-                {[
-                  "Stone-Free Rice",
-                  "Abuja Yam",
-                  "Plantain",
-                  "Pure Palm Oil",
-                  "Honey Beans",
-                  "Dried Pepper",
-                ].map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => navigate(`/products?search=${encodeURIComponent(tag)}`)}
-                    className="rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-[#143c2d] hover:border-[#143c2d]/30 border border-transparent px-2.5 py-1 font-medium text-slate-600 transition-all cursor-pointer"
-                  >
-                    {tag}
-                  </button>
-                ))}
+            <form
+              onSubmit={handleSearchSubmit}
+              className="relative flex items-center w-full"
+            >
+              <div className="pointer-events-none absolute left-3.5 sm:left-4 flex items-center text-slate-400 text-base sm:text-lg">
+                🔍
               </div>
-            </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search fresh produce catalogue (e.g. Rice, Yam, Palm Oil, Pepper...)"
+                className="w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl border border-[#DFD6C2] bg-white pl-10 sm:pl-12 pr-28 sm:pr-32 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#2E7D32] focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/20 transition-all shadow-xs"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-24 sm:right-28 flex items-center text-slate-400 hover:text-slate-600 text-sm font-bold px-2 py-1"
+                >
+                  ×
+                </button>
+              )}
+              <button
+                type="submit"
+                className="absolute right-1.5 sm:right-2 h-9 sm:h-10 px-4 sm:px-5 rounded-lg sm:rounded-xl bg-[#143c2d] hover:bg-[#1b4d3a] text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+              >
+                <span>Search</span>
+                <span className="hidden sm:inline">Shop</span>
+                <span>→</span>
+              </button>
+            </form>
           </div>
         </section>
 
