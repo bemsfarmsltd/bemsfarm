@@ -12,6 +12,7 @@ import ProductCard, {
 import api from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
 import { NAIRA_PER_UNIT } from "../utils/currency";
+import RestockModal from "../components/ui/RestockModal";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -23,6 +24,7 @@ export default function ProductDetail() {
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
   const [quantity, setQuantity] = useState(1);
+  const [restockOpen, setRestockOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [added, setAdded] = useState(false);
   const [activeTab, setActiveTab] = useState("description");
@@ -339,7 +341,7 @@ export default function ProductDetail() {
                   fontWeight: 700,
                 }}
               >
-                {(Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? "| Unavailable" : "| In Stock"}
+                {(Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? "| Presently Out of Stock" : "| In Stock"}
               </span>
             </div>
 
@@ -387,7 +389,7 @@ export default function ProductDetail() {
                       fontSize: "13px",
                     }}
                   >
-                    Unavailable
+                    Presently Out of Stock
                   </span>
                 </div>
               ) : product.stock_quantity !== null && product.stock_quantity <= 10 ? (
@@ -601,35 +603,50 @@ export default function ProductDetail() {
                   +
                 </motion.button>
               </div>
-              <motion.button
-                disabled={Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock"}
-                onClick={handleAdd}
-                style={{
-                  flex: 1,
-                  backgroundColor:
-                    (Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock")
-                      ? "#9AA0A6"
-                      : added
-                        ? "#2E7D32"
-                        : "#F57C00",
-                  cursor: (Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? "not-allowed" : "pointer",
-                  opacity: (Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? 0.6 : 1,
-                  color: "white",
-                  border: "none",
-                  borderRadius: "12px",
-                  padding: "16px",
-                  fontSize: "16px",
-                  fontWeight: 800,
-                  boxShadow: (Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? "none" : "0 4px 16px rgba(245,124,0,0.35)",
-                  transition: "background-color 0.2s",
-                }}
-              >
-                {(Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock")
-                  ? "Unavailable"
-                  : added
-                    ? " Added to Cart!"
-                    : "Buy Now"}
-              </motion.button>
+              {(Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? (
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setRestockOpen(true)}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#D97706",
+                    cursor: "pointer",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "12px",
+                    padding: "16px",
+                    fontSize: "15px",
+                    fontWeight: 800,
+                    boxShadow: "0 4px 16px rgba(217,119,6,0.35)",
+                    transition: "background-color 0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                  }}
+                >
+                  Notify Me When Restocked
+                </motion.button>
+              ) : (
+                <motion.button
+                  onClick={handleAdd}
+                  style={{
+                    flex: 1,
+                    backgroundColor: added ? "#2E7D32" : "#F57C00",
+                    cursor: "pointer",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "12px",
+                    padding: "16px",
+                    fontSize: "16px",
+                    fontWeight: 800,
+                    boxShadow: "0 4px 16px rgba(245,124,0,0.35)",
+                    transition: "background-color 0.2s",
+                  }}
+                >
+                  {added ? " Added to Cart!" : "Buy Now"}
+                </motion.button>
+              )}
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={toggleFavorite}
@@ -1080,6 +1097,12 @@ export default function ProductDetail() {
             </div>
           </div>
         )}
+
+        <RestockModal
+          product={product}
+          isOpen={restockOpen}
+          onClose={() => setRestockOpen(false)}
+        />
       </div>
     </PageWrapper>
   );

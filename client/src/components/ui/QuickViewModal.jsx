@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../../context/CartContext";
 import { NAIRA_PER_UNIT } from "../../utils/currency";
 import { getProductImage } from "../../utils/productImages";
+import RestockModal from "./RestockModal";
 
 const CHEF_TIPS = {
   "Grains & Cereals": "Parboil for 10 mins before simmering with rich stock for maximum grain integrity and fragrance.",
@@ -19,11 +20,13 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
   const navigate = useNavigate();
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [restockOpen, setRestockOpen] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setQty(1);
       setAdded(false);
+      setRestockOpen(false);
       document.body.style.overflow = "hidden";
       const handleKeyDown = (e) => {
         if (e.key === "Escape") onClose();
@@ -139,18 +142,12 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
 
               {/* Price & Stock */}
               <div className="mt-3 flex items-baseline gap-3">
-                {isOutOfStock ? (
-                  <span className="text-2xl font-black text-red-600">
-                    Unavailable
-                  </span>
-                ) : (
-                  <span className="text-2xl font-black text-[#143c2d]">
-                    ₦{price.toLocaleString()}
-                  </span>
-                )}
+                <span className="text-2xl font-black text-[#143c2d]">
+                  ₦{price.toLocaleString()}
+                </span>
                 {isOutOfStock ? (
                   <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-extrabold text-red-700 border border-red-200">
-                    Out of stock
+                    Presently Out of Stock
                   </span>
                 ) : isLowStock ? (
                   <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-extrabold text-amber-800">
@@ -177,57 +174,66 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
 
             {/* Quantity Stepper & Add Button */}
             <div className="mt-6 pt-4 border-t border-[#DFD6C2]/70 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">Quantity</span>
-                <div className="flex items-center rounded-xl border border-slate-300 bg-white">
-                  <button
-                    type="button"
-                    disabled={qty <= 1 || isOutOfStock}
-                    onClick={() => setQty((prev) => Math.max(1, prev - 1))}
-                    className="flex h-8 w-8 items-center justify-center text-sm font-bold text-slate-700 transition hover:bg-slate-100 disabled:opacity-40"
-                  >
-                    -
-                  </button>
-                  <span className="w-10 text-center text-xs font-black text-[#143c2d]">
-                    {qty}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={qty >= stock || isOutOfStock}
-                    onClick={() => setQty((prev) => Math.min(stock, prev + 1))}
-                    className="flex h-8 w-8 items-center justify-center text-sm font-bold text-slate-700 transition hover:bg-slate-100 disabled:opacity-40"
-                  >
-                    +
-                  </button>
+              {!isOutOfStock && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700">Quantity</span>
+                  <div className="flex items-center rounded-xl border border-slate-300 bg-white">
+                    <button
+                      type="button"
+                      disabled={qty <= 1}
+                      onClick={() => setQty((prev) => Math.max(1, prev - 1))}
+                      className="flex h-8 w-8 items-center justify-center text-sm font-bold text-slate-700 transition hover:bg-slate-100 disabled:opacity-40"
+                    >
+                      -
+                    </button>
+                    <span className="w-10 text-center text-xs font-black text-[#143c2d]">
+                      {qty}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={qty >= stock}
+                      onClick={() => setQty((prev) => Math.min(stock, prev + 1))}
+                      className="flex h-8 w-8 items-center justify-center text-sm font-bold text-slate-700 transition hover:bg-slate-100 disabled:opacity-40"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Actions */}
               <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  disabled={isOutOfStock}
-                  onClick={handleAdd}
-                  className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-black uppercase tracking-wider text-white shadow-md transition-all ${
-                    isOutOfStock
-                      ? "bg-slate-300 cursor-not-allowed"
-                      : added
-                      ? "bg-emerald-600 scale-[0.99]"
-                      : "bg-[#143c2d] hover:bg-[#0e2c21] hover:scale-[1.01]"
-                  }`}
-                >
-                  {added ? (
-                    <>
-                      <span></span>
-                      <span>Added to Basket!</span>
-                    </>
-                  ) : (
-                    <>
-                      <span></span>
-                      <span>Add {qty} to Basket • ₦{(price * qty).toLocaleString()}</span>
-                    </>
-                  )}
-                </button>
+                {isOutOfStock ? (
+                  <button
+                    type="button"
+                    onClick={() => setRestockOpen(true)}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-black uppercase tracking-wider text-white bg-amber-500 hover:bg-amber-600 shadow-md transition-all cursor-pointer"
+                  >
+                    Notify Me When Restocked
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleAdd}
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-black uppercase tracking-wider text-white shadow-md transition-all ${
+                      added
+                        ? "bg-emerald-600 scale-[0.99]"
+                        : "bg-[#143c2d] hover:bg-[#0e2c21] hover:scale-[1.01]"
+                    }`}
+                  >
+                    {added ? (
+                      <>
+                        <span></span>
+                        <span>Added to Basket!</span>
+                      </>
+                    ) : (
+                      <>
+                        <span></span>
+                        <span>Add {qty} to Basket • ₦{(price * qty).toLocaleString()}</span>
+                      </>
+                    )}
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -243,6 +249,12 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
             </div>
           </div>
         </motion.div>
+
+        <RestockModal
+          product={product}
+          isOpen={restockOpen}
+          onClose={() => setRestockOpen(false)}
+        />
       </div>
     </AnimatePresence>
   );

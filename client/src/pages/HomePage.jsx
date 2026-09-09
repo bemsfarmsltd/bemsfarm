@@ -9,6 +9,7 @@ import { NAIRA_PER_UNIT } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
 import Toast from "../components/ui/Toast";
 import QuickViewModal from "../components/ui/QuickViewModal";
+import RestockModal from "../components/ui/RestockModal";
 
 const CATEGORY_META = {
   "Vegetables": {},
@@ -37,6 +38,7 @@ function ProductGridCard({
   onQuickView,
   isFavorite,
   onToggleFavorite,
+  onNotify,
 }) {
   const stock = Number(product.stock_quantity ?? product.stock ?? 0);
   const price = Number(product.price || 0) * NAIRA_PER_UNIT;
@@ -53,28 +55,26 @@ function ProductGridCard({
   return (
     <article
       onClick={() => onQuickView(product)}
-      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[#DFD6C2]/80 bg-white shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-[#143c2d]/40 hover:shadow-xl cursor-pointer"
+      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#143c2d]/25 cursor-pointer"
     >
-      {/* Image Container */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#FAF9F6]">
-        <div className="block h-full w-full" aria-label={`View ${product.name}`}>
-          <img
-            src={getProductImage(product)}
-            alt={product.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = "/hero_food_4.jpg";
-            }}
-          />
-        </div>
+      {/* Product Image Box */}
+      <div className="relative aspect-square w-full bg-[#FAF9F6] overflow-hidden">
+        <img
+          src={getProductImage(product)}
+          alt={product.name}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = "/hero_food_4.jpg";
+          }}
+        />
 
-        {/* Top Badges */}
-        <div className="absolute inset-x-2 top-2 flex items-center justify-between gap-1 pointer-events-none">
+        {/* Top Badges Floating Header */}
+        <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none z-10">
           {isBemsOriginal ? (
-            <span className="rounded-full bg-[#143c2d]/95 backdrop-blur px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">
-              Original
+            <span className="rounded-full bg-[#143c2d]/95 backdrop-blur px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-300 shadow-md">
+               Bems Original
             </span>
           ) : product.is_featured ? (
             <span className="rounded-full bg-[#143c2d] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-white shadow-md">
@@ -108,23 +108,6 @@ function ProductGridCard({
           </div>
         </div>
 
-        {/* Quick View Button on Desktop Hover Only */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onQuickView(product);
-          }}
-          className="absolute bottom-2.5 right-2.5 z-10 hidden md:flex items-center gap-1 rounded-full bg-white/95 backdrop-blur px-2.5 py-1 text-[11px] font-bold text-slate-800 shadow-md transition-all duration-200 hover:bg-[#143c2d] hover:text-white"
-          aria-label={`Quick preview ${product.name}`}
-        >
-          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span>Quick View</span>
-        </button>
-
         {isLowStock && !isOutOfStock && (
           <div className="absolute bottom-2 left-2 pointer-events-none">
             <span className="rounded-full bg-amber-500/95 px-2 py-0.5 text-[9px] font-extrabold text-white shadow-sm">
@@ -134,9 +117,9 @@ function ProductGridCard({
         )}
 
         {isOutOfStock && (
-          <div className="absolute inset-0 grid place-items-center bg-slate-900/60 backdrop-blur-[2px]">
-            <span className="rounded-full bg-white px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-slate-800 shadow-md">
-              Out of stock
+          <div className="absolute inset-0 grid place-items-center bg-slate-900/65 backdrop-blur-[2px]">
+            <span className="rounded-full bg-red-600 px-3 py-1 text-[10px] sm:text-[11px] font-extrabold text-white shadow-md">
+              Presently Out of Stock
             </span>
           </div>
         )}
@@ -172,8 +155,8 @@ function ProductGridCard({
           <div className="min-w-0">
             <p className="text-[8px] sm:text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Price</p>
             {isOutOfStock ? (
-              <p className="font-display text-xs sm:text-sm md:text-base font-black text-red-600 truncate">
-                Unavailable
+              <p className="font-display text-[11px] sm:text-xs font-black text-red-600 truncate">
+                Presently Out of Stock
               </p>
             ) : (
               <p className="font-display text-xs sm:text-sm md:text-base font-black text-slate-900 truncate">
@@ -182,7 +165,19 @@ function ProductGridCard({
             )}
           </div>
 
-          {cartQuantity > 0 ? (
+          {isOutOfStock ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNotify ? onNotify(product) : null;
+              }}
+              className="inline-flex h-7 sm:h-8 items-center justify-center rounded-full bg-amber-500 hover:bg-amber-600 px-2.5 sm:px-3 text-[10px] sm:text-xs font-black text-white shadow-xs transition-all duration-200 hover:shadow-md active:scale-95 cursor-pointer shrink-0"
+              aria-label={`Notify me when ${product.name} is restocked`}
+            >
+              Notify Me
+            </button>
+          ) : cartQuantity > 0 ? (
             /* In-Card Quantity Stepper */
             <div
               onClick={(e) => e.stopPropagation()}
@@ -223,12 +218,11 @@ function ProductGridCard({
                 e.stopPropagation();
                 onAdd(product);
               }}
-              disabled={isOutOfStock}
               className={`inline-flex h-7 sm:h-8 items-center justify-center rounded-full px-3 sm:px-3.5 text-[11px] sm:text-xs font-extrabold transition-all duration-200 active:scale-95 ${
                 isAdded
                   ? "bg-[#1d6b45] text-white shadow-md"
                   : "bg-[#143c2d] text-white shadow-xs hover:bg-[#1a4e3b] hover:shadow-md"
-              } disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none`}
+              } cursor-pointer`}
               aria-label={`Add ${product.name} to basket`}
             >
               {isAdded ? "Added" : "+ Add"}
@@ -262,6 +256,7 @@ export default function HomePage() {
   const [addedProducts, setAddedProducts] = useState({});
   const [toast, setToast] = useState(null);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
+  const [restockProduct, setRestockProduct] = useState(null);
   const toastTimerRef = useRef(null);
 
   // Favorites stored in localStorage
@@ -692,6 +687,7 @@ export default function HomePage() {
                     onQuickView={(p) => setQuickViewProduct(p)}
                     isFavorite={Boolean(favorites[product.id])}
                     onToggleFavorite={toggleFavorite}
+                    onNotify={setRestockProduct}
                   />
                 ))}
               </div>
@@ -738,6 +734,7 @@ export default function HomePage() {
                     onQuickView={(p) => setQuickViewProduct(p)}
                     isFavorite={Boolean(favorites[product.id])}
                     onToggleFavorite={toggleFavorite}
+                    onNotify={setRestockProduct}
                   />
                 ))}
               </div>
@@ -780,7 +777,7 @@ export default function HomePage() {
               <div className="flex items-start gap-2.5 sm:gap-3.5 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
                 <div className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-800">
                   <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296a3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043a3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
                   </svg>
                 </div>
                 <div>
@@ -833,6 +830,13 @@ export default function HomePage() {
           product={quickViewProduct}
           isOpen={Boolean(quickViewProduct)}
           onClose={() => setQuickViewProduct(null)}
+        />
+
+        {/* Restock Notification Modal */}
+        <RestockModal
+          product={restockProduct}
+          isOpen={Boolean(restockProduct)}
+          onClose={() => setRestockProduct(null)}
         />
 
         {/* Floating Toast Feedback */}

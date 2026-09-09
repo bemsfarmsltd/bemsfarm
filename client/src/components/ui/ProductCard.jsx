@@ -150,15 +150,16 @@ export default function ProductCard({ product, index = 0 }) {
         >
           <span
             style={{
-              backgroundColor: "#EF4444",
+              backgroundColor: "#DC2626",
               color: "white",
               fontWeight: 800,
-              fontSize: "12px",
-              padding: "5px 14px",
+              fontSize: "11px",
+              padding: "5px 12px",
               borderRadius: "50px",
+              boxShadow: "0 2px 8px rgba(220,38,38,0.3)",
             }}
           >
-            Out of Stock
+            Presently Out of Stock
           </span>
         </div>
       )}

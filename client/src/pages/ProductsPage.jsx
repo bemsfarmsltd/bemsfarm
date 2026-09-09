@@ -7,6 +7,7 @@ import api from "../services/api";
 import { NAIRA_PER_UNIT } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
 import QuickViewModal from "../components/ui/QuickViewModal";
+import RestockModal from "../components/ui/RestockModal";
 import Toast from "../components/ui/Toast";
 
 const SHOP_CSS = `
@@ -218,6 +219,7 @@ export default function ProductsPage() {
   const [activeCat, setActiveCat] = useState(params.get("category") || "All");
   const [sort, setSort] = useState("featured");
   const [quickViewProduct, setQuickViewProduct] = useState(null);
+  const [restockProduct, setRestockProduct] = useState(null);
   const [toast, setToast] = useState(null);
   const [favorites, setFavorites] = useState(() => {
     try {
@@ -693,9 +695,9 @@ export default function ProductsPage() {
                         )}
 
                         {isOutOfStock && (
-                          <div className="absolute inset-0 grid place-items-center bg-slate-900/60 backdrop-blur-[2px]">
-                            <span className="rounded-full bg-white px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-slate-800 shadow-md">
-                              Out of stock
+                          <div className="absolute inset-0 grid place-items-center bg-slate-900/65 backdrop-blur-[2px]">
+                            <span className="rounded-full bg-red-600 px-3 py-1 text-[10px] sm:text-[11px] font-extrabold text-white shadow-md">
+                              Presently Out of Stock
                             </span>
                           </div>
                         )}
@@ -721,9 +723,11 @@ export default function ProductsPage() {
                           <div className="min-w-0">
                             <p className="text-[8px] sm:text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Price</p>
                             {isOutOfStock ? (
-                              <p className="font-display text-xs sm:text-sm md:text-base font-black text-red-600 truncate">
-                                Unavailable
-                              </p>
+                              <div>
+                                <p className="font-display text-[11px] sm:text-xs font-black text-red-600 truncate">
+                                  Presently Out of Stock
+                                </p>
+                              </div>
                             ) : (
                               <p className="font-display text-xs sm:text-sm md:text-base font-black text-slate-900 truncate">
                                 ₦{price.toLocaleString("en-NG")}
@@ -731,7 +735,19 @@ export default function ProductsPage() {
                             )}
                           </div>
 
-                          {cartQty > 0 ? (
+                          {isOutOfStock ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRestockProduct(product);
+                              }}
+                              className="inline-flex h-7 sm:h-8 items-center justify-center rounded-full bg-amber-500 hover:bg-amber-600 px-2.5 sm:px-3 text-[10px] sm:text-xs font-black text-white shadow-xs transition-all duration-200 hover:shadow-md active:scale-95 cursor-pointer shrink-0"
+                              aria-label={`Notify me when ${product.name} is restocked`}
+                            >
+                              Notify Me
+                            </button>
+                          ) : cartQty > 0 ? (
                             <div
                               onClick={(e) => e.stopPropagation()}
                               className="flex items-center rounded-full border border-[#143c2d] bg-[#143c2d]/5 p-0.5 shadow-xs"
@@ -766,9 +782,8 @@ export default function ProductsPage() {
                           ) : (
                             <button
                               type="button"
-                              disabled={isOutOfStock}
                               onClick={(e) => handleAdd(product, e)}
-                              className="inline-flex h-7 sm:h-8 items-center justify-center rounded-full bg-[#143c2d] px-3 sm:px-3.5 text-[11px] sm:text-xs font-extrabold text-white shadow-xs transition-all duration-200 hover:bg-[#1a4e3b] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none cursor-pointer"
+                              className="inline-flex h-7 sm:h-8 items-center justify-center rounded-full bg-[#143c2d] px-3 sm:px-3.5 text-[11px] sm:text-xs font-extrabold text-white shadow-xs transition-all duration-200 hover:bg-[#1a4e3b] hover:shadow-md active:scale-95 cursor-pointer"
                               aria-label={`Add ${product.name} to basket`}
                             >
                               + Add
@@ -789,6 +804,12 @@ export default function ProductsPage() {
           isOpen={Boolean(quickViewProduct)}
           onClose={() => setQuickViewProduct(null)}
           onAddToCart={handleAdd}
+        />
+
+        <RestockModal
+          product={restockProduct}
+          isOpen={Boolean(restockProduct)}
+          onClose={() => setRestockProduct(null)}
         />
 
         <Toast toast={toast} onClose={() => setToast(null)} />

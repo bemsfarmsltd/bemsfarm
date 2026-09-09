@@ -8,6 +8,7 @@ import { NAIRA_PER_UNIT } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
 import logo from "../assets/bemsfarms_logo_compact.png";
 import Toast from "../components/ui/Toast";
+import RestockModal from "../components/ui/RestockModal";
 
 const DEFAULT_CATEGORIES = [
   {
@@ -244,7 +245,7 @@ function SectionHeading({ eyebrow, title, text, align = "center" }) {
   );
 }
 
-function StoreProductCard({ product, added, onAdd }) {
+function StoreProductCard({ product, added, onAdd, onNotify }) {
   const stock = Number(product.stock_quantity ?? product.stock ?? 0);
   const price = Number(product.price || 0) * NAIRA_PER_UNIT;
   const invalidPrice = !Number.isFinite(price) || price <= 0;
@@ -279,7 +280,11 @@ function StoreProductCard({ product, added, onAdd }) {
             Featured
           </span>
         ) : null}
-        {unavailable && <span className="absolute inset-x-3 bottom-3 rounded-full bg-red-600/90 backdrop-blur px-3 py-1.5 text-center text-xs font-extrabold text-white shadow-md">Out of stock</span>}
+        {unavailable && (
+          <span className="absolute inset-x-3 bottom-3 rounded-full bg-red-600/95 backdrop-blur px-3 py-1.5 text-center text-[11px] font-extrabold text-white shadow-md">
+            Presently Out of Stock
+          </span>
+        )}
       </Link>
       <div className="p-4">
         <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#143c2d]/80">{product.category_name || "Farm produce"}</p>
@@ -290,19 +295,29 @@ function StoreProductCard({ product, added, onAdd }) {
         </div>
         <div className="mt-3 flex items-center justify-between gap-1.5">
           {unavailable ? (
-            <p className="font-extrabold text-red-600 text-sm xl:text-base whitespace-nowrap">Unavailable</p>
+            <p className="font-extrabold text-red-600 text-xs xl:text-sm whitespace-nowrap">Presently Out of Stock</p>
           ) : (
             <p className="font-extrabold text-slate-900 text-sm xl:text-base whitespace-nowrap">{`₦${price.toLocaleString("en-NG")}`}</p>
           )}
-          <button
-            type="button"
-            onClick={() => onAdd(product)}
-            disabled={unavailable}
-            className={`h-9 shrink-0 rounded-full px-3 text-[11px] font-extrabold text-white transition ${added ? "bg-[#1d6b45]" : "bg-[#143c2d] hover:bg-[#1a4e3b]"} disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400`}
-            aria-label={unavailable ? `${product.name} is unavailable` : `Add ${product.name} to basket`}
-          >
-            {unavailable ? "Unavailable" : added ? " Added" : "+ Add"}
-          </button>
+          {unavailable ? (
+            <button
+              type="button"
+              onClick={() => onNotify ? onNotify(product) : null}
+              className="h-9 shrink-0 rounded-full bg-amber-500 hover:bg-amber-600 px-3 text-[11px] font-extrabold text-white transition shadow-xs cursor-pointer"
+              aria-label={`Notify me when ${product.name} is restocked`}
+            >
+              Notify Me
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onAdd(product)}
+              className={`h-9 shrink-0 rounded-full px-3 text-[11px] font-extrabold text-white transition ${added ? "bg-[#1d6b45]" : "bg-[#143c2d] hover:bg-[#1a4e3b]"}`}
+              aria-label={`Add ${product.name} to basket`}
+            >
+              {added ? " Added" : "+ Add"}
+            </button>
+          )}
         </div>
       </div>
     </article>
@@ -392,6 +407,7 @@ function FullScreenCatalogueModal({
   products,
   addedProducts,
   onAdd,
+  onNotify,
   cartCount,
   cartSubtotal,
   onProceedToOrder,
@@ -503,13 +519,14 @@ function FullScreenCatalogueModal({
           <div className="flex items-center gap-2">
             <Link
               to="/cart"
-              className="relative inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-extrabold text-slate-700 shadow-sm hover:bg-slate-50"
-              aria-label={`View basket with ${cartCount} items`}
+              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-[#143c2d] hover:bg-slate-50"
+              aria-label={`View shopping cart with ${cartCount} items`}
             >
-              <span aria-hidden="true"></span>
-              <span>Basket</span>
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
               {cartCount > 0 && (
-                <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-extrabold text-white">
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#c85a17] text-[10px] font-extrabold text-white">
                   {cartCount}
                 </span>
               )}
@@ -518,17 +535,18 @@ function FullScreenCatalogueModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2 text-xs font-extrabold text-white shadow-md transition hover:bg-slate-800 active:scale-95"
-              aria-label="Close full screen catalogue"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200"
+              aria-label="Close store catalogue"
             >
-              <span></span>
-              <span>Close (Esc)</span>
+              ×
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Category Pills */}
-        <div className="mx-auto mt-3 flex max-w-7xl items-center gap-2 overflow-x-auto pb-1 text-xs">
+      {/* Category Pills Filter Bar */}
+      <div className="relative z-10 border-b border-slate-200 bg-white/80 px-4 py-2.5 backdrop-blur-sm sm:px-8">
+        <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto text-xs">
           {categoriesList.map((cat) => (
             <button
               key={cat.key}
@@ -585,6 +603,7 @@ function FullScreenCatalogueModal({
                   product={product}
                   added={Boolean(addedProducts[product.id])}
                   onAdd={onAdd}
+                  onNotify={onNotify}
                 />
               ))}
             </div>
@@ -657,6 +676,7 @@ export default function LandingPage() {
   const [catalogueView, setCatalogueView] = useState("all");
   const [addedProducts, setAddedProducts] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [restockProduct, setRestockProduct] = useState(null);
   const [toast, setToast] = useState(null);
   const toastTimerRef = useRef(null);
   const catalogueTriggerRef = useRef(null);
@@ -1102,7 +1122,7 @@ export default function LandingPage() {
               <>
                 <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 xl:gap-4">
                   {paginatedProducts.map((product) => (
-                    <StoreProductCard key={product.id} product={product} added={Boolean(addedProducts[product.id])} onAdd={handleAdd} />
+                    <StoreProductCard key={product.id} product={product} added={Boolean(addedProducts[product.id])} onAdd={handleAdd} onNotify={setRestockProduct} />
                   ))}
                 </div>
 
@@ -1466,6 +1486,7 @@ export default function LandingPage() {
             products={products}
             addedProducts={addedProducts}
             onAdd={handleAdd}
+            onNotify={setRestockProduct}
             cartCount={cartCount}
             cartSubtotal={cartSubtotal}
             onProceedToOrder={handleProceedToOrder}
@@ -1487,6 +1508,13 @@ export default function LandingPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Restock Notification Modal */}
+      <RestockModal
+        product={restockProduct}
+        isOpen={Boolean(restockProduct)}
+        onClose={() => setRestockProduct(null)}
+      />
 
       {/* Toast Notification for Basket Actions */}
       <Toast toast={toast} onClose={() => setToast(null)} />
