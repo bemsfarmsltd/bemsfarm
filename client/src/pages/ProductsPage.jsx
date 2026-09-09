@@ -594,7 +594,7 @@ export default function ProductsPage() {
                 return (
                   <div
                     key={product.id}
-                    onClick={() => navigate(`/product/${product.id}`)}
+                    onClick={() => setQuickViewProduct(product)}
                     style={{
                       backgroundColor: "rgba(255,255,255,0.85)",
                       border: "1px solid rgba(27,67,50,0.08)",

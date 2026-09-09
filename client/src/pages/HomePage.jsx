@@ -51,10 +51,13 @@ function ProductGridCard({
   );
 
   return (
-    <article className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[#DFD6C2]/80 bg-white shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-[#143c2d]/40 hover:shadow-xl">
+    <article
+      onClick={() => onQuickView(product)}
+      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[#DFD6C2]/80 bg-white shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-[#143c2d]/40 hover:shadow-xl cursor-pointer"
+    >
       {/* Image Container */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#FAF9F6]">
-        <Link to={`/product/${product.id}`} className="block h-full w-full" aria-label={`View ${product.name}`}>
+        <div className="block h-full w-full" aria-label={`View ${product.name}`}>
           <img
             src={getProductImage(product)}
             alt={product.name}
@@ -65,7 +68,7 @@ function ProductGridCard({
               e.currentTarget.src = "/hero_food_4.jpg";
             }}
           />
-        </Link>
+        </div>
 
         {/* Top Badges */}
         <div className="absolute inset-x-2 top-2 flex items-center justify-between gap-1 pointer-events-none">
@@ -83,7 +86,10 @@ function ProductGridCard({
             {/* Wishlist Heart Button */}
             <button
               type="button"
-              onClick={(e) => onToggleFavorite(product.id, e)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite(product.id, e);
+              }}
               className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white/95 backdrop-blur shadow-xs transition hover:scale-110 ${
                 isFavorite ? "text-red-500" : "text-slate-400 hover:text-red-500"
               }`}
@@ -94,10 +100,13 @@ function ProductGridCard({
           </div>
         </div>
 
-        {/* Quick View Button on Desktop Hover Only (Hidden on Mobile) */}
+        {/* Quick View Button on Desktop Hover Only */}
         <button
           type="button"
-          onClick={() => onQuickView(product)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onQuickView(product);
+          }}
           className="absolute bottom-2.5 right-2.5 z-10 hidden md:flex items-center gap-1 rounded-full bg-white/95 backdrop-blur px-2.5 py-1 text-[11px] font-bold text-slate-800 shadow-md transition-all duration-200 hover:bg-[#143c2d] hover:text-white"
           aria-label={`Quick preview ${product.name}`}
         >
@@ -129,10 +138,8 @@ function ProductGridCard({
           <span className="text-slate-400 font-medium normal-case shrink-0">{product.unit || "Per item"}</span>
         </div>
 
-        <h3 className="mt-1 min-h-[2.1rem] font-display text-xs sm:text-sm font-bold leading-snug text-slate-900">
-          <Link to={`/product/${product.id}`} className="transition hover:text-[#c85a17] line-clamp-2">
-            {product.name}
-          </Link>
+        <h3 className="mt-1 min-h-[2.1rem] font-display text-xs sm:text-sm font-bold leading-snug text-slate-900 group-hover:text-[#c85a17] transition-colors line-clamp-2">
+          {product.name}
         </h3>
 
         {/* Rating */}
@@ -160,10 +167,16 @@ function ProductGridCard({
 
           {cartQuantity > 0 ? (
             /* In-Card Quantity Stepper */
-            <div className="flex items-center rounded-full border border-[#143c2d] bg-[#143c2d]/5 p-0.5 shadow-xs">
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center rounded-full border border-[#143c2d] bg-[#143c2d]/5 p-0.5 shadow-xs"
+            >
               <button
                 type="button"
-                onClick={() => onUpdateQty(product.id, cartQuantity - 1)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateQty(product.id, cartQuantity - 1);
+                }}
                 className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition"
                 aria-label={`Decrease ${product.name} quantity`}
               >
@@ -175,7 +188,10 @@ function ProductGridCard({
               <button
                 type="button"
                 disabled={cartQuantity >= stock}
-                onClick={() => onUpdateQty(product.id, cartQuantity + 1)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpdateQty(product.id, cartQuantity + 1);
+                }}
                 className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition disabled:opacity-40"
                 aria-label={`Increase ${product.name} quantity`}
               >
@@ -186,7 +202,10 @@ function ProductGridCard({
             /* Default Add Button */
             <button
               type="button"
-              onClick={() => onAdd(product)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAdd(product);
+              }}
               disabled={isOutOfStock}
               className={`inline-flex h-7 sm:h-8 items-center justify-center rounded-full px-3 sm:px-3.5 text-[11px] sm:text-xs font-extrabold transition-all duration-200 active:scale-95 ${
                 isAdded
