@@ -476,7 +476,7 @@ export default function Navbar() {
   const NAV_LINKS = [
     { label: "Home", path: "/home" },
     { label: "Shop", path: "/products" },
-    { label: "Delivery", path: "/track-order" },
+    { label: "Delivery", path: "/delivery" },
     { label: "Chef Bems", path: "/chef-chat" },
     { label: "My Orders", path: "/orders" },
   ];

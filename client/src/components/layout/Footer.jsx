@@ -89,7 +89,7 @@ export default function Footer() {
     {
       heading: "Help & Delivery",
       links: [
-        { label: "Track an Order", path: "/track-order" },
+        { label: "Delivery & Order Tracking", path: "/delivery" },
         { label: "Shipping & Rates", path: "/shipping" },
         { label: "Returns Policy", path: "/returns-policy" },
         { label: "Contact Support", path: "/contact" },

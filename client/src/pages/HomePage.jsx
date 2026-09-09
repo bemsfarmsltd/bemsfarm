@@ -527,7 +527,7 @@ export default function HomePage() {
                   </Link>
 
                   <Link
-                    to="/track-order"
+                    to="/delivery"
                     className="inline-flex items-center justify-center rounded-full bg-black/30 hover:bg-black/45 border border-white/20 hover:border-white/40 text-white px-5 py-2.5 text-xs sm:text-sm font-bold backdrop-blur-md shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
                   >
                     <span>Delivery</span>

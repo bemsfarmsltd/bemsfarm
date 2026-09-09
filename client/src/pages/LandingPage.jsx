@@ -888,7 +888,7 @@ export default function LandingPage() {
             <a href="#categories" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Categories</a>
             <a href="#our-brand" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Bems Originals</a>
             <a href="#how-it-works" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">How it works</a>
-            <Link to="/track-order" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Track order</Link>
+            <Link to="/delivery" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Delivery</Link>
             <a href="#chef-bems" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Chef Bems</a>
             <a href="#faq" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">FAQs</a>
           </div>
@@ -913,7 +913,7 @@ export default function LandingPage() {
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="border-t border-slate-100 bg-white px-5 pb-6 pt-4 shadow-xl xl:hidden">
               <div className="flex flex-col gap-1">
                 {[['#featured-products', 'Shop products'], ['#categories', 'Categories'], ['#our-brand', 'Bems Originals'], ['#how-it-works', 'How it works'], ['#chef-bems', 'Chef Bems'], ['#faq', 'FAQs']].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">{label}</a>)}
-                <Link to="/track-order" onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">Track an order</Link>
+                <Link to="/delivery" onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">Delivery & Tracking</Link>
               </div>
               {isLoggedIn ? <Link to="/home" className="mt-4 block rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">My account</Link> : <div className="mt-4 grid grid-cols-2 gap-3"><Link to="/login" className="rounded-full border border-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-[#143c2d]">Sign in</Link><Link to="/register" className="rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">Join now</Link></div>}
               <Link to="/cart" className="mt-3 flex items-center justify-between rounded-2xl bg-[#143c2d] px-4 py-3 text-sm font-extrabold text-white"><span> View basket</span><span>{cartCount} {cartCount === 1 ? "item" : "items"}</span></Link>
@@ -1515,7 +1515,7 @@ export default function LandingPage() {
           <div className="grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-[1.35fr_.75fr_.75fr_.9fr]">
             <div><img src={logo} alt="BemsFarms" className="h-10 w-auto brightness-0 invert" /><p className="mt-5 max-w-sm text-sm leading-7">Fresh Nigerian food, everyday kitchen essentials and practical meal inspiration in one welcoming marketplace.</p><div className="mt-6 flex flex-wrap gap-2"><span className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-emerald-300 font-semibold">Fresh Selection</span><span className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-emerald-300 font-semibold">Secure Checkout</span></div></div>
             <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Shop</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/products" className="hover:text-white">All products</Link><a href="#categories" className="hover:text-white">Categories</a><a href="#featured-products" className="hover:text-white">Fresh picks</a><a href="#chef-bems" className="hover:text-white">Chef Bems</a></div></div>
-            <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Help</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/track-order" className="hover:text-white">Track an order</Link><Link to="/contact" className="hover:text-white">Contact support</Link><Link to="/shipping" className="hover:text-white">Shipping & delivery</Link><Link to="/returns-policy" className="hover:text-white">Returns & refunds</Link></div></div>
+            <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Help</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/delivery" className="hover:text-white">Delivery & Tracking</Link><Link to="/contact" className="hover:text-white">Contact support</Link><Link to="/shipping" className="hover:text-white">Shipping & delivery</Link><Link to="/returns-policy" className="hover:text-white">Returns & refunds</Link></div></div>
             <div>
               <h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Your account</h2>
               <p className="mt-5 text-sm leading-6">
