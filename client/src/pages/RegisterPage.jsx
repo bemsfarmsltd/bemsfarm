@@ -123,7 +123,7 @@ export default function RegisterPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 md:p-8 font-sans relative overflow-hidden"
+      className="min-h-screen flex items-center justify-center px-4 py-20 md:p-8 font-sans relative overflow-x-hidden"
       style={{ backgroundColor: "#FBF8F3" }}
     >
       <style>{AUTH_CSS}</style>
@@ -152,11 +152,11 @@ export default function RegisterPage() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="max-w-5xl w-full h-auto md:h-[720px] bg-white rounded-[32px] overflow-hidden shadow-2xl flex flex-col md:flex-row relative z-10"
+        className="max-w-5xl w-full bg-white rounded-[32px] overflow-hidden shadow-2xl flex flex-col md:min-h-[700px] md:flex-row relative z-10"
         style={{ boxShadow: "0 30px 80px -20px rgba(27,67,50,0.25)" }}
       >
         {/* Left Side: Video Pane */}
-        <div className="w-full md:w-1/2 relative overflow-hidden h-[240px] md:h-full shrink-0">
+        <div className="w-full md:w-1/2 relative overflow-hidden h-[220px] md:h-auto shrink-0">
           <video
             src="https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_640/v1786166480/A_slow_looping_cinematic_shot_i0swkm.mp4"
             autoPlay
@@ -192,7 +192,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Right Side: Form Pane */}
-        <div className="flex-1 p-6 md:p-10 flex flex-col justify-between overflow-y-auto">
+        <div className="flex-1 p-6 md:p-8 flex flex-col justify-between">
 
           <div className="w-full max-w-sm mx-auto my-auto text-left">
             <div className="flex items-center justify-between mb-3">
@@ -225,7 +225,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-3.5 max-h-[380px] overflow-y-auto pr-2 hide-scrollbar">
+            <form onSubmit={handleSubmit} className="space-y-3.5">
               {/* Name Fields Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
