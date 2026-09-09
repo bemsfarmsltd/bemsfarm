@@ -427,6 +427,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [hoveredNav, setHoveredNav] = useState(null);
   const dropdownRef = useRef(null);
 
   const cartCount = cartItems?.reduce((sum, i) => sum + i.quantity, 0) || 0;
@@ -565,52 +566,100 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* DESKTOP NAV LINKS (Natural Compact Width) */}
+        {/* DESKTOP NAV LINKS (Sliding Animated Navigation Segment) */}
         {user && (
           <div
             className="bf-navbar-links"
+            onMouseLeave={() => setHoveredNav(null)}
             style={{
+              display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: "4px",
+              gap: "2px",
               margin: "0 auto",
               flexShrink: 0,
+              position: "relative",
+              padding: "4px",
+              background: "#F4F6F4",
+              borderRadius: "14px",
+              border: "1px solid rgba(0, 0, 0, 0.05)",
             }}
           >
-            {NAV_LINKS.map(({ label, path }) => (
-              <Link
-                key={path}
-                to={path}
-                style={{
-                  textDecoration: "none",
-                }}
-              >
-                <div
+            {NAV_LINKS.map(({ label, path }) => {
+              const active = isActive(path);
+              const isHovered = hoveredNav === path;
+              return (
+                <Link
+                  key={path}
+                  to={path}
+                  onMouseEnter={() => setHoveredNav(path)}
                   style={{
-                    padding: "6px 14px",
-                    borderRadius: "8px",
-                    fontSize: "14px",
-                    fontWeight: isActive(path) ? 700 : 500,
-                    color: isActive(path) ? "#2E7D32" : "#6B7280",
-                    backgroundColor: isActive(path) ? "rgba(46, 125, 50, 0.08)" : "transparent",
-                    fontFamily: "var(--body-font)",
-                    transition: "all 0.15s",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive(path))
-                      e.currentTarget.style.backgroundColor = "#F9FAFB";
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive(path))
-                      e.currentTarget.style.backgroundColor = "transparent";
+                    textDecoration: "none",
+                    position: "relative",
+                    borderRadius: "10px",
+                    outline: "none",
                   }}
                 >
-                  {label}
-                </div>
-              </Link>
-            ))}
+                  <div
+                    style={{
+                      position: "relative",
+                      padding: "7px 16px",
+                      borderRadius: "10px",
+                      fontSize: "14px",
+                      fontWeight: active ? 700 : 500,
+                      color: active ? "#1B5E20" : isHovered ? "#111827" : "#4B5563",
+                      fontFamily: "var(--body-font)",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      zIndex: 2,
+                      transition: "color 0.2s ease",
+                    }}
+                  >
+                    {label}
+                  </div>
+
+                  {/* Active Sliding Indicator Pill */}
+                  {active && (
+                    <motion.div
+                      layoutId="activeNavIndicator"
+                      transition={{
+                        type: "spring",
+                        stiffness: 420,
+                        damping: 32,
+                      }}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        backgroundColor: "#ffffff",
+                        borderRadius: "10px",
+                        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(27, 94, 32, 0.06)",
+                        border: "1px solid rgba(46, 125, 50, 0.12)",
+                        zIndex: 1,
+                      }}
+                    />
+                  )}
+
+                  {/* Hover Sliding Pill (when not active) */}
+                  {!active && isHovered && (
+                    <motion.div
+                      layoutId="hoverNavIndicator"
+                      transition={{
+                        type: "spring",
+                        stiffness: 450,
+                        damping: 34,
+                      }}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        backgroundColor: "rgba(255, 255, 255, 0.65)",
+                        borderRadius: "10px",
+                        zIndex: 0,
+                      }}
+                    />
+                  )}
+                </Link>
+              );
+            })}
           </div>
         )}
 
@@ -869,13 +918,25 @@ export default function Navbar() {
                   border: "none",
                   cursor: "pointer",
                   padding: "7px",
+                  display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "20px",
+                  color: "#1B4332",
                 }}
                 aria-label="Toggle navigation"
               >
-                {mobileNavOpen ? "" : ""}
+                {mobileNavOpen ? (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                ) : (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                  </svg>
+                )}
               </button>
             </>
           ) : (
