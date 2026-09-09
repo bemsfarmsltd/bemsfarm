@@ -3,9 +3,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { NAIRA_PER_UNIT } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
+import { recordOutOfStockDemand } from "../utils/demandTracker";
 import QuickViewModal from "../components/ui/QuickViewModal";
 import RestockModal from "../components/ui/RestockModal";
 import Toast from "../components/ui/Toast";
@@ -173,6 +175,7 @@ function ShopVideoSlider() {
 export default function ProductsPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
+  const { user } = useAuth();
   const { cart, addToCart, updateQuantity } = useCart();
 
   const [products, setProducts] = useState([]);
@@ -229,7 +232,16 @@ export default function ProductsPage() {
   const handleAdd = (product, e) => {
     e?.stopPropagation();
     const stock = Number(product.stock_quantity ?? product.stock ?? 0);
-    if (stock === 0) return;
+    if (stock === 0) {
+      recordOutOfStockDemand(product, "shop_page_add_button", user);
+      setRestockProduct(product);
+      setToast({
+        message: `${product.name} is presently out of stock. Join the waitlist for instant restock notice!`,
+        type: "error",
+      });
+      setTimeout(() => setToast(null), 3500);
+      return;
+    }
 
     addToCart(product);
     setToast({
@@ -237,6 +249,21 @@ export default function ProductsPage() {
       type: "success",
     });
     setTimeout(() => setToast(null), 2500);
+  };
+
+  const handleProductCardClick = (product) => {
+    const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+    if (stock === 0) {
+      recordOutOfStockDemand(product, "shop_page_card_click", user);
+      setRestockProduct(product);
+      setToast({
+        message: `${product.name} is presently out of stock. Join the waitlist for instant restock notice!`,
+        type: "error",
+      });
+      setTimeout(() => setToast(null), 3500);
+      return;
+    }
+    navigate(`/product/${product.id}`);
   };
 
   const handleCategoryChange = (catName) => {
@@ -595,7 +622,7 @@ export default function ProductsPage() {
                   return (
                     <article
                       key={product.id}
-                      onClick={() => setQuickViewProduct(product)}
+                      onClick={() => handleProductCardClick(product)}
                       className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-[#DFD6C2]/80 bg-white shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-[#143c2d]/40 hover:shadow-xl cursor-pointer"
                     >
                       <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#FAF9F6]">
@@ -659,18 +686,10 @@ export default function ProductsPage() {
                           <span>Quick View</span>
                         </button>
 
-                        {isLowStock && !isOutOfStock && (
+                        {isLowStock && (
                           <div className="absolute bottom-2 left-2 pointer-events-none">
                             <span className="rounded-full bg-amber-500/95 px-2 py-0.5 text-[9px] font-extrabold text-white shadow-sm">
                               Only {stock} left
-                            </span>
-                          </div>
-                        )}
-
-                        {isOutOfStock && (
-                          <div className="absolute inset-0 grid place-items-center bg-slate-900/65 backdrop-blur-[2px]">
-                            <span className="rounded-full bg-red-600 px-3 py-1 text-[10px] sm:text-[11px] font-extrabold text-white shadow-md">
-                              Presently Out of Stock
                             </span>
                           </div>
                         )}
@@ -695,32 +714,12 @@ export default function ProductsPage() {
                         <div className="mt-2.5 flex items-center justify-between gap-1 border-t border-slate-100 pt-2">
                           <div className="min-w-0">
                             <p className="text-[8px] sm:text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Price</p>
-                            {isOutOfStock ? (
-                              <div>
-                                <p className="font-display text-[11px] sm:text-xs font-black text-red-600 truncate">
-                                  Presently Out of Stock
-                                </p>
-                              </div>
-                            ) : (
-                              <p className="font-display text-xs sm:text-sm md:text-base font-black text-slate-900 truncate">
-                                ₦{price.toLocaleString("en-NG")}
-                              </p>
-                            )}
+                            <p className="font-display text-xs sm:text-sm md:text-base font-black text-slate-900 truncate">
+                              ₦{price.toLocaleString("en-NG")}
+                            </p>
                           </div>
 
-                          {isOutOfStock ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setRestockProduct(product);
-                              }}
-                              className="inline-flex h-7 sm:h-8 items-center justify-center rounded-full bg-amber-500 hover:bg-amber-600 px-2.5 sm:px-3 text-[10px] sm:text-xs font-black text-white shadow-xs transition-all duration-200 hover:shadow-md active:scale-95 cursor-pointer shrink-0"
-                              aria-label={`Notify me when ${product.name} is restocked`}
-                            >
-                              Notify Me
-                            </button>
-                          ) : cartQty > 0 ? (
+                          {cartQty > 0 ? (
                             <div
                               onClick={(e) => e.stopPropagation()}
                               className="flex items-center rounded-full border border-[#143c2d] bg-[#143c2d]/5 p-0.5 shadow-xs"

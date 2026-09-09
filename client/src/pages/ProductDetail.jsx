@@ -12,6 +12,7 @@ import ProductCard, {
 import api from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
 import { NAIRA_PER_UNIT } from "../utils/currency";
+import { recordOutOfStockDemand } from "../utils/demandTracker";
 import RestockModal from "../components/ui/RestockModal";
 
 export default function ProductDetail() {
@@ -606,7 +607,10 @@ export default function ProductDetail() {
               {(Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? (
                 <motion.button
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => setRestockOpen(true)}
+                  onClick={() => {
+                    recordOutOfStockDemand(product, "product_detail_notify", user);
+                    setRestockOpen(true);
+                  }}
                   style={{
                     flex: 1,
                     backgroundColor: "#D97706",

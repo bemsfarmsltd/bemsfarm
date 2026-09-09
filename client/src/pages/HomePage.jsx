@@ -7,6 +7,7 @@ import { useCart } from "../context/CartContext";
 import api from "../services/api";
 import { NAIRA_PER_UNIT } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
+import { recordOutOfStockDemand } from "../utils/demandTracker";
 import Toast from "../components/ui/Toast";
 import QuickViewModal from "../components/ui/QuickViewModal";
 import RestockModal from "../components/ui/RestockModal";
@@ -108,18 +109,10 @@ function ProductGridCard({
           </div>
         </div>
 
-        {isLowStock && !isOutOfStock && (
+        {isLowStock && (
           <div className="absolute bottom-2 left-2 pointer-events-none">
             <span className="rounded-full bg-amber-500/95 px-2 py-0.5 text-[9px] font-extrabold text-white shadow-sm">
               Only {stock} left
-            </span>
-          </div>
-        )}
-
-        {isOutOfStock && (
-          <div className="absolute inset-0 grid place-items-center bg-slate-900/65 backdrop-blur-[2px]">
-            <span className="rounded-full bg-red-600 px-3 py-1 text-[10px] sm:text-[11px] font-extrabold text-white shadow-md">
-              Presently Out of Stock
             </span>
           </div>
         )}
@@ -154,30 +147,12 @@ function ProductGridCard({
         <div className="mt-2.5 flex items-center justify-between gap-1 border-t border-slate-100 pt-2">
           <div className="min-w-0">
             <p className="text-[8px] sm:text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Price</p>
-            {isOutOfStock ? (
-              <p className="font-display text-[11px] sm:text-xs font-black text-red-600 truncate">
-                Presently Out of Stock
-              </p>
-            ) : (
-              <p className="font-display text-xs sm:text-sm md:text-base font-black text-slate-900 truncate">
-                ₦{price.toLocaleString("en-NG")}
-              </p>
-            )}
+            <p className="font-display text-xs sm:text-sm md:text-base font-black text-slate-900 truncate">
+              ₦{price.toLocaleString("en-NG")}
+            </p>
           </div>
 
-          {isOutOfStock ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onNotify ? onNotify(product) : null;
-              }}
-              className="inline-flex h-7 sm:h-8 items-center justify-center rounded-full bg-amber-500 hover:bg-amber-600 px-2.5 sm:px-3 text-[10px] sm:text-xs font-black text-white shadow-xs transition-all duration-200 hover:shadow-md active:scale-95 cursor-pointer shrink-0"
-              aria-label={`Notify me when ${product.name} is restocked`}
-            >
-              Notify Me
-            </button>
-          ) : cartQuantity > 0 ? (
+          {cartQuantity > 0 ? (
             /* In-Card Quantity Stepper */
             <div
               onClick={(e) => e.stopPropagation()}
@@ -189,7 +164,7 @@ function ProductGridCard({
                   e.stopPropagation();
                   onUpdateQty(product.id, cartQuantity - 1);
                 }}
-                className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition"
+                className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition cursor-pointer"
                 aria-label={`Decrease ${product.name} quantity`}
               >
                 -
@@ -204,7 +179,7 @@ function ProductGridCard({
                   e.stopPropagation();
                   onUpdateQty(product.id, cartQuantity + 1);
                 }}
-                className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition disabled:opacity-40"
+                className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-[#143c2d] shadow-2xs hover:bg-[#143c2d] hover:text-white transition disabled:opacity-40 cursor-pointer"
                 aria-label={`Increase ${product.name} quantity`}
               >
                 +
@@ -306,6 +281,19 @@ export default function HomePage() {
   }, []);
 
   const handleAdd = (product) => {
+    const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+    if (stock === 0 || product.available_for_sale === false || product.status === "out_of_stock") {
+      recordOutOfStockDemand(product, "home_page_add_button", user);
+      setRestockProduct(product);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      setToast({
+        message: `${product.name} is presently out of stock. Join the waitlist for instant notice!`,
+        type: "error",
+      });
+      toastTimerRef.current = setTimeout(() => setToast(null), 3500);
+      return;
+    }
+
     const displayPrice = Number(product.price || 0) * NAIRA_PER_UNIT;
     if (!Number.isFinite(displayPrice) || displayPrice <= 0 || displayPrice > 1_000_000) return;
 
@@ -324,6 +312,22 @@ export default function HomePage() {
     setTimeout(() => {
       setAddedProducts((prev) => ({ ...prev, [product.id]: false }));
     }, 1200);
+  };
+
+  const handleCardClick = (product) => {
+    const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+    if (stock === 0 || product.available_for_sale === false || product.status === "out_of_stock") {
+      recordOutOfStockDemand(product, "home_page_card_click", user);
+      setRestockProduct(product);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      setToast({
+        message: `${product.name} is presently out of stock. Join the waitlist for instant notice!`,
+        type: "error",
+      });
+      toastTimerRef.current = setTimeout(() => setToast(null), 3500);
+      return;
+    }
+    setQuickViewProduct(product);
   };
 
   const customerName = user?.first_name || user?.name || user?.email?.split("@")[0] || "there";
@@ -684,7 +688,7 @@ export default function HomePage() {
                     onUpdateQty={updateQuantity}
                     cartQuantity={cart[product.id]?.quantity || 0}
                     isAdded={Boolean(addedProducts[product.id])}
-                    onQuickView={(p) => setQuickViewProduct(p)}
+                    onQuickView={(p) => handleCardClick(p)}
                     isFavorite={Boolean(favorites[product.id])}
                     onToggleFavorite={toggleFavorite}
                     onNotify={setRestockProduct}
@@ -731,7 +735,7 @@ export default function HomePage() {
                     onUpdateQty={updateQuantity}
                     cartQuantity={cart[product.id]?.quantity || 0}
                     isAdded={Boolean(addedProducts[product.id])}
-                    onQuickView={(p) => setQuickViewProduct(p)}
+                    onQuickView={(p) => handleCardClick(p)}
                     isFavorite={Boolean(favorites[product.id])}
                     onToggleFavorite={toggleFavorite}
                     onNotify={setRestockProduct}

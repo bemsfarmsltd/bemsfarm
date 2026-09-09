@@ -6,6 +6,7 @@ import { useResponsive } from "../hooks/useResponsive";
 import api from "../services/api";
 import logoImg from "../assets/bemsfarms_logo.png";
 import { NAIRA_PER_UNIT } from "../utils/currency";
+import { getOutOfStockDemandSummary, getOutOfStockDemandLogs } from "../utils/demandTracker";
 const C = {
   sidebar: "#0F172A", // Dark navy (more modern than dark blue-purple)
   sidebarBorder: "rgba(255,255,255,0.07)",
@@ -28,6 +29,7 @@ const tabs = [
   { id: "overview", label: "Overview", emoji: "" },
   { id: "orders", label: "Orders", emoji: "" },
   { id: "products", label: "Products", emoji: "" },
+  { id: "demand", label: "Restock Demand", emoji: "" },
   { id: "customers", label: "Customers", emoji: "" },
   { id: "subscribers", label: "Subscribers", emoji: "" },
   { id: "returns", label: "Returns", emoji: "↩" },
@@ -1676,6 +1678,125 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+
+          {/* RESTOCK DEMAND & PROCUREMENT INTELLIGENCE TAB */}
+          {activeTab === "demand" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              {/* Header card */}
+              <div
+                style={{
+                  backgroundColor: "white",
+                  borderRadius: "16px",
+                  border: `1px solid ${C.border}`,
+                  padding: "20px 24px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "16px",
+                }}
+              >
+                <div>
+                  <h3 style={{ fontSize: "18px", fontWeight: 800, color: C.text, margin: "0 0 4px" }}>
+                    Customer Out-of-Stock Demand &amp; Procurement Radar
+                  </h3>
+                  <p style={{ fontSize: "13px", color: C.muted, margin: 0 }}>
+                    Real-time telemetry tracking of all customer clicks on out-of-stock products to guide purchase decisions.
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <span
+                    style={{
+                      backgroundColor: "#FEF3C7",
+                      color: "#92400E",
+                      fontWeight: 800,
+                      fontSize: "12px",
+                      padding: "6px 12px",
+                      borderRadius: "50px",
+                    }}
+                  >
+                    Live Procurement Data
+                  </span>
+                </div>
+              </div>
+
+              {/* Demand Summary Table */}
+              <div
+                style={{
+                  backgroundColor: "white",
+                  borderRadius: "16px",
+                  border: `1px solid ${C.border}`,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "16px 20px",
+                    borderBottom: `1px solid ${C.border}`,
+                  }}
+                >
+                  <h4 style={{ fontSize: "15px", fontWeight: 800, color: C.text, margin: 0 }}>
+                    Most Demanded Out-of-Stock Produce (Ranked by Customer Clicks)
+                  </h4>
+                </div>
+
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                    <thead>
+                      <tr style={{ backgroundColor: "#F9FAFB", borderBottom: `1px solid ${C.border}` }}>
+                        <th style={{ padding: "12px 16px", fontSize: "12px", fontWeight: 700, color: C.muted }}>PRODUCT NAME</th>
+                        <th style={{ padding: "12px 16px", fontSize: "12px", fontWeight: 700, color: C.muted }}>CATEGORY</th>
+                        <th style={{ padding: "12px 16px", fontSize: "12px", fontWeight: 700, color: C.muted }}>CUSTOMER CLICKS</th>
+                        <th style={{ padding: "12px 16px", fontSize: "12px", fontWeight: 700, color: C.muted }}>PROCUREMENT PRIORITY</th>
+                        <th style={{ padding: "12px 16px", fontSize: "12px", fontWeight: 700, color: C.muted }}>LAST REQUESTED</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getOutOfStockDemandSummary().length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{ padding: "32px 16px", textAlign: "center", color: C.muted, fontSize: "13px" }}>
+                            No out-of-stock product clicks logged yet. When customers click on out-of-stock produce in the catalogue, their interest will appear here automatically.
+                          </td>
+                        </tr>
+                      ) : (
+                        getOutOfStockDemandSummary().map((item, idx) => (
+                          <tr key={item.productId || idx} style={{ borderBottom: `1px solid ${C.border}` }}>
+                            <td style={{ padding: "14px 16px", fontSize: "13.5px", fontWeight: 700, color: C.text }}>
+                              {item.productName}
+                            </td>
+                            <td style={{ padding: "14px 16px", fontSize: "13px", color: C.muted }}>
+                              {item.category || "Produce"}
+                            </td>
+                            <td style={{ padding: "14px 16px", fontSize: "14px", fontWeight: 800, color: "#D97706" }}>
+                              {item.clickCount} clicks
+                            </td>
+                            <td style={{ padding: "14px 16px" }}>
+                              <span
+                                style={{
+                                  backgroundColor: item.clickCount >= 5 ? "#FEE2E2" : "#FEF3C7",
+                                  color: item.clickCount >= 5 ? "#DC2626" : "#B45309",
+                                  padding: "4px 10px",
+                                  borderRadius: "50px",
+                                  fontSize: "11px",
+                                  fontWeight: 800,
+                                }}
+                              >
+                                {item.clickCount >= 5 ? "High Restock Priority" : "Moderate Demand"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "14px 16px", fontSize: "12.5px", color: C.muted }}>
+                              {item.lastRequested ? new Date(item.lastRequested).toLocaleString() : "Recently"}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* CUSTOMERS TAB */}
           {activeTab === "customers" && (
             <div

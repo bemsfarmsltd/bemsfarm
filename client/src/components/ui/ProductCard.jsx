@@ -2,8 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
 import { NAIRA_PER_UNIT } from "../../utils/currency";
 import { getProductImageByName } from "../../utils/productImages";
+import { recordOutOfStockDemand } from "../../utils/demandTracker";
+import RestockModal from "./RestockModal";
 
 /* ---------------- IMAGE HELPERS ---------------- */
 
@@ -77,231 +80,217 @@ export function getProductEmoji(name) {
 
 export default function ProductCard({ product, index = 0 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { addToCart } = useCart();
 
   const [added, setAdded] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [restockOpen, setRestockOpen] = useState(false);
 
-  // Real products come from the API as stock_quantity, not stock — using
-  // the wrong field name here left isOutOfStock/isLowStock permanently
-  // false, so this card's stock badges and add-to-cart guard never fired.
-  const isOutOfStock = Number(product.stock_quantity) === 0;
+  const isOutOfStock = Number(product.stock_quantity ?? product.stock ?? 0) === 0 || product.available_for_sale === false || product.status === "out_of_stock";
   const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= 5;
+
+  const handleCardClick = () => {
+    if (isOutOfStock) {
+      recordOutOfStockDemand(product, "product_card_click", user);
+      setRestockOpen(true);
+      return;
+    }
+    navigate(`/product/${product.id}`);
+  };
 
   const handleAdd = (e) => {
     e.stopPropagation();
-    if (isOutOfStock) return;
+    if (isOutOfStock) {
+      recordOutOfStockDemand(product, "product_card_add_btn", user);
+      setRestockOpen(true);
+      return;
+    }
     addToCart(product);
     setAdded(true);
     setTimeout(() => setAdded(false), 800);
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      whileHover={{ y: -6, boxShadow: "0 16px 40px rgba(0,0,0,0.12)" }}
-      onHoverStart={() => setHovered(true)}
-      onHoverEnd={() => setHovered(false)}
-      onClick={() => navigate(`/product/${product.id}`)}
-      style={{
-        backgroundColor: "var(--white)",
-        borderRadius: "16px",
-        overflow: "hidden",
-        cursor: "pointer",
-        border: "1px solid var(--gray-200)",
-        position: "relative",
-        minWidth: 0,
-      }}
-    >
-      {/* FEATURED */}
-      {product.is_featured && (
-        <div
-          style={{
-            position: "absolute",
-            top: 8,
-            left: 8,
-            backgroundColor: "#F57C00",
-            color: "white",
-            fontSize: "10px",
-            fontWeight: 700,
-            padding: "3px 8px",
-            borderRadius: "6px",
-            zIndex: 2,
-          }}
-        >
-           TOP
-        </div>
-      )}
-
-      {/* STOCK BADGES */}
-      {isOutOfStock && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundColor: "rgba(0,0,0,0.6)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 5,
-          }}
-        >
-          <span
-            style={{
-              backgroundColor: "#DC2626",
-              color: "white",
-              fontWeight: 800,
-              fontSize: "11px",
-              padding: "5px 12px",
-              borderRadius: "50px",
-              boxShadow: "0 2px 8px rgba(220,38,38,0.3)",
-            }}
-          >
-            Presently Out of Stock
-          </span>
-        </div>
-      )}
-
-      {isLowStock && !isOutOfStock && (
-        <div
-          style={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            backgroundColor: "#F59E0B",
-            color: "white",
-            fontSize: "10px",
-            fontWeight: 700,
-            padding: "3px 9px",
-            borderRadius: "50px",
-            zIndex: 5,
-          }}
-        >
-           {product.stock_quantity} left
-        </div>
-      )}
-
-      {/* IMAGE — intrinsic aspect ratio, scales with grid cell width */}
-      <div
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.05 }}
+        whileHover={{ y: -6, boxShadow: "0 16px 40px rgba(0,0,0,0.12)" }}
+        onHoverStart={() => setHovered(true)}
+        onHoverEnd={() => setHovered(false)}
+        onClick={handleCardClick}
         style={{
-          paddingTop: "75%",
+          backgroundColor: "var(--white)",
+          borderRadius: "16px",
+          overflow: "hidden",
+          cursor: "pointer",
+          border: "1px solid var(--gray-200)",
           position: "relative",
-          backgroundColor: "var(--gray-50)",
+          minWidth: 0,
         }}
       >
-        <motion.img
-          src={getDisplayImage(product)}
-          alt={product.name}
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-          }}
-        />
+        {/* FEATURED */}
+        {product.is_featured && (
+          <div
+            style={{
+              position: "absolute",
+              top: 8,
+              left: 8,
+              backgroundColor: "#F57C00",
+              color: "white",
+              fontSize: "10px",
+              fontWeight: 700,
+              padding: "3px 8px",
+              borderRadius: "6px",
+              zIndex: 2,
+            }}
+          >
+             TOP
+          </div>
+        )}
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: hovered && !isOutOfStock ? 1 : 0 }}
-          onClick={handleAdd}
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: "rgba(46,125,50,0.92)",
-            padding: "9px",
-            textAlign: "center",
-            cursor: "pointer",
-            zIndex: 3,
-            // opacity:0 alone still leaves this clickable — block pointer
-            // events too, or an out-of-stock card's invisible overlay can
-            // still be clicked to add it to cart.
-            pointerEvents: isOutOfStock ? "none" : "auto",
-          }}
-        >
-          <span style={{ color: "white", fontWeight: 700, fontSize: "12px" }}>
-            {added ? " Added!" : " Add to Cart"}
-          </span>
-        </motion.div>
-      </div>
+        {isLowStock && (
+          <div
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              backgroundColor: "#F59E0B",
+              color: "white",
+              fontSize: "10px",
+              fontWeight: 700,
+              padding: "3px 9px",
+              borderRadius: "50px",
+              zIndex: 5,
+            }}
+          >
+             {product.stock_quantity} left
+          </div>
+        )}
 
-      {/* INFO */}
-      <div style={{ padding: "12px", minWidth: 0 }}>
-        <p style={{ fontSize: 11, color: "var(--gray-500)", marginBottom: 2 }}>
-          {product.category_name}
-        </p>
-
-        <h3
-          style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: "var(--gray-900)",
-            margin: "0 0 4px",
-            lineHeight: 1.35,
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-            minHeight: "35px",
-          }}
-        >
-          {product.name}
-        </h3>
-
-        <p style={{ fontSize: 11, color: "var(--gray-500)", marginBottom: 8 }}>
-          {product.unit}
-        </p>
-
+        {/* IMAGE */}
         <div
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "6px",
+            paddingTop: "75%",
+            position: "relative",
+            backgroundColor: "var(--gray-50)",
           }}
         >
-          <p
+          <motion.img
+            src={getDisplayImage(product)}
+            alt={product.name}
             style={{
-              fontSize: 15,
-              fontWeight: 800,
-              color: "var(--primary)",
-              margin: 0,
-              minWidth: 0,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+            }}
+          />
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: hovered ? 1 : 0 }}
+            onClick={handleAdd}
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              backgroundColor: isOutOfStock ? "rgba(217,119,6,0.92)" : "rgba(46,125,50,0.92)",
+              padding: "9px",
+              textAlign: "center",
+              cursor: "pointer",
+              zIndex: 3,
             }}
           >
-            ₦{(product.price * NAIRA_PER_UNIT).toLocaleString()}
+            <span style={{ color: "white", fontWeight: 700, fontSize: "12px" }}>
+              {added ? " Added!" : isOutOfStock ? " Check Stock / Alert" : " Add to Cart"}
+            </span>
+          </motion.div>
+        </div>
+
+        {/* INFO */}
+        <div style={{ padding: "12px", minWidth: 0 }}>
+          <p style={{ fontSize: 11, color: "var(--gray-500)", marginBottom: 2 }}>
+            {product.category_name}
           </p>
 
-          <motion.button
-            whileTap={isOutOfStock ? undefined : { scale: 0.8 }}
-            onClick={handleAdd}
-            disabled={isOutOfStock}
+          <h3
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 9,
-              backgroundColor: isOutOfStock ? "#D1D5DB" : added ? "#2E7D32" : "#F57C00",
-              color: "white",
-              border: "none",
-              fontSize: "16px",
-              cursor: isOutOfStock ? "not-allowed" : "pointer",
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              fontSize: 13,
+              fontWeight: 700,
+              color: "var(--gray-900)",
+              margin: "0 0 4px",
+              lineHeight: 1.35,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              minHeight: "35px",
             }}
           >
-            {added ? "" : "+"}
-          </motion.button>
+            {product.name}
+          </h3>
+
+          <p style={{ fontSize: 11, color: "var(--gray-500)", marginBottom: 8 }}>
+            {product.unit}
+          </p>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            <p
+              style={{
+                fontSize: 15,
+                fontWeight: 800,
+                color: "var(--primary)",
+                margin: 0,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              ₦{(product.price * NAIRA_PER_UNIT).toLocaleString()}
+            </p>
+
+            <motion.button
+              whileTap={{ scale: 0.8 }}
+              onClick={handleAdd}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 9,
+                backgroundColor: added ? "#2E7D32" : "#F57C00",
+                color: "white",
+                border: "none",
+                fontSize: "16px",
+                cursor: "pointer",
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {added ? "" : "+"}
+            </motion.button>
+          </div>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+
+      <RestockModal
+        product={product}
+        isOpen={restockOpen}
+        onClose={() => setRestockOpen(false)}
+      />
+    </>
   );
 }

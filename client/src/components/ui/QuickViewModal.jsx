@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
 import { NAIRA_PER_UNIT } from "../../utils/currency";
 import { getProductImage } from "../../utils/productImages";
+import { recordOutOfStockDemand } from "../../utils/demandTracker";
 import RestockModal from "./RestockModal";
 
 const CHEF_TIPS = {
@@ -16,6 +18,7 @@ const CHEF_TIPS = {
 };
 
 export default function QuickViewModal({ product, isOpen, onClose }) {
+  const { user } = useAuth();
   const { addToCart, openCartDrawer } = useCart();
   const navigate = useNavigate();
   const [qty, setQty] = useState(1);
@@ -206,7 +209,10 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
                 {isOutOfStock ? (
                   <button
                     type="button"
-                    onClick={() => setRestockOpen(true)}
+                    onClick={() => {
+                      recordOutOfStockDemand(product, "quick_view_modal_notify", user);
+                      setRestockOpen(true);
+                    }}
                     className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-black uppercase tracking-wider text-white bg-amber-500 hover:bg-amber-600 shadow-md transition-all cursor-pointer"
                   >
                     Notify Me When Restocked

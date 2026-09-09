@@ -6,6 +6,7 @@ import { useCart } from "../context/CartContext";
 import api from "../services/api";
 import { NAIRA_PER_UNIT } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
+import { recordOutOfStockDemand } from "../utils/demandTracker";
 import logo from "../assets/bemsfarms_logo_compact.png";
 import Toast from "../components/ui/Toast";
 import RestockModal from "../components/ui/RestockModal";
@@ -259,7 +260,17 @@ function StoreProductCard({ product, added, onAdd, onNotify }) {
 
   return (
     <article className="group min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg">
-      <Link to={`/product/${product.id}`} className="relative block aspect-[4/3] overflow-hidden bg-[#FAF9F6]" aria-label={`View ${product.name}`}>
+      <div
+        onClick={() => {
+          if (unavailable) {
+            onNotify ? onNotify(product) : null;
+          } else {
+            navigate(`/product/${product.id}`);
+          }
+        }}
+        className="relative block aspect-[4/3] overflow-hidden bg-[#FAF9F6] cursor-pointer"
+        aria-label={`View ${product.name}`}
+      >
         <img
           src={getProductImage(product)}
           alt={product.name}
@@ -280,44 +291,37 @@ function StoreProductCard({ product, added, onAdd, onNotify }) {
             Featured
           </span>
         ) : null}
-        {unavailable && (
-          <span className="absolute inset-x-3 bottom-3 rounded-full bg-red-600/95 backdrop-blur px-3 py-1.5 text-center text-[11px] font-extrabold text-white shadow-md">
-            Presently Out of Stock
-          </span>
-        )}
-      </Link>
+      </div>
       <div className="p-4">
         <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#143c2d]/80">{product.category_name || "Farm produce"}</p>
-        <h3 className="mt-1.5 min-h-[2.5rem] font-display text-base font-bold leading-5 text-[#143c2d]"><Link to={`/product/${product.id}`} className="transition hover:text-[#c85a17]">{product.name}</Link></h3>
+        <h3 className="mt-1.5 min-h-[2.5rem] font-display text-base font-bold leading-5 text-[#143c2d]">
+          <span
+            onClick={() => {
+              if (unavailable) {
+                onNotify ? onNotify(product) : null;
+              } else {
+                navigate(`/product/${product.id}`);
+              }
+            }}
+            className="transition hover:text-[#c85a17] cursor-pointer"
+          >
+            {product.name}
+          </span>
+        </h3>
         <p className="mt-1 truncate text-xs text-slate-500">{product.unit || "Per item"}</p>
         <div className="mt-2 flex min-h-4 items-center gap-1 text-[11px]">
           {Number(product.review_count) > 0 ? <><span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}><span aria-hidden="true">{"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}</span></span><span className="text-slate-400">({product.review_count})</span></> : <span className="text-slate-400">New to the shop</span>}
         </div>
         <div className="mt-3 flex items-center justify-between gap-1.5">
-          {unavailable ? (
-            <p className="font-extrabold text-red-600 text-xs xl:text-sm whitespace-nowrap">Presently Out of Stock</p>
-          ) : (
-            <p className="font-extrabold text-slate-900 text-sm xl:text-base whitespace-nowrap">{`₦${price.toLocaleString("en-NG")}`}</p>
-          )}
-          {unavailable ? (
-            <button
-              type="button"
-              onClick={() => onNotify ? onNotify(product) : null}
-              className="h-9 shrink-0 rounded-full bg-amber-500 hover:bg-amber-600 px-3 text-[11px] font-extrabold text-white transition shadow-xs cursor-pointer"
-              aria-label={`Notify me when ${product.name} is restocked`}
-            >
-              Notify Me
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onAdd(product)}
-              className={`h-9 shrink-0 rounded-full px-3 text-[11px] font-extrabold text-white transition ${added ? "bg-[#1d6b45]" : "bg-[#143c2d] hover:bg-[#1a4e3b]"}`}
-              aria-label={`Add ${product.name} to basket`}
-            >
-              {added ? " Added" : "+ Add"}
-            </button>
-          )}
+          <p className="font-extrabold text-slate-900 text-sm xl:text-base whitespace-nowrap">{`₦${price.toLocaleString("en-NG")}`}</p>
+          <button
+            type="button"
+            onClick={() => onAdd(product)}
+            className={`h-9 shrink-0 rounded-full px-3 text-[11px] font-extrabold text-white transition cursor-pointer ${added ? "bg-[#1d6b45]" : "bg-[#143c2d] hover:bg-[#1a4e3b]"}`}
+            aria-label={`Add ${product.name} to basket`}
+          >
+            {added ? " Added" : "+ Add"}
+          </button>
         </div>
       </div>
     </article>
@@ -759,14 +763,28 @@ export default function LandingPage() {
   };
 
   const handleAdd = (product) => {
+    const stock = Number(product.stock_quantity ?? product.stock ?? 0);
     const displayPrice = Number(product.price || 0) * NAIRA_PER_UNIT;
-    if (!Number.isFinite(displayPrice) || displayPrice <= 0 || displayPrice > 1_000_000) return;
+    const isOutOfStock = stock <= 0 || product.available_for_sale === false || product.status === "out_of_stock" || !Number.isFinite(displayPrice) || displayPrice <= 0;
+
+    if (isOutOfStock) {
+      recordOutOfStockDemand(product, "landing_page_add_btn", user);
+      setRestockProduct(product);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      setToast({
+        message: `${product.name} is presently out of stock. Join the waitlist for instant alert!`,
+        type: "error",
+      });
+      toastTimerRef.current = setTimeout(() => setToast(null), 3500);
+      return;
+    }
+
     addToCart(product);
     setAddedProducts((current) => ({ ...current, [product.id]: true }));
 
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({
-      message: ` Added ${product.name} to basket`,
+      message: `Added ${product.name} to basket`,
       type: "success",
     });
     toastTimerRef.current = setTimeout(() => {
