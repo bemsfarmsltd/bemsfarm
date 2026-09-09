@@ -423,7 +423,7 @@ export default function Navbar() {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { cartItems } = useCart();
+  const { cartItems, openCartDrawer } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -634,7 +634,7 @@ export default function Navbar() {
 
               {/* Cart */}
               <button
-                onClick={() => navigate("/cart")}
+                onClick={openCartDrawer}
                 aria-label={cartCount > 0 ? `View cart, ${cartCount} item${cartCount === 1 ? "" : "s"}` : "View cart"}
                 style={{
                   position: "relative",
@@ -874,7 +874,7 @@ export default function Navbar() {
           ) : (
             <div style={{ display: "flex", gap: "6px" }}>
               <button
-                onClick={() => navigate("/cart")}
+                onClick={openCartDrawer}
                 aria-label={cartCount > 0 ? `View cart, ${cartCount} item${cartCount === 1 ? "" : "s"}` : "View cart"}
                 style={{
                   position: "relative",

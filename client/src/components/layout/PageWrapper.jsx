@@ -2,6 +2,7 @@ import { useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import AIChatbot from "../AIChatbot";
+import CartDrawer from "../ui/CartDrawer";
 
 /*
   FIX: AIChatbot floating icon now hidden on /chef-chat.
@@ -25,6 +26,7 @@ export default function PageWrapper({ children, noFooter = false }) {
       <main style={{ flex: 1 }}>{children}</main>
       {!noFooter && <Footer />}
       {showChatbot && <AIChatbot />}
+      <CartDrawer />
     </div>
   );
 }

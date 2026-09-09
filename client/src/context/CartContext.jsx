@@ -28,6 +28,7 @@ export function CartProvider({ children }) {
   const [cart, setCart] = useState(loadCart);
   const [products, setProducts] = useState([]);
   const [appliedCoupon, setAppliedCoupon] = useState(loadCoupon); // { code, discount, type, value }
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
 
   // Persist across refresh/tab-close — a customer who accidentally reloads
   // shouldn't lose everything they'd added.
@@ -40,16 +41,36 @@ export function CartProvider({ children }) {
     else localStorage.removeItem(COUPON_KEY);
   }, [appliedCoupon]);
 
-  const addToCart = (product) => {
+  const openCartDrawer = () => setIsCartDrawerOpen(true);
+  const closeCartDrawer = () => setIsCartDrawerOpen(false);
+  const toggleCartDrawer = () => setIsCartDrawerOpen((prev) => !prev);
+
+  const addToCart = (product, quantityToAdd = 1) => {
     setCart((prev) => {
       const currentQty = prev[product.id]?.quantity || 0;
       const maxQty = product.stock_quantity ?? Infinity;
-      const nextQty = Math.min(currentQty + 1, maxQty);
+      const nextQty = Math.min(currentQty + quantityToAdd, maxQty);
       if (nextQty === currentQty) return prev;
       return {
         ...prev,
         [product.id]: { product, quantity: nextQty },
       };
+    });
+  };
+
+  const addMultipleToCart = (items) => {
+    if (!Array.isArray(items) || items.length === 0) return;
+    setCart((prev) => {
+      const updated = { ...prev };
+      items.forEach((item) => {
+        const prod = item.product || item;
+        const addQty = item.quantity || 1;
+        const currentQty = updated[prod.id]?.quantity || 0;
+        const maxQty = prod.stock_quantity ?? Infinity;
+        const nextQty = Math.min(currentQty + addQty, maxQty);
+        updated[prod.id] = { product: prod, quantity: nextQty };
+      });
+      return updated;
     });
   };
 
@@ -94,11 +115,17 @@ export function CartProvider({ children }) {
         cartCount,
         cartSubtotal,
         addToCart,
+        addMultipleToCart,
         removeFromCart,
         updateQuantity,
         clearCart,
         appliedCoupon,
         setAppliedCoupon,
+        isCartDrawerOpen,
+        setIsCartDrawerOpen,
+        openCartDrawer,
+        closeCartDrawer,
+        toggleCartDrawer,
       }}
     >
       {children}

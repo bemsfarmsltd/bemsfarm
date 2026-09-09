@@ -6,6 +6,8 @@ import { useCart } from "../context/CartContext";
 import api from "../services/api";
 import { NAIRA_PER_UNIT } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
+import QuickViewModal from "../components/ui/QuickViewModal";
+import Toast from "../components/ui/Toast";
 
 const CATEGORY_EMOJIS = {
   "Grains & Cereals": "🌾",
@@ -309,7 +311,7 @@ const DASHBOARD_CSS = `
 export default function ProductsPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { addToCart } = useCart();
+  const { cart, addToCart, updateQuantity, openCartDrawer } = useCart();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -318,6 +320,8 @@ export default function ProductsPage() {
   const [search, setSearch] = useState(params.get("search") || "");
   const [activeCat, setActiveCat] = useState(params.get("category") || "All");
   const [sort, setSort] = useState("featured");
+  const [quickViewProduct, setQuickViewProduct] = useState(null);
+  const [toast, setToast] = useState(null);
 
   // Favorites state persisted in localStorage
   const [favorites, setFavorites] = useState(() => {
@@ -359,6 +363,17 @@ export default function ProductsPage() {
       localStorage.setItem("favorites", JSON.stringify(updated));
       return updated;
     });
+  };
+
+  const handleAdd = (product, e) => {
+    e.stopPropagation();
+    if (Number(product.stock_quantity ?? product.stock ?? 0) === 0) return;
+    addToCart(product);
+    setToast({
+      message: `✓ Added ${product.name} to basket!`,
+      type: "success",
+    });
+    setTimeout(() => setToast(null), 2500);
   };
 
   const filtered = products
@@ -572,6 +587,8 @@ export default function ProductsPage() {
             <div className="bp-products-grid">
               {filtered.map((product) => {
                 const isFavorite = !!favorites[product.id];
+                const cartQty = cart[product.id]?.quantity || 0;
+                const stock = Number(product.stock_quantity ?? product.stock ?? 0);
 
                 return (
                   <div
@@ -613,11 +630,37 @@ export default function ProductsPage() {
                           cursor: "pointer",
                           color: isFavorite ? "#EF4444" : "#D1D5DB",
                           boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
-                          fontSize: "16px",
+                          fontSize: "14px",
                           padding: 0
                         }}
+                        aria-label="Toggle favorite"
                       >
-                        <i className={isFavorite ? "ri-heart-fill" : "ri-heart-line"} />
+                        {isFavorite ? "❤️" : "🤍"}
+                      </button>
+
+                      {/* Quick View Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setQuickViewProduct(product);
+                        }}
+                        style={{
+                          background: "rgba(255,255,255,0.9)",
+                          border: "1px solid #E5E7EB",
+                          borderRadius: "999px",
+                          padding: "3px 8px",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          color: "#1F2937",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "3px"
+                        }}
+                      >
+                        <span>👁️</span>
+                        <span>Quick View</span>
                       </button>
                     </div>
 
@@ -626,9 +669,9 @@ export default function ProductsPage() {
                       <img
                         src={getProductImage(product)}
                         alt={product.name}
-                        style={{ height: "100%", width: "100%", objectFit: "cover", filter: Number(product.stock_quantity) === 0 ? "grayscale(60%)" : "none", opacity: Number(product.stock_quantity) === 0 ? 0.6 : 1 }}
+                        style={{ height: "100%", width: "100%", objectFit: "cover", filter: stock === 0 ? "grayscale(60%)" : "none", opacity: stock === 0 ? 0.6 : 1 }}
                       />
-                      {Number(product.stock_quantity) === 0 && (
+                      {stock === 0 && (
                         <span style={{ position: "absolute", top: "8px", left: "8px", background: "#EF4444", color: "white", fontSize: "10px", fontWeight: 700, padding: "3px 9px", borderRadius: "50px" }}>
                           Out of Stock
                         </span>
@@ -641,23 +684,17 @@ export default function ProductsPage() {
                       {product.name}
                     </h4>
 
-                    {/* Rating — real average from approved reviews */}
+                    {/* Rating */}
                     <div style={{ display: "flex", alignItems: "center", gap: "4px", marginBottom: "8px", minHeight: "13px" }}>
                       {Number(product.review_count) > 0 ? (
                         <>
-                          <div style={{ display: "flex", gap: "2px" }}>
-                            {[...Array(5)].map((_, idx) => (
-                              <i
-                                key={idx}
-                                className={idx < Math.round(Number(product.avg_rating)) ? "ri-star-fill" : "ri-star-line"}
-                                style={{ color: "#F57C00", fontSize: "11px" }}
-                              />
-                            ))}
-                          </div>
+                          <span style={{ color: "#F57C00", fontSize: "12px" }}>
+                            {"★".repeat(Math.round(Number(product.avg_rating || 0)))}
+                          </span>
                           <span style={{ fontSize: "10px", color: "#9CA3AF" }}>({product.review_count})</span>
                         </>
                       ) : (
-                        <span style={{ fontSize: "10px", color: "#9CA3AF" }}>No reviews yet</span>
+                        <span style={{ fontSize: "10px", color: "#9CA3AF" }}>Fresh Harvest</span>
                       )}
                     </div>
 
@@ -670,28 +707,87 @@ export default function ProductsPage() {
                         </div>
                       </div>
 
-                      <button
-                        disabled={Number(product.stock_quantity) === 0}
-                        onClick={(e) => { e.stopPropagation(); if (Number(product.stock_quantity) === 0) return; addToCart(product); }}
-                        style={{
-                          background: Number(product.stock_quantity) === 0 ? "#D1D5DB" : "#F57C00",
-                          border: "none",
-                          borderRadius: "10px",
-                          width: "32px",
-                          height: "32px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "white",
-                          cursor: Number(product.stock_quantity) === 0 ? "not-allowed" : "pointer",
-                          fontSize: "18px",
-                          boxShadow: Number(product.stock_quantity) === 0 ? "none" : "0 2px 6px rgba(245,124,0,0.2)",
-                          padding: 0,
-                          marginLeft: "auto"
-                        }}
-                      >
-                        +
-                      </button>
+                      {cartQty > 0 ? (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            background: "#E8F5E9",
+                            border: "1px solid #2E7D32",
+                            borderRadius: "999px",
+                            padding: "2px",
+                            marginLeft: "auto"
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateQuantity(product.id, cartQty - 1);
+                            }}
+                            style={{
+                              width: "24px",
+                              height: "24px",
+                              borderRadius: "50%",
+                              border: "none",
+                              background: "white",
+                              color: "#2E7D32",
+                              fontWeight: 800,
+                              fontSize: "12px",
+                              cursor: "pointer"
+                            }}
+                          >
+                            -
+                          </button>
+                          <span style={{ minWidth: "20px", textAlign: "center", fontSize: "12px", fontWeight: 800, color: "#1B4332" }}>
+                            {cartQty}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={cartQty >= stock}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              updateQuantity(product.id, cartQty + 1);
+                            }}
+                            style={{
+                              width: "24px",
+                              height: "24px",
+                              borderRadius: "50%",
+                              border: "none",
+                              background: "white",
+                              color: "#2E7D32",
+                              fontWeight: 800,
+                              fontSize: "12px",
+                              cursor: "pointer"
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          disabled={stock === 0}
+                          onClick={(e) => handleAdd(product, e)}
+                          style={{
+                            background: stock === 0 ? "#D1D5DB" : "#143c2d",
+                            border: "none",
+                            borderRadius: "10px",
+                            padding: "6px 14px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "white",
+                            cursor: stock === 0 ? "not-allowed" : "pointer",
+                            fontSize: "12px",
+                            fontWeight: 800,
+                            boxShadow: stock === 0 ? "none" : "0 2px 6px rgba(20,60,45,0.2)",
+                            marginLeft: "auto"
+                          }}
+                        >
+                          + Add
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -700,6 +796,16 @@ export default function ProductsPage() {
           )}
         </div>
         </div>
+
+        {/* Quick View Modal */}
+        <QuickViewModal
+          product={quickViewProduct}
+          isOpen={Boolean(quickViewProduct)}
+          onClose={() => setQuickViewProduct(null)}
+        />
+
+        {/* Toast Notification */}
+        <Toast toast={toast} onClose={() => setToast(null)} />
       </div>
     </PageWrapper>
   );
