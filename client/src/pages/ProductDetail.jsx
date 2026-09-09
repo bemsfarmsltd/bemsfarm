@@ -335,11 +335,11 @@ export default function ProductDetail() {
               <span
                 style={{
                   fontSize: "14px",
-                  color: product.stock_quantity === 0 ? "#DC2626" : "#2E7D32",
-                  fontWeight: 600,
+                  color: (Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? "#DC2626" : "#2E7D32",
+                  fontWeight: 700,
                 }}
               >
-                {product.stock_quantity === 0 ? "| Out of Stock" : "| In Stock "}
+                {(Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? "| Unavailable" : "| In Stock"}
               </span>
             </div>
 
@@ -361,7 +361,7 @@ export default function ProductDetail() {
 
             {/* Stock Status Badge */}
             <div style={{ marginBottom: "16px" }}>
-              {product.stock_quantity === 0 ? (
+              {(Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? (
                 <div
                   style={{
                     display: "inline-flex",
@@ -387,7 +387,7 @@ export default function ProductDetail() {
                       fontSize: "13px",
                     }}
                   >
-                    Out of Stock
+                    Unavailable
                   </span>
                 </div>
               ) : product.stock_quantity !== null && product.stock_quantity <= 10 ? (
@@ -602,30 +602,30 @@ export default function ProductDetail() {
                 </motion.button>
               </div>
               <motion.button
-                disabled={product.stock_quantity === 0}
+                disabled={Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock"}
                 onClick={handleAdd}
                 style={{
                   flex: 1,
                   backgroundColor:
-                    product.stock_quantity === 0
+                    (Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock")
                       ? "#9AA0A6"
                       : added
                         ? "#2E7D32"
                         : "#F57C00",
-                  cursor: product.stock_quantity === 0 ? "not-allowed" : "pointer",
-                  opacity: product.stock_quantity === 0 ? 0.6 : 1,
+                  cursor: (Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? "not-allowed" : "pointer",
+                  opacity: (Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? 0.6 : 1,
                   color: "white",
                   border: "none",
                   borderRadius: "12px",
                   padding: "16px",
                   fontSize: "16px",
                   fontWeight: 800,
-                  boxShadow: "0 4px 16px rgba(245,124,0,0.35)",
+                  boxShadow: (Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? "none" : "0 4px 16px rgba(245,124,0,0.35)",
                   transition: "background-color 0.2s",
                 }}
               >
-                {product.stock_quantity === 0
-                  ? "Out of Stock"
+                {(Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock")
+                  ? "Unavailable"
                   : added
                     ? " Added to Cart!"
                     : "Buy Now"}
