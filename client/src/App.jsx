@@ -163,7 +163,11 @@ function App() {
         />
         <Route
           path="/chef-chat"
-          element={<ChefBemsPage />}
+          element={
+            <P>
+              <ChefBemsPage />
+            </P>
+          }
         />
         <Route
           path="/dynamic-pricing"
