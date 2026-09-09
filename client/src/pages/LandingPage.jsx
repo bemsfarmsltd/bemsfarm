@@ -973,7 +973,7 @@ export default function LandingPage() {
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:shadow-lg">Skip to main content</a>
 
       <header className="fixed inset-x-0 top-0 z-50 border-b border-[#DFD6C2] bg-[#F8F5EE]/95 backdrop-blur-xl">
-        <nav className="flex h-[76px] w-full items-center justify-between px-5 sm:px-8 lg:px-12" aria-label="Main navigation">
+        <nav className="mx-auto flex h-[76px] max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12" aria-label="Main navigation">
           <Link to="/" className="shrink-0" aria-label="BemsFarms home" onClick={() => setMenuOpen(false)}>
             <img src={logo} alt="BemsFarms" className="h-10 w-auto" />
           </Link>
