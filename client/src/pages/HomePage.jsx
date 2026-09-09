@@ -433,98 +433,74 @@ export default function HomePage() {
           <div className="mx-auto max-w-[1600px] w-full">
             <div
               style={{
-                background: "linear-gradient(135deg, #04140d 0%, #082418 25%, #0f3825 55%, #184e36 80%, #0a291b 100%)",
+                background: "linear-gradient(135deg, #092016 0%, #0d2c20 30%, #133f2d 65%, #0a2419 100%)",
               }}
-              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 lg:p-12 text-white shadow-2xl border border-emerald-700/30 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8"
+              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-7 md:p-9 lg:p-10 text-white shadow-2xl border border-emerald-800/40 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-7"
             >
-              {/* Layer 1: Ambient Glowing Light Orbs */}
+              {/* Organic Topographic & Botanical Background SVG Pattern */}
+              <svg
+                className="absolute inset-0 h-full w-full pointer-events-none opacity-20"
+                xmlns="http://www.w3.org/2000/svg"
+                preserveAspectRatio="none"
+                viewBox="0 0 1000 300"
+              >
+                <defs>
+                  <linearGradient id="hero-pattern-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#34d399" stopOpacity="0.4" />
+                    <stop offset="40%" stopColor="#fbbf24" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.05" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M0,60 C200,140 380,20 620,110 C860,200 950,40 1000,80 L1000,300 L0,300 Z"
+                  fill="none"
+                  stroke="url(#hero-pattern-grad)"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M0,130 C240,210 420,70 660,170 C810,230 920,110 1000,150"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.08)"
+                  strokeWidth="1.5"
+                  strokeDasharray="4 6"
+                />
+                <path
+                  d="M0,190 C290,270 510,130 760,220 C910,270 960,180 1000,210"
+                  fill="none"
+                  stroke="rgba(251,191,36,0.15)"
+                  strokeWidth="1"
+                />
+                <circle cx="850" cy="140" r="140" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                <circle cx="850" cy="140" r="90" fill="none" stroke="rgba(251,191,36,0.08)" strokeWidth="1" />
+                <circle cx="150" cy="40" r="110" fill="none" stroke="rgba(52,211,153,0.06)" strokeWidth="1" />
+              </svg>
+
+              {/* Ambient Radiant Lighting Orbs */}
               <div
-                className="absolute -right-16 -top-16 h-80 w-80 rounded-full pointer-events-none opacity-40"
+                className="absolute -right-12 -top-12 h-72 w-72 rounded-full pointer-events-none opacity-35"
                 style={{
-                  background: "radial-gradient(circle, rgba(245,158,11,0.55) 0%, rgba(245,158,11,0.1) 50%, transparent 70%)",
-                  filter: "blur(60px)",
-                }}
-              />
-              <div
-                className="absolute right-1/3 top-1/2 h-64 w-64 rounded-full pointer-events-none opacity-25 -translate-y-1/2"
-                style={{
-                  background: "radial-gradient(circle, rgba(52,211,153,0.45) 0%, transparent 65%)",
+                  background: "radial-gradient(circle, rgba(245,158,11,0.65) 0%, transparent 70%)",
                   filter: "blur(50px)",
                 }}
               />
               <div
-                className="absolute -left-12 -bottom-12 h-72 w-72 rounded-full pointer-events-none opacity-30"
+                className="absolute -left-10 -bottom-10 h-64 w-64 rounded-full pointer-events-none opacity-25"
                 style={{
-                  background: "radial-gradient(circle, rgba(16,185,129,0.5) 0%, transparent 70%)",
-                  filter: "blur(55px)",
+                  background: "radial-gradient(circle, rgba(52,211,153,0.55) 0%, transparent 70%)",
+                  filter: "blur(45px)",
                 }}
               />
 
-              {/* Layer 2: Geometric & Botanical Grid Contours */}
-              <svg
-                className="absolute inset-0 h-full w-full pointer-events-none opacity-25"
-                xmlns="http://www.w3.org/2000/svg"
-                preserveAspectRatio="none"
-                viewBox="0 0 1200 400"
-              >
-                <defs>
-                  <linearGradient id="hero-flow-1" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#34d399" stopOpacity="0.6" />
-                    <stop offset="50%" stopColor="#fbbf24" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.1" />
-                  </linearGradient>
-                  <linearGradient id="hero-flow-2" x1="100%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#059669" stopOpacity="0.05" />
-                  </linearGradient>
-                  <pattern id="hero-dot-grid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
-                    <circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.06)" />
-                  </pattern>
-                </defs>
-
-                {/* Dot Grid Background */}
-                <rect width="100%" height="100%" fill="url(#hero-dot-grid)" />
-
-                {/* Dynamic Wave Topography */}
-                <path
-                  d="M0,80 C260,160 480,30 780,120 C980,180 1100,50 1200,90 L1200,400 L0,400 Z"
-                  fill="none"
-                  stroke="url(#hero-flow-1)"
-                  strokeWidth="1.5"
-                />
-                <path
-                  d="M0,170 C320,260 560,90 860,190 C1040,250 1140,130 1200,160"
-                  fill="none"
-                  stroke="url(#hero-flow-2)"
-                  strokeWidth="1.5"
-                  strokeDasharray="5 7"
-                />
-                <path
-                  d="M0,240 C380,330 640,160 940,250 C1080,290 1160,210 1200,230"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.08)"
-                  strokeWidth="1"
-                />
-
-                {/* Concentric Halo Accents */}
-                <circle cx="980" cy="180" r="160" fill="none" stroke="rgba(251,191,36,0.08)" strokeWidth="1" />
-                <circle cx="980" cy="180" r="100" fill="none" stroke="rgba(52,211,153,0.06)" strokeWidth="1" />
-                <circle cx="980" cy="180" r="40" fill="none" stroke="rgba(251,191,36,0.12)" strokeWidth="1" strokeDasharray="3 4" />
-              </svg>
-
-              {/* Left Side: Editorial Content & Navigation Pills */}
+              {/* Left Side: Editorial Typography & Actions */}
               <div className="relative z-10 max-w-xl">
-                {/* Floating Farm Badge */}
-                <div className="inline-flex items-center gap-2.5 rounded-full bg-white/10 px-4 py-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300 border border-white/20 backdrop-blur-md shadow-sm">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400 shadow-sm shadow-emerald-400" />
-                  </span>
+                {/* Floating Farm Badge (No emoji) */}
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-amber-300 border border-white/15 backdrop-blur-md shadow-xs">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400" />
                   <span>Direct From Farm To Table</span>
                 </div>
 
                 {/* Main Headline */}
-                <h1 className="mt-3.5 font-display text-2xl sm:text-4xl lg:text-5xl font-black leading-[1.15] text-white drop-shadow-md">
+                <h1 className="mt-3 font-display text-xl sm:text-3xl lg:text-4xl font-black leading-tight text-white drop-shadow-sm">
                   {greeting},{" "}
                   <span className="bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 bg-clip-text text-transparent">
                     {customerName}
@@ -533,124 +509,99 @@ export default function HomePage() {
                 </h1>
 
                 {/* Narrative Subtitle */}
-                <p className="mt-2.5 text-xs sm:text-sm md:text-base text-emerald-100/90 leading-relaxed font-normal">
+                <p className="mt-2 text-xs sm:text-sm md:text-base text-emerald-100/90 leading-relaxed font-normal">
                   Shop 100% stone-free grains, authentic cold-pressed oils, and farm-fresh harvests delivered right to your doorstep.
                 </p>
 
-                {/* Feature Chips */}
-                <div className="mt-3.5 flex flex-wrap items-center gap-2 text-[10px] sm:text-[11px] font-semibold text-emerald-200/90">
-                  <span className="rounded-md bg-white/10 px-2 py-0.5 border border-white/10 backdrop-blur-xs">
-                    Stone-Free Grains
-                  </span>
-                  <span className="rounded-md bg-white/10 px-2 py-0.5 border border-white/10 backdrop-blur-xs">
-                    Cold-Pressed Oils
-                  </span>
-                  <span className="rounded-md bg-white/10 px-2 py-0.5 border border-white/10 backdrop-blur-xs">
-                    Fast Delivery
-                  </span>
-                </div>
-
-                {/* Navigation Action Buttons in Banner (Shop, Delivery, Chef Bems, My Orders) */}
-                <div className="mt-6 flex flex-wrap items-center gap-2.5 sm:gap-3">
+                {/* Navigation Action Buttons in Banner (No Emojis — Shop, Delivery, Chef Bems, My Orders) */}
+                <div className="mt-5 flex flex-wrap items-center gap-2 sm:gap-2.5">
                   <Link
                     to="/products"
-                    className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-[#0f3322] px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-black shadow-xl shadow-black/30 transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none border border-amber-200/40"
+                    className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-[#143c2d] px-5 py-2.5 text-xs sm:text-sm font-black shadow-lg shadow-black/20 transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
                   >
                     <span>Shop</span>
                   </Link>
 
                   <Link
                     to="/track-order"
-                    className="inline-flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 border border-white/25 hover:border-white/45 text-white px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold backdrop-blur-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
+                    className="inline-flex items-center justify-center rounded-full bg-black/30 hover:bg-black/45 border border-white/20 hover:border-white/40 text-white px-5 py-2.5 text-xs sm:text-sm font-bold backdrop-blur-md shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
                   >
                     <span>Delivery</span>
                   </Link>
 
                   <Link
                     to="/chef-chat"
-                    className="inline-flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 border border-amber-400/35 hover:border-amber-400/70 text-amber-300 hover:text-amber-200 px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold backdrop-blur-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
+                    className="inline-flex items-center justify-center rounded-full bg-black/30 hover:bg-black/45 border border-amber-400/30 hover:border-amber-400/60 text-amber-300 hover:text-amber-200 px-5 py-2.5 text-xs sm:text-sm font-bold backdrop-blur-md shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
                   >
                     <span>Chef Bems</span>
                   </Link>
 
                   <Link
                     to="/orders"
-                    className="inline-flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 border border-white/25 hover:border-white/45 text-white px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold backdrop-blur-md shadow-sm transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
+                    className="inline-flex items-center justify-center rounded-full bg-black/30 hover:bg-black/45 border border-white/20 hover:border-white/40 text-white px-5 py-2.5 text-xs sm:text-sm font-bold backdrop-blur-md shadow-xs transition-all duration-200 hover:scale-105 active:scale-95 text-decoration-none"
                   >
                     <span>My Orders</span>
                   </Link>
                 </div>
               </div>
 
-              {/* Right Side: Showcase Frame with Larger Dynamic Real Product Slideshow */}
+              {/* Right Side: Larger Dynamic Real Product Slideshow (In Groups of 3) */}
               <div
                 onMouseEnter={() => setHeroHovered(true)}
                 onMouseLeave={() => setHeroHovered(false)}
-                className="relative z-10 flex flex-col items-center lg:items-end gap-2 shrink-0 w-full lg:w-auto"
+                className="relative z-10 flex flex-col items-center lg:items-end gap-3 shrink-0 w-full lg:w-auto"
               >
-                {/* Showcase Tray Container */}
-                <div className="relative rounded-2xl sm:rounded-3xl bg-black/25 border border-white/15 p-2.5 sm:p-3.5 backdrop-blur-2xl shadow-2xl w-full flex flex-col items-center">
-                  {/* Subtle Tray Header */}
-                  <div className="flex items-center justify-between w-full px-2 pb-2 text-[10px] sm:text-[11px] font-bold text-emerald-200/80">
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Live Produce Showcase
-                    </span>
-                    <span className="text-[9px] text-white/50">Auto-Rotating</span>
-                  </div>
+                {/* Product 3-Cards Row with Animated Slide Transition */}
+                <div className="relative min-h-[200px] sm:min-h-[235px] lg:min-h-[260px] w-full flex items-center justify-center">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={heroSlide}
+                      initial={{ opacity: 0, x: 30, scale: 0.98 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      exit={{ opacity: 0, x: -30, scale: 0.98 }}
+                      transition={{ duration: 0.45, ease: "easeInOut" }}
+                      className="grid grid-cols-3 gap-2.5 sm:gap-4 lg:gap-4.5"
+                    >
+                      {(heroSlideGroups[heroSlide] || heroSlideGroups[0] || []).map((product) => {
+                        const price = Number(product.price || 0) * NAIRA_PER_UNIT;
+                        const isBemsOriginal = Boolean(
+                          product.name?.toLowerCase().includes("bems") ||
+                          product.brand?.toLowerCase().includes("bems") ||
+                          product.is_bems_brand
+                        );
 
-                  {/* Product 3-Cards Row with Animated Slide Transition */}
-                  <div className="relative min-h-[200px] sm:min-h-[235px] lg:min-h-[260px] w-full flex items-center justify-center">
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={heroSlide}
-                        initial={{ opacity: 0, x: 30, scale: 0.98 }}
-                        animate={{ opacity: 1, x: 0, scale: 1 }}
-                        exit={{ opacity: 0, x: -30, scale: 0.98 }}
-                        transition={{ duration: 0.45, ease: "easeInOut" }}
-                        className="grid grid-cols-3 gap-2 sm:gap-3.5 lg:gap-4"
-                      >
-                        {(heroSlideGroups[heroSlide] || heroSlideGroups[0] || []).map((product) => {
-                          const price = Number(product.price || 0) * NAIRA_PER_UNIT;
-                          const isBemsOriginal = Boolean(
-                            product.name?.toLowerCase().includes("bems") ||
-                            product.brand?.toLowerCase().includes("bems") ||
-                            product.is_bems_brand
-                          );
-
-                          return (
-                            <div
-                              key={product.id}
-                              onClick={() => setQuickViewProduct(product)}
-                              className="group relative flex flex-col items-center justify-between rounded-xl sm:rounded-2xl border border-white/20 bg-gradient-to-b from-white/20 to-white/10 p-2.5 sm:p-3.5 backdrop-blur-xl shadow-xl transition-all duration-300 hover:scale-105 hover:border-amber-300/80 hover:shadow-2xl hover:shadow-amber-500/10 cursor-pointer w-[100px] sm:w-[135px] lg:w-[155px] xl:w-[165px]"
-                              title={`Click to view ${product.name}`}
-                            >
-                              <div className="h-16 w-16 sm:h-22 sm:w-22 lg:h-28 lg:w-28 xl:h-30 xl:w-30 overflow-hidden rounded-lg sm:rounded-xl bg-white shadow-md group-hover:rotate-1 transition-transform shrink-0">
-                                <img
-                                  src={getProductImage(product)}
-                                  alt={product.name}
-                                  className="h-full w-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.onerror = null;
-                                    e.currentTarget.src = "/hero_food_4.jpg";
-                                  }}
-                                />
-                              </div>
-                              <span className="mt-2 text-[11px] sm:text-xs lg:text-sm font-black text-amber-300 group-hover:text-amber-200 line-clamp-1 text-center w-full">
-                                {product.name}
-                              </span>
-                              <span className="text-[9px] sm:text-[10px] text-white/80 font-medium line-clamp-1 text-center w-full">
-                                {isBemsOriginal ? "Bems Original" : product.category_name || "Fresh Harvest"}
-                              </span>
-                              <span className="mt-1.5 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-black text-slate-950 shadow-sm">
-                                ₦{price.toLocaleString("en-NG")}
-                              </span>
+                        return (
+                          <div
+                            key={product.id}
+                            onClick={() => setQuickViewProduct(product)}
+                            className="group relative flex flex-col items-center justify-between rounded-2xl sm:rounded-3xl border border-white/25 bg-white/15 p-3 sm:p-4 backdrop-blur-xl shadow-2xl transition-all duration-300 hover:scale-105 hover:bg-white/25 hover:border-amber-300/70 cursor-pointer w-[105px] sm:w-[140px] lg:w-[160px] xl:w-[170px]"
+                            title={`Click to view ${product.name}`}
+                          >
+                            <div className="h-16 w-16 sm:h-24 sm:w-24 lg:h-28 lg:w-28 xl:h-32 xl:w-32 overflow-hidden rounded-xl sm:rounded-2xl bg-white shadow-md group-hover:rotate-1 transition-transform shrink-0">
+                              <img
+                                src={getProductImage(product)}
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = "/hero_food_4.jpg";
+                                }}
+                              />
                             </div>
-                          );
-                        })}
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
+                            <span className="mt-2 text-[11px] sm:text-xs lg:text-sm font-black text-amber-300 group-hover:text-amber-200 line-clamp-1 text-center w-full">
+                              {product.name}
+                            </span>
+                            <span className="text-[10px] sm:text-[11px] text-white/80 font-medium line-clamp-1 text-center w-full">
+                              {isBemsOriginal ? "Bems Original" : product.category_name || "Fresh Harvest"}
+                            </span>
+                            <span className="mt-1.5 rounded-full bg-black/45 border border-white/10 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-black text-white shadow-xs">
+                              ₦{price.toLocaleString("en-NG")}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </div>
             </div>
