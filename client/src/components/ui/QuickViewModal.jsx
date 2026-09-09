@@ -136,11 +136,17 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
 
               {/* Price & Stock */}
               <div className="mt-3 flex items-baseline gap-3">
-                <span className="text-2xl font-black text-[#143c2d]">
-                  ₦{price.toLocaleString()}
-                </span>
                 {isOutOfStock ? (
-                  <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-extrabold text-red-700">
+                  <span className="text-2xl font-black text-red-600">
+                    Unavailable
+                  </span>
+                ) : (
+                  <span className="text-2xl font-black text-[#143c2d]">
+                    ₦{price.toLocaleString()}
+                  </span>
+                )}
+                {isOutOfStock ? (
+                  <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-extrabold text-red-700 border border-red-200">
                     Out of stock
                   </span>
                 ) : isLowStock ? (

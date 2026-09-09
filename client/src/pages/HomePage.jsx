@@ -171,9 +171,15 @@ function ProductGridCard({
         <div className="mt-2.5 flex items-center justify-between gap-1 border-t border-slate-100 pt-2">
           <div className="min-w-0">
             <p className="text-[8px] sm:text-[9px] font-extrabold uppercase text-slate-400 tracking-wider">Price</p>
-            <p className="font-display text-xs sm:text-sm md:text-base font-black text-slate-900 truncate">
-              {invalidPrice ? "Unavailable" : `₦${price.toLocaleString("en-NG")}`}
-            </p>
+            {isOutOfStock ? (
+              <p className="font-display text-xs sm:text-sm md:text-base font-black text-red-600 truncate">
+                Unavailable
+              </p>
+            ) : (
+              <p className="font-display text-xs sm:text-sm md:text-base font-black text-slate-900 truncate">
+                ₦{price.toLocaleString("en-NG")}
+              </p>
+            )}
           </div>
 
           {cartQuantity > 0 ? (

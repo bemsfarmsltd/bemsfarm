@@ -247,8 +247,8 @@ function SectionHeading({ eyebrow, title, text, align = "center" }) {
 function StoreProductCard({ product, added, onAdd }) {
   const stock = Number(product.stock_quantity ?? product.stock ?? 0);
   const price = Number(product.price || 0) * NAIRA_PER_UNIT;
-  const invalidPrice = !Number.isFinite(price) || price <= 0 || price > 1_000_000;
-  const unavailable = stock <= 0 || product.available_for_sale === false || invalidPrice;
+  const invalidPrice = !Number.isFinite(price) || price <= 0;
+  const unavailable = stock <= 0 || product.available_for_sale === false || product.status === "out_of_stock" || invalidPrice;
   const rating = Math.min(5, Math.max(0, Number(product.avg_rating) || 0));
   const isBemsOriginal = Boolean(
     product.name?.toLowerCase().includes("bems") ||
@@ -279,7 +279,7 @@ function StoreProductCard({ product, added, onAdd }) {
             Featured
           </span>
         ) : null}
-        {unavailable && <span className="absolute inset-x-3 bottom-3 rounded-full bg-slate-900/85 px-3 py-2 text-center text-xs font-bold text-white">Currently unavailable</span>}
+        {unavailable && <span className="absolute inset-x-3 bottom-3 rounded-full bg-red-600/90 backdrop-blur px-3 py-1.5 text-center text-xs font-extrabold text-white shadow-md">Out of stock</span>}
       </Link>
       <div className="p-4">
         <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#143c2d]/80">{product.category_name || "Farm produce"}</p>
@@ -289,15 +289,19 @@ function StoreProductCard({ product, added, onAdd }) {
           {Number(product.review_count) > 0 ? <><span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}><span aria-hidden="true">{"".repeat(Math.round(rating))}{"".repeat(5 - Math.round(rating))}</span></span><span className="text-slate-400">({product.review_count})</span></> : <span className="text-slate-400">New to the shop</span>}
         </div>
         <div className="mt-3 flex items-center justify-between gap-1.5">
-          <p className="font-extrabold text-slate-900 text-sm xl:text-base whitespace-nowrap">{invalidPrice ? "Price unavailable" : `₦${price.toLocaleString("en-NG")}`}</p>
+          {unavailable ? (
+            <p className="font-extrabold text-red-600 text-sm xl:text-base whitespace-nowrap">Unavailable</p>
+          ) : (
+            <p className="font-extrabold text-slate-900 text-sm xl:text-base whitespace-nowrap">{`₦${price.toLocaleString("en-NG")}`}</p>
+          )}
           <button
             type="button"
             onClick={() => onAdd(product)}
             disabled={unavailable}
-            className={`h-9 shrink-0 rounded-full px-3 text-[11px] font-extrabold text-white transition ${added ? "bg-[#1d6b45]" : "bg-[#143c2d] hover:bg-[#1a4e3b]"} disabled:cursor-not-allowed disabled:bg-slate-300`}
-            aria-label={invalidPrice ? `${product.name} price is unavailable` : `Add ${product.name} to basket`}
+            className={`h-9 shrink-0 rounded-full px-3 text-[11px] font-extrabold text-white transition ${added ? "bg-[#1d6b45]" : "bg-[#143c2d] hover:bg-[#1a4e3b]"} disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400`}
+            aria-label={unavailable ? `${product.name} is unavailable` : `Add ${product.name} to basket`}
           >
-            {invalidPrice ? "Reviewing" : added ? " Added" : "+ Add"}
+            {unavailable ? "Unavailable" : added ? " Added" : "+ Add"}
           </button>
         </div>
       </div>
