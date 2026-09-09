@@ -800,7 +800,7 @@ export default function LandingPage() {
           <div className="hidden items-center gap-6 xl:flex">
             <a href="#featured-products" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Shop Products</a>
             <a href="#categories" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Categories</a>
-            <a href="#our-brand" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Our Brand</a>
+            <a href="#our-brand" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Bems Originals</a>
             <a href="#how-it-works" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">How it works</a>
             <Link to="/track-order" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Track order</Link>
             <a href="#chef-bems" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Chef Bems</a>
@@ -826,7 +826,7 @@ export default function LandingPage() {
           {menuOpen && (
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="border-t border-slate-100 bg-white px-5 pb-6 pt-4 shadow-xl xl:hidden">
               <div className="flex flex-col gap-1">
-                {[['#featured-products', 'Shop products'], ['#categories', 'Categories'], ['#our-brand', 'Our Brand'], ['#how-it-works', 'How it works'], ['#chef-bems', 'Chef Bems'], ['#faq', 'FAQs']].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">{label}</a>)}
+                {[['#featured-products', 'Shop products'], ['#categories', 'Categories'], ['#our-brand', 'Bems Originals'], ['#how-it-works', 'How it works'], ['#chef-bems', 'Chef Bems'], ['#faq', 'FAQs']].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">{label}</a>)}
                 <Link to="/track-order" onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">Track an order</Link>
               </div>
               {isLoggedIn ? <Link to="/home" className="mt-4 block rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">My account</Link> : <div className="mt-4 grid grid-cols-2 gap-3"><Link to="/login" className="rounded-full border border-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-[#143c2d]">Sign in</Link><Link to="/register" className="rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">Join now</Link></div>}
@@ -851,17 +851,17 @@ export default function LandingPage() {
           />
           <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }} className="text-center lg:text-left">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-[#143c2d] shadow-sm"><span className="h-2 w-2 rounded-full bg-[#143c2d]" /> Direct from Bems Farms & Processing</div>
-              <h1 className="font-display text-[clamp(2.75rem,6.5vw,5.8rem)] font-bold leading-[0.95] tracking-[-0.055em] text-[#143c2d]">Fresh harvests, <span className="text-[#c85a17]">our own brand.</span></h1>
-              <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-600 lg:mx-0">Shop Bems Farms’ signature packaged staples, pure cooking oils and freshly harvested produce alongside everyday kitchen essentials—cultivated with care and paired with Chef Bems.</p>
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-[#143c2d] shadow-sm"><span className="h-2 w-2 rounded-full bg-[#143c2d]" /> Fresh food &amp; trusted brands</div>
+              <h1 className="font-display text-[clamp(2.75rem,6.5vw,5.8rem)] font-bold leading-[0.95] tracking-[-0.055em] text-[#143c2d]">Fresh harvests, <span className="text-[#c85a17]">trusted brands.</span></h1>
+              <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-600 lg:mx-0">Shop fresh produce, trusted grocery brands and everyday kitchen essentials in one place—including Bems Farms’ own packaged staples and cooking oils.</p>
               
               <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
                 <Link to="/products" className="rounded-full bg-[#143c2d] px-8 py-4 text-center text-base font-extrabold text-white shadow-md shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b]">Start shopping <span aria-hidden="true">→</span></Link>
                 <a href="#how-it-works" className="rounded-full border border-slate-300 bg-white px-8 py-4 text-center text-base font-extrabold text-slate-800 transition hover:border-[#143c2d] hover:text-[#143c2d]">See how it works</a>
               </div>
               <div className="mt-9 flex flex-wrap justify-center gap-x-7 gap-y-3 text-sm font-bold text-slate-600 lg:justify-start">
-                <span>✓ Bems Farms Brand Originals</span>
-                <span>✓ Direct Farm Quality</span>
+                <span>✓ Trusted Grocery Brands</span>
+                <span>✓ Bems Farms Originals</span>
                 <span>✓ Fast & Reliable Delivery</span>
               </div>
             </motion.div>
@@ -896,7 +896,7 @@ export default function LandingPage() {
             }}
           />
           <div className="relative mx-auto grid max-w-7xl grid-cols-2 gap-6 text-center md:grid-cols-4">
-            {[['Our Farm', 'branded products'], ['Fresh', 'harvest selections'], ['Helpful', 'meal inspiration'], ['Simple', 'order tracking']].map(([lead, text]) => (
+            {[['Trusted', 'grocery brands'], ['Fresh', 'harvest selections'], ['Helpful', 'meal inspiration'], ['Simple', 'order tracking']].map(([lead, text]) => (
               <div key={lead}>
                 <p className="font-display text-xl font-bold text-amber-300 sm:text-2xl">{lead}</p>
                 <p className="mt-1 text-xs font-bold uppercase tracking-wider text-emerald-100/70">{text}</p>
@@ -910,8 +910,8 @@ export default function LandingPage() {
           <div className="mx-auto max-w-7xl">
             <div className="grid gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[#143c2d]">The Bems Farms Difference</p>
-                <h2 className="mt-3 font-display text-3xl font-bold text-[#143c2d] sm:text-4xl">Our Own Products. Straight from Our Farm to Your Kitchen.</h2>
+                <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[#143c2d]">From Bems Farms</p>
+                <h2 className="mt-3 font-display text-3xl font-bold text-[#143c2d] sm:text-4xl">Meet Our Originals Within Our Wider Marketplace.</h2>
                 <p className="mt-4 text-base leading-7 text-slate-600">Unlike ordinary markets, Bems Farms cultivates, sorts, and packages our own line of signature food staples and crops. Every bag of grains, bottle of oil, and fresh harvest is inspected for supreme quality and natural taste.</p>
                 <div className="mt-7 grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl border border-[#DFD6C2] bg-white p-5 shadow-sm">
@@ -929,7 +929,7 @@ export default function LandingPage() {
               <div className="rounded-3xl border border-emerald-900/10 bg-[#143c2d] p-7 text-white shadow-xl sm:p-9">
                 <p className="text-xs font-extrabold uppercase tracking-widest text-amber-300">Bems Guarantee</p>
                 <h3 className="mt-2 font-display text-2xl font-bold">Look for the “Bems Original” Badge</h3>
-                <p className="mt-3 text-sm leading-6 text-emerald-100/80">When browsing our catalogue, look out for items marked with the <span className="font-bold text-amber-300">★ Bems Original</span> badge—our promise of direct farm origin, honest weighing, and premium quality.</p>
+                <p className="mt-3 text-sm leading-6 text-emerald-100/80">Our catalogue includes products from a range of trusted brands. Items marked with the <span className="font-bold text-amber-300">★ Bems Original</span> badge are produced or packaged by Bems Farms.</p>
                 <div className="mt-6">
                   <a href="#featured-products" onClick={() => setCatalogueView("bems_originals")} className="inline-flex rounded-full bg-amber-300 px-6 py-3 text-xs font-extrabold uppercase tracking-wider text-emerald-950 transition hover:bg-white">View Bems Originals →</a>
                 </div>
