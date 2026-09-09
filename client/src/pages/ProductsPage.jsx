@@ -58,6 +58,153 @@ const SHOP_CSS = `
 }
 `;
 
+const VIDEO_SLIDES = [
+  {
+    id: 1,
+    badge: "100% Stone-Free Harvest",
+    badgeColor: "#10B981",
+    title: "Fresh Nigerian Produce",
+    subtitle: "Stone-free grains, premium tubers & unadulterated oils direct to your kitchen.",
+    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166618/A_vibrant_top_down_flat_lay_vi_xuitwq.mp4",
+  },
+  {
+    id: 2,
+    badge: "Direct Farm Dispatch",
+    badgeColor: "#F59E0B",
+    title: "Live Farm Harvests",
+    subtitle: "Direct harvest from trusted partner farms with guaranteed farm-fresh quality.",
+    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166480/A_slow_looping_cinematic_shot_i0swkm.mp4",
+  },
+  {
+    id: 3,
+    badge: "Culinary AI & Recipes",
+    badgeColor: "#A78BFA",
+    title: "Cook Smarter With Chef Bems",
+    subtitle: "Get recipe inspirations, portion calculations, and cooking tips with Chef Bems AI.",
+    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1784539329/Give_me_a_video_of_the_charact_supd0d.mp4",
+  },
+];
+
+function ShopVideoSlider() {
+  const [current, setCurrent] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % VIDEO_SLIDES.length);
+    }, 7000);
+    return () => clearInterval(interval);
+  }, [isPaused]);
+
+  const prevSlide = (e) => {
+    e.stopPropagation();
+    setCurrent((prev) => (prev - 1 + VIDEO_SLIDES.length) % VIDEO_SLIDES.length);
+  };
+
+  const nextSlide = (e) => {
+    e.stopPropagation();
+    setCurrent((prev) => (prev + 1) % VIDEO_SLIDES.length);
+  };
+
+  const activeSlide = VIDEO_SLIDES[current];
+
+  return (
+    <div
+      className="relative w-full aspect-video sm:aspect-[16/10] max-w-[480px] lg:max-w-none rounded-2xl sm:rounded-3xl overflow-hidden border border-white/25 shadow-2xl bg-black/50 backdrop-blur-md group select-none"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeSlide.id}
+          initial={{ opacity: 0, scale: 1.04 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="absolute inset-0 w-full h-full"
+        >
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            key={activeSlide.src}
+            className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out"
+            src={activeSlide.src}
+          />
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Subtle Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/35 pointer-events-none" />
+
+      {/* Floating Video Badge */}
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md px-3 py-1 border border-white/20 text-[10px] sm:text-xs font-bold text-white shadow-lg pointer-events-none">
+        <span
+          className="h-1.5 w-1.5 rounded-full animate-ping"
+          style={{ backgroundColor: activeSlide.badgeColor }}
+        />
+        <span>{activeSlide.badge}</span>
+      </div>
+
+      {/* Slide Navigation Chevrons */}
+      <button
+        type="button"
+        onClick={prevSlide}
+        aria-label="Previous video"
+        className="absolute left-2.5 top-1/2 -translate-y-1/2 z-20 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-black/40 hover:bg-black/75 border border-white/20 text-white flex items-center justify-center backdrop-blur-md opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:scale-110 active:scale-95 cursor-pointer shadow-lg"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={nextSlide}
+        aria-label="Next video"
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 z-20 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-black/40 hover:bg-black/75 border border-white/20 text-white flex items-center justify-center backdrop-blur-md opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:scale-110 active:scale-95 cursor-pointer shadow-lg"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+      </button>
+
+      {/* Bottom Dynamic Caption & Dots Indicator */}
+      <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 right-3 sm:right-4 z-10 text-white flex items-end justify-between gap-3">
+        <div className="max-w-[75%] pointer-events-none">
+          <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-amber-300 drop-shadow-sm">
+            {activeSlide.title}
+          </p>
+          <p className="text-[10px] sm:text-[11px] text-white/90 line-clamp-1 drop-shadow-xs font-medium">
+            {activeSlide.subtitle}
+          </p>
+        </div>
+
+        {/* Slide Indicator Dots */}
+        <div className="flex items-center gap-1.5 shrink-0 bg-black/50 backdrop-blur-md px-2 py-1 rounded-full border border-white/20">
+          {VIDEO_SLIDES.map((slide, idx) => (
+            <button
+              key={slide.id}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrent(idx);
+              }}
+              aria-label={`Go to slide ${idx + 1}`}
+              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                idx === current
+                  ? "w-4 bg-amber-400"
+                  : "w-1.5 bg-white/40 hover:bg-white/75"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProductsPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -313,32 +460,9 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              {/* Right Column: High Quality Farm Video Container */}
+              {/* Right Column: High Quality Farm Multi-Video Slide Container */}
               <div className="relative z-10 lg:col-span-5 w-full flex justify-center lg:justify-end">
-                <div className="relative w-full aspect-video sm:aspect-[16/10] max-w-[480px] lg:max-w-none rounded-2xl sm:rounded-3xl overflow-hidden border border-white/25 shadow-2xl bg-black/40 backdrop-blur-md group">
-                  <video
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out"
-                    src="https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166618/A_vibrant_top_down_flat_lay_vi_xuitwq.mp4"
-                  />
-                  {/* Subtle Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
-
-                  {/* Floating Video Badge */}
-                  <div className="absolute top-3 right-3 sm:top-4 sm:right-4 inline-flex items-center gap-1.5 rounded-full bg-black/55 backdrop-blur-md px-3 py-1 border border-white/20 text-[10px] sm:text-xs font-bold text-white shadow-lg pointer-events-none">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    <span>Live Harvest</span>
-                  </div>
-
-                  {/* Bottom Caption */}
-                  <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 right-3 sm:right-4 text-white pointer-events-none">
-                    <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-amber-300">Fresh From Nigerian Farms</p>
-                    <p className="text-[10px] sm:text-[11px] text-white/80 line-clamp-1">Direct harvest from trusted partner farms to your kitchen.</p>
-                  </div>
-                </div>
+                <ShopVideoSlider />
               </div>
             </div>
           </div>
