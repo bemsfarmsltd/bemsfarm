@@ -198,14 +198,14 @@ export default function ProductsPage() {
       <div className="bf-shop-page">
         <style>{SHOP_CSS}</style>
 
-        {/* ── 1. LUXURY STOREFRONT SHOP HEADER BANNER ── */}
+        {/* ── 1. LUXURY STOREFRONT SHOP HEADER BANNER WITH VIDEO ── */}
         <section className="px-3 pt-4 sm:pt-6 pb-2 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-[1600px] w-full">
             <div
               style={{
                 background: "linear-gradient(135deg, #051a11 0%, #0d3322 35%, #144931 70%, #082418 100%)",
               }}
-              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 text-white shadow-xl border border-emerald-800/30 flex flex-col md:flex-row md:items-center md:justify-between gap-6"
+              className="relative overflow-hidden rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 text-white shadow-xl border border-emerald-800/30 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center"
             >
               {/* Subtle Atmospheric Light Orbs */}
               <div
@@ -223,9 +223,9 @@ export default function ProductsPage() {
                 }}
               />
 
-              {/* Left Column: Editorial Store Header */}
-              <div className="relative z-10 max-w-2xl">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300 border border-white/15 backdrop-blur-md shadow-xs">
+              {/* Left Column: Editorial Store Header & Search Form */}
+              <div className="relative z-10 lg:col-span-7 flex flex-col justify-center">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300 border border-white/15 backdrop-blur-md shadow-xs w-fit">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400" />
                   <span>Farm-To-Door Catalogue</span>
                 </div>
@@ -250,66 +250,94 @@ export default function ProductsPage() {
                     Same-Day Dispatch Available
                   </span>
                 </div>
+
+                {/* Search & Quick Filter Tags */}
+                <div className="mt-6 w-full max-w-lg">
+                  <form
+                    onSubmit={handleSearchSubmit}
+                    className="relative flex items-center w-full shadow-lg rounded-2xl overflow-hidden bg-white/10 border border-white/20 backdrop-blur-xl p-1.5"
+                  >
+                    <div className="pl-3 pr-2 text-emerald-200/70 flex items-center">
+                      <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search rice, yam, palm oil, beans..."
+                      className="w-full bg-transparent text-xs sm:text-sm text-white placeholder:text-white/60 outline-none pr-2"
+                    />
+                    {search && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearch("");
+                          const newParams = new URLSearchParams(params);
+                          newParams.delete("search");
+                          setParams(newParams);
+                        }}
+                        className="px-2 text-white/60 hover:text-white text-sm font-bold"
+                      >
+                        ×
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0f3322] px-4 py-2 text-xs sm:text-sm font-black transition-all shadow-md shrink-0"
+                    >
+                      Search
+                    </button>
+                  </form>
+
+                  {/* Quick Keyword Suggestions */}
+                  <div className="mt-2.5 flex items-center gap-1.5 text-[10px] sm:text-xs text-white/70 overflow-x-auto">
+                    <span className="font-bold text-amber-300 shrink-0">Popular:</span>
+                    {["Rice", "Yam", "Palm Oil", "Beans", "Pepper"].map((keyword) => (
+                      <button
+                        key={keyword}
+                        type="button"
+                        onClick={() => {
+                          setSearch(keyword);
+                          const newParams = new URLSearchParams(params);
+                          newParams.set("search", keyword);
+                          setParams(newParams);
+                        }}
+                        className="rounded-md bg-white/10 hover:bg-white/20 px-2 py-0.5 text-white/85 text-[10px] font-medium transition shrink-0"
+                      >
+                        {keyword}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
-              {/* Right Column: Search & Quick Navigation Form */}
-              <div className="relative z-10 w-full md:max-w-md shrink-0">
-                <form
-                  onSubmit={handleSearchSubmit}
-                  className="relative flex items-center w-full shadow-lg rounded-2xl overflow-hidden bg-white/10 border border-white/20 backdrop-blur-xl p-1.5"
-                >
-                  <div className="pl-3 pr-2 text-emerald-200/70 flex items-center">
-                    <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search rice, yam, palm oil, beans..."
-                    className="w-full bg-transparent text-xs sm:text-sm text-white placeholder:text-white/60 outline-none pr-2"
+              {/* Right Column: High Quality Farm Video Container */}
+              <div className="relative z-10 lg:col-span-5 w-full flex justify-center lg:justify-end">
+                <div className="relative w-full aspect-video sm:aspect-[16/10] max-w-[480px] lg:max-w-none rounded-2xl sm:rounded-3xl overflow-hidden border border-white/25 shadow-2xl bg-black/40 backdrop-blur-md group">
+                  <video
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out"
+                    src="https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166618/A_vibrant_top_down_flat_lay_vi_xuitwq.mp4"
                   />
-                  {search && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearch("");
-                        const newParams = new URLSearchParams(params);
-                        newParams.delete("search");
-                        setParams(newParams);
-                      }}
-                      className="px-2 text-white/60 hover:text-white text-sm font-bold"
-                    >
-                      ×
-                    </button>
-                  )}
-                  <button
-                    type="submit"
-                    className="rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0f3322] px-4 py-2 text-xs sm:text-sm font-black transition-all shadow-md shrink-0"
-                  >
-                    Search
-                  </button>
-                </form>
+                  {/* Subtle Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
 
-                {/* Quick Keyword Suggestions */}
-                <div className="mt-2.5 flex items-center gap-1.5 text-[10px] sm:text-xs text-white/70 overflow-x-auto">
-                  <span className="font-bold text-amber-300 shrink-0">Popular:</span>
-                  {["Rice", "Yam", "Palm Oil", "Beans", "Pepper"].map((keyword) => (
-                    <button
-                      key={keyword}
-                      type="button"
-                      onClick={() => {
-                        setSearch(keyword);
-                        const newParams = new URLSearchParams(params);
-                        newParams.set("search", keyword);
-                        setParams(newParams);
-                      }}
-                      className="rounded-md bg-white/10 hover:bg-white/20 px-2 py-0.5 text-white/85 text-[10px] font-medium transition shrink-0"
-                    >
-                      {keyword}
-                    </button>
-                  ))}
+                  {/* Floating Video Badge */}
+                  <div className="absolute top-3 right-3 sm:top-4 sm:right-4 inline-flex items-center gap-1.5 rounded-full bg-black/55 backdrop-blur-md px-3 py-1 border border-white/20 text-[10px] sm:text-xs font-bold text-white shadow-lg pointer-events-none">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    <span>Live Harvest</span>
+                  </div>
+
+                  {/* Bottom Caption */}
+                  <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 right-3 sm:right-4 text-white pointer-events-none">
+                    <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-amber-300">Fresh From Nigerian Farms</p>
+                    <p className="text-[10px] sm:text-[11px] text-white/80 line-clamp-1">Direct harvest from trusted partner farms to your kitchen.</p>
+                  </div>
                 </div>
               </div>
             </div>
