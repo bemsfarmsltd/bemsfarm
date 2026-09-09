@@ -527,8 +527,7 @@ export default function Navbar() {
       <div
         className="bf-navbar-inner"
         style={{
-          maxWidth: "1280px",
-          margin: "0 auto",
+          width: "100%",
           display: "flex",
           alignItems: "center",
           minWidth: 0,

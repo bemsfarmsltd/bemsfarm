@@ -34,9 +34,10 @@ const DASHBOARD_CSS = `
   z-index: 0;
 }
 .bp-container {
-  max-width: 1280px;
+  max-width: 1600px;
+  width: 100%;
   margin: 0 auto;
-  padding: 32px 24px 60px;
+  padding: 24px 20px 60px;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   display: flex;
   flex-direction: column;

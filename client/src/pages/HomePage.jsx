@@ -321,7 +321,7 @@ export default function HomePage() {
       <div className="min-h-screen bg-[#F8F5EE] text-slate-900 pb-20">
         {/* ── 1. PERSONALIZED WELCOME & KPI SUMMARY ── */}
         <section className="border-b border-[#DFD6C2] bg-linear-to-b from-[#EDE5D5]/70 via-[#F8F5EE] to-[#F8F5EE] px-3 pt-6 pb-6 sm:px-6 lg:px-10">
-          <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-[1600px] w-full">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-[#DFD6C2] bg-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#143c2d]">
@@ -364,7 +364,7 @@ export default function HomePage() {
 
         {/* ── 2. ACTIVE DELIVERY TRACKER WIDGET ── */}
         <section className="px-3 pt-5 pb-2 sm:px-6 lg:px-10">
-          <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-[1600px] w-full">
             {recentOrder ? (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-4 sm:p-5 shadow-2xs">
                 <div className="flex items-start gap-3">
@@ -425,7 +425,7 @@ export default function HomePage() {
 
         {/* ── 3. WEEKLY PANTRY STAPLES (QUICK RE-ORDER) ── */}
         <section className="px-3 pt-6 pb-4 sm:px-6 lg:px-10">
-          <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-[1600px] w-full">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="font-display text-base sm:text-xl font-bold text-[#143c2d]">
@@ -471,7 +471,7 @@ export default function HomePage() {
 
         {/* ── 4. FEATURED HARVESTS & BEMS ORIGINALS ── */}
         <section className="px-3 pt-6 pb-12 sm:px-6 lg:px-10">
-          <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-[1600px] w-full">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="font-display text-base sm:text-xl font-bold text-[#143c2d]">
@@ -545,7 +545,7 @@ export default function HomePage() {
 
         {/* ── 6. CLEAN QUALITY & TRUST BAR ── */}
         <section className="border-t border-[#DFD6C2] bg-[#EFE8DC] px-3 py-8 sm:px-6 lg:px-10">
-          <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-[1600px] w-full">
             <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
               <div className="flex items-start gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-3 sm:p-4 shadow-2xs">
                 <span className="grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-emerald-50 text-base sm:text-lg text-[#143c2d]">🌾</span>
