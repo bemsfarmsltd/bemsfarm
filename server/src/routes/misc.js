@@ -6,37 +6,49 @@ const { verifyMonnifyWebhookSignature } = require("../utils/monnify");
 const { restoreOrderStock } = require("../utils/orderStock");
 const crypto = require("crypto");
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
+})[character]);
+
 function generateReferralCode() {
   return "BF-" + crypto.randomBytes(3).toString("hex").toUpperCase();
 }
 
 // ── CONTACT FORM ──────────────────────────────────────────────
 router.post("/contact", async (req, res, next) => {
-  const { name, email, phone, message } = req.body;
+  const { name, email, phone, message } = req.body || {};
+  const cleanName = typeof name === "string" ? name.trim() : "";
+  const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const cleanPhone = typeof phone === "string" ? phone.trim() : "";
+  const cleanMessage = typeof message === "string" ? message.trim() : "";
 
-  if (!name?.trim() || !email?.trim() || !message?.trim()) {
+  if (!cleanName || !cleanEmail || !cleanMessage) {
     return res.status(400).json({ message: "Name, email and message are required" });
   }
-  if (!email.includes("@") || !email.includes(".")) {
+  if (!EMAIL_PATTERN.test(cleanEmail) || cleanEmail.length > 254) {
     return res.status(400).json({ message: "Please enter a valid email address" });
+  }
+  if (cleanName.length > 120 || cleanPhone.length > 40 || cleanMessage.length > 5000) {
+    return res.status(400).json({ message: "One or more fields exceed the allowed length" });
   }
 
   try {
     await pool.query(
       `INSERT INTO contact_messages (name, email, phone, message, created_at)
        VALUES ($1, $2, $3, $4, NOW())`,
-      [name.trim(), email.trim().toLowerCase(), phone?.trim() || null, message.trim()]
+      [cleanName, cleanEmail, cleanPhone || null, cleanMessage]
     );
 
     const supportEmail = process.env.SUPPORT_EMAIL || "info@bemsfarms.com";
     sendMail({
       to: supportEmail,
-      subject: `New contact message from ${name.trim()}`,
+      subject: `New contact message from ${cleanName.replace(/[\r\n]+/g, " ")}`,
       html: `
-        <p><strong>From:</strong> ${name.trim()} (${email.trim()})</p>
-        ${phone ? `<p><strong>Phone:</strong> ${phone.trim()}</p>` : ""}
+        <p><strong>From:</strong> ${escapeHtml(cleanName)} (${escapeHtml(cleanEmail)})</p>
+        ${cleanPhone ? `<p><strong>Phone:</strong> ${escapeHtml(cleanPhone)}</p>` : ""}
         <p><strong>Message:</strong></p>
-        <p>${message.trim().replace(/\n/g, "<br>")}</p>
+        <p>${escapeHtml(cleanMessage).replace(/\n/g, "<br>")}</p>
       `,
     }).catch((err) => console.error("⚠️ Contact notification email failed:", err.message));
 
@@ -48,40 +60,32 @@ router.post("/contact", async (req, res, next) => {
 
 // ── SUBSCRIBE ─────────────────────────────────────────────────
 router.post("/subscribe", async (req, res, next) => {
-  const { email, referred_by } = req.body;
+  const { email, referred_by } = req.body || {};
 
   // Validate
   if (!email) {
     return res.status(400).json({ message: "Email is required" });
   }
-  if (
-    typeof email !== "string" ||
-    !email.includes("@") ||
-    !email.includes(".")
-  ) {
+  if (typeof email !== "string" || email.length > 254 || !EMAIL_PATTERN.test(email.trim())) {
     return res
       .status(400)
       .json({ message: "Please enter a valid email address" });
   }
 
   const cleanEmail = email.toLowerCase().trim();
-  const cleanReferredBy = referred_by ? referred_by.trim() : null;
+  const cleanReferredBy = typeof referred_by === "string" ? referred_by.trim() : null;
 
   try {
     // 1. Check if email already exists
     const checkRes = await pool.query(
-      "SELECT id, email, referral_code, referral_count, discount_code FROM email_subscriptions WHERE email = $1",
+      "SELECT id FROM email_subscriptions WHERE email = $1",
       [cleanEmail]
     );
 
     if (checkRes.rows.length > 0) {
-      const existing = checkRes.rows[0];
       return res.json({
         success: true,
-        message: `Welcome back! You are already subscribed. Your discount code is ${existing.discount_code}.`,
-        code: existing.discount_code,
-        referral_code: existing.referral_code,
-        referral_count: existing.referral_count,
+        message: "If this address is eligible, it is subscribed to BemsFarms updates.",
       });
     }
 

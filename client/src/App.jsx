@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import ProtectedRoute, { STAFF_ROLES } from "./components/ProtectedRoute";
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
@@ -27,15 +27,45 @@ const DynamicPricingPage = lazy(() => import("./pages/DynamicPricingPage"));
 const FraudDetectionPage = lazy(() => import("./pages/FraudDetectionPage"));
 const DemandForecastingPage = lazy(() => import("./pages/DemandForecastingPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+const CommercePolicyPage = lazy(() => import("./pages/CommercePolicyPage"));
 
 const P = ({ children }) => <ProtectedRoute>{children}</ProtectedRoute>;
 // Internal/staff-only tooling — same auth system as the storefront, but a
 // plain customer (role "user") must never be able to reach these.
 const Staff = ({ children }) => <ProtectedRoute allowedRoles={STAFF_ROLES}>{children}</ProtectedRoute>;
 
+const ROUTE_META = {
+  "/": ["BemsFarms — Fresh Nigerian Farm Produce", "Shop fresh Nigerian farm produce, pantry staples and cooking essentials with secure checkout and delivery."],
+  "/products": ["Shop Farm Produce | BemsFarms", "Browse fresh produce, grains, oils, legumes and Nigerian pantry essentials from BemsFarms."],
+  "/about": ["About BemsFarms", "Learn about BemsFarms and our approach to farm produce, food shopping and practical meal support."],
+  "/contact": ["Contact BemsFarms", "Contact BemsFarms customer support for help with products, orders, delivery or your account."],
+  "/track-order": ["Track Your Order | BemsFarms", "Use your BemsFarms delivery code to check the latest progress of your order."],
+  "/login": ["Sign In | BemsFarms", "Sign in to your BemsFarms account to manage orders, delivery details and preferences."],
+  "/register": ["Create an Account | BemsFarms", "Create a BemsFarms account to order groceries, save delivery details and access Chef Bems."],
+  "/cart": ["Your Basket | BemsFarms", "Review the farm produce and pantry essentials in your BemsFarms basket."],
+};
+
+function RouteMetadata() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const [title, summary] = ROUTE_META[pathname] || ["BemsFarms — Fresh Nigerian Farm Produce", "Fresh Nigerian farm produce, pantry staples and cooking essentials from BemsFarms."];
+    document.title = title;
+    document.querySelector('meta[name="description"]')?.setAttribute("content", summary);
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.rel = "canonical";
+      document.head.appendChild(canonical);
+    }
+    canonical.href = `https://www.bemsfarms.com${pathname}`;
+  }, [pathname]);
+  return null;
+}
+
 function App() {
   return (
     <BrowserRouter>
+      <RouteMetadata />
       <Suspense fallback={<div className="grid min-h-screen place-items-center bg-[#faf8f2] px-6 text-center font-bold text-[#17352a]" role="status">Loading BemsFarms…</div>}>
         <Routes>
         {/* Public */}
@@ -49,6 +79,12 @@ function App() {
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/track-order" element={<TrackOrderPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/terms" element={<CommercePolicyPage />} />
+        <Route path="/privacy" element={<CommercePolicyPage />} />
+        <Route path="/shipping" element={<CommercePolicyPage />} />
+        <Route path="/returns-policy" element={<CommercePolicyPage />} />
 
         <Route
           path="/returns"
@@ -113,22 +149,6 @@ function App() {
           element={
             <P>
               <ProfilePage />
-            </P>
-          }
-        />
-        <Route
-          path="/about"
-          element={
-            <P>
-              <AboutPage />
-            </P>
-          }
-        />
-        <Route
-          path="/contact"
-          element={
-            <P>
-              <ContactPage />
             </P>
           }
         />

@@ -1,13 +1,11 @@
 require("dotenv").config();
 const pool = require("../db/pool");
 
-// These routes are public/unauthenticated — cost_price and margin_pct are
-// internal margin data (config_admin.js already treats cost_price as
-// staff-only), so strip them from every row before it goes out, same as
-// `p.*` pulling in every column would otherwise leak them to any visitor.
-function stripCostFields(row) {
+// These routes are public. Remove financial, staff, and AI-vector fields
+// selected by p.* before returning product data to a visitor.
+function stripPrivateProductFields(row) {
   if (!row) return row;
-  const { cost_price, margin_pct, ...rest } = row;
+  const { cost_price, margin_pct, embedding, created_by, ...rest } = row;
   return rest;
 }
 
@@ -63,7 +61,7 @@ const getProducts = async (req, res, next) => {
     );
 
     res.json({
-      products: result.rows.map(stripCostFields),
+      products: result.rows.map(stripPrivateProductFields),
       count: result.rows.length,
       total,
       page,
@@ -116,8 +114,8 @@ const getProductById = async (req, res, next) => {
     );
 
     res.json({
-      product: stripCostFields(result.rows[0]),
-      related: related.rows.map(stripCostFields),
+      product: stripPrivateProductFields(result.rows[0]),
+      related: related.rows.map(stripPrivateProductFields),
     });
   } catch (error) {
     next(error);
@@ -136,7 +134,7 @@ const getFeaturedProducts = async (req, res, next) => {
        ORDER BY p.id ASC`,
     );
 
-    res.json({ products: result.rows.map(stripCostFields) });
+    res.json({ products: result.rows.map(stripPrivateProductFields) });
   } catch (error) {
     next(error);
   }

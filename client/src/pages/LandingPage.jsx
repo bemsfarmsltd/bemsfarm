@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -6,14 +6,8 @@ import { useCart } from "../context/CartContext";
 import api from "../services/api";
 import { NAIRA_PER_UNIT } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
-import logo from "../assets/bemsfarms_logo.png";
+import logo from "../assets/bemsfarms_logo_compact.png";
 
-const categories = [
-  { name: "Grains & Cereals", detail: "Rice and everyday pantry essentials.", image: "/hero_food_1.jpg" },
-  { name: "Vegetables", detail: "Peppers, tomatoes and leafy greens.", image: "/hero_food_2.jpg" },
-  { name: "Cooking Oils", detail: "Quality oils for familiar Nigerian meals.", image: "/hero_food_3.jpg" },
-  { name: "Legumes", detail: "Beans and wholesome plant-based staples.", image: "/fresh_salad_hero.png" },
-];
 
 const steps = [
   { number: "01", icon: "⌕", title: "Browse the shop", text: "Explore fresh produce, pantry staples and kitchen favourites." },
@@ -30,15 +24,15 @@ const promises = [
 ];
 
 const shoppingDetails = [
-  { icon: "🚚", title: "Delivery choices", text: "Available options and fees are shown for your address at checkout." },
-  { icon: "↩", title: "7-day returns", text: "Eligible delivered items can be submitted for return from your account." },
+  { icon: "🚚", title: "Clear delivery costs", text: "Standard delivery is ₦1,500; orders over ₦15,000 qualify for free standard delivery." },
+  { icon: "↩", title: "Eligible 7-day returns", text: "Eligible items can be submitted within 7 days of delivery; exclusions apply to some perishable goods." },
   { icon: "🔒", title: "Protected payment", text: "Complete your online payment securely through Monnify." },
   { icon: "✉", title: "Customer support", text: "Questions about shopping or an order? Email info@bemsfarms.com." },
 ];
 
 const faqs = [
   { question: "Do I need an account to place an order?", answer: "Yes. Your account keeps your delivery details, orders and preferences together, making future purchases quicker." },
-  { question: "Where does BemsFarms deliver?", answer: "Available delivery choices are shown during checkout based on your address. This keeps the options and fees accurate for each order." },
+  { question: "What does delivery cost?", answer: "Standard delivery is ₦1,500, and orders over ₦15,000 qualify for free standard delivery. Available options are confirmed for your address at checkout." },
   { question: "What can Chef Bems help me with?", answer: "Chef Bems can suggest meals, build shopping ideas and help you find useful alternatives from products available in the store." },
   { question: "Can I review my order after payment?", answer: "Yes. Signed-in customers can follow order progress and review previous purchases from their account." },
 ];
@@ -78,12 +72,47 @@ const HERO_SLIDES = [
   },
 ];
 
+function useModalFocus(isOpen, returnFocusRef) {
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const previousFocus = document.activeElement;
+    const dialog = dialogRef.current;
+    const focusableSelector = "a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex='-1'])";
+    const focusable = () => Array.from(dialog?.querySelectorAll(focusableSelector) || []);
+
+    (focusable()[0] || dialog)?.focus();
+    const handleKeyDown = (event) => {
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      (returnFocusRef?.current || previousFocus)?.focus?.();
+    };
+  }, [isOpen, returnFocusRef]);
+
+  return dialogRef;
+}
+
 function HeroSlideBanner() {
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
     const interval = setInterval(() => {
       setCurrent((prev) => (prev + 1) % HERO_SLIDES.length);
     }, 4500);
@@ -106,6 +135,10 @@ function HeroSlideBanner() {
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={() => setIsPaused(true)}
       onTouchEnd={() => setIsPaused(false)}
+      onFocusCapture={() => setIsPaused(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setIsPaused(false);
+      }}
     >
       <AnimatePresence mode="wait">
         <motion.img
@@ -189,8 +222,9 @@ function SectionHeading({ eyebrow, title, text, align = "center" }) {
 
 function StoreProductCard({ product, added, onAdd }) {
   const stock = Number(product.stock_quantity ?? product.stock ?? 0);
-  const unavailable = stock <= 0 || product.available_for_sale === false;
   const price = Number(product.price || 0) * NAIRA_PER_UNIT;
+  const invalidPrice = !Number.isFinite(price) || price <= 0 || price > 1_000_000;
+  const unavailable = stock <= 0 || product.available_for_sale === false || invalidPrice;
   const rating = Math.min(5, Math.max(0, Number(product.avg_rating) || 0));
   const isBemsOriginal = Boolean(
     product.name?.toLowerCase().includes("bems") ||
@@ -206,6 +240,10 @@ function StoreProductCard({ product, added, onAdd }) {
           alt={product.name}
           className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
           loading="lazy"
+          onError={(event) => {
+            event.currentTarget.onerror = null;
+            event.currentTarget.src = "/hero_food_4.jpg";
+          }}
         />
         {/* Prioritize Bems Original over generic Featured to prevent badge overlap */}
         {isBemsOriginal ? (
@@ -227,15 +265,15 @@ function StoreProductCard({ product, added, onAdd }) {
           {Number(product.review_count) > 0 ? <><span className="text-[#c85a17]" aria-label={`${rating.toFixed(1)} out of 5 stars`}><span aria-hidden="true">{"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}</span></span><span className="text-slate-400">({product.review_count})</span></> : <span className="text-slate-400">New to the shop</span>}
         </div>
         <div className="mt-3 flex items-center justify-between gap-1.5">
-          <p className="font-extrabold text-slate-900 text-sm xl:text-base whitespace-nowrap">₦{price.toLocaleString("en-NG")}</p>
+          <p className="font-extrabold text-slate-900 text-sm xl:text-base whitespace-nowrap">{invalidPrice ? "Price unavailable" : `₦${price.toLocaleString("en-NG")}`}</p>
           <button
             type="button"
             onClick={() => onAdd(product)}
             disabled={unavailable}
             className={`h-9 shrink-0 rounded-full px-3 text-[11px] font-extrabold text-white transition ${added ? "bg-[#1d6b45]" : "bg-[#143c2d] hover:bg-[#1a4e3b]"} disabled:cursor-not-allowed disabled:bg-slate-300`}
-            aria-label={`Add ${product.name} to basket`}
+            aria-label={invalidPrice ? `${product.name} price is unavailable` : `Add ${product.name} to basket`}
           >
-            {added ? "✓ Added" : "+ Add"}
+            {invalidPrice ? "Reviewing" : added ? "✓ Added" : "+ Add"}
           </button>
         </div>
       </div>
@@ -243,236 +281,9 @@ function StoreProductCard({ product, added, onAdd }) {
   );
 }
 
-const FALLBACK_PRODUCTS = [
-  {
-    id: 1,
-    name: "Bems Premium Parboiled Rice (50kg)",
-    price: 68000,
-    unit: "50kg bag",
-    category_name: "Grains & Cereals",
-    is_featured: true,
-    is_bems_brand: true,
-    image_url: "/hero_food_1.jpg",
-    stock: 50,
-    avg_rating: 5,
-    review_count: 24,
-  },
-  {
-    id: 2,
-    name: "Farm-Fresh Round Tomatoes",
-    price: 4500,
-    unit: "Big basket",
-    category_name: "Vegetables",
-    is_featured: true,
-    image_url: "/hero_food_2.jpg",
-    stock: 80,
-    avg_rating: 4.8,
-    review_count: 18,
-  },
-  {
-    id: 3,
-    name: "Bems Pure Cold-Pressed Palm Oil (5L)",
-    price: 9500,
-    unit: "5 Litres",
-    category_name: "Cooking Oils",
-    is_featured: true,
-    is_bems_brand: true,
-    image_url: "/hero_food_3.jpg",
-    stock: 45,
-    avg_rating: 5,
-    review_count: 32,
-  },
-  {
-    id: 4,
-    name: "Bems Clean White Honey Beans (25kg)",
-    price: 18500,
-    unit: "25kg bag",
-    category_name: "Legumes",
-    is_featured: true,
-    is_bems_brand: true,
-    image_url: "/fresh_salad_hero.png",
-    stock: 60,
-    avg_rating: 4.9,
-    review_count: 15,
-  },
-  {
-    id: 5,
-    name: "Fresh Scotch Bonnet Peppers (Rodo)",
-    price: 3200,
-    unit: "Paint bucket",
-    category_name: "Vegetables",
-    is_featured: true,
-    image_url: "/hero_food_2.jpg",
-    stock: 35,
-    avg_rating: 4.7,
-    review_count: 12,
-  },
-  {
-    id: 6,
-    name: "Bems Premium Ofada Rice (10kg)",
-    price: 24000,
-    unit: "10kg bag",
-    category_name: "Grains & Cereals",
-    is_featured: true,
-    is_bems_brand: true,
-    image_url: "/hero_food_1.jpg",
-    stock: 30,
-    avg_rating: 5,
-    review_count: 29,
-  },
-  {
-    id: 7,
-    name: "Giant Abuja White Yam",
-    price: 6500,
-    unit: "5 large tubers",
-    category_name: "Tubers & Roots",
-    is_featured: true,
-    is_bems_brand: true,
-    image_url: "/hero_food_4.jpg",
-    stock: 40,
-    avg_rating: 4.9,
-    review_count: 21,
-  },
-  {
-    id: 8,
-    name: "Fresh Red Tatashe Bell Peppers",
-    price: 4000,
-    unit: "500g pack",
-    category_name: "Vegetables",
-    is_featured: false,
-    image_url: "/hero_food_2.jpg",
-    stock: 55,
-    avg_rating: 4.8,
-    review_count: 9,
-  },
-  {
-    id: 9,
-    name: "Bems Pure Refined Vegetable Oil (5L)",
-    price: 11000,
-    unit: "5 Litres",
-    category_name: "Cooking Oils",
-    is_featured: true,
-    is_bems_brand: true,
-    image_url: "/hero_food_3.jpg",
-    stock: 40,
-    avg_rating: 5,
-    review_count: 19,
-  },
-  {
-    id: 10,
-    name: "Fresh Red Onions",
-    price: 5500,
-    unit: "10kg bag",
-    category_name: "Vegetables",
-    is_featured: false,
-    image_url: "/hero_food_2.jpg",
-    stock: 65,
-    avg_rating: 4.7,
-    review_count: 14,
-  },
-  {
-    id: 11,
-    name: "Bems White Garri Ijebu (Clean Sort)",
-    price: 12500,
-    unit: "25kg bag",
-    category_name: "Grains & Cereals",
-    is_featured: true,
-    is_bems_brand: true,
-    image_url: "/hero_food_1.jpg",
-    stock: 75,
-    avg_rating: 5,
-    review_count: 36,
-  },
-  {
-    id: 12,
-    name: "Bems Sokoto Brown Sweet Beans",
-    price: 19500,
-    unit: "25kg bag",
-    category_name: "Legumes",
-    is_featured: false,
-    is_bems_brand: true,
-    image_url: "/fresh_salad_hero.png",
-    stock: 50,
-    avg_rating: 4.9,
-    review_count: 16,
-  },
-  {
-    id: 13,
-    name: "Fresh Sweet Potatoes",
-    price: 3500,
-    unit: "Large basket",
-    category_name: "Tubers & Roots",
-    is_featured: false,
-    image_url: "/hero_food_4.jpg",
-    stock: 60,
-    avg_rating: 4.8,
-    review_count: 11,
-  },
-  {
-    id: 14,
-    name: "Fresh Green Leafy Spinach (Efo Tete)",
-    price: 1200,
-    unit: "3 bundles",
-    category_name: "Vegetables",
-    is_featured: false,
-    image_url: "/fresh_salad_hero.png",
-    stock: 40,
-    avg_rating: 4.6,
-    review_count: 8,
-  },
-  {
-    id: 15,
-    name: "Bems Golden Dried Maize Grain",
-    price: 15000,
-    unit: "25kg bag",
-    category_name: "Grains & Cereals",
-    is_featured: false,
-    is_bems_brand: true,
-    image_url: "/hero_food_1.jpg",
-    stock: 35,
-    avg_rating: 4.8,
-    review_count: 13,
-  },
-  {
-    id: 16,
-    name: "Fresh Ginger & Garlic Basket Pack",
-    price: 3800,
-    unit: "1kg mixed pack",
-    category_name: "Vegetables",
-    is_featured: false,
-    image_url: "/hero_food_2.jpg",
-    stock: 45,
-    avg_rating: 4.9,
-    review_count: 17,
-  },
-  {
-    id: 17,
-    name: "Bems Traditional Palm Oil (25L Jerrycan)",
-    price: 46000,
-    unit: "25 Litres",
-    category_name: "Cooking Oils",
-    is_featured: true,
-    is_bems_brand: true,
-    image_url: "/hero_food_3.jpg",
-    stock: 25,
-    avg_rating: 5,
-    review_count: 42,
-  },
-  {
-    id: 18,
-    name: "Crisp Fresh Cucumbers & Green Peppers",
-    price: 2500,
-    unit: "Mixed pack (12 pcs)",
-    category_name: "Vegetables",
-    is_featured: false,
-    image_url: "/fresh_salad_hero.png",
-    stock: 50,
-    avg_rating: 4.7,
-    review_count: 10,
-  },
-];
 
 function LoginPromptModal({ isOpen, onClose, cartCount, cartSubtotal, onLogin, onRegister }) {
+  const dialogRef = useModalFocus(isOpen);
   if (!isOpen) return null;
   return (
     <motion.div
@@ -483,6 +294,7 @@ function LoginPromptModal({ isOpen, onClose, cartCount, cartSubtotal, onLogin, o
       onClick={onClose}
     >
       <motion.div
+        ref={dialogRef}
         initial={{ scale: 0.95, opacity: 0, y: 10 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.95, opacity: 0, y: 10 }}
@@ -491,7 +303,8 @@ function LoginPromptModal({ isOpen, onClose, cartCount, cartSubtotal, onLogin, o
         className="w-full max-w-md rounded-3xl border border-emerald-900/10 bg-[#fffdf8] p-6 shadow-2xl sm:p-8"
         role="dialog"
         aria-modal="true"
-        aria-label="Sign in required to place order"
+        aria-labelledby="login-prompt-title"
+        tabIndex={-1}
       >
         <div className="flex items-center justify-between">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-2xl shadow-inner">
@@ -507,7 +320,7 @@ function LoginPromptModal({ isOpen, onClose, cartCount, cartSubtotal, onLogin, o
           </button>
         </div>
 
-        <h3 className="mt-4 font-display text-2xl font-bold text-[#143c2d]">
+        <h3 id="login-prompt-title" className="mt-4 font-display text-2xl font-bold text-[#143c2d]">
           Sign in to place your order
         </h3>
         <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -554,20 +367,19 @@ function FullScreenCatalogueModal({
   cartCount,
   cartSubtotal,
   onProceedToOrder,
+  returnFocusRef,
 }) {
   const [modalSearch, setModalSearch] = useState("");
   const [modalFilter, setModalFilter] = useState("all");
+  const dialogRef = useModalFocus(isOpen, returnFocusRef);
 
   if (!isOpen) return null;
 
+  const liveCategories = [...new Set(products.map((product) => product.category_name).filter(Boolean))];
   const categoriesList = [
     { key: "all", label: "All Items" },
     { key: "bems_originals", label: "★ Bems Originals" },
-    { key: "Grains & Cereals", label: "🌾 Grains & Cereals" },
-    { key: "Vegetables", label: "🥕 Vegetables" },
-    { key: "Cooking Oils", label: "🫙 Cooking Oils" },
-    { key: "Legumes", label: "🫘 Legumes" },
-    { key: "Tubers & Roots", label: "🍠 Tubers & Roots" },
+    ...liveCategories.map((category) => ({ key: category, label: category })),
     { key: "featured", label: "Featured" },
     { key: "newest", label: "New Arrivals" },
   ];
@@ -603,6 +415,7 @@ function FullScreenCatalogueModal({
 
   return (
     <motion.div
+      ref={dialogRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -610,8 +423,10 @@ function FullScreenCatalogueModal({
       className="fixed inset-0 z-[1000] flex flex-col bg-[#faf8f2] text-slate-900"
       role="dialog"
       aria-modal="true"
-      aria-label="Full Screen Store Catalogue"
+      aria-labelledby="catalogue-dialog-title"
+      tabIndex={-1}
     >
+      <h2 id="catalogue-dialog-title" className="sr-only">Full Screen Store Catalogue</h2>
       {/* Background dot pattern */}
       <div
         className="pointer-events-none absolute inset-0 opacity-40"
@@ -781,9 +596,10 @@ function FullScreenCatalogueModal({
             <button
               type="button"
               onClick={onProceedToOrder}
-              className="inline-flex items-center gap-2 rounded-full bg-[#143c2d] px-6 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white shadow-md transition hover:bg-[#1a4e3b] active:scale-95"
+              disabled={cartCount === 0}
+              className="inline-flex items-center gap-2 rounded-full bg-[#143c2d] px-6 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white shadow-md transition hover:bg-[#1a4e3b] active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
             >
-              <span>Place Order</span>
+              <span>{cartCount === 0 ? "Add items to order" : "Place Order"}</span>
               <span aria-hidden="true">→</span>
             </button>
           </div>
@@ -804,7 +620,7 @@ export default function LandingPage() {
   const [email, setEmail] = useState("");
   const [subscribeState, setSubscribeState] = useState("idle");
   const [subscribeMessage, setSubscribeMessage] = useState("");
-  const [products, setProducts] = useState(FALLBACK_PRODUCTS);
+  const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState("");
   const [search, setSearch] = useState("");
@@ -813,15 +629,12 @@ export default function LandingPage() {
   const [catalogueView, setCatalogueView] = useState("all");
   const [addedProducts, setAddedProducts] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
+  const catalogueTriggerRef = useRef(null);
   const itemsPerPage = 6;
 
+  // Lock body scroll while either modal is open.
   useEffect(() => {
-    if (isLoggedIn) navigate("/home", { replace: true });
-  }, [isLoggedIn, navigate]);
-
-  // Lock body scroll when full screen catalogue modal is open
-  useEffect(() => {
-    if (fullScreenModalOpen) {
+    if (fullScreenModalOpen || loginPromptOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -829,7 +642,7 @@ export default function LandingPage() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [fullScreenModalOpen]);
+  }, [fullScreenModalOpen, loginPromptOpen]);
 
   // Listen for Escape key to close modal or login prompt
   useEffect(() => {
@@ -844,10 +657,7 @@ export default function LandingPage() {
   }, [fullScreenModalOpen, loginPromptOpen]);
 
   const handleProceedToOrder = () => {
-    if (cartCount === 0) {
-      alert("Your basket is currently empty. Please add items to your basket first.");
-      return;
-    }
+    if (cartCount === 0) return;
     if (!isLoggedIn) {
       setLoginPromptOpen(true);
     } else {
@@ -865,23 +675,11 @@ export default function LandingPage() {
     setProductsError("");
     setAppliedSearch(term);
     try {
-      const response = await api.get("/products", { params: { search: term || undefined, limit: 24 } });
-      if (response.data?.products && Array.isArray(response.data.products) && response.data.products.length > 0) {
-        setProducts(response.data.products);
-      } else {
-        const query = term.toLowerCase().trim();
-        const fallback = query
-          ? FALLBACK_PRODUCTS.filter((p) => p.name.toLowerCase().includes(query) || p.category_name.toLowerCase().includes(query))
-          : FALLBACK_PRODUCTS;
-        setProducts(fallback);
-      }
-    } catch {
-      // Graceful fallback to default catalogue products so the store stays functional
-      const query = term.toLowerCase().trim();
-      const fallback = query
-        ? FALLBACK_PRODUCTS.filter((p) => p.name.toLowerCase().includes(query) || p.category_name.toLowerCase().includes(query))
-        : FALLBACK_PRODUCTS;
-      setProducts(fallback);
+      const response = await api.get("/products", { params: { search: term || undefined, limit: 200 } });
+      setProducts(Array.isArray(response.data?.products) ? response.data.products : []);
+    } catch (error) {
+      setProducts([]);
+      setProductsError(error?.response?.data?.message || "The live catalogue is temporarily unavailable. Please try again.");
     } finally {
       setProductsLoading(false);
     }
@@ -904,10 +702,19 @@ export default function LandingPage() {
   };
 
   const handleAdd = (product) => {
+    const displayPrice = Number(product.price || 0) * NAIRA_PER_UNIT;
+    if (!Number.isFinite(displayPrice) || displayPrice <= 0 || displayPrice > 1_000_000) return;
     addToCart(product);
     setAddedProducts((current) => ({ ...current, [product.id]: true }));
     window.setTimeout(() => setAddedProducts((current) => ({ ...current, [product.id]: false })), 1200);
   };
+
+  const categoryImages = ["/hero_food_1.jpg", "/hero_food_2.jpg", "/hero_food_3.jpg", "/fresh_salad_hero.png", "/hero_food_4.jpg"];
+  const categoryCards = [...new Set(products.map((product) => product.category_name).filter(Boolean))].map((name, index) => ({
+    name,
+    detail: `Browse available ${name.toLowerCase()} from the live BemsFarms catalogue.`,
+    image: categoryImages[index % categoryImages.length],
+  }));
 
   const displayedProducts = [...products]
     .filter((product) => {
@@ -918,6 +725,7 @@ export default function LandingPage() {
           product.is_bems_brand
         );
       }
+      if (catalogueView === "featured") return Boolean(product.is_featured);
       return true;
     })
     .sort((a, b) => {
@@ -969,6 +777,18 @@ export default function LandingPage() {
         .animate-backing-drift {
           animation: driftBacking 24s linear infinite;
         }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-pattern-drift,
+          .animate-backing-drift {
+            animation: none;
+          }
+          *, *::before, *::after {
+            scroll-behavior: auto !important;
+            transition-duration: 0.01ms !important;
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+          }
+        }
       `}</style>
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:shadow-lg">Skip to main content</a>
 
@@ -986,13 +806,19 @@ export default function LandingPage() {
             <a href="#chef-bems" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">Chef Bems</a>
             <a href="#faq" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">FAQs</a>
           </div>
-          <div className="hidden items-center gap-3 sm:flex">
+          <div className="hidden items-center gap-3 xl:flex">
             <Link to="/cart" className="relative grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-lg" aria-label={`Basket with ${cartCount} items`}>
               <span aria-hidden="true">🛒</span>
               {cartCount > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#143c2d] px-1 text-[10px] font-extrabold text-white">{cartCount}</span>}
             </Link>
-            <Link to="/login" className="rounded-full px-5 py-2.5 text-sm font-extrabold text-[#143c2d] transition hover:bg-[#143c2d]/5">Sign in</Link>
-            <Link to="/register" className="rounded-full bg-[#143c2d] px-6 py-3 text-sm font-extrabold text-white shadow-md shadow-emerald-950/10 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b]">Create account</Link>
+            {isLoggedIn ? (
+              <Link to="/home" className="rounded-full bg-[#143c2d] px-6 py-3 text-sm font-extrabold text-white shadow-md shadow-emerald-950/10 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b]">My account</Link>
+            ) : (
+              <>
+                <Link to="/login" className="rounded-full px-5 py-2.5 text-sm font-extrabold text-[#143c2d] transition hover:bg-[#143c2d]/5">Sign in</Link>
+                <Link to="/register" className="rounded-full bg-[#143c2d] px-6 py-3 text-sm font-extrabold text-white shadow-md shadow-emerald-950/10 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b]">Create account</Link>
+              </>
+            )}
           </div>
           <button type="button" className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-xl xl:hidden" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-label="Toggle navigation menu">{menuOpen ? "×" : "☰"}</button>
         </nav>
@@ -1003,7 +829,7 @@ export default function LandingPage() {
                 {[['#featured-products', 'Shop products'], ['#categories', 'Categories'], ['#our-brand', 'Our Brand'], ['#how-it-works', 'How it works'], ['#chef-bems', 'Chef Bems'], ['#faq', 'FAQs']].map(([href, label]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">{label}</a>)}
                 <Link to="/track-order" onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">Track an order</Link>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3"><Link to="/login" className="rounded-full border border-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-[#143c2d]">Sign in</Link><Link to="/register" className="rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">Join now</Link></div>
+              {isLoggedIn ? <Link to="/home" className="mt-4 block rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">My account</Link> : <div className="mt-4 grid grid-cols-2 gap-3"><Link to="/login" className="rounded-full border border-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-[#143c2d]">Sign in</Link><Link to="/register" className="rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">Join now</Link></div>}
               <Link to="/cart" className="mt-3 flex items-center justify-between rounded-2xl bg-[#143c2d] px-4 py-3 text-sm font-extrabold text-white"><span>🛒 View basket</span><span>{cartCount} {cartCount === 1 ? "item" : "items"}</span></Link>
             </motion.div>
           )}
@@ -1121,6 +947,7 @@ export default function LandingPage() {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 {/* Prominent Full Screen Button */}
                 <button
+                  ref={catalogueTriggerRef}
                   type="button"
                   onClick={() => setFullScreenModalOpen(true)}
                   className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#143c2d] bg-[#143c2d] px-5 py-3 text-xs font-extrabold uppercase tracking-wider text-amber-300 shadow-md shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b] hover:text-white active:scale-95"
@@ -1283,7 +1110,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="categories" className="scroll-mt-24 bg-[#F8F5EE] px-5 py-20 sm:px-8 lg:px-12 lg:py-28"><div className="mx-auto max-w-7xl"><SectionHeading eyebrow="Explore the pantry" title="Shop by category" text="Jump into the part of the market you need and discover useful choices for the way you cook." /><div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{categories.map((category, index) => <motion.article key={category.name} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ delay: index * 0.06 }} className="group overflow-hidden rounded-[1.75rem] border border-[#DFD6C2] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"><Link to={`/products?category=${encodeURIComponent(category.name)}`} className="block"><div className="h-56 overflow-hidden"><img src={category.image} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" /></div><div className="p-6"><h3 className="font-display text-xl font-bold text-[#143c2d]">{category.name}</h3><p className="mt-2 min-h-12 text-sm leading-6 text-slate-600">{category.detail}</p><span className="mt-5 inline-flex text-sm font-extrabold text-[#143c2d] group-hover:text-[#c85a17]">Explore category <span className="ml-2" aria-hidden="true">→</span></span></div></Link></motion.article>)}</div><div className="mt-9 text-center"><Link to="/products" className="inline-flex rounded-full border border-[#143c2d] px-6 py-3 text-sm font-extrabold text-[#143c2d] transition hover:bg-[#143c2d] hover:text-white">Browse every category →</Link></div></div></section>
+        <section id="categories" className="scroll-mt-24 bg-[#F8F5EE] px-5 py-20 sm:px-8 lg:px-12 lg:py-28"><div className="mx-auto max-w-7xl"><SectionHeading eyebrow="Explore the pantry" title="Shop by category" text="Jump into the part of the market you need and discover useful choices for the way you cook." />{categoryCards.length > 0 ? <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{categoryCards.map((category, index) => <motion.article key={category.name} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }} transition={{ delay: Math.min(index, 6) * 0.06 }} className="group overflow-hidden rounded-[1.75rem] border border-[#DFD6C2] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"><Link to={`/products?category=${encodeURIComponent(category.name)}`} className="block"><div className="h-56 overflow-hidden"><img src={category.image} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" /></div><div className="p-6"><h3 className="font-display text-xl font-bold text-[#143c2d]">{category.name}</h3><p className="mt-2 min-h-12 text-sm leading-6 text-slate-600">{category.detail}</p><span className="mt-5 inline-flex text-sm font-extrabold text-[#143c2d] group-hover:text-[#c85a17]">Explore category <span className="ml-2" aria-hidden="true">→</span></span></div></Link></motion.article>)}</div> : <p className="mx-auto mt-10 max-w-xl text-center text-sm text-slate-600">Categories will appear when the live catalogue is available.</p>}<div className="mt-9 text-center"><Link to="/products" className="inline-flex rounded-full border border-[#143c2d] px-6 py-3 text-sm font-extrabold text-[#143c2d] transition hover:bg-[#143c2d] hover:text-white">Browse every category →</Link></div></div></section>
 
         <section aria-labelledby="shopping-details-title" className="border-y border-[#DDD3BF] bg-[#EFE8DC] px-5 py-14 sm:px-8 lg:px-12">
           <div className="mx-auto max-w-7xl">
@@ -1306,7 +1133,7 @@ export default function LandingPage() {
                 <div className="relative flex items-center justify-between"><p className={`font-display text-3xl font-bold ${step.accent ? "text-amber-300" : "text-[#143c2d]"}`}>{step.number}</p><span className={`grid h-11 w-11 place-items-center rounded-2xl text-lg ${step.accent ? "bg-white/10" : "bg-[#F8F5EE] text-[#143c2d] border border-[#DFD6C2]"}`} aria-hidden="true">{step.icon}</span></div>
                 <h3 className={`relative mt-8 font-display text-xl font-bold ${step.accent ? "text-white" : "text-[#143c2d]"}`}>{step.title}</h3>
                 <p className={`relative mt-3 text-sm leading-6 ${step.accent ? "text-emerald-50/75" : "text-slate-600"}`}>{step.text}</p>
-                {step.accent && <Link to="/register" className="relative mt-5 inline-flex text-xs font-extrabold text-amber-300 hover:text-white">Meet Chef Bems →</Link>}
+                {step.accent && <Link to="/chef-chat" className="relative mt-5 inline-flex text-xs font-extrabold text-amber-300 hover:text-white">Open Chef Bems →</Link>}
               </article>)}
             </div>
           </div>
@@ -1322,7 +1149,7 @@ export default function LandingPage() {
                 <h2 className="mt-4 font-display text-4xl font-bold leading-tight sm:text-5xl">Meet Chef Bems</h2>
                 <p className="mt-5 max-w-xl text-base leading-7 text-emerald-50/75">Need meal inspiration or help building a useful shopping list? Chef Bems connects your cooking ideas with ingredients you can find in the store.</p>
                 <div className="mt-8 grid gap-3 sm:grid-cols-2"><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold">🍲 Meal and recipe ideas</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold">🛒 Smarter shopping lists</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold">🥕 Ingredient alternatives</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold">💬 Conversational guidance</p></div>
-                <Link to="/register" className="mt-9 inline-flex rounded-full bg-amber-300 px-7 py-3.5 text-sm font-extrabold text-[#143c2d] transition hover:bg-white">Join to meet Chef Bems</Link>
+                <Link to="/chef-chat" className="mt-9 inline-flex rounded-full bg-amber-300 px-7 py-3.5 text-sm font-extrabold text-[#143c2d] transition hover:bg-white">Open Chef Bems</Link>
               </div>
               <div className="relative mx-auto w-full max-w-md">
                 <div className="aspect-square overflow-hidden rounded-[2rem] border border-white/15 bg-white/10 shadow-2xl">
@@ -1469,6 +1296,7 @@ export default function LandingPage() {
                   {subscribeMessage}
                 </p>
               )}
+              <p className="mt-3 text-xs leading-5 text-emerald-100/70">By subscribing, you agree to receive BemsFarms updates. You can unsubscribe from any email. See our <Link to="/privacy" className="font-bold text-amber-300 hover:underline">privacy policy</Link>.</p>
             </form>
           </div>
         </section>
@@ -1480,17 +1308,18 @@ export default function LandingPage() {
         <div className="relative mx-auto max-w-7xl">
           <div className="grid items-center gap-8 rounded-[2rem] border border-white/10 bg-white/[0.06] p-7 sm:p-10 lg:grid-cols-[1fr_auto]">
             <div><p className="text-xs font-extrabold uppercase tracking-[0.22em] text-amber-300">Fresh ideas meet fresh food</p><h2 className="mt-3 max-w-2xl font-display text-3xl font-bold leading-tight text-white sm:text-4xl">Find the ingredients. Ask Chef Bems. Make something memorable.</h2></div>
-            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col"><Link to="/products" className="rounded-full bg-amber-300 px-7 py-3.5 text-center text-sm font-extrabold text-[#143c2d] transition hover:bg-white">Shop the catalogue</Link><Link to="/register" className="rounded-full border border-white/25 px-7 py-3.5 text-center text-sm font-extrabold text-white transition hover:bg-white/10">Meet Chef Bems</Link></div>
+            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col"><Link to="/products" className="rounded-full bg-amber-300 px-7 py-3.5 text-center text-sm font-extrabold text-[#143c2d] transition hover:bg-white">Shop the catalogue</Link><Link to="/chef-chat" className="rounded-full border border-white/25 px-7 py-3.5 text-center text-sm font-extrabold text-white transition hover:bg-white/10">Open Chef Bems</Link></div>
           </div>
 
           <div className="grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-[1.35fr_.75fr_.75fr_.9fr]">
             <div><img src={logo} alt="BemsFarms" className="h-10 w-auto brightness-0 invert" /><p className="mt-5 max-w-sm text-sm leading-7">Fresh Nigerian food, everyday kitchen essentials and practical meal inspiration in one welcoming marketplace.</p><div className="mt-6 flex flex-wrap gap-2"><span className="rounded-full border border-white/10 px-3 py-1.5 text-xs">🌱 Fresh selection</span><span className="rounded-full border border-white/10 px-3 py-1.5 text-xs">🔒 Secure checkout</span></div></div>
             <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Shop</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/products" className="hover:text-white">All products</Link><a href="#categories" className="hover:text-white">Categories</a><a href="#featured-products" className="hover:text-white">Fresh picks</a><a href="#chef-bems" className="hover:text-white">Chef Bems</a></div></div>
-            <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Help</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/track-order" className="hover:text-white">Track an order</Link><a href="#how-it-works" className="hover:text-white">How it works</a><a href="#faq" className="hover:text-white">FAQs</a><a href="mailto:info@bemsfarms.com" className="hover:text-white">Contact support</a></div></div>
+            <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Help</h2><div className="mt-5 flex flex-col gap-3 text-sm"><Link to="/track-order" className="hover:text-white">Track an order</Link><Link to="/contact" className="hover:text-white">Contact support</Link><Link to="/shipping" className="hover:text-white">Shipping & delivery</Link><Link to="/returns-policy" className="hover:text-white">Returns & refunds</Link></div></div>
             <div><h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-white">Your account</h2><p className="mt-5 text-sm leading-6">Keep delivery details, orders and preferences together.</p><div className="mt-5 flex flex-wrap gap-3"><Link to="/login" className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-white/10">Sign in</Link><Link to="/register" className="rounded-full bg-[#143c2d] border border-white/20 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-[#1a4e3b]">Join</Link></div></div>
           </div>
 
           <div className="flex flex-col gap-3 border-t border-white/10 pt-7 text-xs sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} BemsFarms Limited. All rights reserved.</p><p>Fresh food · Smart help · Easier shopping</p></div>
+          <nav aria-label="Legal" className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t border-white/10 pt-5 text-xs"><Link to="/about" className="hover:text-white">About us</Link><Link to="/terms" className="hover:text-white">Terms & conditions</Link><Link to="/privacy" className="hover:text-white">Privacy policy</Link><Link to="/shipping" className="hover:text-white">Shipping policy</Link><Link to="/returns-policy" className="hover:text-white">Returns policy</Link></nav>
         </div>
       </footer>
 
@@ -1506,6 +1335,7 @@ export default function LandingPage() {
             cartCount={cartCount}
             cartSubtotal={cartSubtotal}
             onProceedToOrder={handleProceedToOrder}
+            returnFocusRef={catalogueTriggerRef}
           />
         )}
       </AnimatePresence>
