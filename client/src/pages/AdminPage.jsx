@@ -453,7 +453,21 @@ export default function AdminPage() {
                 }}
               >
                 <span style={{ fontSize: "18px" }}>{tab.emoji}</span>
-                {tab.label}
+                <span style={{ flex: 1 }}>{tab.label}</span>
+                {tab.id === "demand" && getOutOfStockDemandSummary().length > 0 && (
+                  <span
+                    style={{
+                      backgroundColor: "#DC2626",
+                      color: "white",
+                      fontSize: "11px",
+                      fontWeight: 800,
+                      padding: "2px 7px",
+                      borderRadius: "50px",
+                    }}
+                  >
+                    {getOutOfStockDemandSummary().reduce((a, b) => a + b.clickCount, 0)}
+                  </span>
+                )}
               </button>
             ))}
             <div
@@ -617,6 +631,36 @@ export default function AdminPage() {
           {/* OVERVIEW */}
           {activeTab === "overview" && (
             <div>
+              {/* Live Out of Stock Demand Alert Banner */}
+              {getOutOfStockDemandSummary().length > 0 && (
+                <div
+                  onClick={() => setActiveTab("demand")}
+                  style={{
+                    backgroundColor: "#FEF3C7",
+                    border: "1px solid #FCD34D",
+                    borderRadius: "14px",
+                    padding: "14px 20px",
+                    marginBottom: "20px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "12px",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 8px rgba(245, 158, 11, 0.12)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: "#DC2626", display: "inline-block" }} />
+                    <p style={{ margin: 0, fontSize: "13.5px", fontWeight: 700, color: "#92400E" }}>
+                      <strong>Restock Procurement Alert:</strong> {getOutOfStockDemandSummary().reduce((a, b) => a + b.clickCount, 0)} customer click requests logged for out-of-stock produce ({getOutOfStockDemandSummary()[0]?.productName || "produce"} is most in-demand).
+                    </p>
+                  </div>
+                  <span style={{ fontSize: "12px", fontWeight: 800, color: "#B45309", textDecoration: "underline", whiteSpace: "nowrap" }}>
+                    View Demand Data →
+                  </span>
+                </div>
+              )}
+
               {/* Real Stats Grid */}
               <div
                 style={{

@@ -439,26 +439,6 @@ export default function ProductsPage() {
                       Search
                     </button>
                   </form>
-
-                  {/* Quick Keyword Suggestions */}
-                  <div className="mt-2.5 flex items-center gap-1.5 text-[10px] sm:text-xs text-white/70 overflow-x-auto pb-0.5">
-                    <span className="font-bold text-amber-300 shrink-0">Popular:</span>
-                    {["Rice", "Yam", "Palm Oil", "Beans", "Pepper"].map((keyword) => (
-                      <button
-                        key={keyword}
-                        type="button"
-                        onClick={() => {
-                          setSearch(keyword);
-                          const newParams = new URLSearchParams(params);
-                          newParams.set("search", keyword);
-                          setParams(newParams);
-                        }}
-                        className="rounded-md bg-white/10 hover:bg-white/25 px-2.5 py-0.5 text-white/90 text-[10px] sm:text-[11px] font-medium transition shrink-0 cursor-pointer border border-white/10"
-                      >
-                        {keyword}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </div>
 
