@@ -1288,20 +1288,69 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="bg-[#F8F5EE] px-5 pb-20 sm:px-8 lg:px-12 lg:pb-28" aria-labelledby="track-delivery-title">
-          <div className="mx-auto grid max-w-7xl gap-7 overflow-hidden rounded-[2rem] border border-[#DDD3BF] bg-[#EFE8DC] p-6 sm:p-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center lg:p-10 shadow-sm">
-            <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-[#DDD3BF] bg-white px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-[#143c2d]">
-                <span></span> Real-time tracking
+        {/* ── UPGRADED LIVE DELIVERY & LOGISTICS RADAR ── */}
+        <section className="bg-[#FAF8F5] px-5 pb-20 sm:px-8 lg:px-12 lg:pb-28" aria-labelledby="track-delivery-title">
+          <div className="mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-[#0F3824] via-[#0A2E1C] to-[#14422B] p-7 sm:p-10 lg:p-12 text-white shadow-xl border border-white/15 relative">
+            <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#F59E0B_1px,transparent_1px)] [background-size:24px_24px]" />
+            
+            <div className="relative z-10 grid gap-8 lg:grid-cols-12 lg:items-center">
+              <div className="lg:col-span-7">
+                <div className="inline-flex items-center gap-2 rounded-full bg-amber-400/20 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-amber-300 border border-amber-400/30">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>BemsFarms Express Logistics</span>
+                </div>
+                <h2 id="track-delivery-title" className="mt-3.5 font-display text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-tight">
+                  Track Your Delivery or Check Shipping Rates
+                </h2>
+                <p className="mt-2.5 text-sm sm:text-base text-emerald-100/90 max-w-xl leading-relaxed">
+                  Real-time GPS courier tracking, guaranteed stone-free grain inspection, and 100% Free Doorstep Delivery on orders above ₦15,000.
+                </p>
+
+                <form onSubmit={handleTracking} className="mt-6 flex flex-col sm:flex-row gap-2.5 max-w-xl rounded-2xl bg-white/10 p-2 border border-white/20 backdrop-blur-xl">
+                  <label htmlFor="landing-tracking-code" className="sr-only">Delivery code</label>
+                  <input
+                    id="landing-tracking-code"
+                    value={trackingCode}
+                    onChange={(event) => setTrackingCode(event.target.value.toUpperCase())}
+                    placeholder="Enter order reference (e.g. BF-ABC12345)"
+                    autoComplete="off"
+                    spellCheck="false"
+                    className="min-w-0 flex-1 rounded-xl bg-white px-4 py-3.5 font-mono text-sm font-bold uppercase tracking-wide text-slate-900 placeholder:text-slate-400 outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-amber-400 hover:bg-amber-300 px-6 py-3.5 text-sm font-black text-[#0A2E1C] transition-all shadow-md shrink-0 cursor-pointer"
+                  >
+                    Track Live →
+                  </button>
+                </form>
               </div>
-              <h2 id="track-delivery-title" className="mt-3 font-display text-2xl font-bold text-[#143c2d] sm:text-3xl">Track your harvest delivery</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">Use the order reference from your confirmation. No password or login required.</p>
+
+              <div className="lg:col-span-5 grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-white/10 p-4 border border-white/15 backdrop-blur-md">
+                  <p className="text-xs font-black uppercase text-amber-300">Free Delivery</p>
+                  <p className="mt-1 font-display text-xl font-bold text-white">Above ₦15,000</p>
+                  <p className="mt-1 text-[11px] text-emerald-100/70">Flat ₦1,500 below threshold.</p>
+                </div>
+                <div className="rounded-2xl bg-white/10 p-4 border border-white/15 backdrop-blur-md">
+                  <p className="text-xs font-black uppercase text-emerald-300">Lagos Coverage</p>
+                  <p className="mt-1 font-display text-xl font-bold text-white">Same-Day</p>
+                  <p className="mt-1 text-[11px] text-emerald-100/70">Island, Mainland & Environs.</p>
+                </div>
+                <div className="col-span-2 rounded-2xl bg-white/10 p-4 border border-white/15 backdrop-blur-md flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-white">Full Logistics & Coverage Radar</p>
+                    <p className="text-[11px] text-emerald-100/70">Check delivery calculator, hubs, & FAQs.</p>
+                  </div>
+                  <Link
+                    to="/delivery"
+                    className="rounded-xl bg-white text-[#0A2E1C] hover:bg-amber-300 px-4 py-2 text-xs font-black transition-all shadow-sm shrink-0"
+                  >
+                    Explore Delivery Portal
+                  </Link>
+                </div>
+              </div>
             </div>
-            <form onSubmit={handleTracking} className="flex flex-col gap-3 rounded-3xl bg-white p-3 border border-[#DDD3BF] shadow-sm sm:flex-row">
-              <label htmlFor="landing-tracking-code" className="sr-only">Delivery code</label>
-              <input id="landing-tracking-code" value={trackingCode} onChange={(event) => setTrackingCode(event.target.value.toUpperCase())} placeholder="Delivery code, e.g. BF-ABC12345" autoComplete="off" spellCheck="false" className="min-w-0 flex-1 rounded-2xl bg-[#F8F5EE] px-5 py-4 font-mono text-sm font-bold uppercase tracking-wide outline-none ring-[#143c2d] transition focus:ring-2" />
-              <button type="submit" className="rounded-2xl bg-[#143c2d] px-7 py-4 text-sm font-extrabold text-white transition hover:bg-[#1a4e3b]">Track delivery →</button>
-            </form>
           </div>
         </section>
 
