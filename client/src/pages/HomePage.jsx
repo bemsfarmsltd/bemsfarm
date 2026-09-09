@@ -592,30 +592,6 @@ export default function HomePage() {
                     </motion.div>
                   </AnimatePresence>
                 </div>
-
-                {/* Slideshow Arrow Controls Only (No dots, no tap hint) */}
-                {heroSlideGroups.length > 1 && (
-                  <div className="flex items-center justify-end w-full pt-1 px-1">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setHeroSlide((prev) => (prev === 0 ? heroSlideGroups.length - 1 : prev - 1))}
-                        className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-black/35 hover:bg-black/60 border border-white/20 text-white text-base sm:text-lg flex items-center justify-center transition hover:scale-105 cursor-pointer shadow-sm"
-                        aria-label="Previous products"
-                      >
-                        ‹
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setHeroSlide((prev) => (prev + 1) % heroSlideGroups.length)}
-                        className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-black/35 hover:bg-black/60 border border-white/20 text-white text-base sm:text-lg flex items-center justify-center transition hover:scale-105 cursor-pointer shadow-sm"
-                        aria-label="Next products"
-                      >
-                        ›
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
