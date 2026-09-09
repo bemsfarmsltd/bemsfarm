@@ -40,6 +40,7 @@ const ROUTE_META = {
   "/about": ["About BemsFarms", "Learn about BemsFarms and our approach to farm produce, food shopping and practical meal support."],
   "/contact": ["Contact BemsFarms", "Contact BemsFarms customer support for help with products, orders, delivery or your account."],
   "/track-order": ["Track Your Order | BemsFarms", "Use your BemsFarms delivery code to check the latest progress of your order."],
+  "/delivery": ["Delivery & Order Tracking | BemsFarms", "Track your fresh produce delivery live, check coverage zones, and calculate free shipping thresholds."],
   "/login": ["Sign In | BemsFarms", "Sign in to your BemsFarms account to manage orders, delivery details and preferences."],
   "/register": ["Create an Account | BemsFarms", "Create a BemsFarms account to order groceries, save delivery details and access Chef Bems."],
   "/cart": ["Your Basket | BemsFarms", "Review the farm produce and pantry essentials in your BemsFarms basket."],
@@ -80,6 +81,7 @@ function App() {
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/track-order" element={<TrackOrderPage />} />
+        <Route path="/delivery" element={<TrackOrderPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/terms" element={<CommercePolicyPage />} />
