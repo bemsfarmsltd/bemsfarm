@@ -733,7 +733,7 @@ export default function CheckoutPage() {
                     {
                       id: "monnify",
                       icon: "💳",
-                      label: "Card / Bank (Monnify)",
+                      label: "Card / Bank Transfer / USSD",
                       desc: "Visa, Mastercard, USSD, Bank Transfer",
                     },
                     {

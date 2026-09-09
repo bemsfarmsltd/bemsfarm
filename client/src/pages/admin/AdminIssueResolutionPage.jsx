@@ -441,7 +441,7 @@ function IssueDetailPanel({ issue, onClose, onUpdated }) {
                 </div>
                 <div style={{ color: "#6B7280", fontSize: 13 }}>
                   ₦{Number(order.total_amount || 0).toLocaleString()} ·{" "}
-                  {order.payment_method || "Monnify"}
+                  {order.payment_method === "monnify" ? "Online Payment (Card/Transfer)" : (order.payment_method || "Online Payment")}
                 </div>
               </div>
               <Badge
@@ -576,7 +576,7 @@ function IssueDetailPanel({ issue, onClose, onUpdated }) {
                   value: "resolved_refund",
                   label: "Approve Refund",
                   icon: "💰",
-                  desc: "Process Monnify refund",
+                  desc: "Process online refund",
                 },
                 {
                   value: "resolved_replacement",
@@ -674,7 +674,7 @@ function IssueDetailPanel({ issue, onClose, onUpdated }) {
                 onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
               />
               <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>
-                Refund will be initiated via Monnify automatically
+                Refund will be initiated via payment gateway automatically
               </div>
             </div>
           )}

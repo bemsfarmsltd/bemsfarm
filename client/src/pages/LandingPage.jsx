@@ -50,7 +50,7 @@ const promises = [
 const shoppingDetails = [
   { icon: "🚚", title: "Clear delivery costs", text: "Standard delivery is ₦1,500; orders over ₦15,000 qualify for free standard delivery." },
   { icon: "↩", title: "Eligible 7-day returns", text: "Eligible items can be submitted within 7 days of delivery; exclusions apply to some perishable goods." },
-  { icon: "🔒", title: "Protected payment", text: "Complete your online payment securely through Monnify." },
+  { icon: "🔒", title: "Protected payment", text: "Complete your online payment securely through our encrypted payment gateway." },
   { icon: "✉", title: "Customer support", text: "Questions about shopping or an order? Email info@bemsfarms.com." },
 ];
 

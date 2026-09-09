@@ -10,7 +10,7 @@ const POLICIES = {
     sections: [
       ["Information we collect", "We collect information you provide, including your name, email address, phone number, delivery address, account preferences, order details, support messages, and newsletter subscription. We also receive basic device and service logs needed to keep the platform secure and reliable."],
       ["How we use information", "We use this information to create and protect your account, process and deliver orders, verify payments, provide order updates and support, remember your preferences, prevent fraud, and send marketing updates when you subscribe."],
-      ["Payments and service providers", "Payments are processed through Monnify. Delivery, email, hosting, analytics, and infrastructure providers may process only the information needed to provide their services. BemsFarms does not sell your personal information."],
+      ["Payments and service providers", "Payments are processed through secure licensed payment partners. Delivery, email, hosting, analytics, and infrastructure providers may process only the information needed to provide their services. BemsFarms does not sell your personal information."],
       ["Retention and security", "We retain records for as long as needed to provide the service, meet accounting and legal obligations, resolve disputes, and prevent abuse. We use access controls, encrypted connections, and authenticated account access, but no online service can guarantee absolute security."],
       ["Your choices", "You may update your profile and saved addresses, unsubscribe through a marketing email, or contact us to request access, correction, or deletion where applicable. Some transaction records must be retained for legal or operational reasons."],
     ],

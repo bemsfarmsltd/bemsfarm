@@ -58,7 +58,7 @@ const VALUES = [
   {
     img: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=120&q=80",
     title: "Secure & Trusted",
-    desc: "Every payment is protected by Monnify. Your data is encrypted and never shared.",
+    desc: "Every payment is protected with bank-grade encryption. Your data is protected and never shared.",
     color: "#64B5F6",
   },
 ];

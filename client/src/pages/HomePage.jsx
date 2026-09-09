@@ -354,7 +354,7 @@ export default function HomePage() {
                     ✨ 100% Stone-Free
                   </span>
                   <span className="flex items-center gap-1 rounded-full bg-black/25 px-2.5 py-0.5">
-                    🔒 Monnify Verified
+                    🔒 Secure Payment
                   </span>
                 </div>
               </div>
@@ -555,7 +555,7 @@ export default function HomePage() {
               <div className="flex items-start gap-2 sm:gap-3 rounded-xl sm:rounded-2xl bg-white p-2.5 sm:p-4 shadow-2xs">
                 <span className="grid h-7 w-7 sm:h-9 sm:w-9 shrink-0 place-items-center rounded-lg sm:rounded-xl bg-blue-50 text-sm sm:text-lg text-blue-700">🔒</span>
                 <div>
-                  <h4 className="font-display text-[11px] sm:text-sm font-bold text-[#143c2d]">Monnify Secure</h4>
+                  <h4 className="font-display text-[11px] sm:text-sm font-bold text-[#143c2d]">Secure Payment</h4>
                   <p className="text-[9px] sm:text-[11px] text-slate-600">Cards, Transfer & USSD.</p>
                 </div>
               </div>

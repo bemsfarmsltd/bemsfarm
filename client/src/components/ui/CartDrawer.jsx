@@ -357,7 +357,7 @@ export default function CartDrawer() {
 
                 {/* Security Trust Badges */}
                 <div className="flex items-center justify-center gap-4 text-[10px] text-slate-500 font-semibold pt-1">
-                  <span>🔒 Monnify Verified</span>
+                  <span>🔒 100% Secure Checkout</span>
                   <span>•</span>
                   <span>🌾 100% Stone-Free Guarantee</span>
                 </div>

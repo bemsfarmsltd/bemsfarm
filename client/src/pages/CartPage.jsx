@@ -250,7 +250,7 @@ export default function CartPage() {
               >
                 Proceed to Checkout →
               </motion.button>
-              <p style={{ textAlign:"center", fontSize:12, color:"#9ca3af", margin:"12px 0 20px" }}>🔒 Payments secured by Monnify</p>
+              <p style={{ textAlign:"center", fontSize:12, color:"#9ca3af", margin:"12px 0 20px" }}>🔒 Secure 256-bit Encrypted Payments</p>
 
               <div style={{ borderTop:"1px solid #f3f4f6", paddingTop:20 }}>
                 <p style={{ fontSize:13, fontWeight:700, color:"#374151", marginBottom:10, marginTop:0 }}>Have a coupon?</p>

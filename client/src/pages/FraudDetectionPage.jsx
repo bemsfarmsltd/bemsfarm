@@ -236,7 +236,7 @@ export default function FraudDetectionPage() {
                     (e.currentTarget.style.borderColor = "#E5E7EB")
                   }
                 >
-                  <option value="monnify">Monnify</option>
+                  <option value="monnify">Card / Bank (Online)</option>
                   <option value="cod">Cash on Delivery</option>
                   <option value="bank_transfer">Bank Transfer</option>
                 </select>

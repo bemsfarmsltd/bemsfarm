@@ -529,7 +529,7 @@ export default function OrderDetailPage() {
               textAlign: "right",
             }}
           >
-            Paid via {order.payment_method || "Monnify"}
+            Paid via {order.payment_method === "monnify" ? "Online Payment (Card/Transfer)" : (order.payment_method || "Online Payment")}
           </div>
         </div>
       </div>

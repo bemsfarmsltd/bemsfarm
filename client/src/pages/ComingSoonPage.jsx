@@ -42,7 +42,7 @@ const TEASER_FEATURES = [
   {
     icon: "💳",
     label: "Secure payments",
-    desc: "Powered by Monnify — Nigeria's most trusted",
+    desc: "Instant, bank-grade encrypted checkout",
   },
 ];
 
