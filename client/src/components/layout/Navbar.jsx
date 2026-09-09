@@ -565,17 +565,16 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* DESKTOP NAV LINKS (Stretched Left to Right) */}
+        {/* DESKTOP NAV LINKS (Natural Compact Width) */}
         {user && (
           <div
             className="bf-navbar-links"
             style={{
               alignItems: "center",
-              justifyContent: "space-between",
-              gap: "8px",
-              flex: "1 1 auto",
-              margin: "0 16px",
-              minWidth: 0,
+              justifyContent: "center",
+              gap: "4px",
+              margin: "0 auto",
+              flexShrink: 0,
             }}
           >
             {NAV_LINKS.map(({ label, path }) => (
@@ -584,16 +583,11 @@ export default function Navbar() {
                 to={path}
                 style={{
                   textDecoration: "none",
-                  flex: "1 1 0%",
-                  display: "flex",
-                  justifyContent: "center",
                 }}
               >
                 <div
                   style={{
-                    width: "100%",
-                    textAlign: "center",
-                    padding: "7px 10px",
+                    padding: "6px 14px",
                     borderRadius: "8px",
                     fontSize: "14px",
                     fontWeight: isActive(path) ? 700 : 500,
@@ -628,7 +622,6 @@ export default function Navbar() {
             alignItems: "center",
             justifyContent: "flex-end",
             gap: "8px",
-            marginLeft: "16px",
           }}
         >
           {user ? (
