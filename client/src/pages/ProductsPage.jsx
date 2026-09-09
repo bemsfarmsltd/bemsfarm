@@ -112,41 +112,25 @@ const VIDEO_SLIDES = [
 
 function ShopVideoSlider() {
   const [current, setCurrent] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
-    if (isPaused) return;
     const interval = setInterval(() => {
       setCurrent((prev) => (prev + 1) % VIDEO_SLIDES.length);
-    }, 7000);
+    }, 6000);
     return () => clearInterval(interval);
-  }, [isPaused]);
-
-  const prevSlide = (e) => {
-    e.stopPropagation();
-    setCurrent((prev) => (prev - 1 + VIDEO_SLIDES.length) % VIDEO_SLIDES.length);
-  };
-
-  const nextSlide = (e) => {
-    e.stopPropagation();
-    setCurrent((prev) => (prev + 1) % VIDEO_SLIDES.length);
-  };
+  }, []);
 
   const activeSlide = VIDEO_SLIDES[current];
 
   return (
-    <div
-      className="relative w-full aspect-video sm:aspect-[16/10] md:aspect-[4/3] lg:aspect-[16/10] max-w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-white/25 shadow-2xl bg-black/50 backdrop-blur-md group select-none"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-    >
+    <div className="relative w-full aspect-video sm:aspect-[16/10] md:aspect-[4/3] lg:aspect-[16/10] max-w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-white/25 shadow-2xl bg-black/50 backdrop-blur-md select-none">
       <AnimatePresence mode="wait">
         <motion.div
           key={activeSlide.id}
           initial={{ opacity: 0, scale: 1.04 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
+          transition={{ duration: 0.6, ease: "easeInOut" }}
           className="absolute inset-0 w-full h-full"
         >
           <video
@@ -155,7 +139,7 @@ function ShopVideoSlider() {
             muted
             playsInline
             key={activeSlide.src}
-            className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out"
+            className="w-full h-full object-cover"
             src={activeSlide.src}
           />
         </motion.div>
@@ -173,58 +157,14 @@ function ShopVideoSlider() {
         <span>{activeSlide.badge}</span>
       </div>
 
-      {/* Slide Navigation Chevrons */}
-      <button
-        type="button"
-        onClick={prevSlide}
-        aria-label="Previous video"
-        className="absolute left-2.5 top-1/2 -translate-y-1/2 z-20 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-black/40 hover:bg-black/75 border border-white/20 text-white flex items-center justify-center backdrop-blur-md opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:scale-110 active:scale-95 cursor-pointer shadow-lg"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-        </svg>
-      </button>
-      <button
-        type="button"
-        onClick={nextSlide}
-        aria-label="Next video"
-        className="absolute right-2.5 top-1/2 -translate-y-1/2 z-20 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-black/40 hover:bg-black/75 border border-white/20 text-white flex items-center justify-center backdrop-blur-md opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:scale-110 active:scale-95 cursor-pointer shadow-lg"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-        </svg>
-      </button>
-
-      {/* Bottom Dynamic Caption & Dots Indicator */}
-      <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 right-3 sm:right-4 z-10 text-white flex items-end justify-between gap-3">
-        <div className="max-w-[75%] pointer-events-none">
-          <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-amber-300 drop-shadow-sm">
-            {activeSlide.title}
-          </p>
-          <p className="text-[10px] sm:text-[11px] text-white/90 line-clamp-1 drop-shadow-xs font-medium">
-            {activeSlide.subtitle}
-          </p>
-        </div>
-
-        {/* Slide Indicator Dots */}
-        <div className="flex items-center gap-1.5 shrink-0 bg-black/50 backdrop-blur-md px-2 py-1 rounded-full border border-white/20">
-          {VIDEO_SLIDES.map((slide, idx) => (
-            <button
-              key={slide.id}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setCurrent(idx);
-              }}
-              aria-label={`Go to slide ${idx + 1}`}
-              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                idx === current
-                  ? "w-4 bg-amber-400"
-                  : "w-1.5 bg-white/40 hover:bg-white/75"
-              }`}
-            />
-          ))}
-        </div>
+      {/* Bottom Dynamic Caption */}
+      <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 right-3 sm:right-4 z-10 text-white pointer-events-none">
+        <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-amber-300 drop-shadow-sm">
+          {activeSlide.title}
+        </p>
+        <p className="text-[10px] sm:text-[11px] text-white/90 line-clamp-1 drop-shadow-xs font-medium">
+          {activeSlide.subtitle}
+        </p>
       </div>
     </div>
   );
