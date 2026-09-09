@@ -603,31 +603,6 @@ export default function Navbar() {
             flexShrink: 0,
           }}
         >
-          {/* Dark Mode Toggle */}
-          <button
-            onClick={toggleTheme}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "7px",
-              borderRadius: "10px",
-              lineHeight: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "background-color 0.2s",
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--gray-100)"}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
-            title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            <span style={{ fontSize: "19px" }}>
-              {theme === "dark" ? "☀️" : "🌙"}
-            </span>
-          </button>
-
           {user ? (
             <>
               <NavSearchBar />
