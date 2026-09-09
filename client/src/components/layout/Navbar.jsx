@@ -534,38 +534,48 @@ export default function Navbar() {
           minWidth: 0,
         }}
       >
-        {/* LOGO (Always Left) */}
-        <Link
-          to={user ? "/home" : "/"}
+        {/* LOGO (Left Aligned) */}
+        <div
           style={{
-            textDecoration: "none",
-            flexShrink: 0,
+            flex: "1 1 0%",
             display: "flex",
             alignItems: "center",
+            justifyContent: "flex-start",
+            minWidth: 0,
           }}
         >
-          <img
-            src={logo}
-            alt="BemsFarms"
-            className="bf-navbar-logo"
+          <Link
+            to={user ? "/home" : "/"}
             style={{
-              width: "auto",
-              objectFit: "contain",
-              display: "block",
-              maxWidth: "140px",
+              textDecoration: "none",
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
             }}
-          />
-        </Link>
+          >
+            <img
+              src={logo}
+              alt="BemsFarms"
+              className="bf-navbar-logo"
+              style={{
+                width: "auto",
+                objectFit: "contain",
+                display: "block",
+                maxWidth: "140px",
+              }}
+            />
+          </Link>
+        </div>
 
-        {/* DESKTOP NAV LINKS (Flowing left to right) */}
+        {/* DESKTOP NAV LINKS (Center Aligned) */}
         {user && (
           <div
             className="bf-navbar-links"
             style={{
               alignItems: "center",
-              gap: "4px",
-              marginLeft: "24px",
-              marginRight: "auto",
+              justifyContent: "center",
+              gap: "6px",
+              flex: "2 1 0%",
               minWidth: 0,
             }}
           >
@@ -600,14 +610,15 @@ export default function Navbar() {
           </div>
         )}
 
-        {/* RIGHT SIDE ACTIONS (Always Right) */}
+        {/* RIGHT SIDE ACTIONS (Right Aligned) */}
         <div
           style={{
+            flex: "1 1 0%",
             display: "flex",
             alignItems: "center",
+            justifyContent: "flex-end",
             gap: "8px",
-            marginLeft: "auto",
-            flexShrink: 0,
+            minWidth: 0,
           }}
         >
           {user ? (

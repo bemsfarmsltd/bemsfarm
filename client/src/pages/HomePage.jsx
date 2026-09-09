@@ -359,45 +359,18 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Right Side: Visual Produce Showcase */}
-              <div className="relative z-10 hidden md:flex items-center gap-3 lg:gap-4 shrink-0">
-                {/* Produce Card 1: Rice */}
-                <div className="flex flex-col items-center rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-md shadow-lg transition-transform hover:scale-105">
-                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-xs">
-                    <img
-                      src="/hero_food_1.jpg"
-                      alt="Stone-Free Rice"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <span className="mt-2 text-[11px] font-extrabold text-amber-300">Stone-Free Rice</span>
-                  <span className="text-[10px] text-white/80">★ Bems Original</span>
-                </div>
-
-                {/* Produce Card 2: Yam */}
-                <div className="flex flex-col items-center rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-md shadow-lg transition-transform hover:scale-105">
-                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-xs">
-                    <img
-                      src="/hero_food_4.jpg"
-                      alt="Abuja Yam Tubers"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <span className="mt-2 text-[11px] font-extrabold text-amber-300">Abuja Yam</span>
-                  <span className="text-[10px] text-white/80">Fresh Harvest</span>
-                </div>
-
-                {/* Produce Card 3: Palm Oil */}
-                <div className="flex flex-col items-center rounded-2xl border border-white/20 bg-white/10 p-3 backdrop-blur-md shadow-lg transition-transform hover:scale-105">
-                  <div className="h-16 w-16 lg:h-20 lg:w-20 overflow-hidden rounded-xl bg-white shadow-xs">
-                    <img
-                      src="/hero_food_3.jpg"
-                      alt="Pure Palm Oil"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <span className="mt-2 text-[11px] font-extrabold text-amber-300">Pure Palm Oil</span>
-                  <span className="text-[10px] text-white/80">Cold-Pressed</span>
+              {/* Right Side: Quick Action & Fast Delivery Guarantee (Clean, No produce cards) */}
+              <div className="relative z-10 flex flex-col sm:flex-row md:flex-col items-start md:items-end justify-center gap-2.5 shrink-0">
+                <Link
+                  to="/products"
+                  className="inline-flex items-center gap-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-black text-[#143c2d] shadow-lg shadow-black/20 transition-all hover:scale-105 active:scale-95 text-decoration-none"
+                >
+                  <span>Shop Farm Fresh</span>
+                  <span>→</span>
+                </Link>
+                <div className="flex items-center gap-1.5 rounded-xl bg-black/20 px-3 py-1.5 backdrop-blur-xs border border-white/10 text-[11px] text-emerald-100 font-medium">
+                  <span>⚡</span>
+                  <span>Free delivery on orders above ₦15,000</span>
                 </div>
               </div>
 
