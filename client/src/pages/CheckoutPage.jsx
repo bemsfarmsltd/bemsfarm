@@ -187,7 +187,7 @@ export default function CheckoutPage() {
     const refreshedItems = await Promise.all(localItems.map(async (item) => {
       const response = await api.get(`/products/${item.product_id}`);
       const product = response.data.product;
-      const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+      const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
 
       if (product.available_for_sale === false || stock < item.quantity) {
         throw new Error(`"${product.name}" is no longer available in the requested quantity.`);

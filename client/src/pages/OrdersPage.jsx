@@ -393,7 +393,7 @@ export default function OrdersPage() {
       try {
         const res = await api.get(`/products/${item.product_id}`);
         const product = res.data.product;
-        const stock = product?.stock_quantity ?? 0;
+        const stock = Math.max(Number(product?.stock_quantity || 0), Number(product?.stock || 0));
         if (!product || stock <= 0) {
           skipped.push(item.name);
           continue;

@@ -178,7 +178,7 @@ export default function ProductsPage() {
 
   const handleAdd = (product, e) => {
     e?.stopPropagation();
-    const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+    const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
     if (stock === 0) {
       recordOutOfStockDemand(product, "shop_page_add_button", user);
       setRestockProduct(product);
@@ -199,7 +199,7 @@ export default function ProductsPage() {
   };
 
   const handleProductCardClick = (product) => {
-    const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+    const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
     if (stock === 0) {
       recordOutOfStockDemand(product, "shop_page_card_click", user);
       setRestockProduct(product);
@@ -536,7 +536,7 @@ export default function ProductsPage() {
                 {filtered.map((product) => {
                   const isFavorite = !!favorites[product.id];
                   const cartQty = cart[product.id]?.quantity || 0;
-                  const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+                  const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
                   const price = Number(product.price || 0) * NAIRA_PER_UNIT;
                   const isOutOfStock = stock <= 0 || product.available_for_sale === false || product.status === "out_of_stock";
                   const isLowStock = stock > 0 && stock <= 5;

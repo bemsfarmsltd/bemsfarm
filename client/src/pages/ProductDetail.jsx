@@ -155,6 +155,9 @@ export default function ProductDetail() {
       </PageWrapper>
     );
 
+  const effectiveStock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
+  const isOutOfStock = effectiveStock <= 0 || product.available_for_sale === false || product.status === "out_of_stock";
+
   return (
     <PageWrapper>
       <div
@@ -338,11 +341,11 @@ export default function ProductDetail() {
               <span
                 style={{
                   fontSize: "14px",
-                  color: (Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? "#DC2626" : "#2E7D32",
+                  color: isOutOfStock ? "#DC2626" : "#2E7D32",
                   fontWeight: 700,
                 }}
               >
-                {(Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? "| Presently Out of Stock" : "| In Stock"}
+                {isOutOfStock ? "| Presently Out of Stock" : "| In Stock"}
               </span>
             </div>
 
@@ -364,7 +367,7 @@ export default function ProductDetail() {
 
             {/* Stock Status Badge */}
             <div style={{ marginBottom: "16px" }}>
-              {(Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? (
+              {isOutOfStock ? (
                 <div
                   style={{
                     display: "inline-flex",
@@ -393,7 +396,7 @@ export default function ProductDetail() {
                     Presently Out of Stock
                   </span>
                 </div>
-              ) : product.stock_quantity !== null && product.stock_quantity <= 10 ? (
+              ) : effectiveStock > 0 && effectiveStock <= 10 ? (
                 <div
                   style={{
                     display: "inline-flex",
@@ -420,7 +423,7 @@ export default function ProductDetail() {
                       fontSize: "13px",
                     }}
                   >
-                     Only {product.stock_quantity} left!
+                     Only {effectiveStock} left!
                   </span>
                 </div>
               ) : (
@@ -450,16 +453,15 @@ export default function ProductDetail() {
                     }}
                   >
                     In Stock
-                    {product.stock_quantity ? ` (${product.stock_quantity} available)` : ""}
+                    {effectiveStock ? ` (${effectiveStock} available)` : ""}
                   </span>
                 </div>
               )}
             </div>
 
             {/* Stock bar */}
-            {product.stock_quantity !== null &&
-              product.stock_quantity > 0 &&
-              product.stock_quantity <= 50 && (
+            {effectiveStock > 0 &&
+              effectiveStock <= 50 && (
                 <div style={{ marginBottom: "20px" }}>
                   <div
                     style={{
@@ -475,10 +477,10 @@ export default function ProductDetail() {
                       style={{
                         fontSize: "12px",
                         fontWeight: 600,
-                        color: product.stock_quantity <= 10 ? "#EF4444" : "#F59E0B",
+                        color: effectiveStock <= 10 ? "#EF4444" : "#F59E0B",
                       }}
                     >
-                      {product.stock_quantity} remaining
+                      {effectiveStock} remaining
                     </span>
                   </div>
                   <div
@@ -492,11 +494,11 @@ export default function ProductDetail() {
                     <div
                       style={{
                         height: "100%",
-                        width: `${Math.min(100, (product.stock_quantity / 50) * 100)}%`,
+                        width: `${Math.min(100, (effectiveStock / 50) * 100)}%`,
                         backgroundColor:
-                          product.stock_quantity <= 10
+                          effectiveStock <= 10
                             ? "#EF4444"
-                            : product.stock_quantity <= 25
+                            : effectiveStock <= 25
                               ? "#F59E0B"
                               : "#10B981",
                         borderRadius: "3px",
@@ -571,14 +573,14 @@ export default function ProductDetail() {
                   whileTap={{ scale: 0.9 }}
                   onClick={() =>
                     setQuantity((q) =>
-                      product.stock_quantity
-                        ? Math.min(q + 1, product.stock_quantity)
+                      effectiveStock
+                        ? Math.min(q + 1, effectiveStock)
                         : q + 1,
                     )
                   }
                   disabled={
-                    !!product.stock_quantity &&
-                    quantity >= product.stock_quantity
+                    !!effectiveStock &&
+                    quantity >= effectiveStock
                   }
                   aria-label="Increase quantity"
                   style={{
@@ -587,13 +589,13 @@ export default function ProductDetail() {
                     border: "none",
                     backgroundColor: "#F57C00",
                     cursor:
-                      !!product.stock_quantity &&
-                      quantity >= product.stock_quantity
+                      !!effectiveStock &&
+                      quantity >= effectiveStock
                         ? "not-allowed"
                         : "pointer",
                     opacity:
-                      !!product.stock_quantity &&
-                      quantity >= product.stock_quantity
+                      !!effectiveStock &&
+                      quantity >= effectiveStock
                         ? 0.5
                         : 1,
                     fontSize: "20px",
@@ -604,7 +606,7 @@ export default function ProductDetail() {
                   +
                 </motion.button>
               </div>
-              {(Number(product.stock_quantity ?? product.stock ?? 0) <= 0 || product.available_for_sale === false || product.status === "out_of_stock") ? (
+              {isOutOfStock ? (
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   onClick={() => {

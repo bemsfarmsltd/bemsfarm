@@ -87,8 +87,9 @@ export default function ProductCard({ product, index = 0 }) {
   const [hovered, setHovered] = useState(false);
   const [restockOpen, setRestockOpen] = useState(false);
 
-  const isOutOfStock = Number(product.stock_quantity ?? product.stock ?? 0) === 0 || product.available_for_sale === false || product.status === "out_of_stock";
-  const isLowStock = product.stock_quantity > 0 && product.stock_quantity <= 5;
+  const effectiveStock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
+  const isOutOfStock = effectiveStock === 0 || product.available_for_sale === false || product.status === "out_of_stock";
+  const isLowStock = effectiveStock > 0 && effectiveStock <= 5;
 
   const handleCardClick = () => {
     if (isOutOfStock) {
@@ -166,7 +167,7 @@ export default function ProductCard({ product, index = 0 }) {
               zIndex: 5,
             }}
           >
-             {product.stock_quantity} left
+             {effectiveStock} left
           </div>
         )}
 

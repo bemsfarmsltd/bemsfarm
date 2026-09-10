@@ -41,7 +41,7 @@ function ProductGridCard({
   onToggleFavorite,
   onNotify,
 }) {
-  const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+  const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
   const price = Number(product.price || 0) * NAIRA_PER_UNIT;
   const isOutOfStock = stock <= 0 || product.available_for_sale === false || product.status === "out_of_stock";
   const isLowStock = stock > 0 && stock <= 5;
@@ -293,7 +293,7 @@ export default function HomePage() {
   }, []);
 
   const handleAdd = (product) => {
-    const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+    const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
     if (stock === 0 || product.available_for_sale === false || product.status === "out_of_stock") {
       recordOutOfStockDemand(product, "home_page_add_button", user);
       setRestockProduct(product);
@@ -327,7 +327,7 @@ export default function HomePage() {
   };
 
   const handleCardClick = (product) => {
-    const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+    const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
     if (stock === 0 || product.available_for_sale === false || product.status === "out_of_stock") {
       recordOutOfStockDemand(product, "home_page_card_click", user);
       setRestockProduct(product);
@@ -391,7 +391,7 @@ export default function HomePage() {
       ];
     }
 
-    const available = products.filter((p) => Number(p.stock_quantity ?? p.stock ?? 0) > 0 || p.is_featured);
+    const available = products.filter((p) => Math.max(Number(p.stock_quantity || 0), Number(p.stock || 0)) > 0 || p.is_featured);
     const pool = available.length >= 3 ? available : products;
 
     const groups = [];
@@ -442,7 +442,7 @@ export default function HomePage() {
           p.is_featured ||
           p.brand?.toLowerCase().includes("bems") ||
           p.is_bems_brand ||
-          Number(p.stock_quantity ?? p.stock ?? 0) > 0
+          Math.max(Number(p.stock_quantity || 0), Number(p.stock || 0)) > 0
       )
       .slice(0, 20);
   }, [products]);

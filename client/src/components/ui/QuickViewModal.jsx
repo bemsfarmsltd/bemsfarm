@@ -46,7 +46,7 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
 
   if (!isOpen || !product) return null;
 
-  const stock = Number(product.stock_quantity ?? product.stock ?? 0);
+  const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
   const price = Number(product.price || 0) * NAIRA_PER_UNIT;
   const isOutOfStock = stock <= 0 || product.available_for_sale === false || product.status === "out_of_stock";
   const isLowStock = stock > 0 && stock <= 5;

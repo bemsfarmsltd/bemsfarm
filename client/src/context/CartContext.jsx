@@ -48,7 +48,8 @@ export function CartProvider({ children }) {
   const addToCart = (product, quantityToAdd = 1) => {
     setCart((prev) => {
       const currentQty = prev[product.id]?.quantity || 0;
-      const maxQty = product.stock_quantity ?? Infinity;
+      const effStock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
+      const maxQty = effStock > 0 ? effStock : Infinity;
       const nextQty = Math.min(currentQty + quantityToAdd, maxQty);
       if (nextQty === currentQty) return prev;
       return {
@@ -66,7 +67,8 @@ export function CartProvider({ children }) {
         const prod = item.product || item;
         const addQty = item.quantity || 1;
         const currentQty = updated[prod.id]?.quantity || 0;
-        const maxQty = prod.stock_quantity ?? Infinity;
+        const effStock = Math.max(Number(prod.stock_quantity || 0), Number(prod.stock || 0));
+        const maxQty = effStock > 0 ? effStock : Infinity;
         const nextQty = Math.min(currentQty + addQty, maxQty);
         updated[prod.id] = { product: prod, quantity: nextQty };
       });
@@ -90,7 +92,8 @@ export function CartProvider({ children }) {
     setCart((prev) => {
       const existing = prev[productId];
       if (!existing) return prev;
-      const maxQty = existing.product?.stock_quantity ?? Infinity;
+      const effStock = Math.max(Number(existing.product?.stock_quantity || 0), Number(existing.product?.stock || 0));
+      const maxQty = effStock > 0 ? effStock : Infinity;
       return {
         ...prev,
         [productId]: { ...existing, quantity: Math.min(quantity, maxQty) },
