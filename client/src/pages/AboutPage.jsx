@@ -310,8 +310,8 @@ export default function AboutPage() {
             }}
           >
             <img
-              src="https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&q=85"
-              alt="Fresh Nigerian vegetables"
+              src="/bems_store_aisles.jpg"
+              alt="Bems Farms Supermarket and Produce Aisles"
               style={{
                 width: "100%",
                 aspectRatio: "4/3",
@@ -483,6 +483,126 @@ export default function AboutPage() {
                   >
                     {v.desc}
                   </p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── PHYSICAL STORE & PROCESSING FACILITY ── */}
+        <section style={{ padding: "80px 5%", background: "#FFFFFF" }}>
+          <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+            <div style={{ textAlign: "center", marginBottom: 52 }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: "#2E7D32",
+                  letterSpacing: 3,
+                  textTransform: "uppercase",
+                  marginBottom: 12,
+                }}
+              >
+                Physical Presence & Infrastructure
+              </div>
+              <h2
+                style={{
+                  fontSize: "clamp(1.7rem, 3.5vw, 2.5rem)",
+                  fontWeight: 900,
+                  color: "#0F3824",
+                  margin: 0,
+                  fontFamily: "var(--heading-font)",
+                }}
+              >
+                Our Central Store & Logistics Hub
+              </h2>
+              <p
+                style={{
+                  maxWidth: 620,
+                  margin: "14px auto 0",
+                  color: "#64748B",
+                  fontSize: 15,
+                  lineHeight: 1.7,
+                }}
+              >
+                Located in Abia State with dedicated physical retail aisles, quality-controlled oil bottling labs, and nationwide dispatch staging.
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gap: 24,
+              }}
+            >
+              {[
+                {
+                  img: "/bems_farms_hub.jpg",
+                  title: "Flagship Retail & Dispatch Center",
+                  desc: "Modern physical store and dedicated red-apron staging zone for our dispatch fleet in Abia State.",
+                },
+                {
+                  img: "/bems_store_aisles.jpg",
+                  title: "Fresh Produce & Grocery Aisles",
+                  desc: "Fully stocked aisles with farm-fresh yams, peppers, tomatoes, pure vegetable oils, and grains.",
+                },
+                {
+                  img: "/bems_store_checkout.jpg",
+                  title: "Modern POS Checkout Counter",
+                  desc: "Welcoming customer service with digital POS systems and well-organized retail shelves.",
+                },
+                {
+                  img: "/bems_oil_packaging_station.jpg",
+                  title: "Hygienic Oil Bottling Station",
+                  desc: "Sanitary stainless processing facility with precision weighing and pure palm/vegetable oil bottling.",
+                },
+              ].map((facility, i) => (
+                <motion.div
+                  key={facility.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  style={{
+                    borderRadius: 20,
+                    overflow: "hidden",
+                    border: "1px solid #E2E8F0",
+                    background: "#FFFFFF",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+                  }}
+                >
+                  <div style={{ aspectRatio: "16/10", overflow: "hidden", background: "#F1F5F9" }}>
+                    <img
+                      src={facility.img}
+                      alt={facility.title}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                        transition: "transform 0.4s ease",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.transform = "scale(1.04)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                    />
+                  </div>
+                  <div style={{ padding: "20px 22px" }}>
+                    <h3
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 800,
+                        color: "#0F3824",
+                        margin: "0 0 8px",
+                        fontFamily: "var(--heading-font)",
+                      }}
+                    >
+                      {facility.title}
+                    </h3>
+                    <p style={{ fontSize: 13, color: "#64748B", margin: 0, lineHeight: 1.6 }}>
+                      {facility.desc}
+                    </p>
+                  </div>
                 </motion.div>
               ))}
             </div>
