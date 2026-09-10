@@ -32,7 +32,7 @@ const POLICIES = {
     title: "Shipping & Delivery Policy",
     summary: "Delivery costs, address requirements, timing, tracking, and what happens when a delivery cannot be completed.",
     sections: [
-      ["Standard delivery cost", "Standard delivery is ₦1,500. Orders with a merchandise subtotal over ₦15,000 qualify for free standard delivery. Any additional delivery option and its exact charge are shown before payment."],
+      ["Standard delivery cost", "Standard delivery fees are calculated based on your destination and order requirements. Any applicable delivery options and their exact charges are displayed at checkout before payment."],
       ["Coverage and timing", "Availability depends on the delivery address, product handling needs, order time, and operational capacity. The options and estimate displayed during checkout are the applicable choices for that order; estimates are not guarantees."],
       ["Address and receiving", "Provide a complete address and reachable phone number. Ensure someone can receive and inspect the order. Extra cost caused by an incorrect address or repeated delivery attempt may require payment before redelivery."],
       ["Tracking and delays", "Use the delivery code in your order confirmation on the Track Order page. Weather, traffic, supply conditions, or other events outside reasonable control may cause delays. Contact support if tracking has not updated or an order is late."],

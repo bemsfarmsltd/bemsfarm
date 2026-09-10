@@ -337,7 +337,7 @@ export default function ProductsPage() {
                     <svg className="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25V3.75c0-.621-.504-1.125-1.125-1.125h-9.75C2.504 2.625 2 3.129 2 3.75v10.5c0 .621.504 1.125 1.125 1.125h1.5" />
                     </svg>
-                    Free Delivery over ₦15,000
+                    Doorstep Delivery Available
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1 border border-white/10 backdrop-blur-xs">
                     <svg className="w-3.5 h-3.5 text-cyan-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">

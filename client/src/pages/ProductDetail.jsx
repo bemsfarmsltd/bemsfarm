@@ -713,8 +713,8 @@ export default function ProductDetail() {
               {[
                 {
                   icon: "",
-                  title: "Free Delivery",
-                  desc: "On orders above ₦15,000",
+                  title: "Doorstep Delivery",
+                  desc: "Calculated at checkout",
                 },
                 {
                   icon: "↩",
@@ -1044,9 +1044,9 @@ export default function ProductDetail() {
                 }}
               >
                 {[
-                  "Standard delivery: 1-2 business days (₦1,500)",
-                  "Express delivery: Same day in Lagos (₦3,000)",
-                  "Free delivery on orders above ₦15,000",
+                  "Standard delivery: 1-2 business days",
+                  "Express delivery: Same day in Lagos",
+                  "Nationwide door-to-door dispatch",
                 ].map((item) => (
                   <div
                     key={item}

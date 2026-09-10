@@ -41,7 +41,7 @@ const ROUTE_META = {
   "/about": ["About BemsFarms", "Learn about BemsFarms and our approach to farm produce, food shopping and practical meal support."],
   "/contact": ["Contact BemsFarms", "Contact BemsFarms customer support for help with products, orders, delivery or your account."],
   "/track-order": ["Track Your Order | BemsFarms", "Use your BemsFarms delivery code to check the latest progress of your order."],
-  "/delivery": ["Delivery & Order Tracking | BemsFarms", "Track your fresh produce delivery live, check coverage zones, and calculate free shipping thresholds."],
+  "/delivery": ["Delivery & Order Tracking | BemsFarms", "Track your fresh produce delivery live, check coverage zones, and view estimated delivery fees."],
   "/login": ["Sign In | BemsFarms", "Sign in to your BemsFarms account to manage orders, delivery details and preferences."],
   "/admin/login": ["Staff & Admin Authentication | BemsFarms", "Secure administrator and operational staff authentication portal for BemsFarms Limited."],
   "/admin-login": ["Staff & Admin Authentication | BemsFarms", "Secure administrator and operational staff authentication portal for BemsFarms Limited."],

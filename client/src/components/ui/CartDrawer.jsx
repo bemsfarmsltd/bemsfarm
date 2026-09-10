@@ -5,7 +5,6 @@ import { useCart } from "../../context/CartContext";
 import { getNairaPrice } from "../../utils/currency";
 import { getProductImage } from "../../utils/productImages";
 
-const FREE_DELIVERY_THRESHOLD = 15000;
 
 // Popular pantry add-ons frequently bundled with staples
 const PANTRY_ADDONS = [
@@ -71,11 +70,6 @@ export default function CartDrawer() {
     };
   }, [isCartDrawerOpen, closeCartDrawer]);
 
-  const progressPercent = Math.min(
-    100,
-    Math.round((cartSubtotal / FREE_DELIVERY_THRESHOLD) * 100)
-  );
-  const remainingForFreeDelivery = Math.max(0, FREE_DELIVERY_THRESHOLD - cartSubtotal);
 
   return (
     <AnimatePresence>
@@ -128,37 +122,6 @@ export default function CartDrawer() {
               </button>
             </div>
 
-            {/* Free Delivery Meter */}
-            <div className="bg-[#143c2d]/5 px-6 py-3.5 border-b border-[#DFD6C2]/60">
-              <div className="flex items-center justify-between text-xs font-bold text-[#143c2d] mb-1.5">
-                <span>
-                  {remainingForFreeDelivery === 0 ? (
-                    <span className="text-emerald-700 flex items-center gap-1">
-                       <span>FREE Doorstep Delivery Unlocked!</span>
-                    </span>
-                  ) : (
-                    <span>
-                      Add <strong className="text-[#c85a17]">₦{remainingForFreeDelivery.toLocaleString()}</strong> more for FREE delivery
-                    </span>
-                  )}
-                </span>
-                <span className="text-[11px] text-slate-500 font-medium">
-                  ₦{cartSubtotal.toLocaleString()} / ₦{FREE_DELIVERY_THRESHOLD.toLocaleString()}
-                </span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progressPercent}%` }}
-                  transition={{ duration: 0.4 }}
-                  className={`h-full rounded-full ${
-                    remainingForFreeDelivery === 0
-                      ? "bg-linear-to-r from-emerald-500 to-teal-500"
-                      : "bg-linear-to-r from-[#c85a17] to-amber-500"
-                  }`}
-                />
-              </div>
-            </div>
 
             {/* Cart Items / Body */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 divide-y divide-slate-100">
@@ -326,9 +289,7 @@ export default function CartDrawer() {
                   </div>
                   <div className="flex items-center justify-between text-xs text-slate-600 font-medium">
                     <span>Doorstep Delivery</span>
-                    <span className="font-bold text-emerald-700">
-                      {remainingForFreeDelivery === 0 ? "FREE" : "Calculated at checkout"}
-                    </span>
+                    <span className="font-bold text-slate-700">Calculated at checkout</span>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-sm">
                     <span className="font-black text-[#143c2d]">Estimated Total</span>

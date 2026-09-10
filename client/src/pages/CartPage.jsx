@@ -6,7 +6,7 @@ import PageWrapper from "../components/layout/PageWrapper";
 import { getProductImage } from "../utils/productImages";
 import api from "../services/api";
 import { getNairaPrice } from "../utils/currency";
-import { getDeliveryFee, FREE_DELIVERY_THRESHOLD } from "../utils/delivery";
+import { getDeliveryFee } from "../utils/delivery";
 
 const CSS = `
   .bf-basket-wrap { background:#f7f5f0; min-height:80vh; position:relative; overflow:hidden; }
@@ -76,8 +76,6 @@ export default function CartPage() {
   const delivery = getDeliveryFee(cartSubtotal);
   const discount = appliedCoupon?.discount || 0;
   const total = cartSubtotal + delivery - discount;
-  const freeDeliveryProgress = Math.min(100, (cartSubtotal / FREE_DELIVERY_THRESHOLD) * 100);
-  const remaining = Math.max(0, FREE_DELIVERY_THRESHOLD - cartSubtotal);
   const totalQty = cartItems.reduce((a, i) => a + i.quantity, 0);
 
   const [coupon, setCoupon] = useState("");
@@ -149,19 +147,6 @@ export default function CartPage() {
           <div className="bf-basket-grid">
             {/* LEFT — Item list */}
             <div>
-              {delivery > 0 && (
-                <motion.div initial={{ opacity:0, y:-8 }} animate={{ opacity:1, y:0 }} style={{ background:"linear-gradient(135deg,#f0fdf4,#ecfdf5)", border:"1.5px solid #bbf7d0", borderRadius:16, padding:"14px 18px", marginBottom:20 }}>
-                  <p style={{ fontSize:13, fontWeight:700, color:"#166534", margin:0 }}> Add <strong>₦{remaining.toLocaleString()}</strong> more to get <strong>FREE delivery</strong>!</p>
-                  <div className="bf-delivery-bar-bg"><div className="bf-delivery-bar-fill" style={{ width:`${freeDeliveryProgress}%` }} /></div>
-                  <p style={{ fontSize:11, color:"#4b7563", margin:0 }}>₦{cartSubtotal.toLocaleString()} / ₦{FREE_DELIVERY_THRESHOLD.toLocaleString()} for free delivery</p>
-                </motion.div>
-              )}
-              {delivery === 0 && (
-                <motion.div initial={{ opacity:0, y:-8 }} animate={{ opacity:1, y:0 }} style={{ background:"linear-gradient(135deg,#f0fdf4,#dcfce7)", border:"1.5px solid #86efac", borderRadius:16, padding:"14px 18px", marginBottom:20, display:"flex", alignItems:"center", gap:10 }}>
-                  <span style={{ fontSize:22 }}></span>
-                  <p style={{ fontSize:13, fontWeight:800, color:"#166534", margin:0 }}>You qualify for FREE delivery!</p>
-                </motion.div>
-              )}
 
               <AnimatePresence mode="popLayout">
                 {cartItems.map(({ product, quantity }) => {

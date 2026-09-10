@@ -50,7 +50,7 @@ const promises = [
 ];
 
 const shoppingDetails = [
-  { icon: "", title: "Clear delivery costs", text: "Standard delivery is ₦1,500; orders over ₦15,000 qualify for free standard delivery." },
+  { icon: "", title: "Clear delivery costs", text: "Transparent delivery fees calculated based on your delivery location at checkout." },
   { icon: "↩", title: "Eligible 7-day returns", text: "Eligible items can be submitted within 7 days of delivery; exclusions apply to some perishable goods." },
   { icon: "", title: "Protected payment", text: "Complete your online payment securely through our encrypted payment gateway." },
   { icon: "", title: "Customer support", text: "Questions about shopping or an order? Email info@bemsfarms.com." },
@@ -58,7 +58,7 @@ const shoppingDetails = [
 
 const faqs = [
   { question: "Do I need an account to place an order?", answer: "Yes. Your account keeps your delivery details, orders and preferences together, making future purchases quicker." },
-  { question: "What does delivery cost?", answer: "Standard delivery is ₦1,500, and orders over ₦15,000 qualify for free standard delivery. Available options are confirmed for your address at checkout." },
+  { question: "What does delivery cost?", answer: "Delivery fees are calculated based on your location and chosen delivery options, confirmed for your address at checkout." },
   { question: "What can Chef Bems help me with?", answer: "Chef Bems can suggest meals, build shopping ideas and help you find useful alternatives from products available in the store." },
   { question: "Can I review my order after payment?", answer: "Yes. Signed-in customers can follow order progress and review previous purchases from their account." },
 ];
