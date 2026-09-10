@@ -917,6 +917,7 @@ export default function Navbar() {
                   border: "none",
                   cursor: "pointer",
                   padding: "7px",
+                  display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   color: "#1B4332",
@@ -938,7 +939,7 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            <div style={{ display: "flex", gap: "6px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <button
                 onClick={openCartDrawer}
                 aria-label={cartCount > 0 ? `View cart, ${cartCount} item${cartCount === 1 ? "" : "s"}` : "View cart"}
@@ -970,6 +971,7 @@ export default function Navbar() {
                 )}
               </button>
               <button
+                className="hidden sm:inline-flex"
                 onClick={() => navigate("/login")}
                 style={{
                   padding: "8px 14px",
@@ -987,7 +989,7 @@ export default function Navbar() {
                 Sign In
               </button>
               <button
-                className="bf-navbar-guest-join"
+                className="bf-navbar-guest-join hidden sm:inline-flex"
                 onClick={() => navigate("/register")}
                 style={{
                   padding: "8px 14px",
@@ -1004,6 +1006,36 @@ export default function Navbar() {
               >
                 Get Started
               </button>
+
+              {/* Hamburger button for guests on mobile */}
+              <button
+                className="bf-navbar-burger md:!hidden"
+                onClick={() => setMobileNavOpen((o) => !o)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "7px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#1B4332",
+                }}
+                aria-label="Toggle navigation"
+              >
+                {mobileNavOpen ? (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                ) : (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                  </svg>
+                )}
+              </button>
             </div>
           )}
         </div>
@@ -1011,24 +1043,29 @@ export default function Navbar() {
 
       {/* MOBILE DRAWER */}
       <AnimatePresence>
-        {user && mobileNavOpen && (
+        {mobileNavOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            style={{ overflow: "hidden", borderTop: "1px solid #F3F4F6" }}
+            style={{ overflow: "hidden", borderTop: "1px solid #E5E7EB", backgroundColor: "#FFFFFF" }}
           >
             <MobileSearchBar onClose={() => setMobileNavOpen(false)} />
             <div
               style={{
-                padding: "4px 14px 16px",
+                padding: "8px 16px 20px",
                 display: "flex",
                 flexDirection: "column",
-                gap: "4px",
+                gap: "6px",
               }}
             >
               {NAV_LINKS.map(({ label, path }) => (
-                <Link key={path} to={path} style={{ textDecoration: "none" }}>
+                <Link
+                  key={path}
+                  to={path}
+                  onClick={() => setMobileNavOpen(false)}
+                  style={{ textDecoration: "none" }}
+                >
                   <div
                     style={{
                       padding: "12px 14px",
@@ -1040,12 +1077,107 @@ export default function Navbar() {
                         ? "#F0FFF4"
                         : "transparent",
                       fontFamily: "var(--body-font)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
                     }}
                   >
-                    {label}
+                    <span>{label}</span>
+                    <span style={{ fontSize: "12px", color: "#9CA3AF" }}>→</span>
                   </div>
                 </Link>
               ))}
+
+              {/* User / Guest specific actions in Mobile Drawer */}
+              <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #F3F4F6", display: "flex", flexDirection: "column", gap: "8px" }}>
+                {user ? (
+                  <>
+                    <div style={{ padding: "8px 14px", backgroundColor: "#F9FAFB", borderRadius: "10px", display: "flex", alignItems: "center", gap: "10px" }}>
+                      <div style={{ width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "#1B4332", color: "white", display: "grid", placeItems: "center", fontWeight: 700, fontSize: "14px" }}>
+                        {user.name ? user.name[0].toUpperCase() : "U"}
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827", truncate: "true" }}>{user.name || "Customer"}</p>
+                        <p style={{ margin: 0, fontSize: "11px", color: "#6B7280", truncate: "true" }}>{user.email}</p>
+                      </div>
+                    </div>
+
+                    <Link to="/profile" onClick={() => setMobileNavOpen(false)} style={{ textDecoration: "none" }}>
+                      <div style={{ padding: "10px 14px", borderRadius: "8px", fontSize: "14px", fontWeight: 600, color: "#374151" }}>
+                        Profile & Delivery Addresses
+                      </div>
+                    </Link>
+
+                    <Link to="/orders" onClick={() => setMobileNavOpen(false)} style={{ textDecoration: "none" }}>
+                      <div style={{ padding: "10px 14px", borderRadius: "8px", fontSize: "14px", fontWeight: 600, color: "#374151" }}>
+                        Order History
+                      </div>
+                    </Link>
+
+                    <button
+                      onClick={() => {
+                        setMobileNavOpen(false);
+                        logout();
+                      }}
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: "8px",
+                        border: "none",
+                        backgroundColor: "#FEF2F2",
+                        color: "#DC2626",
+                        fontWeight: 700,
+                        fontSize: "13px",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      Sign Out
+                    </button>
+                  </>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", paddingTop: "4px" }}>
+                    <button
+                      onClick={() => {
+                        setMobileNavOpen(false);
+                        navigate("/login");
+                      }}
+                      style={{
+                        padding: "11px 14px",
+                        borderRadius: "10px",
+                        border: "1px solid #D1D5DB",
+                        backgroundColor: "#FFFFFF",
+                        color: "#374151",
+                        fontWeight: 700,
+                        fontSize: "14px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMobileNavOpen(false);
+                        navigate("/register");
+                      }}
+                      style={{
+                        padding: "11px 14px",
+                        borderRadius: "10px",
+                        border: "none",
+                        backgroundColor: "#1B4332",
+                        color: "#FFFFFF",
+                        fontWeight: 700,
+                        fontSize: "14px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Get Started
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </motion.div>
         )}

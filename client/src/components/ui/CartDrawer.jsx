@@ -82,7 +82,7 @@ export default function CartDrawer() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
             onClick={closeCartDrawer}
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             aria-hidden="true"
           />
 
@@ -93,15 +93,19 @@ export default function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 280 }}
-            className="relative flex h-full w-full max-w-md flex-col bg-[#FDFBF7] shadow-2xl border-l border-[#DFD6C2]"
+            className="relative flex h-full w-full max-w-md flex-col bg-[#FDFBF7] shadow-2xl border-l border-[#DFD6C2] z-10"
             role="dialog"
             aria-modal="true"
             aria-label="Shopping Cart Drawer"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[#DFD6C2] px-6 py-4 bg-white/90 backdrop-blur-md">
+            <div className="flex items-center justify-between border-b border-[#DFD6C2] px-6 py-4 bg-white/95 backdrop-blur-md">
               <div className="flex items-center gap-2.5">
-                <span className="text-xl"></span>
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#143c2d]/10 text-[#143c2d]">
+                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                  </svg>
+                </div>
                 <div>
                   <h2 className="text-base font-black text-[#143c2d]">Your Fresh Basket</h2>
                   <p className="text-xs font-semibold text-slate-500">
@@ -127,8 +131,10 @@ export default function CartDrawer() {
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 divide-y divide-slate-100">
               {cartItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="mb-4 grid h-20 w-20 place-items-center rounded-3xl bg-[#143c2d]/10 text-4xl">
-                    
+                  <div className="mb-4 grid h-20 w-20 place-items-center rounded-3xl bg-[#143c2d]/10 text-[#143c2d]">
+                    <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z" />
+                    </svg>
                   </div>
                   <h3 className="text-lg font-black text-[#143c2d]">Your basket is empty</h3>
                   <p className="mt-1 max-w-xs text-xs text-slate-600">
@@ -142,7 +148,7 @@ export default function CartDrawer() {
                     }}
                     className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#143c2d] px-6 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md transition-all hover:bg-[#0e2c21]"
                   >
-                    Start Shopping 
+                    Start Shopping
                   </button>
                 </div>
               ) : (
@@ -307,7 +313,7 @@ export default function CartDrawer() {
                       closeCartDrawer();
                       navigate("/checkout");
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-[#143c2d] to-[#1c5540] py-3.5 text-xs font-black uppercase tracking-widest text-white shadow-lg transition-all hover:scale-[1.01] hover:brightness-110 active:scale-[0.99]"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#143c2d] to-[#1c5540] py-3.5 text-xs font-black uppercase tracking-widest text-white shadow-lg transition-all hover:scale-[1.01] hover:brightness-110 active:scale-[0.99]"
                   >
                     <span>Proceed to Secure Checkout</span>
                     <span>→</span>
@@ -327,9 +333,9 @@ export default function CartDrawer() {
 
                 {/* Security Trust Badges */}
                 <div className="flex items-center justify-center gap-4 text-[10px] text-slate-500 font-semibold pt-1">
-                  <span> 100% Secure Checkout</span>
+                  <span>100% Secure Checkout</span>
                   <span>•</span>
-                  <span> 100% Stone-Free Guarantee</span>
+                  <span>100% Stone-Free Guarantee</span>
                 </div>
               </div>
             )}
