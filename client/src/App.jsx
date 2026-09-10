@@ -23,7 +23,7 @@ const ContactPage = lazy(() => import("./pages/ContactPage"));
 const ReturnsPage = lazy(() => import("./pages/ReturnsPage"));
 const ChefBemsPage = lazy(() => import("./pages/ChefBemsPage"));
 
-const ADMIN_PORTAL_URL = "https://bems-admin.vercel.app/login";
+const ADMIN_PORTAL_URL = "/admin/login";
 
 function AdminRedirect() {
   useEffect(() => {
