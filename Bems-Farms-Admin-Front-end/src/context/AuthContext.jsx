@@ -49,8 +49,17 @@ export function AuthProvider({ children }) {
     [user]
   )
 
+  const bypassLogin = useCallback(async () => {
+    const res = await api.post('/auth/admin-bypass')
+    const { token, user: userData } = res.data
+    localStorage.setItem('token', token)
+    localStorage.setItem('user', JSON.stringify(userData))
+    setUser(userData)
+    return userData
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, hasRole, canAccess }}>
+    <AuthContext.Provider value={{ user, loading, login, bypassLogin, logout, hasRole, canAccess }}>
       {children}
     </AuthContext.Provider>
   )

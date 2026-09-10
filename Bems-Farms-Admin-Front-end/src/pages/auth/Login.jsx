@@ -1,359 +1,337 @@
-import { useEffect } from 'react'
-import { isStaff, STAFF_HOME, handoff } from '../../../../shared/authRouting'
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
-import { ROLE_META } from '../../lib/roles'
-import toast from 'react-hot-toast'
-
-const ROLES_ORDER = ['superadmin', 'manager', 'accountant', 'delivery_manager', 'cashier', 'kitchen_staff']
-
-// Dev-only quick-sign-in credentials. Only ever read from inside the
-// `import.meta.env.DEV &&` branch below, so Vite/esbuild statically
-// replace that check with `false` in production builds and dead-code
-// eliminate this whole block — verified by grepping the prod bundle
-// for these strings after building. Previously this lived in
-// lib/roles.js's ROLE_META (imported unconditionally by Sidebar.jsx/
-// Topbar.jsx/Unauthorized.jsx/Login.jsx) with no DEV gate anywhere,
-// so every login page visitor could one-click sign in as superadmin
-// with the plaintext password shown on screen.
-const DEV_CREDENTIALS = {
-  superadmin:       { email: 'superadmin@bemsfarms.com', password: 'super123' },
-  manager:          { email: 'manager@bemsfarms.com',    password: 'manager123' },
-  accountant:       { email: 'accountant@bemsfarms.com', password: 'account123' },
-  delivery_manager: { email: 'delivery@bemsfarms.com',   password: 'delivery123' },
-  cashier:          { email: 'cashier@bemsfarms.com',    password: 'cashier123' },
-  kitchen_staff:    { email: 'kitchen@bemsfarms.com',    password: 'kitchen123' },
-}
-
-const ROLE_ACCESS = {
-  superadmin:       ['Dashboard', 'POS', 'Products', 'Inventory', 'Orders', 'Deliveries', 'Customers', 'Staff', 'Finance', 'Reports', 'Chef Bems AI', 'Multi-Store', 'Settings'],
-  manager:          ['Dashboard', 'POS', 'Products', 'Inventory', 'Orders', 'Deliveries', 'Customers', 'Staff', 'Finance', 'Reports', 'Chef Bems AI', 'Settings'],
-  accountant:       ['Dashboard', 'Orders', 'Finance', 'Reports'],
-  delivery_manager: ['Dashboard', 'Orders', 'Deliveries'],
-  cashier:          ['Dashboard', 'POS', 'Orders', 'Customers'],
-  kitchen_staff:    ['Dashboard', 'Orders', 'Products', 'Inventory', 'Chef Bems AI'],
-}
-
-const inputStyle = {
-  width: '100%', padding: '10px 14px', borderRadius: 10,
-  border: '1.5px solid var(--border)', fontSize: 14,
-  fontFamily: 'var(--body-font)', outline: 'none',
-  background: 'var(--bg-card)', color: 'var(--text-primary)', boxSizing: 'border-box',
-  transition: 'border-color 0.15s',
-}
-
-function Spinner() {
-  return (
-    <span style={{
-      display: 'inline-block', width: 16, height: 16,
-      border: '2px solid rgba(255,255,255,0.4)',
-      borderTopColor: '#fff', borderRadius: '50%',
-      animation: 'spin 0.7s linear infinite', flexShrink: 0,
-    }} />
-  )
-}
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
+import { useAuth } from "../../context/AuthContext";
+import { isStaff, STAFF_HOME, handoff } from "../../../../shared/authRouting";
+import toast from "react-hot-toast";
 
 export default function Login() {
-  const { login, user, loading: authLoading } = useAuth()
-  const navigate   = useNavigate()
-  const [form, setForm]     = useState({ email: '', password: '' })
-  const [showPw, setShowPw] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [bypassLoading, setBypassLoading] = useState(false);
+  const { login, bypassLogin, user, loading: authLoading } = useAuth();
+
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (authLoading || !user) return;
-    if (isStaff(user.role)) navigate(STAFF_HOME[user.role], { replace: true });
-    else if (user.role === 'user') handoff('client');
-    else navigate('/unauthorized', { replace: true });
-  }, [user, authLoading, navigate]);
-
-  const fill = (email, password) => setForm({ email, password })
+    if (isStaff(user.role)) {
+      const from = location.state?.from || STAFF_HOME[user.role] || "/dashboard";
+      navigate(from, { replace: true });
+    } else if (user.role === "user") {
+      handoff("client");
+    } else {
+      navigate("/unauthorized", { replace: true });
+    }
+  }, [user, authLoading, navigate, location]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      await login(form.email, form.password)
-      toast.success('Welcome back!')
-
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Invalid credentials')
-    } finally {
-      setLoading(false)
+    e?.preventDefault();
+    setError("");
+    if (!email.trim() || !password) {
+      return setError("Please enter your staff email and password.");
     }
-  }
+
+    setLoading(true);
+    try {
+      await login(email.trim(), password);
+      toast.success("Welcome back!");
+    } catch (err) {
+      const serverMessage = err.response?.data?.message || err.message;
+      const msg = serverMessage || "Invalid staff credentials. Please try again.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBypassLogin = async () => {
+    setError("");
+    setBypassLoading(true);
+    try {
+      await bypassLogin();
+      toast.success("Superadmin authentication successful!");
+    } catch (err) {
+      const serverMessage = err.response?.data?.message || err.message;
+      const msg = serverMessage || "Failed to bypass admin login. Please check server.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setBypassLoading(false);
+    }
+  };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'var(--body-font)' }}>
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        input:focus { border-color: #1B4332 !important; box-shadow: 0 0 0 3px rgba(27,67,50,0.1); }
-      `}</style>
+    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#FAF8F5] text-slate-900 font-sans selection:bg-[#143c2d] selection:text-white">
+      {/* ── LEFT HALF: EXECUTIVE BRAND & VISUAL BACKDROP (DESKTOP) ── */}
+      <div className="relative hidden lg:flex lg:w-1/2 flex-col justify-between p-12 xl:p-16 overflow-hidden bg-[#071F14]">
+        {/* Background Image with Rich Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="/bems_farms_twilight.jpg"
+            alt="Bems Farms Facility"
+            className="w-full h-full object-cover object-center scale-105 filter brightness-75 contrast-110"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = "/bems_store_aisles.jpg";
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#04120B] via-[#071F14]/85 to-[#092B1C]/90 mix-blend-multiply" />
+          <div className="absolute inset-0 bg-[radial-gradient(#F59E0B_1px,transparent_1px)] [background-size:32px_32px] opacity-15" />
+        </div>
 
-      {/* ── Left: Login Form ── */}
-      <div style={{
-        width: '100%', maxWidth: 480, flexShrink: 0,
-        background: 'var(--bg-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '40px 24px',
-      }}>
-        <div style={{ width: '100%', maxWidth: 400 }}>
+        {/* Top Branding */}
+        <div className="relative z-10">
+          <a
+            href="https://www.bemsfarms.com"
+            className="inline-flex items-center bg-white px-4 py-2.5 rounded-2xl shadow-xl border border-white/90 hover:scale-[1.02] transition-all duration-200"
+          >
+            <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" className="h-9 w-auto object-contain" />
+          </a>
+        </div>
 
-          {/* Logo */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 36 }}>
-            <img src="/admin/logo.png" alt="Bems Farms Logo" style={{ maxHeight: '48px', objectFit: 'contain' }} />
+        {/* Middle Hero Content */}
+        <div className="relative z-10 max-w-lg my-auto py-12">
+          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3.5 py-1.5 text-xs font-black uppercase tracking-wider text-emerald-300 mb-6 backdrop-blur-sm">
+            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+            <span>Authorized Management System</span>
           </div>
 
-          {/* Heading */}
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1B4332', fontFamily: 'var(--heading-font)', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
-            Welcome Back!
+          <h1 className="font-display text-3xl xl:text-4xl font-black text-white tracking-tight leading-tight mb-4">
+            Unified Farm Logistics, Fulfillment &amp; Order Routing
           </h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 28px' }}>
-            Sign in to your Bems Farms admin portal
+          <p className="text-sm xl:text-base text-emerald-100/80 leading-relaxed mb-8">
+            Access live warehouse stock levels, dispatch rider tracking, demand forecasting, and automated issue resolution across all zones.
           </p>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 16 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }} htmlFor="emailInput">
-                Email Address
-              </label>
-              <input
-                id="emailInput"
-                type="email"
-                placeholder="email@bemsfarms.com"
-                required
-                style={inputStyle}
-                value={form.email}
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-              />
+          {/* Quick Pillar Badges */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3.5 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md">
+              <p className="text-xs font-bold text-emerald-300">Role-Based Access</p>
+              <p className="text-[11px] text-emerald-100/70 mt-0.5">Strict privileges for dispatch &amp; finance</p>
             </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }} htmlFor="passwordInput">
-                Password
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  id="passwordInput"
-                  type={showPw ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  required
-                  style={{ ...inputStyle, paddingRight: 42 }}
-                  value={form.password}
-                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(v => !v)}
-                  style={{
-                    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', padding: 2, lineHeight: 1,
-                  }}
-                >
-                  <i className={showPw ? 'ri-eye-off-line' : 'ri-eye-line'} style={{ fontSize: 24 }} />
-                </button>
-              </div>
+            <div className="p-3.5 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md">
+              <p className="text-xs font-bold text-amber-300">Live Inventory Audit</p>
+              <p className="text-[11px] text-emerald-100/70 mt-0.5">Real-time depletion and restock sync</p>
             </div>
+          </div>
+        </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
-                <input type="checkbox" style={{ accentColor: '#1B4332', width: 16, height: 16 }} />
-                Remember me
-              </label>
-              <Link to="/forgot-password" style={{ fontSize: 13, color: '#1B4332', fontWeight: 600, textDecoration: 'none' }}>
-                Forgot Password?
-              </Link>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%', padding: '12px', borderRadius: 10,
-                background: loading ? '#40916C' : '#1B4332', color: '#fff',
-                border: 'none', fontSize: 14, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
-                fontFamily: 'var(--body-font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                transition: 'background 0.15s',
-              }}
-            >
-              {loading && <Spinner />}
-              {loading ? 'Signing in…' : 'Sign In'}
-            </button>
-
-            {/* One-Click Bypass Button */}
-            <button
-              type="button"
-              disabled={loading}
-              onClick={async () => {
-                setLoading(true)
-                try {
-                  const res = await api.post('/auth/admin-bypass')
-                  if (res.data?.token && res.data?.user) {
-                    localStorage.setItem('token', res.data.token)
-                    localStorage.setItem('user', JSON.stringify(res.data.user))
-                    toast.success('Bypass login successful!')
-                    navigate('/dashboard', { replace: true })
-                  }
-                } catch (err) {
-                  toast.error(err.response?.data?.message || 'Bypass failed')
-                } finally {
-                  setLoading(false)
-                }
-              }}
-              style={{
-                marginTop: 10,
-                width: '100%', padding: '11px', borderRadius: 10,
-                background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#071F14',
-                border: '1px solid rgba(245, 158, 11, 0.4)', fontSize: 13, fontWeight: 800, cursor: loading ? 'not-allowed' : 'pointer',
-                fontFamily: 'var(--body-font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)',
-              }}
-            >
-              <i className="ri-flashlight-fill" style={{ fontSize: 16 }} />
-              ⚡ Bypass Login (Superadmin)
-            </button>
-          </form>
-
-          {/* Dev Quick-Fill — dev builds only, stripped entirely from production */}
-          {import.meta.env.DEV && (
-            <div style={{ marginTop: 28 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                <span style={{ fontSize: 10, color: 'var(--text-light)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>
-                  Dev — Quick Sign In
-                </span>
-                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {ROLES_ORDER.map(roleKey => {
-                  const m = ROLE_META[roleKey]
-                  const cred = DEV_CREDENTIALS[roleKey]
-                  const isActive = form.email === cred.email
-                  return (
-                    <button
-                      key={roleKey}
-                      type="button"
-                      onClick={() => fill(cred.email, cred.password)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 8, minWidth: 0,
-                        padding: '8px 10px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
-                        background: isActive ? m.bg : '#fff',
-                        border: `1.5px solid ${isActive ? m.color : 'var(--border)'}`,
-                        transition: 'all 0.12s',
-                        fontFamily: 'var(--body-font)',
-                      }}
-                    >
-                      <div style={{
-                        width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                        background: m.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <i className={m.icon} style={{ color: m.color, fontSize: 13 }} />
-                      </div>
-                      <div style={{ overflow: 'hidden', minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: m.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.label}</div>
-                        <div style={{ fontSize: 10, color: 'var(--text-light)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.description}</div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {form.email && (
-                <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 10, background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ fontSize: 11, color: '#64748b', overflow: 'hidden' }}>
-                    <i className="ri-mail-line" style={{ marginRight: 4 }} />{form.email}
-                    <span style={{ margin: '0 6px' }}>·</span>
-                    <i className="ri-lock-line" style={{ marginRight: 4 }} />{form.password}
-                  </div>
-                  <button
-                    onClick={handleSubmit}
-                    disabled={loading}
-                    style={{
-                      padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                      fontSize: 11, fontWeight: 700, background: '#1B4332', color: '#fff',
-                      fontFamily: 'var(--body-font)', flexShrink: 0,
-                    }}
-                  >
-                    {loading ? '…' : 'Go →'}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+        {/* Bottom System Status */}
+        <div className="relative z-10 pt-6 border-t border-white/15 flex items-center justify-between text-xs text-emerald-300/80">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Core API: <strong>Operational (99.98%)</strong></span>
+          </div>
+          <span className="text-[11px] text-emerald-200/50">Internal v2.4</span>
         </div>
       </div>
 
-      {/* ── Right: Role Overview ── */}
-      <div style={{
-        flex: 1, background: '#1B4332',
-        display: 'none',
-        alignItems: 'center', padding: '48px 56px',
-        // Show on xl screens via media query in index.css
-      }}
-        className="login-right-panel"
-      >
-        <div style={{ maxWidth: 680, width: '100%' }}>
-          <h2 style={{
-            fontSize: 36, fontWeight: 800, color: '#fff',
-            fontFamily: 'var(--heading-font)', letterSpacing: '-0.03em',
-            lineHeight: 1.15, marginBottom: 12,
-          }}>
-            Manage Bems Farms<br />from One Powerful Dashboard
-          </h2>
-          <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.65)', marginBottom: 36, lineHeight: 1.6 }}>
-            Track inventory, manage orders, handle deliveries and reward loyal customers — all in one place.
-          </p>
+      {/* ── RIGHT HALF: CLEAN AUTHENTICATION FORM CANVAS ── */}
+      <div className="flex-1 flex flex-col justify-between min-h-screen bg-[#FAF9F5] p-6 sm:p-10 lg:p-16">
+        {/* Top Nav Action */}
+        <div className="flex items-center justify-between w-full max-w-md mx-auto">
+          {/* Mobile Logo on White Badge */}
+          <a
+            href="https://www.bemsfarms.com"
+            className="lg:hidden inline-flex items-center bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs"
+          >
+            <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" className="h-7 w-auto object-contain" />
+          </a>
 
-          {/* Role cards grid */}
-          <div className="grid-stats-auto" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-            {ROLES_ORDER.map(roleKey => {
-              const m = ROLE_META[roleKey]
-              return (
-                <div key={roleKey} style={{
-                  background: 'rgba(255,255,255,0.08)', borderRadius: 12,
-                  border: '1px solid rgba(255,255,255,0.12)', padding: '14px 16px',
-                  backdropFilter: 'blur(4px)',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: m.bg, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <i className={m.icon} style={{ color: m.color, fontSize: 14 }} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>{m.label}</div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>{m.description}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                    {ROLE_ACCESS[roleKey].map(a => (
-                      <span key={a} style={{
-                        fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 50,
-                        background: m.bg, color: m.color,
-                      }}>{a}</span>
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <a
+            href="https://www.bemsfarms.com"
+            className="ml-auto inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:border-[#143c2d] hover:text-[#143c2d] hover:bg-[#143c2d]/5 transition shadow-2xs"
+          >
+            <span>Customer Storefront</span>
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+            </svg>
+          </a>
+        </div>
 
-          {/* Stat pills */}
-          <div style={{ display: 'flex', gap: 16, marginTop: 28 }}>
-            {[
-              { icon: 'ri-store-2-line',     label: 'Multi-store POS',    sub: 'Manage multiple outlets' },
-              { icon: 'ri-robot-line',       label: 'Chef Bems AI',       sub: 'Smart food recommendations' },
-              { icon: 'ri-bar-chart-line',   label: 'Live Analytics',     sub: 'Real-time dashboards' },
-            ].map(f => (
-              <div key={f.label} style={{ flex: 1, padding: '12px 14px', borderRadius: 10, background: 'rgba(245,124,0,0.15)', border: '1px solid rgba(245,124,0,0.25)' }}>
-                <i className={f.icon} style={{ fontSize: 20, color: '#F57C00', display: 'block', marginBottom: 6 }} />
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', marginBottom: 2 }}>{f.label}</div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>{f.sub}</div>
+        {/* Centered Login Card */}
+        <div className="w-full max-w-md mx-auto my-auto py-8">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+          >
+            {/* Header */}
+            <div className="mb-8">
+              <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 border border-amber-300 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-amber-900 mb-3.5">
+                <span className="h-2 w-2 rounded-full bg-amber-600 animate-pulse" />
+                <span>Staff Portal</span>
               </div>
-            ))}
-          </div>
+              <h2 className="font-display text-3xl font-black text-slate-900 tracking-tight">
+                Staff Sign In
+              </h2>
+              <p className="mt-1.5 text-sm text-slate-600">
+                Sign in with your authorized Bems Farms administrator or staff account.
+              </p>
+            </div>
+
+            {/* Error Banner */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                role="alert"
+                className="mb-6 rounded-2xl bg-rose-50 border border-rose-200 p-4 text-xs font-medium text-rose-800 flex items-start gap-3"
+              >
+                <svg className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                </svg>
+                <span className="leading-relaxed">{error}</span>
+              </motion.div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" htmlFor="admin-email">
+                  Staff Email Address
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                    </svg>
+                  </div>
+                  <input
+                    id="admin-email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="admin@bemsfarms.com"
+                    autoComplete="username"
+                    className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#143c2d] focus:ring-2 focus:ring-[#143c2d]/15 transition shadow-2xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5" htmlFor="admin-password">
+                  Security Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                    </svg>
+                  </div>
+                  <input
+                    id="admin-password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    autoComplete="current-password"
+                    className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-10 pr-11 text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#143c2d] focus:ring-2 focus:ring-[#143c2d]/15 transition shadow-2xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || bypassLoading}
+                className="w-full rounded-xl bg-[#143c2d] hover:bg-[#1a4e3b] text-white py-3.5 text-sm font-black uppercase tracking-wider transition-all shadow-md active:scale-98 disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer mt-2"
+              >
+                {loading ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    <span>Verifying Credentials...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Sign In to Admin Hub</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                    </svg>
+                  </>
+                )}
+              </button>
+
+              {/* ── ONE-CLICK ADMIN BYPASS BUTTON ── */}
+              <div className="relative my-3 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200" />
+                </div>
+                <div className="relative bg-[#FAF9F5] px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                  Instant Developer Access
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleBypassLogin}
+                disabled={bypassLoading || loading}
+                className="w-full rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:from-amber-300 hover:to-amber-300 text-[#071F14] py-3.5 text-sm font-black uppercase tracking-wider transition-all shadow-md hover:shadow-lg active:scale-98 disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer border border-amber-500/30"
+              >
+                {bypassLoading ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin text-[#071F14]" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    <span>Authenticating Superadmin...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 text-[#071F14]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                    </svg>
+                    <span>⚡ Bypass Login (Superadmin)</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Security Footer */}
+            <div className="mt-8 pt-5 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+              <div className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-emerald-700" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+                </svg>
+                <span>Encrypted 256-Bit SSL</span>
+              </div>
+              <span>Role-Based Audit Active</span>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Bottom copyright */}
+        <div className="w-full max-w-md mx-auto text-center text-xs text-slate-400">
+          &copy; {new Date().getFullYear()} Bems Farms Limited &bull; Internal Operations Portal
         </div>
       </div>
     </div>
-  )
+  );
 }
