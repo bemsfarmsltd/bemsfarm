@@ -75,7 +75,7 @@ const VIDEO_SLIDES = [
     badge: "Direct Farm Harvest",
     badgeColor: "#F59E0B",
     title: "Sun-Drenched Farm Fields",
-    subtitle: "Authentic harvests directly from partner farms in Benue, Oyo, and Niger states.",
+    subtitle: "Authentic harvests directly from partner farms across Nigeria.",
     src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166058/A_warm_sun_drenched_Nigerian_f7oi4i.mp4",
   },
   {
@@ -88,14 +88,6 @@ const VIDEO_SLIDES = [
   },
   {
     id: 4,
-    badge: "Fast Doorstep Dispatch",
-    badgeColor: "#EC4899",
-    title: "Rapid Market Logistics",
-    subtitle: "Speedy fulfillment right to your doorstep so you never run out of kitchen essentials.",
-    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1784552209/Create_an_exiting_carousel_vid_xh7212.mp4",
-  },
-  {
-    id: 5,
     badge: "Chef Bems Culinary AI",
     badgeColor: "#8B5CF6",
     title: "Cook Smarter With AI",
@@ -103,7 +95,7 @@ const VIDEO_SLIDES = [
     src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1784539329/Give_me_a_video_of_the_charact_supd0d.mp4",
   },
   {
-    id: 6,
+    id: 5,
     badge: "Flavour & Tradition",
     badgeColor: "#E11D48",
     title: "Delicious Nigerian Dishes",

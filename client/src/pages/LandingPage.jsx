@@ -688,15 +688,6 @@ const DISPATCH_SLIDES_LANDING = [
     subtitle: "Evening dispatch operations ensuring fast next-day deliveries across Nigeria.",
     src: "/bems_farms_twilight.jpg",
   },
-  {
-    id: 4,
-    type: "video",
-    badge: "Live Dispatch Fleet",
-    badgeColor: "#10B981",
-    title: "Express Doorstep Delivery",
-    subtitle: "Prompt doorstep fulfillment operating directly from our Abia State central hub.",
-    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1784552209/Create_an_exiting_carousel_vid_xh7212.mp4",
-  },
 ];
 
 function LandingDispatchSlider() {
