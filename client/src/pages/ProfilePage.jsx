@@ -534,7 +534,7 @@ export default function ProfilePage() {
 
   // Address book
   const [addresses, setAddresses] = useState([]);
-  const [addressForm, setAddressForm] = useState({ label: "", receiver_name: "", receiver_phone: "", street_address: "", city: "", state: "" });
+  const [addressForm, setAddressForm] = useState({ label: "", receiver_name: "", receiver_phone: "", street_address: "", city: "", state: "", is_default: false });
   const [editingAddressId, setEditingAddressId] = useState(null);
   const [addressError, setAddressError] = useState(null);
 
@@ -545,15 +545,20 @@ export default function ProfilePage() {
 
   const openAddAddress = () => {
     setEditingAddressId(null);
-    setAddressForm({ label: "", receiver_name: "", receiver_phone: "", street_address: "", city: "", state: "" });
+    setAddressForm({ label: "", receiver_name: "", receiver_phone: "", street_address: "", city: "", state: "", is_default: addresses.length === 0 });
     setAddressError(null);
     setAdding(true);
   };
   const openEditAddress = (addr) => {
     setEditingAddressId(addr.id);
     setAddressForm({
-      label: addr.label || "", receiver_name: addr.receiver_name || "", receiver_phone: addr.receiver_phone || "",
-      street_address: addr.street_address || "", city: addr.city || "", state: addr.state || "",
+      label: addr.label || "",
+      receiver_name: addr.receiver_name || "",
+      receiver_phone: addr.receiver_phone || "",
+      street_address: addr.street_address || "",
+      city: addr.city || "",
+      state: addr.state || "",
+      is_default: !!addr.is_default,
     });
     setAddressError(null);
     setAdding(true);
@@ -573,6 +578,14 @@ export default function ProfilePage() {
       loadAddresses();
     } catch (err) {
       setAddressError(err?.response?.data?.message || "Failed to save address");
+    }
+  };
+  const setAsDefaultAddress = async (id) => {
+    try {
+      await api.patch(`/addresses/${id}`, { is_default: true });
+      loadAddresses();
+    } catch (err) {
+      setAddressError(err?.response?.data?.message || "Failed to set default address");
     }
   };
   const deleteAddress = async (id) => {
@@ -920,17 +933,86 @@ export default function ProfilePage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                 >
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "var(--heading-font)" }}>Address Book</h3>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "16px", marginBottom: "24px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
+                    <div>
+                      <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 4px", fontFamily: "var(--heading-font)", color: "#1B4332" }}>Delivery Addresses</h3>
+                      <p style={{ fontSize: "13px", color: "#6B7280", margin: 0 }}>
+                        Manage your permanent delivery address or add extra delivery locations for checkout.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px", marginBottom: "24px" }}>
                     {addresses.map((addr) => (
-                      <div key={addr.id} style={{ border: addr.is_default ? "2px solid #2E7D32" : "1px solid #E5E7EB", borderRadius: "16px", padding: "18px", position: "relative" }}>
-                        {addr.is_default && <span style={{ position: "absolute", top: "10px", right: "10px", backgroundColor: "#E8F5E9", color: "#2E7D32", fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "20px" }}>Default</span>}
-                        <p style={{ fontWeight: 700, marginBottom: "6px", fontSize: "14px" }}>{addr.label}</p>
-                        <p style={{ fontSize: "13px", color: "#6B7280", marginBottom: "4px" }}>{addr.street_address}{addr.city ? `, ${addr.city}` : ""}{addr.state ? `, ${addr.state}` : ""}</p>
-                        <p style={{ fontSize: "13px", color: "#6B7280", marginBottom: "16px" }}> {addr.receiver_phone || "—"}</p>
-                        <div style={{ display: "flex", gap: "12px" }}>
-                          <button onClick={() => openEditAddress(addr)} style={{ color: "#F57C00", border: "none", background: "none", cursor: "pointer", fontWeight: 700, fontSize: "13px" }}>Edit</button>
-                          <button onClick={() => deleteAddress(addr.id)} style={{ color: "#EF4444", border: "none", background: "none", cursor: "pointer", fontWeight: 500, fontSize: "13px" }}>Delete</button>
+                      <div
+                        key={addr.id}
+                        style={{
+                          border: addr.is_default ? "2px solid #2E7D32" : "1px solid #E5E7EB",
+                          borderRadius: "16px",
+                          padding: "20px",
+                          position: "relative",
+                          backgroundColor: addr.is_default ? "#F4FBF6" : "#FFFFFF",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                            <span style={{ fontWeight: 800, fontSize: "15px", color: "#1B4332" }}>
+                              {addr.label || "Delivery Address"}
+                            </span>
+                            {addr.is_default ? (
+                              <span style={{ backgroundColor: "#E8F5E9", color: "#2E7D32", fontSize: "11px", fontWeight: 700, padding: "3px 10px", borderRadius: "20px", border: "1px solid #C8E6C9" }}>
+                                Permanent Default
+                              </span>
+                            ) : null}
+                          </div>
+
+                          {addr.receiver_name && (
+                            <p style={{ fontSize: "13px", fontWeight: 600, color: "#374151", margin: "0 0 4px" }}>
+                              {addr.receiver_name}
+                            </p>
+                          )}
+                          <p style={{ fontSize: "13px", color: "#4B5563", lineHeight: "1.4", margin: "0 0 6px" }}>
+                            {addr.street_address}{addr.city ? `, ${addr.city}` : ""}{addr.state ? `, ${addr.state}` : ""}
+                          </p>
+                          {addr.receiver_phone && (
+                            <p style={{ fontSize: "12px", color: "#6B7280", margin: "0 0 16px" }}>
+                              Phone: {addr.receiver_phone}
+                            </p>
+                          )}
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid #E5E7EB", paddingTop: "12px", marginTop: "12px" }}>
+                          <div style={{ display: "flex", gap: "12px" }}>
+                            <button onClick={() => openEditAddress(addr)} style={{ color: "#c85a17", border: "none", background: "none", cursor: "pointer", fontWeight: 700, fontSize: "13px", padding: 0 }}>
+                              Edit
+                            </button>
+                            <button onClick={() => deleteAddress(addr.id)} style={{ color: "#EF4444", border: "none", background: "none", cursor: "pointer", fontWeight: 500, fontSize: "13px", padding: 0 }}>
+                              Delete
+                            </button>
+                          </div>
+
+                          {!addr.is_default && (
+                            <button
+                              onClick={() => setAsDefaultAddress(addr.id)}
+                              style={{
+                                color: "#2E7D32",
+                                border: "1px solid #2E7D32",
+                                backgroundColor: "#FFFFFF",
+                                borderRadius: "8px",
+                                padding: "4px 10px",
+                                cursor: "pointer",
+                                fontWeight: 700,
+                                fontSize: "12px",
+                                transition: "all 0.2s",
+                              }}
+                            >
+                              Set as Default
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -938,37 +1020,84 @@ export default function ProfilePage() {
                     <button
                       onClick={openAddAddress}
                       style={{
-                        border: "2px dashed #E5E7EB",
+                        border: "2px dashed #D1D5DB",
                         borderRadius: "16px",
-                        padding: "24px",
+                        padding: "28px 20px",
                         cursor: "pointer",
-                        backgroundColor: "transparent",
+                        backgroundColor: "#FAFAF9",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
                         gap: "8px",
-                        color: "#9CA3AF"
+                        color: "#6B7280",
+                        minHeight: "160px",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "#1B4332";
+                        e.currentTarget.style.backgroundColor = "#F3F4F6";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "#D1D5DB";
+                        e.currentTarget.style.backgroundColor = "#FAFAF9";
                       }}
                     >
-                      <span style={{ fontSize: "28px" }}>+</span>
-                      <span style={{ fontSize: "13px", fontWeight: 700 }}>Add New Address</span>
+                      <span style={{ fontSize: "28px", lineHeight: "1", color: "#1B4332" }}>+</span>
+                      <span style={{ fontSize: "14px", fontWeight: 700, color: "#1B4332" }}>Add New Delivery Address</span>
                     </button>
                   </div>
 
                   {adding && (
-                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ border: "1px solid #E5E7EB", borderRadius: "16px", padding: "24px", backgroundColor: "#F9FAFB" }}>
-                      <h4 style={{ fontWeight: 700, marginBottom: "18px", fontSize: "15px" }}>{editingAddressId ? "Edit Address" : "Add New Address"}</h4>
-                      {addressError && <p style={{ color: "#EF4444", fontSize: "13px", marginBottom: "12px" }}>{addressError}</p>}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "20px" }}>
-                        <input className="p-input" placeholder="Label (e.g. Office, Parent's house)" value={addressForm.label} onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })} />
-                        <input className="p-input" placeholder="Receiver's Full Name" value={addressForm.receiver_name} onChange={(e) => setAddressForm({ ...addressForm, receiver_name: e.target.value })} />
-                        <input className="p-input" placeholder="Receiver's Phone Number" value={addressForm.receiver_phone} onChange={(e) => setAddressForm({ ...addressForm, receiver_phone: e.target.value })} />
-                        <input className="p-input" placeholder="Street Address" value={addressForm.street_address} onChange={(e) => setAddressForm({ ...addressForm, street_address: e.target.value })} />
-                        <input className="p-input" placeholder="City" value={addressForm.city} onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })} />
-                        <input className="p-input" placeholder="State" value={addressForm.state} onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })} />
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ border: "1px solid #E5E7EB", borderRadius: "20px", padding: "28px", backgroundColor: "#F9FAFB", marginBottom: "20px" }}>
+                      <h4 style={{ fontWeight: 800, marginBottom: "6px", fontSize: "16px", color: "#1B4332" }}>
+                        {editingAddressId ? "Edit Delivery Address" : "Add Permanent / New Delivery Address"}
+                      </h4>
+                      <p style={{ fontSize: "13px", color: "#6B7280", margin: "0 0 18px" }}>
+                        Save your home or office address for fast, accurate produce delivery.
+                      </p>
+                      {addressError && <p style={{ color: "#EF4444", fontSize: "13px", marginBottom: "14px" }}>{addressError}</p>}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "16px" }}>
+                        <div className="p-field">
+                          <label className="p-label">Address Label</label>
+                          <input className="p-input" placeholder="e.g. Home, Main Office, Lekki House" value={addressForm.label} onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })} />
+                        </div>
+                        <div className="p-field">
+                          <label className="p-label">Receiver's Full Name</label>
+                          <input className="p-input" placeholder="e.g. Adebayo Adeleke" value={addressForm.receiver_name} onChange={(e) => setAddressForm({ ...addressForm, receiver_name: e.target.value })} />
+                        </div>
+                        <div className="p-field">
+                          <label className="p-label">Receiver's Phone Number</label>
+                          <input className="p-input" placeholder="e.g. 0801 234 5678" value={addressForm.receiver_phone} onChange={(e) => setAddressForm({ ...addressForm, receiver_phone: e.target.value })} />
+                        </div>
+                        <div className="p-field">
+                          <label className="p-label">State</label>
+                          <input className="p-input" placeholder="e.g. Lagos, Ogun, Oyo" value={addressForm.state} onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })} />
+                        </div>
+                        <div className="p-field full-width">
+                          <label className="p-label">Street Address *</label>
+                          <input className="p-input" placeholder="e.g. 14 Admiralty Way, Lekki Phase 1" value={addressForm.street_address} onChange={(e) => setAddressForm({ ...addressForm, street_address: e.target.value })} />
+                        </div>
+                        <div className="p-field full-width">
+                          <label className="p-label">City / Town *</label>
+                          <input className="p-input" placeholder="e.g. Lekki, Ikeja, Victoria Island" value={addressForm.city} onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })} />
+                        </div>
                       </div>
-                      <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "16px 0 24px" }}>
+                        <input
+                          type="checkbox"
+                          id="is_default_checkbox"
+                          checked={addressForm.is_default}
+                          onChange={(e) => setAddressForm({ ...addressForm, is_default: e.target.checked })}
+                          style={{ width: "18px", height: "18px", cursor: "pointer", accentColor: "#1B4332" }}
+                        />
+                        <label htmlFor="is_default_checkbox" style={{ fontSize: "13px", fontWeight: 600, color: "#374151", cursor: "pointer" }}>
+                          Set as my permanent default delivery address
+                        </label>
+                      </div>
+
+                      <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
                         <button className="p-delete-btn" onClick={() => setAdding(false)}>Cancel</button>
                         <button className="p-upload-btn" onClick={saveAddress}>Save Address</button>
                       </div>

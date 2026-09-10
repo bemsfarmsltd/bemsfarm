@@ -92,6 +92,69 @@ export default function CheckoutPage() {
   const [paymentRecoveryAvailable, setPaymentRecoveryAvailable] = useState(false);
   const finalizingReference = useRef(null);
 
+  // Saved Delivery Address Management
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [deliveryMode, setDeliveryMode] = useState("custom"); // "saved" | "custom"
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setSavedAddresses([]);
+      setDeliveryMode("custom");
+      return;
+    }
+    setLoadingAddresses(true);
+    api.get("/addresses")
+      .then((res) => {
+        const list = res.data.addresses || [];
+        setSavedAddresses(list);
+        if (list.length > 0) {
+          const defaultAddr = list.find((a) => a.is_default) || list[0];
+          setSelectedAddressId(defaultAddr.id);
+          setDeliveryMode("saved");
+          setForm((f) => ({
+            ...f,
+            fullName: defaultAddr.receiver_name || f.fullName || user.name || "",
+            phone: defaultAddr.receiver_phone || f.phone || "",
+            address: defaultAddr.street_address || "",
+            city: defaultAddr.city || "",
+            state: defaultAddr.state || f.state || "Lagos",
+          }));
+        } else {
+          setDeliveryMode("custom");
+          setSaveAsDefault(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingAddresses(false));
+  }, [user]);
+
+  const handleSelectSavedAddress = (addr) => {
+    setSelectedAddressId(addr.id);
+    setDeliveryMode("saved");
+    setForm((f) => ({
+      ...f,
+      fullName: addr.receiver_name || f.fullName || user?.name || "",
+      phone: addr.receiver_phone || f.phone || "",
+      address: addr.street_address || "",
+      city: addr.city || "",
+      state: addr.state || "Lagos",
+    }));
+  };
+
+  const handleUseCustomAddress = () => {
+    setDeliveryMode("custom");
+    setSelectedAddressId(null);
+    setSaveAsDefault(false);
+    setForm((f) => ({
+      ...f,
+      address: "",
+      city: "",
+    }));
+  };
+
   const DELIVERY = getDeliveryFee(cartSubtotal);
   const discount = appliedCoupon?.discount || 0;
   const total = cartSubtotal + DELIVERY - discount;
@@ -222,7 +285,29 @@ export default function CheckoutPage() {
     };
   };
 
+  const maybePersistAddress = async () => {
+    if (!user) return;
+    try {
+      if (saveAsDefault && form.address.trim()) {
+        await api.post("/addresses", {
+          label: deliveryMode === "custom" ? "Alternate Address" : "Home",
+          receiver_name: form.fullName,
+          receiver_phone: form.phone,
+          street_address: form.address,
+          city: form.city,
+          state: form.state,
+          is_default: true,
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to persist delivery address:", e);
+    }
+  };
+
   const createOrder = async (ref, checkout) => {
+    // Persist as permanent default if requested
+    await maybePersistAddress();
+
     const payload = {
       items: checkout.items,
       total: checkout.total,
@@ -563,6 +648,111 @@ export default function CheckoutPage() {
                   Delivery Details
                 </h2>
 
+                {/* Saved Address Selector (if logged in and has addresses) */}
+                {user && savedAddresses.length > 0 && (
+                  <div style={{ marginBottom: "20px" }}>
+                    <div style={{ display: "flex", gap: "10px", marginBottom: "14px" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const def = savedAddresses.find((a) => a.id === selectedAddressId) || savedAddresses.find((a) => a.is_default) || savedAddresses[0];
+                          handleSelectSavedAddress(def);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: "10px 14px",
+                          borderRadius: "10px",
+                          border: deliveryMode === "saved" ? "2px solid #1B4332" : "1px solid #E5E7EB",
+                          backgroundColor: deliveryMode === "saved" ? "rgba(27, 67, 50, 0.06)" : "#FFFFFF",
+                          color: deliveryMode === "saved" ? "#1B4332" : "#4B5563",
+                          fontWeight: 700,
+                          fontSize: "13px",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          textAlign: "center",
+                        }}
+                      >
+                        Use Saved Address
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleUseCustomAddress}
+                        style={{
+                          flex: 1,
+                          padding: "10px 14px",
+                          borderRadius: "10px",
+                          border: deliveryMode === "custom" ? "2px solid #1B4332" : "1px solid #E5E7EB",
+                          backgroundColor: deliveryMode === "custom" ? "rgba(27, 67, 50, 0.06)" : "#FFFFFF",
+                          color: deliveryMode === "custom" ? "#1B4332" : "#4B5563",
+                          fontWeight: 700,
+                          fontSize: "13px",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          textAlign: "center",
+                        }}
+                      >
+                        Deliver to Another Address
+                      </button>
+                    </div>
+
+                    {deliveryMode === "saved" && (
+                      <div style={{ display: "grid", gap: "10px", marginBottom: "16px" }}>
+                        {savedAddresses.map((addr) => {
+                          const isSelected = selectedAddressId === addr.id;
+                          return (
+                            <div
+                              key={addr.id}
+                              onClick={() => handleSelectSavedAddress(addr)}
+                              style={{
+                                border: isSelected ? "2px solid #1B4332" : "1px solid #E5E7EB",
+                                backgroundColor: isSelected ? "#F4FBF6" : "#FFFFFF",
+                                borderRadius: "12px",
+                                padding: "14px 16px",
+                                cursor: "pointer",
+                                transition: "all 0.15s",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                                <input
+                                  type="radio"
+                                  name="saved_delivery_address"
+                                  checked={isSelected}
+                                  onChange={() => handleSelectSavedAddress(addr)}
+                                  style={{ marginTop: "3px", accentColor: "#1B4332", cursor: "pointer" }}
+                                />
+                                <div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <span style={{ fontWeight: 700, fontSize: "14px", color: "#111827" }}>
+                                      {addr.label || "Address"}
+                                    </span>
+                                    {addr.is_default && (
+                                      <span style={{ backgroundColor: "#E8F5E9", color: "#2E7D32", fontSize: "10px", fontWeight: 700, padding: "2px 6px", borderRadius: "12px" }}>
+                                        Permanent Default
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p style={{ fontSize: "13px", color: "#4B5563", margin: "3px 0 0" }}>
+                                    {addr.street_address}, {addr.city}, {addr.state}
+                                  </p>
+                                  {addr.receiver_phone && (
+                                    <p style={{ fontSize: "12px", color: "#6B7280", margin: "2px 0 0" }}>
+                                      Phone: {addr.receiver_phone}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div style={{ display: "grid", gap: "14px" }}>
                   <div
                     style={{
@@ -685,6 +875,21 @@ export default function CheckoutPage() {
                       </select>
                     </div>
                   </div>
+
+                  {user && (deliveryMode === "custom" || savedAddresses.length === 0) && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+                      <input
+                        type="checkbox"
+                        id="save_as_default_checkout"
+                        checked={saveAsDefault}
+                        onChange={(e) => setSaveAsDefault(e.target.checked)}
+                        style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "#1B4332" }}
+                      />
+                      <label htmlFor="save_as_default_checkout" style={{ fontSize: "13px", color: "#374151", cursor: "pointer", fontWeight: 500 }}>
+                        Save as my permanent default delivery address for future orders
+                      </label>
+                    </div>
+                  )}
                 </div>
               </div>
 
