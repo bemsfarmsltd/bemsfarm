@@ -5,7 +5,6 @@ import { useCart } from "../../context/CartContext";
 import { getNairaPrice } from "../../utils/currency";
 import { getProductImage } from "../../utils/productImages";
 
-
 // Popular pantry add-ons frequently bundled with staples
 const PANTRY_ADDONS = [
   {
@@ -70,11 +69,10 @@ export default function CartDrawer() {
     };
   }, [isCartDrawerOpen, closeCartDrawer]);
 
-
   return (
     <AnimatePresence>
       {isCartDrawerOpen && (
-        <div className="fixed inset-0 z-[9999] flex justify-end">
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", justifyContent: "flex-end" }}>
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -82,7 +80,12 @@ export default function CartDrawer() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
             onClick={closeCartDrawer}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            style={{
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.6)",
+              backdropFilter: "blur(4px)",
+            }}
             aria-hidden="true"
           />
 
@@ -93,30 +96,78 @@ export default function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 280 }}
-            className="relative flex h-full w-full max-w-md flex-col bg-[#FDFBF7] shadow-2xl border-l border-[#DFD6C2] z-10"
+            style={{
+              position: "relative",
+              display: "flex",
+              height: "100%",
+              width: "100%",
+              maxWidth: "420px",
+              flexDirection: "column",
+              backgroundColor: "#FDFBF7",
+              boxShadow: "-4px 0 24px rgba(0,0,0,0.15)",
+              borderLeft: "1px solid #DFD6C2",
+              zIndex: 10,
+              boxSizing: "border-box",
+            }}
             role="dialog"
             aria-modal="true"
             aria-label="Shopping Cart Drawer"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[#DFD6C2] px-6 py-4 bg-white/95 backdrop-blur-md">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#143c2d]/10 text-[#143c2d]">
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderBottom: "1px solid #DFD6C2",
+                padding: "16px 20px",
+                backgroundColor: "rgba(255, 255, 255, 0.95)",
+                backdropFilter: "blur(8px)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    height: "36px",
+                    width: "36px",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: "10px",
+                    backgroundColor: "rgba(20, 60, 45, 0.08)",
+                    color: "#143c2d",
+                  }}
+                >
                   <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-base font-black text-[#143c2d]">Your Fresh Basket</h2>
-                  <p className="text-xs font-semibold text-slate-500">
+                  <h2 style={{ fontSize: "16px", fontWeight: 800, color: "#143c2d", margin: 0, fontFamily: "var(--heading-font)" }}>
+                    Your Fresh Basket
+                  </h2>
+                  <p style={{ fontSize: "12px", fontWeight: 600, color: "#6B7280", margin: "2px 0 0" }}>
                     {cartCount} {cartCount === 1 ? "item" : "items"} selected
                   </p>
                 </div>
               </div>
+
               <button
                 type="button"
                 onClick={closeCartDrawer}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                style={{
+                  display: "flex",
+                  height: "36px",
+                  width: "36px",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "50%",
+                  border: "1px solid #E5E7EB",
+                  backgroundColor: "#F9FAFB",
+                  color: "#4B5563",
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
                 aria-label="Close cart drawer"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -126,18 +177,30 @@ export default function CartDrawer() {
               </button>
             </div>
 
-
             {/* Cart Items / Body */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 divide-y divide-slate-100">
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: "16px" }}>
               {cartItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="mb-4 grid h-20 w-20 place-items-center rounded-3xl bg-[#143c2d]/10 text-[#143c2d]">
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "64px 20px", textAlign: "center" }}>
+                  <div
+                    style={{
+                      marginBottom: "16px",
+                      display: "grid",
+                      height: "72px",
+                      width: "72px",
+                      placeItems: "center",
+                      borderRadius: "24px",
+                      backgroundColor: "rgba(20, 60, 45, 0.08)",
+                      color: "#143c2d",
+                    }}
+                  >
                     <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z" />
                     </svg>
                   </div>
-                  <h3 className="text-lg font-black text-[#143c2d]">Your basket is empty</h3>
-                  <p className="mt-1 max-w-xs text-xs text-slate-600">
+                  <h3 style={{ fontSize: "17px", fontWeight: 800, color: "#143c2d", margin: "0 0 6px" }}>
+                    Your basket is empty
+                  </h3>
+                  <p style={{ fontSize: "13px", color: "#6B7280", margin: 0, maxWidth: "260px", lineHeight: "1.4" }}>
                     Discover 100% stone-free grains, farm-fresh tubers, and Nigerian pantry staples.
                   </p>
                   <button
@@ -146,7 +209,23 @@ export default function CartDrawer() {
                       closeCartDrawer();
                       navigate("/products");
                     }}
-                    className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#143c2d] px-6 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md transition-all hover:bg-[#0e2c21]"
+                    style={{
+                      marginTop: "20px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      borderRadius: "12px",
+                      backgroundColor: "#143c2d",
+                      padding: "10px 22px",
+                      fontSize: "12px",
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color: "#FFFFFF",
+                      border: "none",
+                      cursor: "pointer",
+                      boxShadow: "0 4px 12px rgba(20,60,45,0.2)",
+                    }}
                   >
                     Start Shopping
                   </button>
@@ -158,17 +237,43 @@ export default function CartDrawer() {
                   return (
                     <div
                       key={product.id}
-                      className="flex items-center gap-3.5 pt-4 first:pt-0"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "14px",
+                        paddingBottom: "14px",
+                        borderBottom: "1px solid #F3F4F6",
+                        width: "100%",
+                        minWidth: 0,
+                        boxSizing: "border-box",
+                      }}
                     >
                       {/* Thumbnail */}
                       <div
-                        className="relative shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white"
-                        style={{ width: "64px", height: "64px", minWidth: "64px", minHeight: "64px" }}
+                        style={{
+                          width: "64px",
+                          height: "64px",
+                          minWidth: "64px",
+                          minHeight: "64px",
+                          maxWidth: "64px",
+                          maxHeight: "64px",
+                          flexShrink: 0,
+                          borderRadius: "12px",
+                          overflow: "hidden",
+                          backgroundColor: "#FFFFFF",
+                          border: "1px solid #E5E7EB",
+                          position: "relative",
+                        }}
                       >
                         <img
                           src={getProductImage(product)}
                           alt={product.name}
-                          className="h-full w-full object-cover"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            display: "block",
+                          }}
                           onError={(e) => {
                             e.currentTarget.onerror = null;
                             e.currentTarget.src = "/hero_food_4.jpg";
@@ -177,46 +282,98 @@ export default function CartDrawer() {
                       </div>
 
                       {/* Info */}
-                      <div className="flex flex-1 flex-col min-w-0">
-                        <h4 className="truncate text-xs font-bold text-slate-900">
+                      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <h4
+                          style={{
+                            fontWeight: 700,
+                            fontSize: "13px",
+                            color: "#111827",
+                            margin: 0,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
                           {product.name}
                         </h4>
-                        <span className="text-[11px] text-slate-500 font-medium">
+                        <span style={{ fontSize: "11px", color: "#6B7280", fontWeight: 500 }}>
                           {product.unit || "Per item"} • ₦{unitPrice.toLocaleString()}
                         </span>
 
                         {/* Stepper & Line Total */}
-                        <div className="mt-2 flex items-center justify-between">
-                          <div className="flex items-center rounded-lg border border-slate-200 bg-white">
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "6px" }}>
+                          <div
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              border: "1px solid #E5E7EB",
+                              borderRadius: "8px",
+                              backgroundColor: "#FFFFFF",
+                              overflow: "hidden",
+                            }}
+                          >
                             <button
                               type="button"
                               onClick={() => updateQuantity(product.id, quantity - 1)}
-                              className="flex h-7 w-7 items-center justify-center text-xs font-bold text-slate-600 transition hover:bg-slate-100"
+                              style={{
+                                display: "flex",
+                                height: "26px",
+                                width: "26px",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                color: "#4B5563",
+                                border: "none",
+                                background: "none",
+                                cursor: "pointer",
+                              }}
                               aria-label={`Decrease ${product.name} quantity`}
                             >
                               -
                             </button>
-                            <span className="w-7 text-center text-xs font-black text-[#143c2d]">
+                            <span style={{ width: "26px", textAlign: "center", fontSize: "12px", fontWeight: 800, color: "#143c2d" }}>
                               {quantity}
                             </span>
                             <button
                               type="button"
                               onClick={() => updateQuantity(product.id, quantity + 1)}
-                              className="flex h-7 w-7 items-center justify-center text-xs font-bold text-slate-600 transition hover:bg-slate-100"
+                              style={{
+                                display: "flex",
+                                height: "26px",
+                                width: "26px",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                color: "#4B5563",
+                                border: "none",
+                                background: "none",
+                                cursor: "pointer",
+                              }}
                               aria-label={`Increase ${product.name} quantity`}
                             >
                               +
                             </button>
                           </div>
 
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-[#143c2d]">
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span style={{ fontSize: "13px", fontWeight: 800, color: "#143c2d", whiteSpace: "nowrap" }}>
                               ₦{lineTotal.toLocaleString()}
                             </span>
                             <button
                               type="button"
                               onClick={() => removeFromCart(product.id)}
-                              className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                              style={{
+                                color: "#9CA3AF",
+                                border: "none",
+                                background: "none",
+                                cursor: "pointer",
+                                padding: "4px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
                               aria-label={`Remove ${product.name} from basket`}
                             >
                               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -234,33 +391,48 @@ export default function CartDrawer() {
 
               {/* Instant Cross-Sell Staples */}
               {cartItems.length > 0 && (
-                <div className="pt-5 pb-2">
-                  <div className="flex items-center justify-between mb-2.5">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">
+                <div style={{ paddingTop: "12px", paddingBottom: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", color: "#374151" }}>
                       Frequently Added Produce
                     </span>
-                    <span className="text-[10px] text-amber-700 font-bold">1-Tap Add</span>
+                    <span style={{ fontSize: "10px", color: "#c85a17", fontWeight: 700 }}>1-Tap Add</span>
                   </div>
-                  <div className="space-y-2">
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {PANTRY_ADDONS.map((addon) => {
                       const alreadyInCart = Boolean(cartItems.find((ci) => ci.product.id === addon.id));
                       const price = getNairaPrice(addon.price);
                       return (
                         <div
                           key={addon.id}
-                          className="flex items-center justify-between rounded-xl border border-dashed border-[#DFD6C2] bg-white/70 p-2.5 transition hover:bg-white"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            borderRadius: "12px",
+                            border: "1px dashed #DFD6C2",
+                            backgroundColor: "rgba(255, 255, 255, 0.7)",
+                            padding: "10px",
+                          }}
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0, flex: 1 }}>
                             <img
                               src={addon.image_url}
                               alt={addon.name}
-                              className="h-10 w-10 rounded-lg object-cover"
+                              style={{
+                                height: "38px",
+                                width: "38px",
+                                minWidth: "38px",
+                                minHeight: "38px",
+                                borderRadius: "8px",
+                                objectFit: "cover",
+                              }}
                             />
-                            <div className="truncate">
-                              <p className="truncate text-xs font-bold text-slate-900">
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {addon.name}
                               </p>
-                              <p className="text-[10px] text-slate-500">
+                              <p style={{ margin: "2px 0 0", fontSize: "11px", color: "#6B7280" }}>
                                 {addon.unit} • ₦{price.toLocaleString()}
                               </p>
                             </div>
@@ -269,13 +441,21 @@ export default function CartDrawer() {
                             type="button"
                             disabled={alreadyInCart}
                             onClick={() => addToCart(addon)}
-                            className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-black uppercase tracking-wider transition ${
-                              alreadyInCart
-                                ? "bg-emerald-100 text-emerald-800 cursor-default"
-                                : "bg-[#143c2d] text-white hover:bg-[#0e2c21]"
-                            }`}
+                            style={{
+                              flexShrink: 0,
+                              borderRadius: "8px",
+                              padding: "5px 10px",
+                              fontSize: "11px",
+                              fontWeight: 800,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.05em",
+                              border: "none",
+                              cursor: alreadyInCart ? "default" : "pointer",
+                              backgroundColor: alreadyInCart ? "#E8F5E9" : "#143c2d",
+                              color: alreadyInCart ? "#2E7D32" : "#FFFFFF",
+                            }}
                           >
-                            {alreadyInCart ? " Added" : "+ Add"}
+                            {alreadyInCart ? "Added" : "+ Add"}
                           </button>
                         </div>
                       );
@@ -287,33 +467,60 @@ export default function CartDrawer() {
 
             {/* Footer Summary & Checkout */}
             {cartItems.length > 0 && (
-              <div className="border-t border-[#DFD6C2] bg-white p-5 shadow-lg space-y-3.5">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs text-slate-600 font-medium">
+              <div
+                style={{
+                  borderTop: "1px solid #DFD6C2",
+                  backgroundColor: "#FFFFFF",
+                  padding: "18px 20px",
+                  boxShadow: "0 -4px 16px rgba(0,0,0,0.04)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                }}
+              >
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px", color: "#4B5563" }}>
                     <span>Produce Subtotal</span>
-                    <span className="font-bold text-slate-900">₦{cartSubtotal.toLocaleString()}</span>
+                    <span style={{ fontWeight: 700, color: "#111827" }}>₦{cartSubtotal.toLocaleString()}</span>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-slate-600 font-medium">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px", color: "#4B5563" }}>
                     <span>Doorstep Delivery</span>
-                    <span className="font-bold text-slate-700">Calculated at checkout</span>
+                    <span style={{ fontWeight: 600, color: "#4B5563" }}>Calculated at checkout</span>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-sm">
-                    <span className="font-black text-[#143c2d]">Estimated Total</span>
-                    <span className="text-base font-black text-[#143c2d]">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "8px", borderTop: "1px solid #F3F4F6", fontSize: "15px" }}>
+                    <span style={{ fontWeight: 800, color: "#143c2d" }}>Estimated Total</span>
+                    <span style={{ fontSize: "17px", fontWeight: 900, color: "#143c2d" }}>
                       ₦{cartSubtotal.toLocaleString()}
                     </span>
                   </div>
                 </div>
 
                 {/* Checkout CTA */}
-                <div className="flex flex-col gap-2">
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   <button
                     type="button"
                     onClick={() => {
                       closeCartDrawer();
                       navigate("/checkout");
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#143c2d] to-[#1c5540] py-3.5 text-xs font-black uppercase tracking-widest text-white shadow-lg transition-all hover:scale-[1.01] hover:brightness-110 active:scale-[0.99]"
+                    style={{
+                      display: "flex",
+                      width: "100%",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                      borderRadius: "12px",
+                      background: "linear-gradient(to right, #143c2d, #1c5540)",
+                      padding: "14px 20px",
+                      fontSize: "13px",
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color: "#FFFFFF",
+                      border: "none",
+                      cursor: "pointer",
+                      boxShadow: "0 4px 14px rgba(20,60,45,0.25)",
+                    }}
                   >
                     <span>Proceed to Secure Checkout</span>
                     <span>→</span>
@@ -325,14 +532,24 @@ export default function CartDrawer() {
                       closeCartDrawer();
                       navigate("/cart");
                     }}
-                    className="w-full text-center text-xs font-bold text-slate-600 hover:text-[#143c2d] transition-colors py-1"
+                    style={{
+                      width: "100%",
+                      textAlign: "center",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      color: "#4B5563",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "4px 0",
+                    }}
                   >
                     View Full Basket Page
                   </button>
                 </div>
 
                 {/* Security Trust Badges */}
-                <div className="flex items-center justify-center gap-4 text-[10px] text-slate-500 font-semibold pt-1">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", fontSize: "11px", color: "#6B7280", fontWeight: 600 }}>
                   <span>100% Secure Checkout</span>
                   <span>•</span>
                   <span>100% Stone-Free Guarantee</span>
