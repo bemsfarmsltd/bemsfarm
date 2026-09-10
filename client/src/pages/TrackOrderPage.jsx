@@ -5,6 +5,101 @@ import PageWrapper from "../components/layout/PageWrapper";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 
+const DELIVERY_VIDEOS = [
+  {
+    id: 1,
+    badge: "Express Doorstep Dispatch",
+    badgeColor: "#10B981",
+    title: "Rapid Market Logistics",
+    subtitle: "Speedy fulfillment direct from our Abia State central hub to your doorstep.",
+    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1784552209/Create_an_exiting_carousel_vid_xh7212.mp4",
+  },
+  {
+    id: 2,
+    badge: "Certified Sorting & Inspection",
+    badgeColor: "#06B6D4",
+    title: "Hygienic Sealed Packaging",
+    subtitle: "Stone-free sorting, winnowing, and leak-proof container sealing before departure.",
+    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166480/A_slow_looping_cinematic_shot_i0swkm.mp4",
+  },
+  {
+    id: 3,
+    badge: "Direct Farm Harvest",
+    badgeColor: "#F59E0B",
+    title: "Fresh Nigerian Farm Produce",
+    subtitle: "Direct-from-farm harvests delivered across all 36 States + FCT Abuja.",
+    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166618/A_vibrant_top_down_flat_lay_vi_xuitwq.mp4",
+  },
+  {
+    id: 4,
+    badge: "Authentic Sun-Drenched Fields",
+    badgeColor: "#8B5CF6",
+    title: "From Farm to Kitchen",
+    subtitle: "Farm-fresh food shopping delivered with care and quality guarantees.",
+    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166058/A_warm_sun_drenched_Nigerian_f7oi4i.mp4",
+  },
+];
+
+function DeliveryVideoSlider() {
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % DELIVERY_VIDEOS.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const activeSlide = DELIVERY_VIDEOS[current];
+
+  return (
+    <div className="relative w-full aspect-video sm:aspect-[16/10] md:aspect-[4/3] lg:aspect-[16/10] rounded-2xl sm:rounded-3xl overflow-hidden border border-white/20 shadow-2xl bg-black/60 backdrop-blur-md select-none">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeSlide.id}
+          initial={{ opacity: 0, scale: 1.04 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.6, ease: "easeInOut" }}
+          className="absolute inset-0 w-full h-full"
+        >
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            key={activeSlide.src}
+            className="w-full h-full object-cover"
+            src={activeSlide.src}
+          />
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Gradient Shade */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30 pointer-events-none" />
+
+      {/* Video Badge Pill */}
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/65 backdrop-blur-md px-3 py-1 border border-white/20 text-[10px] sm:text-xs font-bold text-white shadow-lg pointer-events-none">
+        <span
+          className="h-1.5 w-1.5 rounded-full animate-ping"
+          style={{ backgroundColor: activeSlide.badgeColor }}
+        />
+        <span>{activeSlide.badge}</span>
+      </div>
+
+      {/* Bottom Caption */}
+      <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 right-3 sm:right-4 z-10 text-white pointer-events-none">
+        <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-amber-300 drop-shadow-sm">
+          {activeSlide.title}
+        </p>
+        <p className="text-[10px] sm:text-[11px] text-white/90 line-clamp-1 drop-shadow-xs font-medium">
+          {activeSlide.subtitle}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 const STEPS = [
   { key: "confirmed", stepNumber: "01", label: "Confirmed", desc: "Order queued & verified" },
   { key: "processing", stepNumber: "02", label: "Packaging", desc: "Inspected & sealed" },
@@ -44,6 +139,27 @@ const STATUS_COPY = {
   delivered: ["Delivered Successfully", "Your order was safely delivered to your doorstep."],
   cancelled: ["Order Cancelled", "This order was cancelled. Please contact support if you need assistance."],
 };
+
+const COVERAGE_HUBS = [
+  {
+    name: "Abia State (HQ & Central Hub)",
+    tag: "Same-Day / Next-Day",
+    areas: "Umuahia, Aba, Ohafia, Arochukwu, Osisioma, Isiala Ngwa & all surrounding towns",
+    timing: "Direct doorstep courier dispatch from our Abia State facilities",
+  },
+  {
+    name: "Regional & South-East / South-South",
+    tag: "1 – 2 Business Days",
+    areas: "Port Harcourt, Owerri, Enugu, Uyo, Calabar, Asaba, Onitsha, Warri, Benin City",
+    timing: "Fast regional transit directly to your door",
+  },
+  {
+    name: "Nationwide Across Nigeria (All 36 States + FCT)",
+    tag: "2 – 3 Business Days",
+    areas: "Lagos, Abuja (FCT), Ibadan, Kano, Kaduna, Jos, and all locations nationwide",
+    timing: "Insured nationwide freight and interstate logistics",
+  },
+];
 
 const FAQS = [
   {
@@ -114,7 +230,7 @@ export default function TrackOrderPage() {
       driver_phone: "+234 803 456 7890",
       driver_lat: 5.5249,
       driver_lng: 7.4943,
-      eta_minutes: 25,
+      eta_minutes: 20,
       destination_area: "Umuahia Central, Abia State",
       items_count: 3,
       items_summary: "Stone-Free Rice (25kg), Pure Palm Oil (5L), Brown Beans (10kg)",
@@ -170,13 +286,13 @@ export default function TrackOrderPage() {
   return (
     <PageWrapper>
       <div className="bg-[#FAF8F5] min-h-screen text-slate-900">
-        {/* ── 1. SLEEK TRACKER HERO ── */}
-        <section className="relative overflow-hidden bg-[#0F3824] text-white pt-10 pb-16 px-4 sm:px-6 lg:px-12">
+        {/* ── 1. CINEMATIC VIDEO & TRACKING BANNER ── */}
+        <section className="relative overflow-hidden bg-gradient-to-b from-[#0A2E1C] via-[#0F3824] to-[#14422B] text-white pt-10 pb-16 px-4 sm:px-6 lg:px-12 shadow-xl">
           {/* Subtle Ambient Background */}
           <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#F59E0B_1px,transparent_1px)] [background-size:20px_20px]" />
 
-          <div className="relative z-10 mx-auto max-w-4xl">
-            {/* Back to Home navigation */}
+          <div className="relative z-10 mx-auto max-w-6xl">
+            {/* Top Navigation Bar Link */}
             <div className="flex items-center justify-between gap-4 mb-6">
               <Link
                 to={homePath}
@@ -185,87 +301,98 @@ export default function TrackOrderPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                 </svg>
-                <span>Back to {user ? "Home" : "Storefront"}</span>
+                <span>Back to {user ? "Home" : "Produce Market"}</span>
               </Link>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-emerald-200 border border-white/15">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-emerald-200 border border-white/15 backdrop-blur-xs">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Abia HQ &bull; Nationwide Delivery</span>
+                <span>Abia State HQ &bull; Delivering Everywhere in Nigeria</span>
               </div>
             </div>
 
-            {/* Header Content */}
-            <div className="text-center max-w-2xl mx-auto">
-              <h1 className="font-display text-3xl sm:text-4xl font-black text-white leading-tight">
-                Track Your Delivery
-              </h1>
-              <p className="mt-2 text-xs sm:text-sm text-emerald-100/80 leading-relaxed">
-                Enter your order reference number to follow your farm produce from our Abia State dispatch center directly to your doorstep.
-              </p>
+            {/* 2-Column Grid: Text & Tracking Form + Video Slider Showcase */}
+            <div className="grid md:grid-cols-12 gap-8 items-center">
+              {/* Left Column: Tracking Content */}
+              <div className="md:col-span-7">
+                <span className="inline-block rounded-md bg-amber-400/20 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-300 border border-amber-400/30">
+                  Live Dispatch Logistics
+                </span>
+                <h1 className="mt-3 font-display text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-tight">
+                  Track Your Delivery
+                </h1>
+                <p className="mt-2.5 text-xs sm:text-sm md:text-base text-emerald-100/90 max-w-lg leading-relaxed">
+                  Direct dispatch from our Abia State central hub to all 36 States + FCT. Enter your reference to track live progress.
+                </p>
 
-              {/* Minimalist Search Box */}
-              <form
-                onSubmit={handleSubmit}
-                className="mt-6 rounded-2xl bg-white/10 p-2 border border-white/20 backdrop-blur-md shadow-2xl max-w-xl mx-auto"
-              >
-                <div className="flex flex-col sm:flex-row items-stretch gap-2">
-                  <div className="relative flex-1 flex items-center bg-white rounded-xl px-3.5 py-3 shadow-inner">
-                    <svg className="w-5 h-5 text-emerald-800 shrink-0 mr-2.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                    </svg>
-                    <input
-                      id="delivery-code"
-                      type="text"
-                      value={code}
-                      onChange={(e) => setCode(e.target.value.toUpperCase())}
-                      placeholder="Enter order reference (e.g. BF-ABC12345)"
-                      autoComplete="off"
-                      spellCheck="false"
-                      className="w-full bg-transparent font-mono text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none uppercase"
-                    />
-                    {code && (
-                      <button
-                        type="button"
-                        onClick={() => setCode("")}
-                        className="text-slate-400 hover:text-slate-600 font-bold px-1.5 cursor-pointer"
-                      >
-                        ✕
-                      </button>
-                    )}
+                {/* Minimalist Search Box */}
+                <form
+                  onSubmit={handleSubmit}
+                  className="mt-6 rounded-2xl bg-white/10 p-2 border border-white/20 backdrop-blur-md shadow-2xl max-w-xl"
+                >
+                  <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                    <div className="relative flex-1 flex items-center bg-white rounded-xl px-3.5 py-3 shadow-inner">
+                      <svg className="w-5 h-5 text-emerald-800 shrink-0 mr-2.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                      </svg>
+                      <input
+                        id="delivery-code"
+                        type="text"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.toUpperCase())}
+                        placeholder="Order reference (e.g. BF-ABC12345)"
+                        autoComplete="off"
+                        spellCheck="false"
+                        className="w-full bg-transparent font-mono text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none uppercase"
+                      />
+                      {code && (
+                        <button
+                          type="button"
+                          onClick={() => setCode("")}
+                          className="text-slate-400 hover:text-slate-600 font-bold px-1.5 cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0A2E1C] px-6 py-3 text-sm font-black transition-all shadow-md shrink-0 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                    >
+                      {loading ? "Locating..." : "Track Order"}
+                    </button>
                   </div>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0F3824] px-6 py-3 text-sm font-black transition-all shadow-md shrink-0 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                </form>
+
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    role="alert"
+                    className="mt-3.5 rounded-xl border border-rose-300/40 bg-rose-950/70 p-3 text-xs sm:text-sm font-medium text-rose-200 text-left max-w-xl flex items-center gap-2.5"
                   >
-                    {loading ? "Locating..." : "Track Order"}
+                    <svg className="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                    </svg>
+                    <span>{error}</span>
+                  </motion.div>
+                )}
+
+                {/* Sample demo shortcut & trust highlights */}
+                <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-emerald-200">
+                  <span className="text-emerald-100/70">Sample tracking:</span>
+                  <button
+                    type="button"
+                    onClick={showPreview}
+                    className="inline-flex items-center gap-1 rounded-lg bg-white/10 hover:bg-white/20 px-2.5 py-1 font-mono font-bold text-amber-300 border border-white/15 transition cursor-pointer"
+                  >
+                    <span>BF-DEMO-2026 (Preview)</span>
                   </button>
                 </div>
-              </form>
+              </div>
 
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  role="alert"
-                  className="mt-3.5 rounded-xl border border-rose-300/40 bg-rose-950/70 p-3 text-xs sm:text-sm font-medium text-rose-200 text-left max-w-xl mx-auto flex items-center gap-2.5"
-                >
-                  <svg className="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                  </svg>
-                  <span>{error}</span>
-                </motion.div>
-              )}
-
-              {/* Sample demo shortcut */}
-              <div className="mt-4 flex items-center justify-center gap-2 text-xs text-emerald-200">
-                <span className="text-emerald-100/70">Want to test live tracking view?</span>
-                <button
-                  type="button"
-                  onClick={showPreview}
-                  className="inline-flex items-center gap-1 rounded-lg bg-white/10 hover:bg-white/20 px-2.5 py-1 font-mono font-bold text-amber-300 border border-white/15 transition cursor-pointer"
-                >
-                  <span>Preview Demo (BF-DEMO-2026)</span>
-                </button>
+              {/* Right Column: High Quality Farm Delivery Video Carousel */}
+              <div className="md:col-span-5 w-full flex justify-center md:justify-end">
+                <DeliveryVideoSlider />
               </div>
             </div>
           </div>
@@ -280,7 +407,7 @@ export default function TrackOrderPage() {
               exit={{ opacity: 0, y: -16 }}
               className="px-4 sm:px-6 lg:px-12 -mt-8 relative z-20"
             >
-              <div className="mx-auto max-w-4xl rounded-3xl bg-white border border-slate-200 shadow-2xl overflow-hidden">
+              <div className="mx-auto max-w-6xl rounded-3xl bg-white border border-slate-200 shadow-2xl overflow-hidden">
                 {/* Result Header */}
                 <div className={`px-6 py-5 sm:px-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
                   isCancelled ? "bg-rose-900 text-white" : "bg-[#0A2E1C] text-white"
@@ -402,7 +529,7 @@ export default function TrackOrderPage() {
                           href="https://wa.me/2348000000000"
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 text-[#0F3824] px-3.5 py-2 text-xs font-black shadow-xs hover:bg-amber-300 transition"
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 text-[#0A2E1C] px-3.5 py-2 text-xs font-black shadow-xs hover:bg-amber-300 transition"
                         >
                           <span>WhatsApp Dispatch</span>
                         </a>
@@ -509,59 +636,27 @@ export default function TrackOrderPage() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-5">
-              {/* Hub 1: Abia */}
-              <div className="rounded-2xl bg-[#FAF8F5] p-5 border border-slate-200/90 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-display text-sm font-bold text-slate-900">Abia State Central Hub</h3>
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                      Same-Day / Next-Day
-                    </span>
+              {COVERAGE_HUBS.map((hub) => (
+                <div
+                  key={hub.name}
+                  className="rounded-2xl bg-[#FAF8F5] p-5 border border-slate-200/90 flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-display text-sm font-bold text-slate-900">{hub.name}</h3>
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                        {hub.tag}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {hub.areas}
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Umuahia, Aba, Ohafia, Arochukwu, Osisioma & all surrounding towns.
-                  </p>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500">
-                  <span className="font-semibold text-slate-700">Direct courier fleet:</span> Daily dispatch
-                </div>
-              </div>
-
-              {/* Hub 2: South-East & South-South */}
-              <div className="rounded-2xl bg-[#FAF8F5] p-5 border border-slate-200/90 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-display text-sm font-bold text-slate-900">South-East & South-South</h3>
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                      1 – 2 Business Days
-                    </span>
+                  <div className="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500">
+                    <span className="font-semibold text-slate-700">Dispatch:</span> {hub.timing}
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Port Harcourt, Owerri, Enugu, Uyo, Calabar, Asaba, Onitsha, Warri & Benin City.
-                  </p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500">
-                  <span className="font-semibold text-slate-700">Transit:</span> Fast regional connections
-                </div>
-              </div>
-
-              {/* Hub 3: Nationwide */}
-              <div className="rounded-2xl bg-[#FAF8F5] p-5 border border-slate-200/90 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-display text-sm font-bold text-slate-900">Nationwide Across Nigeria</h3>
-                    <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-bold text-cyan-800">
-                      2 – 3 Business Days
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Lagos, Abuja (FCT), Ibadan, Kano, Kaduna, Jos, and all 36 States nationwide.
-                  </p>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500">
-                  <span className="font-semibold text-slate-700">Freight:</span> Insured inter-state logistics
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </section>
