@@ -43,7 +43,7 @@ function generateRefreshToken(userId) {
 // ─────────────────────────────────────────────
 router.post("/register", validate(authSchemas.register), async (req, res, next) => {
   try {
-    const { name, email, password, phone, preferences } = req.body;
+    const { name, email, password, phone, address, city, state, preferences } = req.body;
 
     const existing = await pool.query(
       "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
@@ -63,6 +63,19 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
     );
 
     const user = result.rows[0];
+
+    // If permanent delivery address is provided, persist to addresses table
+    if (address && address.trim()) {
+      try {
+        await pool.query(
+          `INSERT INTO addresses (user_id, label, receiver_name, receiver_phone, street_address, city, state, is_default, created_at)
+           VALUES ($1, 'Home', $2, $3, $4, $5, $6, true, NOW())`,
+          [user.id, user.name, user.phone, address.trim(), (city || "Lagos").trim(), (state || "Lagos").trim()],
+        );
+      } catch (addrErr) {
+        console.warn("Failed to seed initial address for user:", addrErr.message);
+      }
+    }
 
     // Seed AI context record for new user (fire-and-forget)
     upsertContext(user.id, {

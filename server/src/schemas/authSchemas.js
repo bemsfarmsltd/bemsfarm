@@ -5,6 +5,9 @@ const register = z.object({
   email: z.string({ error: "Valid email required" }).trim().email("Valid email required"),
   password: z.string({ error: "Password must be at least 6 characters" }).min(6, "Password must be at least 6 characters"),
   phone: z.string({ error: "Phone number is required" }).trim().min(1, "Phone number is required"),
+  address: z.string().trim().max(1000).optional(),
+  city: z.string().trim().max(100).optional(),
+  state: z.string().trim().max(100).optional(),
   preferences: z.array(z.string().trim().max(50)).max(20).optional(),
 });
 

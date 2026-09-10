@@ -37,12 +37,23 @@ const AUTH_CSS = `
 }
 `;
 
+const STATES = [
+  "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno",
+  "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT - Abuja", "Gombe",
+  "Imo", "Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi", "Kogi", "Kwara", "Lagos",
+  "Nasarawa", "Niger", "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers", "Sokoto",
+  "Taraba", "Yobe", "Zamfara",
+];
+
 export default function RegisterPage() {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
+    address: "",
+    city: "",
+    state: "Lagos",
     password: "",
     confirm: "",
   });
@@ -87,9 +98,12 @@ export default function RegisterPage() {
     const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`;
     
     const cleanPhone = form.phone.replace(/\D/g, "");
-    if (cleanPhone.length !== 10) return setError("Phone number must be exactly 10 digits");
+    if (cleanPhone.length !== 10) return setError("Phone number must be exactly 10 digits (e.g. 8012345678)");
     
     const finalPhone = `+234${cleanPhone}`;
+
+    if (!form.address.trim()) return setError("Please enter your delivery street address");
+    if (!form.city.trim()) return setError("Please enter your city or area");
 
     if (passStrength < 4)
       return setError("Password is not strong enough. See requirements below.");
@@ -99,7 +113,11 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const email = form.email.trim().toLowerCase();
-      await register(fullName, email, form.password, finalPhone);
+      await register(fullName, email, form.password, finalPhone, undefined, {
+        address: form.address.trim(),
+        city: form.city.trim(),
+        state: form.state.trim(),
+      });
       sessionStorage.setItem("bemsfarms_pending_email", email);
       sessionStorage.setItem("bemsfarms_post_auth_destination", destination);
       navigate("/verify-email", { state: { email, from: destination } });
@@ -295,6 +313,53 @@ export default function RegisterPage() {
                   />
                 </div>
                 <p className="text-[10px] text-gray-400 mt-1 ml-1">Enter exactly 10 digits (e.g. 8012345678)</p>
+              </div>
+
+              {/* Delivery Address Field */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                  Delivery Street Address
+                </label>
+                <input
+                  type="text"
+                  value={form.address}
+                  onChange={(e) => handleInputChange("address", e.target.value)}
+                  placeholder="e.g. Plot 14 Admiralty Way, Lekki Phase 1"
+                  className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
+                  required
+                />
+              </div>
+
+              {/* City and State Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                    City / LGA
+                  </label>
+                  <input
+                    type="text"
+                    value={form.city}
+                    onChange={(e) => handleInputChange("city", e.target.value)}
+                    placeholder="e.g. Lekki / Ikeja"
+                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                    State
+                  </label>
+                  <select
+                    value={form.state}
+                    onChange={(e) => handleInputChange("state", e.target.value)}
+                    className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none bg-gray-50/50 cursor-pointer"
+                    required
+                  >
+                    {STATES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Password Fields Row */}
