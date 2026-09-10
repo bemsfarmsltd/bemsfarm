@@ -189,6 +189,10 @@ export default function ProductCard({ product, index = 0 }) {
               height: "100%",
               objectFit: "cover",
             }}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = "/bems_store_aisles.jpg";
+            }}
           />
 
           <motion.div

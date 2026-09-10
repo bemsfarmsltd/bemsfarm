@@ -7,8 +7,8 @@ import PageWrapper from "../components/layout/PageWrapper";
 import ProductCard, {
   getProductEmoji,
   getProductBg,
-  getProductImage,
 } from "../components/ui/ProductCard";
+import { getProductImage } from "../utils/productImages";
 import api from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
 import { NAIRA_PER_UNIT } from "../utils/currency";
@@ -249,7 +249,7 @@ export default function ProductDetail() {
                 }}
               >
                 <img
-                  src={product.image_url || getProductImage(product.name)}
+                  src={getProductImage(product)}
                   alt={product.name}
                   style={{
                     width: "100%",
@@ -258,7 +258,8 @@ export default function ProductDetail() {
                     borderRadius: "24px",
                   }}
                   onError={(e) => {
-                    e.target.style.display = "none";
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = "/bems_store_aisles.jpg";
                   }}
                 />
               </motion.div>
