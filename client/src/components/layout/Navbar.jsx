@@ -32,7 +32,7 @@ const NAVBAR_CSS = `
 
 @media (min-width: 768px) {
   .bf-navbar-links { display: flex !important; }
-  .bf-navbar-burger { display: none; }
+  .bf-navbar-burger { display: none !important; }
   .bf-navbar-user-name { display: block; }
   .bf-navbar-logo { height: 40px; }
   .bf-navbar-inner { padding: 0 32px; height: 68px; }
@@ -910,14 +910,13 @@ export default function Navbar() {
 
               {/* Hamburger — mobile only */}
               <button
-                className="bf-navbar-burger"
+                className="bf-navbar-burger md:!hidden"
                 onClick={() => setMobileNavOpen((o) => !o)}
                 style={{
                   background: "none",
                   border: "none",
                   cursor: "pointer",
                   padding: "7px",
-                  display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   color: "#1B4332",
