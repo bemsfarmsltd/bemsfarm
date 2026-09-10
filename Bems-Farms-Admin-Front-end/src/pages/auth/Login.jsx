@@ -11,8 +11,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [bypassLoading, setBypassLoading] = useState(false);
-  const { login, bypassLogin, user, loading: authLoading } = useAuth();
+  const { login, user, loading: authLoading } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -47,22 +46,6 @@ export default function Login() {
       toast.error(msg);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleBypassLogin = async () => {
-    setError("");
-    setBypassLoading(true);
-    try {
-      await bypassLogin();
-      toast.success("Superadmin authentication successful!");
-    } catch (err) {
-      const serverMessage = err.response?.data?.message || err.message;
-      const msg = serverMessage || "Failed to bypass admin login. Please check server.";
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setBypassLoading(false);
     }
   };
 
@@ -258,7 +241,7 @@ export default function Login() {
 
               <button
                 type="submit"
-                disabled={loading || bypassLoading}
+                disabled={loading}
                 className="w-full rounded-xl bg-[#143c2d] hover:bg-[#1a4e3b] text-white py-3.5 text-sm font-black uppercase tracking-wider transition-all shadow-md active:scale-98 disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
                 {loading ? (
@@ -275,40 +258,6 @@ export default function Login() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                     </svg>
-                  </>
-                )}
-              </button>
-
-              {/* ── ONE-CLICK ADMIN BYPASS BUTTON ── */}
-              <div className="relative my-3 flex items-center justify-center">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
-                </div>
-                <div className="relative bg-[#FAF9F5] px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Instant Developer Access
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleBypassLogin}
-                disabled={bypassLoading || loading}
-                className="w-full rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:from-amber-300 hover:to-amber-300 text-[#071F14] py-3.5 text-sm font-black uppercase tracking-wider transition-all shadow-md hover:shadow-lg active:scale-98 disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer border border-amber-500/30"
-              >
-                {bypassLoading ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin text-[#071F14]" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                    </svg>
-                    <span>Authenticating Superadmin...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 text-[#071F14]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                    </svg>
-                    <span>⚡ Bypass Login (Superadmin)</span>
                   </>
                 )}
               </button>
