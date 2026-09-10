@@ -663,6 +663,15 @@ function FullScreenCatalogueModal({
 const DISPATCH_SLIDES_LANDING = [
   {
     id: 1,
+    type: "image",
+    badge: "Central Hub & Storefront",
+    badgeColor: "#10B981",
+    title: "Bems Farms Hub & Dispatch Center",
+    subtitle: "Our physical retail store and central dispatch facility in Abia State, equipped with dedicated delivery fleet staging.",
+    src: "/bems_farms_hub.jpg",
+  },
+  {
+    id: 2,
     type: "video",
     badge: "Live Dispatch Fleet",
     badgeColor: "#10B981",
@@ -671,7 +680,7 @@ const DISPATCH_SLIDES_LANDING = [
     src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1784552209/Create_an_exiting_carousel_vid_xh7212.mp4",
   },
   {
-    id: 2,
+    id: 3,
     type: "image",
     badge: "Dedicated Courier Fleet",
     badgeColor: "#F59E0B",
@@ -680,7 +689,7 @@ const DISPATCH_SLIDES_LANDING = [
     src: "/bems_dispatch_rider.jpg",
   },
   {
-    id: 3,
+    id: 4,
     type: "image",
     badge: "Inter-State Logistics",
     badgeColor: "#06B6D4",
@@ -689,7 +698,7 @@ const DISPATCH_SLIDES_LANDING = [
     src: "/bems_dispatch_van.jpg",
   },
   {
-    id: 4,
+    id: 5,
     type: "image",
     badge: "Delivered to Doorstep",
     badgeColor: "#8B5CF6",
