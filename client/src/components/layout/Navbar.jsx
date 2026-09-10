@@ -483,7 +483,7 @@ export default function Navbar() {
 
   const ADMIN_PANEL_URL = import.meta.env.DEV
     ? "http://localhost:5174"
-    : "https://bems-admin.vercel.app";
+    : "/admin/";
 
   const isAdmin = ["superadmin", "admin", "manager", "staff"].includes(user?.role);
   // Fraud Monitor / Forecasting are behind a stricter role gate (see
