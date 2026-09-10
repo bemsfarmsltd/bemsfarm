@@ -1,6 +1,6 @@
 {
   "framework": null,
-  "installCommand": "npm ci && npm ci --prefix client && npm ci --prefix Bems-Farms-Admin-Front-end",
+  "installCommand": "npm ci && (cd client && npm ci) && (cd Bems-Farms-Admin-Front-end && npm ci)",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
