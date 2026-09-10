@@ -12,7 +12,7 @@ const createOrder = z.object({
     )
     .min(1, "No items in order"),
   payment_method: z.enum(["monnify", "cod"]).optional(),
-  payment_ref: z.string().optional(),
+  payment_ref: z.string().nullish(),
   address: z.string().optional(),
   source: z.string().optional(),
   coupon_code: z.string().optional(),

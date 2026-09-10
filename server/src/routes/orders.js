@@ -31,10 +31,9 @@ const VALID_PAYMENT_METHODS = ["monnify", "cod"];
 // value is also what a Monnify payment is checked against, so any mismatch
 // here means a customer paying the amount they were shown gets rejected
 // with "amount does not match order total".
-const FREE_DELIVERY_THRESHOLD = 15000;
 const STANDARD_DELIVERY_FEE = 1500;
 function getDeliveryFee(subtotal) {
-  return subtotal > FREE_DELIVERY_THRESHOLD ? 0 : STANDARD_DELIVERY_FEE;
+  return STANDARD_DELIVERY_FEE;
 }
 
 // Create the server-owned payment snapshot before the customer opens
