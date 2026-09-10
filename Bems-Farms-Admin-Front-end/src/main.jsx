@@ -10,9 +10,11 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import './index.css'
 import App from './App.jsx'
 
+const adminBasename = window.location.pathname.startsWith('/admin') ? '/admin' : '/';
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter basename="/admin">
+    <BrowserRouter basename={adminBasename}>
       <ThemeProvider>
         <App />
         <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
