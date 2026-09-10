@@ -20,10 +20,25 @@ const TrackOrderPage = lazy(() => import("./pages/TrackOrderPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
-const AdminPage = lazy(() => import("./pages/AdminPage"));
-const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
 const ReturnsPage = lazy(() => import("./pages/ReturnsPage"));
 const ChefBemsPage = lazy(() => import("./pages/ChefBemsPage"));
+
+const ADMIN_PORTAL_URL = "https://bems-admin.vercel.app/login";
+
+function AdminRedirect() {
+  useEffect(() => {
+    window.location.href = ADMIN_PORTAL_URL;
+  }, []);
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#071F14] text-white font-sans">
+      <div className="text-center p-8">
+        <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-amber-400 border-t-transparent" />
+        <h2 className="text-lg font-bold mb-1">BemsFarms Enterprise Admin Portal</h2>
+        <p className="text-xs text-emerald-200/80">Opening administrative dashboard...</p>
+      </div>
+    </div>
+  );
+}
 const DynamicPricingPage = lazy(() => import("./pages/DynamicPricingPage"));
 const FraudDetectionPage = lazy(() => import("./pages/FraudDetectionPage"));
 const DemandForecastingPage = lazy(() => import("./pages/DemandForecastingPage"));
@@ -76,8 +91,8 @@ function App() {
         {/* Public */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="/admin-login" element={<AdminLoginPage />} />
+        <Route path="/admin/login" element={<AdminRedirect />} />
+        <Route path="/admin-login" element={<AdminRedirect />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/onboarding" element={<P><OnboardingPage /></P>} />
@@ -159,14 +174,8 @@ function App() {
             </P>
           }
         />
-        <Route
-          path="/admin"
-          element={
-            <Staff>
-              <AdminPage />
-            </Staff>
-          }
-        />
+        <Route path="/admin" element={<AdminRedirect />} />
+        <Route path="/admin/*" element={<AdminRedirect />} />
         <Route
           path="/chef-chat"
           element={<ChefBemsPage />}
