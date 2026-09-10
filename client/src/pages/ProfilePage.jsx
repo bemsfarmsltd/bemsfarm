@@ -1,421 +1,167 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import PageWrapper from "../components/layout/PageWrapper";
 import api from "../services/api";
-import { NAIRA_PER_UNIT } from "../utils/currency";
+import { getNairaPrice } from "../utils/currency";
+import { getProductImage } from "../utils/productImages";
 
-const DEFAULT_AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80";
-
-const PROFILE_CSS = `
-.p-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 32px 24px 80px;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  color: #111827;
-}
-.p-title-row {
-  margin-bottom: 28px;
-}
-.p-title-row h1 {
-  font-family: var(--heading-font), sans-serif;
-  font-size: 28px;
-  font-weight: 800;
-  color: #1B4332;
-  margin: 0 0 6px;
-}
-.p-breadcrumb {
-  font-size: 13px;
-  color: #9CA3AF;
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-.p-breadcrumb span.active {
-  color: #1B4332;
-  font-weight: 700;
-}
-
-/* Two panel layout */
-.p-layout {
-  display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 32px;
-  align-items: flex-start;
-}
-
-/* Inner Sidebar card */
-.p-sidebar-card {
-  background-color: white;
-  border: 1px solid #E5E7EB;
-  border-radius: 20px;
-  padding: 20px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  box-shadow: 0 4px 18px rgba(0,0,0,0.02);
-}
-.p-tab-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #4B5563;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s;
-  font-family: var(--body-font), sans-serif;
-}
-.p-tab-btn:hover {
-  background-color: #F9FAFB;
-  color: #1B4332;
-}
-.p-tab-btn.active {
-  background-color: rgba(46, 125, 50, 0.08);
-  color: #2E7D32;
-}
-
-/* Main Content Panel */
-.p-content-card {
-  background-color: white;
-  border: 1px solid #E5E7EB;
-  border-radius: 24px;
-  padding: 36px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
-}
-
-/* Form Styles */
-.p-form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-top: 24px;
-}
-.p-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.p-field.full-width {
-  grid-column: 1 / -1;
-}
-.p-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: #374151;
-}
-.p-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #E5E7EB;
-  border-radius: 12px;
-  font-size: 14px;
-  outline: none;
-  background-color: #ffffff;
-  color: #111827;
-  font-family: var(--body-font), sans-serif;
-  box-sizing: border-box;
-  transition: border-color 0.2s;
-}
-.p-input:focus {
-  border-color: #2E7D32;
-  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
-}
-.p-input::placeholder {
-  color: #9CA3AF;
-}
-
-/* Avatar Upload section */
-.p-avatar-section {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 28px;
-}
-.p-avatar-wrap {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  position: relative;
-  border: 3px solid #ffffff;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.1);
-  background-color: #F3F4F6;
-  flex-shrink: 0;
-}
-.p-avatar-wrap img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-}
-.p-avatar-camera {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 32px;
-  height: 32px;
-  background-color: #2E7D32;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  border: 2px solid white;
-  font-size: 14px;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-.p-upload-btn {
-  background-color: #2E7D32;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 20px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: var(--body-font), sans-serif;
-  transition: background-color 0.2s;
-}
-.p-upload-btn:hover {
-  background-color: #1B4332;
-}
-.p-delete-btn {
-  background-color: #F3F4F6;
-  color: #4B5563;
-  border: 1px solid #E5E7EB;
-  border-radius: 10px;
-  padding: 10px 20px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: var(--body-font), sans-serif;
-  transition: all 0.2s;
-}
-.p-delete-btn:hover {
-  background-color: #E5E7EB;
-}
-
-/* Gender Selection cards */
-.p-gender-wrap {
-  display: flex;
-  gap: 16px;
-}
-.p-gender-card {
-  flex: 1;
-  border: 1px solid #E5E7EB;
-  border-radius: 12px;
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  color: #4B5563;
-  background-color: #ffffff;
-  transition: all 0.2s;
-}
-.p-gender-card.active {
-  border-color: #2E7D32;
-  background-color: rgba(46, 125, 50, 0.04);
-  color: #2E7D32;
-}
-.p-gender-card input {
-  cursor: pointer;
-}
-
-/* Tel Prefix Input */
-.p-tel-wrapper {
-  display: flex;
-  gap: 10px;
-}
-.p-tel-flag {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid #E5E7EB;
-  background-color: #F9FAFB;
-  border-radius: 12px;
-  padding: 0 12px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #374151;
-  pointer-events: none;
-}
-
-/* Form Action Buttons */
-.p-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 32px;
-}
-.p-save-btn {
-  background-color: #F57C00;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  padding: 12px 28px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: var(--body-font), sans-serif;
-  box-shadow: 0 4px 12px rgba(245,124,0,0.2);
-  transition: all 0.2s;
-}
-.p-save-btn:hover {
-  background-color: #E65100;
-  box-shadow: 0 6px 16px rgba(245,124,0,0.3);
-}
-
-/* RESPONSIVE LAYOUT MEDIA QUERIES */
-@media (max-width: 900px) {
-  .p-layout {
-    grid-template-columns: 1fr;
-  }
-  .p-sidebar-card {
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 12px;
-  }
-  .p-tab-btn {
-    white-space: nowrap;
-  }
-}
-@media (max-width: 600px) {
-  .p-content-card {
-    padding: 24px;
-  }
-  .p-form-grid {
-    grid-template-columns: 1fr;
-  }
-  .p-avatar-section {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 14px;
-  }
-}
-`;
+const NIGERIAN_STATES = [
+  "Lagos", "Abuja (FCT)", "Ogun", "Oyo", "Rivers", "Delta", "Edo",
+  "Kaduna", "Kano", "Enugu", "Anambra", "Akwa Ibom", "Ondo", "Osun",
+  "Kwara", "Plateau", "Abia", "Imo", "Benue", "Bayelsa"
+];
 
 export default function ProfilePage() {
-  const navigate = useNavigate();
-  const { user, logout, isLoggedIn, updateUser, refreshToken } = useAuth();
+  const { user, isLoggedIn, updateUser, logout } = useAuth();
   const { addToCart } = useCart();
-  const fileInputRef = useRef(null);
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState("profile");
   const [saved, setSaved] = useState(false);
-  const [adding, setAdding] = useState(false);
+  const fileInputRef = useRef(null);
 
-  // Wishlist — reads the same localStorage["favorites"] map ProductsPage.jsx
-  // writes to, so this tab shows what the customer actually favorited
-  // instead of two hardcoded products.
-  const [favorites, setFavorites] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("favorites") || "{}");
-    } catch {
-      return {};
-    }
-  });
-  const [allProducts, setAllProducts] = useState([]);
-
-  useEffect(() => {
-    api.get("/products").then((r) => setAllProducts(r.data.products || [])).catch(() => {});
-  }, []);
-
-  const wishlistProducts = allProducts.filter((p) => favorites[p.id]);
-
-  // Returns & cancellations — both derive from the customer's own orders,
-  // so a cancelled order shows up under "My Cancellations" without a
-  // second endpoint.
-  const [myOrders, setMyOrders] = useState([]);
-  const [myReturns, setMyReturns] = useState([]);
-
-  useEffect(() => {
-    api.get("/orders").then((r) => setMyOrders(r.data.orders || [])).catch(() => {});
-    api.get("/orders/returns").then((r) => setMyReturns(r.data.returns || [])).catch(() => {});
-  }, []);
-
-  const cancelledOrders = myOrders.filter((o) => o.status === "cancelled");
-
-  const RETURN_STATUS_META = {
-    submitted: { label: "Pending Review", color: "#F57C00", bg: "#FFF3E0" },
-    pending:   { label: "Pending Review", color: "#F57C00", bg: "#FFF3E0" },
-    approved:  { label: "Approved",       color: "#2E7D32", bg: "#E8F5E9" },
-    rejected:  { label: "Rejected",       color: "#DC2626", bg: "#FEE2E2" },
-  };
-
-  const removeFromWishlist = (productId) => {
-    setFavorites((prev) => {
-      const updated = { ...prev, [productId]: false };
-      localStorage.setItem("favorites", JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  // Avatar — sourced from the server (users.avatar_url), not localStorage.
-  const [avatar, setAvatar] = useState(DEFAULT_AVATAR);
-
-  // Profile fields — the server is the source of truth. Previously these
-  // only ever lived in localStorage (a global key, not even tied to the
-  // signed-in account), so a new browser, device, or cleared cache made
-  // "Save Changes" look like it silently reverted. Every field here now
-  // has a matching users table column and round-trips through the API.
+  // Profile fields
   const [fields, setFields] = useState({
-    firstName: "", lastName: "", email: "", phone: "",
-    gender: "Male", idNumber: "", taxId: "", taxCountry: "Nigeria", address: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    preferredState: "Lagos",
+    deliveryNotes: "",
   });
 
-  // Sync from the authenticated user whenever it's (re)loaded — on mount,
-  // and again after a fresh login, so the form always reflects what's
-  // actually saved on the account rather than stale local state.
+  const [avatar, setAvatar] = useState(null);
+  const [avatarError, setAvatarError] = useState(null);
+  const [saveError, setSaveError] = useState(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Orders & Wishlist
+  const [myOrders, setMyOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [wishlistProducts, setWishlistProducts] = useState([]);
+
+  // Address book
+  const [addresses, setAddresses] = useState([]);
+  const [addressForm, setAddressForm] = useState({
+    label: "",
+    receiver_name: "",
+    receiver_phone: "",
+    street_address: "",
+    city: "",
+    state: "Lagos",
+    is_default: false,
+  });
+  const [editingAddressId, setEditingAddressId] = useState(null);
+  const [addingAddress, setAddingAddress] = useState(false);
+  const [addressError, setAddressError] = useState(null);
+  const [savingAddress, setSavingAddress] = useState(false);
+
+  // Password change
+  const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNextPassword, setShowNextPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  // Load addresses
+  const loadAddresses = () => {
+    api.get("/addresses").then((r) => setAddresses(r.data.addresses || [])).catch(() => {});
+  };
+
+  // Load orders
+  const loadOrders = () => {
+    setLoadingOrders(true);
+    api.get("/orders")
+      .then((r) => setMyOrders(r.data.orders || []))
+      .catch(() => {})
+      .finally(() => setLoadingOrders(false));
+  };
+
+  // Sync user state on mount
   useEffect(() => {
     if (!user) return;
-    const [firstName = "", ...rest] = (user.name || "").trim().split(" ");
+    const nameParts = (user.name || "").trim().split(" ");
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ") || "";
+
     setFields({
       firstName,
-      lastName: rest.join(" "),
+      lastName,
       email: user.email || "",
       phone: user.phone || "",
-      gender: user.gender || "Male",
-      idNumber: user.id_number || "",
-      taxId: user.tax_id || "",
-      taxCountry: user.tax_country || "Nigeria",
-      address: user.address || "",
+      preferredState: user.state || "Lagos",
+      deliveryNotes: user.address || "",
     });
-    setAvatar(user.avatar_url || DEFAULT_AVATAR);
+    setAvatar(user.avatar_url || null);
+
+    loadAddresses();
+    loadOrders();
   }, [user]);
+
+  // Load wishlist items
+  useEffect(() => {
+    const rawFavs = localStorage.getItem("favorites");
+    if (!rawFavs) return;
+    try {
+      const favMap = JSON.parse(rawFavs);
+      const favIds = Object.keys(favMap).filter((k) => favMap[k]);
+      if (favIds.length > 0) {
+        api.get("/products", { params: { limit: 100 } })
+          .then((res) => {
+            const all = res.data?.products || [];
+            setWishlistProducts(all.filter((p) => favIds.includes(String(p.id))));
+          })
+          .catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   if (!isLoggedIn) {
     return (
       <PageWrapper>
-        <div style={{ maxWidth: "500px", margin: "80px auto", textAlign: "center", padding: "40px 24px" }}>
-          <div style={{ fontSize: "108", marginBottom: "20px" }}></div>
-          <h2 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "12px", fontFamily: "var(--heading-font)" }}>Please Sign In</h2>
-          <p style={{ color: "#9CA3AF", marginBottom: "24px", fontFamily: "var(--body-font)" }}>You need to be logged in to view your profile settings</p>
+        <div style={{ maxWidth: "460px", margin: "80px auto", textAlign: "center", padding: "40px 24px" }}>
+          <div
+            style={{
+              width: "64px",
+              height: "64px",
+              margin: "0 auto 20px",
+              borderRadius: "20px",
+              backgroundColor: "rgba(20, 60, 45, 0.08)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#143c2d",
+            }}
+          >
+            <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+          </div>
+          <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#143c2d", margin: "0 0 8px", fontFamily: "var(--heading-font)" }}>
+            Sign In to View Your Account
+          </h2>
+          <p style={{ color: "#6B7280", fontSize: "14px", margin: "0 0 24px" }}>
+            Access your order history, delivery addresses, and personal produce preferences.
+          </p>
           <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
             <button
               onClick={() => navigate("/login")}
               style={{
-                backgroundColor: "#2E7D32",
+                backgroundColor: "#143c2d",
                 color: "white",
                 border: "none",
                 borderRadius: "12px",
-                padding: "14px 28px",
+                padding: "12px 24px",
                 fontWeight: 700,
+                fontSize: "14px",
                 cursor: "pointer",
-                fontSize: "15px",
-                fontFamily: "var(--body-font)"
               }}
             >
               Sign In
@@ -424,17 +170,16 @@ export default function ProfilePage() {
               onClick={() => navigate("/register")}
               style={{
                 backgroundColor: "white",
-                color: "#111827",
-                border: "1px solid #E5E7EB",
+                color: "#143c2d",
+                border: "1px solid #143c2d",
                 borderRadius: "12px",
-                padding: "14px 28px",
+                padding: "12px 24px",
                 fontWeight: 700,
+                fontSize: "14px",
                 cursor: "pointer",
-                fontSize: "15px",
-                fontFamily: "var(--body-font)"
               }}
             >
-              Register
+              Create Account
             </button>
           </div>
         </div>
@@ -442,113 +187,75 @@ export default function ProfilePage() {
     );
   }
 
-  const [avatarError, setAvatarError] = useState(null);
+  // Avatar Upload
   const handleAvatarUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setAvatarError(null);
     const reader = new FileReader();
     reader.onloadend = async () => {
-      setAvatar(reader.result); // optimistic — reflect it immediately
+      setAvatar(reader.result);
       try {
         const res = await api.patch("/auth/avatar", { avatar_url: reader.result });
         updateUser(res.data.user);
       } catch (err) {
-        setAvatar(user?.avatar_url || DEFAULT_AVATAR); // roll back on failure
-        setAvatarError(err?.response?.data?.message || "Failed to save photo — try a smaller image");
+        setAvatar(user?.avatar_url || null);
+        setAvatarError(err?.response?.data?.message || "Failed to save photo — please try a smaller image");
       }
     };
     reader.readAsDataURL(file);
   };
 
   const handleDeleteAvatar = async () => {
-    setAvatar(DEFAULT_AVATAR);
+    setAvatar(null);
     setAvatarError(null);
     try {
-      const res = await api.patch("/auth/avatar", { avatar_url: DEFAULT_AVATAR });
+      const res = await api.patch("/auth/avatar", { avatar_url: null });
       updateUser(res.data.user);
     } catch (err) {
-      setAvatar(user?.avatar_url || DEFAULT_AVATAR);
+      setAvatar(user?.avatar_url || null);
       setAvatarError(err?.response?.data?.message || "Failed to remove photo");
     }
   };
 
-  const [saveError, setSaveError] = useState(null);
+  // Save Profile Details
   const handleSaveFields = async () => {
     setSaveError(null);
+    setSavingProfile(true);
     try {
       const res = await api.patch("/auth/profile", {
         name: `${fields.firstName} ${fields.lastName}`.trim(),
         email: fields.email,
         phone: fields.phone,
-        gender: fields.gender,
-        id_number: fields.idNumber,
-        tax_id: fields.taxId,
-        tax_country: fields.taxCountry,
-        address: fields.address,
+        state: fields.preferredState,
+        address: fields.deliveryNotes,
       });
       updateUser(res.data.user);
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setTimeout(() => setSaved(false), 2500);
     } catch (err) {
       setSaveError(err?.response?.data?.message || "Failed to save changes");
-    }
-  };
-
-  // Password change
-  const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
-  const [showPasswordCurrent, setShowPasswordCurrent] = useState(false);
-  const [showPasswordNext, setShowPasswordNext] = useState(false);
-  const [showPasswordConfirm, setShowConfirm] = useState(false);
-  const [passwordSaving, setPasswordSaving] = useState(false);
-  const [passwordError, setPasswordError] = useState(null);
-  const handleChangePassword = async () => {
-    setPasswordError(null);
-    if (!passwordForm.current || !passwordForm.next) {
-      setPasswordError("Fill in all password fields");
-      return;
-    }
-    if (passwordForm.next !== passwordForm.confirm) {
-      setPasswordError("New passwords do not match");
-      return;
-    }
-    setPasswordSaving(true);
-    try {
-      const res = await api.post("/auth/change-password", {
-        current_password: passwordForm.current,
-        new_password: passwordForm.next,
-      });
-      // Changing the password invalidates every existing token (see
-      // server/src/routes/auth.js) including the one this request used —
-      // swap in the fresh one returned or the very next API call 403s.
-      if (res.data?.token) refreshToken(res.data.token);
-      setPasswordForm({ current: "", next: "", confirm: "" });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err) {
-      setPasswordError(err?.response?.data?.message || "Failed to update password");
     } finally {
-      setPasswordSaving(false);
+      setSavingProfile(false);
     }
   };
 
-  // Address book
-  const [addresses, setAddresses] = useState([]);
-  const [addressForm, setAddressForm] = useState({ label: "", receiver_name: "", receiver_phone: "", street_address: "", city: "", state: "", is_default: false });
-  const [editingAddressId, setEditingAddressId] = useState(null);
-  const [addressError, setAddressError] = useState(null);
-
-  const loadAddresses = () => {
-    api.get("/addresses").then((r) => setAddresses(r.data.addresses || [])).catch(() => {});
-  };
-  useEffect(() => { loadAddresses(); }, []);
-
+  // Address Handlers
   const openAddAddress = () => {
     setEditingAddressId(null);
-    setAddressForm({ label: "", receiver_name: "", receiver_phone: "", street_address: "", city: "", state: "", is_default: addresses.length === 0 });
+    setAddressForm({
+      label: "",
+      receiver_name: user?.name || "",
+      receiver_phone: user?.phone || "",
+      street_address: "",
+      city: "",
+      state: "Lagos",
+      is_default: addresses.length === 0,
+    });
     setAddressError(null);
-    setAdding(true);
+    setAddingAddress(true);
   };
+
   const openEditAddress = (addr) => {
     setEditingAddressId(addr.id);
     setAddressForm({
@@ -557,29 +264,34 @@ export default function ProfilePage() {
       receiver_phone: addr.receiver_phone || "",
       street_address: addr.street_address || "",
       city: addr.city || "",
-      state: addr.state || "",
+      state: addr.state || "Lagos",
       is_default: !!addr.is_default,
     });
     setAddressError(null);
-    setAdding(true);
+    setAddingAddress(true);
   };
+
   const saveAddress = async () => {
     if (!addressForm.street_address.trim()) {
       setAddressError("Street address is required");
       return;
     }
+    setSavingAddress(true);
     try {
       if (editingAddressId) {
         await api.patch(`/addresses/${editingAddressId}`, addressForm);
       } else {
         await api.post("/addresses", addressForm);
       }
-      setAdding(false);
+      setAddingAddress(false);
       loadAddresses();
     } catch (err) {
       setAddressError(err?.response?.data?.message || "Failed to save address");
+    } finally {
+      setSavingAddress(false);
     }
   };
+
   const setAsDefaultAddress = async (id) => {
     try {
       await api.patch(`/addresses/${id}`, { is_default: true });
@@ -588,6 +300,7 @@ export default function ProfilePage() {
       setAddressError(err?.response?.data?.message || "Failed to set default address");
     }
   };
+
   const deleteAddress = async (id) => {
     try {
       await api.delete(`/addresses/${id}`);
@@ -597,400 +310,845 @@ export default function ProfilePage() {
     }
   };
 
+  // Password Change
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    setPasswordSuccess(false);
+    if (!passwordForm.current || !passwordForm.next) {
+      setPasswordError("Please enter both current and new password");
+      return;
+    }
+    if (passwordForm.next.length < 6) {
+      setPasswordError("New password must be at least 6 characters long");
+      return;
+    }
+    if (passwordForm.next !== passwordForm.confirm) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      await api.post("/auth/change-password", {
+        current_password: passwordForm.current,
+        new_password: passwordForm.next,
+      });
+      setPasswordSuccess(true);
+      setPasswordForm({ current: "", next: "", confirm: "" });
+      setTimeout(() => setPasswordSuccess(false), 3000);
+    } catch (err) {
+      setPasswordError(err?.response?.data?.message || "Failed to change password. Check your current password.");
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  const initials = (fields.firstName?.[0] || user?.name?.[0] || "U").toUpperCase();
+  const defaultAddress = addresses.find((a) => a.is_default) || addresses[0];
+
   const menuTabs = [
-    { id: "profile", label: "Profile Settings", icon: "ri-user-line" },
-    { id: "password", label: "Password Changes", icon: "ri-lock-line" },
-    { id: "address", label: "Address Book", icon: "ri-map-pin-line" },
-    { id: "payment", label: "Payment Options", icon: "ri-bank-card-line" },
-    { id: "wishlist", label: "Saved Items (Wishlist)", icon: "ri-heart-line" },
-    { id: "returns", label: "My Returns", icon: "ri-arrow-go-back-line" },
-    { id: "cancellations", label: "My Cancellations", icon: "ri-close-circle-line" },
+    {
+      id: "profile",
+      label: "Personal Profile",
+      icon: (
+        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+        </svg>
+      ),
+    },
+    {
+      id: "address",
+      label: "Delivery Addresses",
+      badge: addresses.length,
+      icon: (
+        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+        </svg>
+      ),
+    },
+    {
+      id: "orders",
+      label: "My Orders & Tracking",
+      badge: myOrders.length,
+      icon: (
+        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+      ),
+    },
+    {
+      id: "wishlist",
+      label: "Saved Wishlist",
+      badge: wishlistProducts.length,
+      icon: (
+        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+        </svg>
+      ),
+    },
+    {
+      id: "password",
+      label: "Security & Password",
+      icon: (
+        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+        </svg>
+      ),
+    },
   ];
 
   return (
     <PageWrapper>
-      <div className="p-container">
-        <style>{PROFILE_CSS}</style>
+      <div style={{ maxWidth: "1160px", margin: "0 auto", padding: "28px 20px 80px", fontFamily: "var(--body-font), sans-serif" }}>
 
-        {/* Header Breadcrumbs */}
-        <div className="p-title-row">
-          <div className="p-breadcrumb">
-            <span style={{ cursor: "pointer" }} onClick={() => navigate("/home")}>Home</span>
-            <span>/</span>
-            <span className="active">Account Settings</span>
+        {/* Hero Banner */}
+        <div
+          style={{
+            background: "linear-gradient(135deg, #143c2d 0%, #1a4f3b 60%, #23654b 100%)",
+            borderRadius: "24px",
+            padding: "32px 36px",
+            color: "white",
+            marginBottom: "32px",
+            boxShadow: "0 10px 30px rgba(20, 60, 45, 0.15)",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "24px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+            {/* Avatar / Monogram */}
+            <div
+              style={{
+                width: "76px",
+                height: "76px",
+                borderRadius: "50%",
+                backgroundColor: "#FAF8F5",
+                color: "#143c2d",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "28px",
+                fontWeight: 900,
+                boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
+                overflow: "hidden",
+                border: "3px solid rgba(255,255,255,0.8)",
+                flexShrink: 0,
+              }}
+            >
+              {avatar ? (
+                <img src={avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
+
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <h1 style={{ fontSize: "24px", fontWeight: 800, margin: 0, fontFamily: "var(--heading-font)" }}>
+                  {user.name || "Customer Account"}
+                </h1>
+                <span
+                  style={{
+                    backgroundColor: "rgba(255,255,255,0.18)",
+                    border: "1px solid rgba(255,255,255,0.3)",
+                    padding: "2px 10px",
+                    borderRadius: "20px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    letterSpacing: "0.03em",
+                  }}
+                >
+                  Verified Customer
+                </span>
+              </div>
+              <p style={{ margin: "4px 0 0", color: "#E0EFE8", fontSize: "13px" }}>
+                {user.email} {user.phone ? `• ${user.phone}` : ""}
+              </p>
+            </div>
           </div>
-          <h1 style={{ marginTop: "8px" }}>Account settings</h1>
+
+          {/* Quick Stats */}
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+            <div
+              onClick={() => setActiveTab("orders")}
+              style={{
+                backgroundColor: "rgba(255,255,255,0.12)",
+                backdropFilter: "blur(10px)",
+                borderRadius: "16px",
+                padding: "12px 20px",
+                textAlign: "center",
+                cursor: "pointer",
+                border: "1px solid rgba(255,255,255,0.15)",
+                minWidth: "90px",
+              }}
+            >
+              <div style={{ fontSize: "20px", fontWeight: 800 }}>{myOrders.length}</div>
+              <div style={{ fontSize: "11px", color: "#D1E7DD", fontWeight: 600 }}>Orders</div>
+            </div>
+
+            <div
+              onClick={() => setActiveTab("address")}
+              style={{
+                backgroundColor: "rgba(255,255,255,0.12)",
+                backdropFilter: "blur(10px)",
+                borderRadius: "16px",
+                padding: "12px 20px",
+                textAlign: "center",
+                cursor: "pointer",
+                border: "1px solid rgba(255,255,255,0.15)",
+                minWidth: "90px",
+              }}
+            >
+              <div style={{ fontSize: "20px", fontWeight: 800 }}>{addresses.length}</div>
+              <div style={{ fontSize: "11px", color: "#D1E7DD", fontWeight: 600 }}>Addresses</div>
+            </div>
+
+            <div
+              onClick={() => setActiveTab("wishlist")}
+              style={{
+                backgroundColor: "rgba(255,255,255,0.12)",
+                backdropFilter: "blur(10px)",
+                borderRadius: "16px",
+                padding: "12px 20px",
+                textAlign: "center",
+                cursor: "pointer",
+                border: "1px solid rgba(255,255,255,0.15)",
+                minWidth: "90px",
+              }}
+            >
+              <div style={{ fontSize: "20px", fontWeight: 800 }}>{wishlistProducts.length}</div>
+              <div style={{ fontSize: "11px", color: "#D1E7DD", fontWeight: 600 }}>Saved</div>
+            </div>
+          </div>
         </div>
 
-        {/* Two column grid */}
-        <div className="p-layout">
-          {/* Inner Sidebar tabs */}
-          <div className="p-sidebar-card">
-            {menuTabs.map((t) => (
-              <button
-                key={t.id}
-                className={`p-tab-btn ${activeTab === t.id ? "active" : ""}`}
-                onClick={() => { setActiveTab(t.id); setAdding(false); }}
-              >
-                <i className={t.icon} style={{ fontSize: "16px" }} />
-                <span>{t.label}</span>
-              </button>
-            ))}
+        {/* Main 2-Column Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: "28px", alignItems: "flex-start" }}>
 
-            <button
-              className="p-tab-btn"
-              onClick={() => { logout(); navigate("/login"); }}
-              style={{ color: "#EF4444", marginTop: "12px", borderTop: "1px dashed #E5E7EB", paddingTop: "14px" }}
-            >
-              <i className="ri-logout-box-r-line" />
-              <span>Logout</span>
-            </button>
+          {/* Left Navigation Sidebar */}
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "20px",
+              padding: "16px",
+              border: "1px solid #E5E7EB",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.02)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "4px",
+            }}
+          >
+            {menuTabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setAddingAddress(false);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 14px",
+                    borderRadius: "12px",
+                    border: "none",
+                    background: isActive ? "#F0FFF4" : "transparent",
+                    color: isActive ? "#143c2d" : "#4B5563",
+                    fontWeight: isActive ? 700 : 600,
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{ color: isActive ? "#143c2d" : "#9CA3AF" }}>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                  </div>
+                  {typeof tab.badge === "number" && tab.badge > 0 && (
+                    <span
+                      style={{
+                        backgroundColor: isActive ? "#143c2d" : "#F3F4F6",
+                        color: isActive ? "white" : "#6B7280",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        padding: "2px 7px",
+                        borderRadius: "12px",
+                      }}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+
+            <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #F3F4F6" }}>
+              <button
+                onClick={() => {
+                  logout();
+                  navigate("/login");
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  width: "100%",
+                  padding: "12px 14px",
+                  borderRadius: "12px",
+                  border: "none",
+                  backgroundColor: "#FEF2F2",
+                  color: "#DC2626",
+                  fontWeight: 700,
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                </svg>
+                <span>Sign Out</span>
+              </button>
+            </div>
           </div>
 
-          {/* Right Area content card */}
-          <div className="p-content-card">
+          {/* Right Main Content Card */}
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "24px",
+              padding: "32px 36px",
+              border: "1px solid #E5E7EB",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
+              minHeight: "420px",
+            }}
+          >
             <AnimatePresence mode="wait">
+
+              {/* ── TAB 1: PERSONAL PROFILE ── */}
               {activeTab === "profile" && (
                 <motion.div
                   key="profile"
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
+                  exit={{ opacity: 0, y: -8 }}
                 >
-                  <div className="p-avatar-section">
-                    <div className="p-avatar-wrap">
-                      <img src={avatar} alt="User Profile Avatar" />
-                      <div className="p-avatar-camera" onClick={() => fileInputRef.current?.click()} aria-label="Upload photo">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                          <circle cx="12" cy="13" r="4"></circle>
-                        </svg>
-                      </div>
+                  <div style={{ marginBottom: "24px" }}>
+                    <h2 style={{ fontSize: "19px", fontWeight: 800, color: "#143c2d", margin: "0 0 4px", fontFamily: "var(--heading-font)" }}>
+                      Personal Profile
+                    </h2>
+                    <p style={{ color: "#6B7280", fontSize: "13px", margin: 0 }}>
+                      Manage your contact details and default delivery preferences for fast checkout.
+                    </p>
+                  </div>
+
+                  {/* Avatar Upload Box */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "20px", padding: "18px 20px", backgroundColor: "#F9FAFB", borderRadius: "16px", marginBottom: "28px", border: "1px solid #F3F4F6" }}>
+                    <div
+                      style={{
+                        width: "68px",
+                        height: "68px",
+                        borderRadius: "50%",
+                        backgroundColor: "#143c2d",
+                        color: "white",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "24px",
+                        fontWeight: 800,
+                        overflow: "hidden",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {avatar ? (
+                        <img src={avatar} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <span>{initials}</span>
+                      )}
                     </div>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleAvatarUpload}
-                      accept="image/*"
-                      style={{ display: "none" }}
-                    />
-                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+
+                    <div>
+                      <h4 style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: 700, color: "#111827" }}>
+                        Profile Photo
+                      </h4>
+                      <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#6B7280" }}>
+                        JPG or PNG up to 2MB.
+                      </p>
                       <div style={{ display: "flex", gap: "10px" }}>
-                        <button className="p-upload-btn" onClick={() => fileInputRef.current?.click()}>Upload New</button>
-                        <button className="p-delete-btn" onClick={handleDeleteAvatar}>Delete avatar</button>
+                        <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} accept="image/*" style={{ display: "none" }} />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          style={{
+                            padding: "6px 14px",
+                            backgroundColor: "#143c2d",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Upload Photo
+                        </button>
+                        {avatar && (
+                          <button
+                            type="button"
+                            onClick={handleDeleteAvatar}
+                            style={{
+                              padding: "6px 14px",
+                              backgroundColor: "transparent",
+                              color: "#DC2626",
+                              border: "1px solid #FCA5A5",
+                              borderRadius: "8px",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Remove
+                          </button>
+                        )}
                       </div>
-                      {avatarError && <p style={{ color: "#EF4444", fontSize: "13px", margin: 0 }}>{avatarError}</p>}
+                      {avatarError && <p style={{ color: "#EF4444", fontSize: "12px", margin: "6px 0 0" }}>{avatarError}</p>}
                     </div>
                   </div>
 
-                  <div className="p-form-grid">
-                    <div className="p-field">
-                      <label className="p-label">First Name *</label>
+                  {/* Clean Form */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px", marginBottom: "24px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
+                        First Name *
+                      </label>
                       <input
-                        className="p-input"
                         value={fields.firstName}
                         onChange={(e) => setFields({ ...fields, firstName: e.target.value })}
-                        placeholder="First name"
-                      />
-                    </div>
-                    <div className="p-field">
-                      <label className="p-label">Last Name *</label>
-                      <input
-                        className="p-input"
-                        value={fields.lastName}
-                        onChange={(e) => setFields({ ...fields, lastName: e.target.value })}
-                        placeholder="Last name"
+                        placeholder="e.g. Henry"
+                        style={{
+                          width: "100%",
+                          padding: "11px 14px",
+                          borderRadius: "10px",
+                          border: "1px solid #D1D5DB",
+                          fontSize: "14px",
+                          outline: "none",
+                          boxSizing: "border-box",
+                        }}
                       />
                     </div>
 
-                    <div className="p-field">
-                      <label className="p-label">Email</label>
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
+                        Last Name *
+                      </label>
                       <input
-                        className="p-input"
+                        value={fields.lastName}
+                        onChange={(e) => setFields({ ...fields, lastName: e.target.value })}
+                        placeholder="e.g. Adeleke"
+                        style={{
+                          width: "100%",
+                          padding: "11px 14px",
+                          borderRadius: "10px",
+                          border: "1px solid #D1D5DB",
+                          fontSize: "14px",
+                          outline: "none",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
+                        Email Address *
+                      </label>
+                      <input
                         type="email"
                         value={fields.email}
                         onChange={(e) => setFields({ ...fields, email: e.target.value })}
-                        placeholder="examples@gmail.com"
+                        placeholder="henry@example.com"
+                        style={{
+                          width: "100%",
+                          padding: "11px 14px",
+                          borderRadius: "10px",
+                          border: "1px solid #D1D5DB",
+                          fontSize: "14px",
+                          outline: "none",
+                          boxSizing: "border-box",
+                        }}
                       />
                     </div>
 
-                    <div className="p-field">
-                      <label className="p-label">Mobile Number *</label>
-                      <div className="p-tel-wrapper">
-                        <div className="p-tel-flag">
-                          <span></span>
-                          <span>+234</span>
-                        </div>
-                        <input
-                          className="p-input"
-                          value={fields.phone}
-                          onChange={(e) => setFields({ ...fields, phone: e.target.value })}
-                          placeholder="806 123 7890"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="p-field">
-                      <label className="p-label">Gender</label>
-                      <div className="p-gender-wrap">
-                        <div
-                          className={`p-gender-card ${fields.gender === "Male" ? "active" : ""}`}
-                          onClick={() => setFields({ ...fields, gender: "Male" })}
-                        >
-                          <input
-                            type="radio"
-                            checked={fields.gender === "Male"}
-                            onChange={() => setFields({ ...fields, gender: "Male" })}
-                          />
-                          <span>Male</span>
-                        </div>
-                        <div
-                          className={`p-gender-card ${fields.gender === "Female" ? "active" : ""}`}
-                          onClick={() => setFields({ ...fields, gender: "Female" })}
-                        >
-                          <input
-                            type="radio"
-                            checked={fields.gender === "Female"}
-                            onChange={() => setFields({ ...fields, gender: "Female" })}
-                          />
-                          <span>Female</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-field">
-                      <label className="p-label">ID</label>
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
+                        Mobile Phone Number *
+                      </label>
                       <input
-                        className="p-input"
-                        value={fields.idNumber}
-                        onChange={(e) => setFields({ ...fields, idNumber: e.target.value })}
-                        placeholder="ID details"
+                        type="tel"
+                        value={fields.phone}
+                        onChange={(e) => setFields({ ...fields, phone: e.target.value })}
+                        placeholder="+234 800 000 0000"
+                        style={{
+                          width: "100%",
+                          padding: "11px 14px",
+                          borderRadius: "10px",
+                          border: "1px solid #D1D5DB",
+                          fontSize: "14px",
+                          outline: "none",
+                          boxSizing: "border-box",
+                        }}
                       />
                     </div>
 
-                    <div className="p-field">
-                      <label className="p-label">Tax Identification Number</label>
-                      <input
-                        className="p-input"
-                        value={fields.taxId}
-                        onChange={(e) => setFields({ ...fields, taxId: e.target.value })}
-                        placeholder="Tax Identification Number"
-                      />
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
+                        Primary Delivery State
+                      </label>
+                      <select
+                        value={fields.preferredState}
+                        onChange={(e) => setFields({ ...fields, preferredState: e.target.value })}
+                        style={{
+                          width: "100%",
+                          padding: "11px 14px",
+                          borderRadius: "10px",
+                          border: "1px solid #D1D5DB",
+                          fontSize: "14px",
+                          outline: "none",
+                          backgroundColor: "#FFFFFF",
+                          cursor: "pointer",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        {NIGERIAN_STATES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
                     </div>
 
-                    <div className="p-field">
-                      <label className="p-label">Tax Identification Country</label>
-                      <div className="p-tel-wrapper">
-                        <div className="p-tel-flag">
-                          <span></span>
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
+                        Permanent Delivery Address
+                      </label>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <div style={{ flex: 1, padding: "10px 14px", backgroundColor: "#F9FAFB", borderRadius: "10px", border: "1px solid #E5E7EB", fontSize: "13px", color: "#374151", truncate: "true" }}>
+                          {defaultAddress ? `${defaultAddress.street_address}, ${defaultAddress.city}` : "No default address set"}
                         </div>
-                        <input
-                          className="p-input"
-                          value={fields.taxCountry}
-                          onChange={(e) => setFields({ ...fields, taxCountry: e.target.value })}
-                          placeholder="Tax Identification Country"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("address")}
+                          style={{
+                            padding: "10px 14px",
+                            backgroundColor: "#F0FFF4",
+                            color: "#143c2d",
+                            border: "1px solid #C8E6C9",
+                            borderRadius: "10px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Manage
+                        </button>
                       </div>
                     </div>
 
-                    <div className="p-field full-width">
-                      <label className="p-label">Residential Address</label>
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
+                        Delivery Instructions / Dietary Notes (Optional)
+                      </label>
                       <textarea
-                        className="p-input"
-                        style={{ height: "100px", resize: "vertical" }}
-                        value={fields.address}
-                        onChange={(e) => setFields({ ...fields, address: e.target.value })}
-                        placeholder="Residential address"
+                        rows={3}
+                        value={fields.deliveryNotes}
+                        onChange={(e) => setFields({ ...fields, deliveryNotes: e.target.value })}
+                        placeholder="e.g. Call before arrival, leave package at estate gate, prefer fresh unpeeled tubers..."
+                        style={{
+                          width: "100%",
+                          padding: "11px 14px",
+                          borderRadius: "10px",
+                          border: "1px solid #D1D5DB",
+                          fontSize: "14px",
+                          outline: "none",
+                          resize: "none",
+                          boxSizing: "border-box",
+                        }}
                       />
                     </div>
                   </div>
 
-                  {saveError && <p style={{ color: "#EF4444", fontSize: "13px", marginBottom: "8px" }}>{saveError}</p>}
-                  <div className="p-actions">
-                    <button className="p-save-btn" onClick={handleSaveFields}>
-                      {saved ? " Changes Saved!" : "Save Changes"}
+                  {saveError && <p style={{ color: "#EF4444", fontSize: "13px", marginBottom: "12px" }}>{saveError}</p>}
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                    <button
+                      onClick={handleSaveFields}
+                      disabled={savingProfile}
+                      style={{
+                        padding: "12px 28px",
+                        backgroundColor: "#143c2d",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "12px",
+                        fontWeight: 800,
+                        fontSize: "14px",
+                        cursor: "pointer",
+                        boxShadow: "0 4px 14px rgba(20,60,45,0.2)",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {savingProfile ? "Saving Changes..." : saved ? "Changes Saved!" : "Save Changes"}
                     </button>
                   </div>
                 </motion.div>
               )}
 
-              {activeTab === "password" && (
-                <motion.div
-                  key="password"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "var(--heading-font)" }}>Password Changes</h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "16px", maxWidth: "480px" }}>
-                    {passwordError && <p style={{ color: "#EF4444", fontSize: "13px", margin: 0 }}>{passwordError}</p>}
-                    <div className="p-field">
-                      <label className="p-label">Current Password</label>
-                      <div style={{ position: "relative" }}>
-                        <input
-                          className="p-input"
-                          style={{ paddingRight: "44px" }}
-                          type={showPasswordCurrent ? "text" : "password"}
-                          placeholder="Current Password"
-                          value={passwordForm.current}
-                          onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPasswordCurrent((prev) => !prev)}
-                          style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center" }}
-                          aria-label={showPasswordCurrent ? "Hide current password" : "Show current password"}
-                        >
-                          {showPasswordCurrent ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                              <line x1="1" y1="1" x2="23" y2="23"></line>
-                            </svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                              <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-field">
-                      <label className="p-label">New Password</label>
-                      <div style={{ position: "relative" }}>
-                        <input
-                          className="p-input"
-                          style={{ paddingRight: "44px" }}
-                          type={showPasswordNext ? "text" : "password"}
-                          placeholder="New Password"
-                          value={passwordForm.next}
-                          onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPasswordNext((prev) => !prev)}
-                          style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center" }}
-                          aria-label={showPasswordNext ? "Hide new password" : "Show new password"}
-                        >
-                          {showPasswordNext ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                              <line x1="1" y1="1" x2="23" y2="23"></line>
-                            </svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                              <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-field">
-                      <label className="p-label">Confirm New Password</label>
-                      <div style={{ position: "relative" }}>
-                        <input
-                          className="p-input"
-                          style={{ paddingRight: "44px" }}
-                          type={showPasswordConfirm ? "text" : "password"}
-                          placeholder="Confirm New Password"
-                          value={passwordForm.confirm}
-                          onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirm((prev) => !prev)}
-                          style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#9CA3AF", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center" }}
-                          aria-label={showPasswordConfirm ? "Hide confirm password" : "Show confirm password"}
-                        >
-                          {showPasswordConfirm ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                              <line x1="1" y1="1" x2="23" y2="23"></line>
-                            </svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                              <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-actions">
-                    <button className="p-save-btn" onClick={handleChangePassword} disabled={passwordSaving}>
-                      {passwordSaving ? "Updating…" : saved ? " Updated!" : "Update Password"}
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-
+              {/* ── TAB 2: DELIVERY ADDRESSES ── */}
               {activeTab === "address" && (
                 <motion.div
                   key="address"
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
+                  exit={{ opacity: 0, y: -8 }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }}>
                     <div>
-                      <h3 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 4px", fontFamily: "var(--heading-font)", color: "#1B4332" }}>Delivery Addresses</h3>
-                      <p style={{ fontSize: "13px", color: "#6B7280", margin: 0 }}>
-                        Manage your permanent delivery address or add extra delivery locations for checkout.
+                      <h2 style={{ fontSize: "19px", fontWeight: 800, color: "#143c2d", margin: "0 0 4px", fontFamily: "var(--heading-font)" }}>
+                        Delivery Addresses
+                      </h2>
+                      <p style={{ color: "#6B7280", fontSize: "13px", margin: 0 }}>
+                        Set your permanent home/office address or add extra locations for flexible checkout.
                       </p>
                     </div>
+
+                    {!addingAddress && (
+                      <button
+                        onClick={openAddAddress}
+                        style={{
+                          padding: "9px 16px",
+                          backgroundColor: "#143c2d",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "10px",
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        <span>+</span>
+                        <span>Add New Address</span>
+                      </button>
+                    )}
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px", marginBottom: "24px" }}>
+                  {addingAddress && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      style={{
+                        backgroundColor: "#F9FAFB",
+                        borderRadius: "16px",
+                        padding: "24px",
+                        border: "1px solid #E5E7EB",
+                        marginBottom: "24px",
+                      }}
+                    >
+                      <h3 style={{ fontSize: "16px", fontWeight: 800, color: "#143c2d", margin: "0 0 6px" }}>
+                        {editingAddressId ? "Edit Delivery Address" : "Add Permanent Delivery Address"}
+                      </h3>
+                      <p style={{ fontSize: "13px", color: "#6B7280", margin: "0 0 18px" }}>
+                        Enter your exact street address for doorstep delivery.
+                      </p>
+
+                      {addressError && <p style={{ color: "#EF4444", fontSize: "13px", marginBottom: "14px" }}>{addressError}</p>}
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "16px" }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "4px" }}>
+                            Address Label
+                          </label>
+                          <input
+                            value={addressForm.label}
+                            onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })}
+                            placeholder="e.g. Home, Lekki Residence, Office"
+                            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #D1D5DB", fontSize: "13px", boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "4px" }}>
+                            Receiver's Full Name
+                          </label>
+                          <input
+                            value={addressForm.receiver_name}
+                            onChange={(e) => setAddressForm({ ...addressForm, receiver_name: e.target.value })}
+                            placeholder="e.g. Henry Adeleke"
+                            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #D1D5DB", fontSize: "13px", boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "4px" }}>
+                            Receiver's Phone Number
+                          </label>
+                          <input
+                            value={addressForm.receiver_phone}
+                            onChange={(e) => setAddressForm({ ...addressForm, receiver_phone: e.target.value })}
+                            placeholder="e.g. 0801 234 5678"
+                            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #D1D5DB", fontSize: "13px", boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "4px" }}>
+                            State
+                          </label>
+                          <select
+                            value={addressForm.state}
+                            onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+                            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #D1D5DB", fontSize: "13px", backgroundColor: "#FFFFFF", boxSizing: "border-box" }}
+                          >
+                            {NIGERIAN_STATES.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div style={{ gridColumn: "1 / -1" }}>
+                          <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "4px" }}>
+                            Street Address *
+                          </label>
+                          <input
+                            value={addressForm.street_address}
+                            onChange={(e) => setAddressForm({ ...addressForm, street_address: e.target.value })}
+                            placeholder="e.g. 14 Farm Road, Lekki Phase 1"
+                            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #D1D5DB", fontSize: "13px", boxSizing: "border-box" }}
+                          />
+                        </div>
+
+                        <div style={{ gridColumn: "1 / -1" }}>
+                          <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "4px" }}>
+                            City / Town *
+                          </label>
+                          <input
+                            value={addressForm.city}
+                            onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                            placeholder="e.g. Lekki, Ikeja, Victoria Island"
+                            style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #D1D5DB", fontSize: "13px", boxSizing: "border-box" }}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "14px 0 20px" }}>
+                        <input
+                          type="checkbox"
+                          id="form_is_default"
+                          checked={addressForm.is_default}
+                          onChange={(e) => setAddressForm({ ...addressForm, is_default: e.target.checked })}
+                          style={{ width: "16px", height: "16px", accentColor: "#143c2d", cursor: "pointer" }}
+                        />
+                        <label htmlFor="form_is_default" style={{ fontSize: "13px", fontWeight: 600, color: "#374151", cursor: "pointer" }}>
+                          Set as my permanent default delivery address
+                        </label>
+                      </div>
+
+                      <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                        <button
+                          type="button"
+                          onClick={() => setAddingAddress(false)}
+                          style={{
+                            padding: "9px 16px",
+                            backgroundColor: "white",
+                            border: "1px solid #D1D5DB",
+                            borderRadius: "10px",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveAddress}
+                          disabled={savingAddress}
+                          style={{
+                            padding: "9px 20px",
+                            backgroundColor: "#143c2d",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "10px",
+                            fontSize: "13px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {savingAddress ? "Saving..." : "Save Address"}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Addresses List */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
                     {addresses.map((addr) => (
                       <div
                         key={addr.id}
                         style={{
-                          border: addr.is_default ? "2px solid #2E7D32" : "1px solid #E5E7EB",
+                          border: addr.is_default ? "2px solid #143c2d" : "1px solid #E5E7EB",
                           borderRadius: "16px",
                           padding: "20px",
-                          position: "relative",
                           backgroundColor: addr.is_default ? "#F4FBF6" : "#FFFFFF",
-                          boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
                           display: "flex",
                           flexDirection: "column",
                           justifyContent: "space-between",
+                          minHeight: "150px",
                         }}
                       >
                         <div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
-                            <span style={{ fontWeight: 800, fontSize: "15px", color: "#1B4332" }}>
-                              {addr.label || "Delivery Address"}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                            <span style={{ fontWeight: 800, fontSize: "14px", color: "#143c2d" }}>
+                              {addr.label || "Delivery Location"}
                             </span>
-                            {addr.is_default ? (
-                              <span style={{ backgroundColor: "#E8F5E9", color: "#2E7D32", fontSize: "11px", fontWeight: 700, padding: "3px 10px", borderRadius: "20px", border: "1px solid #C8E6C9" }}>
+                            {addr.is_default && (
+                              <span style={{ backgroundColor: "#E8F5E9", color: "#143c2d", fontSize: "11px", fontWeight: 800, padding: "2px 8px", borderRadius: "12px", border: "1px solid #C8E6C9" }}>
                                 Permanent Default
                               </span>
-                            ) : null}
+                            )}
                           </div>
 
                           {addr.receiver_name && (
-                            <p style={{ fontSize: "13px", fontWeight: 600, color: "#374151", margin: "0 0 4px" }}>
+                            <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: 700, color: "#111827" }}>
                               {addr.receiver_name}
                             </p>
                           )}
-                          <p style={{ fontSize: "13px", color: "#4B5563", lineHeight: "1.4", margin: "0 0 6px" }}>
-                            {addr.street_address}{addr.city ? `, ${addr.city}` : ""}{addr.state ? `, ${addr.state}` : ""}
+                          <p style={{ margin: "0 0 4px", fontSize: "13px", color: "#4B5563", lineHeight: "1.4" }}>
+                            {addr.street_address}, {addr.city}, {addr.state}
                           </p>
                           {addr.receiver_phone && (
-                            <p style={{ fontSize: "12px", color: "#6B7280", margin: "0 0 16px" }}>
+                            <p style={{ margin: 0, fontSize: "12px", color: "#6B7280" }}>
                               Phone: {addr.receiver_phone}
                             </p>
                           )}
                         </div>
 
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid #E5E7EB", paddingTop: "12px", marginTop: "12px" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "14px", marginTop: "14px", borderTop: "1px solid #F3F4F6" }}>
                           <div style={{ display: "flex", gap: "12px" }}>
-                            <button onClick={() => openEditAddress(addr)} style={{ color: "#c85a17", border: "none", background: "none", cursor: "pointer", fontWeight: 700, fontSize: "13px", padding: 0 }}>
+                            <button
+                              onClick={() => openEditAddress(addr)}
+                              style={{ background: "none", border: "none", color: "#c85a17", fontWeight: 700, fontSize: "12px", cursor: "pointer", padding: 0 }}
+                            >
                               Edit
                             </button>
-                            <button onClick={() => deleteAddress(addr.id)} style={{ color: "#EF4444", border: "none", background: "none", cursor: "pointer", fontWeight: 500, fontSize: "13px", padding: 0 }}>
+                            <button
+                              onClick={() => deleteAddress(addr.id)}
+                              style={{ background: "none", border: "none", color: "#DC2626", fontWeight: 600, fontSize: "12px", cursor: "pointer", padding: 0 }}
+                            >
                               Delete
                             </button>
                           </div>
@@ -999,15 +1157,14 @@ export default function ProfilePage() {
                             <button
                               onClick={() => setAsDefaultAddress(addr.id)}
                               style={{
-                                color: "#2E7D32",
-                                border: "1px solid #2E7D32",
-                                backgroundColor: "#FFFFFF",
+                                backgroundColor: "white",
+                                border: "1px solid #143c2d",
+                                color: "#143c2d",
                                 borderRadius: "8px",
                                 padding: "4px 10px",
-                                cursor: "pointer",
+                                fontSize: "11px",
                                 fontWeight: 700,
-                                fontSize: "12px",
-                                transition: "all 0.2s",
+                                cursor: "pointer",
                               }}
                             >
                               Set as Default
@@ -1017,277 +1174,377 @@ export default function ProfilePage() {
                       </div>
                     ))}
 
+                    {addresses.length === 0 && !addingAddress && (
+                      <div
+                        onClick={openAddAddress}
+                        style={{
+                          gridColumn: "1 / -1",
+                          border: "2px dashed #D1D5DB",
+                          borderRadius: "16px",
+                          padding: "36px 20px",
+                          textAlign: "center",
+                          cursor: "pointer",
+                          backgroundColor: "#FAFAF9",
+                        }}
+                      >
+                        <p style={{ margin: "0 0 6px", fontSize: "15px", fontWeight: 700, color: "#143c2d" }}>
+                          + Add Your Permanent Delivery Address
+                        </p>
+                        <p style={{ margin: 0, fontSize: "13px", color: "#6B7280" }}>
+                          Save your address once to enjoy instant, 1-tap checkout on fresh produce.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ── TAB 3: ORDERS & TRACKING ── */}
+              {activeTab === "orders" && (
+                <motion.div
+                  key="orders"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+                    <div>
+                      <h2 style={{ fontSize: "19px", fontWeight: 800, color: "#143c2d", margin: "0 0 4px", fontFamily: "var(--heading-font)" }}>
+                        Order History & Tracking
+                      </h2>
+                      <p style={{ color: "#6B7280", fontSize: "13px", margin: 0 }}>
+                        Review your farm produce deliveries, track live shipments, or re-order.
+                      </p>
+                    </div>
+
                     <button
-                      onClick={openAddAddress}
+                      onClick={() => navigate("/products")}
                       style={{
-                        border: "2px dashed #D1D5DB",
-                        borderRadius: "16px",
-                        padding: "28px 20px",
+                        padding: "9px 16px",
+                        backgroundColor: "#143c2d",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "10px",
+                        fontSize: "13px",
+                        fontWeight: 700,
                         cursor: "pointer",
-                        backgroundColor: "#FAFAF9",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "8px",
-                        color: "#6B7280",
-                        minHeight: "160px",
-                        transition: "all 0.2s",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = "#1B4332";
-                        e.currentTarget.style.backgroundColor = "#F3F4F6";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "#D1D5DB";
-                        e.currentTarget.style.backgroundColor = "#FAFAF9";
                       }}
                     >
-                      <span style={{ fontSize: "28px", lineHeight: "1", color: "#1B4332" }}>+</span>
-                      <span style={{ fontSize: "14px", fontWeight: 700, color: "#1B4332" }}>Add New Delivery Address</span>
+                      Shop Produce
                     </button>
                   </div>
 
-                  {adding && (
-                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ border: "1px solid #E5E7EB", borderRadius: "20px", padding: "28px", backgroundColor: "#F9FAFB", marginBottom: "20px" }}>
-                      <h4 style={{ fontWeight: 800, marginBottom: "6px", fontSize: "16px", color: "#1B4332" }}>
-                        {editingAddressId ? "Edit Delivery Address" : "Add Permanent / New Delivery Address"}
-                      </h4>
-                      <p style={{ fontSize: "13px", color: "#6B7280", margin: "0 0 18px" }}>
-                        Save your home or office address for fast, accurate produce delivery.
-                      </p>
-                      {addressError && <p style={{ color: "#EF4444", fontSize: "13px", marginBottom: "14px" }}>{addressError}</p>}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "16px" }}>
-                        <div className="p-field">
-                          <label className="p-label">Address Label</label>
-                          <input className="p-input" placeholder="e.g. Home, Main Office, Lekki House" value={addressForm.label} onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })} />
-                        </div>
-                        <div className="p-field">
-                          <label className="p-label">Receiver's Full Name</label>
-                          <input className="p-input" placeholder="e.g. Adebayo Adeleke" value={addressForm.receiver_name} onChange={(e) => setAddressForm({ ...addressForm, receiver_name: e.target.value })} />
-                        </div>
-                        <div className="p-field">
-                          <label className="p-label">Receiver's Phone Number</label>
-                          <input className="p-input" placeholder="e.g. 0801 234 5678" value={addressForm.receiver_phone} onChange={(e) => setAddressForm({ ...addressForm, receiver_phone: e.target.value })} />
-                        </div>
-                        <div className="p-field">
-                          <label className="p-label">State</label>
-                          <input className="p-input" placeholder="e.g. Lagos, Ogun, Oyo" value={addressForm.state} onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })} />
-                        </div>
-                        <div className="p-field full-width">
-                          <label className="p-label">Street Address *</label>
-                          <input className="p-input" placeholder="e.g. 14 Admiralty Way, Lekki Phase 1" value={addressForm.street_address} onChange={(e) => setAddressForm({ ...addressForm, street_address: e.target.value })} />
-                        </div>
-                        <div className="p-field full-width">
-                          <label className="p-label">City / Town *</label>
-                          <input className="p-input" placeholder="e.g. Lekki, Ikeja, Victoria Island" value={addressForm.city} onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })} />
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "16px 0 24px" }}>
-                        <input
-                          type="checkbox"
-                          id="is_default_checkbox"
-                          checked={addressForm.is_default}
-                          onChange={(e) => setAddressForm({ ...addressForm, is_default: e.target.checked })}
-                          style={{ width: "18px", height: "18px", cursor: "pointer", accentColor: "#1B4332" }}
-                        />
-                        <label htmlFor="is_default_checkbox" style={{ fontSize: "13px", fontWeight: 600, color: "#374151", cursor: "pointer" }}>
-                          Set as my permanent default delivery address
-                        </label>
-                      </div>
-
-                      <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-                        <button className="p-delete-btn" onClick={() => setAdding(false)}>Cancel</button>
-                        <button className="p-upload-btn" onClick={saveAddress}>Save Address</button>
-                      </div>
-                    </motion.div>
-                  )}
-                </motion.div>
-              )}
-
-              {activeTab === "payment" && (
-                <motion.div
-                  key="payment"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "var(--heading-font)" }}>Payment Options</h3>
-                  <div
-                    style={{
-                      border: "1px dashed #E5E7EB",
-                      borderRadius: "16px",
-                      padding: "32px 24px",
-                      textAlign: "center",
-                      color: "#6B7280",
-                    }}
-                  >
-                    <div style={{ fontSize: "43", marginBottom: "10px" }}></div>
-                    <p style={{ fontWeight: 700, color: "#111827", margin: "0 0 6px" }}>No saved cards</p>
-                    <p style={{ fontSize: "13px", margin: 0 }}>
-                      BemsFarms doesn't store your card details — you'll enter them
-                      securely through our encrypted payment gateway each time you check out.
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-
-              {activeTab === "wishlist" && (
-                <motion.div
-                  key="wishlist"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "var(--heading-font)" }}>My Wishlist</h3>
-                  {wishlistProducts.length === 0 ? (
-                    <p style={{ color: "#9CA3AF", fontSize: "14px" }}>
-                      No saved items yet. Tap the  on any product to save it here.
-                    </p>
+                  {loadingOrders ? (
+                    <div style={{ textAlign: "center", padding: "40px", color: "#6B7280" }}>Loading your orders...</div>
+                  ) : myOrders.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "48px 20px", backgroundColor: "#F9FAFB", borderRadius: "16px", border: "1px dashed #E5E7EB" }}>
+                      <p style={{ fontSize: "16px", fontWeight: 700, color: "#143c2d", margin: "0 0 6px" }}>No Orders Yet</p>
+                      <p style={{ fontSize: "13px", color: "#6B7280", margin: "0 0 16px" }}>You haven't placed any farm produce orders yet.</p>
+                      <button
+                        onClick={() => navigate("/products")}
+                        style={{
+                          padding: "10px 20px",
+                          backgroundColor: "#143c2d",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "10px",
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Browse Fresh Produce
+                      </button>
+                    </div>
                   ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "20px" }}>
-                    {wishlistProducts.map((item) => (
-                      <div key={item.id} style={{ border: "1px solid #E5E7EB", borderRadius: "16px", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                        <div style={{ position: "relative" }}>
-                          <img src={item.image_url} alt={item.name} style={{ width: "100%", height: "130px", objectFit: "cover" }} onClick={() => navigate(`/product/${item.id}`)} />
-                          <button
-                            onClick={() => removeFromWishlist(item.id)}
-                            title="Remove from wishlist"
-                            style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", backgroundColor: "rgba(255,255,255,0.9)", color: "#EF4444", cursor: "pointer", fontSize: "14px" }}
-                          >
-                            
-                          </button>
-                        </div>
-                        <div style={{ padding: "14px", flex: 1, display: "flex", flexDirection: "column" }}>
-                          <p style={{ fontWeight: 700, fontSize: "14px", margin: "0 0 4px" }}>{item.name}</p>
-                          <p style={{ color: "#2E7D32", fontWeight: 800, fontSize: "15px", margin: "0 0 14px" }}>₦{(item.price * NAIRA_PER_UNIT).toLocaleString()}</p>
-                          <button
-                            onClick={() => addToCart(item)}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                      {myOrders.map((order) => {
+                        const dateStr = order.created_at ? new Date(order.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }) : "";
+                        const totalNaira = getNairaPrice(order.total_amount || order.total || 0);
+                        const statusColor =
+                          order.status === "delivered" ? "#2E7D32" :
+                          order.status === "cancelled" ? "#DC2626" :
+                          order.status === "in_transit" ? "#c85a17" : "#143c2d";
+
+                        return (
+                          <div
+                            key={order.id}
                             style={{
-                              width: "100%",
-                              backgroundColor: "#F57C00",
-                              color: "white",
-                              border: "none",
-                              borderRadius: "10px",
-                              padding: "10px",
-                              fontSize: "13px",
-                              fontWeight: 700,
-                              cursor: "pointer",
-                              marginTop: "auto"
+                              border: "1px solid #E5E7EB",
+                              borderRadius: "16px",
+                              padding: "18px 20px",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              gap: "14px",
+                              backgroundColor: "#FFFFFF",
                             }}
                           >
-                            Add to Cart
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  )}
-                </motion.div>
-              )}
-
-              {activeTab === "returns" && (
-                <motion.div
-                  key="returns"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                >
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "var(--heading-font)" }}>My Returns</h3>
-                  {myReturns.length > 0 && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "28px" }}>
-                      {myReturns.map((ret) => {
-                        const meta = RETURN_STATUS_META[ret.status] || RETURN_STATUS_META.pending;
-                        return (
-                          <div key={ret.id} style={{ border: "1px solid #E5E7EB", borderRadius: "14px", padding: "16px 20px" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                              <div>
-                                <p style={{ fontWeight: 700, fontSize: "14px", margin: "0 0 2px" }}>Order #{ret.order_id}</p>
-                                <p style={{ fontSize: "12px", color: "#9CA3AF", margin: 0 }}>
-                                  {new Date(ret.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}
-                                </p>
+                            <div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+                                <span style={{ fontWeight: 800, fontSize: "14px", color: "#111827" }}>
+                                  Order #{order.id}
+                                </span>
+                                <span
+                                  style={{
+                                    backgroundColor: `${statusColor}15`,
+                                    color: statusColor,
+                                    fontSize: "11px",
+                                    fontWeight: 800,
+                                    padding: "2px 8px",
+                                    borderRadius: "12px",
+                                    textTransform: "capitalize",
+                                  }}
+                                >
+                                  {order.status || "Processing"}
+                                </span>
                               </div>
-                              <span style={{ background: meta.bg, color: meta.color, fontSize: "12px", fontWeight: 700, padding: "4px 12px", borderRadius: "50px" }}>
-                                {meta.label}
-                              </span>
-                            </div>
-                            <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 4px", textTransform: "capitalize" }}>
-                              Reason: {ret.reason?.replace(/_/g, " ")}
-                            </p>
-                            {ret.items?.length > 0 && (
-                              <p style={{ fontSize: "13px", color: "#4B5563", margin: 0 }}>
-                                {ret.items.map((i) => `${i.product_name} (×${i.returned_quantity})`).join(", ")}
+                              <p style={{ margin: 0, fontSize: "12px", color: "#6B7280" }}>
+                                {dateStr} {order.delivery_code ? `• Delivery Code: ${order.delivery_code}` : ""}
                               </p>
-                            )}
+                              {order.address && (
+                                <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#4B5563" }}>
+                                  Destination: {order.address}
+                                </p>
+                              )}
+                            </div>
+
+                            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                              <div style={{ textAlign: "right" }}>
+                                <div style={{ fontSize: "11px", color: "#6B7280" }}>Total Amount</div>
+                                <div style={{ fontSize: "15px", fontWeight: 900, color: "#143c2d" }}>
+                                  ₦{totalNaira.toLocaleString()}
+                                </div>
+                              </div>
+
+                              <button
+                                onClick={() => navigate(`/track-order?code=${encodeURIComponent(order.delivery_code || order.id)}`)}
+                                style={{
+                                  padding: "8px 14px",
+                                  backgroundColor: "#F0FFF4",
+                                  border: "1px solid #C8E6C9",
+                                  color: "#143c2d",
+                                  borderRadius: "10px",
+                                  fontSize: "12px",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Track Live
+                              </button>
+                            </div>
                           </div>
                         );
                       })}
                     </div>
                   )}
-                  {myReturns.length === 0 && (
-                  <div style={{ textAlign: "center", padding: "40px 20px" }}>
-                    <div style={{ fontSize: "56px", marginBottom: "16px" }}>↩</div>
-                    <h4 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 700 }}>No Returns Yet</h4>
-                    <p style={{ color: "#9CA3AF", fontSize: "14px", margin: "0 0 24px" }}>You can request a return within 7 days of delivery.</p>
-                    <div style={{ backgroundColor: "#F4FDF4", border: "1px solid #D1E7DD", borderRadius: "14px", padding: "20px", textAlign: "left", maxWidth: "480px", margin: "0 auto" }}>
-                      <p style={{ color: "#2E7D32", fontWeight: 700, margin: "0 0 12px" }}>Return Policy Details</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}> Returns accepted within 7 days of delivery</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}> Items must be in original packaging and condition</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}> Refund will be processed in 3-5 business days</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0" }}> Contact info@bemsfarms.com for assistance</p>
-                    </div>
+                </motion.div>
+              )}
+
+              {/* ── TAB 4: WISHLIST ── */}
+              {activeTab === "wishlist" && (
+                <motion.div
+                  key="wishlist"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                >
+                  <div style={{ marginBottom: "24px" }}>
+                    <h2 style={{ fontSize: "19px", fontWeight: 800, color: "#143c2d", margin: "0 0 4px", fontFamily: "var(--heading-font)" }}>
+                      Saved Produce (Wishlist)
+                    </h2>
+                    <p style={{ color: "#6B7280", fontSize: "13px", margin: 0 }}>
+                      Quick 1-tap re-ordering for your favorite household produce.
+                    </p>
                   </div>
+
+                  {wishlistProducts.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "48px 20px", backgroundColor: "#F9FAFB", borderRadius: "16px", border: "1px dashed #E5E7EB" }}>
+                      <p style={{ fontSize: "16px", fontWeight: 700, color: "#143c2d", margin: "0 0 6px" }}>Your Wishlist is Empty</p>
+                      <p style={{ fontSize: "13px", color: "#6B7280", margin: "0 0 16px" }}>Tap the heart icon on any produce item to save it here for fast re-ordering.</p>
+                      <button
+                        onClick={() => navigate("/products")}
+                        style={{
+                          padding: "10px 20px",
+                          backgroundColor: "#143c2d",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "10px",
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Explore Storefront
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "16px" }}>
+                      {wishlistProducts.map((p) => {
+                        const price = getNairaPrice(p.price);
+                        return (
+                          <div
+                            key={p.id}
+                            style={{
+                              border: "1px solid #E5E7EB",
+                              borderRadius: "16px",
+                              padding: "14px",
+                              backgroundColor: "white",
+                              display: "flex",
+                              flexDirection: "column",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <div style={{ width: "100%", height: "120px", borderRadius: "10px", overflow: "hidden", backgroundColor: "#FAF9F6", marginBottom: "10px" }}>
+                              <img src={getProductImage(p)} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            </div>
+                            <div>
+                              <h4 style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: 700, color: "#111827", truncate: "true" }}>{p.name}</h4>
+                              <p style={{ margin: "0 0 8px", fontSize: "11px", color: "#6B7280" }}>{p.unit || "Per item"}</p>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <span style={{ fontSize: "14px", fontWeight: 800, color: "#143c2d" }}>₦{price.toLocaleString()}</span>
+                                <button
+                                  onClick={() => addToCart(p)}
+                                  style={{
+                                    padding: "6px 10px",
+                                    backgroundColor: "#143c2d",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "8px",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  + Basket
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </motion.div>
               )}
 
-              {activeTab === "cancellations" && (
+              {/* ── TAB 5: SECURITY & PASSWORD ── */}
+              {activeTab === "password" && (
                 <motion.div
-                  key="cancellations"
-                  initial={{ opacity: 0, y: 10 }}
+                  key="password"
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
+                  exit={{ opacity: 0, y: -8 }}
                 >
-                  <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "20px", fontFamily: "var(--heading-font)" }}>My Cancellations</h3>
-                  {cancelledOrders.length > 0 && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "28px" }}>
-                      {cancelledOrders.map((order) => (
-                        <div key={order.id} style={{ border: "1px solid #E5E7EB", borderRadius: "14px", padding: "16px 20px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                            <div>
-                              <p style={{ fontWeight: 700, fontSize: "14px", margin: "0 0 2px" }}>Order #{order.id}</p>
-                              <p style={{ fontSize: "12px", color: "#9CA3AF", margin: 0 }}>
-                                Cancelled {order.cancelled_at ? new Date(order.cancelled_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }) : ""}
-                              </p>
-                            </div>
-                            <span style={{ background: "#FEE2E2", color: "#DC2626", fontSize: "12px", fontWeight: 700, padding: "4px 12px", borderRadius: "50px" }}>
-                              Cancelled
-                            </span>
-                          </div>
-                          {order.cancel_reason && (
-                            <p style={{ fontSize: "13px", color: "#4B5563", margin: 0 }}>Reason: {order.cancel_reason}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {cancelledOrders.length === 0 && (
-                  <div style={{ textAlign: "center", padding: "40px 20px" }}>
-                    <div style={{ fontSize: "76", marginBottom: "16px" }}></div>
-                    <h4 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 700 }}>No Cancelled Orders</h4>
-                    <p style={{ color: "#9CA3AF", fontSize: "14px", margin: "0 0 24px" }}>Orders can be cancelled any time before they're prepared for delivery.</p>
-                    <div style={{ backgroundColor: "#FFF8F2", border: "1px solid #FFE6D5", borderRadius: "14px", padding: "20px", textAlign: "left", maxWidth: "480px", margin: "0 auto" }}>
-                      <p style={{ color: "#F57C00", fontWeight: 700, margin: "0 0 12px" }}>Cancellation Policy Details</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}> Cancel any time while the order is pending or confirmed</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}> Orders already prepared/dispatched cannot be cancelled</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0 0 8px" }}> Full refund for eligible cancellations</p>
-                      <p style={{ fontSize: "13px", color: "#4B5563", margin: "0" }}> Contact support immediately to cancel</p>
-                    </div>
+                  <div style={{ marginBottom: "24px" }}>
+                    <h2 style={{ fontSize: "19px", fontWeight: 800, color: "#143c2d", margin: "0 0 4px", fontFamily: "var(--heading-font)" }}>
+                      Security & Password
+                    </h2>
+                    <p style={{ color: "#6B7280", fontSize: "13px", margin: 0 }}>
+                      Keep your account safe by updating your password periodically.
+                    </p>
                   </div>
-                  )}
+
+                  <div style={{ maxWidth: "440px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {passwordError && (
+                      <div style={{ padding: "10px 14px", backgroundColor: "#FEF2F2", color: "#DC2626", borderRadius: "10px", fontSize: "13px", fontWeight: 600 }}>
+                        {passwordError}
+                      </div>
+                    )}
+                    {passwordSuccess && (
+                      <div style={{ padding: "10px 14px", backgroundColor: "#F0FFF4", color: "#143c2d", borderRadius: "10px", fontSize: "13px", fontWeight: 700, border: "1px solid #C8E6C9" }}>
+                        Password updated successfully!
+                      </div>
+                    )}
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
+                        Current Password
+                      </label>
+                      <div style={{ position: "relative" }}>
+                        <input
+                          type={showCurrentPassword ? "text" : "password"}
+                          value={passwordForm.current}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
+                          placeholder="Enter current password"
+                          style={{ width: "100%", padding: "11px 40px 11px 14px", borderRadius: "10px", border: "1px solid #D1D5DB", fontSize: "14px", outline: "none", boxSizing: "border-box" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword((p) => !p)}
+                          style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#9CA3AF", cursor: "pointer" }}
+                        >
+                          {showCurrentPassword ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
+                        New Password
+                      </label>
+                      <div style={{ position: "relative" }}>
+                        <input
+                          type={showNextPassword ? "text" : "password"}
+                          value={passwordForm.next}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })}
+                          placeholder="At least 6 characters"
+                          style={{ width: "100%", padding: "11px 40px 11px 14px", borderRadius: "10px", border: "1px solid #D1D5DB", fontSize: "14px", outline: "none", boxSizing: "border-box" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNextPassword((p) => !p)}
+                          style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#9CA3AF", cursor: "pointer" }}
+                        >
+                          {showNextPassword ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
+                        Confirm New Password
+                      </label>
+                      <div style={{ position: "relative" }}>
+                        <input
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={passwordForm.confirm}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                          placeholder="Re-type new password"
+                          style={{ width: "100%", padding: "11px 40px 11px 14px", borderRadius: "10px", border: "1px solid #D1D5DB", fontSize: "14px", outline: "none", boxSizing: "border-box" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword((p) => !p)}
+                          style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#9CA3AF", cursor: "pointer" }}
+                        >
+                          {showConfirmPassword ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleChangePassword}
+                      disabled={passwordSaving}
+                      style={{
+                        marginTop: "8px",
+                        padding: "12px 24px",
+                        backgroundColor: "#143c2d",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "12px",
+                        fontWeight: 800,
+                        fontSize: "14px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {passwordSaving ? "Updating Password..." : "Update Password"}
+                    </button>
+                  </div>
                 </motion.div>
               )}
+
             </AnimatePresence>
           </div>
         </div>
