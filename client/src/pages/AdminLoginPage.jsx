@@ -65,11 +65,13 @@ export default function AdminLoginPage() {
 
         {/* Top Branding */}
         <div className="relative z-10">
-          <Link to="/" className="inline-flex items-center gap-3 group">
-            <div className="p-2.5 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md group-hover:border-amber-400/50 transition duration-300">
-              <img src={logo} alt="Bems Farms" className="h-10 w-auto brightness-110" />
-            </div>
-            <span className="rounded-full bg-amber-400/20 border border-amber-300/40 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-amber-300 backdrop-blur-sm">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-3 bg-white px-4 py-2.5 rounded-2xl shadow-xl border border-white/90 hover:shadow-2xl transition-all duration-200"
+          >
+            <img src={logo} alt="Bems Farms" className="h-8 w-auto object-contain" />
+            <span className="h-4 w-px bg-slate-200" />
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#143c2d]">
               Operations Hub
             </span>
           </Link>
@@ -117,11 +119,15 @@ export default function AdminLoginPage() {
         
         {/* Top Nav Action */}
         <div className="flex items-center justify-between w-full max-w-md mx-auto">
-          {/* Mobile Logo Only */}
-          <div className="lg:hidden flex items-center gap-2.5">
-            <img src={logo} alt="Bems Farms" className="h-8 w-auto" />
-            <span className="font-display text-xs font-black uppercase text-[#143c2d]">Operations</span>
-          </div>
+          {/* Mobile Logo on White Badge */}
+          <Link
+            to="/"
+            className="lg:hidden inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs"
+          >
+            <img src={logo} alt="Bems Farms" className="h-6 w-auto object-contain" />
+            <span className="h-3 w-px bg-slate-200" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#143c2d]">Ops Hub</span>
+          </Link>
 
           <Link
             to="/"
