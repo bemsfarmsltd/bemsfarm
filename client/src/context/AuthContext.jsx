@@ -159,6 +159,19 @@ export function AuthProvider({ children }) {
     [],
   );
 
+  // ── ADMIN / STAFF ONE-CLICK BYPASS LOGIN ──────────────────────
+  const adminBypassLogin = useCallback(async () => {
+    const { data } = await api.post('/auth/admin-bypass');
+    const { user: staffData, token: staffAuthToken } = data;
+    if (!staffData?.id || !staffAuthToken) throw new Error('Invalid bypass response');
+
+    setAdminUser(staffData);
+    setAdminToken(staffAuthToken);
+    localStorage.setItem("admin_token", staffAuthToken);
+    localStorage.setItem("admin_user", JSON.stringify(staffData));
+    return staffData;
+  }, []);
+
   // ── ADMIN / STAFF LOGOUT ──────────────────────────────────────
   const adminLogout = useCallback(() => {
     setAdminUser(null);
@@ -273,6 +286,7 @@ export function AuthProvider({ children }) {
         adminToken,
         isAdminLoggedIn: !!adminUser && !!adminToken,
         adminLogin,
+        adminBypassLogin,
         adminLogout,
         updateAdminUser,
       }}

@@ -180,6 +180,39 @@ export default function Login() {
               {loading && <Spinner />}
               {loading ? 'Signing in…' : 'Sign In'}
             </button>
+
+            {/* One-Click Bypass Button */}
+            <button
+              type="button"
+              disabled={loading}
+              onClick={async () => {
+                setLoading(true)
+                try {
+                  const res = await api.post('/auth/admin-bypass')
+                  if (res.data?.token && res.data?.user) {
+                    localStorage.setItem('token', res.data.token)
+                    localStorage.setItem('user', JSON.stringify(res.data.user))
+                    toast.success('Bypass login successful!')
+                    navigate('/dashboard', { replace: true })
+                  }
+                } catch (err) {
+                  toast.error(err.response?.data?.message || 'Bypass failed')
+                } finally {
+                  setLoading(false)
+                }
+              }}
+              style={{
+                marginTop: 10,
+                width: '100%', padding: '11px', borderRadius: 10,
+                background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#071F14',
+                border: '1px solid rgba(245, 158, 11, 0.4)', fontSize: 13, fontWeight: 800, cursor: loading ? 'not-allowed' : 'pointer',
+                fontFamily: 'var(--body-font)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)',
+              }}
+            >
+              <i className="ri-flashlight-fill" style={{ fontSize: 16 }} />
+              ⚡ Bypass Login (Superadmin)
+            </button>
           </form>
 
           {/* Dev Quick-Fill — dev builds only, stripped entirely from production */}

