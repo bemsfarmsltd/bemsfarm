@@ -48,73 +48,24 @@ function DeliveryVideoSlider() {
   const activeSlide = DISPATCH_SLIDES[current];
 
   return (
-    <div className="relative w-full aspect-video sm:aspect-[16/10] md:aspect-[4/3] lg:aspect-[16/10] rounded-2xl sm:rounded-3xl overflow-hidden border border-white/20 shadow-2xl bg-black/60 backdrop-blur-md select-none">
+    <div className="relative w-full aspect-video sm:aspect-[16/10] md:aspect-[4/3] lg:aspect-[16/10] rounded-2xl sm:rounded-3xl overflow-hidden border border-white/20 shadow-2xl bg-black/40 backdrop-blur-md select-none">
       <AnimatePresence mode="wait">
         <motion.div
           key={activeSlide.id}
-          initial={{ opacity: 0, scale: 1.04 }}
+          initial={{ opacity: 0, scale: 1.03 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
           transition={{ duration: 0.6, ease: "easeInOut" }}
           className="absolute inset-0 w-full h-full"
         >
-          {activeSlide.type === "video" ? (
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              key={activeSlide.src}
-              className="w-full h-full object-cover"
-              src={activeSlide.src}
-            />
-          ) : (
-            <img
-              src={activeSlide.src}
-              alt={activeSlide.title}
-              key={activeSlide.src}
-              className="w-full h-full object-cover"
-            />
-          )}
+          <img
+            src={activeSlide.src}
+            alt={activeSlide.title || "Bems Farms Facility"}
+            key={activeSlide.src}
+            className="w-full h-full object-cover"
+          />
         </motion.div>
       </AnimatePresence>
-
-      {/* Gradient Shade */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/35 pointer-events-none" />
-
-      {/* Top Slide Indicators */}
-      <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 flex items-center gap-1.5 pointer-events-auto">
-        {DISPATCH_SLIDES.map((slide, idx) => (
-          <button
-            key={slide.id}
-            type="button"
-            onClick={() => setCurrent(idx)}
-            className={`h-1.5 rounded-full transition-all cursor-pointer ${
-              current === idx ? "w-5 bg-amber-400" : "w-1.5 bg-white/40 hover:bg-white/70"
-            }`}
-            aria-label={`Slide ${idx + 1}`}
-          />
-        ))}
-      </div>
-
-      {/* Video / Slide Badge Pill */}
-      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/65 backdrop-blur-md px-3 py-1 border border-white/20 text-[10px] sm:text-xs font-bold text-white shadow-lg pointer-events-none">
-        <span
-          className="h-1.5 w-1.5 rounded-full animate-ping"
-          style={{ backgroundColor: activeSlide.badgeColor }}
-        />
-        <span>{activeSlide.badge}</span>
-      </div>
-
-      {/* Bottom Caption */}
-      <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 right-3 sm:right-4 z-10 text-white pointer-events-none">
-        <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-amber-300 drop-shadow-sm">
-          {activeSlide.title}
-        </p>
-        <p className="text-[10px] sm:text-[11px] text-white/90 line-clamp-1 drop-shadow-xs font-medium">
-          {activeSlide.subtitle}
-        </p>
-      </div>
     </div>
   );
 }
