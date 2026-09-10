@@ -67,13 +67,9 @@ export default function AdminLoginPage() {
         <div className="relative z-10">
           <Link
             to="/"
-            className="inline-flex items-center gap-3 bg-white px-4 py-2.5 rounded-2xl shadow-xl border border-white/90 hover:shadow-2xl transition-all duration-200"
+            className="inline-flex items-center bg-white px-4 py-2.5 rounded-2xl shadow-xl border border-white/90 hover:scale-[1.02] transition-all duration-200"
           >
-            <img src={logo} alt="Bems Farms" className="h-8 w-auto object-contain" />
-            <span className="h-4 w-px bg-slate-200" />
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#143c2d]">
-              Operations Hub
-            </span>
+            <img src={logo} alt="Bems Farms" className="h-9 w-auto object-contain" />
           </Link>
         </div>
 
@@ -122,11 +118,9 @@ export default function AdminLoginPage() {
           {/* Mobile Logo on White Badge */}
           <Link
             to="/"
-            className="lg:hidden inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs"
+            className="lg:hidden inline-flex items-center bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs"
           >
-            <img src={logo} alt="Bems Farms" className="h-6 w-auto object-contain" />
-            <span className="h-3 w-px bg-slate-200" />
-            <span className="text-[10px] font-black uppercase tracking-wider text-[#143c2d]">Ops Hub</span>
+            <img src={logo} alt="Bems Farms" className="h-7 w-auto object-contain" />
           </Link>
 
           <Link
