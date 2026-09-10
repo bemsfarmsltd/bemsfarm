@@ -660,30 +660,42 @@ function FullScreenCatalogueModal({
   );
 }
 
-const DISPATCH_VIDEOS = [
+const DISPATCH_SLIDES_LANDING = [
   {
     id: 1,
-    badge: "Nationwide Doorstep Dispatch",
+    type: "video",
+    badge: "Live Dispatch Fleet",
     badgeColor: "#10B981",
-    title: "Express Logistics Network",
-    subtitle: "Speedy fulfillment direct from our Abia State central hub to all 36 states.",
+    title: "Express Doorstep Delivery",
+    subtitle: "Prompt doorstep fulfillment operating from our Abia State central hub.",
     src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1784552209/Create_an_exiting_carousel_vid_xh7212.mp4",
   },
   {
     id: 2,
-    badge: "Hygienic Sealed Packaging",
-    badgeColor: "#06B6D4",
-    title: "Quality Sorting & Sealing",
-    subtitle: "Stone-free grain verification, winnowing, and leak-proof container seals.",
-    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166480/A_slow_looping_cinematic_shot_i0swkm.mp4",
+    type: "image",
+    badge: "Dedicated Courier Fleet",
+    badgeColor: "#F59E0B",
+    title: "Safe Doorstep Handover",
+    subtitle: "Direct doorstep dispatch across Umuahia, Aba, and all cities nationwide.",
+    src: "/bems_dispatch_rider.jpg",
   },
   {
     id: 3,
-    badge: "Direct Farm Freshness",
-    badgeColor: "#F59E0B",
-    title: "Harvested & Sorted in Abia",
-    subtitle: "Pure palm oil, grains, and authentic Nigerian produce in transit.",
-    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166618/A_vibrant_top_down_flat_lay_vi_xuitwq.mp4",
+    type: "image",
+    badge: "Inter-State Logistics",
+    badgeColor: "#06B6D4",
+    title: "Daily Warehouse Departures",
+    subtitle: "Sealed crates and cargo dispatched to all 36 States and Abuja FCT.",
+    src: "/bems_dispatch_van.jpg",
+  },
+  {
+    id: 4,
+    type: "image",
+    badge: "Delivered to Doorstep",
+    badgeColor: "#8B5CF6",
+    title: "Fresh Groceries Handover",
+    subtitle: "Delivered intact, sealed, and ready for your cooking pot.",
+    src: "/bems_dispatch_doorstep.jpg",
   },
 ];
 
@@ -692,12 +704,12 @@ function LandingDispatchSlider() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % DISPATCH_VIDEOS.length);
+      setCurrent((prev) => (prev + 1) % DISPATCH_SLIDES_LANDING.length);
     }, 6000);
     return () => clearInterval(interval);
   }, []);
 
-  const activeSlide = DISPATCH_VIDEOS[current];
+  const activeSlide = DISPATCH_SLIDES_LANDING[current];
 
   return (
     <div className="relative w-full aspect-video sm:aspect-[16/10] md:aspect-[4/3] lg:aspect-[16/10] rounded-2xl sm:rounded-3xl overflow-hidden border border-white/20 shadow-2xl bg-black/60 backdrop-blur-md select-none">
@@ -710,19 +722,43 @@ function LandingDispatchSlider() {
           transition={{ duration: 0.6, ease: "easeInOut" }}
           className="absolute inset-0 w-full h-full"
         >
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            key={activeSlide.src}
-            className="w-full h-full object-cover"
-            src={activeSlide.src}
-          />
+          {activeSlide.type === "video" ? (
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              key={activeSlide.src}
+              className="w-full h-full object-cover"
+              src={activeSlide.src}
+            />
+          ) : (
+            <img
+              src={activeSlide.src}
+              alt={activeSlide.title}
+              key={activeSlide.src}
+              className="w-full h-full object-cover"
+            />
+          )}
         </motion.div>
       </AnimatePresence>
 
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/35 pointer-events-none" />
+
+      {/* Slide Indicators */}
+      <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 flex items-center gap-1.5 pointer-events-auto">
+        {DISPATCH_SLIDES_LANDING.map((slide, idx) => (
+          <button
+            key={slide.id}
+            type="button"
+            onClick={() => setCurrent(idx)}
+            className={`h-1.5 rounded-full transition-all cursor-pointer ${
+              current === idx ? "w-5 bg-amber-400" : "w-1.5 bg-white/40 hover:bg-white/70"
+            }`}
+            aria-label={`Slide ${idx + 1}`}
+          />
+        ))}
+      </div>
 
       <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/65 backdrop-blur-md px-3 py-1 border border-white/20 text-[10px] sm:text-xs font-bold text-white shadow-lg pointer-events-none">
         <span
