@@ -260,6 +260,7 @@ function SectionHeading({ eyebrow, title, text, align = "center" }) {
 }
 
 function StoreProductCard({ product, added, onAdd, onNotify }) {
+  const navigate = useNavigate();
   const stock = Number(product.stock_quantity ?? product.stock ?? 0);
   const price = Number(product.price || 0) * NAIRA_PER_UNIT;
   const invalidPrice = !Number.isFinite(price) || price <= 0;
@@ -762,7 +763,15 @@ export default function LandingPage() {
   const [toast, setToast] = useState(null);
   const toastTimerRef = useRef(null);
   const catalogueTriggerRef = useRef(null);
+  const productsScrollRef = useRef(null);
   const itemsPerPage = 6;
+
+  const scrollProducts = (direction) => {
+    if (productsScrollRef.current) {
+      const scrollAmount = direction === "left" ? -340 : 340;
+      productsScrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
 
   // Cleanup toast timer on unmount
   useEffect(() => {
@@ -1140,51 +1149,75 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Filter Tabs */}
-            <div className="mt-8 flex flex-wrap items-center gap-2 border-b border-slate-100 pb-4">
-              <button
-                type="button"
-                onClick={() => { setCatalogueView("all"); if (appliedSearch) { setSearch(""); loadProducts(); } }}
-                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "all" && !appliedSearch ? "bg-[#143c2d] text-white" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
-              >
-                All Products
-              </button>
-              <button
-                type="button"
-                onClick={() => setCatalogueView("bems_originals")}
-                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "bems_originals" ? "bg-[#143c2d] text-amber-300 ring-2 ring-amber-400/40" : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}
-              >
-                 Bems Originals
-              </button>
-              <button
-                type="button"
-                onClick={() => setCatalogueView("featured")}
-                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "featured" ? "bg-[#143c2d] text-white" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
-              >
-                Featured
-              </button>
-              <button
-                type="button"
-                onClick={() => setCatalogueView("newest")}
-                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "newest" ? "bg-[#143c2d] text-white" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
-              >
-                New Arrivals
-              </button>
-              {appliedSearch && (
+            {/* Filter Tabs & Scroll Controls Header */}
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => { setSearch(""); loadProducts(); }}
-                  className="ml-auto rounded-full border border-[#DDD3BF] bg-white px-4 py-1.5 text-xs font-extrabold text-slate-700 hover:bg-[#F3EDE2]"
+                  onClick={() => { setCatalogueView("all"); if (appliedSearch) { setSearch(""); loadProducts(); } }}
+                  className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "all" && !appliedSearch ? "bg-[#143c2d] text-white shadow-xs" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
                 >
-                  Clear search ({appliedSearch}) 
+                  All Products
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setCatalogueView("bems_originals")}
+                  className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "bems_originals" ? "bg-[#143c2d] text-amber-300 ring-2 ring-amber-400/40 shadow-xs" : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}
+                >
+                  Bems Originals
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCatalogueView("featured")}
+                  className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "featured" ? "bg-[#143c2d] text-white shadow-xs" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
+                >
+                  Featured
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCatalogueView("newest")}
+                  className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "newest" ? "bg-[#143c2d] text-white shadow-xs" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`}
+                >
+                  New Arrivals
+                </button>
+                {appliedSearch && (
+                  <button
+                    type="button"
+                    onClick={() => { setSearch(""); loadProducts(); }}
+                    className="rounded-full border border-[#DDD3BF] bg-white px-4 py-1.5 text-xs font-extrabold text-slate-700 hover:bg-[#F3EDE2]"
+                  >
+                    Clear search ({appliedSearch}) 
+                  </button>
+                )}
+              </div>
+
+              {/* Scroll Controls (Left / Right) */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-400 hidden sm:inline">Scroll Items:</span>
+                <button
+                  type="button"
+                  onClick={() => scrollProducts("left")}
+                  aria-label="Scroll goods left"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-slate-300 bg-white text-base font-bold text-slate-800 shadow-xs hover:border-[#143c2d] hover:bg-slate-50 transition active:scale-95 cursor-pointer"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollProducts("right")}
+                  aria-label="Scroll goods right"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-slate-300 bg-white text-base font-bold text-slate-800 shadow-xs hover:border-[#143c2d] hover:bg-slate-50 transition active:scale-95 cursor-pointer"
+                >
+                  ›
+                </button>
+              </div>
             </div>
 
+            {/* Horizontal Loading Skeletons */}
             {productsLoading && (
-              <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 xl:gap-4">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <div key={index} className="overflow-hidden rounded-2xl border border-[#DFD6C2] bg-white shadow-sm">
+              <div className="mt-8 flex gap-4 overflow-x-hidden pb-4">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="w-[210px] sm:w-[240px] md:w-[260px] shrink-0 overflow-hidden rounded-2xl border border-[#DFD6C2] bg-white shadow-sm">
                     <div className="aspect-[4/3] animate-pulse bg-[#EDE5D5]" />
                     <div className="space-y-2.5 p-4">
                       <div className="h-2.5 w-16 animate-pulse rounded-full bg-[#DFD6C2]" />
@@ -1200,7 +1233,14 @@ export default function LandingPage() {
               </div>
             )}
 
-            {!productsLoading && productsError && <div role="alert" className="mt-10 flex flex-col items-center rounded-3xl border border-orange-200 bg-orange-50 px-6 py-10 text-center"><p className="font-display text-xl font-bold text-slate-900">{productsError}</p><button type="button" onClick={() => loadProducts(search)} className="mt-4 rounded-full bg-[#17352a] px-6 py-3 text-sm font-extrabold text-white">Try again</button></div>}
+            {!productsLoading && productsError && (
+              <div role="alert" className="mt-10 flex flex-col items-center rounded-3xl border border-orange-200 bg-orange-50 px-6 py-10 text-center">
+                <p className="font-display text-xl font-bold text-slate-900">{productsError}</p>
+                <button type="button" onClick={() => loadProducts(search)} className="mt-4 rounded-full bg-[#17352a] px-6 py-3 text-sm font-extrabold text-white">
+                  Try again
+                </button>
+              </div>
+            )}
 
             {!productsLoading && !productsError && displayedProducts.length === 0 && (
               <div role="status" className="mt-10 rounded-3xl border border-slate-200 bg-slate-50 px-6 py-12 text-center">
@@ -1214,72 +1254,32 @@ export default function LandingPage() {
               </div>
             )}
 
+            {/* Horizontal Goods Scrolling Track */}
             {!productsLoading && !productsError && displayedProducts.length > 0 && (
-              <>
-                <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 xl:gap-4">
-                  {paginatedProducts.map((product) => (
-                    <StoreProductCard key={product.id} product={product} added={Boolean(addedProducts[product.id])} onAdd={handleAdd} onNotify={setRestockProduct} />
+              <div className="relative group mt-6">
+                <div
+                  ref={productsScrollRef}
+                  className="flex gap-4 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory scroll-smooth overscroll-x-contain"
+                  style={{
+                    scrollbarWidth: "none",
+                    msOverflowStyle: "none",
+                  }}
+                >
+                  {displayedProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      className="w-[210px] sm:w-[240px] md:w-[260px] shrink-0 snap-start"
+                    >
+                      <StoreProductCard
+                        product={product}
+                        added={Boolean(addedProducts[product.id])}
+                        onAdd={handleAdd}
+                        onNotify={setRestockProduct}
+                      />
+                    </div>
                   ))}
                 </div>
-
-                {/* Pagination Controls (Previous / Next + Smart Windowed Numbers) */}
-                {totalPages > 1 && (
-                  <div className="mt-9 flex flex-col items-center justify-between gap-4 border-t border-slate-200/80 pt-6 sm:flex-row">
-                    <p className="w-full text-center text-xs font-bold text-slate-500 sm:w-auto sm:text-left shrink-0">
-                      Showing <span className="font-extrabold text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span>–<span className="font-extrabold text-slate-900">{Math.min(currentPage * itemsPerPage, displayedProducts.length)}</span> of <span className="font-extrabold text-slate-900">{displayedProducts.length}</span> products
-                    </p>
-
-                    <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-full">
-                      <button
-                        type="button"
-                        onClick={() => goToPage(Math.max(1, currentPage - 1))}
-                        disabled={currentPage === 1}
-                        className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700 shadow-xs transition hover:border-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-35"
-                        aria-label="Previous page"
-                      >
-                        <span aria-hidden="true">‹</span> Prev
-                      </button>
-
-                      <div className="flex flex-wrap items-center justify-center gap-1">
-                        {getVisiblePages(currentPage, totalPages).map((page, index) => {
-                          if (page === "...") {
-                            return (
-                              <span key={`ellipsis-${index}`} className="px-1 text-xs font-extrabold text-slate-400 select-none">
-                                ...
-                              </span>
-                            );
-                          }
-                          return (
-                            <button
-                              key={page}
-                              type="button"
-                              onClick={() => goToPage(page)}
-                              className={`h-8 w-8 rounded-full text-xs font-extrabold transition ${
-                                currentPage === page
-                                  ? "bg-[#143c2d] text-white shadow-md"
-                                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                              }`}
-                              aria-label={`Go to page ${page}`}
-                            >
-                              {page}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
-                        disabled={currentPage === totalPages}
-                        className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700 shadow-xs transition hover:border-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-35"
-                        aria-label="Next page"
-                      >
-                        Next <span aria-hidden="true">›</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
+              </div>
             )}
 
             <div className="mt-10 flex flex-col items-center justify-between gap-4 rounded-2xl border border-[#DDD3BF] bg-[#EFE8DC] px-6 py-5 sm:flex-row shadow-sm">
