@@ -23,16 +23,20 @@ const ContactPage = lazy(() => import("./pages/ContactPage"));
 const ReturnsPage = lazy(() => import("./pages/ReturnsPage"));
 const ChefBemsPage = lazy(() => import("./pages/ChefBemsPage"));
 
+const ADMIN_PORTAL_URL = import.meta.env.DEV
+  ? "http://localhost:5174"
+  : "https://bems-admin.vercel.app";
+
 function AdminRedirect() {
   useEffect(() => {
-    window.location.replace("/admin/");
+    window.location.replace(ADMIN_PORTAL_URL);
   }, []);
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#071F14] text-white font-sans">
       <div className="text-center p-8">
         <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-amber-400 border-t-transparent" />
         <h2 className="text-lg font-bold mb-1">BemsFarms Enterprise Admin Portal</h2>
-        <p className="text-xs text-emerald-200/80">Opening administrative portal...</p>
+        <p className="text-xs text-emerald-200/80">Redirecting to admin portal...</p>
       </div>
     </div>
   );
