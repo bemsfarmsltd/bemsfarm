@@ -27,17 +27,21 @@ import api from "../services/api";
   - The old login() is kept as _storeSession() for internal use
 */
 
+const STAFF_ROLES = ["superadmin", "admin", "manager", "accountant", "delivery_manager", "cashier", "storekeeper", "kitchen_staff"];
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  // Customer Session
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Restore session on mount — a token/user pair sitting in localStorage
-  // could be expired, revoked, or forged, so it's only trusted once the
-  // server confirms it via /auth/me. Until that resolves, isLoggedIn stays
-  // false and ProtectedRoute won't render the page underneath it.
+  // Admin / Staff Session (Completely isolated)
+  const [adminUser, setAdminUser] = useState(null);
+  const [adminToken, setAdminToken] = useState(null);
+
+  // Restore Customer session on mount
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
     const savedUser = localStorage.getItem("user");
@@ -49,8 +53,6 @@ export function AuthProvider({ children }) {
 
     try {
       const parsed = JSON.parse(savedUser);
-      // Basic sanity check — if "user" is just an email string,
-      // the old broken login stored it wrong; clear and force re-login
       if (typeof parsed === "string" || !parsed?.id) {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
@@ -58,9 +60,8 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      api.defaults.headers.common.Authorization = `Bearer ${savedToken}`;
       api
-        .get("/auth/me")
+        .get("/auth/me", { headers: { Authorization: `Bearer ${savedToken}` } })
         .then((res) => {
           const freshUser = res.data.user || parsed;
           setToken(savedToken);
@@ -70,7 +71,6 @@ export function AuthProvider({ children }) {
         .catch(() => {
           localStorage.removeItem("token");
           localStorage.removeItem("user");
-          delete api.defaults.headers.common.Authorization;
         })
         .finally(() => setLoading(false));
     } catch {
@@ -80,17 +80,53 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Internal: store a valid session after any auth method
+  // Restore Admin session on mount
+  useEffect(() => {
+    const savedAdminToken = localStorage.getItem("admin_token");
+    const savedAdminUser = localStorage.getItem("admin_user");
+
+    if (!savedAdminToken || !savedAdminUser) return;
+
+    try {
+      const parsedAdmin = JSON.parse(savedAdminUser);
+      if (typeof parsedAdmin === "string" || !parsedAdmin?.id || !STAFF_ROLES.includes(parsedAdmin?.role)) {
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("admin_user");
+        return;
+      }
+
+      api
+        .get("/auth/me", { headers: { Authorization: `Bearer ${savedAdminToken}` } })
+        .then((res) => {
+          const freshAdmin = res.data.user || parsedAdmin;
+          if (STAFF_ROLES.includes(freshAdmin?.role)) {
+            setAdminToken(savedAdminToken);
+            setAdminUser(freshAdmin);
+            localStorage.setItem("admin_user", JSON.stringify(freshAdmin));
+          } else {
+            localStorage.removeItem("admin_token");
+            localStorage.removeItem("admin_user");
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem("admin_token");
+          localStorage.removeItem("admin_user");
+        });
+    } catch {
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("admin_user");
+    }
+  }, []);
+
+  // Internal: store customer session
   const _storeSession = useCallback((userData, authToken) => {
     setUser(userData);
     setToken(authToken);
     localStorage.setItem("token", authToken);
     localStorage.setItem("user", JSON.stringify(userData));
-    api.defaults.headers.common.Authorization = `Bearer ${authToken}`;
   }, []);
 
-  // ── EMAIL/PASSWORD LOGIN ─────────────────────────────────────
-  // This is what LoginPage should call: await login(email, password)
+  // ── CUSTOMER EMAIL/PASSWORD LOGIN ────────────────────────────
   const login = useCallback(
     async (email, password) => {
       const { data } = await api.post('/auth/login', { email, password });
@@ -103,12 +139,38 @@ export function AuthProvider({ children }) {
     [_storeSession],
   );
 
+  // ── ADMIN / STAFF EMAIL/PASSWORD LOGIN ────────────────────────
+  const adminLogin = useCallback(
+    async (email, password) => {
+      const { data } = await api.post('/auth/login', { email, password });
+      const { user: staffData, token: staffAuthToken } = data;
+      if (!staffData?.id || !staffAuthToken) throw new Error('Invalid login response');
+
+      if (!STAFF_ROLES.includes(staffData.role)) {
+        throw new Error('Access Denied: This portal is strictly restricted to Bems Farms staff and administrators.');
+      }
+
+      setAdminUser(staffData);
+      setAdminToken(staffAuthToken);
+      localStorage.setItem("admin_token", staffAuthToken);
+      localStorage.setItem("admin_user", JSON.stringify(staffData));
+      return staffData;
+    },
+    [],
+  );
+
+  // ── ADMIN / STAFF LOGOUT ──────────────────────────────────────
+  const adminLogout = useCallback(() => {
+    setAdminUser(null);
+    setAdminToken(null);
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_user");
+  }, []);
+
   // ── EMAIL/PASSWORD REGISTER ──────────────────────────────────
   const register = useCallback(
     async (name, email, password, phone, preferences) => {
       const { data } = await api.post('/auth/register', { name, email, password, phone, preferences });
-      
-      // Do NOT log the user in immediately. They must verify their email.
       return { email, ...data };
     },
     [],
@@ -137,9 +199,6 @@ export function AuthProvider({ children }) {
   );
 
   // ── GOOGLE OAUTH LOGIN ───────────────────────────────────────
-  // googleCredential = the JWT credential string from @react-oauth/google
-  // Backend needs POST /api/auth/google that verifies it with Google
-  // and returns { user, token }
   const loginWithGoogle = useCallback(
     async (googleCredential) => {
       const res = await api.post("/auth/google", {
@@ -156,9 +215,7 @@ export function AuthProvider({ children }) {
     [_storeSession],
   );
 
-  // ── UPDATE USER  (merge a server response into the in-memory user,
-  // e.g. after ProfilePage saves — without this, the navbar/profile form
-  // would keep showing stale data until the next full page load) ───────
+  // ── UPDATE CUSTOMER USER ─────────────────────────────────────
   const updateUser = useCallback((patch) => {
     setUser((prev) => {
       const next = { ...prev, ...patch };
@@ -167,40 +224,53 @@ export function AuthProvider({ children }) {
     });
   }, []);
 
-  // ── REFRESH TOKEN  (e.g. after change-password, which bumps token_version
-  // server-side and invalidates the token this very request was made with —
-  // without swapping in the fresh one returned, the next API call 403s and
-  // silently logs the user out right after they changed their password) ──
+  // ── UPDATE ADMIN USER ─────────────────────────────────────────
+  const updateAdminUser = useCallback((patch) => {
+    setAdminUser((prev) => {
+      const next = { ...prev, ...patch };
+      localStorage.setItem("admin_user", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  // ── REFRESH TOKEN ────────────────────────────────────────────
   const refreshToken = useCallback((newToken) => {
     setToken(newToken);
     localStorage.setItem('token', newToken);
-    api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
   }, []);
 
-  // ── LOGOUT ───────────────────────────────────────────────────
+  // ── CUSTOMER LOGOUT ──────────────────────────────────────────
   const logout = useCallback(() => {
     setUser(null);
     setToken(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    delete api.defaults.headers.common.Authorization;
   }, []);
 
   return (
     <AuthContext.Provider
       value={{
+        // Customer Auth
         user,
         token,
         loading,
         isLoggedIn: !!user && !!token,
-        login, // call as: await login(email, password)
-        register, // call as: await register(name, email, password)
+        login,
+        register,
         verifyEmail,
         resendVerification,
-        loginWithGoogle, // call as: await loginWithGoogle(credential)
+        loginWithGoogle,
         logout,
-        updateUser, // call as: updateUser({ name, phone, ... }) to merge a patch in
-        refreshToken, // call as: refreshToken(newToken) after change-password
+        updateUser,
+        refreshToken,
+
+        // Admin Auth (Concurrent & Isolated)
+        adminUser,
+        adminToken,
+        isAdminLoggedIn: !!adminUser && !!adminToken,
+        adminLogin,
+        adminLogout,
+        updateAdminUser,
       }}
     >
       {loading ? (

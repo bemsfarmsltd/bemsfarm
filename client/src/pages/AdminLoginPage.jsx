@@ -11,7 +11,7 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, logout, user, isLoggedIn } = useAuth();
+  const { adminLogin, adminUser, isAdminLoggedIn } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -19,15 +19,10 @@ export default function AdminLoginPage() {
   const from = location.state?.from || "/admin";
 
   useEffect(() => {
-    if (isLoggedIn && user) {
-      if (STAFF_ROLES.includes(user.role)) {
-        navigate(from, { replace: true });
-      } else {
-        // If a customer is logged in and visits admin login, notify them
-        setError("Your active account is a customer account. Please log in with staff credentials.");
-      }
+    if (isAdminLoggedIn && adminUser && STAFF_ROLES.includes(adminUser.role)) {
+      navigate(from, { replace: true });
     }
-  }, [isLoggedIn, user, from, navigate]);
+  }, [isAdminLoggedIn, adminUser, from, navigate]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -38,17 +33,10 @@ export default function AdminLoginPage() {
 
     setLoading(true);
     try {
-      const responseUser = await login(email.trim(), password);
-      // Verify staff role
-      if (responseUser && !STAFF_ROLES.includes(responseUser.role)) {
-        // Log out immediately if not staff
-        await logout();
-        setError("Access Denied: This portal is strictly restricted to Bems Farms staff and administrators.");
-        return;
-      }
+      await adminLogin(email.trim(), password);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid staff credentials. Please try again.");
+      setError(err.message || err.response?.data?.message || "Invalid staff credentials. Please try again.");
     } finally {
       setLoading(false);
     }

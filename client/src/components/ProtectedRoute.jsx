@@ -2,32 +2,40 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 
-// Roles that exist on staff accounts (users.role) sharing this same auth
-// system with the storefront — kept in sync with the admin app's
-// lib/roles.js ROLES enum. "user" (the default customer role) is
-// deliberately excluded from this list.
 const STAFF_ROLES = ["superadmin", "admin", "manager", "accountant", "delivery_manager", "cashier", "storekeeper", "kitchen_staff"];
 
 export default function ProtectedRoute({ children, allowedRoles }) {
-  const { isLoggedIn, user } = useAuth();
+  const { isLoggedIn, user, adminUser, isAdminLoggedIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const roleAllowed = !allowedRoles || (user && allowedRoles.includes(user.role));
+  const isStaffRoute = Boolean(allowedRoles && !allowedRoles.includes("user"));
+
+  // Effective staff user: adminUser preferred, fallback to user if user has staff role
+  const activeStaff = adminUser || (user && STAFF_ROLES.includes(user.role) ? user : null);
+  const isStaffAuthenticated = isAdminLoggedIn || Boolean(activeStaff);
+
+  const isAuthorized = isStaffRoute
+    ? (isStaffAuthenticated && (!allowedRoles || allowedRoles.includes(activeStaff?.role)))
+    : (isLoggedIn && Boolean(user) && (!allowedRoles || allowedRoles.includes(user?.role)));
 
   useEffect(() => {
-    if (!isLoggedIn) {
-      const isStaffRoute = allowedRoles && !allowedRoles.includes("user");
-      const loginPath = isStaffRoute ? "/admin/login" : "/login";
-      navigate(loginPath, { state: { from: location.pathname } });
-    } else if (!roleAllowed) {
-      // Bounce silently rather than showing an "unauthorized" page —
-      // no need to confirm to a customer that internal tooling exists here.
-      navigate("/home", { replace: true });
+    if (isStaffRoute) {
+      if (!isStaffAuthenticated) {
+        navigate("/admin/login", { state: { from: location.pathname }, replace: true });
+      } else if (!isAuthorized) {
+        navigate("/home", { replace: true });
+      }
+    } else {
+      if (!isLoggedIn) {
+        navigate("/login", { state: { from: location.pathname }, replace: true });
+      } else if (!isAuthorized) {
+        navigate("/home", { replace: true });
+      }
     }
-  }, [isLoggedIn, roleAllowed, allowedRoles, location.pathname, navigate]);
+  }, [isStaffRoute, isStaffAuthenticated, isAuthorized, isLoggedIn, location.pathname, navigate]);
 
-  if (!isLoggedIn || !roleAllowed) return null;
+  if (!isAuthorized) return null;
   return children;
 }
 

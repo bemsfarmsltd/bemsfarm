@@ -133,7 +133,7 @@ function IssueDetailPanel({ issue, onClose, onUpdated }) {
   const [updating, setUpdating] = useState(false);
   const [addingNote, setAddingNote] = useState(false);
   const [success, setSuccess] = useState("");
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("admin_token") || localStorage.getItem("token");
 
   const customer = issue.users || {};
   const order = issue.orders || {};
@@ -917,7 +917,7 @@ export default function AdminIssueResolutionPage() {
   const [filterType, setFilterType] = useState("all");
   const [search, setSearch] = useState("");
   const [stats, setStats] = useState({});
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("admin_token") || localStorage.getItem("token");
 
   const fetchIssues = async () => {
     setLoading(true);

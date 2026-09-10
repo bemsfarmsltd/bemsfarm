@@ -36,7 +36,8 @@ const tabs = [
 ];
 export default function AdminPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, adminUser, adminLogout } = useAuth();
+  const currentStaff = adminUser || user;
   const { isMobile, isTablet, isDesktop, isTabletAny, padding, gap, cols } =
     useResponsive();
   const [products, setProducts] = useState([]);
@@ -519,11 +520,12 @@ export default function AdminPage() {
                 fontWeight: 700,
                 color: "white",
                 fontSize: "14px",
+                flexShrink: 0,
               }}
             >
-              {user?.name?.[0]?.toUpperCase() || "A"}
+              {currentStaff?.name?.[0]?.toUpperCase() || "A"}
             </div>
-            <div style={{ overflow: "hidden" }}>
+            <div style={{ overflow: "hidden", flex: 1 }}>
               <p
                 style={{
                   fontSize: "13px",
@@ -534,12 +536,34 @@ export default function AdminPage() {
                   whiteSpace: "nowrap",
                 }}
               >
-                {user?.name || "Admin"}
+                {currentStaff?.name || "Admin"}
               </p>
               <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>
-                Administrator
+                {currentStaff?.role?.toUpperCase() || "ADMINISTRATOR"}
               </p>
             </div>
+            <button
+              onClick={() => {
+                adminLogout();
+                navigate("/admin/login", { replace: true });
+              }}
+              title="Sign Out of Admin Hub"
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                border: "none",
+                borderRadius: "8px",
+                padding: "6px",
+                cursor: "pointer",
+                color: "rgba(255,255,255,0.6)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <svg style={{ width: "16px", height: "16px" }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+              </svg>
+            </button>
           </div>
         </div>
       )}

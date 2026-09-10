@@ -23,8 +23,16 @@ const api = axios.create({
 // ─────────────────────────────────────────────
 api.interceptors.request.use(
   (config) => {
-    const token =
+    const isAdminRequest =
+      config.url?.startsWith("/admin") ||
+      (typeof window !== "undefined" &&
+        window.location.pathname.startsWith("/admin"));
+
+    const adminToken = localStorage.getItem("admin_token");
+    const customerToken =
       localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    const token = isAdminRequest ? (adminToken || customerToken) : customerToken;
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -36,7 +44,7 @@ api.interceptors.request.use(
 );
 
 // ─────────────────────────────────────────────
-// RESPONSE INTERCEPTOR (Refresh token flow)
+// RESPONSE INTERCEPTOR (Refresh token flow & isolated 401s)
 // ─────────────────────────────────────────────
 let isRefreshing = false;
 let failedQueue = [];
@@ -55,8 +63,22 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     const requestUrl = originalRequest?.url || "";
     const isAuthRequest = /\/auth\/(login|register|google|refresh|forgot-password|reset-password)/.test(requestUrl);
+    const isAdminRequest =
+      requestUrl.startsWith("/admin") ||
+      (typeof window !== "undefined" &&
+        window.location.pathname.startsWith("/admin"));
 
     if (error.response?.status === 401 && !isAuthRequest && !originalRequest?._retry) {
+      if (isAdminRequest) {
+        // Clear only admin session when an admin route fails authentication
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("admin_user");
+        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/admin/login")) {
+          window.location.href = "/admin/login";
+        }
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -91,7 +113,9 @@ api.interceptors.response.use(
         localStorage.removeItem("token");
         localStorage.removeItem("user");
 
-        window.location.href = "/login";
+        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+          window.location.href = "/login";
+        }
 
         return Promise.reject(refreshError);
       } finally {
