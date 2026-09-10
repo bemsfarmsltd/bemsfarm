@@ -98,6 +98,19 @@ const HERO_SLIDES = [
   },
 ];
 
+function getVisiblePages(current, total) {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, "...", total];
+  }
+  if (current >= total - 3) {
+    return [1, "...", total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, "...", current - 1, current, current + 1, "...", total];
+}
+
 function useModalFocus(isOpen, returnFocusRef) {
   const dialogRef = useRef(null);
 
@@ -1209,40 +1222,46 @@ export default function LandingPage() {
                   ))}
                 </div>
 
-                {/* Pagination Controls (Previous / Next + Numbers) */}
+                {/* Pagination Controls (Previous / Next + Smart Windowed Numbers) */}
                 {totalPages > 1 && (
-                  <div className="mt-9 flex flex-col items-center justify-between gap-4 border-t border-slate-100 pt-6 sm:flex-row">
-                    <p className="text-xs font-bold text-slate-500">
+                  <div className="mt-9 flex flex-col items-center justify-between gap-4 border-t border-slate-200/80 pt-6 sm:flex-row">
+                    <p className="w-full text-center text-xs font-bold text-slate-500 sm:w-auto sm:text-left shrink-0">
                       Showing <span className="font-extrabold text-slate-900">{(currentPage - 1) * itemsPerPage + 1}</span>–<span className="font-extrabold text-slate-900">{Math.min(currentPage * itemsPerPage, displayedProducts.length)}</span> of <span className="font-extrabold text-slate-900">{displayedProducts.length}</span> products
                     </p>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-full">
                       <button
                         type="button"
                         onClick={() => goToPage(Math.max(1, currentPage - 1))}
                         disabled={currentPage === 1}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-extrabold text-slate-700 shadow-sm transition hover:border-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-35"
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700 shadow-xs transition hover:border-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-35"
                         aria-label="Previous page"
                       >
-                        <span aria-hidden="true">‹</span> Previous
+                        <span aria-hidden="true">‹</span> Prev
                       </button>
 
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: totalPages }).map((_, index) => {
-                          const pageNum = index + 1;
+                      <div className="flex flex-wrap items-center justify-center gap-1">
+                        {getVisiblePages(currentPage, totalPages).map((page, index) => {
+                          if (page === "...") {
+                            return (
+                              <span key={`ellipsis-${index}`} className="px-1 text-xs font-extrabold text-slate-400 select-none">
+                                ...
+                              </span>
+                            );
+                          }
                           return (
                             <button
-                              key={pageNum}
+                              key={page}
                               type="button"
-                              onClick={() => goToPage(pageNum)}
+                              onClick={() => goToPage(page)}
                               className={`h-8 w-8 rounded-full text-xs font-extrabold transition ${
-                                currentPage === pageNum
+                                currentPage === page
                                   ? "bg-[#143c2d] text-white shadow-md"
                                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                               }`}
-                              aria-label={`Go to page ${pageNum}`}
+                              aria-label={`Go to page ${page}`}
                             >
-                              {pageNum}
+                              {page}
                             </button>
                           );
                         })}
@@ -1252,7 +1271,7 @@ export default function LandingPage() {
                         type="button"
                         onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
                         disabled={currentPage === totalPages}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-extrabold text-slate-700 shadow-sm transition hover:border-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-35"
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-700 shadow-xs transition hover:border-emerald-700 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-35"
                         aria-label="Next page"
                       >
                         Next <span aria-hidden="true">›</span>
