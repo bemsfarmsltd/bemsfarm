@@ -36,7 +36,8 @@ export default function AdminLoginPage() {
       await adminLogin(email.trim(), password);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message || err.response?.data?.message || "Invalid staff credentials. Please try again.");
+      const serverMessage = err.response?.data?.message || err.message;
+      setError(serverMessage || "Invalid staff credentials. Please try again.");
     } finally {
       setLoading(false);
     }
