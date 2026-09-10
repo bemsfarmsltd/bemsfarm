@@ -6,10 +6,10 @@ import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 
 const STEPS = [
-  { key: "confirmed", label: "Confirmed", desc: "Order queued" },
-  { key: "processing", label: "Packaging", desc: "Inspected & packed" },
-  { key: "shipped", label: "With Courier", desc: "En route to doorstep" },
-  { key: "delivered", label: "Delivered", desc: "Order complete" },
+  { key: "confirmed", stepNumber: "01", label: "Confirmed", desc: "Order queued & verified" },
+  { key: "processing", stepNumber: "02", label: "Packaging", desc: "Inspected & sealed" },
+  { key: "shipped", stepNumber: "03", label: "In Transit", desc: "With dispatch courier" },
+  { key: "delivered", stepNumber: "04", label: "Delivered", desc: "Delivered to doorstep" },
 ];
 
 const STATUS_INDEX = {
@@ -32,37 +32,39 @@ const STATUS_COPY = {
   pending: ["Order Received", "Your order has been logged and is awaiting confirmation."],
   order_placed: ["Order Received", "Your farm produce order has been received."],
   confirmed: ["Order Confirmed", "Your payment is confirmed. Farm produce is queued for packing."],
-  processing: ["Packing & Quality Check", "Our team is sorting and packaging your items."],
+  processing: ["Packing & Quality Check", "Our warehouse team is sorting, de-stoning, and packaging your items."],
   packed: ["Packed & Sealed", "Your produce is sealed with freshness tamper-proof packaging."],
   ready_for_pickup: ["Awaiting Dispatch", "Order is staged at the dispatch hub ready for courier pickup."],
   driver_assigned: ["Courier Assigned", "A dedicated BemsFarms delivery driver has been assigned."],
-  awaiting_pickup: ["Courier Arriving", "Courier is collecting your parcel from our central hub."],
+  awaiting_pickup: ["Courier Arriving", "Courier is collecting your parcel from our central dispatch hub."],
   shipped: ["In Transit", "Your order has departed our logistics center."],
   en_route: ["On The Way", "Your delivery driver is en route to your destination."],
   out_for_delivery: ["Out for Delivery", "Your courier is nearby and approaching your delivery address."],
   delivery_attempted: ["Delivery Attempted", "Courier attempted contact. Please check your phone or contact dispatch."],
   delivered: ["Delivered Successfully", "Your order was safely delivered to your doorstep."],
-  cancelled: ["Order Cancelled", "This order was cancelled. Please contact support if you need help."],
+  cancelled: ["Order Cancelled", "This order was cancelled. Please contact support if you need assistance."],
 };
 
-const COVERAGE_HUBS = [
+const FAQS = [
   {
-    name: "Abia State (HQ & Central Hub)",
-    tag: "Same-Day / Next-Day",
-    areas: "Umuahia, Aba, Ohafia, Arochukwu, Osisioma, Isiala Ngwa & all environs",
-    timing: "Direct doorstep dispatch from our Abia state facilities",
+    q: "How does nationwide delivery work from Abia State?",
+    a: "Orders within Abia State (Umuahia, Aba, Ohafia, etc.) and neighboring South-East cities are dispatched via our direct courier fleet for same-day or next-day delivery. Orders to Lagos, Abuja, Port Harcourt, and other states across Nigeria are transported via insured inter-state logistics networks.",
   },
   {
-    name: "Regional & South-East / South-South",
-    tag: "1 – 2 Business Days",
-    areas: "Port Harcourt, Owerri, Enugu, Uyo, Calabar, Asaba, Onitsha, Warri, Benin City",
-    timing: "Fast regional transit directly to your door",
+    q: "How is delivery fee calculated?",
+    a: "Delivery fees are calculated transparently during checkout based on your exact delivery location, package weight, and active promotional discounts.",
   },
   {
-    name: "Nationwide Across Nigeria (All 36 States + FCT)",
-    tag: "2 – 3 Business Days",
-    areas: "Lagos, Abuja (FCT), Ibadan, Kano, Kaduna, Jos, and all locations nationwide",
-    timing: "Insured nationwide freight and interstate logistics",
+    q: "How are fragile goods like palm oil and fresh produce packaged?",
+    a: "All oils are packaged in food-grade, airtight, leak-resistant containers with security seals. Fresh produce is sorted into cushioned, ventilated crates to preserve optimal condition during transit.",
+  },
+  {
+    q: "What should I do if I am unavailable when the courier arrives?",
+    a: "Our dispatch couriers always call your phone number prior to arrival. You can instruct the courier to leave the package with a designated person or arrange an alternative delivery window with dispatch.",
+  },
+  {
+    q: "Can I update my delivery address after ordering?",
+    a: "Yes. If your package has not departed the packaging station, you can contact our dispatch helpline immediately on WhatsApp or Phone with your order reference (BF-...) to update the address.",
   },
 ];
 
@@ -79,11 +81,11 @@ function DeliveryMap({ latitude, longitude }) {
 
   return (
     <iframe
-      title="Current delivery location"
+      title="Live delivery location map"
       src={source}
       loading="lazy"
       referrerPolicy="no-referrer"
-      className="h-72 w-full border-0 sm:h-80 rounded-2xl overflow-hidden shadow-inner"
+      className="h-64 sm:h-72 w-full border-0 rounded-2xl overflow-hidden shadow-inner"
     />
   );
 }
@@ -96,24 +98,26 @@ export default function TrackOrderPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [openFaq, setOpenFaq] = useState(null);
 
   const homePath = user ? "/home" : "/";
 
   const showPreview = () => {
-    setCode("BF-PREVIEW01");
+    setCode("BF-DEMO-2026");
     setError("");
     setOrder({
-      id: "BF-PREVIEW01",
+      id: "BF-DEMO-2026",
       status: "out_for_delivery",
       tracking_status: "out_for_delivery",
       created_at: new Date(Date.now() - 14 * 60 * 60 * 1000).toISOString(),
-      driver_name: "Emmanuel Okon",
-      driver_phone: "+234 803 123 4567",
+      driver_name: "Chukwudi Nnamdi",
+      driver_phone: "+234 803 456 7890",
       driver_lat: 5.5249,
       driver_lng: 7.4943,
-      eta_minutes: 20,
-      destination_area: "Umuahia, Abia State",
-      items_count: 4,
+      eta_minutes: 25,
+      destination_area: "Umuahia Central, Abia State",
+      items_count: 3,
+      items_summary: "Stone-Free Rice (25kg), Pure Palm Oil (5L), Brown Beans (10kg)",
       location_updated_at: new Date().toISOString(),
       preview: true,
     });
@@ -122,7 +126,7 @@ export default function TrackOrderPage() {
   const trackOrder = async (requestedCode) => {
     const normalized = cleanCode(requestedCode);
     if (!normalized) {
-      setError("Please enter the delivery reference from your confirmation (e.g. BF-ABC12345).");
+      setError("Please enter the order reference from your confirmation (e.g. BF-ABC12345).");
       setOrder(null);
       return;
     }
@@ -136,7 +140,7 @@ export default function TrackOrderPage() {
       setCode(normalized);
       setParams({ code: normalized }, { replace: true });
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || "Tracking reference not found. Please double-check your code or contact support.");
+      setError(requestError?.response?.data?.message || "Tracking reference not found. Please verify your reference number and try again.");
     } finally {
       setLoading(false);
     }
@@ -153,7 +157,7 @@ export default function TrackOrderPage() {
 
   const status = order?.tracking_status || order?.status || "pending";
   const activeIndex = STATUS_INDEX[status] ?? 0;
-  const [statusTitle, statusText] = STATUS_COPY[status] || ["Order Status Update", "Your order status is currently being updated."];
+  const [statusTitle, statusText] = STATUS_COPY[status] || ["Order Status Update", "Your order status is being updated."];
   const isCancelled = status === "cancelled" || order?.status === "cancelled";
   const hasDriverLocation = Number.isFinite(Number(order?.driver_lat)) && Number.isFinite(Number(order?.driver_lng));
   const showDriverMap = hasDriverLocation && activeIndex >= 2 && !isCancelled;
@@ -165,11 +169,14 @@ export default function TrackOrderPage() {
 
   return (
     <PageWrapper>
-      <div className="bg-[#FAF8F5] min-h-screen">
-        {/* ── 1. CLEAN HERO & TRACKING CARD ── */}
-        <section className="bg-gradient-to-b from-[#0A2E1C] via-[#0F3824] to-[#14422B] text-white pt-10 pb-14 px-4 sm:px-6 lg:px-12 shadow-md">
-          <div className="mx-auto max-w-4xl">
-            {/* Top Navigation Bar Link */}
+      <div className="bg-[#FAF8F5] min-h-screen text-slate-900">
+        {/* ── 1. SLEEK TRACKER HERO ── */}
+        <section className="relative overflow-hidden bg-[#0F3824] text-white pt-10 pb-16 px-4 sm:px-6 lg:px-12">
+          {/* Subtle Ambient Background */}
+          <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#F59E0B_1px,transparent_1px)] [background-size:20px_20px]" />
+
+          <div className="relative z-10 mx-auto max-w-4xl">
+            {/* Back to Home navigation */}
             <div className="flex items-center justify-between gap-4 mb-6">
               <Link
                 to={homePath}
@@ -178,25 +185,27 @@ export default function TrackOrderPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                 </svg>
-                <span>Back to {user ? "Home" : "Produce Market"}</span>
+                <span>Back to {user ? "Home" : "Storefront"}</span>
               </Link>
-              <span className="text-[11px] font-semibold text-emerald-300/80">
-                Nationwide Delivery Across Nigeria
-              </span>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-emerald-200 border border-white/15">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Abia HQ &bull; Nationwide Delivery</span>
+              </div>
             </div>
 
+            {/* Header Content */}
             <div className="text-center max-w-2xl mx-auto">
               <h1 className="font-display text-3xl sm:text-4xl font-black text-white leading-tight">
-                Delivery & Order Tracking
+                Track Your Delivery
               </h1>
-              <p className="mt-2.5 text-xs sm:text-sm text-emerald-100/80 leading-relaxed">
-                Operating from Abia State with nationwide doorstep dispatch. Enter your order reference code (e.g. <strong className="font-mono text-amber-300">BF-ABC12345</strong>) to view real-time delivery status.
+              <p className="mt-2 text-xs sm:text-sm text-emerald-100/80 leading-relaxed">
+                Enter your order reference number to follow your farm produce from our Abia State dispatch center directly to your doorstep.
               </p>
 
-              {/* Clean Tracking Input Card */}
+              {/* Minimalist Search Box */}
               <form
                 onSubmit={handleSubmit}
-                className="mt-6 rounded-2xl bg-white/10 p-2 border border-white/20 backdrop-blur-md shadow-xl max-w-xl mx-auto"
+                className="mt-6 rounded-2xl bg-white/10 p-2 border border-white/20 backdrop-blur-md shadow-2xl max-w-xl mx-auto"
               >
                 <div className="flex flex-col sm:flex-row items-stretch gap-2">
                   <div className="relative flex-1 flex items-center bg-white rounded-xl px-3.5 py-3 shadow-inner">
@@ -208,10 +217,10 @@ export default function TrackOrderPage() {
                       type="text"
                       value={code}
                       onChange={(e) => setCode(e.target.value.toUpperCase())}
-                      placeholder="Enter reference (e.g. BF-ABC12345)"
+                      placeholder="Enter order reference (e.g. BF-ABC12345)"
                       autoComplete="off"
                       spellCheck="false"
-                      className="w-full bg-transparent font-mono text-sm sm:text-base font-bold text-slate-900 placeholder:text-slate-400 outline-none uppercase"
+                      className="w-full bg-transparent font-mono text-sm font-bold text-slate-900 placeholder:text-slate-400 outline-none uppercase"
                     />
                     {code && (
                       <button
@@ -226,7 +235,7 @@ export default function TrackOrderPage() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0a2e1c] px-6 py-3 text-sm font-black transition-all shadow-md shrink-0 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                    className="rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0F3824] px-6 py-3 text-sm font-black transition-all shadow-md shrink-0 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                   >
                     {loading ? "Locating..." : "Track Order"}
                   </button>
@@ -238,7 +247,7 @@ export default function TrackOrderPage() {
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   role="alert"
-                  className="mt-3.5 rounded-xl border border-rose-300/30 bg-rose-950/60 p-3 text-xs sm:text-sm font-medium text-rose-200 text-left max-w-xl mx-auto flex items-center gap-2.5"
+                  className="mt-3.5 rounded-xl border border-rose-300/40 bg-rose-950/70 p-3 text-xs sm:text-sm font-medium text-rose-200 text-left max-w-xl mx-auto flex items-center gap-2.5"
                 >
                   <svg className="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
@@ -247,34 +256,34 @@ export default function TrackOrderPage() {
                 </motion.div>
               )}
 
-              {/* Test preview shortcut */}
+              {/* Sample demo shortcut */}
               <div className="mt-4 flex items-center justify-center gap-2 text-xs text-emerald-200">
-                <span>Want to test live tracking?</span>
+                <span className="text-emerald-100/70">Want to test live tracking view?</span>
                 <button
                   type="button"
                   onClick={showPreview}
                   className="inline-flex items-center gap-1 rounded-lg bg-white/10 hover:bg-white/20 px-2.5 py-1 font-mono font-bold text-amber-300 border border-white/15 transition cursor-pointer"
                 >
-                  <span>Preview Demo</span>
+                  <span>Preview Demo (BF-DEMO-2026)</span>
                 </button>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ── 2. LIVE TRACKING TIMELINE & COURIER RADAR (WHEN ORDER ACTIVE) ── */}
+        {/* ── 2. LIVE TRACKING RESULT (ORDER ACTIVE) ── */}
         <AnimatePresence>
           {order && (
             <motion.section
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -16 }}
-              className="px-4 sm:px-6 lg:px-12 -mt-6 relative z-20"
+              className="px-4 sm:px-6 lg:px-12 -mt-8 relative z-20"
             >
-              <div className="mx-auto max-w-4xl rounded-3xl bg-white border border-slate-200/90 shadow-xl overflow-hidden">
-                {/* Result Top Bar */}
+              <div className="mx-auto max-w-4xl rounded-3xl bg-white border border-slate-200 shadow-2xl overflow-hidden">
+                {/* Result Header */}
                 <div className={`px-6 py-5 sm:px-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
-                  isCancelled ? "bg-rose-900 text-white" : "bg-[#0F3824] text-white"
+                  isCancelled ? "bg-rose-900 text-white" : "bg-[#0A2E1C] text-white"
                 }`}>
                   <div>
                     <div className="flex items-center gap-2">
@@ -296,13 +305,13 @@ export default function TrackOrderPage() {
                   <button
                     type="button"
                     onClick={() => setOrder(null)}
-                    className="self-start sm:self-auto rounded-full bg-white/15 hover:bg-white/25 px-3 py-1 text-xs font-bold text-white transition cursor-pointer"
+                    className="self-start sm:self-auto rounded-full bg-white/15 hover:bg-white/25 px-3.5 py-1 text-xs font-bold text-white transition cursor-pointer"
                   >
-                    Clear
+                    Close
                   </button>
                 </div>
 
-                {/* 4-Step Milestone Progress */}
+                {/* 4-Step Milestone Progress Bar */}
                 {!isCancelled && (
                   <div className="px-6 py-6 sm:px-8 bg-gradient-to-b from-white to-slate-50 border-b border-slate-100">
                     <div className="grid grid-cols-4 gap-2 relative">
@@ -311,17 +320,17 @@ export default function TrackOrderPage() {
                         const isCurrent = index === activeIndex;
                         return (
                           <div key={step.key} className="relative flex flex-col items-center text-center">
-                            {/* Line connecting milestones */}
+                            {/* Connecting Line */}
                             {index < STEPS.length - 1 && (
                               <div
-                                className={`hidden sm:block absolute top-4 left-[50%] right-[-50%] h-1 z-0 rounded-full ${
+                                className={`hidden sm:block absolute top-4 left-[50%] right-[-50%] h-1 z-0 rounded-full transition-colors ${
                                   index < activeIndex ? "bg-emerald-600" : "bg-slate-200"
                                 }`}
                               />
                             )}
 
                             <div
-                              className={`relative z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-sm ${
+                              className={`relative z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs shadow-sm transition-all ${
                                 isDone
                                   ? "bg-emerald-700 text-white"
                                   : isCurrent
@@ -329,10 +338,16 @@ export default function TrackOrderPage() {
                                   : "bg-slate-100 text-slate-400 border border-slate-200"
                               }`}
                             >
-                              {isDone ? "✓" : index + 1}
+                              {isDone ? (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                              ) : (
+                                step.stepNumber
+                              )}
                             </div>
 
-                            <p className={`mt-2 text-xs font-bold ${isCurrent ? "text-emerald-900" : isDone ? "text-slate-800" : "text-slate-400"}`}>
+                            <p className={`mt-2 text-xs font-bold ${isCurrent ? "text-emerald-950" : isDone ? "text-slate-800" : "text-slate-400"}`}>
                               {step.label}
                             </p>
                             <p className="text-[10px] text-slate-500 hidden md:block">
@@ -345,145 +360,268 @@ export default function TrackOrderPage() {
                   </div>
                 )}
 
-                {/* Live Courier Details & Driver Map Embed */}
-                {showDriverMap && (
-                  <div className="grid md:grid-cols-12 gap-0 border-t border-slate-200">
-                    <div className="md:col-span-5 p-5 sm:p-6 bg-slate-50 flex flex-col justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Live Courier Dispatch</span>
-                        <h3 className="font-display text-lg font-bold text-slate-900 mt-1">
-                          Produce In Transit
-                        </h3>
-                        <p className="text-xs text-slate-600 mt-1">
-                          Driver: <strong className="text-slate-900">{order.driver_name || "BemsFarms Courier"}</strong>
-                        </p>
-                        {order.destination_area && (
-                          <p className="text-xs text-slate-600 mt-1">
-                            Destination: <strong className="text-slate-900">{order.destination_area}</strong>
-                          </p>
-                        )}
-                      </div>
+                {/* Driver Details & Live Radar Map */}
+                <div className="grid md:grid-cols-12 gap-0 border-t border-slate-200">
+                  {/* Courier & Order Metadata Card */}
+                  <div className="md:col-span-5 p-5 sm:p-6 bg-slate-50 flex flex-col justify-between space-y-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                        Dispatch Personnel
+                      </span>
+                      <h3 className="font-display text-lg font-bold text-slate-900 mt-0.5">
+                        {order.driver_name || "BemsFarms Logistics Courier"}
+                      </h3>
 
-                      <div className="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
-                        <span>Status: Active</span>
-                        <a href="mailto:info@bemsfarms.com" className="font-bold text-emerald-700 hover:underline">
-                          Need Help?
+                      {order.destination_area && (
+                        <div className="mt-2 text-xs text-slate-600">
+                          <span className="font-semibold text-slate-800">Destination:</span> {order.destination_area}
+                        </div>
+                      )}
+
+                      {order.items_summary && (
+                        <div className="mt-2 text-xs text-slate-600">
+                          <span className="font-semibold text-slate-800">Items:</span> {order.items_summary}
+                        </div>
+                      )}
+
+                      {/* Direct Courier Action Buttons */}
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        {order.driver_phone && (
+                          <a
+                            href={`tel:${order.driver_phone}`}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-800 text-white px-3.5 py-2 text-xs font-bold shadow-xs hover:bg-emerald-900 transition"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                            </svg>
+                            <span>Call Driver</span>
+                          </a>
+                        )}
+
+                        <a
+                          href="https://wa.me/2348000000000"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 text-[#0F3824] px-3.5 py-2 text-xs font-black shadow-xs hover:bg-amber-300 transition"
+                        >
+                          <span>WhatsApp Dispatch</span>
                         </a>
                       </div>
                     </div>
 
-                    <div className="md:col-span-7 p-3 bg-white">
-                      <DeliveryMap latitude={order.driver_lat} longitude={order.driver_lng} />
+                    <div className="pt-3 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
+                      <span>Status: In Transit</span>
+                      <a href="mailto:info@bemsfarms.com" className="font-bold text-emerald-800 hover:underline">
+                        Need Dispatch Help?
+                      </a>
                     </div>
                   </div>
-                )}
+
+                  {/* Driver Map Preview */}
+                  <div className="md:col-span-7 p-3 bg-white flex items-center">
+                    {showDriverMap ? (
+                      <DeliveryMap latitude={order.driver_lat} longitude={order.driver_lng} />
+                    ) : (
+                      <div className="h-64 w-full rounded-2xl bg-slate-100 flex flex-col items-center justify-center text-center p-6 border border-slate-200">
+                        <svg className="w-10 h-10 text-slate-400 mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                        </svg>
+                        <p className="text-xs font-bold text-slate-700">Map updates when courier is en route</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Live GPS telemetry activates during doorstep transit.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </motion.section>
           )}
         </AnimatePresence>
 
-        {/* ── 3. CLEAN COVERAGE HUBS ── */}
-        <section className="py-12 px-4 sm:px-6 lg:px-12">
+        {/* ── 3. HOW DELIVERY WORKS (3 SIMPLE STEPS) ── */}
+        <section className="py-14 px-4 sm:px-6 lg:px-12">
           <div className="mx-auto max-w-5xl">
-            <div className="text-center max-w-xl mx-auto mb-8">
+            <div className="text-center max-w-xl mx-auto mb-10">
               <span className="rounded-md bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 uppercase tracking-wider">
-                Coverage Areas
+                Simple & Reliable
               </span>
               <h2 className="mt-2 font-display text-2xl sm:text-3xl font-black text-slate-900">
-                Nationwide Delivery Network
+                How Our Delivery Process Works
+              </h2>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="rounded-2xl bg-white p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div>
+                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs mb-3">
+                    01
+                  </span>
+                  <h3 className="font-display text-base font-bold text-slate-900">
+                    Order Placement
+                  </h3>
+                  <p className="mt-1.5 text-xs text-slate-600 leading-relaxed">
+                    Select your farm produce and staples. Enter your delivery address during secure checkout.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-white p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div>
+                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 text-amber-800 font-black text-xs mb-3">
+                    02
+                  </span>
+                  <h3 className="font-display text-base font-bold text-slate-900">
+                    Sorting & Sealed Packaging
+                  </h3>
+                  <p className="mt-1.5 text-xs text-slate-600 leading-relaxed">
+                    Grains are de-stoned, quality-inspected, and oils are packed into tamper-proof containers at our Abia State hub.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-white p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div>
+                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-cyan-100 text-cyan-800 font-black text-xs mb-3">
+                    03
+                  </span>
+                  <h3 className="font-display text-base font-bold text-slate-900">
+                    Doorstep Dispatch Everywhere
+                  </h3>
+                  <p className="mt-1.5 text-xs text-slate-600 leading-relaxed">
+                    Our direct couriers and inter-state logistics partners deliver safely to your doorstep across Nigeria.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 4. COVERAGE HUBS ── */}
+        <section className="py-12 px-4 sm:px-6 lg:px-12 bg-white border-y border-slate-200">
+          <div className="mx-auto max-w-5xl">
+            <div className="text-center max-w-xl mx-auto mb-8">
+              <h2 className="font-display text-2xl sm:text-3xl font-black text-slate-900">
+                Delivery Coverage & Dispatch Hubs
               </h2>
               <p className="mt-1 text-xs sm:text-sm text-slate-600">
-                Operating from Abia State with reliable doorstep dispatch across all locations in Nigeria.
+                Centrally coordinated from Abia State with nationwide coverage across all states in Nigeria.
               </p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-5">
-              {COVERAGE_HUBS.map((hub) => (
-                <div
-                  key={hub.name}
-                  className="rounded-2xl bg-white p-5 sm:p-6 border border-slate-200 shadow-sm flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <h3 className="font-display text-base font-bold text-slate-900">
-                        {hub.name}
-                      </h3>
-                      <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 shrink-0">
-                        {hub.tag}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      {hub.areas}
-                    </p>
+              {/* Hub 1: Abia */}
+              <div className="rounded-2xl bg-[#FAF8F5] p-5 border border-slate-200/90 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-display text-sm font-bold text-slate-900">Abia State Central Hub</h3>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                      Same-Day / Next-Day
+                    </span>
                   </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-500">
-                    <span className="font-semibold text-slate-700">Dispatch:</span> {hub.timing}
-                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Umuahia, Aba, Ohafia, Arochukwu, Osisioma & all surrounding towns.
+                  </p>
                 </div>
-              ))}
+                <div className="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500">
+                  <span className="font-semibold text-slate-700">Direct courier fleet:</span> Daily dispatch
+                </div>
+              </div>
+
+              {/* Hub 2: South-East & South-South */}
+              <div className="rounded-2xl bg-[#FAF8F5] p-5 border border-slate-200/90 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-display text-sm font-bold text-slate-900">South-East & South-South</h3>
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                      1 – 2 Business Days
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Port Harcourt, Owerri, Enugu, Uyo, Calabar, Asaba, Onitsha, Warri & Benin City.
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500">
+                  <span className="font-semibold text-slate-700">Transit:</span> Fast regional connections
+                </div>
+              </div>
+
+              {/* Hub 3: Nationwide */}
+              <div className="rounded-2xl bg-[#FAF8F5] p-5 border border-slate-200/90 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-display text-sm font-bold text-slate-900">Nationwide Across Nigeria</h3>
+                    <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-bold text-cyan-800">
+                      2 – 3 Business Days
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Lagos, Abuja (FCT), Ibadan, Kano, Kaduna, Jos, and all 36 States nationwide.
+                  </p>
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-500">
+                  <span className="font-semibold text-slate-700">Freight:</span> Insured inter-state logistics
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* ── 4. FRESHNESS & SAFE-HANDLING GUARANTEE ── */}
-        <section className="py-10 px-4 sm:px-6 lg:px-12 bg-white border-y border-slate-200">
-          <div className="mx-auto max-w-5xl">
-            <div className="text-center max-w-xl mx-auto mb-8">
-              <h2 className="font-display text-xl sm:text-2xl font-black text-slate-900">
-                The BemsFarms Delivery Guarantee
+        {/* ── 5. FREQUENTLY ASKED QUESTIONS (FAQ) ── */}
+        <section className="py-14 px-4 sm:px-6 lg:px-12">
+          <div className="mx-auto max-w-3xl">
+            <div className="text-center mb-8">
+              <span className="rounded-md bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Support & Help
+              </span>
+              <h2 className="mt-2 font-display text-2xl sm:text-3xl font-black text-slate-900">
+                Frequently Asked Delivery Questions
               </h2>
             </div>
 
-            <div className="grid sm:grid-cols-3 gap-5">
-              <div className="rounded-2xl bg-[#FAF8F5] p-5 border border-slate-200/80">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold mb-3">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                </div>
-                <h3 className="font-display text-sm font-bold text-slate-900">100% Stone-Free Guarantee</h3>
-                <p className="mt-1 text-xs text-slate-600 leading-relaxed">
-                  Every batch of rice and beans is thoroughly de-stoned, cleaned, and sealed before dispatch.
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-[#FAF8F5] p-5 border border-slate-200/80">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold mb-3">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-                  </svg>
-                </div>
-                <h3 className="font-display text-sm font-bold text-slate-900">Tamper-Proof Packaging</h3>
-                <p className="mt-1 text-xs text-slate-600 leading-relaxed">
-                  Pure palm oil and groceries are sealed in food-grade, leak-resistant containers with security seals.
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-[#FAF8F5] p-5 border border-slate-200/80">
-                <div className="w-9 h-9 rounded-xl bg-cyan-100 text-cyan-800 flex items-center justify-center font-bold mb-3">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                  </svg>
-                </div>
-                <h3 className="font-display text-sm font-bold text-slate-900">Quality Replacement Policy</h3>
-                <p className="mt-1 text-xs text-slate-600 leading-relaxed">
-                  If any produce fails quality expectations on arrival, our dispatch team resolves or replaces it promptly.
-                </p>
-              </div>
+            <div className="space-y-3">
+              {FAQS.map((faq, idx) => {
+                const isOpen = openFaq === idx;
+                return (
+                  <div
+                    key={faq.q}
+                    className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs transition"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaq(isOpen ? null : idx)}
+                      className="w-full text-left px-5 py-4 flex items-center justify-between gap-4 font-bold text-slate-900 text-xs sm:text-sm cursor-pointer hover:text-emerald-800"
+                    >
+                      <span>{faq.q}</span>
+                      <span className={`text-slate-400 font-bold transition-transform ${isOpen ? "rotate-180" : ""}`}>
+                        ▾
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="px-5 pb-4 pt-1 text-xs text-slate-600 leading-relaxed border-t border-slate-100"
+                      >
+                        {faq.a}
+                      </motion.div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
 
-        {/* ── 5. QUICK DISPATCH HELPDESK ── */}
+        {/* ── 6. DIRECT DISPATCH HOTLINE ── */}
         <section className="py-10 px-4 sm:px-6 lg:px-12 bg-[#0A2E1C] text-white">
           <div className="mx-auto max-w-4xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <h2 className="font-display text-lg sm:text-xl font-bold">
-                Need help with an active delivery?
+                Have questions about your order or dispatch?
               </h2>
               <p className="text-xs text-emerald-200 mt-0.5">
-                Our dispatch and support team is available Monday – Saturday.
+                Our customer care and dispatch desk is active Monday – Saturday from 8:00 AM to 6:00 PM.
               </p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
@@ -497,9 +635,9 @@ export default function TrackOrderPage() {
                 href="https://wa.me/2348000000000"
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-xl bg-amber-400 hover:bg-amber-300 px-4 py-2 text-xs font-black text-[#0a2e1c] shadow-md transition"
+                className="rounded-xl bg-amber-400 hover:bg-amber-300 px-4 py-2 text-xs font-black text-[#0A2E1C] shadow-md transition"
               >
-                WhatsApp Dispatch
+                WhatsApp Dispatch Desk
               </a>
             </div>
           </div>
