@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
-import { NAIRA_PER_UNIT } from "../../utils/currency";
+import { getNairaPrice } from "../../utils/currency";
 import { getProductImageByName } from "../../utils/productImages";
 import { recordOutOfStockDemand } from "../../utils/demandTracker";
 import RestockModal from "./RestockModal";
@@ -264,7 +264,7 @@ export default function ProductCard({ product, index = 0 }) {
                 whiteSpace: "nowrap",
               }}
             >
-              ₦{(product.price * NAIRA_PER_UNIT).toLocaleString()}
+              ₦{getNairaPrice(product.price).toLocaleString()}
             </p>
 
             <motion.button

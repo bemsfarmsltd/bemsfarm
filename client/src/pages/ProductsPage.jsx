@@ -5,7 +5,7 @@ import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
-import { NAIRA_PER_UNIT } from "../utils/currency";
+import { getNairaPrice } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
 import { recordOutOfStockDemand } from "../utils/demandTracker";
 import QuickViewModal from "../components/ui/QuickViewModal";
@@ -537,7 +537,7 @@ export default function ProductsPage() {
                   const isFavorite = !!favorites[product.id];
                   const cartQty = cart[product.id]?.quantity || 0;
                   const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
-                  const price = Number(product.price || 0) * NAIRA_PER_UNIT;
+                  const price = getNairaPrice(product.price);
                   const isOutOfStock = stock <= 0 || product.available_for_sale === false || product.status === "out_of_stock";
                   const isLowStock = stock > 0 && stock <= 5;
                   const isBemsOriginal = Boolean(

@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import api from "../services/api";
-import { NAIRA_PER_UNIT } from "../utils/currency";
+import { getNairaPrice } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
 import { recordOutOfStockDemand } from "../utils/demandTracker";
 import logo from "../assets/bemsfarms_logo_compact.png";
@@ -262,7 +262,7 @@ function SectionHeading({ eyebrow, title, text, align = "center" }) {
 function StoreProductCard({ product, added, onAdd, onNotify }) {
   const navigate = useNavigate();
   const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
-  const price = Number(product.price || 0) * NAIRA_PER_UNIT;
+  const price = getNairaPrice(product.price);
   const invalidPrice = !Number.isFinite(price) || price <= 0;
   const unavailable = stock <= 0 || product.available_for_sale === false || product.status === "out_of_stock" || invalidPrice;
   const rating = Math.min(5, Math.max(0, Number(product.avg_rating) || 0));
@@ -846,7 +846,7 @@ export default function LandingPage() {
 
   const handleAdd = (product) => {
     const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
-    const displayPrice = Number(product.price || 0) * NAIRA_PER_UNIT;
+    const displayPrice = getNairaPrice(product.price);
     const isOutOfStock = stock <= 0 || product.available_for_sale === false || product.status === "out_of_stock" || !Number.isFinite(displayPrice) || displayPrice <= 0;
 
     if (isOutOfStock) {

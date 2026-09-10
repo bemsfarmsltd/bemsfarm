@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
-import { NAIRA_PER_UNIT } from "../../utils/currency";
+import { getNairaPrice } from "../../utils/currency";
 import { getProductImage } from "../../utils/productImages";
 import { recordOutOfStockDemand } from "../../utils/demandTracker";
 import RestockModal from "./RestockModal";
@@ -47,7 +47,7 @@ export default function QuickViewModal({ product, isOpen, onClose }) {
   if (!isOpen || !product) return null;
 
   const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
-  const price = Number(product.price || 0) * NAIRA_PER_UNIT;
+  const price = getNairaPrice(product.price);
   const isOutOfStock = stock <= 0 || product.available_for_sale === false || product.status === "out_of_stock";
   const isLowStock = stock > 0 && stock <= 5;
   const isBemsOriginal = Boolean(

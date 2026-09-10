@@ -5,7 +5,7 @@ import PageWrapper from "../components/layout/PageWrapper";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import api from "../services/api";
-import { NAIRA_PER_UNIT } from "../utils/currency";
+import { getNairaPrice } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
 import { recordOutOfStockDemand } from "../utils/demandTracker";
 import Toast from "../components/ui/Toast";
@@ -42,7 +42,7 @@ function ProductGridCard({
   onNotify,
 }) {
   const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
-  const price = Number(product.price || 0) * NAIRA_PER_UNIT;
+  const price = getNairaPrice(product.price);
   const isOutOfStock = stock <= 0 || product.available_for_sale === false || product.status === "out_of_stock";
   const isLowStock = stock > 0 && stock <= 5;
   const rating = Math.min(5, Math.max(0, Number(product.avg_rating) || 0));
@@ -306,7 +306,7 @@ export default function HomePage() {
       return;
     }
 
-    const displayPrice = Number(product.price || 0) * NAIRA_PER_UNIT;
+    const displayPrice = getNairaPrice(product.price);
     if (!Number.isFinite(displayPrice) || displayPrice <= 0) return;
 
     addToCart(product);
@@ -585,7 +585,7 @@ export default function HomePage() {
                       className="grid grid-cols-3 gap-2.5 sm:gap-4 lg:gap-4.5"
                     >
                       {(heroSlideGroups[heroSlide] || heroSlideGroups[0] || []).map((product) => {
-                        const price = Number(product.price || 0) * NAIRA_PER_UNIT;
+                        const price = getNairaPrice(product.price);
                         const isBemsOriginal = Boolean(
                           product.name?.toLowerCase().includes("bems") ||
                           product.brand?.toLowerCase().includes("bems") ||

@@ -6,7 +6,7 @@ import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { getDeliveryFee } from "../utils/delivery";
-import { NAIRA_PER_UNIT } from "../utils/currency";
+import { getNairaPrice } from "../utils/currency";
 
 const STATES = [
   "Abia",
@@ -201,7 +201,7 @@ export default function CheckoutPage() {
     }));
 
     const subtotal = refreshedItems.reduce(
-      (sum, item) => sum + item.price * NAIRA_PER_UNIT * item.quantity,
+      (sum, item) => sum + getNairaPrice(item.price) * item.quantity,
       0,
     );
     let discount = 0;
@@ -944,8 +944,7 @@ export default function CheckoutPage() {
                     >
                       ₦
                       {(
-                        entry.product.price *
-                        NAIRA_PER_UNIT *
+                        getNairaPrice(entry.product.price) *
                         entry.quantity
                       ).toLocaleString()}
                     </span>

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../../context/CartContext";
-import { NAIRA_PER_UNIT } from "../../utils/currency";
+import { getNairaPrice } from "../../utils/currency";
 import { getProductImage } from "../../utils/productImages";
 
 const FREE_DELIVERY_THRESHOLD = 15000;
@@ -14,7 +14,7 @@ const PANTRY_ADDONS = [
     name: "Red Onions (Fresh Harvest)",
     category_name: "Vegetables",
     unit: "1kg pack",
-    price: 1800 / NAIRA_PER_UNIT,
+    price: 1800,
     image_url: "/hero_food_4.jpg",
     stock_quantity: 40,
   },
@@ -23,7 +23,7 @@ const PANTRY_ADDONS = [
     name: "Fresh Habanero / Ata Rodo",
     category_name: "Vegetables",
     unit: "500g basket",
-    price: 1500 / NAIRA_PER_UNIT,
+    price: 1500,
     image_url: "/hero_food_2.jpg",
     stock_quantity: 35,
   },
@@ -32,7 +32,7 @@ const PANTRY_ADDONS = [
     name: "Bems Pure Palm Oil (Unadulterated)",
     category_name: "Cooking Oils",
     unit: "1 Litre bottle",
-    price: 3200 / NAIRA_PER_UNIT,
+    price: 3200,
     image_url: "/hero_food_3.jpg",
     stock_quantity: 25,
   },
@@ -184,7 +184,7 @@ export default function CartDrawer() {
                 </div>
               ) : (
                 cartItems.map(({ product, quantity }) => {
-                  const unitPrice = Number(product.price || 0) * NAIRA_PER_UNIT;
+                  const unitPrice = getNairaPrice(product.price);
                   const lineTotal = unitPrice * quantity;
                   return (
                     <div
@@ -192,7 +192,10 @@ export default function CartDrawer() {
                       className="flex items-center gap-3.5 pt-4 first:pt-0"
                     >
                       {/* Thumbnail */}
-                      <div className="relative h-18 w-18 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      <div
+                        className="relative shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white"
+                        style={{ width: "64px", height: "64px", minWidth: "64px", minHeight: "64px" }}
+                      >
                         <img
                           src={getProductImage(product)}
                           alt={product.name}
@@ -272,7 +275,7 @@ export default function CartDrawer() {
                   <div className="space-y-2">
                     {PANTRY_ADDONS.map((addon) => {
                       const alreadyInCart = Boolean(cartItems.find((ci) => ci.product.id === addon.id));
-                      const price = addon.price * NAIRA_PER_UNIT;
+                      const price = getNairaPrice(addon.price);
                       return (
                         <div
                           key={addon.id}

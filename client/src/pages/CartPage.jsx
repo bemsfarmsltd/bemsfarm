@@ -5,7 +5,7 @@ import { useState } from "react";
 import PageWrapper from "../components/layout/PageWrapper";
 import { getProductImage } from "../utils/productImages";
 import api from "../services/api";
-import { NAIRA_PER_UNIT } from "../utils/currency";
+import { getNairaPrice } from "../utils/currency";
 import { getDeliveryFee, FREE_DELIVERY_THRESHOLD } from "../utils/delivery";
 
 const CSS = `
@@ -166,7 +166,8 @@ export default function CartPage() {
               <AnimatePresence mode="popLayout">
                 {cartItems.map(({ product, quantity }) => {
                   const imgSrc = product.image_url?.startsWith("http") ? product.image_url : getProductImage(product);
-                  const lineTotal = product.price * NAIRA_PER_UNIT * quantity;
+                  const unitPrice = getNairaPrice(product.price);
+                  const lineTotal = unitPrice * quantity;
                   const isRemoving = removingId === product.id;
                   return (
                     <motion.div
@@ -205,7 +206,7 @@ export default function CartPage() {
                             <button className="bf-qty-btn bf-qty-btn-plus" onClick={() => updateQuantity(product.id, quantity + 1)} aria-label="Increase">+</button>
                           </div>
                           <div style={{ textAlign:"right" }}>
-                            <p style={{ margin:0, fontSize:12, color:"#9ca3af" }}>₦{(product.price * NAIRA_PER_UNIT).toLocaleString()} each</p>
+                            <p style={{ margin:0, fontSize:12, color:"#9ca3af" }}>₦{unitPrice.toLocaleString()} each</p>
                             <p style={{ margin:0, fontSize:17, fontWeight:900, color:"#17352a" }}>₦{lineTotal.toLocaleString()}</p>
                           </div>
                         </div>

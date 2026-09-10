@@ -11,7 +11,7 @@ import ProductCard, {
 import { getProductImage } from "../utils/productImages";
 import api from "../services/api";
 import { useResponsive } from "../hooks/useResponsive";
-import { NAIRA_PER_UNIT } from "../utils/currency";
+import { getNairaPrice } from "../utils/currency";
 import { recordOutOfStockDemand } from "../utils/demandTracker";
 import RestockModal from "../components/ui/RestockModal";
 
@@ -358,7 +358,7 @@ export default function ProductDetail() {
                 marginBottom: "20px",
               }}
             >
-              ₦{(product.price * NAIRA_PER_UNIT).toLocaleString()}
+              ₦{getNairaPrice(product.price).toLocaleString()}
               <span
                 style={{ fontSize: "14px", color: "#9AA0A6", fontWeight: 400 }}
               >
@@ -698,7 +698,7 @@ export default function ProductDetail() {
                   color: "#2E7D32",
                 }}
               >
-                ₦{(product.price * NAIRA_PER_UNIT * quantity).toLocaleString()}
+                ₦{(getNairaPrice(product.price) * quantity).toLocaleString()}
               </span>
             </div>
 
