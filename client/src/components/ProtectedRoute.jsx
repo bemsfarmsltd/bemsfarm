@@ -17,13 +17,15 @@ export default function ProtectedRoute({ children, allowedRoles }) {
 
   useEffect(() => {
     if (!isLoggedIn) {
-      navigate("/login", { state: { from: location.pathname } });
+      const isStaffRoute = allowedRoles && !allowedRoles.includes("user");
+      const loginPath = isStaffRoute ? "/admin/login" : "/login";
+      navigate(loginPath, { state: { from: location.pathname } });
     } else if (!roleAllowed) {
       // Bounce silently rather than showing an "unauthorized" page —
       // no need to confirm to a customer that internal tooling exists here.
       navigate("/home", { replace: true });
     }
-  }, [isLoggedIn, roleAllowed]);
+  }, [isLoggedIn, roleAllowed, allowedRoles, location.pathname, navigate]);
 
   if (!isLoggedIn || !roleAllowed) return null;
   return children;

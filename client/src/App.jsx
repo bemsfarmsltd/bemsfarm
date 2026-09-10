@@ -21,6 +21,7 @@ const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
+const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
 const ReturnsPage = lazy(() => import("./pages/ReturnsPage"));
 const ChefBemsPage = lazy(() => import("./pages/ChefBemsPage"));
 const DynamicPricingPage = lazy(() => import("./pages/DynamicPricingPage"));
@@ -42,6 +43,8 @@ const ROUTE_META = {
   "/track-order": ["Track Your Order | BemsFarms", "Use your BemsFarms delivery code to check the latest progress of your order."],
   "/delivery": ["Delivery & Order Tracking | BemsFarms", "Track your fresh produce delivery live, check coverage zones, and calculate free shipping thresholds."],
   "/login": ["Sign In | BemsFarms", "Sign in to your BemsFarms account to manage orders, delivery details and preferences."],
+  "/admin/login": ["Staff & Admin Authentication | BemsFarms", "Secure administrator and operational staff authentication portal for BemsFarms Limited."],
+  "/admin-login": ["Staff & Admin Authentication | BemsFarms", "Secure administrator and operational staff authentication portal for BemsFarms Limited."],
   "/register": ["Create an Account | BemsFarms", "Create a BemsFarms account to order groceries, save delivery details and access Chef Bems."],
   "/cart": ["Your Basket | BemsFarms", "Review the farm produce and pantry essentials in your BemsFarms basket."],
   "/chef-chat": ["Chef Bems — Culinary AI Assistant | BemsFarms", "Get personalized Nigerian recipe ideas, ingredient alternatives and smart shopping lists with Chef Bems."],
@@ -74,6 +77,8 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/launch" element={<Navigate to="/" replace />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/admin-login" element={<AdminLoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/onboarding" element={<P><OnboardingPage /></P>} />
