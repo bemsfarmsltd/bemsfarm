@@ -13,24 +13,24 @@ import RestockModal from "../components/ui/RestockModal";
 
 const DEFAULT_CATEGORIES = [
   {
-    name: "Vegetables",
-    detail: "Hand-picked farm fresh tomatoes, tatase, rodo, leafy greens and peppers.",
-    image: "/hero_food_2.jpg",
+    name: "Vegetables & Fresh Produce",
+    detail: "Hand-picked fresh tomatoes, peppers, tatase, rodo, and leafy greens directly in our aisles.",
+    image: "/bems_store_aisles.jpg",
   },
   {
-    name: "Grains & Cereals",
-    detail: "Stone-free Nigerian rice, premium brown rice, and wholesome grains.",
-    image: "/hero_food_1.jpg",
+    name: "Grains & Pantry Staples",
+    detail: "Stone-free Nigerian rice, sorted beans, flours, and daily kitchen essentials.",
+    image: "/bems_store_checkout.jpg",
   },
   {
-    name: "Cooking Oils",
-    detail: "Pure unadulterated palm oil, groundnut oil, and natural culinary oils.",
-    image: "/hero_food_3.jpg",
+    name: "Cooking Oils & Seasonings",
+    detail: "Pure unadulterated palm oil, groundnut oil, and bottled culinary oils from our packaging lab.",
+    image: "/bems_oil_packaging_station.jpg",
   },
   {
-    name: "Legumes",
-    detail: "Quality honey beans, white beans, and daily pantry staples.",
-    image: "/fresh_salad_hero.png",
+    name: "Farm Hub & Logistics",
+    detail: "Central distribution hub ensuring fast doorstep dispatch and pickup.",
+    image: "/bems_farms_hub.jpg",
   },
 ];
 
@@ -43,10 +43,10 @@ const steps = [
 ];
 
 const promises = [
-  { icon: "", title: "Carefully selected", text: "Products are chosen with freshness and quality in mind." },
-  { icon: "", title: "Simple ordering", text: "Clear product details and an easy path from basket to checkout." },
-  { icon: "◌", title: "Helpful guidance", text: "Chef Bems helps turn available ingredients into practical meal ideas." },
-  { icon: "", title: "Secure checkout", text: "Payments are handled through a trusted payment provider." },
+  { title: "Stone-Free Guarantee", text: "Every grain batch is rigorously destoned and sorted before packaging." },
+  { title: "Direct Farm Freshness", text: "Harvested and delivered within optimal timeframes to preserve peak nutrition." },
+  { title: "Transparent Pricing", text: "Fair market prices without hidden charges or unannounced markups." },
+  { title: "Reliable Logistics", text: "Dedicated delivery fleet ensuring fast, safe doorstep delivery across Abuja." },
 ];
 
 const shoppingDetails = [
@@ -65,35 +65,35 @@ const faqs = [
 
 const HERO_SLIDES = [
   {
-    image: "/hero_food_2.jpg",
-    alt: "Bems Farms fresh vegetables, peppers and harvest produce",
-    tag: " 100% Farm-Fresh",
-    eyebrow: "Bems Farms Harvests",
-    heading: "Fresh from our farm, delivered with care.",
+    image: "/bems_store_aisles.jpg",
+    alt: "Bems Farms real stock fresh produce and grocery supermarket aisles",
+    tag: "100% Real Stock & Harvest",
+    eyebrow: "Bems Supermarket & Produce",
+    heading: "Fresh farm harvests, sorted grains and pantry staples.",
     badgeIcon: "",
   },
   {
-    image: "/hero_food_1.jpg",
-    alt: "Bems Farms premium sorted grains, rice and pantry staples",
-    tag: " Bems Brand Staples",
-    eyebrow: "In-House Packaged",
-    heading: "Stone-free grains & everyday pantry staples.",
+    image: "/bems_oil_packaging_station.jpg",
+    alt: "Bems Farms palm oil and cooking oil packaging station",
+    tag: "Pure & Unadulterated",
+    eyebrow: "Bems Packaging Facility",
+    heading: "Precision-bottled authentic oils and sealed spices.",
     badgeIcon: "",
   },
   {
-    image: "/hero_food_3.jpg",
-    alt: "Bems Farms pure cooking oils and natural seasonings",
-    tag: " Pure & Unadulterated",
-    eyebrow: "Bems Signature Oils",
-    heading: "Healthy, authentic oils for familiar meals.",
+    image: "/bems_store_checkout.jpg",
+    alt: "Bems Farms modern customer checkout and supermarket counters",
+    tag: "Walk-In & Online Hub",
+    eyebrow: "Customer Experience",
+    heading: "Seamless checkout, fast order pickup and verified stock.",
     badgeIcon: "",
   },
   {
-    image: "/jollof_rice_hero.png",
-    alt: "Delicious Nigerian meals made with Bems Farms ingredients",
-    tag: " Chef Bems Approved",
-    eyebrow: "Farm-to-Kitchen",
-    heading: "Everything you need for the food you love.",
+    image: "/bems_farms_hub.jpg",
+    alt: "Bems Farms central headquarters, storefront and dispatch fleet",
+    tag: "Central Operations Hub",
+    eyebrow: "Doorstep Dispatch Logistics",
+    heading: "Direct from our physical facility straight to your door.",
     badgeIcon: "",
   },
 ];
@@ -278,7 +278,7 @@ function StoreProductCard({ product, added, onAdd, onNotify }) {
           loading="lazy"
           onError={(event) => {
             event.currentTarget.onerror = null;
-            event.currentTarget.src = "/hero_food_4.jpg";
+            event.currentTarget.src = "/bems_store_aisles.jpg";
           }}
         />
         {/* Prioritize Bems Original over generic Featured to prevent badge overlap */}
@@ -859,7 +859,7 @@ export default function LandingPage() {
     window.setTimeout(() => setAddedProducts((current) => ({ ...current, [product.id]: false })), 1200);
   };
 
-  const categoryImages = ["/hero_food_1.jpg", "/hero_food_2.jpg", "/hero_food_3.jpg", "/fresh_salad_hero.png", "/hero_food_4.jpg"];
+  const categoryImages = ["/bems_store_aisles.jpg", "/bems_oil_packaging_station.jpg", "/bems_store_checkout.jpg", "/bems_farms_storefront.jpg", "/bems_farms_hub.jpg"];
   const dynamicCategories = [...new Set(products.map((product) => product.category_name).filter(Boolean))].map((name, index) => ({
     name,
     detail: `Browse available ${name.toLowerCase()} from the live BemsFarms catalogue.`,

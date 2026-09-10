@@ -61,46 +61,26 @@ const SHOP_CSS = `
 }
 `;
 
-const VIDEO_SLIDES = [
+const REAL_STOCK_SLIDES = [
   {
     id: 1,
-    badge: "100% Stone-Free Harvest",
-    badgeColor: "#10B981",
-    title: "Fresh Nigerian Produce",
-    subtitle: "Stone-free grains, premium tubers & unadulterated oils direct to your kitchen.",
-    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166618/A_vibrant_top_down_flat_lay_vi_xuitwq.mp4",
+    title: "Fresh Harvest & Grocery Aisles",
+    src: "/bems_store_aisles.jpg",
   },
   {
     id: 2,
-    badge: "Direct Farm Harvest",
-    badgeColor: "#F59E0B",
-    title: "Sun-Drenched Farm Fields",
-    subtitle: "Authentic harvests directly from partner farms across Nigeria.",
-    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166058/A_warm_sun_drenched_Nigerian_f7oi4i.mp4",
+    title: "Palm Oil & Vegetable Oil Bottling Lab",
+    src: "/bems_oil_packaging_station.jpg",
   },
   {
     id: 3,
-    badge: "Certified Quality",
-    badgeColor: "#06B6D4",
-    title: "Organic & Fresh Sorting",
-    subtitle: "Carefully sorted and packaged to preserve nutritional integrity and freshness.",
-    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166480/A_slow_looping_cinematic_shot_i0swkm.mp4",
+    title: "Bems Farms Supermarket Storefront",
+    src: "/bems_store_checkout.jpg",
   },
   {
     id: 4,
-    badge: "Chef Bems Culinary AI",
-    badgeColor: "#8B5CF6",
-    title: "Cook Smarter With AI",
-    subtitle: "Get recipe inspirations, portion calculations, and cooking tips with Chef Bems AI.",
-    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1784539329/Give_me_a_video_of_the_charact_supd0d.mp4",
-  },
-  {
-    id: 5,
-    badge: "Flavour & Tradition",
-    badgeColor: "#E11D48",
-    title: "Delicious Nigerian Dishes",
-    subtitle: "Experience the authentic aromas of home-cooked jollof, soups, and native delicacies.",
-    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1785505349/Create_a_Video_of_the_characte_xfqkn8.mp4",
+    title: "Central Store & Dispatch Center",
+    src: "/bems_farms_hub.jpg",
   },
 ];
 
@@ -109,57 +89,32 @@ function ShopVideoSlider() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % VIDEO_SLIDES.length);
-    }, 6000);
+      setCurrent((prev) => (prev + 1) % REAL_STOCK_SLIDES.length);
+    }, 5500);
     return () => clearInterval(interval);
   }, []);
 
-  const activeSlide = VIDEO_SLIDES[current];
+  const activeSlide = REAL_STOCK_SLIDES[current];
 
   return (
-    <div className="relative w-full aspect-video sm:aspect-[16/10] md:aspect-[4/3] lg:aspect-[16/10] max-w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-white/25 shadow-2xl bg-black/50 backdrop-blur-md select-none">
+    <div className="relative w-full aspect-video sm:aspect-[16/10] md:aspect-[4/3] lg:aspect-[16/10] max-w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-white/25 shadow-2xl bg-black/40 backdrop-blur-md select-none">
       <AnimatePresence mode="wait">
         <motion.div
           key={activeSlide.id}
-          initial={{ opacity: 0, scale: 1.04 }}
+          initial={{ opacity: 0, scale: 1.03 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
           transition={{ duration: 0.6, ease: "easeInOut" }}
           className="absolute inset-0 w-full h-full"
         >
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
+          <img
+            src={activeSlide.src}
+            alt={activeSlide.title}
             key={activeSlide.src}
             className="w-full h-full object-cover"
-            src={activeSlide.src}
           />
         </motion.div>
       </AnimatePresence>
-
-      {/* Subtle Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/35 pointer-events-none" />
-
-      {/* Floating Video Badge */}
-      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md px-3 py-1 border border-white/20 text-[10px] sm:text-xs font-bold text-white shadow-lg pointer-events-none">
-        <span
-          className="h-1.5 w-1.5 rounded-full animate-ping"
-          style={{ backgroundColor: activeSlide.badgeColor }}
-        />
-        <span>{activeSlide.badge}</span>
-      </div>
-
-      {/* Bottom Dynamic Caption */}
-      <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 right-3 sm:right-4 z-10 text-white pointer-events-none">
-        <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-amber-300 drop-shadow-sm">
-          {activeSlide.title}
-        </p>
-        <p className="text-[10px] sm:text-[11px] text-white/90 line-clamp-1 drop-shadow-xs font-medium">
-          {activeSlide.subtitle}
-        </p>
-      </div>
     </div>
   );
 }
@@ -605,7 +560,7 @@ export default function ProductsPage() {
                           loading="lazy"
                           onError={(e) => {
                             e.currentTarget.onerror = null;
-                            e.currentTarget.src = "/hero_food_4.jpg";
+                            e.currentTarget.src = "/bems_store_aisles.jpg";
                           }}
                         />
                         <div className="absolute inset-x-2 top-2 flex items-center justify-between gap-1 pointer-events-none">
