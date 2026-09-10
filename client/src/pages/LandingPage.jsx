@@ -35,25 +35,130 @@ const DEFAULT_CATEGORIES = [
 ];
 
 
+function StepIcon({ type, className = "h-5 w-5" }) {
+  if (type === "search") {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8" />
+        <path strokeLinecap="round" d="m21 21-4.35-4.35" />
+      </svg>
+    );
+  }
+  if (type === "chef") {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c-2.5 0-4 1.8-4 3.5 0 .8.3 1.5.8 2C7.2 9.2 6 10.7 6 13c0 2.8 2.2 5 5 5h2c2.8 0 5-2.2 5-5 0-2.3-1.2-3.8-2.8-4.5.5-.5.8-1.2.8-2C16 4.8 14.5 3 12 3z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 18v3h6v-3" />
+      </svg>
+    );
+  }
+  if (type === "basket") {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+      </svg>
+    );
+  }
+  if (type === "truck") {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+        <rect x="1" y="3" width="15" height="13" rx="2" />
+        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+        <circle cx="5.5" cy="18.5" r="2.5" />
+        <circle cx="18.5" cy="18.5" r="2.5" />
+      </svg>
+    );
+  }
+  if (type === "shield") {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </svg>
+    );
+  }
+  if (type === "sprout") {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 22v-9" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 13c0-4.5 4-7 9-7 0 5-2.5 9-7 9" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 17c0-3.5-3-5.5-7-5.5 0 4 2 7 5.5 7" />
+      </svg>
+    );
+  }
+  if (type === "tag") {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+        <circle cx="7" cy="7" r="1.5" />
+      </svg>
+    );
+  }
+  if (type === "refresh") {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+        <polyline points="1 4 1 10 7 10" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+      </svg>
+    );
+  }
+  if (type === "lock") {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+    );
+  }
+  if (type === "chat") {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+      </svg>
+    );
+  }
+  if (type === "check") {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    );
+  }
+  if (type === "close") {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    );
+  }
+  if (type === "sparkles") {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+      </svg>
+    );
+  }
+  return null;
+}
+
 const steps = [
-  { number: "01", icon: "", title: "Browse the shop", text: "Explore fresh produce, pantry staples and kitchen favourites." },
-  { number: "02", icon: "", title: "Ask Chef Bems", text: "Get meal ideas, ingredient alternatives and help building a useful shopping list.", accent: true },
-  { number: "03", icon: "", title: "Fill your basket", text: "Open products for full details, choose what you need and review your basket." },
-  { number: "04", icon: "", title: "Checkout", text: "Sign in, add your delivery address and complete your secure payment." },
+  { number: "01", icon: "search", title: "Browse the shop", text: "Explore fresh produce, pantry staples and kitchen favourites." },
+  { number: "02", icon: "chef", title: "Ask Chef Bems", text: "Get meal ideas, ingredient alternatives and help building a useful shopping list.", accent: true },
+  { number: "03", icon: "basket", title: "Fill your basket", text: "Open products for full details, choose what you need and review your basket." },
+  { number: "04", icon: "truck", title: "Checkout", text: "Sign in, add your delivery address and complete your secure payment." },
 ];
 
 const promises = [
-  { title: "Stone-Free Guarantee", text: "Every grain batch is rigorously destoned and sorted before packaging." },
-  { title: "Direct Farm Freshness", text: "Harvested and delivered within optimal timeframes to preserve peak nutrition." },
-  { title: "Transparent Pricing", text: "Fair market prices without hidden charges or unannounced markups." },
-  { title: "Reliable Logistics", text: "Dedicated delivery fleet ensuring fast, safe doorstep delivery across Abuja." },
+  { icon: "shield", title: "Stone-Free Guarantee", text: "Every grain batch is rigorously destoned and sorted before packaging." },
+  { icon: "sprout", title: "Direct Farm Freshness", text: "Harvested and delivered within optimal timeframes to preserve peak nutrition." },
+  { icon: "tag", title: "Transparent Pricing", text: "Fair market prices without hidden charges or unannounced markups." },
+  { icon: "truck", title: "Reliable Logistics", text: "Dedicated delivery fleet ensuring fast, safe doorstep delivery across Abuja." },
 ];
 
 const shoppingDetails = [
-  { icon: "", title: "Clear delivery costs", text: "Transparent delivery fees calculated based on your delivery location at checkout." },
-  { icon: "↩", title: "Eligible 7-day returns", text: "Eligible items can be submitted within 7 days of delivery; exclusions apply to some perishable goods." },
-  { icon: "", title: "Protected payment", text: "Complete your online payment securely through our encrypted payment gateway." },
-  { icon: "", title: "Customer support", text: "Questions about shopping or an order? Email info@bemsfarms.com." },
+  { icon: "truck", title: "Clear delivery costs", text: "Transparent delivery fees calculated based on your delivery location at checkout." },
+  { icon: "refresh", title: "Eligible 7-day returns", text: "Eligible items can be submitted within 7 days of delivery; exclusions apply to some perishable goods." },
+  { icon: "lock", title: "Protected payment", text: "Complete your online payment securely through our encrypted payment gateway." },
+  { icon: "chat", title: "Customer support", text: "Questions about shopping or an order? Email info@bemsfarms.com." },
 ];
 
 const faqs = [
@@ -70,7 +175,7 @@ const HERO_SLIDES = [
     tag: "100% Real Stock & Harvest",
     eyebrow: "Bems Supermarket & Produce",
     heading: "Fresh farm harvests, sorted grains and pantry staples.",
-    badgeIcon: "",
+    badgeIcon: "sprout",
   },
   {
     image: "/bems_oil_packaging_station.jpg",
@@ -78,7 +183,7 @@ const HERO_SLIDES = [
     tag: "Pure & Unadulterated",
     eyebrow: "Bems Packaging Facility",
     heading: "Precision-bottled authentic oils and sealed spices.",
-    badgeIcon: "",
+    badgeIcon: "shield",
   },
   {
     image: "/bems_store_checkout.jpg",
@@ -86,7 +191,7 @@ const HERO_SLIDES = [
     tag: "Walk-In & Online Hub",
     eyebrow: "Customer Experience",
     heading: "Seamless checkout, fast order pickup and verified stock.",
-    badgeIcon: "",
+    badgeIcon: "basket",
   },
   {
     image: "/bems_farms_hub.jpg",
@@ -94,7 +199,7 @@ const HERO_SLIDES = [
     tag: "Central Operations Hub",
     eyebrow: "Doorstep Dispatch Logistics",
     heading: "Direct from our physical facility straight to your door.",
-    badgeIcon: "",
+    badgeIcon: "truck",
   },
 ];
 
@@ -225,8 +330,8 @@ function HeroSlideBanner() {
           <p className="text-xs font-extrabold uppercase tracking-wider text-[#143c2d]">{slide.eyebrow}</p>
           <p className="mt-0.5 truncate font-display text-base font-bold text-slate-900 sm:text-lg">{slide.heading}</p>
         </div>
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#143c2d]/10 text-xl shadow-inner">
-          {slide.badgeIcon}
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#143c2d]/10 text-[#143c2d] shadow-inner">
+          <StepIcon type={slide.badgeIcon || "sprout"} className="h-5 w-5" />
         </span>
       </div>
 
@@ -297,8 +402,8 @@ function StoreProductCard({ product, added, onAdd, onNotify }) {
         />
         {/* Prioritize Bems Original over generic Featured to prevent badge overlap */}
         {isBemsOriginal ? (
-          <span className="absolute right-3 top-3 rounded-full bg-[#143c2d]/95 backdrop-blur px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">
-             Bems Original
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-[#143c2d]/95 backdrop-blur px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 shadow-md">
+            <StepIcon type="sprout" className="h-3 w-3 text-amber-300" /> Bems Original
           </span>
         ) : product.is_featured ? (
           <span className="absolute left-3 top-3 rounded-full bg-[#143c2d] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white">
@@ -371,16 +476,16 @@ function LoginPromptModal({ isOpen, onClose, cartCount, cartSubtotal, onLogin, o
         tabIndex={-1}
       >
         <div className="flex items-center justify-between">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-2xl shadow-inner">
-            
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-[#143c2d] shadow-inner">
+            <StepIcon type="lock" className="h-6 w-6 text-amber-700" />
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            className="grid h-9 w-9 place-items-center rounded-full border border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
             aria-label="Close dialog"
           >
-            
+            <StepIcon type="close" className="h-4 w-4" />
           </button>
         </div>
 
@@ -390,8 +495,9 @@ function LoginPromptModal({ isOpen, onClose, cartCount, cartSubtotal, onLogin, o
         <p className="mt-2 text-sm leading-6 text-slate-600">
           Your selected goods ({cartCount} {cartCount === 1 ? "item" : "items"}, worth <span className="font-extrabold text-slate-900">₦{cartSubtotal.toLocaleString()}</span>) are securely saved in your basket.
         </p>
-        <div className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3.5 text-xs font-bold leading-5 text-emerald-900">
-           An account is needed so we can verify your delivery address, provide live tracking, and protect your order details.
+        <div className="mt-3 flex items-start gap-2 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3.5 text-xs font-bold leading-5 text-emerald-900">
+          <StepIcon type="shield" className="h-4 w-4 text-emerald-800 shrink-0 mt-0.5" />
+          <span>An account is needed so we can verify your delivery address, provide live tracking, and protect your order details.</span>
         </div>
 
         <div className="mt-6 flex flex-col gap-2.5">
@@ -516,7 +622,9 @@ function FullScreenCatalogueModal({
 
           {/* Live Search Input */}
           <div className="relative flex-1 max-w-md min-w-[220px]">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" aria-hidden="true"></span>
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true">
+              <StepIcon type="search" className="h-4 w-4 text-slate-400" />
+            </span>
             <input
               type="search"
               value={modalSearch}
@@ -529,10 +637,10 @@ function FullScreenCatalogueModal({
               <button
                 type="button"
                 onClick={() => setModalSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 grid h-5 w-5 place-items-center text-slate-400 hover:text-slate-700 transition"
                 aria-label="Clear search"
               >
-                
+                <StepIcon type="close" className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
@@ -540,12 +648,10 @@ function FullScreenCatalogueModal({
           <div className="flex items-center gap-2">
             <Link
               to="/cart"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-[#143c2d] hover:bg-slate-50"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-[#143c2d] hover:bg-slate-50 transition"
               aria-label={`View shopping cart with ${cartCount} items`}
             >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
+              <StepIcon type="basket" className="h-5 w-5 text-[#143c2d]" />
               {cartCount > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#c85a17] text-[10px] font-extrabold text-white">
                   {cartCount}
@@ -556,10 +662,10 @@ function FullScreenCatalogueModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
               aria-label="Close store catalogue"
             >
-              ×
+              <StepIcon type="close" className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -592,7 +698,10 @@ function FullScreenCatalogueModal({
 
       {/* Reassuring Notice Banner */}
       <div className="relative z-10 border-b border-slate-200 bg-[#F4F1EA] px-4 py-2.5 text-center text-xs text-slate-700">
-        <span className="font-extrabold text-[#143c2d]"> Add items freely to your basket!</span>{" "}
+        <span className="font-extrabold text-[#143c2d] inline-flex items-center gap-1">
+          <StepIcon type="basket" className="h-3.5 w-3.5" />
+          Add items freely to your basket!
+        </span>{" "}
         <span className="text-slate-600">
           Even after selecting goods and adding them to your basket, you will sign in (or register) to enter your delivery location and place your order.
         </span>
@@ -636,8 +745,8 @@ function FullScreenCatalogueModal({
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 p-3.5 shadow-2xl backdrop-blur-lg sm:p-4">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#143c2d]/10 text-xl shadow-inner">
-              
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#143c2d]/10 text-[#143c2d] shadow-inner">
+              <StepIcon type="basket" className="h-5 w-5 text-[#143c2d]" />
             </div>
             <div>
               <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
@@ -650,7 +759,7 @@ function FullScreenCatalogueModal({
           </div>
 
           <div className="hidden md:flex items-center gap-2 rounded-full border border-slate-200 bg-[#FAF9F6] px-3.5 py-1.5 text-xs font-bold text-[#143c2d]">
-            <span aria-hidden="true"></span>
+            <StepIcon type="lock" className="h-3.5 w-3.5 text-[#143c2d]" />
             <span>Login required to place order & choose delivery</span>
           </div>
 
@@ -975,8 +1084,10 @@ export default function LandingPage() {
             <a href="#faq" className="text-sm font-bold text-slate-600 transition hover:text-[#143c2d]">FAQs</a>
           </div>
           <div className="hidden items-center gap-3 xl:flex">
-            <Link to="/cart" className="relative grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-lg" aria-label={`Basket with ${cartCount} items`}>
-              <span aria-hidden="true"></span>
+            <Link to="/cart" className="relative grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-[#143c2d] hover:bg-slate-50 hover:border-[#143c2d] transition shadow-xs" aria-label={`Basket with ${cartCount} items`}>
+              <svg className="h-5 w-5 text-[#143c2d]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
               {cartCount > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#143c2d] px-1 text-[10px] font-extrabold text-white">{cartCount}</span>}
             </Link>
             {isLoggedIn ? (
@@ -988,7 +1099,23 @@ export default function LandingPage() {
               </>
             )}
           </div>
-          <button type="button" className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-xl xl:hidden" onClick={() => setMenuOpen((value) => !value)} aria-expanded={menuOpen} aria-label="Toggle navigation menu">{menuOpen ? "×" : ""}</button>
+          <button
+            type="button"
+            className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition xl:hidden"
+            onClick={() => setMenuOpen((value) => !value)}
+            aria-expanded={menuOpen}
+            aria-label="Toggle navigation menu"
+          >
+            {menuOpen ? (
+              <svg className="h-5 w-5 text-slate-700" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="h-5 w-5 text-slate-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              </svg>
+            )}
+          </button>
         </nav>
         <AnimatePresence>
           {menuOpen && (
@@ -998,7 +1125,15 @@ export default function LandingPage() {
                 <Link to="/delivery" onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm font-bold text-slate-700 hover:bg-[#FAF9F6]">Delivery & Tracking</Link>
               </div>
               {isLoggedIn ? <Link to="/home" className="mt-4 block rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">My account</Link> : <div className="mt-4 grid grid-cols-2 gap-3"><Link to="/login" className="rounded-full border border-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-[#143c2d]">Sign in</Link><Link to="/register" className="rounded-full bg-[#143c2d] px-4 py-3 text-center text-sm font-extrabold text-white">Join now</Link></div>}
-              <Link to="/cart" className="mt-3 flex items-center justify-between rounded-2xl bg-[#143c2d] px-4 py-3 text-sm font-extrabold text-white"><span> View basket</span><span>{cartCount} {cartCount === 1 ? "item" : "items"}</span></Link>
+              <Link to="/cart" className="mt-3 flex items-center justify-between rounded-2xl bg-[#143c2d] px-4 py-3 text-sm font-extrabold text-white">
+                <span className="flex items-center gap-2">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                  View basket
+                </span>
+                <span>{cartCount} {cartCount === 1 ? "item" : "items"}</span>
+              </Link>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1028,9 +1163,18 @@ export default function LandingPage() {
                 <a href="#how-it-works" className="rounded-full border border-slate-300 bg-white px-8 py-4 text-center text-base font-extrabold text-slate-800 transition hover:border-[#143c2d] hover:text-[#143c2d]">See how it works</a>
               </div>
               <div className="mt-9 flex flex-wrap justify-center gap-x-7 gap-y-3 text-sm font-bold text-slate-600 lg:justify-start">
-                <span> Trusted Grocery Brands</span>
-                <span> Bems Farms Originals</span>
-                <span> Fast & Reliable Delivery</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <StepIcon type="check" className="h-4 w-4 text-[#143c2d]" />
+                  Trusted Grocery Brands
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <StepIcon type="check" className="h-4 w-4 text-[#143c2d]" />
+                  Bems Farms Originals
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <StepIcon type="check" className="h-4 w-4 text-[#143c2d]" />
+                  Fast &amp; Reliable Delivery
+                </span>
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 0.12 }} className="relative mx-auto w-full max-w-[580px]">
@@ -1046,7 +1190,8 @@ export default function LandingPage() {
               />
               {/* Decorative Corner Badge */}
               <div className="absolute -top-3 -right-2 z-10 hidden sm:flex items-center gap-1.5 rounded-full bg-[#143c2d] px-4 py-1.5 text-xs font-extrabold uppercase tracking-wider text-amber-300 shadow-lg rotate-2 border border-amber-300/30">
-                <span></span> Fresh Harvest
+                <StepIcon type="sprout" className="h-3.5 w-3.5 text-amber-300" />
+                <span>Fresh Harvest</span>
               </div>
               <HeroSlideBanner />
             </motion.div>
@@ -1083,13 +1228,17 @@ export default function LandingPage() {
                 <p className="mt-4 text-base leading-7 text-slate-600">Unlike ordinary markets, Bems Farms cultivates, sorts, and packages our own line of signature food staples and crops. Every bag of grains, bottle of oil, and fresh harvest is inspected for supreme quality and natural taste.</p>
                 <div className="mt-7 grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl border border-[#DFD6C2] bg-white p-5 shadow-sm">
-                    <p className="text-xl"></p>
-                    <h3 className="mt-2 font-display text-base font-bold text-[#143c2d]">In-House Packaged</h3>
+                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#F8F5EE] text-[#143c2d] mb-3">
+                      <StepIcon type="shield" className="h-5 w-5" />
+                    </span>
+                    <h3 className="font-display text-base font-bold text-[#143c2d]">In-House Packaged</h3>
                     <p className="mt-1 text-xs leading-5 text-slate-500">Carefully sorted, stone-free grains and pure culinary oils.</p>
                   </div>
                   <div className="rounded-2xl border border-[#DFD6C2] bg-white p-5 shadow-sm">
-                    <p className="text-xl"></p>
-                    <h3 className="mt-2 font-display text-base font-bold text-[#143c2d]">Harvested Daily</h3>
+                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#F8F5EE] text-[#143c2d] mb-3">
+                      <StepIcon type="sprout" className="h-5 w-5" />
+                    </span>
+                    <h3 className="font-display text-base font-bold text-[#143c2d]">Harvested Daily</h3>
                     <p className="mt-1 text-xs leading-5 text-slate-500">Crops harvested at peak freshness with zero artificial tampering.</p>
                   </div>
                 </div>
@@ -1097,7 +1246,7 @@ export default function LandingPage() {
               <div className="rounded-3xl border border-emerald-900/10 bg-[#143c2d] p-7 text-white shadow-xl sm:p-9">
                 <p className="text-xs font-extrabold uppercase tracking-widest text-amber-300">Bems Guarantee</p>
                 <h3 className="mt-2 font-display text-2xl font-bold">Look for the “Bems Original” Badge</h3>
-                <p className="mt-3 text-sm leading-6 text-emerald-100/80">Our catalogue includes products from a range of trusted brands. Items marked with the <span className="font-bold text-amber-300"> Bems Original</span> badge are produced or packaged by Bems Farms.</p>
+                <p className="mt-3 text-sm leading-6 text-emerald-100/80">Our catalogue includes products from a range of trusted brands. Items marked with the <span className="font-bold text-amber-300">Bems Original</span> badge are produced or packaged by Bems Farms.</p>
                 <div className="mt-6">
                   <a href="#featured-products" onClick={() => setCatalogueView("bems_originals")} className="inline-flex rounded-full bg-amber-300 px-6 py-3 text-xs font-extrabold uppercase tracking-wider text-emerald-950 transition hover:bg-white">View Bems Originals →</a>
                 </div>
@@ -1121,14 +1270,22 @@ export default function LandingPage() {
                   className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#143c2d] bg-[#143c2d] px-5 py-3 text-xs font-extrabold uppercase tracking-wider text-amber-300 shadow-md shadow-emerald-950/15 transition hover:-translate-y-0.5 hover:bg-[#1a4e3b] hover:text-white active:scale-95"
                   aria-label="Open full screen catalogue modal"
                 >
-                  <span className="text-base" aria-hidden="true"></span>
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                  </svg>
                   <span>Full Screen Catalogue</span>
                 </button>
 
                 {/* Search Bar right inside Catalogue section */}
                 <form onSubmit={handleSearch} className="flex w-full sm:w-80 md:w-96 items-center rounded-full border border-[#DDD3BF] bg-white p-1.5 shadow-sm focus-within:border-[#143c2d] focus-within:ring-2 focus-within:ring-emerald-600/20">
                   <label htmlFor="catalogue-search" className="sr-only">Search products</label>
-                  <span className="ml-3 text-slate-400" aria-hidden="true"></span>
+                  <svg className="ml-3 h-4 w-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8" />
+                    <path strokeLinecap="round" d="m21 21-4.35-4.35" />
+                  </svg>
                   <input
                     id="catalogue-search"
                     type="search"
@@ -1156,9 +1313,10 @@ export default function LandingPage() {
               <button
                 type="button"
                 onClick={() => setCatalogueView("bems_originals")}
-                className={`rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "bems_originals" ? "bg-[#143c2d] text-amber-300 ring-2 ring-amber-400/40" : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}
+                className={`inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-xs font-extrabold transition ${catalogueView === "bems_originals" ? "bg-[#143c2d] text-amber-300 ring-2 ring-amber-400/40" : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}
               >
-                 Bems Originals
+                <StepIcon type="sprout" className="h-3.5 w-3.5 text-amber-400" />
+                <span>Bems Originals</span>
               </button>
               <button
                 type="button"
@@ -1315,7 +1473,15 @@ export default function LandingPage() {
               <a href="mailto:info@bemsfarms.com" className="text-sm font-extrabold text-[#c85a17] hover:underline">Contact support →</a>
             </div>
             <div className="mt-8 grid gap-px overflow-hidden rounded-3xl border border-[#DFD6C2] bg-[#DFD6C2] sm:grid-cols-2 lg:grid-cols-4">
-              {shoppingDetails.map((item) => <article key={item.title} className="bg-white p-6"><span className="text-2xl" aria-hidden="true">{item.icon}</span><h3 className="mt-4 font-display text-lg font-bold text-[#143c2d]">{item.title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{item.text}</p></article>)}
+              {shoppingDetails.map((item) => (
+                <article key={item.title} className="bg-white p-6">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#F8F5EE] text-[#143c2d] mb-4" aria-hidden="true">
+                    <StepIcon type={item.icon} className="h-5 w-5" />
+                  </span>
+                  <h3 className="mt-4 font-display text-lg font-bold text-[#143c2d]">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{item.text}</p>
+                </article>
+              ))}
             </div>
           </div>
         </section>
@@ -1324,18 +1490,48 @@ export default function LandingPage() {
           <div className="mx-auto max-w-7xl">
             <SectionHeading eyebrow="A smarter shopping journey" title="From meal idea to doorstep" text="Shop at your own pace, with Chef Bems ready to help when you need inspiration." />
             <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {steps.map((step) => <article key={step.number} className={`relative overflow-hidden rounded-3xl border border-[#DFD6C2] p-6 shadow-sm ${step.accent ? "bg-[#143c2d] text-white border-[#143c2d]" : "bg-white"}`}>
-                {step.accent && <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl" />}
-                <div className="relative flex items-center justify-between"><p className={`font-display text-3xl font-bold ${step.accent ? "text-amber-300" : "text-[#143c2d]"}`}>{step.number}</p><span className={`grid h-11 w-11 place-items-center rounded-2xl text-lg ${step.accent ? "bg-white/10" : "bg-[#F8F5EE] text-[#143c2d] border border-[#DFD6C2]"}`} aria-hidden="true">{step.icon}</span></div>
-                <h3 className={`relative mt-8 font-display text-xl font-bold ${step.accent ? "text-white" : "text-[#143c2d]"}`}>{step.title}</h3>
-                <p className={`relative mt-3 text-sm leading-6 ${step.accent ? "text-emerald-50/75" : "text-slate-600"}`}>{step.text}</p>
-                {step.accent && <Link to="/chef-chat" className="relative mt-5 inline-flex text-xs font-extrabold text-amber-300 hover:text-white">Open Chef Bems →</Link>}
-              </article>)}
+              {steps.map((step) => (
+                <article key={step.number} className={`relative overflow-hidden rounded-3xl border border-[#DFD6C2] p-6 shadow-sm ${step.accent ? "bg-[#143c2d] text-white border-[#143c2d]" : "bg-white"}`}>
+                  {step.accent && <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-400/10 blur-2xl" />}
+                  <div className="relative flex items-center justify-between">
+                    <p className={`font-display text-3xl font-bold ${step.accent ? "text-amber-300" : "text-[#143c2d]"}`}>{step.number}</p>
+                    <span className={`grid h-11 w-11 place-items-center rounded-2xl text-lg ${step.accent ? "bg-white/10 text-amber-300" : "bg-[#F8F5EE] text-[#143c2d] border border-[#DFD6C2]"}`} aria-hidden="true">
+                      <StepIcon type={step.icon} className="h-5 w-5" />
+                    </span>
+                  </div>
+                  <h3 className={`relative mt-8 font-display text-xl font-bold ${step.accent ? "text-white" : "text-[#143c2d]"}`}>{step.title}</h3>
+                  <p className={`relative mt-3 text-sm leading-6 ${step.accent ? "text-emerald-50/75" : "text-slate-600"}`}>{step.text}</p>
+                  {step.accent && <Link to="/chef-chat" className="relative mt-5 inline-flex text-xs font-extrabold text-amber-300 hover:text-white">Open Chef Bems →</Link>}
+                </article>
+              ))}
             </div>
           </div>
         </section>
 
-        <section className="bg-[#EFE8DC] border-y border-[#DDD3BF] px-5 py-20 sm:px-8 lg:px-12 lg:py-28"><div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-2 lg:items-center"><div className="relative"><img src="/jollof_rice_hero.png" alt="Jollof rice served with grilled chicken and plantain" className="aspect-square w-full rounded-[2.5rem] object-cover shadow-xl" loading="lazy" /><div className="absolute -bottom-5 right-5 max-w-[240px] rounded-2xl bg-[#143c2d] p-5 text-white shadow-xl sm:right-8"><p className="font-display text-xl font-bold">Made for the meals you love.</p></div></div><div><SectionHeading align="left" eyebrow="Why BemsFarms" title="More confidence in every basket" text="A thoughtful shopping experience that helps you move from food inspiration to a completed order without confusion." /><div className="mt-9 grid gap-5 sm:grid-cols-2">{promises.map((item) => <article key={item.title} className="rounded-2xl border border-[#DFD6C2] bg-white p-5 shadow-sm"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#F8F5EE] font-bold text-[#143c2d]">{item.icon}</span><h3 className="mt-4 font-display text-lg font-bold text-[#143c2d]">{item.title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{item.text}</p></article>)}</div></div></div></section>
+        <section className="bg-[#EFE8DC] border-y border-[#DDD3BF] px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
+          <div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-2 lg:items-center">
+            <div className="relative">
+              <img src="/jollof_rice_hero.png" alt="Jollof rice served with grilled chicken and plantain" className="aspect-square w-full rounded-[2.5rem] object-cover shadow-xl" loading="lazy" />
+              <div className="absolute -bottom-5 right-5 max-w-[240px] rounded-2xl bg-[#143c2d] p-5 text-white shadow-xl sm:right-8">
+                <p className="font-display text-xl font-bold">Made for the meals you love.</p>
+              </div>
+            </div>
+            <div>
+              <SectionHeading align="left" eyebrow="Why BemsFarms" title="More confidence in every basket" text="A thoughtful shopping experience that helps you move from food inspiration to a completed order without confusion." />
+              <div className="mt-9 grid gap-5 sm:grid-cols-2">
+                {promises.map((item) => (
+                  <article key={item.title} className="rounded-2xl border border-[#DFD6C2] bg-white p-5 shadow-sm">
+                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#F8F5EE] font-bold text-[#143c2d] mb-3">
+                      <StepIcon type={item.icon} className="h-5 w-5" />
+                    </span>
+                    <h3 className="mt-2 font-display text-lg font-bold text-[#143c2d]">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.text}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section id="chef-bems" className="scroll-mt-24 bg-[#F8F5EE] px-5 py-20 sm:px-8 lg:px-12 lg:py-28">
           <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-[#143c2d] px-6 py-12 text-white sm:px-10 lg:px-16 lg:py-16">
@@ -1344,7 +1540,24 @@ export default function LandingPage() {
                 <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-amber-300">Your food companion</p>
                 <h2 className="mt-4 font-display text-4xl font-bold leading-tight sm:text-5xl">Meet Chef Bems</h2>
                 <p className="mt-5 max-w-xl text-base leading-7 text-emerald-50/75">Need meal inspiration or help building a useful shopping list? Chef Bems connects your cooking ideas with ingredients you can find in the store.</p>
-                <div className="mt-8 grid gap-3 sm:grid-cols-2"><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold"> Meal and recipe ideas</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold"> Smarter shopping lists</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold"> Ingredient alternatives</p><p className="rounded-2xl bg-white/10 p-4 text-sm font-bold"> Conversational guidance</p></div>
+                <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                  <p className="flex items-center gap-2 rounded-2xl bg-white/10 p-4 text-sm font-bold">
+                    <svg className="h-4 w-4 text-amber-300 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    Meal and recipe ideas
+                  </p>
+                  <p className="flex items-center gap-2 rounded-2xl bg-white/10 p-4 text-sm font-bold">
+                    <svg className="h-4 w-4 text-amber-300 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    Smarter shopping lists
+                  </p>
+                  <p className="flex items-center gap-2 rounded-2xl bg-white/10 p-4 text-sm font-bold">
+                    <svg className="h-4 w-4 text-amber-300 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    Ingredient alternatives
+                  </p>
+                  <p className="flex items-center gap-2 rounded-2xl bg-white/10 p-4 text-sm font-bold">
+                    <svg className="h-4 w-4 text-amber-300 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    Conversational guidance
+                  </p>
+                </div>
                 <Link to="/chef-chat" className="mt-9 inline-flex rounded-full bg-amber-300 px-7 py-3.5 text-sm font-extrabold text-[#143c2d] transition hover:bg-white">Open Chef Bems</Link>
               </div>
               <div className="relative mx-auto w-full max-w-md">
@@ -1501,7 +1714,8 @@ export default function LandingPage() {
           <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-[#143c2d] px-6 py-12 text-white sm:px-10 lg:flex lg:items-center lg:justify-between lg:gap-12 lg:px-16 shadow-2xl">
             <div className="relative z-10 max-w-xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-white/10 px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider text-amber-300">
-                <span></span> Harvest Notes & Updates
+                <StepIcon type="sprout" className="h-3.5 w-3.5 text-amber-300" />
+                <span>Harvest Notes &amp; Updates</span>
               </div>
               <h2 className="mt-4 font-display text-3xl font-bold sm:text-4xl text-white">
                 Fresh updates straight to your inbox
@@ -1510,9 +1724,18 @@ export default function LandingPage() {
                 Receive product news, seasonal produce alerts, Chef Bems recipes, and practical food inspiration from BemsFarms.
               </p>
               <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold text-emerald-100/70">
-                <span className="rounded-full bg-white/10 px-3 py-1"> Weekly harvest updates</span>
-                <span className="rounded-full bg-white/10 px-3 py-1"> Chef Bems meal tips</span>
-                <span className="rounded-full bg-white/10 px-3 py-1"> Zero spam</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1">
+                  <StepIcon type="check" className="h-3 w-3 text-amber-300" />
+                  Weekly harvest updates
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1">
+                  <StepIcon type="check" className="h-3 w-3 text-amber-300" />
+                  Chef Bems meal tips
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1">
+                  <StepIcon type="check" className="h-3 w-3 text-amber-300" />
+                  Zero spam
+                </span>
               </div>
             </div>
 
