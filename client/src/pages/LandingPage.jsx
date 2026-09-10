@@ -660,6 +660,90 @@ function FullScreenCatalogueModal({
   );
 }
 
+const DISPATCH_VIDEOS = [
+  {
+    id: 1,
+    badge: "Nationwide Doorstep Dispatch",
+    badgeColor: "#10B981",
+    title: "Express Logistics Network",
+    subtitle: "Speedy fulfillment direct from our Abia State central hub to all 36 states.",
+    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1784552209/Create_an_exiting_carousel_vid_xh7212.mp4",
+  },
+  {
+    id: 2,
+    badge: "Hygienic Sealed Packaging",
+    badgeColor: "#06B6D4",
+    title: "Quality Sorting & Sealing",
+    subtitle: "Stone-free grain verification, winnowing, and leak-proof container seals.",
+    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166480/A_slow_looping_cinematic_shot_i0swkm.mp4",
+  },
+  {
+    id: 3,
+    badge: "Direct Farm Freshness",
+    badgeColor: "#F59E0B",
+    title: "Harvested & Sorted in Abia",
+    subtitle: "Pure palm oil, grains, and authentic Nigerian produce in transit.",
+    src: "https://res.cloudinary.com/dyzkjerez/video/upload/f_auto,q_auto,w_1000/v1786166618/A_vibrant_top_down_flat_lay_vi_xuitwq.mp4",
+  },
+];
+
+function LandingDispatchSlider() {
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % DISPATCH_VIDEOS.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const activeSlide = DISPATCH_VIDEOS[current];
+
+  return (
+    <div className="relative w-full aspect-video sm:aspect-[16/10] md:aspect-[4/3] lg:aspect-[16/10] rounded-2xl sm:rounded-3xl overflow-hidden border border-white/20 shadow-2xl bg-black/60 backdrop-blur-md select-none">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeSlide.id}
+          initial={{ opacity: 0, scale: 1.04 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 0.6, ease: "easeInOut" }}
+          className="absolute inset-0 w-full h-full"
+        >
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            key={activeSlide.src}
+            className="w-full h-full object-cover"
+            src={activeSlide.src}
+          />
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30 pointer-events-none" />
+
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 inline-flex items-center gap-1.5 rounded-full bg-black/65 backdrop-blur-md px-3 py-1 border border-white/20 text-[10px] sm:text-xs font-bold text-white shadow-lg pointer-events-none">
+        <span
+          className="h-1.5 w-1.5 rounded-full animate-ping"
+          style={{ backgroundColor: activeSlide.badgeColor }}
+        />
+        <span>{activeSlide.badge}</span>
+      </div>
+
+      <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 right-3 sm:right-4 z-10 text-white pointer-events-none">
+        <p className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-amber-300 drop-shadow-sm">
+          {activeSlide.title}
+        </p>
+        <p className="text-[10px] sm:text-[11px] text-white/90 line-clamp-1 drop-shadow-xs font-medium">
+          {activeSlide.subtitle}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
@@ -1326,27 +1410,18 @@ export default function LandingPage() {
                 </form>
               </div>
 
-              <div className="lg:col-span-5 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-white/10 p-4 border border-white/15 backdrop-blur-md">
-                  <p className="text-xs font-black uppercase text-amber-300">HQ & Central Hub</p>
-                  <p className="mt-1 font-display text-xl font-bold text-white">Abia State</p>
-                  <p className="mt-1 text-[11px] text-emerald-100/70">Umuahia, Aba & regional dispatch.</p>
-                </div>
-                <div className="rounded-2xl bg-white/10 p-4 border border-white/15 backdrop-blur-md">
-                  <p className="text-xs font-black uppercase text-emerald-300">Coverage</p>
-                  <p className="mt-1 font-display text-xl font-bold text-white">Nationwide</p>
-                  <p className="mt-1 text-[11px] text-emerald-100/70">Delivering across all 36 States + FCT.</p>
-                </div>
-                <div className="col-span-2 rounded-2xl bg-white/10 p-4 border border-white/15 backdrop-blur-md flex items-center justify-between">
+              <div className="lg:col-span-5 flex flex-col items-center">
+                <LandingDispatchSlider />
+                <div className="w-full mt-3 flex items-center justify-between bg-white/10 rounded-2xl px-4 py-2.5 border border-white/15 backdrop-blur-md">
                   <div>
-                    <p className="text-xs font-bold text-white">Delivery & Order Tracking Portal</p>
-                    <p className="text-[11px] text-emerald-100/70">View live courier radar, hubs, & guarantees.</p>
+                    <p className="text-xs font-bold text-white">Full Delivery & Coverage Hubs</p>
+                    <p className="text-[10px] text-emerald-100/70">Live courier radar, milestones & FAQ</p>
                   </div>
                   <Link
                     to="/delivery"
-                    className="rounded-xl bg-white text-[#0A2E1C] hover:bg-amber-300 px-4 py-2 text-xs font-black transition-all shadow-sm shrink-0"
+                    className="rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0A2E1C] px-3.5 py-1.5 text-xs font-black transition-all shadow-sm shrink-0"
                   >
-                    Explore Delivery Portal
+                    Open Portal →
                   </Link>
                 </div>
               </div>
