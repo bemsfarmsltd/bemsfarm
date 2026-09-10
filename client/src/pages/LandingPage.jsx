@@ -1297,13 +1297,13 @@ export default function LandingPage() {
               <div className="lg:col-span-7">
                 <div className="inline-flex items-center gap-2 rounded-full bg-amber-400/20 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-amber-300 border border-amber-400/30">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>BemsFarms Express Logistics</span>
+                  <span>Nationwide Logistics Network</span>
                 </div>
                 <h2 id="track-delivery-title" className="mt-3.5 font-display text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-tight">
-                  Track Your Delivery or Check Shipping Rates
+                  Track Your Delivery Live
                 </h2>
                 <p className="mt-2.5 text-sm sm:text-base text-emerald-100/90 max-w-xl leading-relaxed">
-                  Real-time GPS courier tracking, guaranteed stone-free grain inspection, and 100% Free Doorstep Delivery on orders above ₦15,000.
+                  Operating from Abia State with nationwide doorstep dispatch across all 36 States and Abuja FCT. Enter your order reference to track live progress.
                 </p>
 
                 <form onSubmit={handleTracking} className="mt-6 flex flex-col sm:flex-row gap-2.5 max-w-xl rounded-2xl bg-white/10 p-2 border border-white/20 backdrop-blur-xl">
@@ -1328,19 +1328,19 @@ export default function LandingPage() {
 
               <div className="lg:col-span-5 grid grid-cols-2 gap-3">
                 <div className="rounded-2xl bg-white/10 p-4 border border-white/15 backdrop-blur-md">
-                  <p className="text-xs font-black uppercase text-amber-300">Free Delivery</p>
-                  <p className="mt-1 font-display text-xl font-bold text-white">Above ₦15,000</p>
-                  <p className="mt-1 text-[11px] text-emerald-100/70">Flat ₦1,500 below threshold.</p>
+                  <p className="text-xs font-black uppercase text-amber-300">HQ & Central Hub</p>
+                  <p className="mt-1 font-display text-xl font-bold text-white">Abia State</p>
+                  <p className="mt-1 text-[11px] text-emerald-100/70">Umuahia, Aba & regional dispatch.</p>
                 </div>
                 <div className="rounded-2xl bg-white/10 p-4 border border-white/15 backdrop-blur-md">
-                  <p className="text-xs font-black uppercase text-emerald-300">Lagos Coverage</p>
-                  <p className="mt-1 font-display text-xl font-bold text-white">Same-Day</p>
-                  <p className="mt-1 text-[11px] text-emerald-100/70">Island, Mainland & Environs.</p>
+                  <p className="text-xs font-black uppercase text-emerald-300">Coverage</p>
+                  <p className="mt-1 font-display text-xl font-bold text-white">Nationwide</p>
+                  <p className="mt-1 text-[11px] text-emerald-100/70">Delivering across all 36 States + FCT.</p>
                 </div>
                 <div className="col-span-2 rounded-2xl bg-white/10 p-4 border border-white/15 backdrop-blur-md flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-bold text-white">Full Logistics & Coverage Radar</p>
-                    <p className="text-[11px] text-emerald-100/70">Check delivery calculator, hubs, & FAQs.</p>
+                    <p className="text-xs font-bold text-white">Delivery & Order Tracking Portal</p>
+                    <p className="text-[11px] text-emerald-100/70">View live courier radar, hubs, & guarantees.</p>
                   </div>
                   <Link
                     to="/delivery"

@@ -47,22 +47,22 @@ const STATUS_COPY = {
 
 const COVERAGE_HUBS = [
   {
-    name: "Lagos Mainland",
+    name: "Abia State (HQ & Central Hub)",
     tag: "Same-Day / Next-Day",
-    areas: "Ikeja, Yaba, Surulere, Maryland, Gbagada, Magodo, Festac, Anthony, Ilupeju & environs",
-    timing: "Daily morning & afternoon dispatch runs",
+    areas: "Umuahia, Aba, Ohafia, Arochukwu, Osisioma, Isiala Ngwa & all environs",
+    timing: "Direct doorstep dispatch from our Abia state facilities",
   },
   {
-    name: "Lagos Island & Lekki Axis",
-    tag: "Same-Day / Next-Day",
-    areas: "Victoria Island, Ikoyi, Lekki Phase 1, Chevron, Ikate, Ajah, Sangotedo, VGC",
-    timing: "Dedicated dispatch routes with real-time tracking",
+    name: "Regional & South-East / South-South",
+    tag: "1 – 2 Business Days",
+    areas: "Port Harcourt, Owerri, Enugu, Uyo, Calabar, Asaba, Onitsha, Warri, Benin City",
+    timing: "Fast regional transit directly to your door",
   },
   {
-    name: "Inter-State & Nationwide Freight",
+    name: "Nationwide Across Nigeria (All 36 States + FCT)",
     tag: "2 – 3 Business Days",
-    areas: "Abuja (FCT), Port Harcourt, Ibadan, Abeokuta, Benin City, Enugu, Warri & other major cities",
-    timing: "Handled via insured inter-state logistics partners",
+    areas: "Lagos, Abuja (FCT), Ibadan, Kano, Kaduna, Jos, and all locations nationwide",
+    timing: "Insured nationwide freight and interstate logistics",
   },
 ];
 
@@ -109,10 +109,10 @@ export default function TrackOrderPage() {
       created_at: new Date(Date.now() - 14 * 60 * 60 * 1000).toISOString(),
       driver_name: "Emmanuel Okon",
       driver_phone: "+234 803 123 4567",
-      driver_lat: 6.4541,
-      driver_lng: 3.3947,
-      eta_minutes: 25,
-      destination_area: "Ikeja GRA, Lagos",
+      driver_lat: 5.5249,
+      driver_lng: 7.4943,
+      eta_minutes: 20,
+      destination_area: "Umuahia, Abia State",
       items_count: 4,
       location_updated_at: new Date().toISOString(),
       preview: true,
@@ -181,7 +181,7 @@ export default function TrackOrderPage() {
                 <span>Back to {user ? "Home" : "Produce Market"}</span>
               </Link>
               <span className="text-[11px] font-semibold text-emerald-300/80">
-                BemsFarms Express Logistics
+                Nationwide Delivery Across Nigeria
               </span>
             </div>
 
@@ -190,7 +190,7 @@ export default function TrackOrderPage() {
                 Delivery & Order Tracking
               </h1>
               <p className="mt-2.5 text-xs sm:text-sm text-emerald-100/80 leading-relaxed">
-                Enter your order reference code (e.g. <strong className="font-mono text-amber-300">BF-ABC12345</strong>) to view real-time packaging, courier dispatch, and live delivery updates.
+                Operating from Abia State with nationwide doorstep dispatch. Enter your order reference code (e.g. <strong className="font-mono text-amber-300">BF-ABC12345</strong>) to view real-time delivery status.
               </p>
 
               {/* Clean Tracking Input Card */}
@@ -390,10 +390,10 @@ export default function TrackOrderPage() {
                 Coverage Areas
               </span>
               <h2 className="mt-2 font-display text-2xl sm:text-3xl font-black text-slate-900">
-                Where & When We Deliver
+                Nationwide Delivery Network
               </h2>
               <p className="mt-1 text-xs sm:text-sm text-slate-600">
-                Dispatch routes scheduled daily to guarantee freshness on arrival.
+                Operating from Abia State with reliable doorstep dispatch across all locations in Nigeria.
               </p>
             </div>
 
@@ -418,7 +418,7 @@ export default function TrackOrderPage() {
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-500">
-                    <span className="font-semibold text-slate-700">Dispatch schedule:</span> {hub.timing}
+                    <span className="font-semibold text-slate-700">Dispatch:</span> {hub.timing}
                   </div>
                 </div>
               ))}
