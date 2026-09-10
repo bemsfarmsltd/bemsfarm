@@ -65,18 +65,13 @@ export default function AdminLoginPage() {
 
         {/* Top Branding */}
         <div className="relative z-10">
-          <Link to="/" className="inline-flex items-center gap-3.5 group">
-            <div className="p-2 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md group-hover:border-amber-400/50 transition duration-300">
-              <img src={logo} alt="Bems Farms" className="h-9 w-auto brightness-110" />
+          <Link to="/" className="inline-flex items-center gap-3 group">
+            <div className="p-2.5 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md group-hover:border-amber-400/50 transition duration-300">
+              <img src={logo} alt="Bems Farms" className="h-10 w-auto brightness-110" />
             </div>
-            <div>
-              <span className="font-display text-base font-black tracking-wider text-white uppercase block">
-                Bems Farms
-              </span>
-              <span className="text-[11px] font-bold text-amber-300 uppercase tracking-widest block">
-                Enterprise Operations Hub
-              </span>
-            </div>
+            <span className="rounded-full bg-amber-400/20 border border-amber-300/40 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-amber-300 backdrop-blur-sm">
+              Operations Hub
+            </span>
           </Link>
         </div>
 
