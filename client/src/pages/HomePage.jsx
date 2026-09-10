@@ -56,7 +56,7 @@ function ProductGridCard({
   return (
     <article
       onClick={() => onQuickView(product)}
-      className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#143c2d]/25 cursor-pointer"
+      className="group relative w-[210px] sm:w-[240px] md:w-[260px] shrink-0 snap-start flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#143c2d]/25 cursor-pointer"
     >
       {/* Product Image Box */}
       <div className="relative aspect-square w-full bg-[#FAF9F6] overflow-hidden">
@@ -233,6 +233,18 @@ export default function HomePage() {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [restockProduct, setRestockProduct] = useState(null);
   const toastTimerRef = useRef(null);
+  const staplesScrollRef = useRef(null);
+  const harvestsScrollRef = useRef(null);
+
+  const scrollTrack = (ref, direction) => {
+    if (ref.current) {
+      const distance = 320;
+      ref.current.scrollBy({
+        left: direction === "left" ? -distance : distance,
+        behavior: "smooth",
+      });
+    }
+  };
 
   // Favorites stored in localStorage
   const [favorites, setFavorites] = useState(() => {
@@ -419,14 +431,20 @@ export default function HomePage() {
           p.name?.toLowerCase().includes("rice") ||
           p.name?.toLowerCase().includes("yam")
       )
-      .slice(0, 6);
+      .slice(0, 20);
   }, [products]);
 
-  // Featured seasonal harvests
+  // Featured seasonal harvests & Bems originals
   const featuredHarvests = useMemo(() => {
     return products
-      .filter((p) => p.is_featured || p.brand?.toLowerCase().includes("bems") || p.is_bems_brand)
-      .slice(0, 8);
+      .filter(
+        (p) =>
+          p.is_featured ||
+          p.brand?.toLowerCase().includes("bems") ||
+          p.is_bems_brand ||
+          Number(p.stock_quantity ?? p.stock ?? 0) > 0
+      )
+      .slice(0, 20);
   }, [products]);
 
   return (
@@ -652,34 +670,62 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ── 2. WEEKLY PANTRY STAPLES (QUICK RE-ORDER) ── */}
-        <section className="px-3 pt-5 pb-3 sm:px-6 lg:px-10">
+        {/* ── 2. WEEKLY PANTRY STAPLES (HORIZONTAL SCROLLING) ── */}
+        <section className="px-3 pt-6 pb-4 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-[1600px] w-full">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3.5">
               <div>
-                <h2 className="font-display text-sm sm:text-lg font-black text-[#143c2d]">
+                <h2 className="font-display text-base sm:text-xl font-black text-[#143c2d]">
                   Weekly Household Staples
                 </h2>
                 <p className="text-[11px] sm:text-xs text-slate-500">
                   Quick 1-tap reorder of Nigerian kitchen essentials
                 </p>
               </div>
-              <Link
-                to="/products"
-                className="text-[11px] sm:text-xs font-bold text-[#c85a17] hover:underline"
-              >
-                View Full Shop →
-              </Link>
+
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/products"
+                  className="hidden sm:inline-block text-xs font-bold text-[#c85a17] hover:underline mr-2"
+                >
+                  View Full Shop →
+                </Link>
+
+                {/* Left/Right Scroll Arrows */}
+                <button
+                  type="button"
+                  onClick={() => scrollTrack(staplesScrollRef, "left")}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-[#143c2d] hover:text-white hover:border-[#143c2d] transition active:scale-95 cursor-pointer"
+                  aria-label="Scroll staples left"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollTrack(staplesScrollRef, "right")}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-[#143c2d] hover:text-white hover:border-[#143c2d] transition active:scale-95 cursor-pointer"
+                  aria-label="Scroll staples right"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {loading ? (
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+              <div className="flex gap-3 sm:gap-4 overflow-hidden pb-4 pt-1">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-44 rounded-2xl bg-white border border-[#DFD6C2] animate-pulse" />
+                  <div key={i} className="w-[210px] sm:w-[240px] md:w-[260px] h-72 shrink-0 rounded-2xl bg-white border border-[#DFD6C2] animate-pulse" />
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6 sm:gap-3.5">
+              <div
+                ref={staplesScrollRef}
+                className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain pb-4 pt-1 px-0.5 scrollbar-none"
+              >
                 {staples.map((product) => (
                   <ProductGridCard
                     key={product.id}
@@ -699,34 +745,62 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ── 3. FEATURED HARVESTS & BEMS ORIGINALS ── */}
-        <section className="px-3 pt-5 pb-10 sm:px-6 lg:px-10">
+        {/* ── 3. FEATURED HARVESTS & BEMS ORIGINALS (HORIZONTAL SCROLLING) ── */}
+        <section className="px-3 pt-3 pb-10 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-[1600px] w-full">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3.5">
               <div>
-                <h2 className="font-display text-sm sm:text-lg font-black text-[#143c2d]">
+                <h2 className="font-display text-base sm:text-xl font-black text-[#143c2d]">
                   Fresh Seasonal Harvests
                 </h2>
                 <p className="text-[11px] sm:text-xs text-slate-500">
                   100% stone-free grains and unadulterated oils direct from farm
                 </p>
               </div>
-              <Link
-                to="/products?category=Grains%20%26%20Cereals"
-                className="text-[11px] sm:text-xs font-bold text-[#143c2d] hover:underline"
-              >
-                See all grains →
-              </Link>
+
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/products?category=Grains%20%26%20Cereals"
+                  className="hidden sm:inline-block text-xs font-bold text-[#143c2d] hover:underline mr-2"
+                >
+                  See all grains →
+                </Link>
+
+                {/* Left/Right Scroll Arrows */}
+                <button
+                  type="button"
+                  onClick={() => scrollTrack(harvestsScrollRef, "left")}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-[#143c2d] hover:text-white hover:border-[#143c2d] transition active:scale-95 cursor-pointer"
+                  aria-label="Scroll harvests left"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollTrack(harvestsScrollRef, "right")}
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-[#143c2d] hover:text-white hover:border-[#143c2d] transition active:scale-95 cursor-pointer"
+                  aria-label="Scroll harvests right"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {loading ? (
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-52 rounded-2xl bg-white border border-[#DFD6C2] animate-pulse" />
+              <div className="flex gap-3 sm:gap-4 overflow-hidden pb-4 pt-1">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="w-[210px] sm:w-[240px] md:w-[260px] h-72 shrink-0 rounded-2xl bg-white border border-[#DFD6C2] animate-pulse" />
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 sm:gap-4 md:gap-5">
+              <div
+                ref={harvestsScrollRef}
+                className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain pb-4 pt-1 px-0.5 scrollbar-none"
+              >
                 {featuredHarvests.map((product) => (
                   <ProductGridCard
                     key={product.id}
