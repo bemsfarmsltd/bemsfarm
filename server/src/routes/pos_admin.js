@@ -219,7 +219,7 @@ router.get("/sessions", requireRole("superadmin","manager","admin"), async (req,
   try {
     const { page = 1, limit: limitRaw = 20, from, to, cashier_id } = req.query;
     const limit = clampLimit(limitRaw, 20);
-    const params = []; const where = [];
+    const params = []; const where = ["c.role = 'user'"];
 
     if (from) { params.push(from); where.push(`DATE(ps.opened_at)>=$${params.length}`); }
     if (to)   { params.push(to);   where.push(`DATE(ps.opened_at)<=$${params.length}`); }
@@ -694,7 +694,7 @@ router.get("/customers", requireRole("superadmin", "manager", "admin", "cashier"
     const limit = clampLimit(limitRaw, 20);
     const result = await pool.query(
       `SELECT id, name, email, phone, loyalty_points
-       FROM customers
+       FROM users
        WHERE name ILIKE $1 OR phone ILIKE $1 OR email ILIKE $1
        ORDER BY name LIMIT $2`,
       [`%${q}%`, parseInt(limit)]

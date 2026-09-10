@@ -452,6 +452,7 @@ router.get("/track/:code", async (req, res, next) => {
            ELSE tracking_status
          END AS tracking_status,
          created_at,
+         delivered_at,
          updated_at,
          delivery.eta_minutes,
          ROUND(location.latitude::numeric, 3) AS driver_lat,
@@ -497,7 +498,7 @@ router.get("/:id", protect, async (req, res, next) => {
     const result = await pool.query(
       `SELECT
          o.id, o.total, o.status, o.payment_method, o.payment_ref, o.address,
-         o.created_at, o.cancelled_at, o.cancel_reason,
+         o.created_at, o.delivered_at, o.updated_at, o.cancelled_at, o.cancel_reason,
          COALESCE(o.tracking_status, o.status) as tracking_status,
          o.tracking_notes,
          json_agg(
@@ -542,7 +543,7 @@ router.patch(
 
       const result = await pool.query(
         `UPDATE orders
-       SET status = $1, updated_at = NOW()
+       SET status = $1, delivered_at = CASE WHEN $1 = 'delivered' THEN NOW() ELSE delivered_at END, updated_at = NOW()
        WHERE id = $2
        RETURNING *`,
         [status, id],

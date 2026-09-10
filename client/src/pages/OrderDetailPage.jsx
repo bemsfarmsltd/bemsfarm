@@ -138,7 +138,7 @@ export default function OrderDetailPage() {
 
   // Check if eligible for return (delivered within last 7 days)
   const updatedAt = new Date(
-    order.updated_at || order.updatedAt || order.created_at,
+    order.delivered_at || order.updated_at || order.updatedAt || order.created_at,
   );
   const daysSinceUpdate =
     (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);

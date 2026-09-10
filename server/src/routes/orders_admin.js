@@ -74,7 +74,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
-    const where = [];
+    const where = ["c.role = 'user'"];
 
     if (search) {
       params.push(`%${search}%`);
@@ -106,7 +106,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
 
     const countRes = await pool.query(
-      `SELECT COUNT(*) FROM orders o LEFT JOIN customers c ON o.customer_id = c.id ${whereClause}`,
+      `SELECT COUNT(*) FROM orders o LEFT JOIN users c ON o.customer_id = c.id ${whereClause}`,
       params,
     );
 
@@ -129,7 +129,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
         (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count,
         (SELECT STRING_AGG(oi.product_name, ', ' ORDER BY oi.id) FROM order_items oi WHERE oi.order_id = o.id) AS item_names
       FROM orders o
-      LEFT JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN users c ON o.customer_id = c.id
       LEFT JOIN drivers dr ON o.driver_id = dr.id
       LEFT JOIN deliveries d ON d.order_id = o.id
       ${whereClause}
@@ -258,7 +258,7 @@ router.get("/invoices", requireRole("superadmin", "manager", "admin", "delivery_
     const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
-    const where = [];
+    const where = ["c.role = 'user'"];
 
     if (search) {
       params.push(`%${search}%`);
@@ -342,7 +342,7 @@ router.post("/invoices", requireRole("superadmin", "manager", "admin"), validate
     let linkedCustomerId = null;
     if (customer_id) {
       const custCheck = await client.query(
-        "SELECT id FROM customers WHERE id::text=$1 OR customer_code=$1",
+        "SELECT id FROM users WHERE id::text=$1 OR customer_code=$1",
         [String(customer_id)],
       );
       if (custCheck.rows.length) linkedCustomerId = custCheck.rows[0].id;
@@ -461,7 +461,7 @@ router.post("/returns", requireRole("superadmin", "manager", "admin"), validate(
     let customer_id = customerIdInput ? parseInt(customerIdInput) : null;
     if (!customer_id && customer) {
       const custRes = await client.query(
-        "SELECT id FROM customers WHERE LOWER(REGEXP_REPLACE(TRIM(name), '\\s+', ' ', 'g')) = LOWER(REGEXP_REPLACE(TRIM($1), '\\s+', ' ', 'g')) LIMIT 1",
+        "SELECT id FROM users WHERE LOWER(REGEXP_REPLACE(TRIM(name), '\\s+', ' ', 'g')) = LOWER(REGEXP_REPLACE(TRIM($1), '\\s+', ' ', 'g')) LIMIT 1",
         [customer]
       );
       customer_id = custRes.rows[0]?.id || null;
@@ -527,7 +527,7 @@ router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req
     const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
-    const where = [];
+    const where = ["c.role = 'user'"];
 
     if (search) {
       params.push(`%${search}%`);
@@ -539,7 +539,7 @@ router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req
     }
 
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
-    const countRes = await pool.query(`SELECT COUNT(*) FROM returns r LEFT JOIN customers c ON r.customer_id = c.id ${whereClause}`, params);
+    const countRes = await pool.query(`SELECT COUNT(*) FROM returns r LEFT JOIN users c ON r.customer_id = c.id ${whereClause}`, params);
 
     params.push(parseInt(limit));
     params.push(offset);
@@ -547,7 +547,7 @@ router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req
     const rows = await pool.query(`
       SELECT r.*, c.name as customer_name, c.email as customer_email, c.phone as customer_phone
       FROM returns r
-      LEFT JOIN customers c ON r.customer_id = c.id
+      LEFT JOIN users c ON r.customer_id = c.id
       ${whereClause}
       ORDER BY r.created_at DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
@@ -686,7 +686,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
         d.id AS delivery_id, d.status AS delivery_status,
         d.attempts, d.eta_minutes, d.dispatched_at, d.delivered_at
       FROM orders o
-      LEFT JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN users c ON o.customer_id = c.id
       LEFT JOIN drivers dr ON o.driver_id = dr.id
       LEFT JOIN deliveries d ON d.order_id = o.id
       WHERE o.id = $1
@@ -1055,7 +1055,7 @@ router.patch(
       };
 
       await client.query(
-        "UPDATE orders SET status='delivered', updated_at=NOW() WHERE id=$1",
+        "UPDATE orders SET status='delivered', delivered_at=NOW(), updated_at=NOW() WHERE id=$1",
         [req.params.id],
       );
 

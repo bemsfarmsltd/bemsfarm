@@ -31,7 +31,7 @@ async function test() {
         o.payment_method
       FROM returns r
       LEFT JOIN orders o ON o.id = r.order_id
-      LEFT JOIN customers c ON c.id = o.customer_id LIMIT 1
+      LEFT JOIN users c ON c.id = o.customer_id LIMIT 1
     `;
     await pool.query(q2);
     console.log("Returns Query success.");
@@ -47,7 +47,7 @@ async function test() {
         i.subtotal, i.tax_amount, i.discount_amount, i.total, i.status, i.notes,
         c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone
       FROM invoices i
-      LEFT JOIN customers c ON c.id = i.customer_id LIMIT 1
+      LEFT JOIN users c ON c.id = i.customer_id LIMIT 1
     `;
     await pool.query(q3);
     console.log("Invoices Query success.");

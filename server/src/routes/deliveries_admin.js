@@ -62,7 +62,7 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
         ) AS items
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
-      LEFT JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN users c ON o.customer_id = c.id
       LEFT JOIN drivers dr ON d.driver_id = dr.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       LEFT JOIN LATERAL (
@@ -111,7 +111,7 @@ router.get("/auto-log", requireRole("superadmin", "manager", "admin", "delivery_
       FROM delivery_assignments da
       JOIN deliveries d ON da.delivery_id = d.id
       JOIN orders o ON d.order_id = o.id
-      LEFT JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN users c ON o.customer_id = c.id
       LEFT JOIN drivers dr ON da.driver_id = dr.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       LEFT JOIN (
@@ -192,7 +192,7 @@ router.patch(
           [del.rows[0].order_id],
         );
         await client.query(
-          "UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2",
+          "UPDATE orders SET status=$1, delivered_at = CASE WHEN $1 = 'delivered' THEN NOW() ELSE delivered_at END, updated_at=NOW() WHERE id=$2",
           [orderStatus, del.rows[0].order_id],
         );
         await client.query(
@@ -372,7 +372,7 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
   try {
     const { search = "", status = "" } = req.query;
     const params = [];
-    const where = [];
+    const where = ["c.role = 'user'"];
 
     if (status) {
       params.push(status);

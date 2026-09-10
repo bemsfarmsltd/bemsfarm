@@ -23,7 +23,7 @@ async function test() {
         dz.zone_name AS zone
       FROM deliveries d
       JOIN orders o ON d.order_id = o.id
-      LEFT JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN users c ON o.customer_id = c.id
       LEFT JOIN drivers dr ON d.driver_id = dr.id
       LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
       LIMIT 1

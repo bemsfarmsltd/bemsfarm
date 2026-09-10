@@ -78,7 +78,7 @@ export default function ReturnsPage() {
       const now = Date.now();
       const eligible = (r.data.orders || []).filter((o) => {
         if (o.status !== "delivered") return false;
-        const deliveredAt = o.updated_at || o.updatedAt || o.created_at || o.date;
+        const deliveredAt = o.delivered_at || o.updated_at || o.updatedAt || o.created_at || o.date;
         const daysSince = (now - new Date(deliveredAt).getTime()) / 86400000;
         return daysSince <= 7;
       });

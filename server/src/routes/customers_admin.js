@@ -25,12 +25,12 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
     const cappedLimit = clampLimit(limit, 20);
     const offset = (parseInt(page) - 1) * cappedLimit;
     const params = [];
-    const where = [];
+    const where = ["c.role = 'user'"];
 
     if (search) {
       params.push(`%${search}%`);
       where.push(
-        `(c.name ILIKE $${params.length} OR c.phone ILIKE $${params.length} OR c.email ILIKE $${params.length} OR c.customer_code ILIKE $${params.length} OR c.area ILIKE $${params.length})`,
+        `(c.name ILIKE $${params.length} OR c.phone ILIKE $${params.length} OR c.email ILIKE $${params.length} OR c.customer_code ILIKE $${params.length} OR c.address ILIKE $${params.length})`,
       );
     }
     if (status) {
@@ -45,7 +45,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
     const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
 
     const countRes = await pool.query(
-      `SELECT COUNT(*) FROM customers c
+      `SELECT COUNT(*) FROM users c
        LEFT JOIN customer_loyalty cl ON c.id = cl.customer_id
        LEFT JOIN loyalty_tiers lt ON cl.tier_id = lt.id
        ${whereClause}`,
@@ -59,7 +59,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
       `
       SELECT
         c.id, c.customer_code, c.name, c.phone, c.email,
-        c.area AS zone, c.status, c.total_orders, c.total_spent,
+        c.address AS zone, c.status, c.total_orders, c.total_spent,
         c.joined_at, c.last_order_at,
         COALESCE(cl.points_balance, 0) AS points,
         COALESCE(cl.lifetime_points, 0) AS lifetime_points,
@@ -67,7 +67,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
         COALESCE(lt.name, 'Bronze') AS tier,
         COALESCE(cw.balance, 0) AS wallet_balance,
         COALESCE(cw.total_topped_up, 0) AS wallet_total_topped_up
-      FROM customers c
+      FROM users c
       LEFT JOIN customer_loyalty cl ON c.id = cl.customer_id
       LEFT JOIN loyalty_tiers lt ON cl.tier_id = lt.id
       LEFT JOIN customer_wallets cw ON c.id = cw.customer_id
@@ -86,7 +86,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
         COUNT(*) FILTER (WHERE DATE_TRUNC('month', joined_at) = DATE_TRUNC('month', NOW())) AS new_this_month,
         COALESCE(SUM(total_spent), 0)                    AS total_revenue,
         COALESCE(AVG(total_spent), 0)                    AS avg_spent
-      FROM customers
+      FROM users
     `);
 
     const platinum = await pool.query(`
@@ -163,7 +163,7 @@ router.get(
               COUNT(DISTINCT CASE WHEN DATE_TRUNC('month', u.created_at) = DATE_TRUNC('month', NOW()) THEN u.id END) AS new_this_month,
               COUNT(DISTINCT CASE WHEN o_active.last_order > NOW() - INTERVAL '30 days' THEN u.id END) AS active,
               COALESCE(AVG(o.total), 0)                                                  AS avg_order_value
-            FROM customers u
+            FROM users u
             LEFT JOIN orders o ON o.customer_id = u.id AND o.status NOT IN ('cancelled', 'pending')
             LEFT JOIN (
               SELECT customer_id, MAX(created_at) AS last_order FROM orders
@@ -181,9 +181,9 @@ router.get(
                COALESCE(SUM(o.total), 0)     AS total_spending,
                COALESCE(AVG(o.total), 0)     AS avg_order_value,
                MAX(o.created_at)             AS last_purchase
-             FROM customers u
+             FROM users u
              LEFT JOIN orders o ON o.customer_id = u.id AND o.status NOT IN ('cancelled', 'pending')
-             WHERE 1=1 ${searchCond} ${dateCond}
+             WHERE u.role = 'user' ${searchCond} ${dateCond}
              GROUP BY u.id
              ORDER BY ${orderBy}
              LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
@@ -192,8 +192,8 @@ router.get(
 
           // Total count for pagination
           pool.query(
-            `SELECT COUNT(*) FROM customers u
-             WHERE 1=1 ${searchCond} ${dateCond}`,
+            `SELECT COUNT(*) FROM users u
+             WHERE u.role = 'user' ${searchCond} ${dateCond}`,
             params,
           ),
 
@@ -208,7 +208,7 @@ router.get(
                 u.id,
                 COUNT(o.id)       AS order_count,
                 MAX(o.created_at) AS last_purchase
-              FROM customers u
+              FROM users u
               LEFT JOIN orders o ON o.customer_id = u.id AND o.status NOT IN ('cancelled')
               GROUP BY u.id
             ) t
@@ -219,7 +219,7 @@ router.get(
             SELECT
               COUNT(CASE WHEN DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())                        THEN 1 END) AS this_month,
               COUNT(CASE WHEN DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW() - INTERVAL '1 month')   THEN 1 END) AS last_month
-            FROM customers
+            FROM users
           `),
         ]);
 
@@ -266,7 +266,7 @@ router.get("/:id/insights", requireRole("superadmin", "manager", "admin", "accou
     // 1. Fetch customer details
     const custRes = await pool.query(
       `SELECT c.*, COALESCE(cl.points_balance, 0) AS points, COALESCE(lt.name, 'Bronze') AS tier
-       FROM customers c
+       FROM users c
        LEFT JOIN customer_loyalty cl ON c.id = cl.customer_id
        LEFT JOIN loyalty_tiers lt ON cl.tier_id = lt.id
        WHERE ${whereCol} = $1`,
@@ -390,7 +390,7 @@ router.get("/site-activity", requireRole("superadmin", "manager"), async (req, r
     const { type = "", search = "", date_from = "", date_to = "", limit: limitRaw = 100 } = req.query;
     const limit = clampLimit(limitRaw, 100);
     const params = [];
-    const where = [];
+    const where = ["c.role = 'user'"];
 
     if (type) {
       params.push(type);
@@ -457,7 +457,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "
         COALESCE(cw.balance, 0)         AS wallet_balance,
         COALESCE(cw.total_topped_up, 0) AS wallet_funded,
         COALESCE(cw.total_spent, 0)     AS wallet_spent
-      FROM customers c
+      FROM users c
       LEFT JOIN customer_loyalty cl ON c.id = cl.customer_id
       LEFT JOIN loyalty_tiers lt ON cl.tier_id = lt.id
       LEFT JOIN customer_wallets cw ON c.id = cw.customer_id
@@ -543,7 +543,6 @@ router.post(
         phone,
         email,
         zone,
-        area,
         address,
         landmark,
         tier = "Bronze",
@@ -565,7 +564,7 @@ router.post(
 
       // Check duplicate phone
       const exists = await client.query(
-        "SELECT id FROM customers WHERE phone=$1",
+        "SELECT id FROM users WHERE phone=$1",
         [phone],
       );
       if (exists.rows.length) {
@@ -580,7 +579,7 @@ router.post(
       // Check duplicate email
       if (email) {
         const existsEmail = await client.query(
-          "SELECT id FROM customers WHERE email=$1",
+          "SELECT id FROM users WHERE email=$1",
           [email],
         );
         if (existsEmail.rows.length) {
@@ -594,14 +593,14 @@ router.post(
       // customer row was ever deleted.
       const maxRow = await client.query(
         `SELECT MAX(CAST(SPLIT_PART(customer_code, '-', 2) AS INTEGER)) AS max_n
-         FROM customers WHERE customer_code LIKE 'CUS-%'`
+         FROM users WHERE customer_code LIKE 'CUS-%'`
       );
       const code = `CUS-${String((maxRow.rows[0].max_n || 0) + 1).padStart(3, "0")}`;
 
       const result = await client.query(
         `
-      INSERT INTO customers
-        (customer_code, name, phone, email, area, status, notes, joined_at, created_at)
+      INSERT INTO users
+        (customer_code, name, phone, email, address, status, notes, joined_at, created_at)
       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),NOW())
       RETURNING *
     `,
@@ -610,7 +609,7 @@ router.post(
           fullName,
           phone,
           email || null,
-          zone || area || null,
+          zone || address || null,
           status,
           notes || null,
         ],
@@ -643,10 +642,10 @@ router.post(
       if (address) {
         await client.query(
           `
-        INSERT INTO customer_addresses (customer_id, label, full_address, area, is_default, created_at)
+        INSERT INTO customer_addresses (customer_id, label, full_address, address, is_default, created_at)
         VALUES ($1,'Home',$2,$3,true,NOW())
       `,
-          [customer.id, address, zone || area || null],
+          [customer.id, address, zone || address || null],
         );
       }
 
@@ -672,7 +671,7 @@ router.patch(
     try {
       const { status } = req.body;
       await pool.query(
-        "UPDATE customers SET status=$1 WHERE id::text=$2 OR customer_code=$2",
+        "UPDATE users SET status=$1 WHERE id::text=$2 OR customer_code=$2",
         [status, req.params.id],
       );
       res.json({ message: "Status updated" });
@@ -691,7 +690,7 @@ router.delete(
       // Soft delete — anonymise PII
       await pool.query(
         `
-      UPDATE customers SET
+      UPDATE users SET
         name   = 'Deleted Customer',
         phone  = 'deleted_' || id,
         email  = NULL,
@@ -730,7 +729,7 @@ router.post(
         : (delta > 0 ? "bonus" : "deducted");
 
       const custRow = await client.query(
-        "SELECT id FROM customers WHERE id::text=$1 OR customer_code=$1",
+        "SELECT id FROM users WHERE id::text=$1 OR customer_code=$1",
         [req.params.id],
       );
       if (!custRow.rows.length) {
@@ -787,7 +786,7 @@ router.post(
       // customers.loyalty_points is a denormalized copy read directly by the
       // POS customer lookup — keep it in sync with the real ledger.
       await client.query(
-        "UPDATE customers SET loyalty_points = $1 WHERE id = $2",
+        "UPDATE users SET loyalty_points = $1 WHERE id = $2",
         [newBalance, customerId],
       );
 
@@ -823,7 +822,7 @@ router.post(
       }
 
       const custRow = await client.query(
-        "SELECT id FROM customers WHERE id::text=$1 OR customer_code=$1",
+        "SELECT id FROM users WHERE id::text=$1 OR customer_code=$1",
         [req.params.id],
       );
       if (!custRow.rows.length) {
@@ -889,7 +888,7 @@ router.get("/loyalty/activity", requireRole("superadmin", "manager", "admin", "a
   try {
     const { limit: limitRaw = 30, customer_id } = req.query;
     const params = [];
-    const where = [];
+    const where = ["c.role = 'user'"];
     if (customer_id) {
       params.push(customer_id);
       where.push(`(c.id::text = $${params.length} OR c.customer_code = $${params.length})`);
@@ -899,7 +898,7 @@ router.get("/loyalty/activity", requireRole("superadmin", "manager", "admin", "a
       `SELECT lt.id, lt.type, lt.points, lt.description, lt.created_at,
               c.id AS customer_id, c.customer_code, c.name AS customer_name
        FROM loyalty_transactions lt
-       JOIN customers c ON c.id = lt.customer_id
+       JOIN users c ON c.id = lt.customer_id
        ${where.length ? "WHERE " + where.join(" AND ") : ""}
        ORDER BY lt.created_at DESC
        LIMIT $${params.length}`,
@@ -916,7 +915,7 @@ router.get("/wallet/activity", requireRole("superadmin", "manager", "admin", "ac
   try {
     const { limit: limitRaw = 30, customer_id } = req.query;
     const params = [];
-    const where = [];
+    const where = ["c.role = 'user'"];
     if (customer_id) {
       params.push(customer_id);
       where.push(`(c.id::text = $${params.length} OR c.customer_code = $${params.length})`);
@@ -927,7 +926,7 @@ router.get("/wallet/activity", requireRole("superadmin", "manager", "admin", "ac
               wt.payment_method, wt.description, wt.created_at,
               c.id AS customer_id, c.customer_code, c.name AS customer_name
        FROM wallet_transactions wt
-       JOIN customers c ON c.id = wt.customer_id
+       JOIN users c ON c.id = wt.customer_id
        ${where.length ? "WHERE " + where.join(" AND ") : ""}
        ORDER BY wt.created_at DESC
        LIMIT $${params.length}`,

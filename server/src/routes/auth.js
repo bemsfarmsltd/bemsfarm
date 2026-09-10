@@ -114,9 +114,7 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    if (!user.email_verified && user.password !== 'GOOGLE_AUTH') {
-       return res.status(403).json({ message: "Please verify your email before logging in.", requiresVerification: true });
-    }
+
 
     // Check account status
     if (user.status === "suspended") {
@@ -151,6 +149,18 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
         [attempts, user.id],
       );
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (!user.email_verified && user.password !== 'GOOGLE_AUTH' && user.role !== 'superadmin' && user.role !== 'admin') {
+       const otp = Math.floor(100000 + Math.random() * 900000).toString();
+       await pool.query("UPDATE users SET verification_token = $1 WHERE id = $2", [otp, user.id]);
+       sendWelcomeEmail(user, otp).catch(console.error);
+       
+       return res.status(403).json({ 
+         message: "Please verify your email before logging in.", 
+         requiresVerification: true, 
+         email: user.email 
+       });
     }
 
     // Reset failed attempts on success
@@ -510,35 +520,7 @@ router.post("/verify-email", validate(authSchemas.verifyEmail), async (req, res,
       [user.id]
     );
     
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user.id);
-
-    await pool.query(
-      "UPDATE users SET refresh_token=$1, last_login=NOW() WHERE id=$2",
-      [refreshToken, user.id],
-    );
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
-
-    const nameParts = (user.name || "").trim().split(" ");
-    const userPayload = {
-      id: user.id,
-      name: user.name,
-      first_name: nameParts[0] || "",
-      last_name: nameParts.slice(1).join(" ") || "",
-      email: user.email,
-      role: user.role,
-      avatar_url: user.avatar_url || null,
-      store_id: user.store_id || null,
-      status: user.status,
-    };
-
-    res.json({ message: "Email verified successfully", token: accessToken, user: userPayload });
+    res.json({ message: "Email verified successfully. Please sign in to continue." });
   } catch (err) {
     next(err);
   }

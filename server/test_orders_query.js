@@ -18,7 +18,7 @@ async function test() {
         d.attempts, d.eta_minutes,
         (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count
       FROM orders o
-      LEFT JOIN customers c ON o.customer_id = c.id
+      LEFT JOIN users c ON o.customer_id = c.id
       LEFT JOIN drivers dr ON o.driver_id = dr.id
       LEFT JOIN deliveries d ON d.order_id = o.id
       LIMIT 1
@@ -26,7 +26,7 @@ async function test() {
     const rows = await pool.query(q);
     console.log("Query 1 success.");
     
-    const countRes = await pool.query(`SELECT COUNT(*) FROM orders o LEFT JOIN customers c ON o.customer_id = c.id`);
+    const countRes = await pool.query(`SELECT COUNT(*) FROM orders o LEFT JOIN users c ON o.customer_id = c.id`);
     console.log("Query 2 success.");
     
     const stats = await pool.query(`

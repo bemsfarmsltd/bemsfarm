@@ -89,7 +89,7 @@ router.get("/overview", async (req, res, next) => {
            COALESCE(o.customer_name, c.name, 'Walk-in') AS customer,
            (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS items
          FROM orders o
-         LEFT JOIN customers c ON o.customer_id = c.id
+         LEFT JOIN users c ON o.customer_id = c.id
          ORDER BY o.created_at DESC
          LIMIT 10`),
 
@@ -214,7 +214,7 @@ router.get("/sales", async (req, res, next) => {
            COALESCE(o.customer_name, c.name, 'Walk-in') AS customer,
            (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS items
          FROM orders o
-         LEFT JOIN customers c ON o.customer_id = c.id
+         LEFT JOIN users c ON o.customer_id = c.id
          ORDER BY o.created_at DESC
          LIMIT 10`),
 
@@ -448,7 +448,7 @@ router.get("/operations", async (req, res, next) => {
            d.eta_minutes AS eta
          FROM deliveries d
          LEFT JOIN orders o ON d.order_id = o.id
-         LEFT JOIN customers c ON o.customer_id = c.id
+         LEFT JOIN users c ON o.customer_id = c.id
          LEFT JOIN drivers dr ON d.driver_id = dr.id
          LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
          WHERE d.status IN ('assigned','awaiting_pickup','en_route')
@@ -526,9 +526,9 @@ router.get("/customers", async (req, res, next) => {
       customerList,
       growthLast6,
     ] = await Promise.all([
-      q1(`SELECT COUNT(*) AS count FROM customers WHERE status = 'active'`),
+      q1(`SELECT COUNT(*) AS count FROM users WHERE status = 'active'`),
 
-      q1(`SELECT COUNT(*) AS count FROM customers
+      q1(`SELECT COUNT(*) AS count FROM users
           WHERE DATE_TRUNC('month', joined_at) = DATE_TRUNC('month', NOW())`),
 
       q1(`SELECT
@@ -546,7 +546,7 @@ router.get("/customers", async (req, res, next) => {
            c.name, c.phone, c.total_orders, c.status,
            COALESCE(cl.points_balance, 0) AS points,
            COALESCE(cw.balance, 0) AS wallet_balance
-         FROM customers c
+         FROM users c
          LEFT JOIN customer_loyalty cl ON c.id = cl.customer_id
          LEFT JOIN customer_wallets cw ON c.id = cw.customer_id
          ORDER BY c.total_orders DESC
@@ -555,7 +555,7 @@ router.get("/customers", async (req, res, next) => {
       q(`SELECT
            TO_CHAR(DATE_TRUNC('month', joined_at), 'Mon') AS month,
            COUNT(*) AS new_customers
-         FROM customers
+         FROM users
          WHERE joined_at >= NOW() - INTERVAL '6 months'
          GROUP BY DATE_TRUNC('month', joined_at)
          ORDER BY DATE_TRUNC('month', joined_at)`),
@@ -617,7 +617,7 @@ router.get("/ai", async (req, res, next) => {
            ac.status,
            ac.started_at AS created_at
          FROM ai_conversations ac
-         LEFT JOIN customers c ON ac.customer_id = c.id
+         LEFT JOIN users c ON ac.customer_id = c.id
          ORDER BY ac.started_at DESC
          LIMIT 10`),
 
