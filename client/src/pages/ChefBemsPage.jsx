@@ -370,7 +370,7 @@ export default function ChefBemsPage() {
 
   return (
     <PageWrapper noFooter>
-      <div className="flex h-[calc(100vh-72px)] sm:h-[calc(100vh-80px)] w-full overflow-hidden bg-[#FAF8F5] text-slate-900 font-sans relative">
+      <div className="flex flex-1 h-full min-h-0 w-full overflow-hidden bg-[#FAF8F5] text-slate-900 font-sans relative">
         
         {/* Mobile Backdrop Overlay */}
         <AnimatePresence>
@@ -524,7 +524,7 @@ export default function ChefBemsPage() {
         </aside>
 
         {/* ── MAIN CHAT VIEWPORT ── */}
-        <div className="flex-1 flex flex-col h-full min-w-0 bg-[#FAF8F5]">
+        <div className="flex-1 flex flex-col h-full min-h-0 min-w-0 bg-[#FAF8F5] overflow-hidden">
           
           {/* Top Header Bar */}
           <header className="h-16 px-4 sm:px-6 bg-white border-b border-[#EAE3D2] flex items-center justify-between shrink-0 shadow-xs">
@@ -578,7 +578,7 @@ export default function ChefBemsPage() {
           </header>
 
           {/* Messages Scroll Area */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:p-8 space-y-6">
             
             {/* Empty Onboarding Landing */}
             {messages.length <= 1 && (
@@ -795,8 +795,8 @@ export default function ChefBemsPage() {
             <div ref={bottomRef} />
           </div>
 
-          {/* ── STICKY BOTTOM INPUT BAR ── */}
-          <div className="p-3 sm:p-4 bg-white border-t border-[#EAE3D2] shrink-0">
+          {/* ── STICKY STATIC BOTTOM INPUT BAR ── */}
+          <div className="p-3 sm:p-4 bg-white/95 backdrop-blur-md border-t border-[#EAE3D2] shrink-0 sticky bottom-0 z-20">
             <div className="mx-auto max-w-3xl">
               
               {/* Hidden file input for camera / pantry scanner */}

@@ -20,10 +20,18 @@ export default function PageWrapper({ children, noFooter = false }) {
 
   return (
     <div
-      style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}
+      style={{
+        height: noFooter ? "100dvh" : undefined,
+        minHeight: noFooter ? "100dvh" : "100vh",
+        display: "flex",
+        flexDirection: "column",
+        overflow: noFooter ? "hidden" : undefined,
+      }}
     >
       <Navbar />
-      <main style={{ flex: 1 }}>{children}</main>
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+        {children}
+      </main>
       {!noFooter && <Footer />}
       {showChatbot && <AIChatbot />}
       <CartDrawer />
