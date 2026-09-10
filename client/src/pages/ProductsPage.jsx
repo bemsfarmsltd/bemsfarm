@@ -271,14 +271,17 @@ export default function ProductsPage() {
 
   const categoryCounts = useMemo(() => {
     const counts = { All: products.length };
-    products.forEach((p) => {
-      const cat = p.category_name;
-      if (cat) {
-        counts[cat] = (counts[cat] || 0) + 1;
-      }
+    cats.forEach((cat) => {
+      if (cat === "All") return;
+      const count = products.filter((p) => {
+        const pCat = p.category_name?.toLowerCase().trim() || "";
+        const cName = cat.toLowerCase().trim();
+        return pCat === cName || pCat.includes(cName) || cName.includes(pCat);
+      }).length;
+      counts[cat] = count;
     });
     return counts;
-  }, [products]);
+  }, [products, cats]);
 
   return (
     <PageWrapper>
@@ -310,7 +313,7 @@ export default function ProductsPage() {
                 }}
               />
 
-              {/* Left Column: Editorial Store Header & Search Form */}
+              {/* Left Column: Editorial Store Header */}
               <div className="relative z-10 md:col-span-7 flex flex-col justify-center">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300 border border-white/15 backdrop-blur-md shadow-xs w-fit">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400" />
@@ -346,47 +349,6 @@ export default function ProductsPage() {
                     Same-Day Dispatch Available
                   </span>
                 </div>
-
-                {/* Search & Quick Filter Tags */}
-                <div className="mt-4 sm:mt-5 w-full max-w-xl">
-                  <form
-                    onSubmit={handleSearchSubmit}
-                    className="relative flex items-center w-full shadow-lg rounded-2xl overflow-hidden bg-white/10 border border-white/20 backdrop-blur-xl p-1 sm:p-1.5"
-                  >
-                    <div className="pl-3 pr-2 text-emerald-200/70 flex items-center">
-                      <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                      </svg>
-                    </div>
-                    <input
-                      type="text"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search rice, yam, palm oil, beans..."
-                      className="w-full bg-transparent text-xs sm:text-sm text-white placeholder:text-white/60 outline-none pr-2"
-                    />
-                    {search && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSearch("");
-                          const newParams = new URLSearchParams(params);
-                          newParams.delete("search");
-                          setParams(newParams);
-                        }}
-                        className="px-2 text-white/60 hover:text-white text-sm font-bold cursor-pointer"
-                      >
-                        ×
-                      </button>
-                    )}
-                    <button
-                      type="submit"
-                      className="rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0f3322] px-4 sm:px-5 py-2 text-xs sm:text-sm font-black transition-all shadow-md shrink-0 cursor-pointer"
-                    >
-                      Search
-                    </button>
-                  </form>
-                </div>
               </div>
 
               {/* Right Column: High Quality Farm Multi-Video Slide Container */}
@@ -397,10 +359,10 @@ export default function ProductsPage() {
           </div>
         </section>
 
-        {/* ── 2. CATEGORY FILTER TABS & CONTROL TOOLBAR ── */}
+        {/* ── 2. CATEGORY FILTER TABS & SEARCH TOOLBAR (DIRECTLY ABOVE PRODUCTS) ── */}
         <section className="px-3 pt-4 pb-2 sm:px-6 lg:px-10">
           <div className="mx-auto max-w-[1600px] w-full">
-            <div className="flex items-center justify-between gap-4 mb-3">
+            <div className="flex items-center justify-between gap-4 mb-2.5">
               <h2 className="font-display text-sm sm:text-base font-black text-[#143c2d]">
                 Filter by Produce Category
               </h2>
@@ -408,13 +370,14 @@ export default function ProductsPage() {
                 <button
                   type="button"
                   onClick={() => handleCategoryChange("All")}
-                  className="text-xs font-bold text-[#c85a17] hover:underline"
+                  className="text-xs font-bold text-[#c85a17] hover:underline cursor-pointer"
                 >
                   Show All ({products.length})
                 </button>
               )}
             </div>
 
+            {/* Category Pills */}
             <div className="bf-categories-scroll">
               {cats.map((cat) => {
                 const isActive = activeCat === cat;
@@ -443,35 +406,73 @@ export default function ProductsPage() {
               })}
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-[#DFD6C2]/60 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs sm:text-sm font-bold text-slate-700">
-                  {loading ? "Loading items…" : `${filtered.length} ${filtered.length === 1 ? "Product" : "Products"} Found`}
-                </span>
-                {(search || activeCat !== "All") && (
-                  <button
-                    type="button"
-                    onClick={handleClearFilters}
-                    className="inline-flex items-center gap-1 rounded-full bg-slate-200/80 px-2.5 py-0.5 text-[10px] sm:text-xs font-bold text-slate-700 hover:bg-slate-300 transition"
-                  >
-                    <span>Clear filters</span>
-                    <span>×</span>
-                  </button>
-                )}
+            {/* Prominent Search Bar & Sort Toolbar Directly Next to Product List */}
+            <div className="mt-3.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 border-b border-[#DFD6C2]/60 pb-3.5">
+              {/* Live Search Bar */}
+              <div className="relative flex-1 max-w-xl">
+                <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+                  <span className="absolute left-3.5 text-slate-400 pointer-events-none">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                      <circle cx="11" cy="11" r="8" />
+                      <path strokeLinecap="round" d="m21 21-4.35-4.35" />
+                    </svg>
+                  </span>
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search rice, yam, palm oil, beans, seasonings, brands…"
+                    className="w-full rounded-full border border-[#DFD6C2] bg-white py-2.5 pl-10 pr-10 text-xs sm:text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#143c2d] focus:ring-2 focus:ring-emerald-600/20 shadow-xs"
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearch("");
+                        const newParams = new URLSearchParams(params);
+                        newParams.delete("search");
+                        setParams(newParams);
+                      }}
+                      className="absolute right-3.5 grid h-5 w-5 place-items-center rounded-full bg-slate-200 hover:bg-slate-300 text-xs font-bold text-slate-600 cursor-pointer"
+                      aria-label="Clear search"
+                    >
+                      ×
+                    </button>
+                  )}
+                </form>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-500 hidden sm:inline">Sort by:</span>
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value)}
-                  className="rounded-xl border border-[#DFD6C2] bg-white px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-[#143c2d] shadow-xs cursor-pointer"
-                >
-                  <option value="featured">Featured Picks</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="price-desc">Price: High to Low</option>
-                  <option value="name">Alphabetical (A-Z)</option>
-                </select>
+              {/* Status Count & Sort Controls */}
+              <div className="flex flex-wrap items-center justify-between md:justify-end gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm font-bold text-slate-700 whitespace-nowrap">
+                    {loading ? "Loading items…" : `${filtered.length} ${filtered.length === 1 ? "Product" : "Products"} Found`}
+                  </span>
+                  {(search || activeCat !== "All") && (
+                    <button
+                      type="button"
+                      onClick={handleClearFilters}
+                      className="inline-flex items-center gap-1 rounded-full bg-slate-200/80 px-2.5 py-1 text-[10px] sm:text-xs font-bold text-slate-700 hover:bg-slate-300 transition cursor-pointer"
+                    >
+                      <span>Reset</span>
+                      <span>×</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-500 hidden sm:inline">Sort by:</span>
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value)}
+                    className="rounded-full border border-[#DFD6C2] bg-white px-3.5 py-2 text-xs font-bold text-slate-800 outline-none focus:border-[#143c2d] shadow-xs cursor-pointer"
+                  >
+                    <option value="featured">Featured Picks</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="name">Alphabetical (A-Z)</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
