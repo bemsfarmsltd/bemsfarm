@@ -11,18 +11,58 @@ import { escapeHtml } from "../utils/sanitize";
 import { NAIRA_PER_UNIT } from "../utils/currency";
 
 const QUICK_PROMPTS = [
-  { icon: "", text: "What can I cook with garri and tomatoes?" },
-  { icon: "", text: "How do I make perfect Jollof rice?" },
-  { icon: "", text: "Healthy Nigerian meal plan for the week" },
-  { icon: "", text: "Substitute for palm oil in egusi soup?" },
+  {
+    tag: "Pantry Match",
+    title: "Pantry Ingredients Meal",
+    text: "What delicious meal can I cook with garri, fresh tomatoes, and palm oil?",
+  },
+  {
+    tag: "Masterclass",
+    title: "Party Jollof Rice",
+    text: "How do I make authentic Nigerian Party Jollof Rice with that signature smoky flavor?",
+  },
+  {
+    tag: "Meal Planner",
+    title: "Weekly Nigerian Plan",
+    text: "Create a healthy, budget-friendly Nigerian meal plan for the entire week.",
+  },
+  {
+    tag: "Healthy Swaps",
+    title: "Palm Oil Substitute",
+    text: "What is a healthy substitute for palm oil in traditional Egusi soup?",
+  },
+];
+
+const SUGGESTED_FOLLOW_UPS = [
+  "Give me step-by-step cooking instructions",
+  "What are the exact portion measurements?",
+  "Which side dishes pair best with this?",
+  "How long can I store or freeze this meal?",
 ];
 
 function formatMessage(text) {
   if (!text) return "";
-  return escapeHtml(text)
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    .replace(/\n/g, "<br/>");
+  let formatted = escapeHtml(text);
+
+  // Headers
+  formatted = formatted.replace(/^### (.*$)/gim, '<h4 class="font-display font-bold text-emerald-900 text-sm mt-3 mb-1">$1</h4>');
+  formatted = formatted.replace(/^## (.*$)/gim, '<h3 class="font-display font-black text-emerald-950 text-base mt-3.5 mb-1.5">$1</h3>');
+  formatted = formatted.replace(/^# (.*$)/gim, '<h2 class="font-display font-black text-emerald-950 text-lg mt-4 mb-2">$1</h2>');
+
+  // Bold & Italic
+  formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>');
+  formatted = formatted.replace(/\*(.*?)\*/g, '<em class="italic text-slate-700">$1</em>');
+
+  // Bullet points
+  formatted = formatted.replace(/^[•\-\*] (.*$)/gim, '<li class="ml-4 list-disc text-slate-800 leading-relaxed">$1</li>');
+
+  // Numbered lists
+  formatted = formatted.replace(/^(\d+)\. (.*$)/gim, '<li class="ml-4 list-decimal text-slate-800 leading-relaxed"><span class="font-semibold">$2</span></li>');
+
+  // Line breaks
+  formatted = formatted.replace(/\n/g, "<br/>");
+
+  return formatted;
 }
 
 export default function ChefBemsPage() {
@@ -47,6 +87,7 @@ export default function ChefBemsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [editingConvId, setEditingConvId] = useState(null);
   const [editTitleInput, setEditTitleInput] = useState("");
+  const [uploadedPreview, setUploadedPreview] = useState(null);
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -92,7 +133,7 @@ export default function ChefBemsPage() {
   // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, loading]);
 
   const handleSelectConversation = async (conv) => {
     try {
@@ -100,10 +141,10 @@ export default function ChefBemsPage() {
       const res = await api.get(`/ai/context/conversations/${conv.id}`);
       const serverMsgs = res.data.messages || [];
       const formatted = serverMsgs.map((m) => ({
-        id: m.id || (Date.now() + "-" + Math.random()),
+        id: m.id || `${Date.now()}-${Math.random()}`,
         role: m.role,
         content: m.content,
-        timestamp: m.created_at || new Date(),
+        timestamp: m.created_at || new Date().toISOString(),
       }));
       
       setMessages(formatted);
@@ -124,6 +165,7 @@ export default function ChefBemsPage() {
 
   const handleStartNewChat = () => {
     clearChat();
+    setUploadedPreview(null);
     if (window.innerWidth <= 768) {
       setSidebarOpen(false);
     }
@@ -131,7 +173,7 @@ export default function ChefBemsPage() {
 
   const handleDeleteConversation = async (e, convId) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this chat thread?")) return;
+    if (!window.confirm("Are you sure you want to delete this culinary chat thread?")) return;
     try {
       await api.delete(`/ai/context/conversations/${convId}`);
       removeConversation(convId);
@@ -165,11 +207,12 @@ export default function ChefBemsPage() {
     const reader = new FileReader();
     reader.onload = async () => {
       const base64Data = reader.result;
+      setUploadedPreview(null);
       
       const userMsg = {
-        id: Date.now() + "-u",
+        id: `${Date.now()}-u`,
         role: "user",
-        content: " [Uploaded ingredient photo for visual scanning]",
+        content: "Here is a photo of my pantry ingredients. What can I cook with these?",
         image: base64Data,
         timestamp: new Date().toISOString(),
       };
@@ -189,17 +232,17 @@ export default function ChefBemsPage() {
         const data = res.data;
         
         addMessage({
-          id: Date.now() + "-a",
+          id: `${Date.now()}-a`,
           role: "assistant",
-          content: data.reply || "I analyzed your ingredients! Here is what I suggest.",
+          content: data.reply || "I analyzed your ingredients! Here is a recommended recipe from Bems Farms.",
           timestamp: new Date().toISOString(),
           relatedProducts: data.relatedProducts || [],
         });
       } catch (err) {
         addMessage({
-          id: Date.now() + "-e",
+          id: `${Date.now()}-e`,
           role: "assistant",
-          content: " Visual scanner is taking a break. Make sure your GEMINI_API_KEY is configured properly.",
+          content: "The visual scanner encountered an issue. Please describe your ingredients in text and I will help you right away.",
           timestamp: new Date().toISOString(),
           isError: true,
         });
@@ -228,7 +271,7 @@ export default function ChefBemsPage() {
     resetInputHeight();
 
     const userMsg = {
-      id: Date.now() + "-u",
+      id: `${Date.now()}-u`,
       role: "user",
       content: userText,
       timestamp: new Date().toISOString(),
@@ -255,9 +298,9 @@ export default function ChefBemsPage() {
       const data = await callChefChat(payload);
 
       addMessage({
-        id: Date.now() + "-a",
+        id: `${Date.now()}-a`,
         role: "assistant",
-        content: data.reply || "I didn't catch that — could you rephrase?",
+        content: data.reply || "I did not catch that. Could you please rephrase?",
         timestamp: new Date().toISOString(),
         relatedProducts: data.relatedProducts || [],
       });
@@ -280,9 +323,9 @@ export default function ChefBemsPage() {
       }
     } catch (err) {
       addMessage({
-        id: Date.now() + "-e",
+        id: `${Date.now()}-e`,
         role: "assistant",
-        content: " Chef Bems is taking a short break. Try again in a moment.",
+        content: "Chef Bems is momentarily busy in the kitchen. Please try again in a few seconds.",
         timestamp: new Date().toISOString(),
         isError: true,
       });
@@ -295,7 +338,7 @@ export default function ChefBemsPage() {
   const handleInputChange = (e) => {
     setInput(e.target.value);
     e.target.style.height = "auto";
-    e.target.style.height = `${Math.min(e.target.scrollHeight, 180)}px`;
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
   };
 
   const resetInputHeight = () => {
@@ -313,11 +356,7 @@ export default function ChefBemsPage() {
 
   const handleAddProduct = (e, product) => {
     e.stopPropagation();
-    // relatedProducts.price comes from the server already multiplied by
-    // NAIRA_PER_UNIT (see server/src/routes/ai.js) — divide back out so it
-    // matches the base-unit convention CartContext expects, or adding it
-    // silently inflates the cart total by NAIRA_PER_UNIT (1500x). Same bug
-    // class already fixed for OrdersPage's reorder flow.
+    // relatedProducts.price comes from the server already multiplied by NAIRA_PER_UNIT
     addToCart({ ...product, price: product.price / NAIRA_PER_UNIT });
     setAddedIds((prev) => ({ ...prev, [product.id]: true }));
     setTimeout(() => {
@@ -331,416 +370,60 @@ export default function ChefBemsPage() {
 
   return (
     <PageWrapper noFooter>
-      {/* ── Page Styles ── */}
-      <style>{`
-        .chef-page-layout {
-          display: flex;
-          height: calc(100vh - 72px);
-          width: 100%;
-          overflow: hidden;
-          font-family: var(--body-font), sans-serif;
-          background-color: var(--gray-50);
-        }
-        @media (max-width: 768px) {
-          .chef-page-layout {
-            height: calc(100vh - 56px);
-          }
-        }
-
-        /* Collapsible Left Sidebar */
-        .chef-sidebar {
-          width: 260px;
-          height: 100%;
-          background-color: #1B4332;
-          display: flex;
-          flex-direction: column;
-          flex-shrink: 0;
-          color: #ffffff;
-          transition: transform 0.3s ease, margin-left 0.3s ease;
-          z-index: 100;
-          border-right: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .chef-sidebar.collapsed {
-          margin-left: -260px;
-        }
-        @media (max-width: 768px) {
-          .chef-sidebar {
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            transform: translateX(-100%);
-            margin-left: 0 !important;
-          }
-          .chef-sidebar.open {
-            transform: translateX(0);
-          }
-        }
-
-        .sidebar-header {
-          padding: 16px;
-          display: flex;
-          gap: 10px;
-        }
+      <div className="flex h-[calc(100vh-72px)] sm:h-[calc(100vh-80px)] w-full overflow-hidden bg-[#FAF8F5] text-slate-900 font-sans relative">
         
-        .btn-new-chat {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 12px 16px;
-          background-color: transparent;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 8px;
-          color: #ffffff;
-          font-size: 14px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-        .btn-new-chat:hover {
-          background-color: rgba(255, 255, 255, 0.08);
-        }
+        {/* Mobile Backdrop Overlay */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
+            />
+          )}
+        </AnimatePresence>
 
-        .sidebar-scroll-list {
-          flex: 1;
-          overflow-y: auto;
-          padding: 8px;
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-        
-        /* Chat list items scrollbar */
-        .sidebar-scroll-list::-webkit-scrollbar {
-          width: 6px;
-        }
-        .sidebar-scroll-list::-webkit-scrollbar-thumb {
-          background-color: rgba(255, 255, 255, 0.15);
-          border-radius: 4px;
-        }
-
-        .conv-item {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 10px 12px;
-          border-radius: 8px;
-          cursor: pointer;
-          font-size: 13.5px;
-          transition: background-color 0.2s;
-          color: #D1D5DB;
-        }
-        .conv-item:hover, .conv-item.active {
-          background-color: #2D6A4F;
-          color: #ffffff;
-        }
-        .conv-item-left {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          min-width: 0;
-          flex: 1;
-        }
-        .conv-title-text {
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          font-weight: 500;
-        }
-
-        .conv-actions {
-          display: flex;
-          gap: 6px;
-          opacity: 0;
-          transition: opacity 0.2s;
-        }
-        .conv-item:hover .conv-actions {
-          opacity: 1;
-        }
-        .btn-conv-action {
-          background: none;
-          border: none;
-          color: #9CA3AF;
-          cursor: pointer;
-          padding: 2px;
-          font-size: 12px;
-        }
-        .btn-conv-action:hover {
-          color: #ffffff;
-        }
-
-        .sidebar-footer {
-          padding: 16px;
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
-          background-color: #153527;
-        }
-
-        /* Right Side Chat viewport */
-        .chat-viewport {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-          position: relative;
-          min-width: 0;
-        }
-
-        /* Main chat content flow */
-        .chat-scroll-container {
-          flex: 1;
-          overflow-y: auto;
-          padding: 24px 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-
-        .message-content-wrapper {
-          max-width: 700px;
-          margin: 0 auto;
-          width: 100%;
-          display: flex;
-          gap: 16px;
-          padding: 12px 16px;
-          border-radius: 12px;
-          background-color: var(--white);
-          border: 1px solid var(--gray-200);
-          transition: background-color 0.2s;
-        }
-        .message-content-wrapper.assistant {
-          background-color: var(--primary-bg);
-          border: 1px solid var(--gray-200);
-        }
-        .message-content-wrapper.error {
-          background-color: rgba(239, 68, 68, 0.06);
-          border: 1px solid rgba(239, 68, 68, 0.25);
-        }
-        
-        .msg-avatar {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          background-color: #ffffff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          overflow: hidden;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-          border: 1px solid rgba(0,0,0,0.05);
-        }
-        .msg-avatar.user {
-          background-color: #F57C00;
-          color: #ffffff;
-          font-weight: 700;
-          font-size: 14px;
-        }
-
-        .msg-body {
-          flex: 1;
-          min-width: 0;
-        }
-        .msg-sender-name {
-          font-size: 12px;
-          font-weight: 700;
-          color: var(--gray-500);
-          margin-bottom: 4px;
-        }
-        .msg-text {
-          font-size: 15px;
-          line-height: 1.6;
-          color: var(--gray-900);
-        }
-        .msg-text p {
-          margin: 0 0 10px;
-        }
-        .msg-text p:last-child {
-          margin-bottom: 0;
-        }
-        .msg-text strong {
-          color: var(--gray-900);
-        }
-
-        /* Bottom Floating Input bar */
-        .chat-input-sticky {
-          padding: 24px;
-          background: linear-gradient(to top, var(--white) 70%, transparent 100%);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          flex-shrink: 0;
-        }
-        
-        .chat-input-wrapper {
-          width: 100%;
-          max-width: 700px;
-          background-color: var(--white);
-          border: 1px solid var(--gray-200);
-          border-radius: 16px;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.03);
-          display: flex;
-          flex-direction: column;
-          padding: 8px;
-        }
-        .chat-input-row {
-          display: flex;
-          align-items: flex-end;
-          gap: 12px;
-        }
-        
-        .chat-textarea {
-          flex: 1;
-          background: transparent;
-          border: none;
-          outline: none;
-          color: var(--gray-900);
-          font-size: 15px;
-          line-height: 1.5;
-          resize: none;
-          max-height: 180px;
-          min-height: 24px;
-          font-family: inherit;
-          padding: 6px 4px;
-        }
-        
-        .chat-textarea::placeholder {
-          color: var(--gray-500);
-        }
-
-        .btn-input-icon {
-          width: 36px;
-          height: 36px;
-          border-radius: 8px;
-          border: none;
-          background-color: transparent;
-          color: #6B7280;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s;
-        }
-        .btn-input-icon:hover {
-          color: #2E7D32;
-          background-color: rgba(46, 125, 50, 0.08);
-        }
-        .btn-input-icon.send-active {
-          background-color: #F57C00;
-          color: #ffffff;
-        }
-        .btn-input-icon.send-active:hover {
-          background-color: #E65100;
-        }
-        
-        /* Interactive grid for prompts on empty chat */
-        .chatgpt-hero {
-          max-width: 650px;
-          margin: auto;
-          width: 100%;
-          text-align: center;
-          padding: 40px 16px 20px;
-        }
-        .chatgpt-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-          margin-top: 32px;
-        }
-        @media (max-width: 640px) {
-          .chatgpt-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-        
-        .chatgpt-prompt-card {
-          background-color: var(--white);
-          border: 1px solid var(--gray-200);
-          border-radius: 12px;
-          padding: 16px;
-          text-align: left;
-          cursor: pointer;
-          transition: all 0.2s;
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.01);
-        }
-        .chatgpt-prompt-card:hover {
-          background-color: var(--gray-50);
-          border-color: #2E7D32;
-          transform: translateY(-2px);
-        }
-
-        /* Mobile Burger Toggle */
-        .btn-sidebar-toggle {
-          background: none;
-          border: none;
-          color: var(--gray-700);
-          font-size: 20px;
-          cursor: pointer;
-          padding: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 8px;
-        }
-        .btn-sidebar-toggle:hover {
-          background-color: var(--gray-100);
-        }
-
-        .header-topbar {
-          height: 60px;
-          border-bottom: 1px solid var(--gray-200);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0 16px;
-          background-color: var(--white);
-          flex-shrink: 0;
-        }
-        
-        /* Backdrop overlay for mobile sidebar */
-        .sidebar-backdrop {
-          display: none;
-        }
-        @media (max-width: 768px) {
-          .sidebar-backdrop.visible {
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0,0,0,0.4);
-            z-index: 90;
-          }
-        }
-      `}</style>
-
-      <div className="chef-page-layout">
-        
-        {/* Sidebar Mobile Backdrop */}
-        <div 
-          className={`sidebar-backdrop ${sidebarOpen ? "visible" : ""}`}
-          onClick={() => setSidebarOpen(false)}
-        />
-
-        {/* ChatGPT Style Collapsible Left Sidebar */}
-        <div className={`chef-sidebar ${sidebarOpen ? "open" : "collapsed"}`}>
-          
-          {/* New Chat Button */}
-          <div className="sidebar-header">
-            <button className="btn-new-chat" onClick={handleStartNewChat}>
-              <span style={{fontSize:'1.35em'}}></span> New Conversation
+        {/* ── LEFT SIDEBAR (CONVERSATIONS) ── */}
+        <aside
+          className={`fixed md:static inset-y-0 left-0 z-50 flex flex-col w-72 sm:w-80 bg-[#0A2E1C] text-white border-r border-emerald-950/40 shadow-2xl md:shadow-none transition-transform duration-300 ease-in-out ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0 md:w-0 md:border-r-0 md:overflow-hidden"
+          }`}
+        >
+          {/* Sidebar Top: New Chat & Close */}
+          <div className="p-4 border-b border-white/10 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleStartNewChat}
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0A2E1C] px-4 py-2.5 text-xs font-black transition-all shadow-md active:scale-98"
+            >
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              <span>New Recipe Chat</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-emerald-200 hover:bg-white/20 transition"
+              aria-label="Close sidebar"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
 
-          {/* Chronological Chat List */}
-          <div className="sidebar-scroll-list">
+          {/* Conversations History List */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-1">
+            <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-400/80">
+              Saved Recipe Threads
+            </div>
+
             {conversations.length === 0 ? (
-              <div style={{ padding: "20px 10px", fontSize: "12px", color: "#6B7280", textAlign: "center" }}>
-                {user ? "No conversations yet" : "Log in to save history"}
+              <div className="p-6 text-center text-xs text-emerald-200/60 leading-relaxed">
+                {user ? "No saved threads yet. Ask Chef Bems a question to begin." : "Sign in to save and sync your cooking conversations."}
               </div>
             ) : (
               conversations.map((conv) => {
@@ -748,13 +431,20 @@ export default function ChefBemsPage() {
                 const isEditing = editingConvId === conv.id;
                 
                 return (
-                  <div 
+                  <div
                     key={conv.id}
-                    className={`conv-item ${isActive ? "active" : ""}`}
                     onClick={() => handleSelectConversation(conv)}
+                    className={`group relative flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-medium cursor-pointer transition-all ${
+                      isActive
+                        ? "bg-emerald-800/90 text-white font-bold shadow-xs"
+                        : "text-emerald-100/85 hover:bg-white/10 hover:text-white"
+                    }`}
                   >
-                    <div className="conv-item-left">
-                      <span style={{fontSize:'1.35em'}}></span>
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <svg className="w-4 h-4 text-amber-300 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a.75.75 0 01-.84-.84c.15-.845.385-1.666.697-2.433A8.17 8.17 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                      </svg>
+                      
                       {isEditing ? (
                         <input
                           type="text"
@@ -766,48 +456,45 @@ export default function ChefBemsPage() {
                           }}
                           onClick={(e) => e.stopPropagation()}
                           autoFocus
-                          style={{
-                            backgroundColor: "#1B4530",
-                            border: "none",
-                            outline: "none",
-                            color: "#ffffff",
-                            fontSize: "13px",
-                            padding: "2px 4px",
-                            borderRadius: "4px",
-                            width: "100%"
-                          }}
+                          className="w-full rounded bg-emerald-950 px-2 py-1 text-xs text-white outline-none border border-emerald-500"
                         />
                       ) : (
-                        <span className="conv-title-text">{conv.title || "Untitled Chat"}</span>
+                        <span className="truncate">{conv.title || "Untitled Conversation"}</span>
                       )}
                     </div>
-                    
+
                     {!isEditing && (
-                      <div className="conv-actions">
-                        <button 
-                          className="btn-conv-action"
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
                           onClick={(e) => handleStartEditing(e, conv)}
                           title="Rename thread"
+                          className="p-1 text-emerald-300 hover:text-white transition"
                         >
-                          
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                          </svg>
                         </button>
-                        <button 
-                          className="btn-conv-action"
+                        <button
+                          type="button"
                           onClick={(e) => handleDeleteConversation(e, conv.id)}
                           title="Delete thread"
+                          className="p-1 text-rose-300 hover:text-rose-100 transition"
                         >
-                          
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          </svg>
                         </button>
                       </div>
                     )}
 
                     {isEditing && (
-                      <button 
-                        className="btn-conv-action"
+                      <button
+                        type="button"
                         onClick={(e) => handleSaveRename(e, conv.id)}
-                        title="Save name"
+                        className="text-xs font-bold text-amber-300 hover:underline ml-1"
                       >
-                        
+                        Save
                       </button>
                     )}
                   </div>
@@ -816,288 +503,328 @@ export default function ChefBemsPage() {
             )}
           </div>
 
-          {/* User Profile Summary Footer */}
-          <div className="sidebar-footer">
+          {/* Sidebar Footer User Card */}
+          <div className="p-3 border-t border-white/10 bg-[#061D12]">
             {user ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <div style={{
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "50%",
-                  backgroundColor: "#F59E0B",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: "bold",
-                  color: "#0A1C14"
-                }}>
+              <div className="flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center rounded-full bg-amber-400 text-xs font-black text-[#0A2E1C]">
                   {user.name?.[0]?.toUpperCase() || "U"}
                 </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: "13px", fontWeight: "bold", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {user.name}
-                  </div>
-                  <div style={{ fontSize: "11px", color: "#9CA3AF", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {user.email}
-                  </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-bold text-white">{user.name}</p>
+                  <p className="truncate text-[11px] text-emerald-300/80">{user.email}</p>
                 </div>
               </div>
             ) : (
-              <div style={{ fontSize: "12px", color: "#9CA3AF", textAlign: "center" }}>
-                Guest Account
+              <div className="text-center text-[11px] text-emerald-200/70 py-1">
+                Guest Mode &bull; Sign in to sync recipes
               </div>
             )}
           </div>
-        </div>
+        </aside>
 
-        {/* Main Chat Panel */}
-        <div className="chat-viewport">
+        {/* ── MAIN CHAT VIEWPORT ── */}
+        <div className="flex-1 flex flex-col h-full min-w-0 bg-[#FAF8F5]">
           
-          {/* Top Navbar Header */}
-          <div className="header-topbar">
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <button 
-                className="btn-sidebar-toggle" 
+          {/* Top Header Bar */}
+          <header className="h-16 px-4 sm:px-6 bg-white border-b border-[#EAE3D2] flex items-center justify-between shrink-0 shadow-xs">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                title="Toggle sidebar"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
+                aria-label="Toggle recipe threads"
               >
-                ≡
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
               </button>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <h1 style={{ fontSize: "16px", fontWeight: "bold", margin: 0, color: "var(--gray-900)", fontFamily: "var(--heading-font)" }}>
-                  Chef Bems 
-                </h1>
-                <span style={{ fontSize: "12px", color: "var(--gray-500)" }}>Online</span>
+
+              <div className="flex items-center gap-2.5">
+                <div className="relative">
+                  <img
+                    src={chefBemsAvatar}
+                    alt="Chef Bems"
+                    className="h-9 w-9 rounded-full object-cover border border-amber-300 shadow-xs"
+                  />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h1 className="font-display text-sm sm:text-base font-black text-[#0A2E1C]">
+                      Chef Bems
+                    </h1>
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-800">
+                      Culinary AI
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500">Bems Farms Farm-to-Table Kitchen Guide</p>
+                </div>
               </div>
             </div>
+
             {messages.length > 1 && (
               <button
+                type="button"
                 onClick={handleStartNewChat}
-                style={{
-                  background: "transparent",
-                  color: "var(--primary)",
-                  border: "1px solid var(--primary)",
-                  padding: "5px 12px",
-                  borderRadius: "6px",
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px"
-                }}
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-800 bg-white px-3.5 py-1.5 text-xs font-bold text-emerald-900 shadow-xs hover:bg-emerald-50 transition"
               >
-                 New Chat
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                <span className="hidden sm:inline">New Chat</span>
               </button>
             )}
-          </div>
+          </header>
 
-          {/* Messages list viewport */}
-          <div className="chat-scroll-container">
+          {/* Messages Scroll Area */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
             
-            {/* ChatGPT Landing Onboarding Page (Empty screen) */}
+            {/* Empty Onboarding Landing */}
             {messages.length <= 1 && (
-              <div className="chatgpt-hero">
-                <div style={{
-                  width: "72px",
-                  height: "72px",
-                  borderRadius: "50%",
-                  backgroundColor: "var(--white)",
-                  boxShadow: "0 6px 15px rgba(0,0,0,0.05)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 16px",
-                  border: "1.5px solid var(--accent)",
-                  overflow: "hidden"
-                }}>
-                  <img src={chefBemsAvatar} alt="Chef Bems" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                </div>
-                <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "var(--gray-900)", margin: 0, fontFamily: "var(--heading-font)" }}>
-                  What can I help you cook today?
-                </h2>
-                <p style={{ fontSize: "14px", color: "var(--gray-500)", margin: "8px 0 0", lineHeight: 1.5 }}>
-                  Ask me for Nigerian farm recipes, quick substitution options, ingredient prices, or scan your inventory with a photo!
-                </p>
-                
-                {/* Visual Scanner Intro image banner */}
-                <div style={{
-                  maxWidth: "340px",
-                  margin: "24px auto 0",
-                  borderRadius: "12px",
-                  overflow: "hidden",
-                  border: "1px solid var(--gray-200)",
-                  boxShadow: "0 4px 10px rgba(0,0,0,0.03)"
-                }}>
-                  <img src={chefBemsImg} alt="Visual scanner banner" style={{ width: "100%", height: "150px", objectFit: "cover", display: "block" }} />
+              <div className="mx-auto max-w-3xl text-center py-6 sm:py-10">
+                <div className="relative mx-auto mb-4 h-20 w-20 rounded-full bg-white p-1 shadow-xl ring-2 ring-amber-300">
+                  <img
+                    src={chefBemsAvatar}
+                    alt="Chef Bems"
+                    className="h-full w-full rounded-full object-cover"
+                  />
                 </div>
 
-                <div className="chatgpt-grid">
-                  {QUICK_PROMPTS.map((p, idx) => (
-                    <div 
+                <span className="inline-block rounded-full bg-emerald-100 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-emerald-900 border border-emerald-200">
+                  Nigerian Culinary & Pantry AI
+                </span>
+
+                <h2 className="mt-3 font-display text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900">
+                  What would you like to cook today?
+                </h2>
+                <p className="mt-2 text-xs sm:text-sm text-slate-600 max-w-lg mx-auto leading-relaxed">
+                  Ask for Nigerian recipes, substitute ingredients with farm-fresh produce, get weekly meal plans, or scan your kitchen items with a photo.
+                </p>
+
+                {/* Visual Banner */}
+                <div className="mt-6 mx-auto max-w-md overflow-hidden rounded-2xl border border-[#E0D7C3] shadow-lg">
+                  <img
+                    src={chefBemsImg}
+                    alt="Chef Bems preparing fresh harvest ingredients"
+                    className="h-44 w-full object-cover"
+                  />
+                </div>
+
+                {/* Quick Prompts Grid */}
+                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+                  {QUICK_PROMPTS.map((prompt, idx) => (
+                    <button
                       key={idx}
-                      className="chatgpt-prompt-card"
-                      onClick={() => sendMessage(p.text)}
+                      type="button"
+                      onClick={() => sendMessage(prompt.text)}
+                      className="group flex flex-col justify-between rounded-2xl border border-[#DFD6C2] bg-white p-4 shadow-xs hover:border-emerald-700 hover:shadow-md transition text-left cursor-pointer"
                     >
-                      <div style={{ fontSize: "27" }}>{p.icon}</div>
-                      <div style={{ fontSize: "13px", fontWeight: "bold", color: "var(--gray-900)" }}>{p.text}</div>
-                      <div style={{ fontSize: "11px", color: "var(--gray-500)" }}>Click to ask Chef Bems instantly</div>
-                    </div>
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">
+                          {prompt.tag}
+                        </span>
+                        <h3 className="mt-1 font-display text-sm font-bold text-slate-900 group-hover:text-emerald-900">
+                          {prompt.title}
+                        </h3>
+                        <p className="mt-1 text-xs text-slate-500 leading-relaxed line-clamp-2">
+                          {prompt.text}
+                        </p>
+                      </div>
+                      <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800">
+                        <span>Ask Chef Bems</span>
+                        <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                        </svg>
+                      </span>
+                    </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Conversation Flow messages list */}
+            {/* Message Stream */}
             {messages.length > 1 && (
-              <AnimatePresence initial={false}>
-                {messages.map((msg) => {
-                  const isAI = msg.role === "assistant";
-                  return (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className={`message-content-wrapper ${isAI ? "assistant" : "user"} ${msg.isError ? "error" : ""}`}
-                    >
-                      <div className={`msg-avatar ${isAI ? "ai" : "user"}`}>
-                        {isAI ? (
-                          <img 
-                            src={chefBemsAvatar} 
-                            alt="Chef Avatar" 
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }} 
-                          />
-                        ) : (
-                          user?.name?.[0]?.toUpperCase() || "U"
-                        )}
-                      </div>
-                      
-                      <div className="msg-body">
-                        <div className="msg-sender-name">
-                          {isAI ? "Chef Bems" : user?.name || "You"}
-                        </div>
-                        <div className="msg-text">
-                          <div dangerouslySetInnerHTML={{ __html: formatMessage(msg.content) }} />
-                          
-                          {/* Image scanner inline view */}
-                          {msg.image && (
+              <div className="mx-auto max-w-3xl space-y-5">
+                <AnimatePresence initial={false}>
+                  {messages.map((msg) => {
+                    const isAI = msg.role === "assistant";
+                    return (
+                      <motion.div
+                        key={msg.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className={`flex gap-3 sm:gap-4 ${isAI ? "justify-start" : "justify-end"}`}
+                      >
+                        {isAI && (
+                          <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-white border border-amber-300 shadow-xs shrink-0 overflow-hidden mt-1">
                             <img
-                              src={msg.image}
-                              alt="Uploaded Ingredients"
-                              style={{
-                                maxWidth: "100%",
-                                maxHeight: "240px",
-                                borderRadius: "8px",
-                                marginTop: "10px",
-                                display: "block",
-                                border: "1px solid rgba(0,0,0,0.1)",
-                                objectFit: "cover"
-                              }}
+                              src={chefBemsAvatar}
+                              alt="Chef Bems"
+                              className="h-full w-full object-cover"
                             />
-                          )}
-                        </div>
-
-                        {/* Interactive shopping items */}
-                        {isAI && msg.relatedProducts?.length > 0 && (
-                          <div style={{ marginTop: "14px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                            <span style={{ fontSize: "11px", fontWeight: "bold", color: "#F59E0B" }}> Farm Ingredients available on BemsFarms:</span>
-                            <div style={{
-                              display: "grid",
-                              gridTemplateColumns: "1fr 1fr",
-                              gap: "8px"
-                            }}>
-                              {msg.relatedProducts.map((p, idx) => (
-                                <div
-                                  key={idx}
-                                  style={{
-                                    backgroundColor: "var(--white)",
-                                    border: "1px solid var(--gray-200)",
-                                    borderRadius: "8px",
-                                    padding: "8px 12px",
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    gap: "10px",
-                                    boxShadow: "0 2px 4px rgba(0,0,0,0.01)"
-                                  }}
-                                >
-                                  <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontSize: "12px", fontWeight: "bold", color: "var(--gray-900)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                                    <div style={{ fontSize: "11px", color: "var(--gray-500)" }}>₦{Number(p.price).toLocaleString()}</div>
-                                  </div>
-                                  <button
-                                    onClick={(e) => handleAddProduct(e, p)}
-                                    style={{
-                                      background: addedIds[p.id] ? "#2E7D32" : "#F57C00",
-                                      color: "#ffffff",
-                                      border: "none",
-                                      padding: "5px 10px",
-                                      borderRadius: "6px",
-                                      fontSize: "11px",
-                                      fontWeight: "bold",
-                                      cursor: "pointer",
-                                      flexShrink: 0
-                                    }}
-                                  >
-                                    {addedIds[p.id] ? " Added" : "Add"}
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
                           </div>
                         )}
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            )}
 
-            {/* Loading Indicator dots */}
-            {loading && (
-              <div className="message-content-wrapper assistant">
-                <div className="msg-avatar ai">
-                  <img src={chefBemsAvatar} alt="Chef Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                </div>
-                <div style={{ display: "flex", gap: "4px", alignItems: "center", padding: "10px 14px" }}>
-                  {[0, 0.2, 0.4].map((delay, i) => (
-                    <motion.div
-                      key={i}
-                      animate={{ y: [0, -5, 0] }}
-                      transition={{ duration: 0.6, repeat: Infinity, delay }}
-                      style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#2E7D32" }}
-                    />
-                  ))}
-                </div>
+                        <div className={`max-w-[85%] sm:max-w-[78%] flex flex-col ${isAI ? "items-start" : "items-end"}`}>
+                          <div className="text-[11px] font-bold text-slate-400 mb-1 px-1">
+                            {isAI ? "Chef Bems" : user?.name || "You"}
+                          </div>
+
+                          <div
+                            className={`rounded-2xl px-4 py-3 sm:px-5 sm:py-4 text-xs sm:text-sm leading-relaxed shadow-xs ${
+                              isAI
+                                ? msg.isError
+                                  ? "bg-rose-50 border border-rose-200 text-rose-950 rounded-tl-xs"
+                                  : "bg-white border border-[#E2DAC8] text-slate-800 rounded-tl-xs"
+                                : "bg-[#0A2E1C] text-white rounded-tr-xs"
+                            }`}
+                          >
+                            <div
+                              dangerouslySetInnerHTML={{ __html: formatMessage(msg.content) }}
+                              className="space-y-2"
+                            />
+
+                            {/* Attached pantry image view */}
+                            {msg.image && (
+                              <div className="mt-3 overflow-hidden rounded-xl border border-white/20">
+                                <img
+                                  src={msg.image}
+                                  alt="Scanned pantry ingredients"
+                                  className="max-h-60 w-full object-cover"
+                                />
+                              </div>
+                            )}
+
+                            {/* Interactive Bems Farms Produce Cards */}
+                            {isAI && msg.relatedProducts?.length > 0 && (
+                              <div className="mt-4 pt-3 border-t border-slate-100">
+                                <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 block mb-2">
+                                  Order Fresh Ingredients from Bems Farms:
+                                </span>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {msg.relatedProducts.map((product, pIdx) => (
+                                    <div
+                                      key={pIdx}
+                                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-[#FAF9F6] p-2.5 shadow-2xs"
+                                    >
+                                      <div className="min-w-0">
+                                        <p className="truncate text-xs font-bold text-slate-900">{product.name}</p>
+                                        <p className="text-[11px] font-bold text-emerald-800">
+                                          ₦{Number(product.price).toLocaleString()}
+                                        </p>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleAddProduct(e, product)}
+                                        className={`rounded-lg px-3 py-1.5 text-[11px] font-black transition cursor-pointer shrink-0 ${
+                                          addedIds[product.id]
+                                            ? "bg-emerald-700 text-white"
+                                            : "bg-[#0A2E1C] hover:bg-[#14422B] text-white"
+                                        }`}
+                                      >
+                                        {addedIds[product.id] ? "Added" : "+ Add"}
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {!isAI && (
+                          <div className="grid h-8 w-8 sm:h-9 sm:w-9 place-items-center rounded-full bg-amber-400 text-xs font-black text-[#0A2E1C] shrink-0 mt-1 shadow-xs">
+                            {user?.name?.[0]?.toUpperCase() || "U"}
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+
+                {/* AI Typing Indicator */}
+                {loading && (
+                  <div className="flex gap-3 items-start">
+                    <div className="h-8 w-8 rounded-full bg-white border border-amber-300 shadow-xs shrink-0 overflow-hidden mt-1">
+                      <img
+                        src={chefBemsAvatar}
+                        alt="Chef Bems"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="rounded-2xl rounded-tl-xs bg-white border border-[#E2DAC8] px-4 py-3 shadow-xs flex items-center gap-1.5">
+                      {[0, 0.2, 0.4].map((delay, i) => (
+                        <motion.div
+                          key={i}
+                          animate={{ y: [0, -4, 0] }}
+                          transition={{ duration: 0.6, repeat: Infinity, delay }}
+                          className="h-2 w-2 rounded-full bg-emerald-700"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Suggested Follow-up Action Chips */}
+                {!loading && messages.length > 1 && (
+                  <div className="pt-2">
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      Suggested Follow-Ups:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {SUGGESTED_FOLLOW_UPS.map((followUp, fIdx) => (
+                        <button
+                          key={fIdx}
+                          type="button"
+                          onClick={() => sendMessage(followUp)}
+                          className="rounded-full border border-[#D5CCB8] bg-white px-3 py-1 text-[11px] font-bold text-slate-700 hover:border-emerald-700 hover:text-emerald-900 transition shadow-2xs"
+                        >
+                          {followUp}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             
             <div ref={bottomRef} />
           </div>
 
-          {/* Sticky Bottom Input Section */}
-          <div className="chat-input-sticky">
-            <div className="chat-input-wrapper">
-              <div className="chat-input-row">
-                
-                {/* Visual scan triggers */}
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={fileInputRef}
-                  onChange={handleImageUpload}
-                  style={{ display: "none" }}
-                />
-                <button 
-                  className="btn-input-icon"
+          {/* ── STICKY BOTTOM INPUT BAR ── */}
+          <div className="p-3 sm:p-4 bg-white border-t border-[#EAE3D2] shrink-0">
+            <div className="mx-auto max-w-3xl">
+              
+              {/* Hidden file input for camera / pantry scanner */}
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+
+              <div className="flex items-end gap-2 rounded-2xl border border-[#DFD6C2] bg-[#FAF9F6] p-2 focus-within:border-emerald-700 focus-within:ring-2 focus-within:ring-emerald-700/10 transition shadow-inner">
+                {/* Pantry Camera Button */}
+                <button
+                  type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={loading}
-                  title="Upload image for Visual Scanning"
+                  title="Scan pantry ingredients from photo"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-slate-600 hover:text-emerald-900 hover:bg-emerald-50 border border-slate-200 transition disabled:opacity-50"
+                  aria-label="Scan pantry photo"
                 >
-                  
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                  </svg>
                 </button>
 
+                {/* Textarea */}
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -1106,22 +833,26 @@ export default function ChefBemsPage() {
                   placeholder="Ask Chef Bems how to cook Egusi, Jollof, or scan kitchen items..."
                   rows={1}
                   disabled={loading}
-                  className="chat-textarea"
+                  className="flex-1 bg-transparent py-2 px-2 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none resize-none leading-relaxed min-h-[24px] max-h-40"
                 />
 
-                <button 
-                  className={`btn-input-icon ${input.trim() ? "send-active" : ""}`}
+                {/* Send Button */}
+                <button
+                  type="button"
                   onClick={() => sendMessage()}
                   disabled={loading || !input.trim()}
-                  title="Send message"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-400 text-[#0A2E1C] hover:bg-amber-300 disabled:opacity-35 disabled:hover:bg-amber-400 transition shadow-md active:scale-95 cursor-pointer disabled:cursor-not-allowed"
+                  aria-label="Send message"
                 >
-                  
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                  </svg>
                 </button>
               </div>
-            </div>
-            
-            <div style={{ fontSize: "11px", color: "#9CA3AF", marginTop: "8px", textAlign: "center" }}>
-              Chef Bems may make mistakes. Verify recipe parameters, pricing estimates, and health directions.
+
+              <p className="mt-2 text-center text-[10px] text-slate-400">
+                Chef Bems provides culinary guidance. Always verify recipe ingredients, pricing, and allergy precautions.
+              </p>
             </div>
           </div>
 

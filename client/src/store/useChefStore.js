@@ -4,7 +4,7 @@ import { persist } from "zustand/middleware";
 const WELCOME_MESSAGE = {
   id: "welcome",
   role: "assistant",
-  content: `Welcome! I'm **Chef Bems**  — your personal Nigerian kitchen AI.\n\nI can help you with:\n• Recipes for any Nigerian dish\n• What to cook with ingredients you have\n• Healthy meal planning\n• Cooking tips and substitutions\n\nWhat would you like to cook today?`,
+  content: `Welcome! I am **Chef Bems**, your Nigerian culinary and pantry specialist from Bems Farms.\n\nI can assist you with:\n• Authentic recipes for any Nigerian soup, stew, rice, or swallow\n• Smart meal suggestions based on ingredients in your kitchen\n• Healthy weekly Nigerian meal planning and nutrition advice\n• Cooking substitutions and stone-free grain preparation\n\nWhat dish would you like to prepare today?`,
   timestamp: new Date().toISOString(),
 };
 
