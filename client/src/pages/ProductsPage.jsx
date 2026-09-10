@@ -241,20 +241,58 @@ export default function ProductsPage() {
     setParams({});
   };
 
+  const getProductCategory = (p) => {
+    if (p.category_name && typeof p.category_name === "string" && p.category_name.trim()) {
+      return p.category_name.trim();
+    }
+    if (typeof p.category === "string" && p.category.trim()) {
+      return p.category.trim();
+    }
+    if (p.category?.name && typeof p.category.name === "string" && p.category.name.trim()) {
+      return p.category.name.trim();
+    }
+    if (p.category_id && Array.isArray(categories) && categories.length > 0) {
+      const found = categories.find((c) => String(c.id) === String(p.category_id));
+      if (found?.name) return found.name.trim();
+    }
+    return "";
+  };
+
+  const normalizeCategory = (str) =>
+    (str || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "");
+
+  const isProductInCategory = (product, targetCat) => {
+    if (!targetCat || targetCat === "All") return true;
+    const prodCat = getProductCategory(product);
+    if (!prodCat) return false;
+
+    const normProd = normalizeCategory(prodCat);
+    const normTarget = normalizeCategory(targetCat);
+    if (!normProd || !normTarget) return false;
+
+    if (normProd === normTarget) return true;
+
+    if (product.category_id && Array.isArray(categories)) {
+      const matchCatObj = categories.find((c) => normalizeCategory(c.name) === normTarget);
+      if (matchCatObj && String(matchCatObj.id) === String(product.category_id)) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   const filtered = useMemo(() => {
     return products
       .filter((p) => {
-        const matchCat =
-          activeCat === "All" ||
-          p.category_name?.toLowerCase() === activeCat?.toLowerCase() ||
-          p.category_name?.toLowerCase().includes(activeCat?.toLowerCase()) ||
-          activeCat?.toLowerCase().includes(p.category_name?.toLowerCase());
+        const matchCat = isProductInCategory(p, activeCat);
 
         const query = search.toLowerCase().trim();
+        const prodCat = getProductCategory(p);
         const matchSearch =
           !query ||
           p.name?.toLowerCase().includes(query) ||
-          p.category_name?.toLowerCase().includes(query) ||
+          prodCat?.toLowerCase().includes(query) ||
           p.description?.toLowerCase().includes(query);
 
         return matchCat && matchSearch;
@@ -265,23 +303,28 @@ export default function ProductsPage() {
         if (sort === "name") return a.name.localeCompare(b.name);
         return (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0);
       });
-  }, [products, activeCat, search, sort]);
+  }, [products, activeCat, search, sort, categories]);
 
-  const cats = useMemo(() => ["All", ...categories.map((c) => c.name)], [categories]);
+  const cats = useMemo(() => {
+    const names = new Set();
+    categories.forEach((c) => {
+      if (c.name?.trim()) names.add(c.name.trim());
+    });
+    products.forEach((p) => {
+      const catName = getProductCategory(p);
+      if (catName) names.add(catName);
+    });
+    return ["All", ...Array.from(names)];
+  }, [categories, products]);
 
   const categoryCounts = useMemo(() => {
     const counts = { All: products.length };
     cats.forEach((cat) => {
       if (cat === "All") return;
-      const count = products.filter((p) => {
-        const pCat = p.category_name?.toLowerCase().trim() || "";
-        const cName = cat.toLowerCase().trim();
-        return pCat === cName || pCat.includes(cName) || cName.includes(pCat);
-      }).length;
-      counts[cat] = count;
+      counts[cat] = products.filter((p) => isProductInCategory(p, cat)).length;
     });
     return counts;
-  }, [products, cats]);
+  }, [products, cats, categories]);
 
   return (
     <PageWrapper>
