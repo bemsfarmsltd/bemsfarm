@@ -307,7 +307,7 @@ export default function HomePage() {
     }
 
     const displayPrice = Number(product.price || 0) * NAIRA_PER_UNIT;
-    if (!Number.isFinite(displayPrice) || displayPrice <= 0 || displayPrice > 1_000_000) return;
+    if (!Number.isFinite(displayPrice) || displayPrice <= 0) return;
 
     addToCart(product);
     setAddedProducts((prev) => ({ ...prev, [product.id]: true }));

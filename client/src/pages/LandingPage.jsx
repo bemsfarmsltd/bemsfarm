@@ -260,6 +260,7 @@ function SectionHeading({ eyebrow, title, text, align = "center" }) {
 }
 
 function StoreProductCard({ product, added, onAdd, onNotify }) {
+  const navigate = useNavigate();
   const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
   const price = Number(product.price || 0) * NAIRA_PER_UNIT;
   const invalidPrice = !Number.isFinite(price) || price <= 0;
@@ -329,7 +330,10 @@ function StoreProductCard({ product, added, onAdd, onNotify }) {
           <p className="font-extrabold text-slate-900 text-sm xl:text-base whitespace-nowrap">{`₦${price.toLocaleString("en-NG")}`}</p>
           <button
             type="button"
-            onClick={() => onAdd(product)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAdd(product);
+            }}
             className={`h-9 shrink-0 rounded-full px-3 text-[11px] font-extrabold text-white transition cursor-pointer ${added ? "bg-[#1d6b45]" : "bg-[#143c2d] hover:bg-[#1a4e3b]"}`}
             aria-label={`Add ${product.name} to basket`}
           >
