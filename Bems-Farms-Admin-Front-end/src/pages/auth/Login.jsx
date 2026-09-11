@@ -22,7 +22,7 @@ export default function Login() {
       const from = location.state?.from || STAFF_HOME[user.role] || "/dashboard";
       navigate(from, { replace: true });
     } else if (user.role === "user") {
-      handoff("client");
+      window.location.href = "https://bemsfarms.com/home";
     } else {
       navigate("/unauthorized", { replace: true });
     }
