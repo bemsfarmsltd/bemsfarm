@@ -68,7 +68,7 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
     if (address && address.trim()) {
       try {
         await pool.query(
-          `INSERT INTO addresses (user_id, label, receiver_name, receiver_phone, street_address, city, state, is_default, created_at)
+          `INSERT INTO user_addresses (user_id, label, receiver_name, receiver_phone, street_address, city, state, is_default, created_at)
            VALUES ($1, 'Home', $2, $3, $4, $5, $6, true, NOW())`,
           [user.id, user.name, user.phone, address.trim(), (city || "Lagos").trim(), (state || "Lagos").trim()],
         );
