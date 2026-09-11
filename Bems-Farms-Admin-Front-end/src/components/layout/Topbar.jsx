@@ -24,30 +24,29 @@ export default function Topbar({ onToggleSidebar }) {
 
   return (
     <header className="main-topbar" id="main-topbar">
-      {/* Left: logo + sidebar toggle */}
-      <div className="navbar-brand gap-3">
-        <div className="logos">
-          <Link to="/dashboard" aria-label="Bems Farms Admin" className="d-flex align-items-center gap-2 text-decoration-none">
-            <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height: 28, width: 'auto' }} />
-            <span className="fw-black text-dark d-none d-sm-inline font-display" style={{ fontSize: 16, letterSpacing: -0.5 }}>
-              Bems Farms
-            </span>
-          </Link>
-        </div>
+      {/* Left: Brand logo */}
+      <div className="navbar-brand">
+        <Link to="/dashboard" aria-label="Bems Farms Admin" className="d-flex align-items-center gap-2 text-decoration-none">
+          <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height: 28, width: 'auto' }} />
+          <span className="fw-black text-dark d-none d-sm-inline font-display" style={{ fontSize: 16, letterSpacing: -0.5 }}>
+            Bems Farms
+          </span>
+        </Link>
+      </div>
+
+      {/* Centre: Sidebar toggle + quick actions */}
+      <div className="d-flex align-items-center gap-2 ps-2">
         <button
           type="button"
           id="toggleSidebar"
-          className="sidebar-toggle btn p-1 rounded-circle"
+          className="sidebar-toggle btn p-0"
           aria-label="sidebar-toggle"
           onClick={onToggleSidebar}
-          style={{ background: '#FAF8F5', border: '1px solid #E2DDD5' }}
+          title="Toggle Sidebar"
         >
           <i className="ri-layout-left-line fs-17 text-dark"></i>
         </button>
-      </div>
 
-      {/* Centre: quick actions */}
-      <div className="d-flex align-items-center gap-2">
         {/* Add New dropdown */}
         <div className="dropdown d-none d-xl-block">
           <button
