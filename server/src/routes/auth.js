@@ -43,7 +43,7 @@ function generateRefreshToken(userId) {
 // ─────────────────────────────────────────────
 router.post("/register", validate(authSchemas.register), async (req, res, next) => {
   try {
-    const { name, email, password, phone, address, city, state, preferences } = req.body;
+    const { name, email, password, phone, address, city, state, latitude, longitude, preferences } = req.body;
 
     const existing = await pool.query(
       "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
@@ -68,9 +68,9 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
     if (address && address.trim()) {
       try {
         await pool.query(
-          `INSERT INTO user_addresses (user_id, label, receiver_name, receiver_phone, street_address, city, state, is_default, created_at)
-           VALUES ($1, 'Home', $2, $3, $4, $5, $6, true, NOW())`,
-          [user.id, user.name, user.phone, address.trim(), (city || "Lagos").trim(), (state || "Lagos").trim()],
+          `INSERT INTO user_addresses (user_id, label, receiver_name, receiver_phone, street_address, city, state, latitude, longitude, is_default, created_at)
+           VALUES ($1, 'Home', $2, $3, $4, $5, $6, $7, $8, true, NOW())`,
+          [user.id, user.name, user.phone, address.trim(), (city || "Lagos").trim(), (state || "Lagos").trim(), latitude || null, longitude || null],
         );
       } catch (addrErr) {
         console.warn("Failed to seed initial address for user:", addrErr.message);

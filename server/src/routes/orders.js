@@ -95,9 +95,9 @@ router.post("/checkout-intent", protect, validate(orderSchemas.createCheckoutInt
     const total = subtotal - discount + getDeliveryFee(subtotal);
     await client.query(
       `INSERT INTO checkout_intents
-       (id, user_id, payment_ref, items, coupon_code, address, total, status, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', NOW() + INTERVAL '30 minutes')`,
-      [id, req.user.id, req.body.payment_ref, JSON.stringify(items), req.body.coupon_code || null, req.body.address, total],
+       (id, user_id, payment_ref, items, coupon_code, address, latitude, longitude, total, status, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', NOW() + INTERVAL '30 minutes')`,
+      [id, req.user.id, req.body.payment_ref, JSON.stringify(items), req.body.coupon_code || null, req.body.address, req.body.latitude || null, req.body.longitude || null, total],
     );
     await client.query("COMMIT");
     res.status(201).json({ intentId: id, total, expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() });
@@ -115,7 +115,7 @@ router.post("/checkout-intent", protect, validate(orderSchemas.createCheckoutInt
 router.get("/checkout-intent/:id", protect, async (req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT id, payment_ref, items, address, total, status, expires_at
+      `SELECT id, payment_ref, items, address, latitude, longitude, total, status, expires_at
        FROM checkout_intents
        WHERE id = $1 AND user_id = $2`,
       [req.params.id, req.user.id],
@@ -137,7 +137,7 @@ router.get("/checkout-intent/:id", protect, async (req, res, next) => {
 // Client-supplied price/total values are never trusted.
 // ─────────────────────────────────────────────
 router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, next) => {
-  let { items, payment_method, payment_ref, address, source, coupon_code, checkout_intent_id } = req.body;
+  let { items, payment_method, payment_ref, address, latitude, longitude, source, coupon_code, checkout_intent_id } = req.body;
 
   const method = payment_method || "monnify";
   if (!VALID_PAYMENT_METHODS.includes(method)) {
@@ -199,6 +199,8 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
       }
       items = intent.rows[0].items;
       address = intent.rows[0].address;
+      latitude = intent.rows[0].latitude;
+      longitude = intent.rows[0].longitude;
       coupon_code = intent.rows[0].coupon_code || undefined;
     }
 
@@ -287,8 +289,8 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
 
     await client.query(
       `INSERT INTO orders
-       (id, user_id, total, discount_amount, status, payment_method, payment_ref, address, created_at, source)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9)`,
+       (id, user_id, total, discount_amount, status, payment_method, payment_ref, address, latitude, longitude, created_at, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), $11)`,
       [
         orderId,
         req.user.id,
@@ -298,6 +300,8 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
         method,
         method === "monnify" ? payment_ref : null,
         address || "",
+        latitude || null,
+        longitude || null,
         source || "Web App",
       ],
     );

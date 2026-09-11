@@ -8,6 +8,7 @@ import api from "../services/api";
 import { getDeliveryFee } from "../utils/delivery";
 import { getNairaPrice } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
+import AddressAutocomplete from "../components/ui/AddressAutocomplete";
 
 const STATES = [
   "Abia",
@@ -85,6 +86,8 @@ export default function CheckoutPage() {
     address: "",
     city: "",
     state: "Lagos",
+    latitude: null,
+    longitude: null,
   });
 
   const [payMethod, setPayMethod] = useState("monnify"); // "monnify" | "cod"
@@ -155,6 +158,8 @@ export default function CheckoutPage() {
       address: addr.street_address || "",
       city: addr.city || "",
       state: addr.state || "Lagos",
+      latitude: addr.latitude || null,
+      longitude: addr.longitude || null,
     }));
   };
 
@@ -166,6 +171,8 @@ export default function CheckoutPage() {
       ...f,
       address: "",
       city: "",
+      latitude: null,
+      longitude: null,
     }));
   };
 
@@ -292,6 +299,8 @@ export default function CheckoutPage() {
           street_address: form.address,
           city: form.city,
           state: form.state,
+          latitude: form.latitude,
+          longitude: form.longitude,
           is_default: true,
         });
       }
@@ -310,6 +319,8 @@ export default function CheckoutPage() {
       payment_ref: ref || undefined,
       checkout_intent_id: checkout.intentId || undefined,
       address: `${form.address}, ${form.city}, ${form.state}`,
+      latitude: form.latitude,
+      longitude: form.longitude,
       coupon_code: appliedCoupon?.code || undefined,
       behavior_metrics: {
         timeSpent: Math.round((Date.now() - pageMountTime.current) / 1000),
@@ -371,6 +382,8 @@ export default function CheckoutPage() {
         items: checkout.items,
         payment_ref: paymentReference,
         address: `${form.address}, ${form.city}, ${form.state}`,
+        latitude: form.latitude,
+        longitude: form.longitude,
         coupon_code: appliedCoupon?.code || undefined,
       });
       checkout = { ...checkout, intentId: intent.data.intentId, total: Number(intent.data.total) };
@@ -1043,7 +1056,21 @@ export default function CheckoutPage() {
                     <label style={{ display: "block", fontSize: "11px", fontWeight: 800, color: "#374151", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                       Street Address & Landmarks *
                     </label>
-                    <textarea
+                    <AddressAutocomplete
+                      value={form.address}
+                      onChange={setField("address")}
+                      onPlaceSelected={(place) => {
+                        setForm((prev) => ({
+                          ...prev,
+                          address: place.address,
+                          city: place.city || prev.city,
+                          state: place.state || prev.state,
+                          latitude: place.latitude,
+                          longitude: place.longitude,
+                        }));
+                      }}
+                      placeholder="Plot 14 Admiralty Way, Lekki Phase 1, Opposite Hub"
+                      className=""
                       style={{
                         width: "100%",
                         padding: "12px 14px",
@@ -1053,17 +1080,10 @@ export default function CheckoutPage() {
                         fontFamily: "var(--body-font)",
                         outline: "none",
                         backgroundColor: "#FFFFFF",
-                        resize: "none",
-                        minHeight: "75px",
                         boxSizing: "border-box",
                       }}
-                      rows={2}
-                      value={form.address}
-                      onChange={setField("address")}
-                      placeholder="Plot 14 Admiralty Way, Lekki Phase 1, Opposite Hub"
                       disabled={loading}
-                      onFocus={(e) => (e.currentTarget.style.borderColor = "#143c2d")}
-                      onBlur={(e) => (e.currentTarget.style.borderColor = "#D1D5DB")}
+                      required
                     />
                   </div>
 

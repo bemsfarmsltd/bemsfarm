@@ -143,6 +143,15 @@ export const ordersAPI = {
 };
 
 // ─────────────────────────────────────────────
+// WISHLIST API
+// ─────────────────────────────────────────────
+export const wishlistAPI = {
+  getAll: () => api.get("/wishlist"),
+  add: (productId) => api.post("/wishlist", { productId }),
+  remove: (productId) => api.delete(`/wishlist/${productId}`),
+};
+
+// ─────────────────────────────────────────────
 // EXPORT BASE API (optional but useful)
 // ─────────────────────────────────────────────
 export default api;

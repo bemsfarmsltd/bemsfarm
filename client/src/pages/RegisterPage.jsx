@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { GoogleLogin } from "@react-oauth/google";
+import AddressAutocomplete from "../components/ui/AddressAutocomplete";
 
 
 const AUTH_CSS = `
@@ -54,6 +55,8 @@ export default function RegisterPage() {
     address: "",
     city: "",
     state: "Lagos",
+    latitude: null,
+    longitude: null,
     password: "",
     confirm: "",
   });
@@ -117,6 +120,8 @@ export default function RegisterPage() {
         address: form.address.trim(),
         city: form.city.trim(),
         state: form.state.trim(),
+        latitude: form.latitude,
+        longitude: form.longitude,
       });
       sessionStorage.setItem("bemsfarms_pending_email", email);
       sessionStorage.setItem("bemsfarms_post_auth_destination", destination);
@@ -320,10 +325,19 @@ export default function RegisterPage() {
                 <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase tracking-wider">
                   Delivery Street Address
                 </label>
-                <input
-                  type="text"
+                <AddressAutocomplete
                   value={form.address}
                   onChange={(e) => handleInputChange("address", e.target.value)}
+                  onPlaceSelected={(place) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      address: place.address,
+                      city: place.city || prev.city,
+                      state: place.state || prev.state,
+                      latitude: place.latitude,
+                      longitude: place.longitude,
+                    }));
+                  }}
                   placeholder="e.g. Plot 14 Admiralty Way, Lekki Phase 1"
                   className="auth-input w-full px-4 py-2.5 border-2 border-gray-100 focus:border-emerald-700 rounded-xl text-[13px] font-medium outline-none placeholder-gray-300 bg-gray-50/50"
                   required

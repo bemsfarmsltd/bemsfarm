@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
 import PageWrapper from "../components/layout/PageWrapper";
 import api from "../services/api";
 import { getNairaPrice } from "../utils/currency";
@@ -42,7 +43,7 @@ export default function ProfilePage() {
   // Orders & Wishlist
   const [myOrders, setMyOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
-  const [wishlistProducts, setWishlistProducts] = useState([]);
+  const { wishlistProducts } = useWishlist();
 
   // Address book
   const [addresses, setAddresses] = useState([]);
@@ -104,24 +105,9 @@ export default function ProfilePage() {
     loadOrders();
   }, [user]);
 
-  // Load wishlist items
+  // Wishlist is now automatically loaded by WishlistContext
   useEffect(() => {
-    const rawFavs = localStorage.getItem("favorites");
-    if (!rawFavs) return;
-    try {
-      const favMap = JSON.parse(rawFavs);
-      const favIds = Object.keys(favMap).filter((k) => favMap[k]);
-      if (favIds.length > 0) {
-        api.get("/products", { params: { limit: 100 } })
-          .then((res) => {
-            const all = res.data?.products || [];
-            setWishlistProducts(all.filter((p) => favIds.includes(String(p.id))));
-          })
-          .catch(() => {});
-      }
-    } catch {
-      // ignore
-    }
+    // keeping useEffect wrapper around loadOrders for consistency if needed, but not necessary here
   }, []);
 
   if (!isLoggedIn) {

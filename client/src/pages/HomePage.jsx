@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
 import api from "../services/api";
 import { getNairaPrice } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
@@ -220,6 +221,7 @@ export default function HomePage() {
     cartSubtotal,
     openCartDrawer,
   } = useCart();
+  const { isSaved, toggleWishlist } = useWishlist();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -246,22 +248,16 @@ export default function HomePage() {
     }
   };
 
-  // Favorites stored in localStorage
-  const [favorites, setFavorites] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("favorites") || "{}");
-    } catch {
-      return {};
-    }
-  });
-
-  const toggleFavorite = (productId, e) => {
+  const toggleFavorite = async (productId, e) => {
     e?.stopPropagation();
-    setFavorites((prev) => {
-      const updated = { ...prev, [productId]: !prev[productId] };
-      localStorage.setItem("favorites", JSON.stringify(updated));
-      return updated;
-    });
+    if (!user) {
+      alert("Please log in to save items to your wishlist.");
+      return;
+    }
+    const product = products.find(p => p.id === productId);
+    if (product) {
+      await toggleWishlist(product);
+    }
   };
 
   useEffect(() => {
@@ -735,7 +731,7 @@ export default function HomePage() {
                     cartQuantity={cart[product.id]?.quantity || 0}
                     isAdded={Boolean(addedProducts[product.id])}
                     onQuickView={(p) => handleCardClick(p)}
-                    isFavorite={Boolean(favorites[product.id])}
+                    isFavorite={isSaved(product.id)}
                     onToggleFavorite={toggleFavorite}
                     onNotify={setRestockProduct}
                   />
@@ -810,7 +806,7 @@ export default function HomePage() {
                     cartQuantity={cart[product.id]?.quantity || 0}
                     isAdded={Boolean(addedProducts[product.id])}
                     onQuickView={(p) => handleCardClick(p)}
-                    isFavorite={Boolean(favorites[product.id])}
+                    isFavorite={isSaved(product.id)}
                     onToggleFavorite={toggleFavorite}
                     onNotify={setRestockProduct}
                   />

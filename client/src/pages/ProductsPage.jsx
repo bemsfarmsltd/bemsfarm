@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import { useWishlist } from "../context/WishlistContext";
 import api from "../services/api";
 import { getNairaPrice } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
@@ -124,6 +125,7 @@ export default function ProductsPage() {
   const [params, setParams] = useSearchParams();
   const { user } = useAuth();
   const { cart, addToCart, updateQuantity } = useCart();
+  const { toggleWishlist, isSaved } = useWishlist();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -135,13 +137,6 @@ export default function ProductsPage() {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [restockProduct, setRestockProduct] = useState(null);
   const [toast, setToast] = useState(null);
-  const [favorites, setFavorites] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("favorites") || "{}");
-    } catch {
-      return {};
-    }
-  });
 
   const loadData = () => {
     setLoading(true);
@@ -167,13 +162,13 @@ export default function ProductsPage() {
     setActiveCat(params.get("category") || "All");
   }, [params]);
 
-  const toggleFavorite = (productId, e) => {
+  const handleToggleFavorite = async (product, e) => {
     e?.stopPropagation();
-    setFavorites((prev) => {
-      const updated = { ...prev, [productId]: !prev[productId] };
-      localStorage.setItem("favorites", JSON.stringify(updated));
-      return updated;
-    });
+    if (!user) {
+      alert("Please log in to save items to your wishlist.");
+      return;
+    }
+    await toggleWishlist(product);
   };
 
   const handleAdd = (product, e) => {
@@ -282,7 +277,7 @@ export default function ProductsPage() {
     return false;
   };
 
-  const filtered = useMemo(() => {
+  const filteredProducts = useMemo(() => {
     return products
       .filter((p) => {
         const matchCat = isProductInCategory(p, activeCat);
@@ -489,7 +484,7 @@ export default function ProductsPage() {
               <div className="flex flex-wrap items-center justify-between md:justify-end gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs sm:text-sm font-bold text-slate-700 whitespace-nowrap">
-                    {loading ? "Loading items…" : `${filtered.length} ${filtered.length === 1 ? "Product" : "Products"} Found`}
+                    {loading ? "Loading items…" : `${filteredProducts.length} ${filteredProducts.length === 1 ? "Product" : "Products"} Found`}
                   </span>
                   {(search || activeCat !== "All") && (
                     <button
@@ -556,7 +551,7 @@ export default function ProductsPage() {
                   </div>
                 ))}
               </div>
-            ) : filtered.length === 0 ? (
+            ) : filteredProducts.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-3xl border border-[#DFD6C2] bg-white p-12 text-center shadow-sm max-w-lg mx-auto mt-6">
                 <div className="grid h-16 w-16 place-items-center rounded-full bg-emerald-50 text-emerald-800 mb-4">
                   <svg className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -577,8 +572,8 @@ export default function ProductsPage() {
               </div>
             ) : (
               <div className="bf-product-grid">
-                {filtered.map((product) => {
-                  const isFavorite = !!favorites[product.id];
+                {filteredProducts.map((product, index) => {
+                  const isFavorite = isSaved(product.id);
                   const cartQty = cart[product.id]?.quantity || 0;
                   const stock = Math.max(Number(product.stock_quantity || 0), Number(product.stock || 0));
                   const price = getNairaPrice(product.price);
@@ -622,7 +617,7 @@ export default function ProductsPage() {
                           <div className="flex items-center gap-1 pointer-events-auto">
                             <button
                               type="button"
-                              onClick={(e) => toggleFavorite(product.id, e)}
+                              onClick={(e) => handleToggleFavorite(product, e)}
                               className={`flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-white/95 backdrop-blur shadow-xs transition hover:scale-110 ${
                                 isFavorite ? "text-red-500" : "text-slate-400 hover:text-red-500"
                               }`}
