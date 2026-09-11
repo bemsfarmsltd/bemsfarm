@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { Pool } = require("pg");
-const { authenticateToken } = require("../middleware/auth");
+const { protect } = require("../middleware/authMiddleware");
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -10,7 +10,7 @@ const pool = new Pool({
 
 // GET /api/wishlist
 // Fetch all saved items for the logged-in user
-router.get("/", authenticateToken, async (req, res) => {
+router.get("/", protect, async (req, res) => {
   try {
     const customerId = req.user.id;
     const query = `
@@ -30,7 +30,7 @@ router.get("/", authenticateToken, async (req, res) => {
 
 // POST /api/wishlist
 // Add an item to the wishlist
-router.post("/", authenticateToken, async (req, res) => {
+router.post("/", protect, async (req, res) => {
   try {
     const customerId = req.user.id;
     const { productId } = req.body;
@@ -57,7 +57,7 @@ router.post("/", authenticateToken, async (req, res) => {
 
 // DELETE /api/wishlist/:productId
 // Remove an item from the wishlist
-router.delete("/:productId", authenticateToken, async (req, res) => {
+router.delete("/:productId", protect, async (req, res) => {
   try {
     const customerId = req.user.id;
     const productId = req.params.productId;
