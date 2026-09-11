@@ -193,14 +193,6 @@ const HERO_SLIDES = [
     heading: "Seamless checkout, fast order pickup and verified stock.",
     badgeIcon: "basket",
   },
-  {
-    image: "/bems_farms_hub.jpg",
-    alt: "Bems Farms central headquarters, storefront and dispatch fleet",
-    tag: "Central Operations Hub",
-    eyebrow: "Doorstep Dispatch Logistics",
-    heading: "Direct from our physical facility straight to your door.",
-    badgeIcon: "truck",
-  },
 ];
 
 function getVisiblePages(current, total) {
