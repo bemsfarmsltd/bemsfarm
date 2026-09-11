@@ -290,9 +290,15 @@ function getProductIcon(name = '', cat = '') {
     async function loadPOSData() {
       setLoadingPOS(true)
       try {
-        // 1. Fetch live products
-        const prodRes = await api.get('/admin/pos/products').catch(() => api.get('/products'))
-        const prods = prodRes.data?.products || prodRes.data || []
+        // 1. Fetch live products from database
+        let prods = []
+        try {
+          const res = await api.get('/products?limit=200')
+          prods = res.data?.products || res.data?.data || res.data || []
+        } catch {
+          const res = await api.get('/admin/pos/products?limit=200').catch(() => null)
+          prods = res?.data?.products || res?.data || []
+        }
         if (Array.isArray(prods) && prods.length > 0) {
           const mapped = prods.map(p => {
             const rawPrice = Number(p.price || p.unit_price || 0)

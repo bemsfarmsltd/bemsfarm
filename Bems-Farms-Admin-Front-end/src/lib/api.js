@@ -9,10 +9,10 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Attach JWT token to every request
+// Attach JWT token to every request (only if real token)
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('admin_token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  if (token && token !== 'dev-token') config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
@@ -20,7 +20,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isDev = import.meta.env.DEV || localStorage.getItem('admin_token') === 'dev-token'
+    if (error.response?.status === 401 && !isDev) {
       localStorage.removeItem('admin_token')
       localStorage.removeItem('admin_user')
       if (!window.location.pathname.includes('/login')) {
