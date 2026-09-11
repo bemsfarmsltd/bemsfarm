@@ -3,9 +3,15 @@
   "installCommand": "npm ci && (cd client && npm ci) && (cd Bems-Farms-Admin-Front-end && npm ci)",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "cleanUrls": false,
+  "trailingSlash": false,
   "rewrites": [
     {
       "source": "/admin",
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/admin/",
       "destination": "/admin/index.html"
     },
     {
@@ -13,7 +19,7 @@
       "destination": "/admin/index.html"
     },
     {
-      "source": "/:path*",
+      "source": "/((?!admin).*)",
       "destination": "/index.html"
     }
   ]
