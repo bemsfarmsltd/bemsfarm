@@ -6,7 +6,14 @@ export default defineConfig({
   base: './',
   cacheDir: '/tmp/vite-cache',
   server: {
-    port: 5173,
+    port: 5174,
     host: true,
+    proxy: {
+      '/api': {
+        target: 'https://api.bemsfarms.com',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 })

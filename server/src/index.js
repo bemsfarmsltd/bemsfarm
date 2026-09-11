@@ -12,9 +12,11 @@ const app = express();
 app.set("trust proxy", 1);
 
 // This is a JSON-only API (no HTML pages or static assets served here), so
-// helmet's defaults are safe — no CSP directives need loosening for scripts,
-// styles, or cross-origin embeds.
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
 app.use(
   cors({
