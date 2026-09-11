@@ -159,7 +159,7 @@ export default function POS() {
   const { user } = useAuth()
 
   // ── Live Backend State ───────────────────────────────────────────────────
-  const [productsList, setProductsList] = useState(PRODUCTS)
+  const [productsList, setProductsList] = useState([])
   const [customersList, setCustomersList] = useState(MOCK_CUSTOMERS)
   const [historyList, setHistoryList] = useState(HISTORY_MOCK)
   const [loadingPOS, setLoadingPOS] = useState(false)
@@ -241,7 +241,7 @@ export default function POS() {
   // Goods Return modal
   const POS_RETURN_REASONS = ['Damaged on delivery','Wrong item sent','Quality below standard','Spoiled / Already expired','Item missing from order','Incorrect quantity','Customer changed mind','Packaging damaged']
   const [returnForm, setReturnForm] = useState({
-    customer:'Walk-in', phone:'', product:PRODUCTS[0], qty:1, unitPrice:PRODUCTS[0].price,
+    customer:'Walk-in', phone:'', product: null, qty:1, unitPrice:0,
     reason:POS_RETURN_REASONS[0], notes:'', condition:'resalable', refundMethod:'Cash',
   })
   const [returnStep, setReturnStep]     = useState(1)  // 1=details 2=inspect+refund
@@ -296,8 +296,14 @@ function getProductIcon(name = '', cat = '') {
           const res = await api.get('/products?limit=200')
           prods = res.data?.products || res.data?.data || res.data || []
         } catch {
-          const res = await api.get('/admin/pos/products?limit=200').catch(() => null)
-          prods = res?.data?.products || res?.data || []
+          try {
+            const raw = await fetch('/api/products?limit=200')
+            const json = await raw.json()
+            prods = json.products || json.data || []
+          } catch {
+            const res = await api.get('/admin/pos/products?limit=200').catch(() => null)
+            prods = res?.data?.products || res?.data || []
+          }
         }
         if (Array.isArray(prods) && prods.length > 0) {
           const mapped = prods.map(p => {
@@ -317,6 +323,7 @@ function getProductIcon(name = '', cat = '') {
             }
           })
           setProductsList(mapped)
+          setReturnForm(f => ({ ...f, product: f.product || mapped[0], unitPrice: f.unitPrice || mapped[0]?.price || 0 }))
         }
       } catch (e) {
         console.warn('Live products fallback', e)
@@ -1180,7 +1187,7 @@ function getProductIcon(name = '', cat = '') {
                   const ch       = CHANNEL_META[order.channel]
                   const st       = STATUS_META[order.status]
                   const orderTotal = order.items.reduce((s, { productId, qty }) => {
-                    const p = PRODUCTS.find(x => x.id === productId)
+                    const p = productsList.find(x => x.id === productId)
                     return s + (p ? p.price * qty : 0)
                   }, 0)
                   const isExpanded = expandedOrder === order.id
@@ -1240,7 +1247,7 @@ function getProductIcon(name = '', cat = '') {
                             </div>
                           )}
                           {order.items.map(({ productId, qty }) => {
-                            const p = PRODUCTS.find(x => x.id === productId)
+                            const p = productsList.find(x => x.id === productId)
                             if (!p) return null
                             const color = CAT_COLORS[p.cat] || '#0ab39c'
                             return (
@@ -1852,9 +1859,9 @@ function getProductIcon(name = '', cat = '') {
 
                     <div className="col-12">
                       <label className="form-label fw-medium" style={{ fontSize:13 }}>Product Being Returned <span className="text-danger">*</span></label>
-                      <select className="form-select form-select-sm" value={returnForm.product.id}
-                        onChange={e => { const p=PRODUCTS.find(p=>p.id===Number(e.target.value)); setReturnForm(f=>({...f,product:p,unitPrice:p.price})) }}>
-                        {PRODUCTS.map(p=><option key={p.id} value={p.id}>{p.icon} {p.name} — ₦{p.price.toLocaleString()} / {p.unit}</option>)}
+                      <select className="form-select form-select-sm" value={returnForm.product?.id || ''}
+                        onChange={e => { const p=productsList.find(p=>p.id===Number(e.target.value)); if(p) setReturnForm(f=>({...f,product:p,unitPrice:p.price})) }}>
+                        {productsList.map(p=><option key={p.id} value={p.id}>{p.icon} {p.name} — ₦{p.price.toLocaleString()} / {p.unit}</option>)}
                       </select>
                     </div>
                     <div className="col-md-6">
