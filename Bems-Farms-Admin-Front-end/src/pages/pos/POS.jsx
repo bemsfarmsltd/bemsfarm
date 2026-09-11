@@ -294,18 +294,22 @@ function getProductIcon(name = '', cat = '') {
         const prodRes = await api.get('/admin/pos/products').catch(() => api.get('/products'))
         const prods = prodRes.data?.products || prodRes.data || []
         if (Array.isArray(prods) && prods.length > 0) {
-          const mapped = prods.map(p => ({
-            id: p.id,
-            barcode: p.barcode || `BF-${p.sku || p.id}`,
-            sku: p.sku || `SKU-${p.id}`,
-            name: p.name,
-            cat: getProductCat(p),
-            price: Math.round(Number(p.price || p.unit_price || 0)),
-            stock: p.stock != null ? Number(p.stock) : (p.stock_quantity != null ? Number(p.stock_quantity) : 50),
-            unit: p.unit || 'unit',
-            image: p.image_url || p.image || null,
-            icon: p.icon || getProductIcon(p.name, p.category || p.cat)
-          }))
+          const mapped = prods.map(p => {
+            const rawPrice = Number(p.price || p.unit_price || 0)
+            const sanitizedPrice = rawPrice >= 500000 ? Math.round(rawPrice / 1500) : Math.round(rawPrice)
+            return {
+              id: p.id,
+              barcode: p.barcode || `BF-${p.sku || p.id}`,
+              sku: p.sku || `SKU-${p.id}`,
+              name: p.name,
+              cat: getProductCat(p),
+              price: sanitizedPrice,
+              stock: p.stock != null ? Number(p.stock) : (p.stock_quantity != null ? Number(p.stock_quantity) : 0),
+              unit: p.unit || 'unit',
+              image: p.image_url || p.image || null,
+              icon: p.icon || getProductIcon(p.name, p.category || p.cat)
+            }
+          })
           setProductsList(mapped)
         }
       } catch (e) {
@@ -624,9 +628,9 @@ function getProductIcon(name = '', cat = '') {
       {/* ═══ TOPBAR ═══════════════════════════════════════════════════════ */}
       <header className="border-bottom" style={{ height:58, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', zIndex:200, background:'var(--bs-body-bg)' }}>
         {/* Logo — left */}
-        <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, fontWeight:800, fontSize:15, color:'#0ab39c' }}>
-          <span style={{ fontSize:24 }}>🌾</span>
-          <span>Bems Farms<br/><span style={{ fontSize:9, fontWeight:500, color:'var(--bs-secondary-color)', letterSpacing:1 }}>POINT OF SALE</span></span>
+        <div style={{ flex:1, display:'flex', alignItems:'center', gap:10 }}>
+          <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height:36, objectFit:'contain' }} onError={e => { e.target.style.display='none'; }} />
+          <span style={{ fontWeight:800, fontSize:15, color:'#0ab39c', lineHeight:1.2 }}>Bems Farms<br/><span style={{ fontSize:9, fontWeight:600, color:'var(--bs-secondary-color)', letterSpacing:1 }}>POINT OF SALE</span></span>
         </div>
         {/* Unified search + scanner — truly centred */}
         <div style={{ position:'relative', width:'100%', maxWidth:520 }}>
