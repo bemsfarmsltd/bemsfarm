@@ -117,18 +117,7 @@ export default function Sidebar() {
 
         {/* ── Scrollable nav menu ── */}
         <div className="navbar-menu px-3" id="navbar-menu-list">
-          {/* Top Brand Banner */}
-          <div className="sidebar-brand-header">
-            <Link to="/dashboard" className="sidebar-logo-badge">
-              <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" />
-            </Link>
-            <div className="text-truncate">
-              <div className="text-white fw-bold" style={{ fontSize: 13, letterSpacing: -0.2 }}>Bems Farms</div>
-              <div style={{ fontSize: 10, color: '#6ee7b7', fontWeight: 600 }}>Staff Hub</div>
-            </div>
-          </div>
-
-          <ul className="list-unstyled navbar-nav-menu mb-0">
+          <ul className="list-unstyled navbar-nav-menu mb-0" style={{ paddingTop: '0.5rem' }}>
 
             {/* ── MAIN ── */}
             <li className="menu-label px-2"><span>Main</span></li>

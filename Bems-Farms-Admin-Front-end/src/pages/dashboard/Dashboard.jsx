@@ -127,26 +127,26 @@ function OverviewTab() {
   const ordersRef  = useRef(null)
 
   useApexChart(revenueRef, () => ({
-    chart:      { type: 'area', height: 200, toolbar: { show: false } },
+    chart:      { type: 'area', height: 210, toolbar: { show: false } },
     series:     [{ name: 'Revenue (₦)', data: REVENUE }],
     dataLabels: { enabled: false },
-    stroke:     { curve: 'smooth', width: 2 },
-    fill:       { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.05 } },
-    colors:     ['#0ab39c'],
+    stroke:     { curve: 'smooth', width: 2.5 },
+    fill:       { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.02 } },
+    colors:     ['#143c2d'],
     xaxis:      { categories: WEEK_DAYS, axisBorder: { show: false }, axisTicks: { show: false } },
     yaxis:      { labels: { formatter: (v) => `₦${(v/1000).toFixed(0)}k` } },
-    grid:       { borderColor: '#f1f5f9', strokeDashArray: 4 },
+    grid:       { borderColor: '#EFECE6', strokeDashArray: 4 },
     tooltip:    { y: { formatter: (v) => `₦${v.toLocaleString()}` } },
   }), [])
 
   useApexChart(ordersRef, () => ({
-    chart:       { type: 'bar', height: 200, toolbar: { show: false } },
+    chart:       { type: 'bar', height: 210, toolbar: { show: false } },
     series:      [{ name: 'Orders', data: ORDERS }],
-    plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
+    plotOptions: { bar: { borderRadius: 6, columnWidth: '50%' } },
     dataLabels:  { enabled: false },
-    colors:      ['#405189'],
+    colors:      ['#F59E0B'],
     xaxis:       { categories: WEEK_DAYS, axisBorder: { show: false }, axisTicks: { show: false } },
-    grid:        { borderColor: '#f1f5f9', strokeDashArray: 4 },
+    grid:        { borderColor: '#EFECE6', strokeDashArray: 4 },
   }), [])
 
   return (
@@ -176,24 +176,27 @@ function OverviewTab() {
       {/* Pipeline quick-stats */}
       <div className="row g-3 mb-4">
         {[
-          { label: 'Confirmed',        count: 5,  icon: 'ri-time-line',             bg: 'bg-warning-subtle',   txt: 'text-warning',   link: '/orders',                      roles: null },
-          { label: 'Preparing',        count: 3,  icon: 'ri-archive-stack-line',    bg: 'bg-primary-subtle',   txt: 'text-primary',   link: '/orders',                      roles: null },
-          { label: 'Dispatched',       count: 6,  icon: 'ri-truck-line',            bg: 'bg-info-subtle',      txt: 'text-info',      link: '/deliveries/active',           roles: ['superadmin','manager','delivery_manager'] },
-          { label: 'Delivered',        count: 12, icon: 'ri-checkbox-circle-line',  bg: 'bg-success-subtle',   txt: 'text-success',   link: '/orders',                      roles: null },
-          { label: 'Returns',          count: 2,  icon: 'ri-arrow-go-back-line',    bg: 'bg-danger-subtle',    txt: 'text-danger',    link: '/orders/refunds',              roles: ['superadmin','manager'] },
-          { label: 'AI Conversations', count: 5,  icon: 'ri-robot-line',            bg: 'bg-primary-subtle',   txt: 'text-primary',   link: '/chef-bems/conversations',     roles: ['superadmin','manager','kitchen_staff'] },
+          { label: 'Confirmed',        count: 5,  icon: 'ri-time-line',             bg: '#fef3c7', txt: '#b45309', border: '#fde68a', link: '/orders',                      roles: null },
+          { label: 'Preparing',        count: 3,  icon: 'ri-archive-stack-line',    bg: '#e0f2fe', txt: '#0369a1', border: '#bae6fd', link: '/orders',                      roles: null },
+          { label: 'Dispatched',       count: 6,  icon: 'ri-truck-line',            bg: '#f3e8ff', txt: '#7e22ce', border: '#e9d5ff', link: '/deliveries/active',           roles: ['superadmin','admin','manager','delivery_manager'] },
+          { label: 'Delivered',        count: 12, icon: 'ri-checkbox-circle-line',  bg: '#dcfce7', txt: '#15803d', border: '#86efac', link: '/orders',                      roles: null },
+          { label: 'Returns',          count: 2,  icon: 'ri-arrow-go-back-line',    bg: '#ffe4e6', txt: '#be123c', border: '#fecdd3', link: '/orders/refunds',              roles: ['superadmin','admin','manager'] },
+          { label: 'AI Conversations', count: 5,  icon: 'ri-robot-line',            bg: '#ccfbf1', txt: '#0f766e', border: '#99f6e4', link: '/chef-bems/conversations',     roles: ['superadmin','admin','manager','kitchen_staff'] },
         ].filter(({ roles }) => !roles || hasRole(...roles))
-        .map(({ label, count, icon, bg, txt, link }) => (
+        .map(({ label, count, icon, bg, txt, border, link }) => (
           <div className="col-6 col-sm-3 col-xl" key={label} style={{ minWidth: 0 }}>
             <Link to={link} className="text-decoration-none">
-              <div className="card mb-0 h-100">
-                <div className="card-body d-flex align-items-center gap-2 py-3 px-3">
-                  <div className={`avatar size-9 rounded d-flex align-items-center justify-content-center flex-shrink-0 ${bg} ${txt}`}>
+              <div className="card mb-0 h-100" style={{ borderRadius: '0.875rem', border: '1px solid #EFECE6' }}>
+                <div className="card-body d-flex align-items-center gap-3 py-3 px-3">
+                  <div
+                    className="d-flex align-items-center justify-content-center flex-shrink-0"
+                    style={{ width: 38, height: 38, borderRadius: '0.625rem', backgroundColor: bg, color: txt, border: `1px solid ${border}` }}
+                  >
                     <i className={`${icon} fs-5`}></i>
                   </div>
                   <div>
-                    <h6 className="fw-bold mb-0">{count}</h6>
-                    <p className="text-muted mb-0" style={{ fontSize: 11 }}>{label}</p>
+                    <h5 className="fw-black mb-0 font-display text-dark">{count}</h5>
+                    <p className="text-muted fw-semibold mb-0" style={{ fontSize: 11, letterSpacing: '0.02em' }}>{label}</p>
                   </div>
                 </div>
               </div>
@@ -205,54 +208,69 @@ function OverviewTab() {
       {/* Charts */}
       <div className="row g-4 mb-4">
         <div className="col-xl-8">
-          <div className="card mb-0">
-            <div className="card-body">
-              <div className="d-flex align-items-start justify-content-between mb-2">
+          <div className="card mb-0 h-100" style={{ borderRadius: '1rem', border: '1px solid #EFECE6' }}>
+            <div className="card-body p-4">
+              <div className="d-flex align-items-start justify-content-between mb-3">
                 <div>
-                  <h6 className="fw-semibold mb-0">Revenue This Week</h6>
-                  <p className="text-muted fs-xs mb-0 mt-1">Daily revenue in Naira</p>
+                  <h5 className="fw-bold font-display text-dark mb-0">Revenue This Week</h5>
+                  <p className="text-muted fw-medium mb-0 mt-0.5" style={{ fontSize: '0.8rem' }}>Daily gross receipts in Naira (₦)</p>
                 </div>
-                <span className="badge bg-success-subtle text-success fs-xs">+12% vs last week</span>
+                <span className="badge" style={{ backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #86efac', fontWeight: 800 }}>
+                  +12% vs last week
+                </span>
               </div>
               <div ref={revenueRef}></div>
             </div>
           </div>
         </div>
         <div className="col-xl-4">
-          <div className="card mb-0">
-            <div className="card-body">
-              <h6 className="fw-semibold mb-0">Orders Per Day</h6>
-              <p className="text-muted fs-xs mb-2 mt-1">This week</p>
+          <div className="card mb-0 h-100" style={{ borderRadius: '1rem', border: '1px solid #EFECE6' }}>
+            <div className="card-body p-4">
+              <h5 className="fw-bold font-display text-dark mb-0">Orders Per Day</h5>
+              <p className="text-muted fw-medium mb-3 mt-0.5" style={{ fontSize: '0.8rem' }}>Volume across active days</p>
               <div ref={ordersRef}></div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions & Recent Orders */}
       <div className="row g-4 mb-4">
         <div className="col-xl-4">
-          <div className="card mb-0 h-100">
-            <div className="card-header">
-              <h6 className="fw-semibold mb-0"><i className="ri-flashlight-line text-primary me-2"></i>Quick Actions</h6>
+          <div className="card mb-0 h-100" style={{ borderRadius: '1rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header p-3 px-4 border-bottom d-flex align-items-center gap-2">
+              <i className="ri-flashlight-line text-warning fs-5"></i>
+              <h6 className="fw-bold font-display text-dark mb-0">Quick Actions</h6>
             </div>
-            <div className="card-body">
+            <div className="card-body p-3">
               <div className="row g-2">
                 {[
-                  { label: 'New Order',    icon: 'ri-add-circle-line',        to: '/orders',              color: 'btn-primary',         roles: null },
-                  { label: 'POS Terminal', icon: 'ri-store-2-line',           to: '/pos',                 color: 'btn-dark',            roles: ['superadmin','manager','cashier'] },
-                  { label: 'Stock In',     icon: 'ri-archive-stack-line',     to: '/inventory/stock-in',  color: 'btn-success',         roles: ['superadmin','manager','kitchen_staff'] },
-                  { label: 'Add Product',  icon: 'ri-price-tag-3-line',       to: '/products/add',        color: 'btn-info',            roles: ['superadmin','manager'] },
-                  { label: 'Add Staff',    icon: 'ri-team-line',              to: '/staff/add',           color: 'btn-secondary',       roles: ['superadmin','manager'] },
-                  { label: 'Sales Report', icon: 'ri-bar-chart-grouped-line', to: '/reports/sales',       color: 'btn-outline-primary', roles: ['superadmin','manager','accountant'] },
-                  { label: 'Finance',      icon: 'ri-bank-card-line',         to: '/accounts/overview',   color: 'btn-outline-success', roles: ['superadmin','manager','accountant'] },
-                  { label: 'Deliveries',   icon: 'ri-bike-line',              to: '/deliveries/active',   color: 'btn-outline-info',    roles: ['superadmin','manager','delivery_manager'] },
+                  { label: 'New Order',    icon: 'ri-add-circle-line',        to: '/orders',              primary: true,  roles: null },
+                  { label: 'POS Terminal', icon: 'ri-store-2-line',           to: '/pos',                 primary: false, roles: ['superadmin','admin','manager','cashier'] },
+                  { label: 'Stock In',     icon: 'ri-archive-stack-line',     to: '/inventory/stock-in',  primary: false, roles: ['superadmin','admin','manager','kitchen_staff'] },
+                  { label: 'Add Product',  icon: 'ri-price-tag-3-line',       to: '/products/add',        primary: false, roles: ['superadmin','admin','manager'] },
+                  { label: 'Add Staff',    icon: 'ri-team-line',              to: '/staff/add',           primary: false, roles: ['superadmin','admin','manager'] },
+                  { label: 'Sales Report', icon: 'ri-bar-chart-grouped-line', to: '/reports/sales',       primary: false, roles: ['superadmin','admin','manager','accountant'] },
+                  { label: 'Finance',      icon: 'ri-bank-card-line',         to: '/accounts/overview',   primary: false, roles: ['superadmin','admin','manager','accountant'] },
+                  { label: 'Deliveries',   icon: 'ri-bike-line',              to: '/deliveries/active',   primary: false, roles: ['superadmin','admin','manager','delivery_manager'] },
                 ].filter(({ roles }) => !roles || hasRole(...roles))
-                .map(({ label, icon, to, color }) => (
+                .map(({ label, icon, to, primary }) => (
                   <div className="col-6" key={label}>
-                    <Link to={to} className={`btn ${color} btn-sm w-100 d-flex align-items-center gap-2`}>
-                      <i className={icon}></i>
-                      <span style={{ fontSize: 12 }}>{label}</span>
+                    <Link
+                      to={to}
+                      className="btn w-100 d-flex align-items-center justify-content-start gap-2 py-2 px-3 text-decoration-none"
+                      style={{
+                        backgroundColor: primary ? '#143c2d' : '#FAF8F5',
+                        color: primary ? '#FFFFFF' : '#1F2937',
+                        border: primary ? '1px solid #143c2d' : '1px solid #EFECE6',
+                        borderRadius: '0.625rem',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <i className={`${icon} ${primary ? 'text-white' : 'text-success'}`} style={{ fontSize: 15 }}></i>
+                      <span className="text-truncate">{label}</span>
                     </Link>
                   </div>
                 ))}
@@ -261,10 +279,10 @@ function OverviewTab() {
           </div>
         </div>
         <div className="col-xl-8">
-          <div className="card mb-0">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h6 className="fw-semibold mb-0">Recent Orders</h6>
-              <Link to="/orders" className="link link-custom fs-sm">View all →</Link>
+          <div className="card mb-0 h-100" style={{ borderRadius: '1rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header p-3 px-4 d-flex align-items-center justify-content-between border-bottom">
+              <h6 className="fw-bold font-display text-dark mb-0">Recent Orders</h6>
+              <Link to="/orders" className="text-decoration-none fw-bold text-success fs-xs">View all →</Link>
             </div>
             <div className="card-body p-0">
               <Table>
@@ -272,10 +290,10 @@ function OverviewTab() {
                 <Tbody>
                   {RECENT_ORDERS.map((o) => (
                     <Tr key={o.id}>
-                      <Td><Link to={`/orders/${o.id}`} className="fw-medium fs-sm link link-custom">{o.id}</Link></Td>
-                      <Td>{o.customer}</Td>
-                      <Td>{o.items}</Td>
-                      <Td className="fw-semibold">{o.total}</Td>
+                      <Td><Link to={`/orders/${o.id}`} className="fw-bold fs-sm text-dark text-decoration-none font-display">{o.id}</Link></Td>
+                      <Td className="fw-semibold text-dark">{o.customer}</Td>
+                      <Td className="text-muted">{o.items}</Td>
+                      <Td className="fw-bold font-display text-dark">{o.total}</Td>
                       <Td><Badge label={o.status} color={statusColor(o.status)} /></Td>
                       <Td className="text-muted fs-xs">{o.time}</Td>
                     </Tr>
