@@ -15,11 +15,11 @@
       "destination": "/admin/index.html"
     },
     {
-      "source": "/admin/:path*",
+      "source": "/admin/((?!assets/|css/|javascript/|.*\\.[a-zA-Z0-9]+$).*)",
       "destination": "/admin/index.html"
     },
     {
-      "source": "/((?!admin).*)",
+      "source": "/((?!admin|assets/|.*\\.[a-zA-Z0-9]+$).*)",
       "destination": "/index.html"
     }
   ]

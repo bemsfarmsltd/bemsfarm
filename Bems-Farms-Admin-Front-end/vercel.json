@@ -2,13 +2,15 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "cleanUrls": false,
+  "trailingSlash": false,
   "rewrites": [
     {
-      "source": "/admin/:path*",
+      "source": "/admin/((?!assets/|css/|javascript/|.*\\.[a-zA-Z0-9]+$).*)",
       "destination": "/index.html"
     },
     {
-      "source": "/:path*",
+      "source": "/((?!assets/|css/|javascript/|.*\\.[a-zA-Z0-9]+$).*)",
       "destination": "/index.html"
     }
   ]
