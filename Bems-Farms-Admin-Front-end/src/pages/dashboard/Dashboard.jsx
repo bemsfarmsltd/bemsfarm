@@ -127,32 +127,33 @@ function OverviewTab() {
   const ordersRef  = useRef(null)
 
   useApexChart(revenueRef, () => ({
-    chart:      { type: 'area', height: 210, toolbar: { show: false } },
+    chart:      { type: 'area', height: 150, toolbar: { show: false }, sparkline: { enabled: false } },
     series:     [{ name: 'Revenue (₦)', data: REVENUE }],
     dataLabels: { enabled: false },
-    stroke:     { curve: 'smooth', width: 2.5 },
-    fill:       { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.02 } },
+    stroke:     { curve: 'smooth', width: 2 },
+    fill:       { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.25, opacityTo: 0.02 } },
     colors:     ['#143c2d'],
-    xaxis:      { categories: WEEK_DAYS, axisBorder: { show: false }, axisTicks: { show: false } },
-    yaxis:      { labels: { formatter: (v) => `₦${(v/1000).toFixed(0)}k` } },
-    grid:       { borderColor: '#EFECE6', strokeDashArray: 4 },
+    xaxis:      { categories: WEEK_DAYS, axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { fontSize: '11px' } } },
+    yaxis:      { labels: { formatter: (v) => `₦${(v/1000).toFixed(0)}k`, style: { fontSize: '11px' } } },
+    grid:       { borderColor: '#EFECE6', strokeDashArray: 3, padding: { top: 0, bottom: 0 } },
     tooltip:    { y: { formatter: (v) => `₦${v.toLocaleString()}` } },
   }), [])
 
   useApexChart(ordersRef, () => ({
-    chart:       { type: 'bar', height: 210, toolbar: { show: false } },
+    chart:       { type: 'bar', height: 150, toolbar: { show: false } },
     series:      [{ name: 'Orders', data: ORDERS }],
-    plotOptions: { bar: { borderRadius: 6, columnWidth: '50%' } },
+    plotOptions: { bar: { borderRadius: 4, columnWidth: '45%' } },
     dataLabels:  { enabled: false },
     colors:      ['#F59E0B'],
-    xaxis:       { categories: WEEK_DAYS, axisBorder: { show: false }, axisTicks: { show: false } },
-    grid:        { borderColor: '#EFECE6', strokeDashArray: 4 },
+    xaxis:       { categories: WEEK_DAYS, axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { fontSize: '11px' } } },
+    yaxis:       { labels: { style: { fontSize: '11px' } } },
+    grid:        { borderColor: '#EFECE6', strokeDashArray: 3, padding: { top: 0, bottom: 0 } },
   }), [])
 
   return (
     <>
-      {/* KPI row 1 */}
-      <div className="row g-3 mb-4">
+      {/* KPI row 1 (6 compact cards) */}
+      <div className="row g-2 mb-2.5">
         <div className="col-6 col-sm-4 col-xl-2">
           <StatsCard title="Today's Revenue"   value="₦115,000" sub="23 orders today"       riIcon="ri-money-dollar-circle-line" color="green" trend={12} />
         </div>
@@ -173,8 +174,8 @@ function OverviewTab() {
         </div>
       </div>
 
-      {/* Pipeline quick-stats */}
-      <div className="row g-3 mb-4">
+      {/* Pipeline quick-stats (Streamlined Chips) */}
+      <div className="row g-2 mb-2.5">
         {[
           { label: 'Confirmed',        count: 5,  icon: 'ri-time-line',             bg: '#fef3c7', txt: '#b45309', border: '#fde68a', link: '/orders',                      roles: null },
           { label: 'Preparing',        count: 3,  icon: 'ri-archive-stack-line',    bg: '#e0f2fe', txt: '#0369a1', border: '#bae6fd', link: '/orders',                      roles: null },
@@ -184,19 +185,29 @@ function OverviewTab() {
           { label: 'AI Conversations', count: 5,  icon: 'ri-robot-line',            bg: '#ccfbf1', txt: '#0f766e', border: '#99f6e4', link: '/chef-bems/conversations',     roles: ['superadmin','admin','manager','kitchen_staff'] },
         ].filter(({ roles }) => !roles || hasRole(...roles))
         .map(({ label, count, icon, bg, txt, border, link }) => (
-          <div className="col-6 col-sm-3 col-xl" key={label} style={{ minWidth: 0 }}>
-            <Link to={link} className="text-decoration-none">
-              <div className="card mb-0 h-100" style={{ borderRadius: '0.875rem', border: '1px solid #EFECE6' }}>
-                <div className="card-body d-flex align-items-center gap-3 py-3 px-3">
+          <div className="col-6 col-sm-4 col-xl" key={label} style={{ minWidth: 0 }}>
+            <Link to={link} className="text-decoration-none d-block">
+              <div
+                className="card mb-0"
+                style={{
+                  borderRadius: '0.625rem',
+                  border: '1px solid #EFECE6',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.02)'
+                }}
+              >
+                <div className="card-body d-flex align-items-center gap-2 py-2 px-2.5">
                   <div
                     className="d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{ width: 38, height: 38, borderRadius: '0.625rem', backgroundColor: bg, color: txt, border: `1px solid ${border}` }}
+                    style={{ width: 26, height: 26, borderRadius: '0.5rem', backgroundColor: bg, color: txt, border: `1px solid ${border}` }}
                   >
-                    <i className={`${icon} fs-5`}></i>
+                    <i className={`${icon}`} style={{ fontSize: 13 }}></i>
                   </div>
-                  <div>
-                    <h5 className="fw-black mb-0 font-display text-dark">{count}</h5>
-                    <p className="text-muted fw-semibold mb-0" style={{ fontSize: 11, letterSpacing: '0.02em' }}>{label}</p>
+                  <div className="flex-grow-1 overflow-hidden">
+                    <div className="d-flex align-items-baseline gap-1.5">
+                      <span className="fw-black font-display text-dark" style={{ fontSize: '0.95rem', lineHeight: 1 }}>{count}</span>
+                      <span className="text-muted fw-semibold text-truncate" style={{ fontSize: '0.68rem', letterSpacing: '0.02em' }}>{label}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -206,16 +217,16 @@ function OverviewTab() {
       </div>
 
       {/* Charts */}
-      <div className="row g-4 mb-4">
+      <div className="row g-2.5 mb-2.5">
         <div className="col-xl-8">
-          <div className="card mb-0 h-100" style={{ borderRadius: '1rem', border: '1px solid #EFECE6' }}>
-            <div className="card-body p-4">
-              <div className="d-flex align-items-start justify-content-between mb-3">
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-body p-3">
+              <div className="d-flex align-items-center justify-content-between mb-2">
                 <div>
-                  <h5 className="fw-bold font-display text-dark mb-0">Revenue This Week</h5>
-                  <p className="text-muted fw-medium mb-0 mt-0.5" style={{ fontSize: '0.8rem' }}>Daily gross receipts in Naira (₦)</p>
+                  <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.92rem' }}>Revenue This Week</h6>
+                  <p className="text-muted fw-medium mb-0" style={{ fontSize: '0.72rem' }}>Daily gross receipts in Naira (₦)</p>
                 </div>
-                <span className="badge" style={{ backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #86efac', fontWeight: 800 }}>
+                <span className="badge" style={{ backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #86efac', fontWeight: 800, fontSize: '0.625rem', padding: '0.2rem 0.5rem' }}>
                   +12% vs last week
                 </span>
               </div>
@@ -224,10 +235,10 @@ function OverviewTab() {
           </div>
         </div>
         <div className="col-xl-4">
-          <div className="card mb-0 h-100" style={{ borderRadius: '1rem', border: '1px solid #EFECE6' }}>
-            <div className="card-body p-4">
-              <h5 className="fw-bold font-display text-dark mb-0">Orders Per Day</h5>
-              <p className="text-muted fw-medium mb-3 mt-0.5" style={{ fontSize: '0.8rem' }}>Volume across active days</p>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-body p-3">
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.92rem' }}>Orders Per Day</h6>
+              <p className="text-muted fw-medium mb-2" style={{ fontSize: '0.72rem' }}>Volume across active days</p>
               <div ref={ordersRef}></div>
             </div>
           </div>
@@ -235,15 +246,15 @@ function OverviewTab() {
       </div>
 
       {/* Quick Actions & Recent Orders */}
-      <div className="row g-4 mb-4">
+      <div className="row g-2.5 mb-3">
         <div className="col-xl-4">
-          <div className="card mb-0 h-100" style={{ borderRadius: '1rem', border: '1px solid #EFECE6' }}>
-            <div className="card-header p-3 px-4 border-bottom d-flex align-items-center gap-2">
-              <i className="ri-flashlight-line text-warning fs-5"></i>
-              <h6 className="fw-bold font-display text-dark mb-0">Quick Actions</h6>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center gap-2">
+              <i className="ri-flashlight-line text-warning" style={{ fontSize: 16 }}></i>
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Quick Actions</h6>
             </div>
-            <div className="card-body p-3">
-              <div className="row g-2">
+            <div className="card-body p-2.5">
+              <div className="row g-1.5">
                 {[
                   { label: 'New Order',    icon: 'ri-add-circle-line',        to: '/orders',              primary: true,  roles: null },
                   { label: 'POS Terminal', icon: 'ri-store-2-line',           to: '/pos',                 primary: false, roles: ['superadmin','admin','manager','cashier'] },
@@ -258,18 +269,18 @@ function OverviewTab() {
                   <div className="col-6" key={label}>
                     <Link
                       to={to}
-                      className="btn w-100 d-flex align-items-center justify-content-start gap-2 py-2 px-3 text-decoration-none"
+                      className="btn w-100 d-flex align-items-center justify-content-start gap-1.5 py-1.5 px-2 text-decoration-none text-truncate"
                       style={{
                         backgroundColor: primary ? '#143c2d' : '#FAF8F5',
                         color: primary ? '#FFFFFF' : '#1F2937',
                         border: primary ? '1px solid #143c2d' : '1px solid #EFECE6',
-                        borderRadius: '0.625rem',
-                        fontSize: '0.78rem',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.72rem',
                         fontWeight: 700,
                         transition: 'all 0.15s ease'
                       }}
                     >
-                      <i className={`${icon} ${primary ? 'text-white' : 'text-success'}`} style={{ fontSize: 15 }}></i>
+                      <i className={`${icon} ${primary ? 'text-white' : 'text-success'}`} style={{ fontSize: 13 }}></i>
                       <span className="text-truncate">{label}</span>
                     </Link>
                   </div>
@@ -279,10 +290,10 @@ function OverviewTab() {
           </div>
         </div>
         <div className="col-xl-8">
-          <div className="card mb-0 h-100" style={{ borderRadius: '1rem', border: '1px solid #EFECE6' }}>
-            <div className="card-header p-3 px-4 d-flex align-items-center justify-content-between border-bottom">
-              <h6 className="fw-bold font-display text-dark mb-0">Recent Orders</h6>
-              <Link to="/orders" className="text-decoration-none fw-bold text-success fs-xs">View all →</Link>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 d-flex align-items-center justify-content-between border-bottom">
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Recent Orders</h6>
+              <Link to="/orders" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>View all →</Link>
             </div>
             <div className="card-body p-0">
               <Table>
@@ -290,12 +301,12 @@ function OverviewTab() {
                 <Tbody>
                   {RECENT_ORDERS.map((o) => (
                     <Tr key={o.id}>
-                      <Td><Link to={`/orders/${o.id}`} className="fw-bold fs-sm text-dark text-decoration-none font-display">{o.id}</Link></Td>
-                      <Td className="fw-semibold text-dark">{o.customer}</Td>
-                      <Td className="text-muted">{o.items}</Td>
-                      <Td className="fw-bold font-display text-dark">{o.total}</Td>
+                      <Td><Link to={`/orders/${o.id}`} className="fw-bold text-dark text-decoration-none font-display" style={{ fontSize: '0.78rem' }}>{o.id}</Link></Td>
+                      <Td className="fw-semibold text-dark" style={{ fontSize: '0.78rem' }}>{o.customer}</Td>
+                      <Td className="text-muted" style={{ fontSize: '0.75rem' }}>{o.items}</Td>
+                      <Td className="fw-bold font-display text-dark" style={{ fontSize: '0.78rem' }}>{o.total}</Td>
                       <Td><Badge label={o.status} color={statusColor(o.status)} /></Td>
-                      <Td className="text-muted fs-xs">{o.time}</Td>
+                      <Td className="text-muted" style={{ fontSize: '0.72rem' }}>{o.time}</Td>
                     </Tr>
                   ))}
                 </Tbody>
@@ -1155,30 +1166,31 @@ export default function Dashboard() {
         }
       />
 
-      {/* ── Tab navigation ── */}
-      <div className="card mb-4" style={{ borderRadius: '1rem', border: '1px solid #EFECE6' }}>
-        <div className="card-body p-2">
-          <div className="d-flex align-items-center gap-1 flex-nowrap overflow-auto py-1" style={{ whiteSpace: 'nowrap' }}>
+      {/* ── Tab navigation (Compact Streamlined Bar) ── */}
+      <div className="card mb-3" style={{ borderRadius: '0.625rem', border: '1px solid #EFECE6' }}>
+        <div className="card-body p-1.5">
+          <div className="d-flex align-items-center gap-1 flex-nowrap overflow-auto" style={{ whiteSpace: 'nowrap' }}>
             {TABS.map((tab) => (
               <button
                 key={tab.key}
-                className={`btn d-flex align-items-center gap-2 border-0 px-3 py-2 ${activeTab === tab.key ? 'btn-primary-bf fw-bold' : 'text-muted fw-semibold bg-transparent'}`}
+                className={`btn d-flex align-items-center gap-1.5 border-0 px-2.5 py-1.5 ${activeTab === tab.key ? 'btn-primary-bf fw-bold' : 'text-muted fw-semibold bg-transparent'}`}
                 style={{
                   borderRadius: '9999px',
-                  fontSize: '0.8125rem',
-                  transition: 'all 0.2s ease',
+                  fontSize: '0.75rem',
+                  transition: 'all 0.15s ease',
                   cursor: 'pointer'
                 }}
                 onClick={() => setActiveTab(tab.key)}
               >
-                <i className={`${tab.icon} fs-6`}></i>
+                <i className={`${tab.icon}`} style={{ fontSize: 14 }}></i>
                 <span>{tab.label}</span>
                 {tab.badge && (
                   <span className="badge" style={{
                     backgroundColor: activeTab === tab.key ? '#FEF3C7' : 'rgba(245, 158, 11, 0.15)',
                     color: activeTab === tab.key ? '#B45309' : '#D97706',
-                    fontSize: 9,
-                    fontWeight: 800
+                    fontSize: 8.5,
+                    fontWeight: 800,
+                    padding: '0.1rem 0.35rem'
                   }}>
                     {tab.badge}
                   </span>

@@ -15,20 +15,21 @@ export default function StatsCard({ title, value, sub, icon: Icon, riIcon, color
   const tint = TINT_MAP[color] ?? TINT_MAP.green
 
   return (
-    <div className="card mb-0 h-100" style={{ borderRadius: '1rem', border: '1px solid #EFECE6', boxShadow: '0 4px 20px -2px rgba(20, 60, 45, 0.04)' }}>
-      <div className="card-body p-4">
-        <div className="d-flex align-items-start justify-content-between">
-          <div className="flex-grow-1">
-            <p className="text-muted text-uppercase fw-bold mb-1" style={{ fontSize: '0.6875rem', letterSpacing: '0.06em' }}>{title}</p>
-            <h3 className="fw-black mb-1 font-display text-dark" style={{ letterSpacing: '-0.02em', fontSize: '1.65rem' }}>{value}</h3>
-            {sub && <p className="text-muted fw-medium mb-1" style={{ fontSize: '0.78rem' }}>{sub}</p>}
+    <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6', boxShadow: '0 2px 12px -2px rgba(20, 60, 45, 0.04)' }}>
+      <div className="card-body p-3">
+        <div className="d-flex align-items-start justify-content-between gap-2">
+          <div className="flex-grow-1 overflow-hidden">
+            <p className="text-muted text-uppercase fw-bold mb-1 text-truncate" style={{ fontSize: '0.625rem', letterSpacing: '0.05em' }}>{title}</p>
+            <h4 className="fw-black mb-0.5 font-display text-dark text-truncate" style={{ letterSpacing: '-0.02em', fontSize: '1.25rem' }}>{value}</h4>
+            {sub && <p className="text-muted fw-medium mb-1 text-truncate" style={{ fontSize: '0.72rem' }}>{sub}</p>}
             {trend !== undefined && (
-              <div className="d-inline-flex align-items-center gap-1 mt-1">
+              <div className="d-inline-flex align-items-center gap-1">
                 <span className="badge" style={{
                   backgroundColor: trend >= 0 ? '#dcfce7' : '#ffe4e6',
                   color: trend >= 0 ? '#15803d' : '#be123c',
-                  fontSize: '0.6875rem',
-                  fontWeight: 800
+                  fontSize: '0.625rem',
+                  fontWeight: 800,
+                  padding: '0.15rem 0.45rem'
                 }}>
                   {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}% vs last week
                 </span>
@@ -38,17 +39,17 @@ export default function StatsCard({ title, value, sub, icon: Icon, riIcon, color
           <div
             className="d-flex align-items-center justify-content-center flex-shrink-0"
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: '0.875rem',
+              width: 32,
+              height: 32,
+              borderRadius: '0.625rem',
               backgroundColor: tint.bg,
               color: tint.text,
               border: `1px solid ${tint.border}`
             }}
           >
             {riIcon
-              ? <i className={`${riIcon} fs-4`}></i>
-              : Icon ? <Icon size={22} /> : null
+              ? <i className={`${riIcon} fs-5`}></i>
+              : Icon ? <Icon size={16} /> : null
             }
           </div>
         </div>

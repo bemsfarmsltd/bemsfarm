@@ -61,7 +61,12 @@ h1, h2, h3, h4, h5, h6, .font-display {
 
 .page-content {
   background-color: #FAF8F5 !important;
-  padding: 1.5rem 1.75rem 2.5rem !important;
+  padding: 0.85rem 1.25rem 2rem !important;
+}
+
+.container-fluid {
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
 }
 
 /* ── SIDEBAR (EXECUTIVE FOREST TWILIGHT) ─────────────────────────── */
@@ -77,100 +82,7 @@ h1, h2, h3, h4, h5, h6, .font-display {
 
 #main-sidebar .navbar-menu {
   background-color: transparent !important;
-  padding: 1rem 0.75rem 1.5rem !important;
-}
-
-/* Sidebar Branding Header */
-.sidebar-brand-header {
-  padding: 1.25rem 1rem 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 0.75rem;
-}
-
-.sidebar-logo-badge {
-  display: inline-flex;
-  align-items: center;
-  background: #ffffff;
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.75rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.sidebar-logo-badge img {
-  height: 1.75rem;
-  width: auto;
-  object-fit: contain;
-}
-
-/* Menu Labels */
-#main-sidebar .menu-label {
-  color: #6ee7b7 !important;
-  opacity: 0.65;
-  font-size: 0.6875rem !important;
-  font-weight: 800 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.08em !important;
-  padding: 0.75rem 0.75rem 0.25rem !important;
-}
-
-/* Nav Links */
-#main-sidebar .navbar-nav-menu .nav-link,
-#main-sidebar .sub-navbar-nav .nav-link {
-  color: rgba(226, 232, 240, 0.78) !important;
-  font-size: 0.84rem !important;
-  font-weight: 600 !important;
-  border-radius: 0.75rem !important;
-  padding: 0.55rem 0.85rem !important;
-  margin: 0.15rem 0 !important;
-  transition: all 0.2s ease !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.65rem !important;
-}
-
-#main-sidebar .navbar-nav-menu .nav-link:hover,
-#main-sidebar .sub-navbar-nav .nav-link:hover {
-  color: #ffffff !important;
-  background-color: rgba(255, 255, 255, 0.08) !important;
-  transform: translateX(2px);
-}
-
-#main-sidebar .navbar-nav-menu .nav-link.active,
-#main-sidebar .sub-navbar-nav .nav-link.active {
-  color: #ffffff !important;
-  background: linear-gradient(135deg, #143c2d, #1b5e3f) !important;
-  box-shadow: 0 4px 14px 0 rgba(20, 60, 45, 0.45) !important;
-  border: 1px solid rgba(110, 231, 183, 0.3) !important;
-  font-weight: 700 !important;
-}
-
-#main-sidebar .navbar-nav-menu .nav-link.active .menu-icon,
-#main-sidebar .sub-navbar-nav .nav-link.active .menu-icon {
-  color: #f59e0b !important;
-}
-
-#main-sidebar .menu-icon {
-  font-size: 1.15rem !important;
-  color: rgba(209, 250, 229, 0.65) !important;
-  transition: color 0.2s ease;
-}
-
-/* Sidebar Profile Footer */
-.sidebar-profile-footer {
-  background: linear-gradient(to top, #04120B, #071F14) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-  padding: 0.75rem 1rem !important;
-}
-
-.sidebar-avatar {
-  background: linear-gradient(135deg, #F59E0B, #B45309) !important;
-  color: #ffffff !important;
-  font-weight: 800 !important;
-  border-radius: 9999px !important;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35) !important;
+  padding: 0.65rem 0.65rem 1.25rem !important;
 }
 
 /* ── TOPBAR (CLEAN EXECUTIVE HEADER) ─────────────────────────────── */
@@ -178,11 +90,11 @@ h1, h2, h3, h4, h5, h6, .font-display {
   background-color: rgba(255, 255, 255, 0.98) !important;
   backdrop-filter: blur(12px) !important;
   border-bottom: 1px solid #EFECE6 !important;
-  padding: 0 1.25rem 0 0 !important;
-  height: var(--dx-topbar, 4.375rem) !important;
+  padding: 0 1rem 0 0 !important;
+  height: 3.5rem !important;
   display: flex !important;
   align-items: center !important;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.02) !important;
+  box-shadow: 0 2px 10px 0 rgba(0, 0, 0, 0.02) !important;
   z-index: 1003 !important;
 }
 
@@ -191,7 +103,7 @@ h1, h2, h3, h4, h5, h6, .font-display {
   min-width: var(--dx-sidebar, 15rem) !important;
   max-width: var(--dx-sidebar, 15rem) !important;
   height: 100% !important;
-  padding: 0 1.25rem !important;
+  padding: 0 1rem !important;
   margin: 0 !important;
   display: flex !important;
   align-items: center !important;
@@ -202,9 +114,9 @@ h1, h2, h3, h4, h5, h6, .font-display {
 }
 
 .main-topbar .sidebar-toggle {
-  width: 2.125rem !important;
-  height: 2.125rem !important;
-  min-width: 2.125rem !important;
+  width: 1.875rem !important;
+  height: 1.875rem !important;
+  min-width: 1.875rem !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -228,8 +140,8 @@ h1, h2, h3, h4, h5, h6, .font-display {
   background-color: #FAF8F5 !important;
   border: 1px solid #E2DDD5 !important;
   border-radius: 9999px !important;
-  padding: 0.5rem 1rem 0.5rem 2.25rem !important;
-  font-size: 0.8125rem !important;
+  padding: 0.35rem 0.75rem 0.35rem 2rem !important;
+  font-size: 0.75rem !important;
   font-weight: 500 !important;
   color: #0F172A !important;
   transition: all 0.2s ease !important;
@@ -245,12 +157,12 @@ h1, h2, h3, h4, h5, h6, .font-display {
 /* Quick Action Pills */
 .topbar-action-pill {
   border-radius: 9999px !important;
-  font-size: 0.8125rem !important;
+  font-size: 0.75rem !important;
   font-weight: 700 !important;
-  padding: 0.45rem 0.95rem !important;
+  padding: 0.35rem 0.75rem !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 0.4rem !important;
+  gap: 0.35rem !important;
   transition: all 0.2s ease !important;
 }
 
@@ -258,7 +170,7 @@ h1, h2, h3, h4, h5, h6, .font-display {
   background-color: #143c2d !important;
   border-color: #143c2d !important;
   color: #ffffff !important;
-  box-shadow: 0 4px 12px 0 rgba(20, 60, 45, 0.25) !important;
+  box-shadow: 0 2px 8px 0 rgba(20, 60, 45, 0.2) !important;
 }
 
 .btn-primary-bf:hover {
@@ -267,67 +179,36 @@ h1, h2, h3, h4, h5, h6, .font-display {
   transform: translateY(-1px);
 }
 
-/* ── CARDS & STATS (MODERN LUXURY ELEVATION) ─────────────────────── */
+/* ── CARDS & STATS (COMPACT LUXURY ELEVATION) ─────────────────────── */
 .card, .stats-card {
   background-color: #FFFFFF !important;
   border: 1px solid #EFECE6 !important;
-  border-radius: 1rem !important;
-  box-shadow: 0 4px 20px -2px rgba(20, 60, 45, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02) !important;
-  transition: all 0.25s ease !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 2px 10px -2px rgba(20, 60, 45, 0.04), 0 1px 3px 0 rgba(0, 0, 0, 0.02) !important;
+  transition: all 0.2s ease !important;
 }
 
 .card:hover, .stats-card:hover {
   border-color: #E2DDD5 !important;
-  box-shadow: 0 8px 30px -4px rgba(20, 60, 45, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.03) !important;
+  box-shadow: 0 4px 16px -2px rgba(20, 60, 45, 0.07) !important;
 }
 
 .card-header {
   background-color: transparent !important;
   border-bottom: 1px solid #EFECE6 !important;
-  padding: 1rem 1.25rem !important;
+  padding: 0.65rem 1rem !important;
   font-family: 'Outfit', sans-serif !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
+  font-size: 0.85rem !important;
 }
 
 .card-body {
-  padding: 1.25rem !important;
-}
-
-/* ── PILL TABS ───────────────────────────────────────────────────── */
-.nav-pills-bf {
-  display: inline-flex;
-  gap: 0.35rem;
-  background-color: #EFECE6;
-  padding: 0.25rem;
-  border-radius: 9999px;
-}
-
-.nav-pills-bf .pill-tab-item {
-  border-radius: 9999px;
-  padding: 0.4rem 1rem;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: #475569;
-  text-decoration: none;
-  border: none;
-  background: transparent;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.nav-pills-bf .pill-tab-item:hover {
-  color: #0F172A;
-}
-
-.nav-pills-bf .pill-tab-item.active {
-  background-color: #143c2d;
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(20, 60, 45, 0.3);
+  padding: 0.85rem 1rem !important;
 }
 
 /* ── TABLES & DATA GRIDS ─────────────────────────────────────────── */
 .table-responsive {
-  border-radius: 0.875rem !important;
+  border-radius: 0.75rem !important;
   overflow: hidden !important;
 }
 
@@ -339,19 +220,19 @@ h1, h2, h3, h4, h5, h6, .font-display {
 .table th {
   background-color: #FAF8F5 !important;
   color: #64748B !important;
-  font-size: 0.6875rem !important;
+  font-size: 0.65rem !important;
   font-weight: 800 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.06em !important;
-  padding: 0.875rem 1rem !important;
+  letter-spacing: 0.05em !important;
+  padding: 0.55rem 0.75rem !important;
   border-bottom: 1px solid #EFECE6 !important;
 }
 
 .table td {
-  padding: 0.875rem 1rem !important;
+  padding: 0.55rem 0.75rem !important;
   vertical-align: middle !important;
   border-bottom: 1px solid #F1EFEA !important;
-  font-size: 0.84rem !important;
+  font-size: 0.78rem !important;
   font-weight: 500 !important;
 }
 
@@ -367,9 +248,9 @@ h1, h2, h3, h4, h5, h6, .font-display {
 .badge {
   font-family: 'Plus Jakarta Sans', sans-serif !important;
   font-weight: 800 !important;
-  padding: 0.3rem 0.65rem !important;
+  padding: 0.22rem 0.5rem !important;
   border-radius: 9999px !important;
-  font-size: 0.6875rem !important;
+  font-size: 0.625rem !important;
   letter-spacing: 0.02em !important;
 }
 
