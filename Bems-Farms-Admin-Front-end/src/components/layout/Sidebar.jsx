@@ -62,6 +62,7 @@ export default function Sidebar() {
         height: 100% !important;
         overflow: hidden !important;
         display: block !important;
+        background: transparent !important;
       }
       #main-sidebar .navbar-menu {
         position: absolute !important;
@@ -75,6 +76,7 @@ export default function Sidebar() {
         scrollbar-width: thin;
         scrollbar-color: rgba(255,255,255,0.12) transparent;
         padding: 0.75rem 0.65rem 1.5rem !important;
+        background: transparent !important;
       }
       #main-sidebar .navbar-menu::-webkit-scrollbar { width: 3px; }
       #main-sidebar .navbar-menu::-webkit-scrollbar-track { background: transparent; }
@@ -87,7 +89,8 @@ export default function Sidebar() {
         right: 0 !important;
         height: 76px !important;
         z-index: 10 !important;
-        background: linear-gradient(to top, #04120B 40%, rgba(7,31,20,0.95)) !important;
+        background: linear-gradient(to top, rgba(4, 18, 11, 0.94) 60%, rgba(7, 31, 20, 0.85)) !important;
+        backdrop-filter: blur(10px) !important;
         border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
       }
       
