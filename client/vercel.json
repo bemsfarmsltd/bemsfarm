@@ -1,5 +1,10 @@
 {
   "rewrites": [
+    { "source": "/admin/assets/:path*", "destination": "https://bems-admin.vercel.app/assets/:path*" },
+    { "source": "/admin/javascript/:path*", "destination": "https://bems-admin.vercel.app/javascript/:path*" },
+    { "source": "/admin/css/:path*", "destination": "https://bems-admin.vercel.app/css/:path*" },
+    { "source": "/admin", "destination": "https://bems-admin.vercel.app" },
+    { "source": "/admin/:path*", "destination": "https://bems-admin.vercel.app" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
