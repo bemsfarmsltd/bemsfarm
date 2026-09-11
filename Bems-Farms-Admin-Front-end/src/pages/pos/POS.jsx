@@ -250,6 +250,41 @@ export default function POS() {
 
   const scanInputRef = useRef(null)
 
+function getProductCat(p) {
+  const catName = (p.category || p.category_name || p.cat || '').toLowerCase()
+  const name = (p.name || '').toLowerCase()
+  if (catName.includes('meal') || catName.includes('soup') || catName.includes('food') || name.includes('soup') || name.includes('jollof') || name.includes('fried rice')) return 'meals'
+  if (catName.includes('fish') || catName.includes('sea') || catName.includes('prawn') || name.includes('tilapia') || name.includes('catfish') || name.includes('crayfish') || name.includes('stockfish') || name.includes('mackerel')) return 'seafood'
+  if (catName.includes('meat') || catName.includes('poultry') || catName.includes('beef') || name.includes('goat') || name.includes('chicken') || name.includes('turkey') || name.includes('beef')) return 'meat'
+  if (catName.includes('grain') || catName.includes('cereal') || catName.includes('carb') || catName.includes('rice') || catName.includes('bean') || catName.includes('flour') || catName.includes('tuber') || name.includes('rice') || name.includes('bean') || name.includes('yam') || name.includes('poundo') || name.includes('plantain') || name.includes('semovita') || name.includes('wheat') || name.includes('flour') || name.includes('garri')) return 'grains'
+  if (catName.includes('veg') || catName.includes('fruit') || catName.includes('pepper') || name.includes('tomato') || name.includes('onion') || name.includes('spinach') || name.includes('efo') || name.includes('ugu') || name.includes('pepper') || name.includes('rodo') || name.includes('tatashe') || name.includes('carrot') || name.includes('cucumber')) return 'vegetables'
+  if (catName.includes('dairy') || catName.includes('egg') || name.includes('egg') || name.includes('milk') || name.includes('yogurt') || name.includes('butter') || name.includes('custard') || name.includes('cheese')) return 'dairy'
+  if (catName.includes('bev') || catName.includes('drink') || catName.includes('juice') || name.includes('milo') || name.includes('zobo') || name.includes('kunu') || name.includes('water') || name.includes('juice') || name.includes('tea') || name.includes('drink')) return 'beverages'
+  return 'farm'
+}
+
+function getProductIcon(name = '', cat = '') {
+  const n = name.toLowerCase()
+  if (n.includes('rice') || n.includes('wheat') || n.includes('semovita')) return '🌾'
+  if (n.includes('bean') || n.includes('oloyin')) return '🫘'
+  if (n.includes('yam') || n.includes('poundo') || n.includes('cassava')) return '🍠'
+  if (n.includes('plantain') || n.includes('banana')) return '🍌'
+  if (n.includes('soup') || n.includes('egusi') || n.includes('ofada') || n.includes('afang') || n.includes('banga')) return '🍲'
+  if (n.includes('chicken') || n.includes('turkey') || n.includes('fowl')) return '🍗'
+  if (n.includes('beef') || n.includes('meat') || n.includes('goat')) return '🥩'
+  if (n.includes('fish') || n.includes('tilapia') || n.includes('catfish') || n.includes('mackerel') || n.includes('crayfish') || n.includes('prawn') || n.includes('stockfish')) return '🐟'
+  if (n.includes('egg')) return '🥚'
+  if (n.includes('milk') || n.includes('yogurt') || n.includes('butter') || n.includes('custard')) return '🥛'
+  if (n.includes('oil') || n.includes('kings') || n.includes('emperor') || n.includes('bama') || n.includes('mayonnaise')) return '🫒'
+  if (n.includes('tomato') || n.includes('tatashe') || n.includes('pepper') || n.includes('rodo')) return '🍅'
+  if (n.includes('onion')) return '🧅'
+  if (n.includes('spinach') || n.includes('efo') || n.includes('ugu') || n.includes('vegetable')) return '🥬'
+  if (n.includes('salt')) return '🧂'
+  if (n.includes('milo') || n.includes('beverage') || n.includes('juice') || n.includes('drink') || n.includes('zobo') || n.includes('water')) return '🧃'
+  if (n.includes('soap') || n.includes('mama') || n.includes('viva') || n.includes('so klin') || n.includes('detergent')) return '🧼'
+  return '🌾'
+}
+
   // ── Fetch Live Backend Data on Mount ───────────────────────────────────────
   useEffect(() => {
     async function loadPOSData() {
@@ -264,12 +299,12 @@ export default function POS() {
             barcode: p.barcode || `BF-${p.sku || p.id}`,
             sku: p.sku || `SKU-${p.id}`,
             name: p.name,
-            cat: p.category_slug || p.category_name?.toLowerCase() || 'farm',
+            cat: getProductCat(p),
             price: Math.round(Number(p.price || p.unit_price || 0)),
-            stock: p.stock ?? p.stock_quantity ?? 50,
+            stock: p.stock != null ? Number(p.stock) : (p.stock_quantity != null ? Number(p.stock_quantity) : 50),
             unit: p.unit || 'unit',
             image: p.image_url || p.image || null,
-            icon: p.icon || '🌾'
+            icon: p.icon || getProductIcon(p.name, p.category || p.cat)
           }))
           setProductsList(mapped)
         }
@@ -718,18 +753,25 @@ export default function POS() {
               ? <div style={{ textAlign:'center', padding:'60px 0', color:'var(--bs-secondary-color)' }}><div style={{ fontSize:52 }}>🔍</div><p style={{ marginTop:12 }}>No products found</p></div>
               : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(145px,1fr))', gap:10 }}>
                   {products.map(p => {
-                    const color = CAT_COLORS[p.cat] || '#405189'; const low = p.stock>0&&p.stock<=5; const out = p.stock===0; const inCart = cart.find(i=>i.id===p.id)
+                    const color = CAT_COLORS[p.cat] || '#405189'
+                    const low = p.stock > 0 && p.stock <= 5
+                    const inCart = cart.find(i => i.id === p.id)
                     return (
-                      <button key={p.id} onClick={() => !out && addProductToCart(p)} disabled={out}
-                        style={{ border: inCart ? `2px solid ${color}` : '1px solid var(--bs-border-color)', borderRadius:10, padding:12, background:'var(--bs-body-bg,#fff)', cursor: out?'not-allowed':'pointer', opacity: out?.45:1, textAlign:'left', position:'relative', boxShadow: inCart ? `0 0 0 3px ${color}25` : '0 1px 3px rgba(0,0,0,.06)' }}>
+                      <button key={p.id} onClick={() => addProductToCart(p)}
+                        style={{ border: inCart ? `2px solid ${color}` : '1px solid var(--bs-border-color)', borderRadius:10, padding:12, background:'var(--bs-body-bg,#fff)', cursor: 'pointer', textAlign:'left', position:'relative', boxShadow: inCart ? `0 0 0 3px ${color}25` : '0 1px 3px rgba(0,0,0,.06)' }}>
                         {inCart && <div style={{ position:'absolute', top:-7, right:-7, width:20, height:20, borderRadius:'50%', background:color, color:'#fff', fontSize:10, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{inCart.qty}</div>}
-                        {low && !out && <div style={{ position:'absolute', top:6, left:6, fontSize:8, fontWeight:700, color:'#f7b84b', textTransform:'uppercase' }}>Low</div>}
-                        <div style={{ height:64, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:8, background:color+'15', fontSize:36, marginBottom:8 }}>{p.icon}</div>
+                        {low && <div style={{ position:'absolute', top:6, left:6, fontSize:8, fontWeight:700, color:'#f7b84b', textTransform:'uppercase' }}>Low</div>}
+                        <div style={{ height:64, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:8, background:color+'15', fontSize:32, marginBottom:8, overflow:'hidden', position:'relative' }}>
+                          {p.image ? (
+                            <img src={p.image} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain', borderRadius:6 }} onError={e => { e.target.style.display='none'; if (e.target.nextSibling) e.target.nextSibling.style.display='block'; }} />
+                          ) : null}
+                          <span style={{ display: p.image ? 'none' : 'block' }}>{p.icon || getProductIcon(p.name, p.cat)}</span>
+                        </div>
                         <div style={{ fontSize:11, fontWeight:600, lineHeight:1.3, marginBottom:4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{p.name}</div>
                         <div style={{ fontSize:9, color:'var(--bs-secondary-color)', marginBottom:6 }}>{p.sku} · per {p.unit}</div>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                           <span style={{ fontSize:13, fontWeight:800, color }}>{fmt(p.price)}</span>
-                          <span style={{ fontSize:9, color: p.stock<=5?'#f06548':'var(--bs-secondary-color)' }}>{p.stock} left</span>
+                          <span style={{ fontSize:9, color: low ? '#f7b84b' : 'var(--bs-secondary-color)' }}>{p.stock > 0 ? `${p.stock} left` : 'Available'}</span>
                         </div>
                       </button>
                     )

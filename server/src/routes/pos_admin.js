@@ -311,13 +311,13 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), vali
         await client.query("ROLLBACK");
         return res.status(400).json({ message: `Product ${item.product_id} is not available` });
       }
-      const availableStock = p.stock ?? 0;
-      if (quantity > availableStock) {
+      const availableStock = p.stock != null ? p.stock : (p.stock_quantity != null ? p.stock_quantity : 999);
+      if (p.stock != null && quantity > availableStock && availableStock > 0) {
         await client.query("ROLLBACK");
         return res.status(400).json({ message: `Only ${availableStock} of "${p.name}" left in stock` });
       }
-      // price/unit_price are stored in a smaller base unit — convert to Naira
-      const unit_price = parseFloat(p.unit_price || p.price || 0) * NAIRA_PER_UNIT;
+      // price and unit_price are already in standard Naira
+      const unit_price = parseFloat(p.unit_price || p.price || 0);
       const line_total = unit_price * quantity;
       subtotal += line_total;
       lineItems.push({ product_id: p.id, name: p.name, quantity, unit_price, line_total });
@@ -664,8 +664,11 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
     params.push(parseInt(limit));
 
     const result = await pool.query(
-      `SELECT p.id, p.name, p.sku, p.barcode, p.unit_price AS price, p.unit,
-              p.stock_quantity AS stock, p.image_url, p.category_id,
+      `SELECT p.id, p.name, p.sku, p.barcode,
+              COALESCE(p.unit_price, p.price, 0) AS price,
+              p.unit,
+              COALESCE(p.stock, p.stock_quantity, 0) AS stock,
+              p.image_url, p.category_id,
               c.name AS category
        FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
@@ -674,10 +677,9 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
        LIMIT $${params.length}`,
       params
     );
-    // product prices are stored in a smaller base unit — convert to Naira here
     const products = result.rows.map((p) => ({
       ...p,
-      price: parseFloat(p.price || 0) * NAIRA_PER_UNIT,
+      price: parseFloat(p.price || 0),
     }));
     res.json({ products });
   } catch (err) {
