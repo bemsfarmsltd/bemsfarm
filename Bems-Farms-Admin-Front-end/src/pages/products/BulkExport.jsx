@@ -1,277 +1,374 @@
-import { useState, useMemo } from 'react'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-// Field labels are limited to columns the export endpoint actually returns
-// (EXPORT_COLUMNS in config_admin.js) — a label here that had no backing
-// column used to sit in the picker with zero effect on the download.
-const EXPORT_TYPES = [
-  { key:'products',       label:'Products',        icon:'ri-box-3-line',       color:'#0ab39c',
-    fields:[['Name','name'],['SKU','sku'],['Barcode','barcode'],['Category','category'],['Unit Price','unit_price'],['Cost Price','cost_price'],['Stock','stock'],['Status','status'],['Created','created_at']] },
-  { key:'categories',     label:'Categories',      icon:'ri-folder-line',      color:'#405189',
-    fields:[['Name','name'],['Code','code'],['Status','status'],['Created','created_at']] },
-  { key:'sub_categories', label:'Sub-Categories',  icon:'ri-folder-open-line', color:'#299cdb',
-    fields:[['Name','name'],['Parent Category','parent_category'],['Code','code'],['Status','status'],['Created','created_at']] },
-  { key:'units',          label:'Units',           icon:'ri-ruler-2-line',     color:'#a78bfa',
-    fields:[['Name','name'],['Short Name','short'],['Type','type'],['Step','step'],['Status','status'],['Created','created_at']] },
-  { key:'inventory',      label:'Inventory Report',icon:'ri-stock-line',       color:'#f06548',
-    fields:[['Product','name'],['SKU','sku'],['Stock','stock'],['Low Stock Threshold','low_stock_threshold'],['Status','status']] },
-]
-
-const FORMATS = ['CSV','XLSX','PDF']
-
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
+import { Link } from 'react-router-dom'
 
 export default function BulkExport() {
-  const [selectedType, setSelectedType]     = useState('products')
-  const [selectedFormat, setSelectedFormat] = useState('CSV')
-  const [selectedFields, setSelectedFields] = useState(null)
-  const [dateFrom, setDateFrom]             = useState('')
-  const [dateTo, setDateTo]                 = useState('')
-  const [filterStatus, setFilterStatus]     = useState('all')
-  const [exporting, setExporting]           = useState(false)
-  const [downloadingType, setDownloadingType] = useState(null)
-  // Real export history — there's no backend storage for past export
-  // files, so this only ever reflects exports made this session, rather
-  // than a fabricated multi-month audit trail.
-  const [history, setHistory]               = useState([])
-
-  const typeConfig = EXPORT_TYPES.find(t=>t.key===selectedType)
-  const fields     = useMemo(() => selectedFields || typeConfig.fields, [selectedFields, typeConfig])
-
-  function handleTypeChange(key) {
-    setSelectedType(key); setSelectedFields(null)
-  }
-
-  function toggleField(f) {
-    const current = fields
-    if (current.includes(f)) {
-      if (current.length===1) return
-      setSelectedFields(current.filter(x=>x!==f))
-    } else {
-      setSelectedFields([...current,f])
-    }
-  }
-
-  // Shared by the main "Export" button and each history row's re-download —
-  // both trigger a real CSV fetch + browser download for the given type.
-  async function downloadExport(type, params = {}) {
-    const res = await api.get(`/admin/config/export`, {
-      params: { type, ...params },
-      responseType: 'blob'
-    })
-    const blob = new Blob([res.data], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    const filename = `${type}_export_${new Date().toISOString().slice(0,10)}.csv`
-    link.href = url
-    link.setAttribute('download', filename)
-    document.body.appendChild(link)
-    link.click()
-    link.parentNode.removeChild(link)
-    window.URL.revokeObjectURL(url)
-    return { filename, blob }
-  }
-
-  async function handleExport() {
-    if (selectedFormat !== 'CSV') {
-      toast.error('Only CSV format is currently supported for direct exports.')
-      return
-    }
-    setExporting(true)
-    try {
-      const { filename, blob } = await downloadExport(selectedType, {
-        fields: fields.map(f => f[1]).join(','),
-        status: filterStatus,
-        date_from: dateFrom || undefined,
-        date_to: dateTo || undefined,
-      })
-      setHistory(p => [{
-        type: selectedType,
-        file: filename,
-        by: 'Admin',
-        rows: 'All',
-        format: 'CSV',
-        date: new Date().toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }),
-        size: `${Math.round(blob.size / 1024)} KB`
-      }, ...p])
-      toast.success('Report exported successfully')
-    } catch {
-      toast.error('Failed to export data')
-    } finally {
-      setExporting(false)
-    }
-  }
-
-  async function handleHistoryDownload(row) {
-    setDownloadingType(row.type)
-    try {
-      await downloadExport(row.type)
-      toast.success('Download started')
-    } catch {
-      toast.error('Failed to download')
-    } finally {
-      setDownloadingType(null)
-    }
-  }
-
-  const B = 'var(--border)', S = '#6b7280'
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ marginBottom:24 }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Bulk Export</div>
-        <div style={{ fontSize:12,color:S,marginTop:2 }}>Products → Bulk Export</div>
-      </div>
-
-      <div className="grid-sidebar-split" style={{ display:'grid',gridTemplateColumns:'1fr 340px',gap:20,alignItems:'start' }}>
-        {/* Left: config */}
-        <div>
-          {/* Export Type */}
-          <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16 }}>
-            <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>What to export?</div>
-            <div className="grid-stats-auto" style={{ padding:20,display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10 }}>
-              {EXPORT_TYPES.map(t=>(
-                <button key={t.key} onClick={()=>handleTypeChange(t.key)}
-                  style={{ display:'flex',flexDirection:'column',alignItems:'flex-start',gap:6,padding:14,borderRadius:10,border:`2px solid ${selectedType===t.key?t.color:B}`,background:selectedType===t.key?`${t.color}0d`:'#fff',cursor:'pointer',textAlign:'left',transition:'all .15s' }}>
-                  <i className={t.icon} style={{ fontSize:20,color:t.color }}/>
-                  <span style={{ fontWeight:700,fontSize:12,color:'var(--text-primary)' }}>{t.label}</span>
-                  <span style={{ fontSize:11,color:S }}>{typeConfig?.fields.length} fields</span>
-                </button>
-              ))}
-            </div>
+    <div className="container-fluid">
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
+              <h6 className="flex-grow-1 mb-0">Bulk Export</h6>
+              <ul className="breadcrumb flex-shrink-0 mb-0">
+                  <li className="breadcrumb-item"><a href="#">Products</a></li>
+                  <li className="breadcrumb-item active">Bulk Export</li>
+              </ul>
           </div>
-
-          {/* Field selection */}
-          <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16 }}>
-            <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-              <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Select Fields ({fields.length}/{typeConfig.fields.length})</span>
-              <div style={{ display:'flex',gap:8 }}>
-                <button style={{ ...btnL,padding:'5px 10px',fontSize:12 }} onClick={()=>setSelectedFields([...typeConfig.fields])}>All</button>
-                <button style={{ ...btnL,padding:'5px 10px',fontSize:12 }} onClick={()=>setSelectedFields(null)}>Reset</button>
+          <div className="card mb-3">
+              <div className="card-header">
+                  <h5 className="card-title mb-0">Product Bulk Export</h5>
               </div>
-            </div>
-            <div style={{ padding:16,display:'flex',flexWrap:'wrap',gap:8 }}>
-              {typeConfig.fields.map(f=>(
-                <button key={f[1]} onClick={()=>toggleField(f)}
-                  style={{ display:'inline-flex',alignItems:'center',gap:5,padding:'5px 12px',borderRadius:20,border:`1.5px solid ${fields.includes(f)?typeConfig.color:B}`,background:fields.includes(f)?`${typeConfig.color}12`:'var(--bg-card)',color:fields.includes(f)?typeConfig.color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontSize:12,fontWeight:600 }}>
-                  {fields.includes(f)&&<i className="ri-check-line" style={{ fontSize:15 }}/>}
-                  {f[0]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
-            <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Filter Data</div>
-            <div style={{ padding:20,display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14 }}>
-              <div>
-                <label style={LBL}>Status</label>
-                <select style={inp} value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
-                  <option value="all">All Status</option>
-                  <option value="active">Active Only</option>
-                  <option value="inactive">Inactive Only</option>
-                </select>
-              </div>
-              <div>
-                <label style={LBL}>Date From</label>
-                <input type="date" style={inp} value={dateFrom} onChange={e=>setDateFrom(e.target.value)}/>
-              </div>
-              <div>
-                <label style={LBL}>Date To</label>
-                <input type="date" style={inp} value={dateTo} onChange={e=>setDateTo(e.target.value)}/>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: format + download */}
-        <div style={{ position:'sticky',top:80 }}>
-          <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:16 }}>
-            <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Export Format</div>
-            <div style={{ padding:16,display:'flex',flexDirection:'column',gap:8 }}>
-              {FORMATS.map(fmt=>(
-                <label key={fmt} style={{ display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderRadius:10,border:`2px solid ${selectedFormat===fmt?'#1B4332':B}`,background:selectedFormat===fmt?'#f0fdf4':'#fff',cursor:'pointer' }}>
-                  <input type="radio" checked={selectedFormat===fmt} onChange={()=>setSelectedFormat(fmt)} style={{ accentColor:'#1B4332' }}/>
-                  <div>
-                    <div style={{ fontWeight:700,fontSize:13,color:'var(--text-primary)' }}>{fmt}</div>
-                    <div style={{ fontSize:11,color:S }}>
-                      {fmt==='CSV'?'Comma-separated, universal':fmt==='XLSX'?'Excel format with formatting':'Print-ready document'}
-                    </div>
+              <div className="card-body">
+                  <div className="row align-items-center g-4 mb-4">
+                      <div className="col-md-6 col-lg-4 col-xl-3">
+                          <label htmlFor="categorySelect" className="form-label">Category</label>
+                          <div id="categorySelect"></div>
+                      </div>
+                      <div className="col-md-6 col-lg-4 col-xl-3">
+                          <label htmlFor="filterStock" className="form-label">Stock Status</label>
+                          <div id="filterStock"></div>
+                      </div>
+                      <div className="col-md-6 col-lg-4 col-xl-3">
+                          <label htmlFor="filterPrice" className="form-label">Price Range</label>
+                          <div id="filterPrice"></div>
+                      </div>
+                      <div className="col-lg-5">
+                          <label htmlFor="productName" className="form-label">Product</label>
+                          <input type="text" className="form-control" id="productName" placeholder="Product name, SKU or barcode" />
+                      </div>
+                      <div className="col-md-6 col-lg-3">
+                          <div className="card mb-0">
+                              <label htmlFor="exportCsv" className="form-check check-success d-flex align-items-center gap-3 card-body">
+                                  <img src="data:image/png;base64,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" loading="lazy" alt="CSV" className="size-8 flex-shrink-0" />
+                                  <span className="form-check-label fw-semibold flex-grow-1">CSV</span>
+                                  <input className="form-check-input float-none ms-auto" type="radio" name="exportFormat" id="exportCsv" defaultValue="csv" />
+                              </label>
+                          </div>
+                      </div>
+                      <div className="col-md-6 col-lg-3">
+                          <div className="card mb-0">
+                              <label htmlFor="exportExcel" className="form-check check-success d-flex align-items-center gap-3 card-body">
+                                  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAdhAAAHYQGVw7i2AAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAABWpJREFUeJztm2tsFFUYhp8zO9vullLaCqW1BYMVAlEqCKZcJBJACsZoQEsqikaTIqiIRowhMaGoQCCKiRKjBCFcFI2SEFPQKHJRLg13RYillBpKKZReKKXd7V7m+KMwWilhdndmZwn7/Ptmz5nz7rsz53znshDn9kZEVLukRLk799xLUsoCFLqZpEknKT2tPjEluafZ91WQDZqUGw6PKSmNyIB+64o/RjDHLGH/Jyk15Q9XWkqeVfeXQrzgCLfynZ/PTFIT2AQoJmrqhNOVeEF1J/a26v4CBoUt3pUssgHVRD12MCD8Xy+gRdZ/xAbCssf3ViFugN0C7CZugN0C7CZugN0C7Oa2N0DP5HouKshSUQdKBUPpcXtjQ46je3JYjQoJwqkiHGFn4qah5iwvdPu9ntVAkQSQxioGPD4CnsbIGk9ykZCeCsK+pFL1eT0lAorsaDzQ5sV3paYtqAWvdPl5Rs9L7Vfa6qzUoAqYamUDN0MIkRRsa08S6vXdUdDnPxUMBDKsbF8BLJtuGkEgkFd8BC+2QlCLevuxMwoENLTm9qg3GzsGANIfjHqbMWUAmsEhyEQMrehM6p/Pi8Mf0+OVB75n26kD15VLSezGZ0+8hXp1fD9aW8HinetMkmoNhgzYWXWEdycU0ze1o7/MTunFztOHCWidH9nZ+VMYlzsMAE1Kluxab7Jc8zH0CngDPhZuX63HuenZFN43rlOZdHcKxQ8+rsdrDpVy5NxJk2Rah+E+YEv5XnZVHdXjeWOeJsHh1OPXR08jOcENQF1rE0t//dJEmdYRUif4zs8r8WsBoOM1eHZIAQAZ3dJ4buhkvdyCbau43N5qokzrCMmAioZqvjhYqsdzRxXiUhOYnT8Fl5oAwL4zf7L5xG/mqrSQkIfBD3dvpK61CYDeyenMGVnI8w90/Pr+YIB5P65AGp1RxQAhG9DS3sb7O9bq8ZsPFZHkdAGwomwTlQ015qmLAmElQt8e205Z9fFO12ouX+STfd+ZIiqahLW1JZH83VTLiD736tcCWhBNhjGZkZBY7UHzdXSuTu+/iyTe5lraetSHI9EwYT0BeZn3MG3w+E7X7krN5NWRT5kiKpqEbIAiBMsmvYxydRWntHyv/tmcEU/SLy3LPHVRIGQDnrm/gCFZ/QE4dr6SWZuXUdFQDUCimsCSgtnmKrSYkAxIdXdn/tgZevzB7o0EtCBLd23Qr43tN5TJA0aYp9BiQjJg/sMzSHenAHC8roqfKvYDsKV8Hwdr/tLLvTehGLcz0USZ1mHYgMGZuXrqC/DRnm/0hEciWfDLKj3O6ZHB3FHTTJZqDYYMEAiWTJyF4+pxgpP11Wz9T+cHcKimnB9OlunxK/lTyb0j20Sp1mDIgKK8CQzPHqjHy/d8jSavT3cX7VirT5acDpXFj8wySaZ1GEqE9p89wcQ1b+jx8QunuyxX2VjDuFWvdXr/nYqqmxKLGDKgstF4fn9tSLxViK1FURuIGwBcsFVBQEPasBx+DRUpNiHk23YJkE0eZLDrDRGHX0rNr1m4OaqgOt2uhX6vpw8w3bqGukY2etCqmm64Je9oCYx2tFg6grToG/O9lj2a6fCLQUYPSIhL7f2DZ5s/DWtDU4L0BpG+zl9OKAI1NSn0+4VPS9gnE7Km5w/zX/YclCbu6DrcCShu580LmkdLbBx2FgIlUY32lwciPO2tdneZsAIsEIqNR2Qiqq0IRIR/OrGbeCJktwC7iRtgtwC7iRsQbkWhiFtnB/TGyLANUDW1CsMHa2MTCafDPq3cfOyMNzkvpy8w1ERNUUWRYl5EidB5X9+ZvZ3VvwshxwuI6iwmEqSgHo31tV+VbbVbSxy7+Qd8NJoSYxNhVwAAAABJRU5ErkJggg==" loading="lazy" alt="Excel" className="h-8 flex-shrink-0" />
+                                  <span className="form-check-label fw-semibold flex-grow-1">Excel</span>
+                                  <input className="form-check-input float-none ms-auto" type="radio" name="exportFormat" id="exportExcel" defaultValue="excel" />
+                              </label>
+                          </div>
+                      </div>
+                      <div className="col-md-3 col-xl-2">
+                          <div className="d-flex gap-2">
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="switch-light-1" defaultChecked />
+                                  <label className="label" htmlFor="switch-light-1"></label>
+                              </div>
+                              <span className="lh-lg">Product Name</span>
+                          </div>
+                      </div>
+                      <div className="col-md-3 col-xl-2">
+                          <div className="d-flex gap-2">
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="switch-light-2" defaultChecked />
+                                  <label className="label" htmlFor="switch-light-2"></label>
+                              </div>
+                              <span className="lh-lg">SKU</span>
+                          </div>
+                      </div>
+                      <div className="col-md-3 col-xl-2">
+                          <div className="d-flex gap-2">
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="switch-light-3" defaultChecked />
+                                  <label className="label" htmlFor="switch-light-3"></label>
+                              </div>
+                              <span className="lh-lg">Category</span>
+                          </div>
+                      </div>
+                      <div className="col-md-3 col-xl-2">
+                          <div className="d-flex gap-2">
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="switch-light-4" defaultChecked />
+                                  <label className="label" htmlFor="switch-light-4"></label>
+                              </div>
+                              <span className="lh-lg">Price</span>
+                          </div>
+                      </div>
+                      <div className="col-md-3 col-xl-2">
+                          <div className="d-flex gap-2">
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="switch-light-5" defaultChecked />
+                                  <label className="label" htmlFor="switch-light-5"></label>
+                              </div>
+                              <span className="lh-lg">Stock</span>
+                          </div>
+                      </div>
+                      <div className="col-md-3 col-xl-2">
+                          <div className="d-flex gap-2">
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="switch-light-6" defaultChecked />
+                                  <label className="label" htmlFor="switch-light-6"></label>
+                              </div>
+                              <span className="lh-lg">Status</span>
+                          </div>
+                      </div>
                   </div>
-                </label>
-              ))}
-            </div>
+              </div>
           </div>
 
-          {/* Summary */}
-          <div style={{ background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:12,padding:16,marginBottom:14 }}>
-            <div style={{ fontWeight:700,fontSize:13,color:'#166534',marginBottom:8 }}>Export Summary</div>
-            <div style={{ fontSize:12,color:'var(--text-secondary)',display:'flex',flexDirection:'column',gap:5 }}>
-              <div style={{ display:'flex',justifyContent:'space-between' }}><span style={{ color:S }}>Type</span><span style={{ fontWeight:600 }}>{typeConfig?.label}</span></div>
-              <div style={{ display:'flex',justifyContent:'space-between' }}><span style={{ color:S }}>Format</span><span style={{ fontWeight:600 }}>{selectedFormat}</span></div>
-              <div style={{ display:'flex',justifyContent:'space-between' }}><span style={{ color:S }}>Fields</span><span style={{ fontWeight:600 }}>{fields.length} selected</span></div>
-              <div style={{ display:'flex',justifyContent:'space-between' }}><span style={{ color:S }}>Filter</span><span style={{ fontWeight:600,textTransform:'capitalize' }}>{filterStatus==='all'?'None':filterStatus}</span></div>
-            </div>
+
+          <div className="card mb-3">
+              <div className="card-header d-flex justify-content-between align-items-center">
+                  <span className="fw-semibold">Preview</span>
+                  <div className="d-flex gap-2">
+                      <button className="btn btn-outline-light border btn-icon"><i className="ri-loop-right-line"></i></button>
+                      <button className="btn btn-primary">Export Now</button>
+                  </div>
+              </div>
+              <div className="card-body">
+                  <div className="table-responsive">
+                      <table className="table table-borderless align-middle mb-0 text-nowrap">
+                          <thead className="border-bottom">
+                              <tr>
+                                  <th className="fw-medium text-muted">Product Name</th>
+                                  <th className="fw-medium text-muted">SKU</th>
+                                  <th className="fw-medium text-muted">Category</th>
+                                  <th className="fw-medium text-muted">Price (₹)</th>
+                                  <th className="fw-medium text-muted">Status</th>
+                                  <th className="fw-medium text-muted">Stock</th>
+                                  <th className="fw-medium text-muted">Action</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              <tr>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <div className="avatar size-9 border rounded-1 p-1">
+                                              <img src="../assets/img-01-BBWp8t8E.png" loading="lazy" alt="Product" className="img-fluid" />
+                                          </div>
+                                          <a href="#" className="fw-medium text-reset">Apple iPhone 15</a>
+                                      </div>
+                                  </td>
+                                  <td>APL-15</td>
+                                  <td>Electronics</td>
+                                  <td>79,999</td>
+                                  <td>In Stock</td>
+                                  <td>25</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-download-line"></i></button>
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <div className="avatar size-9 border rounded-1 p-1">
+                                              <img src="../assets/img-02-ClVfz9I5.png" loading="lazy" alt="Product" className="img-fluid" />
+                                          </div>
+                                          <a href="#" className="fw-medium text-reset">Nike Air Max</a>
+                                      </div>
+                                  </td>
+                                  <td>NIK-001</td>
+                                  <td>Footwear</td>
+                                  <td>12,000</td>
+                                  <td>Low Stock</td>
+                                  <td>10</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-download-line"></i></button>
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <div className="avatar size-9 border rounded-1 p-1">
+                                              <img src="../assets/img-03-oTTY_McP.png" loading="lazy" alt="Product" className="img-fluid" />
+                                          </div>
+                                          <a href="#" className="fw-medium text-reset">Leather Jacket</a>
+                                      </div>
+                                  </td>
+                                  <td>FAS-101</td>
+                                  <td>Fashion</td>
+                                  <td>7,500</td>
+                                  <td>In Stock</td>
+                                  <td>15</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-download-line"></i></button>
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <div className="avatar size-9 border rounded-1 p-1">
+                                              <img src="../assets/img-04-DZ4OtBxS.png" loading="lazy" alt="Product" className="img-fluid" />
+                                          </div>
+                                          <a href="#" className="fw-medium text-reset">Samsung TV</a>
+                                      </div>
+                                  </td>
+                                  <td>SAM-55</td>
+                                  <td>Electronics</td>
+                                  <td>45,000</td>
+                                  <td>Out of Stock</td>
+                                  <td>56</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-download-line"></i></button>
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <div className="avatar size-9 border rounded-1 p-1">
+                                              <img src="../assets/img-05-DPzi-ptA.png" loading="lazy" alt="Sony Headphones" className="img-fluid" />
+                                          </div>
+                                          <a href="#" className="fw-medium text-reset">Sony Headphones</a>
+                                      </div>
+                                  </td>
+                                  <td>SON-200</td>
+                                  <td>Electronics</td>
+                                  <td>15,000</td>
+                                  <td>In Stock</td>
+                                  <td>48</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-download-line"></i></button>
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <div className="avatar size-9 border rounded-1 p-1">
+                                              <img src="../assets/img-06-DdkuSG6a.png" loading="lazy" alt="Adidas Sneakers" className="img-fluid" />
+                                          </div>
+                                          <a href="#" className="fw-medium text-reset">Adidas Sneakers</a>
+                                      </div>
+                                  </td>
+                                  <td>ADI-302</td>
+                                  <td>Footwear</td>
+                                  <td>8,500</td>
+                                  <td>In Stock</td>
+                                  <td>36</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-download-line"></i></button>
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <div className="avatar size-9 border rounded-1 p-1">
+                                              <img src="../assets/img-07-9mjzrP7h.png" loading="lazy" alt="LG Refrigerator" className="img-fluid" />
+                                          </div>
+                                          <a href="#" className="fw-medium text-reset">LG Refrigerator</a>
+                                      </div>
+                                  </td>
+                                  <td>LG-410</td>
+                                  <td>Home Appliances</td>
+                                  <td>32,000</td>
+                                  <td>Out of Stock</td>
+                                  <td>45</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-download-line"></i></button>
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <div className="avatar size-9 border rounded-1 p-1">
+                                              <img src="../assets/img-08-BXmGY-HZ.png" loading="lazy" alt="Sony PlayStation 5" className="img-fluid" />
+                                          </div>
+                                          <a href="#" className="fw-medium text-reset">Sony PlayStation 5</a>
+                                      </div>
+                                  </td>
+                                  <td>SONY-PS5</td>
+                                  <td>Electronics</td>
+                                  <td>50,000</td>
+                                  <td>In Stock</td>
+                                  <td>29</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-download-line"></i></button>
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <div className="avatar size-9 border rounded-1 p-1">
+                                              <img src="../assets/img-09-CqG2QIp1.png" loading="lazy" alt="Dell Laptop XPS 13" className="img-fluid" />
+                                          </div>
+                                          <a href="#" className="fw-medium text-reset">Dell Laptop XPS 13</a>
+                                      </div>
+                                  </td>
+                                  <td>DEL-X13</td>
+                                  <td>Electronics</td>
+                                  <td>95,000</td>
+                                  <td>In Stock</td>
+                                  <td>63</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-download-line"></i></button>
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                          </tbody>
+                      </table>
+                  </div>
+                  <div className="row align-items-center g-3 mt-3">
+                      <div className="col-md-6">
+                          <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b> of <b className="ms-1">18</b> Results</p>
+                      </div>
+                      <div className="col-md-6">
+                          <nav aria-label="Page navigation example">
+                              <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
+                                  <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
+                                  <li className="page-item active"><a className="page-link" href="#">1</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">2</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
+                              </ul>
+                          </nav>
+                      </div>
+                  </div>
+              </div>
           </div>
 
-          <button style={{ ...btnP,width:'100%',justifyContent:'center',background:typeConfig.color,opacity:exporting?.7:1 }} disabled={exporting} onClick={handleExport}>
-            {exporting ? <><i className="ri-loader-4-line"/>Exporting…</> : <><i className="ri-download-cloud-line"/>Export {typeConfig?.label}</>}
-          </button>
-        </div>
-      </div>
 
-      {/* Export History */}
-      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginTop:20 }}>
-        <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Export History</div>
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%',borderCollapse:'collapse' }}>
-            <thead>
-              <tr>{['File','Type','Format','Rows','Exported By','Date','Size',''].map(h=><th key={h} style={TH}>{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {history.length===0&&(
-                <tr><td colSpan={8} style={{ ...TD,textAlign:'center',padding:'40px 0',color:S }}>
-                  <i className="ri-download-cloud-2-line" style={{ fontSize:43,display:'block',marginBottom:8 }}/>No exports yet this session
-                </td></tr>
-              )}
-              {history.map((row,i)=>{
-                const cfg = EXPORT_TYPES.find(t=>t.key===row.type)||EXPORT_TYPES[0]
-                return (
-                  <tr key={i}>
-                    <td style={TD}>
-                      <div style={{ display:'flex',alignItems:'center',gap:10 }}>
-                        <div style={{ width:28,height:28,borderRadius:6,background:`${cfg.color}20`,display:'flex',alignItems:'center',justifyContent:'center' }}>
-                          <i className={cfg.icon} style={{ color:cfg.color,fontSize:14 }}/>
-                        </div>
-                        <span style={{ fontWeight:600,fontSize:12 }}>{row.file}</span>
+          <div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered modal-xs">
+                  <div className="modal-content p-7 text-center">
+                      <div className="d-flex justify-content-center mb-4">
+                          <div className="size-14 bg-danger-subtle rounded-circle d-flex align-items-center justify-content-center size-16">
+                              <i className="ri-delete-bin-line text-danger fs-2xl"></i>
+                          </div>
                       </div>
-                    </td>
-                    <td style={TD}><span style={{ background:'var(--bg-muted)',color:'var(--text-secondary)',borderRadius:20,padding:'2px 8px',fontSize:11,fontWeight:500 }}>{cfg.label}</span></td>
-                    <td style={TD}><code style={{ fontSize:11,background:'var(--bg-muted)',padding:'2px 6px',borderRadius:4,color:'var(--text-secondary)' }}>{row.format}</code></td>
-                    <td style={{ ...TD,color:S }}>{row.rows}</td>
-                    <td style={{ ...TD,color:S }}>{row.by}</td>
-                    <td style={{ ...TD,color:S,fontSize:12 }}>{row.date}</td>
-                    <td style={{ ...TD,color:S,fontSize:12 }}>{row.size}</td>
-                    <td style={TD}>
-                      <div style={{ display:'flex',gap:4 }}>
-                        <button onClick={()=>handleHistoryDownload(row)} disabled={downloadingType===row.type} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0f4ff',color:'#405189',cursor:downloadingType===row.type?'wait':'pointer' }}><i className={downloadingType===row.type?'ri-loader-4-line':'ri-download-line'}/></button>
-                        <button onClick={()=>setHistory(p=>p.filter((_,idx)=>idx!==i))} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#fff0f0',color:'#f06548',cursor:'pointer' }}><i className="ri-delete-bin-line"/></button>
+                      <h5 className="mb-4 lh-base">Are you sure you want to delete this File?</h5>
+                      <input type="hidden" id="deleteSubCategoryId" />
+                      <div className="d-flex justify-content-center align-items-center gap-2">
+                          <button type="button" className="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+                          <button type="button" className="btn btn-link text-reset" data-bs-dismiss="modal">Cancel</button>
                       </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  </div>
+              </div>
+          </div>
     </div>
   )
 }

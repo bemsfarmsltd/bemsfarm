@@ -1,260 +1,152 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const btnD = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
-
-function fmtCurrency(n) { return `₦${Number(n||0).toLocaleString('en-NG')}` }
-
-function stockBadge(p) {
-  if ((p.stock||0)===0) return ['Out of Stock','#fee2e2','#991b1b']
-  if ((p.stock||0)<=(p.low_stock_threshold||10)) return ['Low Stock','#fef3c7','#92400e']
-  return ['In Stock','#dcfce7','#166534']
-}
-function statusBadge(s) {
-  if (s==='active') return ['#dcfce7','#166534']
-  if (s==='draft') return ['#fef3c7','#92400e']
-  return ['#fee2e2','#991b1b']
-}
-
-function Badge({ label, bg, color }) {
-  return <span style={{ background:bg,color,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600,whiteSpace:'nowrap' }}>{label}</span>
-}
+import { Link } from 'react-router-dom'
 
 export default function ProductsList() {
-  const [products, setProducts] = useState([])
-  const [total, setTotal]       = useState(0)
-  const [pages, setPages]       = useState(1)
-  const [page, setPage]         = useState(1)
-  const [loading, setLoading]   = useState(true)
-  const [searchParams] = useSearchParams()
-  // Picked up once on mount so the topbar's "search products" box has
-  // somewhere real to land instead of being purely decorative.
-  const [search, setSearch]     = useState(() => searchParams.get('search') || '')
-  const [category, setCategory] = useState('')
-  const [status, setStatus]     = useState('')
-  const [stock, setStock]       = useState('')
-  const [categories, setCategories] = useState([])
-  const [deleteId, setDeleteId] = useState(null)
-  const [deleting, setDeleting] = useState(false)
-  const [selected, setSelected] = useState([])
-  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/admin/products', { params:{ page,limit:20,search,category,status,stock } })
-      setProducts(res.data.products)
-      setTotal(res.data.total)
-      setPages(res.data.pages)
-    } catch { toast.error('Failed to load products') }
-    finally { setLoading(false) }
-  }, [page, search, category, status, stock])
-
-  // Split into two effects so a keystroke in the search box only ever
-  // triggers the debounced load below, not an extra immediate one — `load`
-  // itself is deliberately left out of these dependency arrays since its
-  // identity changes on every keystroke (it closes over `search`).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load() }, [page, category, status, stock])
-  useEffect(() => { api.get('/admin/products/form-data').then(r=>setCategories(r.data.categories||[])).catch(()=>{}) }, [])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { const t=setTimeout(()=>{ setPage(1); load() },400); return ()=>clearTimeout(t) }, [search])
-
-  const handleDelete = async () => {
-    if (!deleteId) return
-    setDeleting(true)
-    try {
-      await api.delete(`/admin/products/${deleteId}`)
-      toast.success('Product archived'); setDeleteId(null); load()
-    } catch { toast.error('Failed to delete product') }
-    finally { setDeleting(false) }
-  }
-
-  const handleBulkDelete = async () => {
-    setDeleting(true)
-    try {
-      const results = await Promise.allSettled(selected.map(id => api.delete(`/admin/products/${id}`)))
-      const ok = results.filter(r => r.status === 'fulfilled').length
-      const failed = results.length - ok
-      if (ok) toast.success(`Archived ${ok} product${ok===1?'':'s'}`)
-      if (failed) toast.error(`Failed to archive ${failed} product${failed===1?'':'s'}`)
-      setSelected([]); setBulkDeleteConfirm(false); load()
-    } finally { setDeleting(false) }
-  }
-
-  const toggleSelect = id => setSelected(p => p.includes(id) ? p.filter(x=>x!==id) : [...p,id])
-  const toggleAll    = () => setSelected(p => p.length===products.length ? [] : products.map(p=>p.id))
-
-  const B = 'var(--border)', S = '#6b7280', BG2 = 'var(--bg-subtle)'
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      {/* Page header */}
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12 }}>
-        <div>
-          <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Products</div>
-          <div style={{ fontSize:12,color:S,marginTop:2 }}>{total} products total</div>
-        </div>
-        <div style={{ display:'flex',gap:8,flexWrap:'wrap' }}>
-          {selected.length>0&&<button style={btnD} onClick={()=>setBulkDeleteConfirm(true)}><i className="ri-delete-bin-line"/>Delete ({selected.length})</button>}
-          <Link to="/products/import" style={{ ...btnL,textDecoration:'none' }}><i className="ri-upload-cloud-2-line"/>Import</Link>
-          <Link to="/products/add" style={{ ...btnP,textDecoration:'none' }}><i className="ri-add-line"/>Add Product</Link>
-        </div>
-      </div>
-
-      {/* Table card */}
-      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
-        {/* Filters */}
-        <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap' }}>
-          <div style={{ position:'relative',flex:'1 1 220px' }}>
-            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
-            <input type="text" placeholder="Search products…" value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} style={{ ...inp,paddingLeft:34 }}/>
+    <div className="container-fluid">
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
+              <h6 className="flex-grow-1 mb-0">Products List</h6>
+              <ul className="breadcrumb flex-shrink-0 mb-0">
+                  <li className="breadcrumb-item"><a href="#">Products</a></li>
+                  <li className="breadcrumb-item active">Products List</li>
+              </ul>
           </div>
-          <select style={{ ...inp,width:'auto',minWidth:150 }} value={category} onChange={e=>{ setCategory(e.target.value); setPage(1) }}>
-            <option value="">All Categories</option>
-            {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <select style={{ ...inp,width:'auto',minWidth:130 }} value={status} onChange={e=>{ setStatus(e.target.value); setPage(1) }}>
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="draft">Draft</option>
-          </select>
-          <select style={{ ...inp,width:'auto',minWidth:130 }} value={stock} onChange={e=>{ setStock(e.target.value); setPage(1) }}>
-            <option value="">All Stock</option>
-            <option value="low">Low Stock</option>
-            <option value="out">Out of Stock</option>
-          </select>
-        </div>
-
-        {/* Table */}
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%',borderCollapse:'collapse' }}>
-            <thead>
-              <tr>
-                <th style={TH}><input type="checkbox" checked={selected.length===products.length&&products.length>0} onChange={toggleAll} style={{ cursor:'pointer' }}/></th>
-                {['Product','Category','Price','Cost','Stock','Status','Revenue','Actions'].map(h=><th key={h} style={TH}>{h}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {loading&&[...Array(6)].map((_,i)=>(
-                <tr key={i}>{[...Array(9)].map((_,j)=><td key={j} style={TD}><div style={{ height:14,background:'#f0f0f0',borderRadius:4 }}/></td>)}</tr>
-              ))}
-              {!loading&&products.map(p=>{
-                const [slbl,sbg,sclr]=stockBadge(p); const [stbg,stclr]=statusBadge(p.status)
-                return (
-                  <tr key={p.id} style={{ background:selected.includes(p.id)?'#f0fdf4':'transparent' }}>
-                    <td style={TD}><input type="checkbox" checked={selected.includes(p.id)} onChange={()=>toggleSelect(p.id)} style={{ cursor:'pointer' }}/></td>
-                    <td style={TD}>
-                      <div style={{ display:'flex',alignItems:'center',gap:10 }}>
-                        {p.image_url
-                          ? <img src={p.image_url} alt={p.name} style={{ width:36,height:36,borderRadius:8,objectFit:'cover',border:`1px solid ${B}`,flexShrink:0 }}/>
-                          : <div style={{ width:36,height:36,borderRadius:8,background:'#f0f4ff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0 }}>🌿</div>
-                        }
-                        <div>
-                          <div style={{ fontWeight:600,fontSize:13 }}>{p.name}</div>
-                          <div style={{ fontSize:10,color:S }}>{p.sku}</div>
-                        </div>
+          <div className="card">
+              <div className="card-header">
+                  <div className="d-flex flex-wrap align-items-center gap-5">
+                      <div className="flex-grow-1">
+                          <h6 className="mb-1 card-title">Products List</h6>
                       </div>
-                    </td>
-                    <td style={{ ...TD,color:S,fontSize:12 }}>{p.category||'—'}</td>
-                    <td style={{ ...TD,fontWeight:600 }}>{fmtCurrency(p.unit_price||p.price)}</td>
-                    <td style={{ ...TD,color:S }}>{p.cost_price?fmtCurrency(p.cost_price):'—'}</td>
-                    <td style={TD}>
-                      <div style={{ display:'flex',alignItems:'center',gap:6 }}>
-                        <Badge label={slbl} bg={sbg} color={sclr}/>
-                        <span style={{ fontSize:11,color:S }}>({p.stock||0})</span>
+                      <div className="d-flex flex-wrap gap-2 flex-shrink-0">
+                          <div className="dropdown flex-shrink-0">
+                              <button className="btn btn-light d-flex align-items-center" type="button" id="exportDropdownButton" data-bs-toggle="dropdown" aria-expanded="false" title="dropdown-button">
+                                  <i data-lucide="download" className="size-4 me-1"></i> Export
+                              </button>
+                              <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdownButton">
+                                  <li className="dropdown-item">
+                                      <i data-lucide="file-text" className="size-4 me-1 align-middle"></i> Export to Excel
+                                  </li>
+                                  <li className="dropdown-item">
+                                      <i data-lucide="file" className="size-4 me-1 align-middle"></i> Export to CSV
+                                  </li>
+                                  <li className="dropdown-item">
+                                      <i data-lucide="file-output" className="size-4 me-1 align-middle"></i> Export to PDF
+                                  </li>
+                                  <li className="dropdown-item">
+                                      <i data-lucide="printer" className="size-4 me-1 align-middle"></i> Print
+                                  </li>
+                              </ul>
+                          </div>
                       </div>
-                    </td>
-                    <td style={TD}><Badge label={p.status} bg={stbg} color={stclr}/></td>
-                    <td style={{ ...TD,fontWeight:600,color:'#16a34a' }}>{p.revenue?fmtCurrency(p.revenue):'₦0'}</td>
-                    <td style={TD}>
-                      <div style={{ display:'flex',gap:4 }}>
-                        <Link to={`/products/${p.id}`} title="View" style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:BG2,color:'var(--text-secondary)',textDecoration:'none' }}><i className="ri-eye-line"/></Link>
-                        <Link to={`/products/${p.id}/edit`} title="Edit" style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:BG2,color:'var(--text-secondary)',textDecoration:'none' }}><i className="ri-pencil-line"/></Link>
-                        <button title="Delete" onClick={()=>setDeleteId(p.id)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:BG2,color:'#f06548',cursor:'pointer' }}><i className="ri-delete-bin-line"/></button>
+                  </div>
+              </div>
+              <div className="card-body">
+                  <div className="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                      <div className="flex-shrink-0">
+                          <label htmlFor="searchProductInput" className="form-label d-none">Search</label>
+                          <div className="position-relative">
+                              <input type="text" className="form-control ps-9" id="searchProductInput" placeholder="Search for..." />
+                              <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-3 translate-middle-y"></i>
+                          </div>
                       </div>
-                    </td>
-                  </tr>
-                )
-              })}
-              {!loading&&products.length===0&&(
-                <tr><td colSpan={9} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                  <i className="ri-inbox-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>
-                  No products found. <Link to="/products/add" style={{ color:'#1B4332' }}>Add your first product →</Link>
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {pages>1&&(
-          <div style={{ padding:'12px 20px',borderTop:`1px solid ${B}`,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:8 }}>
-            <span style={{ fontSize:12,color:S }}>Showing {(page-1)*20+1}–{Math.min(page*20,total)} of {total} products</span>
-            <div style={{ display:'flex',gap:4 }}>
-              <button disabled={page===1} onClick={()=>setPage(p=>p-1)} style={{ ...btnL,padding:'5px 10px',opacity:page===1?.5:1,cursor:page===1?'not-allowed':'pointer' }}><i className="ri-arrow-left-s-line"/></button>
-              {[...Array(Math.min(pages,5))].map((_,i)=>(
-                <button key={i} onClick={()=>setPage(i+1)} style={{ ...page===i+1?{...btnP,minWidth:34}:{...btnL,minWidth:34},padding:'5px 12px',justifyContent:'center' }}>{i+1}</button>
-              ))}
-              <button disabled={page===pages} onClick={()=>setPage(p=>p+1)} style={{ ...btnL,padding:'5px 10px',opacity:page===pages?.5:1,cursor:page===pages?'not-allowed':'pointer' }}><i className="ri-arrow-right-s-line"/></button>
-            </div>
+                      <div className="d-flex flex-wrap flex-md-nowrap gap-2">
+                          <button type="button" className="btn btn-danger btn-icon flex-shrink-0 d-none trash-button"><i data-lucide="trash-2" className="size-5"></i></button>
+                          <div id="stockSelect" className="min-w-40"></div>
+                          <div id="priceSelect" className="min-w-36"></div>
+                          <div className="dropdown flex-shrink-0">
+                              <button className="btn btn-light d-flex align-items-center" type="button" id="filterDropdownButton" data-bs-toggle="dropdown" aria-expanded="false" title="dropdown-button">
+                                  <i data-lucide="filter" className="size-4 me-1"></i> Filters
+                              </button>
+                              <ul className="dropdown-menu dropdown-menu-end p-3 w-64" aria-labelledby="filterDropdownButton">
+                                  <h6 className="mb-4">Filter Options</h6>
+                                  <form action="#!" id="filterForm">
+                                      <h6 className="mb-2 fs-sm">Status</h6>
+                                      <div className="d-flex gap-4 align-items-center mb-4">
+                                          <div className="form-check check-primary">
+                                              <input className="form-check-input mt-0" type="checkbox" id="publishedStatus" />
+                                              <label className="form-check-label" htmlFor="publishedStatus">
+                                                  Published
+                                              </label>
+                                          </div>
+                                          <div className="form-check check-primary">
+                                              <input className="form-check-input mt-0" type="checkbox" id="inactiveStatus" />
+                                              <label className="form-check-label" htmlFor="inactiveStatus">
+                                                  Inactive
+                                              </label>
+                                          </div>
+                                      </div>
+                                      <label className="mb-3 form-label">Price Range</label>
+                                      <div id="slider"></div>
+                                      <div className="d-flex align-items-center justify-content-end gap-2 mt-5">
+                                          <button type="reset" className="btn-sm btn btn-light">Reset</button>
+                                          <button type="submit" className="btn-sm btn btn-primary">Apply</button>
+                                      </div>
+                                  </form>
+                              </ul>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              <div className="card-body pt-0">
+                  <div className="table-card table-responsive">
+                      <table className="table table-borderless mb-0 text-nowrap align-middle">
+                          <thead>
+                              <tr className="bg-light border-bottom">
+                                  <th scope="col">
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" title="checkbox" type="checkbox" id="checkboxDataAll" />
+                                          <label className="form-check-label d-none" htmlFor="checkboxDataAll">
+                                              All Checkbox
+                                          </label>
+                                      </div>
+                                  </th>
+                                  <th scope="col" className="text-muted fw-medium" data-sort="id">Product ID</th>
+                                  <th scope="col" className="text-muted fw-medium" data-sort="name">Product</th>
+                                  <th scope="col" className="text-muted fw-medium" data-sort="category">Category</th>
+                                  <th scope="col" className="text-muted fw-medium" data-sort="price">Price</th>
+                                  <th scope="col" className="text-muted fw-medium" data-sort="quantity">QTY</th>
+                                  <th scope="col" className="text-muted fw-medium" data-sort="inStock">Stock</th>
+                                  <th scope="col" className="text-muted fw-medium" data-sort="discount">Discount</th>
+                                  <th scope="col" className="text-muted fw-medium" data-sort="revenue">Revenue</th>
+                                  <th scope="col" className="text-muted fw-medium" data-sort="brand">Brand</th>
+                                  <th scope="col" className="text-muted fw-medium" data-sort="cost">Cost</th>
+                                  <th scope="col" className="text-muted fw-medium" data-sort="status">status</th>
+                                  <th scope="col" className="text-muted fw-medium">Action</th>
+                              </tr>
+                          </thead>
+                          <tbody id="productsTableBody"></tbody>
+                      </table>
+                  </div>
+                  <div className="row align-items-center g-3 mt-3">
+                      <div className="col-md-6">
+                          <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b>of<b className="ms-1">10</b> Results</p>
+                      </div>
+                      <div className="col-md-6">
+                          <nav aria-label="Page navigation example">
+                              <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
+                                  <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i> Previous</a></li>
+                                  <li className="page-item active"><a className="page-link" href="#">1</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">Next <i data-lucide="chevron-right" className="size-4"></i></a></li>
+                              </ul>
+                          </nav>
+                      </div>
+                  </div>
+              </div>
           </div>
-        )}
-      </div>
 
-      {/* Delete modal */}
-      {deleteId&&(
-        <>
-          <div onClick={()=>setDeleteId(null)} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:380,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:24 }}/></div>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>Delete Product?</span>
-                <button onClick={()=>setDeleteId(null)} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+          <div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered modal-xs mx-auto">
+                  <div className="modal-content p-7 text-center">
+                      <div className="size-14 bg-danger-subtle rounded-circle avatar mx-auto mb-4">
+                          <i data-lucide="trash-2" className="size-6 text-danger"></i>
+                      </div>
+                      <h5 className="mb-4 lh-base">Are you sure you want to delete this Product?</h5>
+                      <div className="d-flex justify-content-center align-items-center gap-2">
+                          <button type="button" className="btn btn-danger delete-btn" data-bs-dismiss="modal">Delete</button>
+                          <button type="button" className="btn btn-active-secondary" data-bs-dismiss="modal">Cancel</button>
+                      </div>
+                  </div>
               </div>
-              <div style={{ padding:24,textAlign:'center' }}>
-                <p style={{ color:S,fontSize:14,marginBottom:24 }}>It will be archived and hidden from the store.</p>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={()=>setDeleteId(null)}>Cancel</button>
-                  <button style={{ ...btnD,flex:1,justifyContent:'center' }} onClick={handleDelete} disabled={deleting}>{deleting?'Deleting…':'Yes, Delete'}</button>
-                </div>
-              </div>
-            </div>
           </div>
-        </>
-      )}
-
-      {/* Bulk delete modal */}
-      {bulkDeleteConfirm&&(
-        <>
-          <div onClick={()=>setBulkDeleteConfirm(false)} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:380,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:24 }}/></div>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>Delete {selected.length} Product{selected.length===1?'':'s'}?</span>
-                <button onClick={()=>setBulkDeleteConfirm(false)} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
-              </div>
-              <div style={{ padding:24,textAlign:'center' }}>
-                <p style={{ color:S,fontSize:14,marginBottom:24 }}>They will be archived and hidden from the store.</p>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={()=>setBulkDeleteConfirm(false)}>Cancel</button>
-                  <button style={{ ...btnD,flex:1,justifyContent:'center' }} onClick={handleBulkDelete} disabled={deleting}>{deleting?'Deleting…':'Yes, Delete'}</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   )
 }

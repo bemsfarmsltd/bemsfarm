@@ -1,151 +1,171 @@
-import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-const NAV = [
-  { label:'General',      to:'/settings/general'        },
-  { label:'Tax',          to:'/settings/tax'            },
-  { label:'Coupons',      to:'/settings/coupons'        },
-  { label:'POS',          to:'/settings/pos'            },
-  { label:'Payment',      to:'/settings/payment'        },
-  { label:'Currencies',   to:'/settings/currencies'     },
-  { label:'Receipts',     to:'/settings/invoices'       },
-  { label:'Manager',      to:'/settings/manager'        },
-  { label:'Notifications',to:'/settings/notifications'  },
-]
-
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const B = 'var(--border)', S = '#6b7280'
-
-function Toggle({ value, onChange }) {
-  return (
-    <div onClick={onChange} style={{ width:40,height:22,borderRadius:20,background:value?'#1B4332':'var(--border-strong)',position:'relative',cursor:'pointer',flexShrink:0,transition:'background .2s' }}>
-      <div style={{ position:'absolute',top:2,left:value?20:2,width:18,height:18,borderRadius:'50%',background:'var(--bg-card)',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
-    </div>
-  )
-}
-
-function Card({ title, subtitle, children }) {
-  return (
-    <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
-      <div style={{ padding:'16px 24px',borderBottom:`1px solid ${B}` }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,color:'var(--text-primary)',marginBottom:2 }}>{title}</div>
-        {subtitle&&<div style={{ fontSize:12,color:S }}>{subtitle}</div>}
-      </div>
-      <div style={{ padding:24 }}>{children}</div>
-    </div>
-  )
-}
-
-function Row({ label, desc, children }) {
-  return (
-    <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,paddingBottom:18,marginBottom:18,borderBottom:`1px solid var(--border)`,alignItems:'center' }}>
-      <div>
-        <div style={{ fontWeight:600,fontSize:13,color:'var(--text-primary)',marginBottom:2 }}>{label}</div>
-        {desc&&<div style={{ fontSize:12,color:S }}>{desc}</div>}
-      </div>
-      <div>{children}</div>
-    </div>
-  )
-}
-
-function SettingsNav() {
-  const { pathname } = useLocation()
-  return (
-    <div style={{ display:'flex',gap:0,borderBottom:`2px solid ${B}`,marginBottom:24,overflowX:'auto' }}>
-      {NAV.map(n=>(
-        <Link key={n.to} to={n.to} style={{ padding:'10px 16px',border:'none',borderBottom:pathname===n.to?'2px solid #1B4332':'2px solid transparent',background:'transparent',fontFamily:'var(--body-font)',fontWeight:pathname===n.to?700:500,fontSize:13,color:pathname===n.to?'#1B4332':S,cursor:'pointer',textDecoration:'none',whiteSpace:'nowrap',marginBottom:-2 }}>
-          {n.label}
-        </Link>
-      ))}
-    </div>
-  )
-}
-
-// pos_print_receipt/pos_receipt_footer are the real backend-persisted keys;
-// the rest have no backend consumer yet and stay local-only settings.
-const BLANK = { pos_enabled:true, pos_receipt_footer:'Thank you for shopping with Bems Farms!', pos_print_receipt:true, ask_customer_name:false, allow_discount:true, max_discount_percent:20 }
+import { Link } from 'react-router-dom'
 
 export default function POSSettings() {
-  const [form, setForm]     = useState(BLANK)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving]   = useState(false)
-
-  useEffect(() => {
-    api.get('/admin/settings/pos')
-      .then(r => setForm({ ...BLANK, ...r.data.settings }))
-      .catch(() => toast.error('Failed to load POS settings'))
-      .finally(() => setLoading(false))
-  }, [])
-
-  function set(key, val) { setForm(f => ({ ...f, [key]: val })) }
-
-  async function handleSave(e) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      await api.post('/admin/settings/pos', form)
-      toast.success('POS settings saved')
-    } catch {
-      toast.error('Failed to save POS settings')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Settings</div>
-        <div style={{ fontSize:12,color:S,marginTop:2 }}>Manage store preferences and system configurations.</div>
-      </div>
-      <SettingsNav/>
-
-      {loading ? (
-        <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
-      ) : (
-        <form onSubmit={handleSave}>
-          <Card title="POS System" subtitle="Core POS configuration options.">
-            <Row label="Enable POS System" desc="Allow POS module access across the system.">
-              <Toggle value={form.pos_enabled} onChange={()=>set('pos_enabled',!form.pos_enabled)}/>
-            </Row>
-            <Row label="Print Receipt" desc="Automatically print receipt after every completed sale.">
-              <Toggle value={form.pos_print_receipt} onChange={()=>set('pos_print_receipt',!form.pos_print_receipt)}/>
-            </Row>
-            <Row label="Ask Customer Name" desc="Prompt cashier to enter customer name at checkout.">
-              <Toggle value={form.ask_customer_name} onChange={()=>set('ask_customer_name',!form.ask_customer_name)}/>
-            </Row>
-            <Row label="Allow Discounts" desc="Allow cashiers to apply manual discounts at checkout.">
-              <Toggle value={form.allow_discount} onChange={()=>set('allow_discount',!form.allow_discount)}/>
-            </Row>
-            <Row label="Max Discount (%)" desc="Maximum discount percentage a cashier can apply.">
-              <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                <input type="number" style={{ ...inp,width:100 }} min={0} max={100} step={1} value={form.max_discount_percent} onChange={e=>set('max_discount_percent',parseInt(e.target.value)||0)} disabled={!form.allow_discount}/>
-                <span style={{ fontSize:13,color:S,fontWeight:600 }}>%</span>
-              </div>
-            </Row>
-          </Card>
-
-          <Card title="Receipt Settings" subtitle="Customize the POS receipt footer message.">
-            <div>
-              <label style={LBL}>Receipt Footer Message</label>
-              <textarea style={{ ...inp,resize:'vertical' }} rows={3} value={form.pos_receipt_footer} onChange={e=>set('pos_receipt_footer',e.target.value)} placeholder="Thank you for shopping with us!"/>
-              <div style={{ fontSize:11,color:S,marginTop:4 }}>This text is printed at the bottom of every receipt.</div>
-            </div>
-          </Card>
-
-          <div style={{ display:'flex',justifyContent:'flex-end',gap:10 }}>
-            <button type="button" style={btnL}>Cancel</button>
-            <button type="submit" style={btnP} disabled={saving}>
-              <i className="ri-save-line"/>{saving?'Saving…':'Save Changes'}
-            </button>
+    <div className="container-fluid">
+      <div className="mb-5">
+              <h4 className="fs-xl">Settings</h4>
+              <p className="text-muted">Manage overall store preferences and system configurations.</p>
           </div>
-        </form>
-      )}
+          <ul className="nav nav-underline mb-5 border-bottom nav-primary" id="settings-tab" role="tablist">
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-tax.html" className="nav-link py-6px" aria-current="page">Tax</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-coupons.html" className="nav-link py-6px" aria-current="page">Coupons</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-general.html" className="nav-link py-6px" aria-current="page">General</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-pos.html" className="nav-link py-6px active" aria-current="page">POS</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-payment-gateway.html" className="nav-link py-6px" aria-current="page">Payment Gateway</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-currencies.html" className="nav-link py-6px" aria-current="page">Currencies</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-invoices.html" className="nav-link py-6px" aria-current="page">Invoices</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-manager.html" className="nav-link py-6px" aria-current="page">Manager</a>
+              </li>
+          </ul>
+
+          <div className="card">
+              <div className="card-body">
+                  <h6 className="mb-1">POS Configuration Settings</h6>
+                  <p className="text-muted mb-5">Manage POS receipts, printers, customer types, stock alerts, and payment options.</p>
+                  <div className="d-flex flex-column gap-6">
+                      <div className="row g-2 align-items-center">
+                          <div className="col-md-4">
+                              <label htmlFor="taxRegistrationNumber" className="form-label mb-0 fs-15">Receipt Format</label>
+                          </div>
+                          <div className="col-md-8">
+                              <div id="receiptFormate" className="w-56"></div>
+                          </div>
+                      </div>
+                      <div className="row g-2 align-items-center">
+                          <div className="col-md-4">
+                              <label htmlFor="taxRegistrationNumber" className="form-label mb-0 fs-15">POS Printer Settings</label>
+                          </div>
+                          <div className="col-md-8">
+                              <div id="posPrinter" className="w-56"></div>
+                          </div>
+                      </div>
+                      <div className="row g-2 align-items-center">
+                          <div className="col-md-4">
+                              <label htmlFor="taxRegistrationName" className="form-label mb-0 fs-15">Auto Print Receipt</label>
+                          </div>
+                          <div className="col-md-8">
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="switch-light-1" defaultChecked /><label className="label" htmlFor="switch-light-1"></label>
+                              </div>
+                          </div>
+                      </div>
+                      <div className="row g-2 align-items-center">
+                          <div className="col-md-4">
+                              <label htmlFor="taxDisplayName" className="form-label mb-0 fs-15">Default Customer Type</label>
+                          </div>
+                          <div className="col-md-8">
+                              <div className="d-flex flex-wrap align-items-center gap-6">
+                                  <div className="form-check check-primary">
+                                      <input className="form-check-input" type="checkbox" id="defaultCheck1" />
+                                      <label className="form-check-label" htmlFor="defaultCheck1">
+                                          Regular
+                                      </label>
+                                  </div>
+                                  <div className="form-check check-primary">
+                                      <input className="form-check-input" type="checkbox" id="defaultCheck2" />
+                                      <label className="form-check-label" htmlFor="defaultCheck2">
+                                          Member
+                                      </label>
+                                  </div>
+                                  <div className="form-check check-primary">
+                                      <input className="form-check-input" type="checkbox" id="defaultCheck3" />
+                                      <label className="form-check-label" htmlFor="defaultCheck3">
+                                          Wholesale
+                                      </label>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      <div className="row g-2 align-items-center">
+                          <div className="col-md-4">
+                              <label htmlFor="taxRate" className="form-label mb-0 fs-15">Low Stock Alert</label>
+                          </div>
+                          <div className="col-md-8">
+                              <input type="number" className="form-control w-28" id="lowStock" placeholder="Enter threshold" defaultValue="5" />
+                          </div>
+                      </div>
+                      <div className="row g-2 align-items-center">
+                          <div className="col-md-4">
+                              <label htmlFor="taxRate" className="form-label mb-0 fs-15">Enable Barcode Scanning</label>
+                          </div>
+                          <div className="col-md-8">
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="switch-light-2" defaultChecked /><label className="label" htmlFor="switch-light-2"></label>
+                              </div>
+                          </div>
+                      </div>
+                      <div className="row g-2 align-items-center">
+                          <div className="col-md-4">
+                              <label htmlFor="taxDisplayName" className="form-label mb-0 fs-15">Payment Methods</label>
+                          </div>
+                          <div className="col-md-8">
+                              <div className="d-flex flex-wrap align-items-center gap-6">
+                                  <div className="form-check check-primary">
+                                      <input className="form-check-input" type="checkbox" id="defaultCheck4" />
+                                      <label className="form-check-label" htmlFor="defaultCheck4">
+                                          Cash
+                                      </label>
+                                  </div>
+                                  <div className="form-check check-primary">
+                                      <input className="form-check-input" type="checkbox" id="defaultCheck5" />
+                                      <label className="form-check-label" htmlFor="defaultCheck5">
+                                          Card
+                                      </label>
+                                  </div>
+                                  <div className="form-check check-primary">
+                                      <input className="form-check-input" type="checkbox" id="defaultCheck6" />
+                                      <label className="form-check-label" htmlFor="defaultCheck6">
+                                          UPI
+                                      </label>
+                                  </div>
+                                  <div className="form-check check-primary">
+                                      <input className="form-check-input" type="checkbox" id="defaultCheck7" />
+                                      <label className="form-check-label" htmlFor="defaultCheck7">
+                                          Wallet
+                                      </label>
+                                  </div>
+                                  <div className="form-check check-primary">
+                                      <input className="form-check-input" type="checkbox" id="defaultCheck8" />
+                                      <label className="form-check-label" htmlFor="defaultCheck8">
+                                          COD
+                                      </label>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                      <div className="row g-2 align-items-center">
+                          <div className="col-md-4">
+                              <label htmlFor="taxRate" className="form-label mb-0 fs-15">Enable Order Notes</label>
+                          </div>
+                          <div className="col-md-8">
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="switch-light-2" /><label className="label" htmlFor="switch-light-2"></label>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  <div className="text-end mt-5">
+                      <button className="btn btn-outline-light border me-1">Cancel</button>
+                      <button className="btn btn-primary">Save</button>
+                  </div>
+              </div>
+          </div>
     </div>
   )
 }

@@ -1,310 +1,303 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import ImportModal from '../../components/ImportModal'
 
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-function genCode(name, existingCodes=[]) {
-  const slug = name.trim().toUpperCase().replace(/[^A-Z]/g,'').slice(0,3).padEnd(3,'X')
-  let n=1, code
-  do { code=`CAT-${slug}-${String(n).padStart(3,'0')}`; n++ }
+// ── Code generator ───────────────────────────────────────────────────────────
+function genCode(name, existingCodes = []) {
+  const slug = name.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3).padEnd(3, 'X')
+  let n = 1, code
+  do { code = `CAT-${slug}-${String(n).padStart(3,'0')}`; n++ }
   while (existingCodes.includes(code))
   return code
 }
 
+// ── Import field definitions ─────────────────────────────────────────────────
 const IMPORT_FIELDS = [
-  { key:'name',        label:'Name',        required:true  },
-  { key:'description', label:'Description', required:false },
-  { key:'status',      label:'Status',      required:false },
+  { key:'name',   label:'Name',   required:true  },
+  { key:'status', label:'Status', required:false },
 ]
 
-const BLANK = { name:'', code:'', products:0, status:'active', description:'' }
+// ── Mock data ─────────────────────────────────────────────────────────────────
+const MOCK = [
+  { id:1, name:'Meals',          code:'CAT-MEA-001', products:12, status:'active',   created:'2026-01-15' },
+  { id:2, name:'Seafood',        code:'CAT-SEA-001', products:8,  status:'active',   created:'2026-01-15' },
+  { id:3, name:'Meat',           code:'CAT-MEA-002', products:6,  status:'active',   created:'2026-01-15' },
+  { id:4, name:'Grains & Carbs', code:'CAT-GRA-001', products:15, status:'active',   created:'2026-01-15' },
+  { id:5, name:'Vegetables',     code:'CAT-VEG-001', products:9,  status:'active',   created:'2026-01-20' },
+  { id:6, name:'Dairy & Eggs',   code:'CAT-DAI-001', products:7,  status:'active',   created:'2026-01-20' },
+  { id:7, name:'Beverages',      code:'CAT-BEV-001', products:5,  status:'inactive', created:'2026-02-01' },
+  { id:8, name:'Fresh Farm',     code:'CAT-FRE-001', products:11, status:'active',   created:'2026-02-01' },
+]
 
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const btnD = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
+const BLANK = { name:'', code:'', products:0, status:'active' }
 
 export default function Categories() {
-  const navigate = useNavigate()
-  const [items, setItems]               = useState([])
-  const [search, setSearch]             = useState('')
+  const [items, setItems]           = useState(MOCK)
+  const [search, setSearch]         = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
-  const [activeModal, setActiveModal]   = useState(null)
-  const [editItem, setEditItem]         = useState(null)
-  const [form, setForm]                 = useState(BLANK)
-  const [loading, setLoading]           = useState(true)
+  const [activeModal, setActiveModal] = useState(null)  // 'form' | 'delete' | 'import'
+  const [editItem, setEditItem]     = useState(null)
+  const [form, setForm]             = useState(BLANK)
 
-  const fetchItems = async () => {
-    try {
-      const res = await api.get('/admin/config/categories')
-      setItems(res.data.categories)
-    } catch (err) {
-      toast.error('Failed to load categories')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchItems()
-  }, [])
-
+  // Auto-generate code when name changes (add only)
   useEffect(() => {
     if (!editItem && form.name.trim()) {
-      setForm(f => ({ ...f, code: genCode(f.name, items.map(i=>i.code)) }))
+      setForm(f => ({ ...f, code: genCode(f.name, items.map(i => i.code)) }))
     }
-  }, [form.name]) // eslint-disable-line
+  }, [form.name])  // eslint-disable-line
 
   const filtered = useMemo(() => items.filter(r => {
-    const m = r.name.toLowerCase().includes(search.toLowerCase()) || r.code.toLowerCase().includes(search.toLowerCase())
-    return m && (filterStatus==='all' || r.status===filterStatus)
+    const m = r.name.toLowerCase().includes(search.toLowerCase()) ||
+              r.code.toLowerCase().includes(search.toLowerCase())
+    return m && (filterStatus === 'all' || r.status === filterStatus)
   }), [items, search, filterStatus])
 
   const stats = useMemo(() => ({
     total:    items.length,
-    active:   items.filter(i=>i.status==='active').length,
-    inactive: items.filter(i=>i.status==='inactive').length,
-    products: items.reduce((s,i)=>s+(Number(i.products)||0),0),
+    active:   items.filter(i => i.status === 'active').length,
+    inactive: items.filter(i => i.status === 'inactive').length,
+    products: items.reduce((s, i) => s + i.products, 0),
   }), [items])
 
-  function openAdd() { setEditItem(null); setForm({ ...BLANK }); setActiveModal('form') }
+  // ── Modal helpers ────────────────────────────────────────────────────────
+  function openAdd() {
+    setEditItem(null)
+    setForm({ ...BLANK, code: genCode('', items.map(i => i.code)) })
+    setActiveModal('form')
+  }
   function openEdit(r) { setEditItem(r); setForm({ ...r }); setActiveModal('form') }
   function openDelete(r) { setEditItem(r); setActiveModal('delete') }
   function closeModal() { setActiveModal(null); setEditItem(null) }
 
-  async function saveForm(e) {
+  function saveForm(e) {
     e.preventDefault()
-    const payload = { ...form, code: form.code || genCode(form.name, items.map(i=>i.code)) }
-    
-    try {
-      if (editItem) {
-        const res = await api.put(`/admin/config/categories/${editItem.id}`, payload)
-        setItems(p => p.map(r => r.id === editItem.id ? { ...res.data, products: r.products } : r))
-        toast.success('Category updated')
-      } else {
-        const res = await api.post('/admin/config/categories', payload)
-        setItems(p => [{ ...res.data, products: 0 }, ...p])
-        toast.success('Category created')
-      }
-      closeModal()
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save category')
+    if (editItem) {
+      setItems(prev => prev.map(r => r.id === editItem.id ? { ...r, ...form } : r))
+    } else {
+      const code = form.code || genCode(form.name, items.map(i => i.code))
+      setItems(prev => [...prev, { id: Math.max(...prev.map(r=>r.id))+1, ...form, code, products:0, created: new Date().toISOString().slice(0,10) }])
     }
-  }
-
-  async function confirmDelete() { 
-    try {
-      await api.delete(`/admin/config/categories/${editItem.id}`)
-      setItems(p => p.filter(r => r.id !== editItem.id))
-      toast.success('Category deleted')
-      closeModal()
-    } catch (err) {
-      toast.error('Failed to delete category')
-    }
-  }
-
-  async function handleImport(rows) {
-    const existingCodes = items.map(i=>i.code)
-    const created = []
-    const failed = []
-    for (const [idx, row] of rows.entries()) {
-      const name = row.name?.trim()||`Imported ${idx+1}`
-      const code = genCode(name,existingCodes); existingCodes.push(code)
-      try {
-        const res = await api.post('/admin/config/categories', {
-          name, code,
-          description: row.description||'',
-          status: row.status?.toLowerCase()==='inactive'?'inactive':'active',
-        })
-        created.push({ ...res.data, products: 0 })
-      } catch { failed.push(name) }
-    }
-    if (created.length) setItems(p=>[...created,...p])
-    if (created.length) toast.success(`Imported ${created.length} categor${created.length===1?'y':'ies'}`)
-    if (failed.length) toast.error(`Failed to import: ${failed.join(', ')}`)
     closeModal()
   }
 
-  const B = 'var(--border)', S = '#6b7280'
+  function confirmDelete() {
+    setItems(prev => prev.filter(r => r.id !== editItem.id))
+    closeModal()
+  }
 
-  const STAT_CARDS = [
-    { label:'Total Categories', value:stats.total,    icon:'ri-price-tag-3-line',     color:'#405189', filter:'all'      },
-    { label:'Active',           value:stats.active,   icon:'ri-checkbox-circle-line', color:'#0ab39c', filter:'active'   },
-    { label:'Inactive',         value:stats.inactive, icon:'ri-close-circle-line',    color:'#f7b84b', filter:'inactive' },
-    { label:'Total Products',   value:stats.products, icon:'ri-box-3-line',           color:'#299cdb', filter:'all'      },
-  ]
+  function handleImport(rows) {
+    const existingCodes = items.map(i => i.code)
+    const today = new Date().toISOString().slice(0,10)
+    const newItems = rows.map((row, idx) => {
+      const name = row.name?.trim() || `Imported ${idx + 1}`
+      const code = genCode(name, [...existingCodes])
+      existingCodes.push(code)
+      return {
+        id: Math.max(...items.map(i=>i.id), 0) + idx + 1,
+        name, code,
+        products: 0,
+        status: row.status?.toLowerCase() === 'inactive' ? 'inactive' : 'active',
+        created: today,
+      }
+    })
+    setItems(prev => [...prev, ...newItems])
+    closeModal()
+  }
 
+  // ═══════════════════════════════════════════════════════════════════════════
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      {/* Page header & Breadcrumbs */}
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:12 }}>
-        <div>
-          <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Categories</div>
-        </div>
-        <div style={{ display:'flex',alignItems:'center',gap:6,fontSize:12,color:'var(--text-muted)' }}>
-          <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Products</span>
-          <i className="ri-arrow-right-s-line" style={{ fontSize:19 }} />
-          <span style={{ fontWeight:600,color:'var(--text-primary)' }}>Categories</span>
-        </div>
+    <div className="container-fluid">
+      <div className="gap-2 page-heading mb-3">
+        <h6 className="flex-grow-1 mb-0">Categories</h6>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><a href="#">Products</a></li>
+          <li className="breadcrumb-item active">Categories</li>
+        </ul>
       </div>
 
       {/* Stat cards */}
-      <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:24 }}>
-        {STAT_CARDS.map(c=>(
-          <div key={c.label} onClick={()=>setFilterStatus(c.filter)}
-            style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,borderLeft:`4px solid ${c.color}`,padding:16,cursor:'pointer',boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'flex',alignItems:'center',gap:14 }}>
-            <div style={{ width:44,height:44,borderRadius:'50%',background:`${c.color}1a`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-              <i className={c.icon} style={{ fontSize:22,color:c.color }}/>
-            </div>
-            <div>
-              <div style={{ fontWeight:800,fontSize:22,color:'var(--text-primary)',fontFamily:'var(--heading-font)' }}>{c.value}</div>
-              <div style={{ fontSize:12,color:'var(--text-muted)' }}>{c.label}</div>
+      <div className="row g-3 mb-4">
+        {[
+          { label:'Total Categories', value:stats.total,    icon:'ri-price-tag-3-line',     color:'#405189', filter:'all'      },
+          { label:'Active',           value:stats.active,   icon:'ri-checkbox-circle-line', color:'#0ab39c', filter:'active'   },
+          { label:'Inactive',         value:stats.inactive, icon:'ri-close-circle-line',    color:'#f7b84b', filter:'inactive' },
+          { label:'Total Products',   value:stats.products, icon:'ri-box-3-line',           color:'#299cdb', filter:'all'      },
+        ].map(c => (
+          <div className="col-6 col-xl-3" key={c.label}>
+            <div className="card mb-0 cursor-pointer" style={{ borderLeft:`3px solid ${c.color}` }}
+              onClick={() => setFilterStatus(c.filter)}>
+              <div className="card-body d-flex align-items-center gap-3 py-3">
+                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width:44, height:44, background:`${c.color}1a` }}>
+                  <i className={`${c.icon} fs-20`} style={{ color:c.color }}></i>
+                </div>
+                <div>
+                  <div className="fw-bold fs-18" style={{ color:c.color }}>{c.value}</div>
+                  <div className="text-muted" style={{ fontSize:12 }}>{c.label}</div>
+                </div>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
       {/* Table card */}
-      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
-        <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap' }}>
-          <div style={{ position:'relative',flex:'1 1 220px' }}>
-            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
-            <input type="text" placeholder="Search categories…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp,paddingLeft:34 }}/>
+      <div className="card">
+        <div className="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+          <div className="position-relative">
+            <input className="form-control ps-9" placeholder="Search categories…" value={search}
+              onChange={e => setSearch(e.target.value)} style={{ minWidth:220 }} />
+            <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
           </div>
-          <select style={{ ...inp,width:'auto' }} value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          <button style={btnL} onClick={()=>setActiveModal('import')}><i className="ri-cloud-upload-line"/>Import</button>
-          <button style={btnP} onClick={openAdd}><i className="ri-add-line"/>Add Category</button>
+          <div className="d-flex gap-2 ms-auto flex-wrap">
+            <select className="form-select" style={{ width:'auto' }} value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}>
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <button className="btn btn-outline-secondary d-flex align-items-center gap-1"
+              onClick={() => setActiveModal('import')}>
+              <i className="ri-upload-cloud-2-line"></i> Import
+            </button>
+            <button className="btn btn-primary d-flex align-items-center gap-1" onClick={openAdd}>
+              <i className="ri-add-line"></i> Add Category
+            </button>
+          </div>
         </div>
-
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%',borderCollapse:'collapse' }}>
-            <thead>
-              <tr>{['Category','Code','Products','Status','Created','Action'].map(h=><th key={h} style={TH}>{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {filtered.length===0&&(
-                <tr><td colSpan={6} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                  <i className="ri-price-tag-3-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No categories found
-                </td></tr>
-              )}
-              {filtered.map(r=>(
-                <tr key={r.id}>
-                  <td style={{ ...TD,fontWeight:600 }}>{r.name}</td>
-                  <td style={TD}>
-                    <span style={{ fontSize:13,color:'#d53f8c',fontWeight:600,fontFamily:'var(--font-mono, monospace)' }}>{r.code}</span>
-                  </td>
-                  <td style={TD}>
-                    <span style={{ background:'var(--bg-muted)',color:'var(--text-secondary)',borderRadius:4,padding:'2px 8px',fontSize:12,fontWeight:600 }}>
-                      {r.products}
-                    </span>
-                  </td>
-                  <td style={TD}>
-                    <span style={{
-                      background: r.status==='active' ? '#dcfce7' : '#e0e7ff',
-                      color: r.status==='active' ? '#15803d' : '#4338ca',
-                      borderRadius: 50,
-                      padding: '3px 10px',
-                      fontSize: 11,
-                      fontWeight: 600
-                    }}>
-                      {r.status==='active'?'Active':'Inactive'}
-                    </span>
-                  </td>
-                  <td style={{ ...TD,color:S,fontSize:12 }}>{r.created}</td>
-                  <td style={TD}>
-                    <div style={{ display:'flex',gap:12,alignItems:'center' }}>
-                      <button onClick={()=>openEdit(r)} aria-label={`Edit ${r.name}`} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-pencil-line" style={{ fontSize:22 }}/></button>
-                      <button onClick={()=>openDelete(r)} aria-label={`Delete ${r.name}`} style={{ background:'none',border:'none',color:'#4b5563',cursor:'pointer',padding:2,display:'inline-flex',alignItems:'center' }}><i className="ri-delete-bin-line" style={{ fontSize:22 }}/></button>
-                    </div>
-                  </td>
+        <div className="card-body pt-0">
+          <div className="table-responsive">
+            <table className="table align-middle text-nowrap mb-0">
+              <thead>
+                <tr className="bg-light border-bottom">
+                  <th className="fw-medium text-muted">Category</th>
+                  <th className="fw-medium text-muted">Code</th>
+                  <th className="fw-medium text-muted">Products</th>
+                  <th className="fw-medium text-muted">Status</th>
+                  <th className="fw-medium text-muted">Created</th>
+                  <th className="fw-medium text-muted">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div style={{ padding:'10px 20px',borderTop:`1px solid ${B}`,fontSize:12,color:S }}>
-          Showing {filtered.length} of {items.length} categories
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr><td colSpan={6} className="text-center py-5 text-muted">
+                    <i className="ri-price-tag-3-line fs-2 d-block mb-2"></i>No categories found
+                  </td></tr>
+                )}
+                {filtered.map(r => (
+                  <tr key={r.id}>
+                    <td className="fw-medium">{r.name}</td>
+                    <td><code style={{ fontSize:12 }}>{r.code}</code></td>
+                    <td>
+                      <span className="badge bg-light text-dark border">{r.products}</span>
+                    </td>
+                    <td>
+                      <span className={`badge ${r.status === 'active' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}`}>
+                        {r.status === 'active' ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="text-muted">{r.created}</td>
+                    <td>
+                      <div className="d-flex gap-1">
+                        <button className="btn btn-sm btn-soft-primary px-2" onClick={() => openEdit(r)}>
+                          <i className="ri-pencil-line"></i>
+                        </button>
+                        <button className="btn btn-sm btn-soft-danger px-2" onClick={() => openDelete(r)}>
+                          <i className="ri-delete-bin-line"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 text-muted" style={{ fontSize:13 }}>
+            Showing {filtered.length} of {items.length} categories
+          </div>
         </div>
       </div>
 
-      {/* ADD/EDIT MODAL */}
-      {activeModal==='form'&&(
+      {/* ── ADD / EDIT MODAL ─────────────────────────────────── */}
+      {activeModal === 'form' && (
         <>
-          <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:460,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'var(--orange-accent)',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-price-tag-3-line" style={{ fontSize:24 }}/>
+          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h6 className="modal-title">{editItem ? 'Edit Category' : 'Add New Category'}</h6>
+                  <button className="btn-close" onClick={closeModal}></button>
                 </div>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>{editItem?'Edit Category':'Add New Category'}</span>
-                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
-              </div>
-              <form onSubmit={saveForm} style={{ padding:24 }}>
-                <div style={{ marginBottom:16 }}>
-                  <label style={LBL}>Category Name <span style={{ color:'#f06548' }}>*</span></label>
-                  <input style={inp} required value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g., Fresh Produce"/>
-                </div>
-                <div style={{ marginBottom:16 }}>
-                  <label style={LBL}>Description</label>
-                  <textarea style={{ ...inp,height:60,resize:'none' }} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="e.g., Organic vegetables and greens"/>
-                </div>
-                <div style={{ marginBottom:16 }}>
-                  <label style={LBL}>Code <span style={{ fontSize:11,fontWeight:400,color:S }}>(auto-generated)</span></label>
-                  <input style={{ ...inp,background:'var(--bg-subtle)',color:S }} readOnly value={form.code} placeholder="Type name above to generate code"/>
-                </div>
-                <div style={{ marginBottom:24 }}>
-                  <label style={LBL}>Status</label>
-                  <select style={inp} value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button type="button" style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
-                  <button type="submit" style={{ ...btnP,flex:1,justifyContent:'center' }}>{editItem?'Save Changes':'Add Category'}</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* DELETE MODAL */}
-      {activeModal==='delete'&&(
-        <>
-          <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-delete-bin-line" style={{ fontSize:24 }}/>
-                </div>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>Delete Category?</span>
-                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
-              </div>
-              <div style={{ padding:24,textAlign:'center' }}>
-                <p style={{ color:S,fontSize:14,marginBottom:24 }}><strong style={{ color:'var(--text-primary)' }}>{editItem?.name}</strong></p>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
-                  <button style={{ ...btnD,flex:1,justifyContent:'center' }} onClick={confirmDelete}>Delete</button>
+                <div className="modal-body">
+                  <form onSubmit={saveForm}>
+                    <div className="mb-3">
+                      <label className="form-label fw-medium">Category Name <span className="text-danger">*</span></label>
+                      <input className="form-control" required value={form.name}
+                        onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                        placeholder="e.g., Fresh Produce" />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label fw-medium">
+                        Code <span className="text-muted fw-normal">(auto-generated)</span>
+                      </label>
+                      <input className="form-control bg-light" readOnly value={form.code}
+                        placeholder="Type name above to generate code" />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label fw-medium">Status</label>
+                      <select className="form-select" value={form.status}
+                        onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div className="d-flex gap-2 mt-4">
+                      <button type="button" className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
+                      <button type="submit" className="btn btn-primary w-100">
+                        {editItem ? 'Save Changes' : 'Add Category'}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             </div>
           </div>
+          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
         </>
       )}
 
-      {activeModal==='import'&&<ImportModal entityName="Categories" fields={IMPORT_FIELDS} onImport={handleImport} onClose={closeModal}/>}
+      {/* ── DELETE MODAL ─────────────────────────────────────── */}
+      {activeModal === 'delete' && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
+            <div className="modal-dialog modal-dialog-centered modal-sm">
+              <div className="modal-content p-4 text-center">
+                <div className="d-flex justify-content-center mb-3">
+                  <div className="rounded-circle bg-danger-subtle d-flex align-items-center justify-content-center" style={{ width:56, height:56 }}>
+                    <i className="ri-delete-bin-line text-danger fs-22"></i>
+                  </div>
+                </div>
+                <h6 className="mb-1">Delete Category?</h6>
+                <p className="text-muted mb-4" style={{ fontSize:13 }}>{editItem?.name}</p>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-danger w-100" onClick={confirmDelete}>Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
+        </>
+      )}
+
+      {/* ── IMPORT MODAL ─────────────────────────────────────── */}
+      {activeModal === 'import' && (
+        <ImportModal
+          entityName="Categories"
+          fields={IMPORT_FIELDS}
+          onImport={handleImport}
+          onClose={closeModal}
+        />
+      )}
     </div>
   )
 }

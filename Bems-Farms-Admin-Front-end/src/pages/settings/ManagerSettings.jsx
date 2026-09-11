@@ -1,312 +1,199 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-const NAV = [
-  { label:'General',      to:'/settings/general'        },
-  { label:'Tax',          to:'/settings/tax'            },
-  { label:'Coupons',      to:'/settings/coupons'        },
-  { label:'POS',          to:'/settings/pos'            },
-  { label:'Payment',      to:'/settings/payment'        },
-  { label:'Currencies',   to:'/settings/currencies'     },
-  { label:'Receipts',     to:'/settings/invoices'       },
-  { label:'Manager',      to:'/settings/manager'        },
-  { label:'Notifications',to:'/settings/notifications'  },
-]
-
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const btnD = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
-const B = 'var(--border)', S = '#6b7280'
-
-// Must match the backend's validRoles in settings_admin.js POST /manager
-// exactly — superadmin is deliberately excluded there (creating another
-// superadmin isn't allowed through this route), and 'viewer' was never a
-// real role.
-const ROLES = ['manager','admin','cashier','storekeeper','delivery_manager']
-const STATUS_OPTS = ['active','inactive','suspended']
-
-function SettingsNav() {
-  const { pathname } = useLocation()
-  return (
-    <div style={{ display:'flex',gap:0,borderBottom:`2px solid ${B}`,marginBottom:24,overflowX:'auto' }}>
-      {NAV.map(n=>(
-        <Link key={n.to} to={n.to} style={{ padding:'10px 16px',border:'none',borderBottom:pathname===n.to?'2px solid #1B4332':'2px solid transparent',background:'transparent',fontFamily:'var(--body-font)',fontWeight:pathname===n.to?700:500,fontSize:13,color:pathname===n.to?'#1B4332':S,cursor:'pointer',textDecoration:'none',whiteSpace:'nowrap',marginBottom:-2 }}>
-          {n.label}
-        </Link>
-      ))}
-    </div>
-  )
-}
-
-function roleBadge(role) {
-  const map = { admin:['#7c3aed','#ede9fe'], manager:['#1B4332','#dcfce7'], cashier:['#0369a1','#e0f2fe'], viewer:['#6b7280','var(--border)'] }
-  const [color, bg] = map[role] || ['#6b7280','var(--border)']
-  return <span style={{ background:bg,color,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:700,textTransform:'capitalize' }}>{role}</span>
-}
-
-function statusBadge(status) {
-  const map = { active:['#166534','#dcfce7'], inactive:['#6b7280','var(--border)'], suspended:['#991b1b','#fee2e2'] }
-  const [color, bg] = map[status] || ['#6b7280','var(--border)']
-  return <span style={{ background:bg,color,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600,textTransform:'capitalize' }}>{status}</span>
-}
-
-const BLANK_ADD = { name:'', email:'', password:'', role:'manager', store_id:'' }
-const BLANK_EDIT = { role:'manager', status:'active', store_id:'', name:'' }
+import { Link } from 'react-router-dom'
 
 export default function ManagerSettings() {
-  const [managers, setManagers] = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [modal, setModal]       = useState(null)   // null | 'add' | manager object
-  const [addForm, setAddForm]   = useState(BLANK_ADD)
-  const [editForm, setEditForm] = useState(BLANK_EDIT)
-  const [deleteItem, setDeleteItem] = useState(null)
-  const [saving, setSaving]     = useState(false)
-  const [search, setSearch]     = useState('')
-
-  const load = useCallback(() => {
-    setLoading(true)
-    api.get('/admin/settings/manager')
-      .then(r => setManagers(r.data.users || []))
-      .catch(() => toast.error('Failed to load managers'))
-      .finally(() => setLoading(false))
-  }, [])
-
-  useEffect(() => { load() }, [load])
-
-  const filtered = managers.filter(m =>
-    m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.email.toLowerCase().includes(search.toLowerCase())
-  )
-
-  function openAdd() { setAddForm({ ...BLANK_ADD }); setModal('add') }
-  function openEdit(m) { setEditForm({ role:m.role, status:m.status, store_id:m.store_id||'', name:m.name }); setModal(m) }
-  function closeModal() { setModal(null); setDeleteItem(null) }
-
-  async function handleAdd(e) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      await api.post('/admin/settings/manager', addForm)
-      toast.success('Admin user created')
-      closeModal()
-      load()
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to create manager')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleEdit(e) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      await api.patch(`/admin/settings/manager/${modal.id}`, editForm)
-      toast.success('Manager updated')
-      closeModal()
-      load()
-    } catch {
-      toast.error('Failed to update manager')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleDelete() {
-    setSaving(true)
-    try {
-      await api.delete(`/admin/settings/manager/${deleteItem.id}`)
-      toast.success('Manager deactivated')
-      setDeleteItem(null)
-      load()
-    } catch {
-      toast.error('Failed to deactivate manager')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Settings</div>
-        <div style={{ fontSize:12,color:S,marginTop:2 }}>Manage admin users and their permissions.</div>
-      </div>
-      <SettingsNav/>
-
-      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
-        <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
-          <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14 }}>Admin Users</span>
-          <div style={{ display:'flex',gap:10,alignItems:'center' }}>
-            <div style={{ position:'relative' }}>
-              <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
-              <input type="text" placeholder="Search managers…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp,paddingLeft:34,width:220 }}/>
-            </div>
-            <button style={btnP} onClick={openAdd}><i className="ri-user-add-line"/>Add Admin User</button>
+    <div className="container-fluid">
+      <div className="mb-5">
+              <h4 className="fs-xl">Settings</h4>
+              <p className="text-muted">Manage overall store preferences and system configurations.</p>
           </div>
-        </div>
+          <ul className="nav nav-underline mb-5 border-bottom nav-primary" id="settings-tab" role="tablist">
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-tax.html" className="nav-link py-6px" aria-current="page">Tax</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-coupons.html" className="nav-link py-6px" aria-current="page">Coupons</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-general.html" className="nav-link py-6px" aria-current="page">General</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-pos.html" className="nav-link py-6px" aria-current="page">POS</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-payment-gateway.html" className="nav-link py-6px" aria-current="page">Payment Gateway</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-currencies.html" className="nav-link py-6px" aria-current="page">Currencies</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-invoices.html" className="nav-link py-6px" aria-current="page">Invoices</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-manager.html" className="nav-link py-6px active" aria-current="page">Manager</a>
+              </li>
+          </ul>
 
-        {loading ? (
-          <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
-        ) : (
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%',borderCollapse:'collapse' }}>
-              <thead>
-                <tr>{['Name','Email','Role','Status','Store','Created','Actions'].map(h=><th key={h} style={TH}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 && (
-                  <tr><td colSpan={7} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                    <i className="ri-user-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No admin users found
-                  </td></tr>
-                )}
-                {filtered.map(m=>(
-                  <tr key={m.id}>
-                    <td style={{ ...TD,fontWeight:600 }}>{m.name}</td>
-                    <td style={{ ...TD,color:S }}>{m.email}</td>
-                    <td style={TD}>{roleBadge(m.role)}</td>
-                    <td style={TD}>{statusBadge(m.status)}</td>
-                    <td style={{ ...TD,fontSize:12,color:S }}>{m.store_name||<span style={{ color:'var(--border-strong)' }}>—</span>}</td>
-                    <td style={{ ...TD,fontSize:11,color:S }}>{m.created_at ? new Date(m.created_at).toLocaleDateString() : '—'}</td>
-                    <td style={TD}>
-                      <div style={{ display:'flex',gap:4 }}>
-                        <button onClick={()=>openEdit(m)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0f4ff',color:'#405189',cursor:'pointer' }} title="Edit"><i className="ri-pencil-line"/></button>
-                        <button onClick={()=>setDeleteItem(m)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#fff0f0',color:'#f06548',cursor:'pointer' }} title="Deactivate"><i className="ri-user-forbid-line"/></button>
+          <div className="card">
+              <div className="card-body">
+                  <div className="pb-6 mb-5 border-bottom">
+                      <h6 className="mb-1">System Overview</h6>
+                      <p className="text-muted mb-5">
+                          Current operational status of key POS system components.
+                      </p>
+                      <div className="d-flex flex-column gap-6">
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label className="form-label fs-15 mb-0">POS System Status</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <span className="bg-success-subtle text-success border border-success-subtle badge">Active</span>
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label className="form-label fs-15 mb-0">Invoice Mode</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <span className="bg-info-subtle text-info border border-info-subtle badge">Thermal</span>
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label className="form-label fs-15 mb-0">Tax System</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <div className="d-flex gap-6">
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" id="defaultCheck1" defaultChecked />
+                                          <label className="form-check-label" htmlFor="defaultCheck1">
+                                              Enabled
+                                          </label>
+                                      </div>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" id="defaultCheck2" />
+                                          <label className="form-check-label" htmlFor="defaultCheck2">
+                                              Disabled
+                                          </label>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <div style={{ padding:'10px 20px',borderTop:`1px solid ${B}`,fontSize:12,color:S }}>
-          {managers.length} admin users
-        </div>
-      </div>
-
-      {/* ADD MODAL */}
-      {modal === 'add' && (
-        <>
-          <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:500,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-user-add-line" style={{ fontSize:24 }}/>
-                </div>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>Add Admin User</span>
-                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
-              </div>
-              <form onSubmit={handleAdd} style={{ padding:24 }}>
-                <div style={{ marginBottom:14 }}>
-                  <label style={LBL}>Full Name <span style={{ color:'#f06548' }}>*</span></label>
-                  <input style={inp} required value={addForm.name} onChange={e=>setAddForm(f=>({...f,name:e.target.value}))} placeholder="John Doe"/>
-                </div>
-                <div style={{ marginBottom:14 }}>
-                  <label style={LBL}>Email Address <span style={{ color:'#f06548' }}>*</span></label>
-                  <input type="email" style={inp} required value={addForm.email} onChange={e=>setAddForm(f=>({...f,email:e.target.value}))} placeholder="john@bemsfarms.ng"/>
-                </div>
-                <div style={{ marginBottom:14 }}>
-                  <label style={LBL}>Password <span style={{ color:'#f06548' }}>*</span></label>
-                  <input type="password" style={inp} required minLength={8} value={addForm.password} onChange={e=>setAddForm(f=>({...f,password:e.target.value}))} placeholder="Min 8 characters"/>
-                </div>
-                <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:24 }}>
-                  <div>
-                    <label style={LBL}>Role</label>
-                    <select style={inp} value={addForm.role} onChange={e=>setAddForm(f=>({...f,role:e.target.value}))}>
-                      {ROLES.map(r=><option key={r} value={r} style={{ textTransform:'capitalize' }}>{r.charAt(0).toUpperCase()+r.slice(1)}</option>)}
-                    </select>
                   </div>
-                  <div>
-                    <label style={LBL}>Store ID <span style={{ fontWeight:400,color:S }}>(optional)</span></label>
-                    <input style={inp} value={addForm.store_id} onChange={e=>setAddForm(f=>({...f,store_id:e.target.value}))} placeholder="Store ID"/>
+                  <div className="pb-6 mb-5 border-bottom">
+                      <h6 className="mb-1">Core Feature Controls</h6>
+                      <p className="text-muted mb-4">
+                          Enable or disable essential POS functionalities.
+                      </p>
+                      <div className="d-flex flex-column gap-5">
+                          <div className="row align-items-center">
+                              <div className="col-md-5 col-lg-4">
+                                  <h6 className="mb-1 fw-medium">Enable POS System</h6>
+                              </div>
+                              <div className="col-md-7 col-xxl-4">
+                                  <div className="form-switch switch-solid-primary mb-1">
+                                      <input type="checkbox" id="enablePOS" defaultChecked />
+                                      <label className="label" htmlFor="enablePOS"></label>
+                                  </div>
+                                  <p className="text-muted">Turn the POS system on or off globally.</p>
+                              </div>
+                          </div>
+                          <div className="row align-items-center">
+                              <div className="col-md-5 col-lg-4">
+                                  <h6 className="mb-1 fw-medium">Offline POS Mode</h6>
+                              </div>
+                              <div className="col-md-7 col-xxl-4">
+                                  <div className="form-switch switch-solid-primary">
+                                      <input type="checkbox" id="offlinePOS" />
+                                      <label className="label" htmlFor="offlinePOS"></label>
+                                  </div>
+                                  <p className="text-muted">Allow sales when internet connection is unavailable.</p>
+                              </div>
+                          </div>
+                          <div className="row align-items-center">
+                              <div className="col-md-5 col-lg-4">
+                                  <h6 className="mb-1 fw-medium">Discounts & Coupons</h6>
+                              </div>
+                              <div className="col-md-7 col-xxl-4">
+                                  <div className="form-switch switch-solid-primary">
+                                      <input type="checkbox" id="discounts" />
+                                      <label className="label" htmlFor="discounts"></label>
+                                  </div>
+                                  <p className="text-muted">Enable discount codes and promotional offers.</p>
+                              </div>
+                          </div>
+                          <div className="row align-items-center">
+                              <div className="col-md-5 col-lg-4">
+                                  <h6 className="mb-1 fw-medium">Loyalty Program</h6>
+                              </div>
+                              <div className="col-md-7 col-xxl-4">
+                                  <div className="form-switch switch-solid-primary">
+                                      <input type="checkbox" id="loyaltyProgram" defaultChecked />
+                                      <label className="label" htmlFor="loyaltyProgram"></label>
+                                  </div>
+                                  <p className="text-muted">Reward repeat customers with loyalty points.</p>
+                              </div>
+                          </div>
+                      </div>
                   </div>
-                </div>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button type="button" style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
-                  <button type="submit" style={{ ...btnP,flex:1,justifyContent:'center' }} disabled={saving}>{saving?'Creating…':'Create User'}</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* EDIT MODAL */}
-      {modal && modal !== 'add' && (
-        <>
-          <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:460,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-user-settings-line" style={{ fontSize:24 }}/>
-                </div>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>Edit {modal.name}</span>
-                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
-              </div>
-              <form onSubmit={handleEdit} style={{ padding:24 }}>
-                <div style={{ marginBottom:14 }}>
-                  <label style={LBL}>Name</label>
-                  <input style={inp} value={editForm.name} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
-                </div>
-                <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
-                  <div>
-                    <label style={LBL}>Role</label>
-                    <select style={inp} value={editForm.role} onChange={e=>setEditForm(f=>({...f,role:e.target.value}))}>
-                      {ROLES.map(r=><option key={r} value={r} style={{ textTransform:'capitalize' }}>{r.charAt(0).toUpperCase()+r.slice(1)}</option>)}
-                    </select>
+                  <div className="pb-6 mb-5 border-bottom">
+                      <h6 className="mb-1">Default Manager Rules</h6>
+                      <p className="text-muted mb-5">
+                          System-wide defaults applied automatically.
+                      </p>
+                      <div className="d-flex flex-column gap-5">
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="paymentMethod" className="form-label fs-15 mb-0">Default Payment Method</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <input id="paymentMethod" type="text" className="form-control" defaultValue="Cash" />
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="invoiceFormat" className="form-label fs-15 mb-0">Invoice Format</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <input id="invoiceFormat" type="text" className="form-control" defaultValue="Thermal" />
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="roundinMethod" className="form-label fs-15 mb-0">Rounding Method</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <input id="roundinMethod" type="text" className="form-control" defaultValue="Nearest 0.05" />
+                              </div>
+                          </div>
+                      </div>
                   </div>
-                  <div>
-                    <label style={LBL}>Status</label>
-                    <select style={inp} value={editForm.status} onChange={e=>setEditForm(f=>({...f,status:e.target.value}))}>
-                      {STATUS_OPTS.map(s=><option key={s} value={s} style={{ textTransform:'capitalize' }}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
-                    </select>
+                  <div className="mb-5">
+                      <h6 className="mb-1">Backup & Safety</h6>
+                      <p className="text-muted mb-4">
+                          Manage configuration backups and recovery.
+                      </p>
+                      <div className="d-flex flex-column gap-4">
+                          <p className="mb-0">
+                              Automatic daily backup scheduled at <strong>2:00 AM</strong>.
+                          </p>
+                          <div className="d-flex gap-2">
+                              <button className="btn btn-outline-light border">
+                                  Export Settings
+                              </button>
+                              <button className="btn btn-primary">
+                                  Backup Now
+                              </button>
+                          </div>
+                      </div>
                   </div>
-                </div>
-                <div style={{ marginBottom:24 }}>
-                  <label style={LBL}>Store Assignment <span style={{ fontWeight:400,color:S }}>(optional)</span></label>
-                  <input style={inp} value={editForm.store_id} onChange={e=>setEditForm(f=>({...f,store_id:e.target.value}))} placeholder="Store ID"/>
-                </div>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button type="button" style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
-                  <button type="submit" style={{ ...btnP,flex:1,justifyContent:'center' }} disabled={saving}>{saving?'Saving…':'Save Changes'}</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* DELETE CONFIRM */}
-      {deleteItem && (
-        <>
-          <div onClick={()=>setDeleteItem(null)} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <i className="ri-user-forbid-line" style={{ fontSize:30 }}/>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>Deactivate Manager?</span>
-                <button onClick={()=>setDeleteItem(null)} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+                  <div className="text-end">
+                      <button className="btn btn-outline-light border me-1">Cancel</button>
+                      <button className="btn btn-primary">Save</button>
+                  </div>
               </div>
-              <div style={{ padding:24,textAlign:'center' }}>
-                <p style={{ color:S,fontSize:14,marginBottom:24 }}>Deactivate <strong style={{ color:'var(--text-primary)' }}>{deleteItem.name}</strong>? They will lose all system access.</p>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={()=>setDeleteItem(null)}>Cancel</button>
-                  <button style={{ ...btnD,flex:1,justifyContent:'center' }} onClick={handleDelete} disabled={saving}>{saving?'Processing…':'Deactivate'}</button>
-                </div>
-              </div>
-            </div>
           </div>
-        </>
-      )}
     </div>
   )
 }

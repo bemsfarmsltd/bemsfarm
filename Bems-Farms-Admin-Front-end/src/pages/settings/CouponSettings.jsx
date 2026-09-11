@@ -1,308 +1,374 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-const NAV = [
-  { label:'General',      to:'/settings/general'        },
-  { label:'Tax',          to:'/settings/tax'            },
-  { label:'Coupons',      to:'/settings/coupons'        },
-  { label:'POS',          to:'/settings/pos'            },
-  { label:'Payment',      to:'/settings/payment'        },
-  { label:'Currencies',   to:'/settings/currencies'     },
-  { label:'Receipts',     to:'/settings/invoices'       },
-  { label:'Manager',      to:'/settings/manager'        },
-  { label:'Notifications',to:'/settings/notifications'  },
-]
-
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const btnD = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
-const B = 'var(--border)', S = '#6b7280'
-
-function Toggle({ value, onChange }) {
-  return (
-    <div onClick={onChange} style={{ width:40,height:22,borderRadius:20,background:value?'#1B4332':'var(--border-strong)',position:'relative',cursor:'pointer',flexShrink:0,transition:'background .2s' }}>
-      <div style={{ position:'absolute',top:2,left:value?20:2,width:18,height:18,borderRadius:'50%',background:'var(--bg-card)',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
-    </div>
-  )
-}
-
-function SettingsNav() {
-  const { pathname } = useLocation()
-  return (
-    <div style={{ display:'flex',gap:0,borderBottom:`2px solid ${B}`,marginBottom:24,overflowX:'auto' }}>
-      {NAV.map(n=>(
-        <Link key={n.to} to={n.to} style={{ padding:'10px 16px',border:'none',borderBottom:pathname===n.to?'2px solid #1B4332':'2px solid transparent',background:'transparent',fontFamily:'var(--body-font)',fontWeight:pathname===n.to?700:500,fontSize:13,color:pathname===n.to?'#1B4332':S,cursor:'pointer',textDecoration:'none',whiteSpace:'nowrap',marginBottom:-2 }}>
-          {n.label}
-        </Link>
-      ))}
-    </div>
-  )
-}
-
-const BLANK = { code:'', description:'', type:'percentage', value:0, min_order:0, max_discount:'', usage_limit:100, per_user_limit:1, applicable_to:'all', start_date:'', end_date:'' }
-
-function genCode(name) { return name.trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12) }
-
-function couponStatus(c) {
-  const now = new Date().toISOString().slice(0,10)
-  if (!c.is_active) return { label:'Inactive', bg:'var(--border)', color:S }
-  if (c.end_date && c.end_date < now) return { label:'Expired', bg:'#fee2e2', color:'#991b1b' }
-  if (c.start_date && c.start_date > now) return { label:'Upcoming', bg:'#e0f2fe', color:'#0369a1' }
-  return { label:'Active', bg:'#dcfce7', color:'#166534' }
-}
+import { Link } from 'react-router-dom'
 
 export default function CouponSettings() {
-  const [coupons, setCoupons]   = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [search, setSearch]     = useState('')
-  const [page, setPage]         = useState(1)
-  const [total, setTotal]       = useState(0)
-  const [modal, setModal]       = useState(null)   // null | 'add' | coupon object
-  const [form, setForm]         = useState(BLANK)
-  const [deleteItem, setDeleteItem] = useState(null)
-  const [saving, setSaving]     = useState(false)
-
-  const load = useCallback(() => {
-    setLoading(true)
-    api.get('/admin/coupons', { params: { page, limit:20, search: search||undefined } })
-      .then(r => { setCoupons(r.data.coupons || []); setTotal(r.data.total||0) })
-      .catch(() => toast.error('Failed to load coupons'))
-      .finally(() => setLoading(false))
-  }, [page, search])
-
-  useEffect(() => { load() }, [load])
-
-  function openAdd() { setForm({ ...BLANK }); setModal('add') }
-  function openEdit(c) { setForm({ code:c.code,description:c.description||'',type:c.type,value:c.value,min_order:c.min_order||0,max_discount:c.max_discount||'',usage_limit:c.usage_limit||100,per_user_limit:c.per_user_limit||1,applicable_to:c.applicable_to||'all',start_date:c.start_date||'',end_date:c.end_date||'' }); setModal(c) }
-  function closeModal() { setModal(null); setDeleteItem(null) }
-
-  async function handleSave(e) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      if (modal === 'add') {
-        await api.post('/admin/coupons', form)
-        toast.success('Coupon created')
-      } else {
-        await api.patch(`/admin/coupons/${modal.id}`, form)
-        toast.success('Coupon updated')
-      }
-      closeModal()
-      load()
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to save coupon')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleToggle(c) {
-    try {
-      await api.patch(`/admin/coupons/${c.id}/toggle`)
-      toast.success(`Coupon ${c.is_active?'deactivated':'activated'}`)
-      load()
-    } catch {
-      toast.error('Failed to toggle coupon')
-    }
-  }
-
-  async function handleDelete() {
-    setSaving(true)
-    try {
-      await api.delete(`/admin/coupons/${deleteItem.id}`)
-      toast.success('Coupon deleted')
-      setDeleteItem(null)
-      load()
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Cannot delete — coupon may have been used')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Settings</div>
-        <div style={{ fontSize:12,color:S,marginTop:2 }}>Manage store preferences and system configurations.</div>
-      </div>
-      <SettingsNav/>
-
-      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
-        <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
-          <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14 }}>Coupon List</span>
-          <div style={{ display:'flex',gap:10,alignItems:'center' }}>
-            <div style={{ position:'relative' }}>
-              <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
-              <input type="text" placeholder="Search coupons…" value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} style={{ ...inp,paddingLeft:34,width:220 }}/>
-            </div>
-            <button style={btnP} onClick={openAdd}><i className="ri-add-line"/>Add Coupon</button>
+    <div className="container-fluid">
+      <div className="mb-5">
+              <h4 className="fs-xl">Settings</h4>
+              <p className="text-muted">Manage overall store preferences and system configurations.</p>
           </div>
-        </div>
+          <ul className="nav nav-underline mb-5 border-bottom nav-primary" id="settings-tab" role="tablist">
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-tax.html" className="nav-link py-6px" aria-current="page">Tax</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-coupons.html" className="nav-link py-6px active" aria-current="page">Coupons</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-general.html" className="nav-link py-6px" aria-current="page">General</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-pos.html" className="nav-link py-6px" aria-current="page">POS</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-payment-gateway.html" className="nav-link py-6px" aria-current="page">Payment Gateway</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-currencies.html" className="nav-link py-6px" aria-current="page">Currencies</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-invoices.html" className="nav-link py-6px" aria-current="page">Invoices</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-manager.html" className="nav-link py-6px" aria-current="page">Manager</a>
+              </li>
+          </ul>
 
-        {loading ? (
-          <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
-        ) : (
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%',borderCollapse:'collapse' }}>
-              <thead>
-                <tr>{['Code','Type','Value','Min Order','Used','Status','Dates','Active','Actions'].map(h=><th key={h} style={TH}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {coupons.length===0&&(
-                  <tr><td colSpan={9} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                    <i className="ri-coupon-3-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No coupons found
-                  </td></tr>
-                )}
-                {coupons.map(c=>{
-                  const st = couponStatus(c)
-                  return (
-                    <tr key={c.id}>
-                      <td style={TD}><code style={{ background:'#f0f4ff',color:'#405189',borderRadius:6,padding:'3px 8px',fontSize:11,fontWeight:700 }}>{c.code}</code></td>
-                      <td style={{ ...TD,color:S,fontSize:12 }}>{c.type==='percentage'?'Percentage':'Fixed'}</td>
-                      <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{c.type==='percentage'?`${c.value}%`:`₦${Number(c.value).toLocaleString()}`}</td>
-                      <td style={{ ...TD,color:S }}>₦{Number(c.min_order||0).toLocaleString()}</td>
-                      <td style={TD}><span style={{ background:'var(--bg-muted)',color:'var(--text-secondary)',borderRadius:20,padding:'2px 8px',fontSize:11,fontWeight:600 }}>{c.used_count||0}/{c.usage_limit||'∞'}</span></td>
-                      <td style={TD}><span style={{ background:st.bg,color:st.color,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}>{st.label}</span></td>
-                      <td style={{ ...TD,fontSize:11,color:S,whiteSpace:'nowrap' }}>{c.start_date||'—'} → {c.end_date||'—'}</td>
-                      <td style={TD}><Toggle value={c.is_active} onChange={()=>handleToggle(c)}/></td>
-                      <td style={TD}>
-                        <div style={{ display:'flex',gap:4 }}>
-                          <button onClick={()=>openEdit(c)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0f4ff',color:'#405189',cursor:'pointer' }}><i className="ri-pencil-line"/></button>
-                          <button onClick={()=>setDeleteItem(c)} disabled={(c.used_count||0)>0} title={(c.used_count||0)>0?'Cannot delete used coupon':''} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:(c.used_count||0)>0?'#f9fafb':'#fff0f0',color:(c.used_count||0)>0?'var(--border-strong)':'#f06548',cursor:(c.used_count||0)>0?'not-allowed':'pointer' }}><i className="ri-delete-bin-line"/></button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <div style={{ padding:'10px 20px',borderTop:`1px solid ${B}`,fontSize:12,color:S,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-          <span>Showing {coupons.length} of {total} coupons</span>
-          <div style={{ display:'flex',gap:6 }}>
-            <button style={{ ...btnL,padding:'4px 10px',fontSize:12 }} disabled={page<=1} onClick={()=>setPage(p=>p-1)}>Prev</button>
-            <span style={{ padding:'4px 8px',fontSize:12,color:S }}>Page {page}</span>
-            <button style={{ ...btnL,padding:'4px 10px',fontSize:12 }} disabled={page*20>=total} onClick={()=>setPage(p=>p+1)}>Next</button>
-          </div>
-        </div>
-      </div>
-
-      {/* ADD / EDIT MODAL */}
-      {modal !== null && (
-        <>
-          <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:580,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden',maxHeight:'90vh',display:'flex',flexDirection:'column' }}>
-              <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10,flexShrink:0 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-coupon-3-line" style={{ fontSize:24 }}/>
-                </div>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>{modal==='add'?'Add New Coupon':'Edit Coupon'}</span>
-                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+          <div className="card">
+              <div className="card-header d-flex flex-wrap gap-4 align-items-center justify-content-between">
+                  <h5 className="card-title mb-1">Coupon List</h5>
+                  <div className="position-relative">
+                      <input type="text" id="tableSearch" className="form-control ps-10" placeholder="Search coupon..." />
+                      <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
+                  </div>
               </div>
-              <form onSubmit={handleSave} style={{ padding:24,overflowY:'auto' }}>
-                <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
-                  <div>
-                    <label style={LBL}>Coupon Code <span style={{ color:'#f06548' }}>*</span></label>
-                    {/* Code can't be changed after creation — the backend's
-                        PATCH doesn't accept it, so editing it here would
-                        silently be discarded on save. */}
-                    <input style={{ ...inp, ...(modal!=='add'?{background:'var(--bg-subtle)',cursor:'not-allowed'}:{}) }} required disabled={modal!=='add'} value={form.code} onChange={e=>setForm(f=>({...f,code:e.target.value.toUpperCase()}))} placeholder="HARVEST15"/>
+              <div className="card-body pt-0">
+                  <div className="table-card table-responsive">
+                      <table className="table text-nowrap align-middle mb-0">
+                          <thead>
+                              <tr className="bg-light border-bottom">
+                                  <th>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" id="checkAllCoupons" />
+                                      </div>
+                                  </th>
+                                  <th className="fw-medium text-muted">Name</th>
+                                  <th className="fw-medium text-muted">Code</th>
+                                  <th className="fw-medium text-muted">Type</th>
+                                  <th className="fw-medium text-muted">Discount</th>
+                                  <th className="fw-medium text-muted">Status</th>
+                                  <th className="fw-medium text-muted">Start Date</th>
+                                  <th className="fw-medium text-muted">End Date</th>
+                                  <th className="fw-medium text-muted">Action</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td>Weekend Sale</td>
+                                  <td><span className="bg-indigo-subtle text-indigo border border-indigo-subtle badge">WEEKENDSALE</span></td>
+                                  <td>Percentage</td>
+                                  <td>10%</td>
+                                  <td>
+                                      <div className="form-switch switch-light-secondary"><input type="checkbox" id="switch-light-1" defaultChecked /><label className="label" htmlFor="switch-light-1"></label></div>
+                                  </td>
+                                  <td>2026-01-01</td>
+                                  <td>2026-01-31</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#weekendSaleCouponModal"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td>New Year Special</td>
+                                  <td><span className="bg-indigo-subtle text-indigo border border-indigo-subtle badge">NEWYEAR50</span></td>
+                                  <td>Fixed Amount</td>
+                                  <td>$50</td>
+                                  <td>
+                                      <div className="form-switch switch-light-secondary"><input type="checkbox" id="switch-light-2" defaultChecked /><label className="label" htmlFor="switch-light-2"></label></div>
+                                  </td>
+                                  <td>2026-12-25</td>
+                                  <td>2026-01-05</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#newYearSpecialCouponModal"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td>Electronics Fest</td>
+                                  <td><span className="bg-indigo-subtle text-indigo border border-indigo-subtle badge">ELECFEST</span></td>
+                                  <td>Percentage</td>
+                                  <td>15%</td>
+                                  <td>
+                                      <div className="form-switch switch-light-secondary"><input type="checkbox" id="switch-light-3" defaultChecked /><label className="label" htmlFor="switch-light-3"></label></div>
+                                  </td>
+                                  <td>2026-02-01</td>
+                                  <td>2026-02-10</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#elecFestCouponModal"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td>Electronics Fest</td>
+                                  <td><span className="bg-indigo-subtle text-indigo border border-indigo-subtle badge">ELECFEST</span></td>
+                                  <td>Percentage</td>
+                                  <td>15%</td>
+                                  <td>
+                                      <div className="form-switch switch-light-secondary"><input type="checkbox" id="switch-light-3" defaultChecked /><label className="label" htmlFor="switch-light-3"></label></div>
+                                  </td>
+                                  <td>2026-02-23</td>
+                                  <td>2026-02-26</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#elecFestCouponModal"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td>Holiday Special</td>
+                                  <td><span className="bg-indigo-subtle text-indigo border border-indigo-subtle badge">HOLIDAY30</span></td>
+                                  <td>Fixed Amount</td>
+                                  <td>$30</td>
+                                  <td>
+                                      <div className="form-switch switch-light-secondary"><input type="checkbox" id="switch-light-5" /><label className="label" htmlFor="switch-light-5"></label></div>
+                                  </td>
+                                  <td>2026-12-20</td>
+                                  <td>2026-12-31</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td>New Year Special</td>
+                                  <td><span className="bg-indigo-subtle text-indigo border border-indigo-subtle badge">NEWYEAR50</span></td>
+                                  <td>Fixed Amount</td>
+                                  <td>$50</td>
+                                  <td>
+                                      <div className="form-switch switch-light-secondary"><input type="checkbox" id="switch-light-2" defaultChecked /><label className="label" htmlFor="switch-light-2"></label></div>
+                                  </td>
+                                  <td>2026-12-19</td>
+                                  <td>2026-12-21</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#newYearSpecialCouponModal"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td>Black Friday</td>
+                                  <td><span className="bg-indigo-subtle text-indigo border border-indigo-subtle badge">BF2026</span></td>
+                                  <td>Percentage</td>
+                                  <td>25%</td>
+                                  <td>
+                                      <div className="form-switch switch-light-secondary"><input type="checkbox" id="switch-light-7" defaultChecked /><label className="label" htmlFor="switch-light-7"></label></div>
+                                  </td>
+                                  <td>2026-11-10</td>
+                                  <td>2026-11-14</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#blackFridayCouponModal"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td>Black Friday</td>
+                                  <td><span className="bg-indigo-subtle text-indigo border border-indigo-subtle badge">BF2026</span></td>
+                                  <td>Percentage</td>
+                                  <td>25%</td>
+                                  <td>
+                                      <div className="form-switch switch-light-secondary"><input type="checkbox" id="switch-light-7" /><label className="label" htmlFor="switch-light-7"></label></div>
+                                  </td>
+                                  <td>2026-11-25</td>
+                                  <td>2026-11-30</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td>Weekend Sale</td>
+                                  <td><span className="bg-indigo-subtle text-indigo border border-indigo-subtle badge">WEEKENDSALE</span></td>
+                                  <td>Percentage</td>
+                                  <td>10%</td>
+                                  <td>
+                                      <div className="form-switch switch-light-secondary"><input type="checkbox" id="switch-light-8" defaultChecked /><label className="label" htmlFor="switch-light-8"></label></div>
+                                  </td>
+                                  <td>2026-01-01</td>
+                                  <td>2026-01-31</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#weekendSaleCouponModal"><i className="ri-eye-line"></i></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                          </tbody>
+                      </table>
                   </div>
-                  <div>
-                    <label style={LBL}>Applies To</label>
-                    <select style={inp} value={form.applicable_to} onChange={e=>setForm(f=>({...f,applicable_to:e.target.value}))}>
-                      <option value="all">All Orders</option>
-                      <option value="products">Specific Products</option>
-                      <option value="categories">Specific Categories</option>
-                    </select>
+                  <div className="row align-items-center g-3 mt-3">
+                      <div className="col-md-6">
+                          <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b> of <b className="ms-1">23</b> Results</p>
+                      </div>
+                      <div className="col-md-6">
+                          <nav aria-label="Page navigation example">
+                              <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
+                                  <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
+                                  <li className="page-item active"><a className="page-link" href="#">1</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">2</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">3</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
+                              </ul>
+                          </nav>
+                      </div>
                   </div>
-                </div>
-                <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
-                  <div>
-                    <label style={LBL}>Discount Type</label>
-                    <select style={inp} value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}>
-                      <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">Fixed Amount (₦)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={LBL}>Value {form.type==='percentage'?'(%)':'(₦)'} <span style={{ color:'#f06548' }}>*</span></label>
-                    <input type="number" style={inp} required min={0} value={form.value} onChange={e=>setForm(f=>({...f,value:parseFloat(e.target.value)||0}))}/>
-                  </div>
-                </div>
-                <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14,marginBottom:14 }}>
-                  <div>
-                    <label style={LBL}>Min Order (₦)</label>
-                    <input type="number" style={inp} min={0} value={form.min_order} onChange={e=>setForm(f=>({...f,min_order:parseFloat(e.target.value)||0}))}/>
-                  </div>
-                  <div>
-                    <label style={LBL}>Max Discount (₦)</label>
-                    <input type="number" style={inp} min={0} value={form.max_discount} onChange={e=>setForm(f=>({...f,max_discount:e.target.value}))} placeholder="No limit"/>
-                  </div>
-                  <div>
-                    <label style={LBL}>Usage Limit</label>
-                    <input type="number" style={inp} min={1} value={form.usage_limit} onChange={e=>setForm(f=>({...f,usage_limit:parseInt(e.target.value)||1}))}/>
-                  </div>
-                </div>
-                <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14,marginBottom:14 }}>
-                  <div>
-                    <label style={LBL}>Per User Limit</label>
-                    <input type="number" style={inp} min={1} value={form.per_user_limit} onChange={e=>setForm(f=>({...f,per_user_limit:parseInt(e.target.value)||1}))}/>
-                  </div>
-                  <div>
-                    <label style={LBL}>Start Date</label>
-                    <input type="date" style={inp} value={form.start_date} onChange={e=>setForm(f=>({...f,start_date:e.target.value}))}/>
-                  </div>
-                  <div>
-                    <label style={LBL}>End Date</label>
-                    <input type="date" style={inp} value={form.end_date} onChange={e=>setForm(f=>({...f,end_date:e.target.value}))}/>
-                  </div>
-                </div>
-                <div style={{ marginBottom:24 }}>
-                  <label style={LBL}>Description</label>
-                  <textarea style={{ ...inp,resize:'vertical' }} rows={2} placeholder="Brief description…" value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))}/>
-                </div>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button type="button" style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
-                  <button type="submit" style={{ ...btnP,flex:1,justifyContent:'center' }} disabled={saving}>{saving?'Saving…':modal==='add'?'Add Coupon':'Save Changes'}</button>
-                </div>
-              </form>
-            </div>
+              </div>
           </div>
-        </>
-      )}
 
-      {/* DELETE CONFIRM */}
-      {deleteItem && (
-        <>
-          <div onClick={()=>setDeleteItem(null)} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <i className="ri-delete-bin-line" style={{ fontSize:30 }}/>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>Delete Coupon?</span>
-                <button onClick={()=>setDeleteItem(null)} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+
+          <div className="modal fade" id="elecFestCouponModal" tabIndex="-1" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered modal-lg">
+                  <div className="modal-content electronics-fest-coupon position-relative">
+                      <button type="button" className="btn-close position-absolute top-0 end-0 p-5 z-1" data-bs-dismiss="modal"></button>
+                      <p className="fw-bolder d-none d-md-block sale-title text-light text-opacity-75 lh-1 px-5 position-absolute top-0 start-0">SALE</p>
+                      <div className="modal-body px-6 px-md-8 px-lg-10 pt-md-20 pb-36 position-relative">
+                          <div className="row justify-content-md-end">
+                              <div className="col-md-7 col-lg-6">
+                                  <p className="text-muted">Up to</p>
+                                  <h2 className="fw-bold fs-4xl my-2 per-off-title">30% OFF</h2>
+                                  <a href="#" className="text-muted d-block">ELECFEST-2026-30OFF</a>
+                                  <button type="button" className="btn btn-dark mt-7">Learn more </button>
+                              </div>
+                          </div>
+                      </div>
+                      <img src="../assets/buds-DX_GkgwW.png" alt="Buds" className="img-fluid position-absolute bottom-0 w-100 start-0 end-0 mb-5" />
+                  </div>
               </div>
-              <div style={{ padding:24,textAlign:'center' }}>
-                <p style={{ color:S,fontSize:14,marginBottom:24 }}>Delete coupon <strong style={{ color:'var(--text-primary)' }}>{deleteItem.code}</strong>? This cannot be undone.</p>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={()=>setDeleteItem(null)}>Cancel</button>
-                  <button style={{ ...btnD,flex:1,justifyContent:'center' }} onClick={handleDelete} disabled={saving}>{saving?'Deleting…':'Delete'}</button>
-                </div>
-              </div>
-            </div>
           </div>
-        </>
-      )}
+
+
+          <div className="modal fade" id="blackFridayCouponModal" tabIndex="-1" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered modal-lg">
+                  <div className="modal-content black-friday-coupon border-0">
+                      <button type="button" className="btn-close position-absolute top-0 end-0 p-5 z-1" data-bs-dismiss="modal"></button>
+                      <div className="modal-body p-6 p-md-8 p-lg-10">
+                          <div className="row g-8 align-items-center">
+                              <div className="col-md-5">
+                                  <div className="d-flex flex-column gap-6 gap-md-16">
+                                      <div>
+                                          <h2 className="fw-bold mb-0">50% OFF</h2>
+                                          <p className="fs-16">Black Friday Mega Sale</p>
+                                      </div>
+                                      <div>
+                                          <a href="#" className="text-indigo mb-1 fs-17 fst-italic fw-medium">"BLACKFRIDAY50"</a>
+                                          <span className="text-muted fs-16 d-block">Coupon Code</span>
+                                      </div>
+                                      <div>
+                                          <p className="fs-16">Limited-time offer — don’t miss out!</p>
+                                      </div>
+                                  </div>
+                              </div>
+                              <div className="col-md-7">
+                                  <img src="../assets/black-friday-DebvN8Uf.png" alt="Image" className="img-fluid" />
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+
+          <div className="modal fade" id="weekendSaleCouponModal" tabIndex="-1" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered modal-sm">
+                  <div className="modal-content weekend-sale-coupon border-2 border-primary position-relative">
+                      <button type="button" className="btn-close position-absolute top-0 end-0 p-5 z-1" data-bs-dismiss="modal"></button>
+                      <div className="modal-body p-10 pb-6 text-center border-bottom border-dashed overflow-hidden">
+                          <div className="circle-shap size-md bg-primary-subtle rounded-circle position-absolute"></div>
+                          <h2 className="fw-bold mb-1">Get 20% off for</h2>
+                          <h2 className="fw-bold mb-8">2 weeks</h2>
+                          <p className="text-muted fs-lg">Use Coupon code:</p>
+                      </div>
+                      <div className="p-10 py-8">
+                          <a href="#" className="text-center text-muted text-16 text-center d-block text-uppercase">WeekendSale-2026</a>
+                      </div>
+                      <div className="square-shap w-100 h-100 position-absolute top-0 start-0 bg-primary bg-opacity-75 rounded-2"></div>
+                  </div>
+              </div>
+          </div>
+
+
+          <div className="modal fade" id="newYearSpecialCouponModal" tabIndex="-1" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered modal-sm">
+                  <div className="modal-content border-0">
+                       <button type="button" className="btn-close position-absolute top-0 end-0 p-5 z-1" data-bs-dismiss="modal"></button>
+                      <div className="modal-body text-center p-6 p-md-8 p-lg-10">
+                          <p className="mb-6 fs-17 text-muted"> Get <span className="fw-semibold text-warning">50% Bonus Credits</span> for the First Month of the Year</p>
+                          <img src="../assets/gift-BNBUbTKy.png" alt="Gigt" className="img-fluid w-75 mx-auto d-block mb-7" />
+                          <P className="fw-semibold fs-lg mb-1">Bonus50</P>
+                          <p className="text-muted fs-16 mb-5">Share their referral code</p>
+                          <button type="button" className="btn btn-light w-100 py-3">78FTG8965GHY</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+
+          <div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered modal-xs">
+                  <div className="modal-content p-7 text-center">
+                      <div className="d-flex justify-content-center mb-4">
+                          <div className="size-14 bg-danger-subtle rounded-circle d-flex align-items-center justify-content-center size-16">
+                              <i className="ri-delete-bin-line text-danger fs-2xl"></i>
+                          </div>
+                      </div>
+                      <h5 className="mb-4 lh-base">Are you sure you want to delete this Coupon?</h5>
+                      <div className="d-flex justify-content-center align-items-center gap-2">
+                          <button type="button" className="btn btn-danger" data-bs-dismiss="modal">Delete</button>
+                          <button type="button" className="btn btn-link text-reset" data-bs-dismiss="modal">Cancel</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
     </div>
   )
 }

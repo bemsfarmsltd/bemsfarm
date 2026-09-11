@@ -1,165 +1,206 @@
-import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-const NAV = [
-  { label:'General',      to:'/settings/general'        },
-  { label:'Tax',          to:'/settings/tax'            },
-  { label:'Coupons',      to:'/settings/coupons'        },
-  { label:'POS',          to:'/settings/pos'            },
-  { label:'Payment',      to:'/settings/payment'        },
-  { label:'Currencies',   to:'/settings/currencies'     },
-  { label:'Receipts',     to:'/settings/invoices'       },
-  { label:'Manager',      to:'/settings/manager'        },
-  { label:'Notifications',to:'/settings/notifications'  },
-]
-
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const B = 'var(--border)', S = '#6b7280'
-
-function Toggle({ value, onChange }) {
-  return (
-    <div onClick={onChange} style={{ width:40,height:22,borderRadius:20,background:value?'#1B4332':'var(--border-strong)',position:'relative',cursor:'pointer',flexShrink:0,transition:'background .2s' }}>
-      <div style={{ position:'absolute',top:2,left:value?20:2,width:18,height:18,borderRadius:'50%',background:'var(--bg-card)',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
-    </div>
-  )
-}
-
-function Card({ title, subtitle, children, action }) {
-  return (
-    <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
-      <div style={{ padding:'16px 24px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-        <div>
-          <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,color:'var(--text-primary)',marginBottom:2 }}>{title}</div>
-          {subtitle&&<div style={{ fontSize:12,color:S }}>{subtitle}</div>}
-        </div>
-        {action}
-      </div>
-      <div style={{ padding:24 }}>{children}</div>
-    </div>
-  )
-}
-
-function NotifRow({ label, desc, value, onChange }) {
-  return (
-    <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 0',borderBottom:`1px solid var(--border)` }}>
-      <div style={{ flex:1,paddingRight:20 }}>
-        <div style={{ fontWeight:600,fontSize:13,color:'var(--text-primary)' }}>{label}</div>
-        {desc&&<div style={{ fontSize:11,color:S,marginTop:2 }}>{desc}</div>}
-      </div>
-      <Toggle value={value} onChange={onChange}/>
-    </div>
-  )
-}
-
-function SettingsNav() {
-  const { pathname } = useLocation()
-  return (
-    <div style={{ display:'flex',gap:0,borderBottom:`2px solid ${B}`,marginBottom:24,overflowX:'auto' }}>
-      {NAV.map(n=>(
-        <Link key={n.to} to={n.to} style={{ padding:'10px 16px',border:'none',borderBottom:pathname===n.to?'2px solid #1B4332':'2px solid transparent',background:'transparent',fontFamily:'var(--body-font)',fontWeight:pathname===n.to?700:500,fontSize:13,color:pathname===n.to?'#1B4332':S,cursor:'pointer',textDecoration:'none',whiteSpace:'nowrap',marginBottom:-2 }}>
-          {n.label}
-        </Link>
-      ))}
-    </div>
-  )
-}
-
-// notif_email_enabled/notif_sms_enabled/notif_order_email/notif_low_stock are
-// the real, backend-consumed keys (notif_low_stock + notif_email_enabled
-// directly gate the low-stock alert email in inventory_admin.js). The other
-// toggles here (email_new_customer, sms_orders, push_enabled) have no
-// backend consumer yet and are kept as local-only settings.
-const BLANK = { notif_order_email:true, notif_low_stock:true, email_new_customer:true, notif_sms_enabled:false, sms_orders:false, push_enabled:true, notif_email_enabled:true }
+import { Link } from 'react-router-dom'
 
 export default function NotificationSettings() {
-  const [settings, setSettings] = useState(BLANK)
-  const [loading, setLoading]   = useState(true)
-  const [saving, setSaving]     = useState(false)
-
-  useEffect(() => {
-    api.get('/admin/settings/notifications')
-      .then(r => setSettings({ ...BLANK, ...r.data.settings }))
-      .catch(() => toast.error('Failed to load notification settings'))
-      .finally(() => setLoading(false))
-  }, [])
-
-  function toggle(key) { setSettings(s => ({ ...s, [key]: !s[key] })) }
-
-  async function handleSave(e) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      await api.post('/admin/settings/notifications', settings)
-      toast.success('Notification settings saved')
-    } catch {
-      toast.error('Failed to save notification settings')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:10 }}>
-        <div>
-          <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Settings</div>
-          <div style={{ fontSize:12,color:S,marginTop:2 }}>Manage store preferences and system configurations.</div>
-        </div>
-      </div>
-      <SettingsNav/>
+    <div className="container-fluid">
+      <div className="position-relative">
+              <div className="main-profile-bg position-relative">
+                  <div className="size-48 square-1"></div>
+                  <div className="profile-bg bg-primary-subtle"></div>
+                  <img src="../assets/user-14-BWimhkHc.png" alt="Avatar" className="avatar-1 size-16 rounded-circle d-none d-md-block" />
+                  <img src="../assets/user-54-BgoCiuFl.png" alt="Avatar" className="avatar-2 size-16 rounded-circle d-none d-md-block" />
+                  <img src="../assets/user-57-BgWfHmFH.png" alt="Avatar" className="avatar-3 size-16 rounded-circle d-none d-md-block" />
+                  <img src="../assets/user-5-BsT8d_Co.png" alt="Avatar" className="avatar-4 size-16 rounded-circle d-none d-md-block" />
+                  <div className="row g-0 d-none d-md-block">
+                      <div className="col-7 col-xl-6 col-xxl-5 offset-5 offset-lg-4 offset-xl-5 offset-xxl-6">
+                          <h3 className="fw-medium line-clamp-2 lh-base py-12 overflow-hidden">A powerful POS admin dashboard to manage sales, inventory, and daily store operations</h3>
+                      </div>
+                  </div>
+              </div>
+              <div className="card border-0 border-bottom rounded-0 user-card">
+                  <div className="card-body px-6 pb-0">
+                      <div className="d-flex flex-wrap gap-3 justify-content-between align-items-end mb-3">
+                          <img src="../assets/user-71-RNjOCE17.png" loading="lazy" alt="user-45" className="size-36 mt-n28 rounded-5 border border-5 border-light" />
+                          <div className="d-flex flex-wrap align-items-center gap-3">
+                              <div className="border py-1 px-2 d-flex align-items-center gap-3 h-100 rounded">
+                                  <i className="ri-error-warning-fill text-secondary fs-xl"></i>
+                                  <p>POS Offline Mode</p>
+                                  <div className="form-switch switch-light-primary my-auto d-flex">
+                                      <input type="checkbox" id="switch-light-1" /><label className="label" htmlFor="switch-light-1"></label>
+                                  </div>
+                              </div>
+                              <a href="pos.html" className="btn btn-primary py-2">Open POS</a>
+                          </div>
+                      </div>
+                      <div className="avatar justify-content-start gap-1 mb-1">
+                          <h5 className="mt-2 mb-1">Lucas Ethan</h5>
+                          <i data-lucide="badge-check" className="size-5 icon-primary"></i>
+                      </div>
+                      <ul className="text-muted avatar justify-content-start gap-2 flex-wrap ps-0 mb-5">
+                          <li className="d-flex align-items-center gap-2">
+                              <i data-lucide="building-2" className="size-4"></i>
+                              <span>Store Manager · Main Branch</span>
+                          </li>
+                          <li className="d-flex align-items-center gap-2">
+                              <i data-lucide="map-pin" className="size-4"></i>
+                              <span>Buenos Aires, Argentina</span>
+                          </li>
+                          <li className="d-flex align-items-center gap-2">
+                              <i data-lucide="calendar-days" className="size-4"></i>
+                              <span>Joined on 24 April, 2024</span>
+                          </li>
+                      </ul>
+                      <div className="d-flex flex-wrap justify-content-between align-items-center gap-4 mb-9">
+                          <div className="d-flex flex-wrap gap-3 align-items-center">
+                              <div className="py-6px px-3 border rounded">
+                                  <i className="ri-calendar-fill me-2"></i>Last Login: May 17, 2025 | 10:00 AM
 
-      {loading ? (
-        <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
-      ) : (
-        <form onSubmit={handleSave}>
-          {/* Notification Channels */}
-          <Card title="Notification Channels" subtitle="Enable or disable notification delivery methods.">
-            <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12 }}>
-              {[
-                { key:'notif_email_enabled', label:'Email',    icon:'ri-mail-line',           color:'#405189', desc:'Order alerts by email'   },
-                { key:'notif_sms_enabled',   label:'SMS',      icon:'ri-smartphone-line',      color:'#0ab39c', desc:'SMS notifications'       },
-                { key:'push_enabled',        label:'Push',     icon:'ri-notification-3-line',  color:'#f57c00', desc:'Browser push alerts'     },
-              ].map(c=>(
-                <div key={c.key} onClick={()=>toggle(c.key)}
-                  style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'16px 12px',borderRadius:12,border:`2px solid ${settings[c.key]?c.color:B}`,background:settings[c.key]?`${c.color}08`:'var(--bg-card)',cursor:'pointer',transition:'all .15s',textAlign:'center' }}>
-                  <i className={c.icon} style={{ fontSize:26,color:settings[c.key]?c.color:S }}/>
-                  <div style={{ fontWeight:700,fontSize:12,color:settings[c.key]?'var(--text-primary)':S }}>{c.label}</div>
-                  <div style={{ fontSize:10,color:settings[c.key]?c.color:S,fontWeight:600 }}>{settings[c.key]?'Enabled':'Disabled'}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* Email Notifications */}
-          <Card title="Email Notifications" subtitle="Control which events trigger email alerts.">
-            <NotifRow label="New Order Email" desc="Send email when a new order is placed" value={settings.notif_order_email} onChange={()=>toggle('notif_order_email')}/>
-            <NotifRow label="Low Stock Alert Email" desc="Email when stock falls below reorder level" value={settings.notif_low_stock} onChange={()=>toggle('notif_low_stock')}/>
-            <div style={{ paddingBottom:0,borderBottom:'none' }}>
-              <NotifRow label="New Customer Email" desc="Email when a new customer registers" value={settings.email_new_customer} onChange={()=>toggle('email_new_customer')}/>
-            </div>
-          </Card>
-
-          {/* SMS Notifications */}
-          <Card title="SMS Notifications" subtitle="SMS alerts (requires SMS channel to be enabled above).">
-            <div style={{ marginBottom:8,fontSize:12,color:settings.notif_sms_enabled?S:'#f59e0b',background:settings.notif_sms_enabled?'transparent':'#fffbeb',padding:settings.notif_sms_enabled?0:'8px 12px',borderRadius:6 }}>
-              {!settings.notif_sms_enabled && <><i className="ri-alert-line"/> Enable SMS channel above to activate SMS alerts.</>}
-            </div>
-            <div style={{ opacity:settings.notif_sms_enabled?1:0.5,pointerEvents:settings.notif_sms_enabled?'auto':'none' }}>
-              <NotifRow label="SMS Order Alerts" desc="Receive SMS for new orders" value={settings.sms_orders} onChange={()=>toggle('sms_orders')}/>
-            </div>
-          </Card>
-
-          <div style={{ display:'flex',justifyContent:'flex-end',gap:10 }}>
-            <button type="button" style={btnL}>Cancel</button>
-            <button type="submit" style={btnP} disabled={saving}>
-              <i className="ri-save-line"/>{saving?'Saving…':'Save Changes'}
-            </button>
+                              </div>
+                              <div className="py-6px px-3 text-white bg-primary border-primary border rounded">9 Active Staff</div>
+                          </div>
+                          <div className="d-flex flex-wrap gap-3 align-items-center">
+                              <a href="http://localhost:8080/index.html" className="link link-custom-primary py-6px px-3 border rounded">http://localhost:8080/index.html</a>
+                              <button type="button" className="btn btn-indigo btn-icon size-9"><i className="ri-facebook-fill fs-16"></i></button>
+                              <button type="button" className="btn btn-pink btn-icon size-9"><i className="ri-instagram-fill fs-16"></i></button>
+                              <button type="button" className="btn btn-info btn-icon size-9"><i className="ri-twitter-fill fs-16"></i></button>
+                          </div>
+                      </div>
+                      <div>
+                          <ul className="nav nav-underline gap-1 gap-lg-4">
+                              <li className="nav-item">
+                                  <a className="nav-link" aria-current="page" href="pages-account-settings.html">
+                                      <i data-lucide="user-round" className="size-4 me-1"></i>
+                                      Account
+                                  </a>
+                              </li>
+                              <li className="nav-item">
+                                  <a className="nav-link" aria-current="page" href="pages-account-security.html">
+                                      <i data-lucide="shield-check" className="size-4 me-1"></i>
+                                      Security
+                                  </a>
+                              </li>
+                              <li className="nav-item">
+                                  <a className="nav-link" aria-current="page" href="pages-account-billing-plan.html">
+                                      <i data-lucide="gem" className="size-4 me-1"></i>
+                                      Billing &amp; Plans
+                                  </a>
+                              </li>
+                              <li className="nav-item">
+                                  <a className="nav-link active" aria-current="page" href="pages-account-notification.html">
+                                      <i data-lucide="bell" className="size-4 me-1"></i>
+                                      Notification
+                                  </a>
+                              </li>
+                              <li className="nav-item">
+                                  <a className="nav-link" aria-current="page" href="pages-account-statements.html">
+                                      <i data-lucide="list-tree" className="size-4 me-1"></i>
+                                      Statements
+                                  </a>
+                              </li>
+                              <li className="nav-item">
+                                  <a className="nav-link" aria-current="page" href="pages-account-logs.html">
+                                      <i data-lucide="log-out" className="size-4 me-1"></i>
+                                      Logs
+                                  </a>
+                              </li>
+                          </ul>
+                      </div>
+                  </div>
+              </div>
           </div>
-        </form>
-      )}
+          <div className="d-flex align-items-lg-center my-5 flex-lg-row flex-column gap-3">
+              <div className="flex-grow-1">
+                  <h6 className="mb-1">Notifications</h6>
+                  <p className="text-muted">Where would you like to receive notifications?</p>
+              </div>
+              <div className="flex-shrink-0">
+                  <a href="#" className="link link-custom-primary">Reset to Default Settings</a>
+              </div>
+          </div>
+          <div className="card">
+              <div className="card-header">
+                  <h6 className="card-title mb-0">Receive notifications about new activities in projects you're involved in</h6>
+              </div>
+              <div className="card-body">
+                  <div className="d-flex justify-content-between align-items-center gap-2">
+                      <label htmlFor="notification1" className="cursor-pointer mb-0 fw-medium flex-grow-1">New comments by others comments</label>
+                      <div className="form-switch switch-outline-primary">
+                          <input type="checkbox" id="notification1" checked />
+                          <label className="label" htmlFor="notification1"></label>
+                      </div>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center gap-2 mt-4">
+                      <label htmlFor="notification2" className="cursor-pointer mb-0 fw-medium flex-grow-1">Comments fro you tasks</label>
+                      <div className="form-switch switch-outline-primary">
+                          <input type="checkbox" id="notification2" />
+                          <label className="label" htmlFor="notification2"></label>
+                      </div>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center gap-2 mt-4">
+                      <label htmlFor="notification3" className="cursor-pointer mb-0 fw-medium flex-grow-1">New tasks assigned to you</label>
+                      <div className="form-switch switch-outline-primary">
+                          <input type="checkbox" id="notification3" />
+                          <label className="label" htmlFor="notification3"></label>
+                      </div>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center gap-2 mt-4">
+                      <label htmlFor="notification4" className="cursor-pointer mb-0 fw-medium flex-grow-1">Tasks completed (For tasks you created or assigned to)</label>
+                      <div className="form-switch switch-outline-primary">
+                          <input type="checkbox" id="notification4" />
+                          <label className="label" htmlFor="notification4"></label>
+                      </div>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center gap-2 mt-4">
+                      <label htmlFor="notification5" className="cursor-pointer mb-0 fw-medium flex-grow-1">You are mentioned in a projects, task, etc,.</label>
+                      <div className="form-switch switch-outline-primary">
+                          <input type="checkbox" id="notification5" />
+                          <label className="label" htmlFor="notification5"></label>
+                      </div>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center gap-2 mt-4">
+                      <label htmlFor="notification6" className="cursor-pointer mb-0 fw-medium flex-grow-1">Change in status of a task you're</label>
+                      <div className="form-switch switch-outline-primary">
+                          <input type="checkbox" id="notification6" />
+                          <label className="label" htmlFor="notification6"></label>
+                      </div>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center gap-2 mt-4">
+                      <label htmlFor="notification7" className="cursor-pointer mb-0 fw-medium flex-grow-1">Added new projects</label>
+                      <div className="form-switch switch-outline-primary">
+                          <input type="checkbox" id="notification7" />
+                          <label className="label" htmlFor="notification7"></label>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          <div className="card">
+              <div className="card-header">
+                  <h6 className="card-title mb-0">Get notified wherever you are</h6>
+              </div>
+              <div className="card-body">
+                  <div className="d-flex justify-content-between align-items-center gap-2">
+                      <label htmlFor="notification8" className="cursor-pointer mb-0 fw-medium flex-grow-1">Email notifications</label>
+                      <div className="form-switch switch-outline-primary">
+                          <input type="checkbox" id="notification8" checked />
+                          <label className="label" htmlFor="notification8"></label>
+                      </div>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center gap-2 mt-4">
+                      <label htmlFor="notification9" className="cursor-pointer mb-0 fw-medium flex-grow-1">Notifications via gotpos</label>
+                      <div className="form-switch switch-outline-primary">
+                          <input type="checkbox" id="notification9" checked />
+                          <label className="label" htmlFor="notification9"></label>
+                      </div>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center gap-2 mt-4">
+                      <label htmlFor="notification10" className="cursor-pointer mb-0 fw-medium flex-grow-1">Browser push notifications</label>
+                      <div className="form-switch switch-outline-primary">
+                          <input type="checkbox" id="notification10" checked />
+                          <label className="label" htmlFor="notification10"></label>
+                      </div>
+                  </div>
+              </div>
+          </div>
     </div>
   )
 }

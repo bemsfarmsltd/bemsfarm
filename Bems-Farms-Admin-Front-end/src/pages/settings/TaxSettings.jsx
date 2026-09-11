@@ -1,149 +1,191 @@
-import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-const NAV = [
-  { label:'General',      to:'/settings/general'        },
-  { label:'Tax',          to:'/settings/tax'            },
-  { label:'Coupons',      to:'/settings/coupons'        },
-  { label:'POS',          to:'/settings/pos'            },
-  { label:'Payment',      to:'/settings/payment'        },
-  { label:'Currencies',   to:'/settings/currencies'     },
-  { label:'Receipts',     to:'/settings/invoices'       },
-  { label:'Manager',      to:'/settings/manager'        },
-  { label:'Notifications',to:'/settings/notifications'  },
-]
-
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const B = 'var(--border)', S = '#6b7280'
-
-function Toggle({ value, onChange }) {
-  return (
-    <div onClick={onChange} style={{ width:40,height:22,borderRadius:20,background:value?'#1B4332':'var(--border-strong)',position:'relative',cursor:'pointer',flexShrink:0,transition:'background .2s' }}>
-      <div style={{ position:'absolute',top:2,left:value?20:2,width:18,height:18,borderRadius:'50%',background:'var(--bg-card)',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
-    </div>
-  )
-}
-
-function Card({ title, subtitle, children }) {
-  return (
-    <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
-      <div style={{ padding:'16px 24px',borderBottom:`1px solid ${B}` }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,color:'var(--text-primary)',marginBottom:2 }}>{title}</div>
-        {subtitle&&<div style={{ fontSize:12,color:S }}>{subtitle}</div>}
-      </div>
-      <div style={{ padding:24 }}>{children}</div>
-    </div>
-  )
-}
-
-function Row({ label, desc, children }) {
-  return (
-    <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,paddingBottom:18,marginBottom:18,borderBottom:`1px solid var(--border)`,alignItems:'center' }}>
-      <div>
-        <div style={{ fontWeight:600,fontSize:13,color:'var(--text-primary)',marginBottom:2 }}>{label}</div>
-        {desc&&<div style={{ fontSize:12,color:S }}>{desc}</div>}
-      </div>
-      <div>{children}</div>
-    </div>
-  )
-}
-
-function SettingsNav() {
-  const { pathname } = useLocation()
-  return (
-    <div style={{ display:'flex',gap:0,borderBottom:`2px solid ${B}`,marginBottom:24,overflowX:'auto' }}>
-      {NAV.map(n=>(
-        <Link key={n.to} to={n.to} style={{ padding:'10px 16px',border:'none',borderBottom:pathname===n.to?'2px solid #1B4332':'2px solid transparent',background:'transparent',fontFamily:'var(--body-font)',fontWeight:pathname===n.to?700:500,fontSize:13,color:pathname===n.to?'#1B4332':S,cursor:'pointer',textDecoration:'none',whiteSpace:'nowrap',marginBottom:-2 }}>
-          {n.label}
-        </Link>
-      ))}
-    </div>
-  )
-}
-
-const BLANK = { tax_enabled:true, tax_rate:7.5, tax_label:'VAT', tax_number:'', tax_inclusive:false }
+import { Link } from 'react-router-dom'
 
 export default function TaxSettings() {
-  const [form, setForm]     = useState(BLANK)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving]   = useState(false)
-
-  useEffect(() => {
-    api.get('/admin/settings/tax')
-      .then(r => setForm({ ...BLANK, ...r.data.settings }))
-      .catch(() => toast.error('Failed to load tax settings'))
-      .finally(() => setLoading(false))
-  }, [])
-
-  function set(key, val) { setForm(f => ({ ...f, [key]: val })) }
-
-  async function handleSave(e) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      await api.post('/admin/settings/tax', form)
-      toast.success('Tax settings saved')
-    } catch {
-      toast.error('Failed to save tax settings')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Settings</div>
-        <div style={{ fontSize:12,color:S,marginTop:2 }}>Manage store preferences and system configurations.</div>
-      </div>
-      <SettingsNav/>
+    <div className="container-fluid">
+      <div className="mb-5">
+              <h4 className="fs-xl">Settings</h4>
+              <p className="text-muted">Manage overall store preferences and system configurations.</p>
+          </div>
+          <ul className="nav nav-underline mb-5 border-bottom nav-primary" id="settings-tab" role="tablist">
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-tax.html" className="nav-link py-6px active" aria-current="page">Tax</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-coupons.html" className="nav-link py-6px" aria-current="page">Coupons</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-general.html" className="nav-link py-6px" aria-current="page">General</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-pos.html" className="nav-link py-6px" aria-current="page">POS</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-payment-gateway.html" className="nav-link py-6px" aria-current="page">Payment Gateway</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-currencies.html" className="nav-link py-6px" aria-current="page">Currencies</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-invoices.html" className="nav-link py-6px" aria-current="page">Invoices</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-manager.html" className="nav-link py-6px" aria-current="page">Manager</a>
+              </li>
+          </ul>
 
-      {loading ? (
-        <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
-      ) : (
-        <>
-          {!form.tax_enabled && (
-            <div style={{ background:'#fef3c7',border:'1px solid #fcd34d',borderRadius:10,padding:'12px 16px',marginBottom:20,fontSize:13,color:'#92400e',display:'flex',alignItems:'center',gap:10 }}>
-              <i className="ri-alert-line" style={{ fontSize:24 }}/>
-              <span><strong>Tax system is disabled.</strong> Tax will not be applied to sales or receipts.</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSave}>
-            <Card title="Tax Configuration" subtitle="Configure tax rates and display settings.">
-              <Row label="Enable Tax System" desc="Turn tax calculation on or off across the system.">
-                <Toggle value={form.tax_enabled} onChange={()=>set('tax_enabled',!form.tax_enabled)}/>
-              </Row>
-              <Row label="Tax Name / Label" desc="Label shown on receipts (e.g. VAT, GST).">
-                <input style={inp} value={form.tax_label} onChange={e=>set('tax_label',e.target.value)} placeholder="VAT"/>
-              </Row>
-              <Row label="Tax Rate (%)" desc="Nigerian standard VAT is 7.5%.">
-                <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                  <input type="number" style={{ ...inp,width:100 }} min={0} max={100} step={0.01} value={form.tax_rate} onChange={e=>set('tax_rate',parseFloat(e.target.value)||0)}/>
-                  <span style={{ fontSize:13,color:S,fontWeight:600 }}>%</span>
-                </div>
-              </Row>
-              <Row label="Tax Registration Number" desc="Your FIRS or relevant tax registration number.">
-                <input style={inp} value={form.tax_number} onChange={e=>set('tax_number',e.target.value)} placeholder="12345678-0001"/>
-              </Row>
-              <Row label="Prices Include Tax" desc="Whether product prices are entered inclusive of tax.">
-                <Toggle value={form.tax_inclusive} onChange={()=>set('tax_inclusive',!form.tax_inclusive)}/>
-              </Row>
-            </Card>
-
-            <div style={{ display:'flex',justifyContent:'flex-end',gap:10 }}>
-              <button type="button" style={btnL}>Cancel</button>
-              <button type="submit" style={btnP} disabled={saving}>
-                <i className="ri-save-line"/>{saving?'Saving…':'Save Changes'}
-              </button>
-            </div>
-          </form>
-        </>
-      )}
+          <div className="card">
+              <div className="card-body">
+                  <div className="alert alert-sub-warning alert-dismissible mb-5">
+                      <span><span className="fw-medium">Note:</span> Make sure the <span className="fw-medium">"Enable Tax System"</span> toggle is turned on; otherwise, all tax configurations including default tax rate, category-specific taxes, and auto-apply tax will not be applied to POS transactions or invoices.</span>
+                      <button type="button" className="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                  <div className="pb-6 mb-5 border-bottom">
+                      <h6 className="mb-1">Tax Information</h6>
+                      <p className="text-muted mb-5">Configure default tax details used across POS and invoices.</p>
+                      <div className="d-flex flex-column gap-5">
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="taxRegistrationNumber" className="form-label fs-15 mb-0">Tax Registration Number (GSTIN)</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <input id="taxRegistrationNumber" type="text" className="form-control" placeholder="22AAAAA0000A1Z5" />
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="taxRegistrationName" className="form-label fs-15 mb-0">Registered Business Name</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <input id="taxRegistrationName" type="text" className="form-control" placeholder="ABC Company" />
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="taxDisplayName" className="form-label fs-15 mb-0">Tax Display Name</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <input id="taxDisplayName" type="text" className="form-control" defaultValue="GST" />
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="taxRate" className="form-label fs-15 mb-0">Default Tax Rate (%)</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <input id="taxRate" type="number" className="form-control" placeholder="18" />
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  <div className="pb-6 mb-5 border-bottom">
+                      <h6 className="mb-1">Tax Controls</h6>
+                      <p className="text-muted mb-4">Manage how tax is applied and displayed in your POS system.</p>
+                      <div className="d-flex flex-column gap-5">
+                          <div className="row align-items-center">
+                              <div className="col-md-5 col-lg-4">
+                                  <h6 className="mb-1 fw-medium">Enable Tax System</h6>
+                              </div>
+                              <div className="col-md-7 col-xxl-4">
+                                  <div className="form-switch switch-solid-primary mb-1">
+                                      <input type="checkbox" id="enableTax" defaultChecked /><label className="label" htmlFor="enableTax"></label>
+                                  </div>
+                                  <p className="text-muted">Turn tax calculation on or off for all POS transactions.</p>
+                              </div>
+                          </div>
+                          <div className="row align-items-center">
+                              <div className="col-md-5 col-lg-4">
+                                  <h6 className="mb-1 fw-medium">Auto Apply Tax</h6>
+                              </div>
+                              <div className="col-md-7 col-xxl-4">
+                                  <div className="form-switch switch-solid-primary">
+                                      <input type="checkbox" id="autoApplyTax" defaultChecked /><label className="label" htmlFor="autoApplyTax"></label>
+                                  </div>
+                                  <p className="text-muted">Automatically apply tax when products are added to the cart.</p>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  <div className="pb-6 mb-5 border-bottom">
+                      <h6 className="mb-1">Category Tax Mapping</h6>
+                      <p className="text-muted mb-5">Assign specific tax rates to different product categories for accurate billing.</p>
+                      <div className="d-flex flex-column gap-5">
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="productCategory" className="form-label fs-15 mb-0">Product Category</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <div id="productCategory"></div>
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="applyTax" className="form-label fs-15 mb-0">Apply Tax</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <div id="applyTax"></div>
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="Country" className="form-label fs-15 mb-0">Country</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <input id="Country" type="text" className="form-control" placeholder="Enter country" />
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="State" className="form-label fs-15 mb-0">State</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <input id="State" type="text" className="form-control" placeholder="Enter state" />
+                              </div>
+                          </div>
+                          <div className="row mt-3 g-3">
+                              <div className="col-md-5 col-lg-4">
+                                  <div className="form-check">
+                                      <input className="form-check-input" type="checkbox" id="showTaxInvoice" defaultChecked />
+                                      <label className="form-check-label" htmlFor="showTaxInvoice">Show tax amount on invoice</label>
+                                  </div>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <div className="form-check">
+                                      <input className="form-check-input" type="checkbox" id="showTaxBreakdown" defaultChecked />
+                                      <label className="form-check-label" htmlFor="showTaxBreakdown">Show tax breakup (CGST / SGST)</label>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  <div className="mb-5">
+                      <h6 className="mb-1">Tax Configuration</h6>
+                      <p className="text-muted mb-5">Assign specific tax rates to different product categories for accurate billing.</p>
+                      <div className="d-flex flex-column gap-5">
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="taxType" className="form-label fs-15 mb-0">Tax Type</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <div id="taxType"></div>
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="calculationMethod" className="form-label fs-15 mb-0">Tax Calculation Method</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <div id="calculationMethod"></div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  <div className="text-end">
+                      <button className="btn btn-outline-light border me-1">Cancel</button>
+                      <button className="btn btn-primary">Save</button>
+                  </div>
+              </div>
+          </div>
     </div>
   )
 }

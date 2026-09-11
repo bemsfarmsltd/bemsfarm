@@ -1,377 +1,156 @@
-import { useState, useMemo, useEffect } from 'react'
-
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-const POLICY_TYPES = ['freshness','quality','shelf_life','seal']
-const BLANK_POLICY = { name:'', type:'freshness', days:3, products:0, description:'', status:'active' }
-
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const btnD = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
-
-const CLAIM_STATUS_STYLE = {
-  approved: { background:'#dcfce7',color:'#166534' },
-  pending:  { background:'#fef3c7',color:'#92400e' },
-  rejected: { background:'#fee2e2',color:'#991b1b' },
-}
-
-const TYPE_COLOR = { freshness:'#0ab39c', quality:'#405189', shelf_life:'#299cdb', seal:'#a78bfa' }
+import { Link } from 'react-router-dom'
 
 export default function Warranty() {
-  const [tab, setTab]                   = useState('policies')
-  const [policies, setPolicies]         = useState([])
-  // No backend exists yet for warranty claims (checked server/src/routes/ —
-  // only warranty *policies* are real). Starting empty rather than seeding
-  // fake claims — the table's existing empty state handles this cleanly.
-  const [claims, setClaims]             = useState([])
-  const [search, setSearch]             = useState('')
-  const [filterStatus, setFilterStatus] = useState('all')
-  const [activeModal, setActiveModal]   = useState(null)
-  const [editItem, setEditItem]         = useState(null)
-  const [viewItem, setViewItem]         = useState(null)
-  const [form, setForm]                 = useState(BLANK_POLICY)
-
-  const fetchPolicies = async () => {
-    try {
-      const res = await api.get('/admin/config/warranties')
-      // map duration to days for frontend compatibility
-      const mapped = res.data.warranties.map(p => ({ ...p, days: p.duration }))
-      setPolicies(mapped)
-    } catch (err) {
-      toast.error('Failed to load policies')
-    }
-  }
-
-  useEffect(() => {
-    fetchPolicies()
-  }, [])
-
-  const filteredPolicies = useMemo(() => policies.filter(r => {
-    const m = r.name.toLowerCase().includes(search.toLowerCase())
-    return m && (filterStatus==='all'||r.status===filterStatus)
-  }), [policies, search, filterStatus])
-
-  const filteredClaims = useMemo(() => claims.filter(r => {
-    const m = r.product.toLowerCase().includes(search.toLowerCase()) ||
-              r.customer.toLowerCase().includes(search.toLowerCase()) ||
-              r.order.toLowerCase().includes(search.toLowerCase())
-    return m && (filterStatus==='all'||r.status===filterStatus)
-  }), [claims, search, filterStatus])
-
-  const stats = useMemo(() => ({
-    policies:  policies.length,
-    active:    policies.filter(p=>p.status==='active').length,
-    totalClaims: claims.length,
-    pending:   claims.filter(c=>c.status==='pending').length,
-    approved:  claims.filter(c=>c.status==='approved').length,
-  }), [policies, claims])
-
-  function openAdd() { setEditItem(null); setForm({...BLANK_POLICY}); setActiveModal('form') }
-  function openEdit(r) { setEditItem(r); setForm({...r}); setActiveModal('form') }
-  function openDelete(r) { setEditItem(r); setActiveModal('delete') }
-  function closeModal() { setActiveModal(null); setEditItem(null); setViewItem(null) }
-
-  async function saveForm(e) {
-    e.preventDefault()
-    const payload = { ...form, duration: form.days }
-    try {
-      if (editItem) {
-        const res = await api.put(`/admin/config/warranties/${editItem.id}`, payload)
-        setPolicies(p=>p.map(r=>r.id===editItem.id?{...res.data, days: res.data.duration, products: r.products}:r))
-        toast.success('Policy updated')
-      } else {
-        const res = await api.post('/admin/config/warranties', payload)
-        setPolicies(p=>[{...res.data, days: res.data.duration, products: 0}, ...p])
-        toast.success('Policy created')
-      }
-      closeModal()
-    } catch (err) {
-      toast.error('Failed to save policy')
-    }
-  }
-
-  async function confirmDelete() { 
-    try {
-      await api.delete(`/admin/config/warranties/${editItem.id}`)
-      setPolicies(p=>p.filter(r=>r.id!==editItem.id))
-      toast.success('Policy deleted')
-      closeModal()
-    } catch (err) {
-      toast.error('Failed to delete policy')
-    }
-  }
-
-  function approveClaim(id) { setClaims(p=>p.map(c=>c.id===id?{...c,status:'approved',resolution:'Approved by admin'}:c)) }
-  function rejectClaim(id)  { setClaims(p=>p.map(c=>c.id===id?{...c,status:'rejected',resolution:'Rejected by admin'}:c)) }
-
-  const B = 'var(--border)', S = '#6b7280'
-
-  const TABS = [
-    { key:'policies', label:'Warranty Policies', count:policies.length },
-    { key:'claims',   label:'Claims',             count:claims.length  },
-  ]
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12 }}>
-        <div>
-          <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Warranty & Quality</div>
-          <div style={{ fontSize:12,color:S,marginTop:2 }}>Products → Warranty</div>
-        </div>
-        {tab==='policies'&&<button style={btnP} onClick={openAdd}><i className="ri-add-line"/>Add Policy</button>}
-      </div>
-
-      {/* Stat cards */}
-      <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:14,marginBottom:24 }}>
-        {[
-          { label:'Policies',       value:stats.policies,    icon:'ri-shield-check-line',    color:'#405189' },
-          { label:'Active',         value:stats.active,      icon:'ri-checkbox-circle-line', color:'#0ab39c' },
-          { label:'Total Claims',   value:stats.totalClaims, icon:'ri-file-list-3-line',     color:'#299cdb' },
-          { label:'Pending Claims', value:stats.pending,     icon:'ri-time-line',            color:'#f7b84b' },
-          { label:'Approved',       value:stats.approved,    icon:'ri-check-double-line',    color:'#16a34a' },
-        ].map(c=>(
-          <div key={c.label} style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,borderLeft:`4px solid ${c.color}`,padding:14,boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'flex',alignItems:'center',gap:12 }}>
-            <div style={{ width:40,height:40,borderRadius:'50%',background:`${c.color}1a`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-              <i className={c.icon} style={{ fontSize:20,color:c.color }}/>
-            </div>
-            <div>
-              <div style={{ fontWeight:800,fontSize:20,color:c.color,fontFamily:'var(--heading-font)' }}>{c.value}</div>
-              <div style={{ fontSize:11,color:S }}>{c.label}</div>
-            </div>
+    <div className="container-fluid">
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
+              <h6 className="flex-grow-1 mb-0">Warranties</h6>
+              <ul className="breadcrumb flex-shrink-0 mb-0">
+                  <li className="breadcrumb-item"><a href="#">Products</a></li>
+                  <li className="breadcrumb-item active">Warranties</li>
+              </ul>
           </div>
-        ))}
-      </div>
-
-      {/* Table card */}
-      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
-        <div style={{ padding:'0 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'flex-end',justifyContent:'space-between',flexWrap:'wrap',gap:0 }}>
-          <div style={{ display:'flex' }}>
-            {TABS.map(t=>(
-              <button key={t.key} onClick={()=>{ setTab(t.key); setSearch(''); setFilterStatus('all') }}
-                style={{ padding:'14px 18px',border:'none',borderBottom:tab===t.key?'2px solid #1B4332':'2px solid transparent',background:'transparent',fontFamily:'var(--body-font)',fontWeight:tab===t.key?700:500,fontSize:13,color:tab===t.key?'#1B4332':S,cursor:'pointer',display:'flex',alignItems:'center',gap:6 }}>
-                {t.label}
-                <span style={{ background:tab===t.key?'#1B4332':B,color:tab===t.key?'#fff':S,borderRadius:20,padding:'1px 7px',fontSize:10,fontWeight:700 }}>{t.count}</span>
-              </button>
-            ))}
-          </div>
-          <div style={{ display:'flex',gap:8,padding:'10px 0 10px 20px',borderLeft:`1px solid ${B}` }}>
-            <div style={{ position:'relative' }}>
-              <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
-              <input type="text" placeholder={tab==='policies'?'Search policies…':'Search claims…'} value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp,paddingLeft:34,width:200 }}/>
-            </div>
-            <select style={{ ...inp,width:'auto' }} value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
-              <option value="all">All</option>
-              {tab==='policies'?<><option value="active">Active</option><option value="inactive">Inactive</option></>
-                :<><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></>}
-            </select>
-          </div>
-        </div>
-
-        {/* Policies table */}
-        {tab==='policies'&&(
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%',borderCollapse:'collapse' }}>
-              <thead><tr>{['Policy Name','Type','Coverage','Products','Status','Created','Actions'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
-              <tbody>
-                {filteredPolicies.length===0&&(
-                  <tr><td colSpan={7} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                    <i className="ri-shield-check-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No policies found
-                  </td></tr>
-                )}
-                {filteredPolicies.map(r=>(
-                  <tr key={r.id}>
-                    <td style={TD}>
-                      <div style={{ fontWeight:600 }}>{r.name}</div>
-                      <div style={{ fontSize:11,color:S,marginTop:2,maxWidth:240,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{r.description}</div>
-                    </td>
-                    <td style={TD}><span style={{ background:`${TYPE_COLOR[r.type]}1a`,color:TYPE_COLOR[r.type],borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600,textTransform:'capitalize' }}>{r.type.replace('_',' ')}</span></td>
-                    <td style={{ ...TD,fontWeight:600 }}>{r.days} day{r.days>1?'s':''}</td>
-                    <td style={TD}><span style={{ background:'var(--bg-muted)',color:'var(--text-secondary)',borderRadius:20,padding:'2px 10px',fontSize:11,fontWeight:600 }}>{r.products}</span></td>
-                    <td style={TD}><span style={{ background:r.status==='active'?'#dcfce7':'#fee2e2',color:r.status==='active'?'#166534':'#991b1b',borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}>{r.status==='active'?'Active':'Inactive'}</span></td>
-                    <td style={{ ...TD,color:S,fontSize:12 }}>{r.created}</td>
-                    <td style={TD}>
-                      <div style={{ display:'flex',gap:4 }}>
-                        <button onClick={()=>openEdit(r)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0f4ff',color:'#405189',cursor:'pointer' }}><i className="ri-pencil-line"/></button>
-                        <button onClick={()=>openDelete(r)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#fff0f0',color:'#f06548',cursor:'pointer' }}><i className="ri-delete-bin-line"/></button>
+          <div className="row">
+              <div className="col-12">
+                  <div className="card">
+                      <div className="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+                          <h5 className="card-title mb-0">Warranty List</h5>
+                          <button type="button" className="btn btn-primary d-flex align-items-center gap-1 flex-shrink-0" data-bs-toggle="modal" data-bs-target="#addWarrantyModal" id="addWarrantyBtn"><i data-lucide="plus" className="size-4"></i> Add Warranty</button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                      <div className="card-body">
+                          <div className="d-flex flex-wrap gap-5 mb-4 justify-content-between">
+                              <div className="flex-shrink-0">
+                                  <label htmlFor="searchProductInput" className="form-label d-none">Search</label>
+                                  <div className="position-relative">
+                                      <input type="text" className="form-control ps-9" id="searchProductInput" placeholder="Search for..." />
+                                      <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-3 translate-middle-y"></i>
+                                  </div>
+                              </div>
+                              <div className="d-flex flex-wrap flex-md-nowrap gap-2">
+                                  <div id="Status" className="min-w-52"></div>
+                                  <div id="warrantyTypeFilter" className="min-w-52"></div>
+                              </div>
+                          </div>
+                          <div className="table-card table-responsive">
+                              <table className="table table-borderless align-middle text-nowrap mb-0">
+                                  <thead>
+                                      <tr className="bg-light border-bottom">
+                                          <th>
+                                              <div className="form-check check-primary">
+                                                  <input className="form-check-input" type="checkbox" id="checAllData" />
+                                              </div>
+                                          </th>
+                                          <th className="fw-medium text-muted sortable" data-column="product">Product</th>
+                                          <th className="fw-medium text-muted sortable" data-column="sku">SKU</th>
+                                          <th className="fw-medium text-muted sortable" data-column="customer">Customer</th>
+                                          <th className="fw-medium text-muted sortable" data-column="warrantyType">Warranty Type</th>
+                                          <th className="fw-medium text-muted sortable" data-column="purchaseDate">Purchase Date</th>
+                                          <th className="fw-medium text-muted sortable" data-column="status">Status</th>
+                                          <th className="fw-medium text-muted sortable" data-column="warrantyStart">Warranty Start</th>
+                                          <th className="fw-medium text-muted sortable" data-column="warrantyEnd">Warranty End</th>
+                                          <th className="fw-medium text-muted">Action</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody id="warrantiesTableBody">
 
-        {/* Claims table */}
-        {tab==='claims'&&(
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%',borderCollapse:'collapse' }}>
-              <thead><tr>{['Order','Customer','Product','Policy','Issue','Status','Date','Actions'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
-              <tbody>
-                {filteredClaims.length===0&&(
-                  <tr><td colSpan={8} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                    <i className="ri-file-list-3-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No claims found
-                  </td></tr>
-                )}
-                {filteredClaims.map(r=>(
-                  <tr key={r.id}>
-                    <td style={TD}><code style={{ fontSize:11,background:'var(--bg-muted)',padding:'2px 6px',borderRadius:4,color:'var(--text-secondary)' }}>{r.order}</code></td>
-                    <td style={{ ...TD,fontWeight:600 }}>{r.customer}</td>
-                    <td style={{ ...TD,color:S,fontSize:12 }}>{r.product}</td>
-                    <td style={{ ...TD,fontSize:11 }}><span style={{ background:'var(--bg-muted)',color:'var(--text-secondary)',borderRadius:20,padding:'2px 8px' }}>{r.policy}</span></td>
-                    <td style={{ ...TD,color:S,maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:12 }}>{r.issue}</td>
-                    <td style={TD}><span style={{ ...CLAIM_STATUS_STYLE[r.status],borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600,textTransform:'capitalize' }}>{r.status}</span></td>
-                    <td style={{ ...TD,color:S,fontSize:12,whiteSpace:'nowrap' }}>{r.date}</td>
-                    <td style={TD}>
-                      <div style={{ display:'flex',gap:4 }}>
-                        <button onClick={()=>{ setViewItem(r); setActiveModal('claim') }} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0f4ff',color:'#405189',cursor:'pointer' }}><i className="ri-eye-line"/></button>
-                        {r.status==='pending'&&<>
-                          <button onClick={()=>approveClaim(r.id)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0fdf4',color:'#16a34a',cursor:'pointer' }}><i className="ri-check-line"/></button>
-                          <button onClick={()=>rejectClaim(r.id)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#fff0f0',color:'#f06548',cursor:'pointer' }}><i className="ri-close-line"/></button>
-                        </>}
+                                  </tbody>
+                              </table>
+                          </div>
+                          <div className="row align-items-center g-3 mt-2">
+                              <div className="col-md-6">
+                                  <p className="text-muted text-center text-md-start mb-0" id="paginationInfo">
+                                      Showing <b className="me-1">1-0</b> of <b className="ms-1">0</b> Results
+                                  </p>
+                              </div>
+                              <div className="col-md-6">
+                                  <nav aria-label="Page navigation example">
+                                      <ul className="pagination justify-content-center justify-content-md-end mb-0" id="pagination">
+
+                                      </ul>
+                                  </nav>
+                              </div>
+                          </div>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <div style={{ padding:'10px 20px',borderTop:`1px solid ${B}`,fontSize:12,color:S }}>
-          {tab==='policies'?`Showing ${filteredPolicies.length} of ${policies.length} policies`:`Showing ${filteredClaims.length} of ${claims.length} claims`}
-        </div>
-      </div>
-
-      {/* ADD/EDIT POLICY MODAL */}
-      {activeModal==='form'&&(
-        <>
-          <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:500,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-shield-check-line" style={{ fontSize:24 }}/>
-                </div>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>{editItem?'Edit Policy':'Add Warranty Policy'}</span>
-                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
-              </div>
-              <form onSubmit={saveForm} style={{ padding:24 }}>
-                <div style={{ marginBottom:14 }}>
-                  <label style={LBL}>Policy Name <span style={{ color:'#f06548' }}>*</span></label>
-                  <input style={inp} required value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g., Fresh Produce Guarantee"/>
-                </div>
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14 }}>
-                  <div>
-                    <label style={LBL}>Type</label>
-                    <select style={inp} value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}>
-                      {POLICY_TYPES.map(t=><option key={t} value={t}>{t.replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase())}</option>)}
-                    </select>
                   </div>
-                  <div>
-                    <label style={LBL}>Coverage (days)</label>
-                    <input type="number" style={inp} min={1} value={form.days} onChange={e=>setForm(f=>({...f,days:parseInt(e.target.value)||1}))}/>
-                  </div>
-                </div>
-                <div style={{ marginBottom:14 }}>
-                  <label style={LBL}>Description</label>
-                  <textarea style={{ ...inp,resize:'vertical' }} rows={3} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Describe what this policy covers…"/>
-                </div>
-                <div style={{ marginBottom:24 }}>
-                  <label style={LBL}>Status</label>
-                  <select style={inp} value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button type="button" style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
-                  <button type="submit" style={{ ...btnP,flex:1,justifyContent:'center' }}>{editItem?'Save Changes':'Add Policy'}</button>
-                </div>
-              </form>
-            </div>
+              </div>
           </div>
-        </>
-      )}
 
-      {/* CLAIM DETAIL MODAL */}
-      {activeModal==='claim'&&viewItem&&(
-        <>
-          <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:500,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-file-list-3-line" style={{ fontSize:24 }}/>
-                </div>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>Claim Detail</span>
-                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
-              </div>
-              <div style={{ padding:24 }}>
-                {[
-                  ['Order', viewItem.order], ['Customer', viewItem.customer], ['Product', viewItem.product],
-                  ['Policy', viewItem.policy], ['Date', viewItem.date],
-                ].map(([k,v])=>(
-                  <div key={k} style={{ display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid var(--border)`,fontSize:13 }}>
-                    <span style={{ color:S,fontWeight:600 }}>{k}</span>
-                    <span style={{ color:'var(--text-primary)',fontWeight:500 }}>{v}</span>
-                  </div>
-                ))}
-                <div style={{ marginTop:14 }}>
-                  <div style={{ fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:6 }}>Issue Reported</div>
-                  <p style={{ fontSize:13,color:'var(--text-secondary)',background:'var(--bg-subtle)',borderRadius:8,padding:'10px 14px',margin:0,lineHeight:1.6 }}>{viewItem.issue}</p>
-                </div>
-                {viewItem.resolution&&(
-                  <div style={{ marginTop:12 }}>
-                    <div style={{ fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:6 }}>Resolution</div>
-                    <p style={{ fontSize:13,color:'var(--text-secondary)',background:'var(--bg-subtle)',borderRadius:8,padding:'10px 14px',margin:0 }}>{viewItem.resolution}</p>
-                  </div>
-                )}
-                <div style={{ marginTop:16,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-                  <span style={{ ...CLAIM_STATUS_STYLE[viewItem.status],borderRadius:50,padding:'4px 12px',fontSize:12,fontWeight:600,textTransform:'capitalize' }}>{viewItem.status}</span>
-                  {viewItem.status==='pending'&&(
-                    <div style={{ display:'flex',gap:8 }}>
-                      <button style={{ ...btnP,background:'#16a34a' }} onClick={()=>{ approveClaim(viewItem.id); closeModal() }}><i className="ri-check-line"/>Approve</button>
-                      <button style={btnD} onClick={()=>{ rejectClaim(viewItem.id); closeModal() }}><i className="ri-close-line"/>Reject</button>
-                    </div>
-                  )}
-                  {viewItem.status!=='pending'&&<button style={btnL} onClick={closeModal}>Close</button>}
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
 
-      {/* DELETE MODAL */}
-      {activeModal==='delete'&&editItem&&(
-        <>
-          <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-delete-bin-line" style={{ fontSize:24 }}/>
-                </div>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>Delete Policy?</span>
-                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+          <div className="modal fade" id="addWarrantyModal" tabIndex="-1" aria-labelledby="addWarrantyModalLabel" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered">
+                  <div className="modal-content">
+                      <div className="h-24 rounded-top-2 pattern-bg"></div>
+                      <div className="modal-body">
+                          <form id="warrantyForm">
+                              <input type="hidden" id="warrantyId" />
+                              <div className="row g-3">
+                                  <div className="col-12">
+                                      <label className="avatar border text-muted mx-auto bg-body-secondary size-24 rounded p-3 mt-n20 cursor-pointer" htmlFor="imageInput">
+                                          <i className="ri-upload-cloud-2-line fs-2xl"></i>
+                                          <input type="file" id="imageInput" className="d-none" />
+                                      </label>
+                                  </div>
+                                  <div className="col-12">
+                                      <label htmlFor="productName" className="form-label">Product <span className="text-danger">*</span></label>
+                                      <input type="text" className="form-control" id="productName" placeholder="e.g., Apple iPhone 15" required />
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="sku" className="form-label">SKU <span className="text-danger">*</span></label>
+                                      <input type="text" className="form-control" id="sku" placeholder="e.g., APL-15" required />
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="warrantyType" className="form-label">Warranty Type</label>
+                                      <div id="warrantyType"></div>
+                                  </div>
+                                  <div className="col-12">
+                                      <label htmlFor="customer" className="form-label">Customer <span className="text-danger">*</span></label>
+                                      <input type="text" className="form-control" id="customer" placeholder="e.g., John Doe" required />
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="purchaseDate" className="form-label">Purchase Date</label>
+                                       <input type="text" id="rightTopDatepicker" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose date" />
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="status" className="form-label">Status</label>
+                                      <div id="status"></div>
+                                  </div>
+                                  <div className="col-12">
+                                      <label htmlFor="warrantyStart" className="form-label">Warranty Start</label>
+                                     <input type="text" id="warrantyStart" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose date" />
+                                  </div>
+                                  <div className="col-12">
+                                      <label htmlFor="warrantyEnd" className="form-label">Warranty End</label>
+                                     <input type="text" id="warrantyEnd" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose date" />
+                                  </div>
+                              </div>
+                              <div className="d-flex gap-2 mt-7">
+                                  <button type="button" className="btn btn-light w-100" data-bs-dismiss="modal">Close</button>
+                                  <button type="submit" className="btn btn-primary w-100" id="saveWarrantyBtn">Add Warranty</button>
+                              </div>
+                          </form>
+                      </div>
+                  </div>
               </div>
-              <div style={{ padding:24,textAlign:'center' }}>
-                <p style={{ color:S,fontSize:14,marginBottom:24 }}>Delete policy <strong style={{ color:'var(--text-primary)' }}>{editItem.name}</strong>? Products using it will lose warranty coverage.</p>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
-                  <button style={{ ...btnD,flex:1,justifyContent:'center' }} onClick={confirmDelete}>Delete</button>
-                </div>
-              </div>
-            </div>
           </div>
-        </>
-      )}
+
+
+          <div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered modal-xs">
+                  <div className="modal-content p-7 text-center">
+                      <div className="d-flex justify-content-center mb-4">
+                          <div className="size-14 bg-danger-subtle rounded-circle d-flex align-items-center justify-content-center size-16">
+                              <i className="ri-delete-bin-line text-danger fs-2xl"></i>
+                          </div>
+                      </div>
+                      <h5 className="mb-4 lh-base">Are you sure you want to delete this warranty?</h5>
+                      <input type="hidden" id="deleteWarrantyId" />
+                      <div className="d-flex justify-content-center align-items-center gap-2">
+                          <button type="button" className="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+                          <button type="button" className="btn btn-link text-reset" data-bs-dismiss="modal">Cancel</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
     </div>
   )
 }

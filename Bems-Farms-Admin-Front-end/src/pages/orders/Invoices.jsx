@@ -1,292 +1,429 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
+import { useState, useMemo } from 'react'
+
+// ─── Config ───────────────────────────────────────────────────────────────────
 
 const STATUS_CFG = {
-  draft:     { label:'Draft',     color:'var(--text-muted)', bg:'var(--border)', icon:'ri-draft-line'          },
-  sent:      { label:'Sent',      color:'#3b82f6', bg:'#dbeafe', icon:'ri-send-plane-line'      },
-  paid:      { label:'Paid',      color:'#22c55e', bg:'#dcfce7', icon:'ri-checkbox-circle-line' },
-  overdue:   { label:'Overdue',   color:'#ef4444', bg:'#fee2e2', icon:'ri-error-warning-line'   },
-  cancelled: { label:'Cancelled', color:'var(--text-light)', bg:'var(--border)', icon:'ri-close-circle-line'    },
+  draft:     { label: 'Draft',     color: '#6b7280', bg: '#f3f4f6', icon: 'ri-draft-line'           },
+  sent:      { label: 'Sent',      color: '#3b82f6', bg: '#dbeafe', icon: 'ri-send-plane-line'       },
+  paid:      { label: 'Paid',      color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'  },
+  overdue:   { label: 'Overdue',   color: '#ef4444', bg: '#fee2e2', icon: 'ri-error-warning-line'    },
+  cancelled: { label: 'Cancelled', color: '#9ca3af', bg: '#f3f4f6', icon: 'ri-close-circle-line'     },
 }
 
 const CHANNEL_CFG = {
-  online:    { label:'Online',         icon:'ri-global-line',     color:'#3b82f6' },
-  mobile_app:{ label:'Mobile App',     icon:'ri-smartphone-line', color:'#8b5cf6' },
-  chef_bems: { label:'Chef Bems AI',   icon:'ri-robot-line',      color:'#a855f7' },
-  physical:  { label:'Physical Store', icon:'ri-store-2-line',    color:'#10b981' },
-  manual:    { label:'Manual',         icon:'ri-edit-line',       color:'#f59e0b' },
+  online:    { label: 'Online',         icon: 'ri-global-line',     color: '#3b82f6' },
+  mobile_app:{ label: 'Mobile App',     icon: 'ri-smartphone-line', color: '#8b5cf6' },
+  chef_bems: { label: 'Chef Bems AI',   icon: 'ri-robot-line',      color: '#a855f7' },
+  physical:  { label: 'Physical Store', icon: 'ri-store-2-line',    color: '#10b981' },
+  manual:    { label: 'Manual',         icon: 'ri-edit-line',       color: '#f59e0b' },
 }
 
-const fmt       = (n) => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const calcSub   = (items) => items.reduce((s,i)=>s+i.total,0)
-const calcTotal = (items,fee,disc) => calcSub(items)+Number(fee||0)-Number(disc||0)
+// ─── Mock Data ────────────────────────────────────────────────────────────────
 
-const BLANK_FORM = { customerId:'', customName:'', customPhone:'', customEmail:'', customAddress:'', paymentMethod:'Bank Transfer', dueDate:'', notes:'', discount:0, deliveryFee:0, items:[{ name:'',qty:1,unit:'kg',price:0,total:0 }] }
+const CUSTOMERS = [
+  { name: 'Ngozi Obi',          phone: '08123456789', email: 'ngozi@email.com',    address: '14 Ikeja GRA, Lagos'        },
+  { name: 'Adaeze Nwosu',       phone: '07098765432', email: 'adaeze@email.com',   address: '7 Lekki Phase 1, Lagos'     },
+  { name: 'Bimpe Fashola',      phone: '08055566677', email: 'bimpe@gmail.com',    address: '22 Agege Motor Road, Lagos' },
+  { name: 'Seun Adesanya',      phone: '09012341234', email: 'seun.a@email.com',   address: '5 Victoria Island, Lagos'   },
+  { name: 'Kemi Balogun',       phone: '08167891234', email: 'kemi.b@gmail.com',   address: '18 Surulere, Lagos'         },
+  { name: 'Funmi Ogundele',     phone: '08123450987', email: 'funmi@email.com',    address: '9 Gbagada, Lagos'           },
+  { name: 'Rasheedat Lawal',    phone: '07023456789', email: 'rasheedat@email.com',address: '15 Maryland, Lagos'         },
+  { name: 'Chukwuemeka Nze',    phone: '08098761234', email: 'emeka.n@email.com',  address: '11 Isolo, Lagos'            },
+  { name: 'Yetunde Adeniyi',    phone: '08056781234', email: 'yetunde@email.com',  address: '20 Ikorodu Road, Lagos'     },
+  { name: 'Corporate — Mega Catering Ltd', phone: '0700MEGA01', email: 'orders@megacatering.ng', address: '2 Marina, Lagos' },
+]
 
-const inp  = { display:'block',width:'100%',padding:'9px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box' }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:6 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
+const PRODUCTS_CATALOG = [
+  { id: 1,  name: 'Fresh Tomatoes',         unit: 'kg',    price: 2800  },
+  { id: 2,  name: 'Red Bell Pepper',        unit: 'kg',    price: 3500  },
+  { id: 3,  name: 'Scotch Bonnet',          unit: 'kg',    price: 4200  },
+  { id: 4,  name: 'Fresh Spinach',          unit: 'bunch', price: 800   },
+  { id: 5,  name: 'Ugwu (Fluted Pumpkin)', unit: 'bunch', price: 600   },
+  { id: 6,  name: 'Plantain',              unit: 'hand',  price: 2500  },
+  { id: 7,  name: 'Yam (White)',           unit: 'tuber', price: 3200  },
+  { id: 8,  name: 'Ginger',               unit: 'kg',    price: 5500  },
+  { id: 9,  name: 'Garlic',               unit: 'kg',    price: 4800  },
+  { id: 10, name: 'Palm Oil',             unit: 'litre', price: 2100  },
+  { id: 11, name: 'Onion (Red)',          unit: 'kg',    price: 1800  },
+  { id: 12, name: 'Sweet Corn',          unit: 'cob',   price: 400   },
+]
 
-function Modal({ title, onClose, children, maxWidth=600 }) {
-  return <>
-    <div onClick={onClose} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1054 }}/>
-    <div style={{ position:'fixed',inset:0,zIndex:1055,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-      <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth,boxShadow:'0 8px 40px rgba(0,0,0,0.18)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column' }}>
-        <div style={{ background:'#1B4332',color:'#fff',padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0 }}>
-          <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:15 }}>{title}</span>
-          <button onClick={onClose} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,0.8)',cursor:'pointer',fontSize:20,display:'flex',padding:4 }}><i className="ri-close-line"/></button>
-        </div>
-        <div style={{ padding:24,overflowY:'auto' }}>{children}</div>
-      </div>
-    </div>
-  </>
+const p = (id, qty) => {
+  const prod = PRODUCTS_CATALOG.find(x => x.id === id)
+  return { ...prod, qty, total: prod.price * qty }
 }
+
+const INVOICES_INIT = [
+  {
+    id: 'INV-2026-0142', orderId: 'ORD-2026-0142', date: '2026-06-27',
+    dueDate: '2026-07-04', issuedDate: '2026-06-27',
+    status: 'paid', channel: 'online',
+    customer: CUSTOMERS[0],
+    items: [p(1,5), p(11,3), p(3,2)],
+    deliveryFee: 800, discount: 0, notes: '',
+    paidDate: '2026-06-27', paymentRef: 'PST-9938422', paymentMethod: 'Paystack',
+    source: 'auto',
+  },
+  {
+    id: 'INV-2026-0141', orderId: 'ORD-2026-0141', date: '2026-06-27',
+    dueDate: '2026-07-04', issuedDate: '2026-06-27',
+    status: 'paid', channel: 'chef_bems',
+    customer: CUSTOMERS[1],
+    items: [p(1,8), p(2,4), p(6,3), p(5,5)],
+    deliveryFee: 1200, discount: 0, notes: 'Jollof rice party for 25 people — Nancy AI order',
+    paidDate: '2026-06-27', paymentRef: 'PST-9937100', paymentMethod: 'Paystack',
+    source: 'auto',
+  },
+  {
+    id: 'INV-2026-0140', orderId: 'ORD-2026-0140', date: '2026-06-27',
+    dueDate: '2026-07-04', issuedDate: '2026-06-27',
+    status: 'paid', channel: 'mobile_app',
+    customer: CUSTOMERS[2],
+    items: [p(4,4), p(7,2), p(10,2)],
+    deliveryFee: 600, discount: 0, notes: '',
+    paidDate: '2026-06-27', paymentRef: 'PST-9936700', paymentMethod: 'Paystack',
+    source: 'auto',
+  },
+  {
+    id: 'INV-2026-0139', orderId: 'ORD-2026-0139', date: '2026-06-26',
+    dueDate: '2026-07-03', issuedDate: '2026-06-26',
+    status: 'paid', channel: 'online',
+    customer: CUSTOMERS[3],
+    items: [p(8,1), p(9,1), p(12,6)],
+    deliveryFee: 1500, discount: 0, notes: '',
+    paidDate: '2026-06-26', paymentRef: 'PST-9935001', paymentMethod: 'Paystack',
+    source: 'auto',
+  },
+  {
+    id: 'INV-2026-0135', orderId: 'ORD-2026-0135', date: '2026-06-25',
+    dueDate: '2026-07-02', issuedDate: '2026-06-25',
+    status: 'paid', channel: 'chef_bems',
+    customer: CUSTOMERS[7],
+    items: [p(8,2), p(9,2), p(4,6)],
+    deliveryFee: 1000, discount: 0, notes: 'Soup base ingredients — Nancy AI order',
+    paidDate: '2026-06-25', paymentRef: 'PST-9920081', paymentMethod: 'Paystack',
+    source: 'auto',
+  },
+  {
+    id: 'INV-2026-0131', orderId: 'ORD-2026-0131', date: '2026-06-24',
+    dueDate: '2026-07-01', issuedDate: '2026-06-24',
+    status: 'paid', channel: 'chef_bems',
+    customer: CUSTOMERS[6],
+    items: [p(1,10), p(2,5), p(3,3), p(11,4)],
+    deliveryFee: 1500, discount: 2000, notes: 'Egusi soup for 30 people — Nancy AI order. 5% loyalty discount applied.',
+    paidDate: '2026-06-24', paymentRef: 'PST-9910022', paymentMethod: 'Paystack',
+    source: 'auto',
+  },
+  {
+    id: 'INV-2026-0128', orderId: null, date: '2026-06-23',
+    dueDate: '2026-06-30', issuedDate: '2026-06-23',
+    status: 'overdue', channel: 'manual',
+    customer: CUSTOMERS[9],
+    items: [p(1,20), p(2,10), p(3,5), p(11,8), p(10,5)],
+    deliveryFee: 3000, discount: 5000, notes: 'Corporate bulk order for Mega Catering Ltd. Net 7 payment terms.',
+    paidDate: null, paymentRef: null, paymentMethod: 'Bank Transfer',
+    source: 'manual',
+  },
+  {
+    id: 'INV-2026-0125', orderId: null, date: '2026-06-20',
+    dueDate: '2026-06-27', issuedDate: '2026-06-20',
+    status: 'sent', channel: 'manual',
+    customer: CUSTOMERS[4],
+    items: [p(1,3), p(2,2), p(6,4)],
+    deliveryFee: 800, discount: 0, notes: 'Manual invoice for recurring customer.',
+    paidDate: null, paymentRef: null, paymentMethod: 'Bank Transfer',
+    source: 'manual',
+  },
+  {
+    id: 'INV-2026-0120', orderId: null, date: '2026-06-18',
+    dueDate: '2026-06-25', issuedDate: '2026-06-18',
+    status: 'draft', channel: 'manual',
+    customer: CUSTOMERS[8],
+    items: [p(7,4), p(6,3), p(4,5)],
+    deliveryFee: 600, discount: 0, notes: 'Draft — pending customer confirmation.',
+    paidDate: null, paymentRef: null, paymentMethod: 'Cash',
+    source: 'manual',
+  },
+  {
+    id: 'INV-2026-0115', orderId: null, date: '2026-06-15',
+    dueDate: '2026-06-22', issuedDate: '2026-06-15',
+    status: 'cancelled', channel: 'manual',
+    customer: CUSTOMERS[5],
+    items: [p(1,5), p(3,2)],
+    deliveryFee: 700, discount: 0, notes: 'Customer cancelled order before delivery.',
+    paidDate: null, paymentRef: null, paymentMethod: 'Paystack',
+    source: 'manual',
+  },
+]
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const fmt       = (n) => `₦${Number(n).toLocaleString()}`
+const calcSub   = (items) => items.reduce((s, i) => s + i.total, 0)
+const calcTotal = (items, fee, disc) => calcSub(items) + Number(fee||0) - Number(disc||0)
+
+const BLANK_FORM = {
+  customer:      '',
+  customName:    '',
+  customPhone:   '',
+  customEmail:   '',
+  customAddress: '',
+  paymentMethod: 'Bank Transfer',
+  dueDate:       '',
+  notes:         '',
+  discount:      0,
+  deliveryFee:   0,
+  items: [{ name:'', qty:1, unit:'kg', price:0, total:0 }],
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Invoices() {
-  const [invoices,setInvoices]           = useState([])
-  const [search,setSearch]               = useState('')
-  const [filterStatus,setFilterStatus]   = useState('all')
-  const [activeModal,setActiveModal]     = useState(null)
-  const [selected,setSelected]           = useState(null)
-  const [form,setForm]                   = useState(BLANK_FORM)
-  const [markPaidRef,setMarkPaidRef]     = useState('')
-  const [loading, setLoading]            = useState(true)
-  const [customers, setCustomers]        = useState([])
-  const [productsCatalog, setProductsCatalog] = useState([])
+  const [invoices, setInvoices] = useState(INVOICES_INIT)
+  const [search, setSearch]     = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [activeModal, setActiveModal]   = useState(null)
+  const [selected, setSelected]         = useState(null)
+  const [form, setForm]                 = useState(BLANK_FORM)
+  const [markPaidRef, setMarkPaidRef]   = useState('')
 
-  useEffect(() => {
-    api.get('/admin/customers', { params: { limit: 200 } }).then(r => setCustomers(r.data.customers || [])).catch(() => {})
-    api.get('/admin/products', { params: { limit: 200 } }).then(r => setProductsCatalog(r.data.products || [])).catch(() => {})
-  }, [])
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/admin/orders/invoices', { params: { search, status: filterStatus } })
-      setInvoices(res.data.invoices)
-    } catch { toast.error('Failed to load invoices') }
-    finally { setLoading(false) }
-  }, [search, filterStatus])
-
-  useEffect(() => { load() }, [load])
-
-  const openModal  = (type,inv) => { setSelected(inv); setActiveModal(type); setMarkPaidRef('') }
+  const openModal = (type, inv) => { setSelected(inv); setActiveModal(type); setMarkPaidRef('') }
   const closeModal = () => { setActiveModal(null); setSelected(null) }
 
-  const stats = useMemo(()=>({
-    total:             invoices.length,
-    paid:              invoices.filter(i=>i.status==='paid').length,
-    outstanding:       invoices.filter(i=>['sent','draft'].includes(i.status)).length,
-    overdue:           invoices.filter(i=>i.status==='overdue').length,
-    revenue:           invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+Number(i.amount||0),0),
-    outstanding_value: invoices.filter(i=>['sent','overdue'].includes(i.status)).reduce((s,i)=>s+Number(i.amount||0),0),
-  }),[invoices])
+  // ── Stats ──────────────────────────────────────────────────────────────────
 
-  const filtered = useMemo(() => invoices.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)), [invoices])
+  const stats = useMemo(() => ({
+    total:     invoices.length,
+    paid:      invoices.filter(i => i.status === 'paid').length,
+    outstanding: invoices.filter(i => ['sent','draft'].includes(i.status)).length,
+    overdue:   invoices.filter(i => i.status === 'overdue').length,
+    revenue:   invoices.filter(i => i.status === 'paid').reduce((s,i) => s + calcTotal(i.items, i.deliveryFee, i.discount), 0),
+    outstanding_value: invoices.filter(i => ['sent','overdue'].includes(i.status)).reduce((s,i) => s + calcTotal(i.items, i.deliveryFee, i.discount), 0),
+  }), [invoices])
 
-  const setField = (f,v) => setForm(p=>({...p,[f]:v}))
+  // ── Filtered ───────────────────────────────────────────────────────────────
 
-  const updateItem = (idx,field,val) => {
-    setForm(prev=>{
-      const items=prev.items.map((item,i)=>{
-        if (i!==idx) return item
-        const updated={...item,[field]:val}
-        updated.total=Number(updated.qty||0)*Number(updated.price||0)
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    return invoices
+      .filter(i => {
+        const okStatus = filterStatus === 'all' || i.status === filterStatus
+        const okSearch = !q || i.id.toLowerCase().includes(q) || i.customer.name.toLowerCase().includes(q)
+          || (i.orderId||'').toLowerCase().includes(q)
+        return okStatus && okSearch
+      })
+      .sort((a,b) => new Date(b.date) - new Date(a.date))
+  }, [invoices, search, filterStatus])
+
+  // ── Form item management ───────────────────────────────────────────────────
+
+  const setField = (f, v) => setForm(p => ({ ...p, [f]: v }))
+
+  const updateItem = (idx, field, val) => {
+    setForm(prev => {
+      const items = prev.items.map((item, i) => {
+        if (i !== idx) return item
+        const updated = { ...item, [field]: val }
+        updated.total = Number(updated.qty||0) * Number(updated.price||0)
         return updated
       })
-      return {...prev,items}
+      return { ...prev, items }
     })
   }
 
-  const addItem    = ()=>setForm(p=>({...p,items:[...p.items,{name:'',qty:1,unit:'kg',price:0,total:0}]}))
-  const removeItem = (idx)=>setForm(p=>({...p,items:p.items.filter((_,i)=>i!==idx)}))
+  const addItem    = () => setForm(p => ({ ...p, items: [...p.items, { name:'', qty:1, unit:'kg', price:0, total:0 }] }))
+  const removeItem = (idx) => setForm(p => ({ ...p, items: p.items.filter((_,i) => i !== idx) }))
 
-  const formTotal = calcTotal(form.items,form.deliveryFee,form.discount)
+  const formTotal = calcTotal(form.items, form.deliveryFee, form.discount)
 
-  const [creating, setCreating] = useState(false)
+  // ── Actions ────────────────────────────────────────────────────────────────
 
-  const createInvoice = async (asDraft) => {
-    const custObj = customers.find(c => String(c.id) === String(form.customerId))
-    const customerName = custObj ? custObj.name : form.customName.trim()
-    if (!customerName) { toast.error("Enter a customer name"); return }
-    const cleanItems = form.items.filter(i => i.name && Number(i.qty) > 0)
-    if (!cleanItems.length) { toast.error("Add at least one line item"); return }
+  const createInvoice = (asDraft) => {
+    const customer = form.customer
+      ? CUSTOMERS.find(c => c.name === form.customer) || CUSTOMERS[0]
+      : { name: form.customName, phone: form.customPhone, email: form.customEmail, address: form.customAddress }
 
-    setCreating(true)
-    try {
-      await api.post('/admin/orders/invoices', {
-        customer_id: custObj ? custObj.id : undefined,
-        customer_name: customerName,
-        customer_phone: custObj ? custObj.phone : (form.customPhone || undefined),
-        customer_email: custObj ? custObj.email : (form.customEmail || undefined),
-        customer_address: form.customAddress || undefined,
-        due_date: form.dueDate || undefined,
-        payment_method: form.paymentMethod,
-        notes: form.notes || undefined,
-        items: cleanItems,
-        delivery_fee: form.deliveryFee,
-        discount_amount: form.discount,
-        status: asDraft ? 'draft' : 'sent',
-      })
-      toast.success(asDraft ? 'Invoice saved as draft' : 'Invoice created and sent')
-      setForm(BLANK_FORM); closeModal(); load()
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to create invoice')
-    } finally {
-      setCreating(false)
-    }
+    const now    = new Date()
+    const id     = `INV-2026-${String(invoices.length + 200).padStart(4,'0')}`
+    const today  = now.toISOString().slice(0,10)
+    const status = asDraft ? 'draft' : 'sent'
+
+    setInvoices(prev => [{
+      id, orderId: null, date: today,
+      dueDate: form.dueDate || new Date(now.getTime() + 7*86400000).toISOString().slice(0,10),
+      issuedDate: today, status, channel: 'manual', customer,
+      items: form.items.filter(i => i.name && i.qty && i.price),
+      deliveryFee: Number(form.deliveryFee||0), discount: Number(form.discount||0),
+      notes: form.notes, paidDate: null, paymentRef: null, paymentMethod: form.paymentMethod,
+      source: 'manual',
+    }, ...prev])
+    setForm(BLANK_FORM)
+    closeModal()
   }
 
-  const updateStatus = async (status, notes) => {
-    try {
-      await api.patch(`/admin/orders/invoices/${selected.id}/status`, { status, notes })
-      toast.success("Status updated")
-      closeModal(); load()
-    } catch { toast.error("Failed to update status") }
+  const markAsPaid = () => {
+    setInvoices(prev => prev.map(i => {
+      if (i.id !== selected.id) return i
+      return { ...i, status:'paid', paidDate: new Date().toISOString().slice(0,10), paymentRef: markPaidRef || 'Manual' }
+    }))
+    closeModal()
   }
 
-  // The backend only preserves the invoice's existing notes when this is
-  // null (COALESCE) — sending the payment ref/"Manual" here used to
-  // permanently overwrite whatever notes were entered at creation instead
-  // of appending to them.
-  const markAsPaid = ()=>updateStatus('paid', markPaidRef
-    ? [selected?.notes, `Paid via ${markPaidRef}`].filter(Boolean).join(' — ')
-    : undefined)
-  const sendInvoice   = ()=>updateStatus('sent')
-  const cancelInvoice = ()=>updateStatus('cancelled')
+  const sendInvoice = () => {
+    setInvoices(prev => prev.map(i => i.id !== selected.id ? i : { ...i, status:'sent' }))
+    closeModal()
+  }
 
-  const STATUS_TABS = [{ key:'all',label:'All Invoices' },...Object.entries(STATUS_CFG).map(([k,v])=>({ key:k,label:v.label }))]
+  const cancelInvoice = () => {
+    setInvoices(prev => prev.map(i => i.id !== selected.id ? i : { ...i, status:'cancelled' }))
+    closeModal()
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ marginBottom:24 }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:22,color:'var(--text-primary)' }}>Invoices</div>
-        <div style={{ fontSize:12,color:'var(--text-muted)',marginTop:2 }}>Orders / Invoices</div>
+    <div className="container-fluid">
+
+      {/* Page Header */}
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
+        <h6 className="flex-grow-1 mb-0">Invoices</h6>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><a href="#">Orders</a></li>
+          <li className="breadcrumb-item active">Invoices</li>
+        </ul>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:12,marginBottom:24 }}>
+      {/* Stat Cards */}
+      <div className="row g-3 mb-4">
         {[
-          { label:'Total Invoices',    value:stats.total,                         color:'#6366f1',icon:'ri-file-list-3-line',        filter:'all'     },
-          { label:'Paid',              value:stats.paid,                           color:'#22c55e',icon:'ri-checkbox-circle-line',    filter:'paid'    },
-          { label:'Sent / Draft',      value:stats.outstanding,                   color:'#3b82f6',icon:'ri-send-plane-line',          filter:'sent,draft' },
-          { label:'Overdue',           value:stats.overdue,                       color:'#ef4444',icon:'ri-error-warning-line',       filter:'overdue' },
-          { label:'Total Collected',   value:fmt(stats.revenue),                  color:'#10b981',icon:'ri-money-dollar-circle-line', filter:null      },
-          { label:'Outstanding Value', value:fmt(stats.outstanding_value),        color:'#f59e0b',icon:'ri-time-line',                filter:'sent,overdue' },
-        ].map(c=>(
-          <div key={c.label} onClick={()=>c.filter&&setFilterStatus(c.filter)}
-            style={{ background:'var(--bg-card)',borderRadius:12,border:'1px solid var(--border)',borderLeft:`3px solid ${c.color}`,padding:'14px 16px',display:'flex',alignItems:'center',gap:10,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',cursor:c.filter?'pointer':'default' }}>
-            <div style={{ width:38,height:38,borderRadius:8,background:`${c.color}18`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-              <i className={c.icon} style={{ fontSize:17,color:c.color }}/>
-            </div>
-            <div>
-              <div style={{ fontSize:16,fontWeight:800,color:'var(--text-primary)' }}>{c.value}</div>
-              <div style={{ fontSize:11,color:'var(--text-muted)' }}>{c.label}</div>
+          { label:'Total Invoices',    value: stats.total,                color:'#6366f1', icon:'ri-file-list-3-line',      filter:'all'     },
+          { label:'Paid',              value: stats.paid,                  color:'#22c55e', icon:'ri-checkbox-circle-line',  filter:'paid'    },
+          { label:'Sent / Draft',      value: stats.outstanding,          color:'#3b82f6', icon:'ri-send-plane-line',        filter:'sent'    },
+          { label:'Overdue',           value: stats.overdue,              color:'#ef4444', icon:'ri-error-warning-line',     filter:'overdue' },
+          { label:'Total Collected',   value: fmt(stats.revenue),         color:'#10b981', icon:'ri-money-dollar-circle-line',filter: null    },
+          { label:'Outstanding Value', value: fmt(stats.outstanding_value),color:'#f59e0b', icon:'ri-time-line',             filter:'overdue' },
+        ].map(c => (
+          <div key={c.label} className="col-6 col-md-4 col-xl-2">
+            <div className="card p-3" style={{ borderLeft:`3px solid ${c.color}`, cursor: c.filter ? 'pointer' : 'default' }}
+              onClick={() => c.filter && setFilterStatus(c.filter)}>
+              <div className="d-flex align-items-center gap-3">
+                <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width:40, height:40, background:c.color+'20' }}>
+                  <i className={`${c.icon} fs-18`} style={{ color:c.color }}/>
+                </div>
+                <div>
+                  <div className="text-muted" style={{ fontSize:11 }}>{c.label}</div>
+                  <div className="fw-bold fs-18">{c.value}</div>
+                </div>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Filter bar */}
-      <div style={{ background:'var(--bg-card)',borderRadius:12,border:'1px solid var(--border)',boxShadow:'0 1px 4px rgba(0,0,0,0.06)',marginBottom:16 }}>
-        <div style={{ padding:'12px 16px',display:'flex',flexWrap:'wrap',gap:10,alignItems:'center' }}>
-          <div style={{ position:'relative',minWidth:260 }}>
-            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:'var(--text-light)',fontSize:20 }}/>
-            <input style={{ ...inp,paddingLeft:32 }} placeholder="Invoice ref, customer, order..." value={search} onChange={e=>setSearch(e.target.value)}/>
+      {/* Filter + Actions Bar */}
+      <div className="card mb-3">
+        <div className="card-body d-flex flex-wrap gap-2 align-items-center">
+          <div className="input-group" style={{ maxWidth:280 }}>
+            <span className="input-group-text"><i className="ri-search-line"/></span>
+            <input className="form-control" placeholder="Invoice ref, customer, order..." value={search} onChange={e => setSearch(e.target.value)}/>
           </div>
-          {filterStatus!=='all'&&(
-            <button style={btnL} onClick={()=>setFilterStatus('all')}><i className="ri-close-line"/>Clear Filter</button>
+          {filterStatus !== 'all' && (
+            <button className="btn btn-sm btn-outline-secondary" onClick={() => setFilterStatus('all')}>
+              <i className="ri-close-line me-1"/>Clear Filter
+            </button>
           )}
-          <div style={{ marginLeft:'auto',display:'flex',gap:10,alignItems:'center' }}>
-            <span style={{ fontSize:12,color:'var(--text-muted)' }}>{filtered.length} invoice{filtered.length!==1?'s':''}</span>
-            <button style={btnP} onClick={()=>{ setForm(BLANK_FORM); setActiveModal('create') }}>
-              <i className="ri-add-line"/>Create Invoice
+          <div className="ms-auto d-flex gap-2 align-items-center">
+            <span className="text-muted small">{filtered.length} invoice{filtered.length !== 1 ? 's' : ''}</span>
+            <button className="btn btn-sm btn-primary" onClick={() => { setForm(BLANK_FORM); setActiveModal('create') }}>
+              <i className="ri-add-line me-1"/>Create Invoice
             </button>
           </div>
         </div>
-        <div style={{ borderTop:'1px solid var(--border)',overflowX:'auto' }}>
-          <div style={{ display:'flex',whiteSpace:'nowrap',padding:'0 8px' }}>
-            {STATUS_TABS.map(t=>(
-              <button key={t.key} onClick={()=>setFilterStatus(t.key)}
-                style={{ background:'none',border:'none',cursor:'pointer',padding:'10px 12px',fontSize:13,fontWeight:filterStatus===t.key?700:400,color:filterStatus===t.key?'#1B4332':'#6b7280',borderBottom:filterStatus===t.key?'2px solid #1B4332':'2px solid transparent',fontFamily:'var(--body-font)',whiteSpace:'nowrap' }}>
-                {t.label}
-              </button>
+        {/* Status tabs */}
+        <div className="border-top px-3" style={{ overflowX:'auto' }}>
+          <div className="d-flex" style={{ whiteSpace:'nowrap' }}>
+            {[{ key:'all', label:'All Invoices' }, ...Object.entries(STATUS_CFG).map(([k,v]) => ({ key:k, label:v.label }))].map(t => (
+              <button key={t.key} className="btn btn-sm border-0 rounded-0 py-2 px-3"
+                style={{
+                  borderBottom: filterStatus === t.key ? '2px solid #6366f1' : '2px solid transparent',
+                  color:        filterStatus === t.key ? '#6366f1' : '#6b7280',
+                  fontWeight:   filterStatus === t.key ? 600 : 400,
+                  background:   'transparent',
+                }}
+                onClick={() => setFilterStatus(t.key)}>{t.label}</button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Table */}
-      <div style={{ background:'var(--bg-card)',borderRadius:12,border:'1px solid var(--border)',boxShadow:'0 1px 4px rgba(0,0,0,0.06)',overflow:'hidden' }}>
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%',borderCollapse:'collapse' }}>
-            <thead>
-              <tr style={{ background:'var(--bg-subtle)',borderBottom:'1px solid var(--border)' }}>
-                {['Invoice','Customer','Channel','Date Issued','Due Date','Amount','Payment','Status','Actions'].map(h=>(
-                  <th key={h} style={TH}>{h}</th>
-                ))}
+      {/* Invoices Table */}
+      <div className="card">
+        <div className="table-responsive">
+          <table className="table table-hover align-middle mb-0">
+            <thead className="table-light">
+              <tr>
+                <th>Invoice</th><th>Customer</th><th>Channel</th><th>Date Issued</th>
+                <th>Due Date</th><th>Amount</th><th>Payment</th><th>Status</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length===0&&(
-                <tr><td colSpan={9} style={{ ...TD,textAlign:'center',padding:48,color:'var(--text-light)' }}>
-                  <i className="ri-file-list-3-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No invoices found
-                </td></tr>
+              {filtered.length === 0 && (
+                <tr><td colSpan={9} className="text-center text-muted py-5">No invoices found</td></tr>
               )}
-              {filtered.map(inv=>{
-                const cfg=STATUS_CFG[inv.status] || STATUS_CFG.draft, chCfg=CHANNEL_CFG[inv.channel] || CHANNEL_CFG.online
-                const total=Number(inv.amount||0)
-                const dueDateString = inv.due_date ? new Date(inv.due_date).toISOString().slice(0,10) : ''
-                const issuedDateString = inv.date_issued ? new Date(inv.date_issued).toISOString().slice(0,10) : new Date(inv.created_at||Date.now()).toISOString().slice(0,10)
-                const overdue=inv.status!=='paid'&&inv.status!=='cancelled'&&inv.due_date&&new Date(inv.due_date)<new Date()
+              {filtered.map(inv => {
+                const cfg   = STATUS_CFG[inv.status]
+                const chCfg = CHANNEL_CFG[inv.channel]
+                const total = calcTotal(inv.items, inv.deliveryFee, inv.discount)
+                const overdue = inv.status !== 'paid' && inv.status !== 'cancelled' && new Date(inv.dueDate) < new Date()
                 return (
                   <tr key={inv.id}>
-                    <td style={TD}>
-                      <div style={{ fontWeight:700,color:'#1B4332',cursor:'pointer' }} onClick={()=>openModal('view',inv)}>{inv.invoice_ref || inv.id}</div>
-                      {inv.order_id&&<div style={{ fontSize:11,color:'var(--text-muted)',marginTop:2 }}><i className="ri-link me-1"/>{inv.order_id}</div>}
-                      {inv.type==='manual'&&<span style={{ display:'inline-block',background:'#fef3c7',color:'#92400e',borderRadius:50,padding:'1px 6px',fontSize:9,fontWeight:700,marginTop:2 }}>Manual</span>}
+                    <td>
+                      <div className="fw-medium text-primary" style={{ cursor:'pointer' }} onClick={() => openModal('view', inv)}>{inv.id}</div>
+                      {inv.orderId && <div className="text-muted" style={{ fontSize:11 }}><i className="ri-link me-1"/>{inv.orderId}</div>}
+                      {inv.source === 'manual' && <span className="badge rounded-pill bg-warning text-dark" style={{ fontSize:9 }}>Manual</span>}
                     </td>
-                    <td style={TD}>
-                      <div style={{ fontWeight:600 }}>{inv.customer_name || 'Walk-in'}</div>
-                      <div style={{ fontSize:11,color:'var(--text-muted)' }}>{inv.customer_phone || ''}</div>
+                    <td>
+                      <div className="fw-medium">{inv.customer.name}</div>
+                      <div className="text-muted" style={{ fontSize:11 }}>{inv.customer.phone}</div>
                     </td>
-                    <td style={TD}>
-                      <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:`${chCfg.color}18`,color:chCfg.color,borderRadius:50,padding:'3px 8px',fontSize:11,fontWeight:600 }}>
-                        <i className={chCfg.icon}/>{chCfg.label}
+                    <td>
+                      <span className="badge rounded-pill" style={{ background:chCfg.color+'20', color:chCfg.color, fontSize:11 }}>
+                        <i className={`${chCfg.icon} me-1`}/>{chCfg.label}
                       </span>
                     </td>
-                    <td style={{ ...TD,fontSize:13 }}>{issuedDateString}</td>
-                    <td style={TD}>
-                      <div style={{ fontSize:13,color:overdue?'#ef4444':'inherit',fontWeight:overdue?600:400 }}>{dueDateString}</div>
-                      {overdue&&<div style={{ fontSize:10,color:'#ef4444',fontWeight:700 }}>OVERDUE</div>}
+                    <td style={{ fontSize:13 }}>{inv.issuedDate}</td>
+                    <td>
+                      <div style={{ fontSize:13, color: overdue ? '#ef4444' : 'inherit', fontWeight: overdue ? 600 : 400 }}>
+                        {inv.dueDate}
+                      </div>
+                      {overdue && <div style={{ fontSize:10, color:'#ef4444' }}>OVERDUE</div>}
                     </td>
-                    <td style={TD}>
-                      <div style={{ fontWeight:700 }}>{fmt(total)}</div>
-                      {inv.discount_amount>0&&<div style={{ fontSize:11,color:'#16a34a' }}>-{fmt(inv.discount_amount)} disc.</div>}
+                    <td>
+                      <div className="fw-bold">{fmt(total)}</div>
+                      {inv.discount > 0 && <div className="text-success" style={{ fontSize:11 }}>-{fmt(inv.discount)} disc.</div>}
                     </td>
-                    <td style={{ ...TD,fontSize:12 }}>{inv.payment_method}</td>
-                    <td style={TD}>
-                      <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:cfg.bg,color:cfg.color,borderRadius:50,padding:'3px 8px',fontSize:11,fontWeight:600 }}>
-                        <i className={cfg.icon}/>{cfg.label}
+                    <td style={{ fontSize:12 }}>{inv.paymentMethod}</td>
+                    <td>
+                      <span className="badge" style={{ background:cfg.bg, color:cfg.color, fontSize:11 }}>
+                        <i className={`${cfg.icon} me-1`}/>{cfg.label}
                       </span>
-                      {inv.paidDate&&<div style={{ fontSize:10,color:'var(--text-muted)',marginTop:2 }}>{inv.paidDate}</div>}
+                      {inv.paidDate && <div className="text-muted" style={{ fontSize:10 }}>{inv.paidDate}</div>}
                     </td>
-                    <td style={TD}>
-                      <div style={{ display:'flex',gap:4 }}>
-                        <button title="View" onClick={()=>openModal('view',inv)} style={{ background:'var(--bg-subtle)',border:'1px solid var(--border)',borderRadius:6,padding:'5px 8px',cursor:'pointer',fontSize:14,color:'var(--text-secondary)' }}><i className="ri-eye-line"/></button>
-                        {inv.status==='draft'&&(
-                          <button title="Send Invoice" onClick={()=>openModal('send',inv)} style={{ background:'#dbeafe',border:'none',borderRadius:6,padding:'5px 8px',cursor:'pointer',fontSize:14,color:'#1d4ed8' }}><i className="ri-send-plane-line"/></button>
-                        )}
-                        {['sent','overdue'].includes(inv.status)&&(
-                          <button title="Mark as Paid" onClick={()=>openModal('markpaid',inv)} style={{ background:'#dcfce7',border:'none',borderRadius:6,padding:'5px 8px',cursor:'pointer',fontSize:14,color:'#166534' }}><i className="ri-checkbox-circle-line"/></button>
-                        )}
-                        {!['paid','cancelled'].includes(inv.status)&&(
-                          <button title="Cancel Invoice" onClick={()=>openModal('cancel',inv)} style={{ background:'#fee2e2',border:'none',borderRadius:6,padding:'5px 8px',cursor:'pointer',fontSize:14,color:'#991b1b' }}><i className="ri-close-circle-line"/></button>
-                        )}
+                    <td>
+                      <div className="d-flex gap-1 flex-wrap">
+                        <button className="btn btn-sm btn-outline-secondary" title="View" onClick={() => openModal('view', inv)}><i className="ri-eye-line"/></button>
+                        {inv.status === 'draft' && <>
+                          <button className="btn btn-sm btn-outline-primary" title="Send Invoice" onClick={() => openModal('send', inv)}><i className="ri-send-plane-line"/></button>
+                        </>}
+                        {['sent','overdue'].includes(inv.status) && <>
+                          <button className="btn btn-sm btn-outline-success" title="Mark as Paid" onClick={() => openModal('markpaid', inv)}><i className="ri-checkbox-circle-line"/></button>
+                        </>}
+                        {!['paid','cancelled'].includes(inv.status) && <>
+                          <button className="btn btn-sm btn-outline-danger" title="Cancel Invoice" onClick={() => openModal('cancel', inv)}><i className="ri-close-circle-line"/></button>
+                        </>}
                       </div>
                     </td>
                   </tr>
@@ -297,240 +434,348 @@ export default function Invoices() {
         </div>
       </div>
 
-      {/* MODALS */}
-      {activeModal&&<>
+      {/* ════════════════════════════════════════════════
+          MODALS
+      ════════════════════════════════════════════════ */}
 
-        {/* VIEW */}
-        {activeModal==='view'&&selected&&(()=>{
-          const total=calcTotal(selected.items,selected.deliveryFee,selected.discount)
-          const cfg=STATUS_CFG[selected.status], chCfg=CHANNEL_CFG[selected.channel]
-          return (
-            <>
-              <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:1054 }}/>
-              <div style={{ position:'fixed',inset:0,zIndex:1055,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}>
-                <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:720,maxHeight:'90vh',overflowY:'auto',boxShadow:'0 8px 40px rgba(0,0,0,0.18)' }}>
-                  {/* Invoice header band */}
-                  <div style={{ background:'#1e293b',color:'#fff',borderRadius:'14px 14px 0 0',padding:'24px 32px' }}>
-                    <div style={{ display:'flex',alignItems:'flex-start',justifyContent:'space-between' }}>
-                      <div>
-                        <div style={{ fontFamily:'var(--custom-font)',fontWeight:700,fontSize:26,marginBottom:4 }}>Bems Farms</div>
-                        <div style={{ fontSize:12,opacity:0.7 }}>Premium Fresh Produce · Lagos, Nigeria</div>
-                      </div>
-                      <div style={{ textAlign:'right' }}>
-                        <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:20,marginBottom:6 }}>{selected.id}</div>
-                        <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:cfg.bg,color:cfg.color,borderRadius:50,padding:'4px 10px',fontSize:11,fontWeight:600 }}>
-                          <i className={cfg.icon}/>{cfg.label}
-                        </span>
-                      </div>
+      {activeModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050,
+          display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
+          onClick={e => e.target === e.currentTarget && closeModal()}>
+
+          {/* ── VIEW INVOICE ───────────────────────────── */}
+          {activeModal === 'view' && selected && (() => {
+            const total = calcTotal(selected.items, selected.deliveryFee, selected.discount)
+            const cfg   = STATUS_CFG[selected.status]
+            const chCfg = CHANNEL_CFG[selected.channel]
+            return (
+              <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:720, maxHeight:'90vh', overflowY:'auto' }}>
+                {/* Invoice header band */}
+                <div style={{ background:'#1e293b', color:'#fff', borderRadius:'12px 12px 0 0', padding:'24px 32px' }}>
+                  <div className="d-flex align-items-start justify-content-between">
+                    <div>
+                      <div className="fw-bold fs-18 mb-1">BEMS FARMS</div>
+                      <div style={{ fontSize:12, opacity:0.7 }}>Premium Fresh Produce · Lagos, Nigeria</div>
                     </div>
-                  </div>
-                  <div style={{ padding:'24px 32px' }}>
-                    {/* Meta */}
-                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:24,marginBottom:24 }}>
-                      <div>
-                        <div style={{ fontSize:11,color:'var(--text-muted)',marginBottom:6 }}>Billed To</div>
-                        <div style={{ fontWeight:600 }}>{selected.customer.name}</div>
-                        <div style={{ fontSize:13 }}>{selected.customer.phone}</div>
-                        <div style={{ fontSize:13,color:'var(--text-muted)' }}>{selected.customer.email}</div>
-                        <div style={{ fontSize:13,color:'var(--text-muted)' }}>{selected.customer.address}</div>
-                      </div>
-                      <div>
-                        {[['Issue Date',selected.issuedDate,'inherit'],['Due Date',selected.dueDate,selected.status==='overdue'?'#ef4444':'inherit'],selected.orderId&&['Order Ref',selected.orderId,'inherit'],['Channel',null,''],['Payment',selected.paymentMethod,'inherit']].filter(Boolean).map((row,i)=>(
-                          row[1]===null ? (
-                            <div key={i} style={{ display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:13 }}>
-                              <span style={{ color:'var(--text-muted)' }}>Channel</span>
-                              <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:`${chCfg.color}18`,color:chCfg.color,borderRadius:50,padding:'2px 8px',fontSize:11,fontWeight:600 }}>
-                                <i className={chCfg.icon}/>{chCfg.label}
-                              </span>
-                            </div>
-                          ) : (
-                            <div key={i} style={{ display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:13 }}>
-                              <span style={{ color:'var(--text-muted)' }}>{row[0]}</span>
-                              <span style={{ fontWeight:600,color:row[2] }}>{row[1]}</span>
-                            </div>
-                          )
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Line items */}
-                    <table style={{ width:'100%',borderCollapse:'collapse',border:'1px solid var(--border)',borderRadius:8,overflow:'hidden',marginBottom:16 }}>
-                      <thead>
-                        <tr style={{ background:'var(--bg-subtle)' }}>
-                          {['Product','Qty','Unit Price','Total'].map((h,i)=>(
-                            <th key={h} style={{ ...TH,textAlign:i>1?'right':'left' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selected.items.map((item,i)=>(
-                          <tr key={i}>
-                            <td style={TD}>{item.name}</td>
-                            <td style={TD}>{item.qty} {item.unit}</td>
-                            <td style={{ ...TD,textAlign:'right' }}>{fmt(item.price)}</td>
-                            <td style={{ ...TD,textAlign:'right',fontWeight:600 }}>{fmt(item.total)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-
-                    {/* Totals */}
-                    <div style={{ display:'flex',justifyContent:'flex-end',marginBottom:16 }}>
-                      <div style={{ minWidth:240 }}>
-                        <div style={{ display:'flex',justifyContent:'space-between',padding:'6px 0',fontSize:13,color:'var(--text-muted)' }}><span>Subtotal</span><span>{fmt(calcSub(selected.items))}</span></div>
-                        {selected.deliveryFee>0&&<div style={{ display:'flex',justifyContent:'space-between',padding:'6px 0',fontSize:13,color:'var(--text-muted)' }}><span>Delivery Fee</span><span>{fmt(selected.deliveryFee)}</span></div>}
-                        {selected.discount>0&&<div style={{ display:'flex',justifyContent:'space-between',padding:'6px 0',fontSize:13,color:'#16a34a' }}><span>Discount</span><span>-{fmt(selected.discount)}</span></div>}
-                        <div style={{ display:'flex',justifyContent:'space-between',padding:'10px 0',fontSize:16,fontWeight:700,borderTop:'1px solid var(--border)',marginTop:4 }}><span>Total</span><span>{fmt(total)}</span></div>
-                      </div>
-                    </div>
-
-                    {selected.paidDate&&(
-                      <div style={{ background:'#dcfce7',border:'1px solid #bbf7d0',borderRadius:8,padding:'10px 14px',fontSize:13,color:'#166534',marginBottom:12 }}>
-                        <i className="ri-checkbox-circle-line" style={{ marginRight:6 }}/><strong>Payment received</strong> on {selected.paidDate}{selected.paymentRef&&<> · Ref: <strong>{selected.paymentRef}</strong></>}
-                      </div>
-                    )}
-
-                    {selected.notes&&(
-                      <div style={{ borderTop:'1px solid var(--border)',paddingTop:12,fontSize:13,color:'var(--text-muted)',marginBottom:16 }}>
-                        <strong>Notes:</strong> {selected.notes}
-                      </div>
-                    )}
-
-                    <div style={{ borderTop:'1px solid var(--border)',paddingTop:16,display:'flex',gap:10,flexWrap:'wrap' }}>
-                      {selected.status==='draft'&&<button style={btnP} onClick={()=>{ closeModal(); setTimeout(()=>openModal('send',selected),100) }}><i className="ri-send-plane-line"/>Send Invoice</button>}
-                      {['sent','overdue'].includes(selected.status)&&<button style={{ ...btnP,background:'#16a34a' }} onClick={()=>{ closeModal(); setTimeout(()=>openModal('markpaid',selected),100) }}><i className="ri-checkbox-circle-line"/>Mark as Paid</button>}
-                      {!['paid','cancelled'].includes(selected.status)&&<button style={{ ...btnL,color:'#991b1b',borderColor:'#fca5a5' }} onClick={()=>{ closeModal(); setTimeout(()=>openModal('cancel',selected),100) }}><i className="ri-close-circle-line"/>Cancel Invoice</button>}
-                      <button style={{ ...btnL,marginLeft:'auto' }} onClick={closeModal}><i className="ri-close-line"/>Close</button>
+                    <div className="text-end">
+                      <div className="fw-bold fs-20">{selected.id}</div>
+                      <span className="badge" style={{ background:cfg.bg, color:cfg.color, fontSize:11 }}>
+                        <i className={`${cfg.icon} me-1`}/>{cfg.label}
+                      </span>
                     </div>
                   </div>
                 </div>
+
+                <div className="p-4">
+                  {/* Meta row */}
+                  <div className="row g-3 mb-4">
+                    <div className="col-6">
+                      <div className="text-muted small mb-1">Billed To</div>
+                      <div className="fw-medium">{selected.customer.name}</div>
+                      <div className="small">{selected.customer.phone}</div>
+                      <div className="small text-muted">{selected.customer.email}</div>
+                      <div className="small text-muted">{selected.customer.address}</div>
+                    </div>
+                    <div className="col-6 text-end">
+                      <div className="row g-2">
+                        <div className="col-6 text-start"><div className="text-muted small">Issue Date</div></div>
+                        <div className="col-6"><div className="small fw-medium">{selected.issuedDate}</div></div>
+                        <div className="col-6 text-start"><div className="text-muted small">Due Date</div></div>
+                        <div className="col-6">
+                          <div className="small fw-medium" style={{ color: selected.status==='overdue' ? '#ef4444' : 'inherit' }}>
+                            {selected.dueDate}
+                          </div>
+                        </div>
+                        {selected.orderId && <>
+                          <div className="col-6 text-start"><div className="text-muted small">Order Ref</div></div>
+                          <div className="col-6"><div className="small fw-medium">{selected.orderId}</div></div>
+                        </>}
+                        <div className="col-6 text-start"><div className="text-muted small">Channel</div></div>
+                        <div className="col-6">
+                          <span className="badge" style={{ background:chCfg.color+'20', color:chCfg.color, fontSize:10 }}>
+                            <i className={`${chCfg.icon} me-1`}/>{chCfg.label}
+                          </span>
+                        </div>
+                        <div className="col-6 text-start"><div className="text-muted small">Payment</div></div>
+                        <div className="col-6"><div className="small fw-medium">{selected.paymentMethod}</div></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Line items */}
+                  <table className="table table-sm mb-0 border">
+                    <thead style={{ background:'#f8fafc' }}>
+                      <tr>
+                        <th>Product</th><th className="text-center">Qty</th><th className="text-end">Unit Price</th><th className="text-end">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selected.items.map((item, i) => (
+                        <tr key={i}>
+                          <td>{item.name}</td>
+                          <td className="text-center">{item.qty} {item.unit}</td>
+                          <td className="text-end">{fmt(item.price)}</td>
+                          <td className="text-end">{fmt(item.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* Totals */}
+                  <div className="d-flex justify-content-end mt-3">
+                    <div style={{ minWidth:240 }}>
+                      <div className="d-flex justify-content-between py-1 small text-muted">
+                        <span>Subtotal</span><span>{fmt(calcSub(selected.items))}</span>
+                      </div>
+                      {selected.deliveryFee > 0 && (
+                        <div className="d-flex justify-content-between py-1 small text-muted">
+                          <span>Delivery Fee</span><span>{fmt(selected.deliveryFee)}</span>
+                        </div>
+                      )}
+                      {selected.discount > 0 && (
+                        <div className="d-flex justify-content-between py-1 small text-success">
+                          <span>Discount</span><span>-{fmt(selected.discount)}</span>
+                        </div>
+                      )}
+                      <div className="d-flex justify-content-between py-2 fw-bold border-top mt-1" style={{ fontSize:15 }}>
+                        <span>Total</span><span>{fmt(total)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment record */}
+                  {selected.paidDate && (
+                    <div className="alert alert-success p-3 mt-3 small">
+                      <i className="ri-checkbox-circle-line me-1"/>
+                      <strong>Payment received</strong> on {selected.paidDate}
+                      {selected.paymentRef && <> · Ref: <strong>{selected.paymentRef}</strong></>}
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {selected.notes && (
+                    <div className="border-top pt-3 mt-3 small text-muted">
+                      <strong>Notes:</strong> {selected.notes}
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="border-top pt-3 mt-3 d-flex gap-2 flex-wrap">
+                    {selected.status === 'draft' && <button className="btn btn-primary btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('send', selected), 100) }}><i className="ri-send-plane-line me-1"/>Send Invoice</button>}
+                    {['sent','overdue'].includes(selected.status) && <button className="btn btn-success btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('markpaid', selected), 100) }}><i className="ri-checkbox-circle-line me-1"/>Mark as Paid</button>}
+                    {!['paid','cancelled'].includes(selected.status) && <button className="btn btn-outline-danger btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('cancel', selected), 100) }}><i className="ri-close-circle-line me-1"/>Cancel Invoice</button>}
+                    <button className="btn btn-outline-secondary btn-sm ms-auto" onClick={closeModal}><i className="ri-close-line me-1"/>Close</button>
+                  </div>
+                </div>
               </div>
-            </>
-          )
-        })()}
+            )
+          })()}
 
-        {/* CREATE */}
-        {activeModal==='create'&&(
-          <Modal title="Create Invoice" onClose={closeModal} maxWidth={700}>
-            <label style={LBL}>Customer</label>
-            <select style={{ ...inp,marginBottom:10 }} value={form.customerId} onChange={e=>setField('customerId',e.target.value)}>
-              <option value="">— Enter manually —</option>
-              {customers.map(c=><option key={c.id} value={c.id}>{c.name} ({c.customer_code})</option>)}
-            </select>
-            {!form.customerId&&(
-              <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16 }}>
-                <input style={inp} placeholder="Full name *" value={form.customName} onChange={e=>setField('customName',e.target.value)}/>
-                <input style={inp} placeholder="Phone" value={form.customPhone} onChange={e=>setField('customPhone',e.target.value)}/>
-                <input style={inp} placeholder="Email" value={form.customEmail} onChange={e=>setField('customEmail',e.target.value)}/>
+          {/* ── CREATE INVOICE ─────────────────────────── */}
+          {activeModal === 'create' && (
+            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:680, maxHeight:'92vh', overflowY:'auto' }}>
+              <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
+                <h5 className="mb-0">Create Invoice</h5>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line"/></button>
               </div>
-            )}
-            <div style={{ marginBottom:16 }}>
-              <input style={inp} placeholder="Billing / delivery address" value={form.customAddress} onChange={e=>setField('customAddress',e.target.value)}/>
-            </div>
+              <div className="p-4">
+                {/* Customer */}
+                <div className="mb-3">
+                  <label className="form-label fw-medium small">Customer</label>
+                  <select className="form-select mb-2" value={form.customer} onChange={e => setField('customer', e.target.value)}>
+                    <option value="">— Enter manually —</option>
+                    {CUSTOMERS.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  </select>
+                  {!form.customer && (
+                    <div className="row g-2">
+                      <div className="col-6"><input className="form-control form-control-sm" placeholder="Full name *" value={form.customName} onChange={e => setField('customName', e.target.value)}/></div>
+                      <div className="col-6"><input className="form-control form-control-sm" placeholder="Phone" value={form.customPhone} onChange={e => setField('customPhone', e.target.value)}/></div>
+                      <div className="col-6"><input className="form-control form-control-sm" placeholder="Email" value={form.customEmail} onChange={e => setField('customEmail', e.target.value)}/></div>
+                      <div className="col-6"><input className="form-control form-control-sm" placeholder="Address" value={form.customAddress} onChange={e => setField('customAddress', e.target.value)}/></div>
+                    </div>
+                  )}
+                </div>
 
-            <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8 }}>
-              <label style={{ ...LBL,marginBottom:0 }}>Line Items</label>
-              <button style={btnL} onClick={addItem}><i className="ri-add-line"/>Add Item</button>
-            </div>
-            {form.items.map((item,idx)=>(
-              <div key={idx} style={{ display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr auto auto',gap:8,marginBottom:8,alignItems:'center' }}>
-                <select style={inp} value={item.name} onChange={e=>{
-                  const prod=productsCatalog.find(p=>p.name===e.target.value)
-                  if (prod) {
-                    const price = Number(prod.unit_price ?? prod.price ?? 0)
-                    setForm(prev=>({ ...prev, items:prev.items.map((it,i)=>i!==idx?it:{ ...it,name:prod.name,price,total:price*it.qty }) }))
-                  } else { updateItem(idx,'name',e.target.value) }
-                }}>
-                  <option value="">Select product...</option>
-                  {productsCatalog.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}
-                </select>
-                <input type="number" style={inp} placeholder="Qty" min={0} value={item.qty} onChange={e=>updateItem(idx,'qty',e.target.value)}/>
-                <input style={inp} placeholder="Unit" value={item.unit} onChange={e=>updateItem(idx,'unit',e.target.value)}/>
-                <input type="number" style={inp} placeholder="Price" value={item.price} onChange={e=>updateItem(idx,'price',e.target.value)}/>
-                <span style={{ fontSize:13,fontWeight:600,color:'var(--text-secondary)',whiteSpace:'nowrap' }}>{fmt(item.total)}</span>
-                {form.items.length>1&&<button onClick={()=>removeItem(idx)} style={{ background:'#fee2e2',border:'none',borderRadius:6,padding:'8px',cursor:'pointer',color:'#991b1b',fontSize:14 }}><i className="ri-delete-bin-line"/></button>}
+                {/* Items */}
+                <div className="mb-3">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <label className="form-label fw-medium small mb-0">Line Items</label>
+                    <button className="btn btn-sm btn-outline-primary" onClick={addItem}><i className="ri-add-line me-1"/>Add Item</button>
+                  </div>
+                  {form.items.map((item, idx) => (
+                    <div key={idx} className="row g-2 mb-2 align-items-center">
+                      <div className="col-4">
+                        <select className="form-select form-select-sm"
+                          value={item.name}
+                          onChange={e => {
+                            const prod = PRODUCTS_CATALOG.find(p => p.name === e.target.value)
+                            if (prod) {
+                              updateItem(idx, 'name', prod.name)
+                              setForm(prev => {
+                                const items = prev.items.map((it, i) => {
+                                  if (i !== idx) return it
+                                  return { ...it, name: prod.name, unit: prod.unit, price: prod.price, total: prod.price * it.qty }
+                                })
+                                return { ...prev, items }
+                              })
+                            } else {
+                              updateItem(idx, 'name', e.target.value)
+                            }
+                          }}>
+                          <option value="">Select product...</option>
+                          {PRODUCTS_CATALOG.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="col-2">
+                        <input type="number" className="form-control form-control-sm" placeholder="Qty" min={0}
+                          value={item.qty} onChange={e => updateItem(idx, 'qty', e.target.value)}/>
+                      </div>
+                      <div className="col-2">
+                        <input className="form-control form-control-sm" placeholder="Unit" value={item.unit}
+                          onChange={e => updateItem(idx, 'unit', e.target.value)}/>
+                      </div>
+                      <div className="col-2">
+                        <input type="number" className="form-control form-control-sm" placeholder="Price"
+                          value={item.price} onChange={e => updateItem(idx, 'price', e.target.value)}/>
+                      </div>
+                      <div className="col-1 text-end small fw-medium">{fmt(item.total)}</div>
+                      <div className="col-1 text-center">
+                        {form.items.length > 1 && (
+                          <button className="btn btn-sm btn-outline-danger" onClick={() => removeItem(idx)}><i className="ri-delete-bin-line"/></button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Fees, discount, payment */}
+                <div className="row g-3 mb-3">
+                  <div className="col-4">
+                    <label className="form-label small fw-medium">Delivery Fee (₦)</label>
+                    <input type="number" className="form-control" value={form.deliveryFee} onChange={e => setField('deliveryFee', e.target.value)}/>
+                  </div>
+                  <div className="col-4">
+                    <label className="form-label small fw-medium">Discount (₦)</label>
+                    <input type="number" className="form-control" value={form.discount} onChange={e => setField('discount', e.target.value)}/>
+                  </div>
+                  <div className="col-4">
+                    <label className="form-label small fw-medium">Due Date</label>
+                    <input type="date" className="form-control" value={form.dueDate} onChange={e => setField('dueDate', e.target.value)}/>
+                  </div>
+                  <div className="col-6">
+                    <label className="form-label small fw-medium">Payment Method</label>
+                    <select className="form-select" value={form.paymentMethod} onChange={e => setField('paymentMethod', e.target.value)}>
+                      {['Bank Transfer','Cash','Paystack','POS'].map(m => <option key={m}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-6">
+                    <label className="form-label small fw-medium">Notes</label>
+                    <input className="form-control" placeholder="Optional notes..." value={form.notes} onChange={e => setField('notes', e.target.value)}/>
+                  </div>
+                </div>
+
+                {/* Total preview */}
+                <div className="d-flex justify-content-end mb-3">
+                  <div className="border rounded p-3 text-end" style={{ minWidth:200 }}>
+                    <div className="small text-muted">Subtotal: {fmt(calcSub(form.items))}</div>
+                    {Number(form.deliveryFee) > 0 && <div className="small text-muted">+ Delivery: {fmt(form.deliveryFee)}</div>}
+                    {Number(form.discount) > 0 && <div className="small text-success">- Discount: {fmt(form.discount)}</div>}
+                    <div className="fw-bold mt-1">Total: {fmt(formTotal)}</div>
+                  </div>
+                </div>
+
+                <div className="d-flex gap-2">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-outline-primary flex-fill" onClick={() => createInvoice(true)}>
+                    <i className="ri-draft-line me-1"/>Save as Draft
+                  </button>
+                  <button className="btn btn-primary flex-fill" onClick={() => createInvoice(false)}>
+                    <i className="ri-send-plane-line me-1"/>Create & Send
+                  </button>
+                </div>
               </div>
-            ))}
+            </div>
+          )}
 
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,margin:'16px 0' }}>
-              <div><label style={LBL}>Delivery Fee (₦)</label><input type="number" style={inp} value={form.deliveryFee} onChange={e=>setField('deliveryFee',e.target.value)}/></div>
-              <div><label style={LBL}>Discount (₦)</label><input type="number" style={inp} value={form.discount} onChange={e=>setField('discount',e.target.value)}/></div>
-              <div><label style={LBL}>Due Date</label><input type="date" style={inp} value={form.dueDate} onChange={e=>setField('dueDate',e.target.value)}/></div>
-              <div><label style={LBL}>Payment Method</label>
-                <select style={inp} value={form.paymentMethod} onChange={e=>setField('paymentMethod',e.target.value)}>
-                  {['Bank Transfer','Cash','Monnify','POS'].map(m=><option key={m}>{m}</option>)}
-                </select>
+          {/* ── SEND INVOICE ───────────────────────────── */}
+          {activeModal === 'send' && selected && (
+            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:420 }}>
+              <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
+                <h5 className="mb-0">Send Invoice</h5>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line"/></button>
               </div>
-              <div style={{ gridColumn:'span 2' }}><label style={LBL}>Notes</label><input style={inp} placeholder="Optional notes..." value={form.notes} onChange={e=>setField('notes',e.target.value)}/></div>
+              <div className="p-4">
+                <div className="alert alert-info mb-3 small">
+                  <i className="ri-information-line me-1"/>
+                  This will mark the invoice as <strong>Sent</strong>. The customer will receive a notification with the invoice details.
+                </div>
+                <div className="card border p-3 mb-3 small">
+                  <div className="fw-medium">{selected.id}</div>
+                  <div className="text-muted">{selected.customer.name} · {fmt(calcTotal(selected.items, selected.deliveryFee, selected.discount))}</div>
+                  <div className="text-muted">Due: {selected.dueDate} · {selected.paymentMethod}</div>
+                </div>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-primary flex-fill" onClick={sendInvoice}>
+                    <i className="ri-send-plane-line me-1"/>Send Invoice
+                  </button>
+                </div>
+              </div>
             </div>
+          )}
 
-            <div style={{ background:'var(--bg-subtle)',border:'1px solid var(--border)',borderRadius:8,padding:'12px 16px',textAlign:'right',marginBottom:20 }}>
-              <div style={{ fontSize:12,color:'var(--text-muted)' }}>Subtotal: {fmt(calcSub(form.items))}</div>
-              {Number(form.deliveryFee)>0&&<div style={{ fontSize:12,color:'var(--text-muted)' }}>+ Delivery: {fmt(form.deliveryFee)}</div>}
-              {Number(form.discount)>0&&<div style={{ fontSize:12,color:'#16a34a' }}>- Discount: {fmt(form.discount)}</div>}
-              <div style={{ fontSize:15,fontWeight:700,marginTop:4 }}>Total: {fmt(formTotal)}</div>
+          {/* ── MARK AS PAID ───────────────────────────── */}
+          {activeModal === 'markpaid' && selected && (
+            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:420 }}>
+              <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
+                <h5 className="mb-0">Mark as Paid</h5>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line"/></button>
+              </div>
+              <div className="p-4">
+                <div className="card border p-3 mb-3 small">
+                  <div className="fw-medium">{selected.id}</div>
+                  <div className="text-muted">{selected.customer.name}</div>
+                  <div className="fw-bold mt-1">{fmt(calcTotal(selected.items, selected.deliveryFee, selected.discount))}</div>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-medium small">Payment Reference / Transaction ID (optional)</label>
+                  <input className="form-control" placeholder="e.g. TRF-20260627-001, PST-XXXXX..."
+                    value={markPaidRef} onChange={e => setMarkPaidRef(e.target.value)}/>
+                </div>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-success flex-fill" onClick={markAsPaid}>
+                    <i className="ri-checkbox-circle-line me-1"/>Confirm Payment Received
+                  </button>
+                </div>
+              </div>
             </div>
+          )}
 
-            <div style={{ display:'flex',gap:10 }}>
-              <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal} disabled={creating}>Cancel</button>
-              <button style={{ ...btnL,flex:1,justifyContent:'center',color:'#1d4ed8',borderColor:'#bfdbfe' }} onClick={()=>createInvoice(true)} disabled={creating}><i className="ri-draft-line"/>{creating?'Saving…':'Save as Draft'}</button>
-              <button style={{ ...btnP,flex:1,justifyContent:'center' }} onClick={()=>createInvoice(false)} disabled={creating}><i className="ri-send-plane-line"/>{creating?'Saving…':'Create & Send'}</button>
+          {/* ── CANCEL INVOICE ─────────────────────────── */}
+          {activeModal === 'cancel' && selected && (
+            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:400 }}>
+              <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
+                <h5 className="mb-0">Cancel Invoice</h5>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line"/></button>
+              </div>
+              <div className="p-4">
+                <div className="alert alert-warning mb-3 small">
+                  <i className="ri-alert-line me-1"/>
+                  Are you sure you want to cancel <strong>{selected.id}</strong>? This action cannot be undone.
+                </div>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Go Back</button>
+                  <button className="btn btn-danger flex-fill" onClick={cancelInvoice}>
+                    <i className="ri-close-circle-line me-1"/>Cancel Invoice
+                  </button>
+                </div>
+              </div>
             </div>
-          </Modal>
-        )}
+          )}
 
-        {/* SEND */}
-        {activeModal==='send'&&selected&&(
-          <Modal title="Send Invoice" onClose={closeModal} maxWidth={420}>
-            <div style={{ background:'#e0f2fe',border:'1px solid #bae6fd',borderRadius:8,padding:'10px 14px',marginBottom:16,fontSize:13 }}>
-              <i className="ri-information-line" style={{ marginRight:6,color:'#0369a1' }}/>
-              This will mark the invoice as <strong>Sent</strong>. The customer will receive a notification.
-            </div>
-            <div style={{ border:'1px solid var(--border)',borderRadius:10,padding:14,marginBottom:20,fontSize:13 }}>
-              <div style={{ fontWeight:600 }}>{selected.id}</div>
-              <div style={{ color:'var(--text-muted)' }}>{selected.customer.name} · {fmt(calcTotal(selected.items,selected.deliveryFee,selected.discount))}</div>
-              <div style={{ color:'var(--text-muted)' }}>Due: {selected.dueDate} · {selected.paymentMethod}</div>
-            </div>
-            <div style={{ display:'flex',gap:10 }}>
-              <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
-              <button style={{ ...btnP,flex:1,justifyContent:'center' }} onClick={sendInvoice}><i className="ri-send-plane-line"/>Send Invoice</button>
-            </div>
-          </Modal>
-        )}
-
-        {/* MARK PAID */}
-        {activeModal==='markpaid'&&selected&&(
-          <Modal title="Mark as Paid" onClose={closeModal} maxWidth={420}>
-            <div style={{ border:'1px solid var(--border)',borderRadius:10,padding:14,marginBottom:16,fontSize:13 }}>
-              <div style={{ fontWeight:600 }}>{selected.id}</div>
-              <div style={{ color:'var(--text-muted)' }}>{selected.customer.name}</div>
-              <div style={{ fontSize:16,fontWeight:700,marginTop:4 }}>{fmt(calcTotal(selected.items,selected.deliveryFee,selected.discount))}</div>
-            </div>
-            <label style={LBL}>Payment Reference / Transaction ID (optional)</label>
-            <input style={{ ...inp,marginBottom:20 }} placeholder="e.g. TRF-20260627-001, PST-XXXXX..." value={markPaidRef} onChange={e=>setMarkPaidRef(e.target.value)}/>
-            <div style={{ display:'flex',gap:10 }}>
-              <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
-              <button style={{ ...btnP,flex:1,justifyContent:'center',background:'#16a34a' }} onClick={markAsPaid}><i className="ri-checkbox-circle-line"/>Confirm Payment Received</button>
-            </div>
-          </Modal>
-        )}
-
-        {/* CANCEL */}
-        {activeModal==='cancel'&&selected&&(
-          <Modal title="Cancel Invoice" onClose={closeModal} maxWidth={400}>
-            <div style={{ background:'#fef3c7',border:'1px solid #fde68a',borderRadius:8,padding:'10px 14px',marginBottom:20,fontSize:13 }}>
-              <i className="ri-alert-line" style={{ marginRight:6,color:'#92400e' }}/>
-              Are you sure you want to cancel <strong>{selected.id}</strong>? This action cannot be undone.
-            </div>
-            <div style={{ display:'flex',gap:10 }}>
-              <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Go Back</button>
-              <button style={{ display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#dc2626',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13,flex:1 }} onClick={cancelInvoice}>
-                <i className="ri-close-circle-line"/>Cancel Invoice
-              </button>
-            </div>
-          </Modal>
-        )}
-      </>}
+        </div>
+      )}
     </div>
   )
 }

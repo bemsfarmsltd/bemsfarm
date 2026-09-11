@@ -1,9 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/admin/assets/:path*", "destination": "/assets/:path*" },
-    { "source": "/admin/javascript/:path*", "destination": "/javascript/:path*" },
-    { "source": "/admin/css/:path*", "destination": "/css/:path*" },
-    { "source": "/admin/:path*", "destination": "/index.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}

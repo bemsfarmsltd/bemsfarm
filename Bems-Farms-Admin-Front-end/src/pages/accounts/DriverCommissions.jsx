@@ -1,419 +1,341 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-import PageHeader from '../../components/ui/PageHeader'
+import { useState, useMemo } from 'react'
 
-const fmt = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const fmtD = s => s ? new Date(s).toLocaleDateString('en-NG', { day:'2-digit', month:'short', year:'numeric' }) : '—'
-const ini  = name => (name || '').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+const fmt = n => `₦${Number(n).toLocaleString()}`
+const ini  = name => name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()
 
 const DRIVER_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec4899']
 
-const STATUS_CFG = {
-  pending: { label:'Pending', bg:'var(--bg-yellow-faint)', color:'#f59e0b' },
-  paid:    { label:'Paid',    bg:'var(--bg-green-faint)', color:'#22c55e' },
-  approved:{ label:'Approved',bg:'var(--bg-blue-faint)', color:'#3b82f6' },
-}
+const DRIVERS = [
+  { id:'DRV-01', name:'Emeka Okafor',      phone:'08031234567', zone:'Lekki/VI',           deliveries:8,  rate:2300, totalEarned:412_500, unpaid:18_400, lastPaid:'2026-06-20', payouts:12, rating:4.8 },
+  { id:'DRV-02', name:'Bola Akinwale',     phone:'08057892340', zone:'Ikeja/Maryland',     deliveries:5,  rate:2300, totalEarned:298_700, unpaid:11_500, lastPaid:'2026-06-20', payouts:9,  rating:4.6 },
+  { id:'DRV-03', name:'Damilola Fashola',  phone:'07034512890', zone:'Surulere/Yaba',      deliveries:6,  rate:2300, totalEarned:344_800, unpaid:13_800, lastPaid:'2026-06-20', payouts:11, rating:4.7 },
+  { id:'DRV-04', name:'Chidi Obi',         phone:'09012345678', zone:'Ajah/Sangotedo',     deliveries:4,  rate:2300, totalEarned:184_000, unpaid:9_200,  lastPaid:'2026-06-20', payouts:6,  rating:4.5 },
+  { id:'DRV-05', name:'Segun Adeleke',     phone:'08023456789', zone:'Ikorodu',            deliveries:3,  rate:2300, totalEarned:138_000, unpaid:6_900,  lastPaid:'2026-06-20', payouts:5,  rating:4.4 },
+  { id:'DRV-06', name:'Kunle Babatunde',   phone:'07056789012', zone:'Gbagada/Oworonshoki',deliveries:7,  rate:2300, totalEarned:391_000, unpaid:16_100, lastPaid:'2026-06-20', payouts:10, rating:4.9 },
+]
+
+const PAYOUT_HISTORY = [
+  { ref:'PAY-0088', driverId:'DRV-01', driver:'Emeka Okafor',     date:'2026-06-20', deliveries:7, amount:16_100, method:'Bank Transfer', account:'0123456789 – GTBank', status:'paid' },
+  { ref:'PAY-0087', driverId:'DRV-06', driver:'Kunle Babatunde',  date:'2026-06-20', deliveries:6, amount:13_800, method:'Bank Transfer', account:'9876543210 – Access', status:'paid' },
+  { ref:'PAY-0086', driverId:'DRV-02', driver:'Bola Akinwale',    date:'2026-06-20', deliveries:5, amount:11_500, method:'Bank Transfer', account:'1234567890 – UBA',    status:'paid' },
+  { ref:'PAY-0085', driverId:'DRV-03', driver:'Damilola Fashola', date:'2026-06-20', deliveries:6, amount:13_800, method:'Bank Transfer', account:'0987654321 – Zenith',  status:'paid' },
+  { ref:'PAY-0084', driverId:'DRV-04', driver:'Chidi Obi',        date:'2026-06-20', deliveries:4, amount:9_200,  method:'Bank Transfer', account:'5678901234 – First',   status:'paid' },
+  { ref:'PAY-0083', driverId:'DRV-05', driver:'Segun Adeleke',    date:'2026-06-20', deliveries:3, amount:6_900,  method:'Bank Transfer', account:'3456789012 – GTBank',  status:'paid' },
+  { ref:'PAY-0082', driverId:'DRV-01', driver:'Emeka Okafor',     date:'2026-06-13', deliveries:8, amount:18_400, method:'Bank Transfer', account:'0123456789 – GTBank', status:'paid' },
+  { ref:'PAY-0081', driverId:'DRV-06', driver:'Kunle Babatunde',  date:'2026-06-13', deliveries:7, amount:16_100, method:'Bank Transfer', account:'9876543210 – Access', status:'paid' },
+  { ref:'PAY-0080', driverId:'DRV-03', driver:'Damilola Fashola', date:'2026-06-13', deliveries:5, amount:11_500, method:'Bank Transfer', account:'0987654321 – Zenith',  status:'paid' },
+  { ref:'PAY-0079', driverId:'DRV-02', driver:'Bola Akinwale',    date:'2026-06-13', deliveries:6, amount:13_800, method:'Bank Transfer', account:'1234567890 – UBA',    status:'paid' },
+]
+
+const MONTHLY_SUMMARY = [
+  { month:'Jan 2026', deliveries:148, totalPaid:340_400 },
+  { month:'Feb 2026', deliveries:162, totalPaid:372_600 },
+  { month:'Mar 2026', deliveries:155, totalPaid:356_500 },
+  { month:'Apr 2026', deliveries:178, totalPaid:409_400 },
+  { month:'May 2026', deliveries:194, totalPaid:446_200 },
+  { month:'Jun 2026 (so far)', deliveries:33, totalPaid:71_900 },
+]
 
 export default function DriverCommissions() {
-  const [commissions, setCommissions] = useState([])
-  const [loading, setLoading]         = useState(false)
-  const [saving, setSaving]           = useState(false)
-  const [meta, setMeta]               = useState({ total: 0, page: 1, pages: 1 })
-  const [stats, setStats]             = useState(null)
-  const [page, setPage]               = useState(1)
-  const [search, setSearch]           = useState('')
-  const [filterSt, setFilterSt]       = useState('all')
-  const [selected, setSelected]       = useState(null)  // for pay modal
-  const [viewModal, setViewModal]     = useState(null)  // for detail view
-  const [generateModal, setGenerateModal] = useState(false)
-  const [payNote, setPayNote]         = useState('')
-  const [payConfirm, setPayConfirm]   = useState(false)
-  const [bankAccounts, setBankAccounts] = useState([])
-  const [payAccountId, setPayAccountId] = useState('')
-  const [genForm, setGenForm]         = useState({
-    period_from: '',
-    period_to: new Date().toISOString().split('T')[0],
-  })
-  const [editModal, setEditModal]     = useState(null)
-  const [editForm, setEditForm]       = useState({ status:'', payment_ref:'' })
+  const [search, setSearch] = useState('')
+  const [payModal, setPayModal] = useState(null)   // driver to pay out
+  const [viewModal, setViewModal] = useState(null) // driver detail
+  const [payConfirm, setPayConfirm] = useState(false)
+  const [payNote, setPayNote] = useState('')
+  const [payouts, setPayouts] = useState(PAYOUT_HISTORY)
+  const [drivers, setDrivers] = useState(DRIVERS)
 
-  const fetchCommissions = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/admin/accounts/commissions', {
-        params: {
-          page,
-          limit: 20,
-          search: search || undefined,
-          status: filterSt === 'all' ? undefined : filterSt,
-        },
-      })
-      setCommissions(res.data.commissions || [])
-      setMeta({ total: res.data.total, page: res.data.page, pages: res.data.pages })
-      setStats(res.data.stats || null)
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load commissions')
-    } finally {
-      setLoading(false)
+  const filtered = useMemo(() => {
+    if (!search) return drivers
+    const q = search.toLowerCase()
+    return drivers.filter(d => d.name.toLowerCase().includes(q) || d.zone.toLowerCase().includes(q))
+  }, [search, drivers])
+
+  const totalUnpaid     = drivers.reduce((s,d)=>s+d.unpaid,0)
+  const totalEarned     = drivers.reduce((s,d)=>s+d.totalEarned,0)
+  const totalDeliveries = drivers.reduce((s,d)=>s+d.deliveries,0)
+
+  function processPayout(driver) {
+    const ref = `PAY-${String(payouts.length + 89).padStart(4,'0')}`
+    const newPayout = {
+      ref, driverId:driver.id, driver:driver.name,
+      date: new Date().toISOString().slice(0,10),
+      deliveries: driver.deliveries,
+      amount: driver.unpaid,
+      method:'Bank Transfer', account:'— on file —', status:'paid',
     }
-  }, [page, search, filterSt])
-
-  useEffect(() => { fetchCommissions() }, [fetchCommissions])
-  useEffect(() => { setPage(1) }, [search, filterSt])
-  useEffect(() => {
-    api.get('/admin/accounts/bank-accounts')
-      .then(res => {
-        const accounts = res.data.bank_accounts || res.data.accounts || []
-        setBankAccounts(accounts)
-        setPayAccountId(prev => prev || accounts.find(a => a.is_primary)?.id || accounts[0]?.id || '')
-      })
-      .catch(() => {})
-  }, [])
-
-  // These come from the backend's aggregate over every matching row, not
-  // just the current page — page-local reduce() previously made the KPI
-  // cards silently change value as the admin paged through the table.
-  const totalUnpaid    = stats?.total_unpaid ?? 0
-  const totalPaid      = stats?.total_paid ?? 0
-  const totalDeliveries= stats?.total_deliveries ?? 0
-  const pendingCount   = stats?.pending_count ?? 0
-
-  const handleUpdateCommission = async () => {
-    if (!editModal) return
-    setSaving(true)
-    try {
-      await api.patch(`/admin/accounts/commissions/${editModal.id}`, editForm)
-      toast.success('Commission updated successfully')
-      fetchCommissions()
-      setEditModal(null)
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update commission')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleMarkPaid = async (commission) => {
-    if (!payAccountId) { toast.error('Select a bank account to pay from'); return }
-    setSaving(true)
-    try {
-      await api.patch(`/admin/accounts/commissions/${commission.id}`, {
-        status: 'paid',
-        payment_ref: payNote || `PAY-${Date.now()}`,
-        bank_account_id: payAccountId,
-      })
-      toast.success(`Commission paid to ${commission.driver_name}`)
-      fetchCommissions()
-      setSelected(null)
-      setPayConfirm(false)
-      setPayNote('')
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to process payment')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleGenerate = async () => {
-    if (!genForm.period_from || !genForm.period_to) return
-    setSaving(true)
-    try {
-      await api.post('/admin/accounts/commissions/generate', genForm)
-      toast.success('Commissions generated successfully')
-      fetchCommissions()
-      setGenerateModal(false)
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Generation failed')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const cardStyle = {
-    background: 'var(--bg-card)',
-    border: '1px solid var(--border)',
-    borderRadius: '12px',
-    boxShadow: 'var(--shadow-card)',
-    overflow: 'hidden',
-  }
-
-  const inpStyle = {
-    padding: '8px 12px',
-    borderRadius: '8px',
-    border: '1px solid var(--border)',
-    background: 'var(--bg-input)',
-    color: 'var(--text-primary)',
-    fontSize: '13px',
-    outline: 'none',
-    width: '100%',
-  }
-
-  const btnP = {
-    background: '#1B4332',
-    color: '#ffffff',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontFamily: 'var(--heading-font)',
-    fontWeight: 700,
-    fontSize: '13px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    boxShadow: '0 4px 12px rgba(27,67,50,0.15)',
-  }
-
-  const thStyle = {
-    padding: '10px 16px',
-    fontSize: '11px',
-    fontWeight: '700',
-    color: 'var(--text-muted)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    borderBottom: '1px solid var(--border)',
-  }
-
-  const tdStyle = {
-    padding: '12px 16px',
-    fontSize: '13px',
-    color: 'var(--text-secondary)',
-    borderBottom: '1px solid var(--border)',
+    setPayouts(p => [newPayout, ...p])
+    setDrivers(prev => prev.map(d => d.id===driver.id ? { ...d, unpaid:0, deliveries:0, lastPaid:newPayout.date, payouts:d.payouts+1 } : d))
+    setPayModal(null)
+    setPayConfirm(false)
+    setPayNote('')
   }
 
   return (
-    <div style={{ fontFamily: 'var(--body-font)' }}>
-      <PageHeader title="Driver Commissions" breadcrumbs={['Accounts', 'Commissions']} />
+    <div className="container-fluid">
+      {/* Header */}
+      <div className="page-heading d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div>
+          <h6 className="mb-0">Driver Commissions</h6>
+          <p className="text-muted mb-0" style={{ fontSize:12 }}>Track and pay driver earnings per delivery</p>
+        </div>
+        <ul className="breadcrumb mb-0">
+          <li className="breadcrumb-item text-muted">Accounts</li>
+          <li className="breadcrumb-item active">Commissions</li>
+        </ul>
+      </div>
 
-      {/* KPI strip */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '16px',
-        marginBottom: '24px'
-      }}>
+      {/* KPI Strip */}
+      <div className="row g-3 mb-4">
         {[
-          { label: 'Unpaid Commissions', val: fmt(totalUnpaid), color: '#d97706', bg: 'var(--bg-yellow-faint)', icon: 'ri-time-line' },
-          { label: 'Paid Commissions', val: fmt(totalPaid), color: '#22c55e', bg: 'var(--bg-green-faint)', icon: 'ri-checkbox-circle-line' },
-          { label: 'Total Payouts Logged', val: fmt(totalPaid + totalUnpaid), color: '#3b82f6', bg: 'var(--bg-blue-faint)', icon: 'ri-line-chart-line' },
-          { label: 'Deliveries Tracked', val: totalDeliveries, color: '#8b5cf6', bg: 'var(--bg-muted)', icon: 'ri-truck-line' },
-        ].map((k, i) => (
-          <div key={i} style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: '12px',
-            padding: '16px 20px',
-            boxShadow: 'var(--shadow-card)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px'
-          }}>
-            <div style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '10px',
-              background: k.bg,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}>
-              <i className={k.icon} style={{ fontSize: '20px', color: k.color }} />
-            </div>
-            <div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>{k.label}</div>
-              <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)' }}>{k.val}</div>
+          { label:'Total Earned (All Time)', val:fmt(totalEarned),   color:'#3b82f6', bg:'#eff6ff', icon:'ri-money-dollar-circle-line' },
+          { label:'Total Unpaid — This Week', val:fmt(totalUnpaid),  color:'#f59e0b', bg:'#fffbeb', icon:'ri-time-line' },
+          { label:'Deliveries This Week',     val:totalDeliveries,   color:'#22c55e', bg:'#f0fdf4', icon:'ri-e-bike-2-line' },
+          { label:'Active Drivers',           val:drivers.length,    color:'#8b5cf6', bg:'#f5f3ff', icon:'ri-user-star-line' },
+          { label:'Commission Rate',          val:'₦2,300 / delivery',color:'#0ea5e9',bg:'#f0f9ff', icon:'ri-percent-line' },
+        ].map((k,i) => (
+          <div key={i} className="col-6 col-md-4 col-xl">
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-body p-3 d-flex align-items-center gap-3">
+                <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width:44, height:44, background:k.bg }}>
+                  <i className={`${k.icon} fs-20`} style={{ color:k.color }}/>
+                </div>
+                <div>
+                  <div className="text-muted" style={{ fontSize:11 }}>{k.label}</div>
+                  <div className="fw-bold" style={{ fontSize:16 }}>{k.val}</div>
+                </div>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Table Card */}
-      <div style={cardStyle}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between', gap: '12px' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            <div style={{ position: 'relative' }}>
-              <input style={{ ...inpStyle, width: '220px', paddingLeft: '32px' }} placeholder="Search driver name…" value={search} onChange={e => setSearch(e.target.value)} />
-              <i className="ri-search-line" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '19', color: 'var(--text-muted)' }} />
-            </div>
-            <select style={{ ...inpStyle, width: '150px' }} value={filterSt} onChange={e => setFilterSt(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="paid">Paid</option>
-            </select>
+      {/* Pending banner */}
+      {totalUnpaid > 0 && (
+        <div className="alert d-flex align-items-center justify-content-between gap-3 mb-4 border-0"
+          style={{ background:'#fffbeb', border:'1px solid #fde68a !important', borderRadius:8 }}>
+          <div className="d-flex align-items-center gap-2">
+            <i className="ri-coin-line" style={{ color:'#d97706', fontSize:18 }}/>
+            <span style={{ fontSize:13, color:'#92400e' }}>
+              <strong>{fmt(totalUnpaid)}</strong> in unpaid commissions across {drivers.filter(d=>d.unpaid>0).length} drivers — pending this week's payout.
+            </span>
           </div>
-          <button style={btnP} onClick={() => setGenerateModal(true)}>
-            <i className="ri-refresh-line" />Generate Commissions
+          <button className="btn btn-sm" style={{ background:'#d97706', color:'#fff', fontSize:12, whiteSpace:'nowrap' }}
+            onClick={()=>{ /* scroll to table */ }}>
+            Pay All Drivers
           </button>
         </div>
+      )}
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-hover)' }}>
-                <th style={thStyle}>Driver</th>
-                <th style={thStyle}>Period</th>
-                <th style={thStyle}>Deliveries</th>
-                <th style={thStyle}>Base Amount</th>
-                <th style={thStyle}>Bonus</th>
-                <th style={thStyle}>Deductions</th>
-                <th style={thStyle}>Net Payout</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '40px 0' }}>
-                  <div className="spinner-border spinner-border-sm text-primary me-2" />Loading...
-                </td></tr>
-              ) : commissions.length === 0 ? (
-                <tr><td colSpan={9} style={{ ...tdStyle, textAlign: 'center', padding: '40px 0', color: 'var(--text-light)' }}>No commission records found.</td></tr>
-              ) : commissions.map((c, i) => {
-                const color = DRIVER_COLORS[i % DRIVER_COLORS.length]
-                const cfg = STATUS_CFG[c.status] || STATUS_CFG.pending
-                return (
-                  <tr key={c.id} onMouseEnter={el => el.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={el => el.currentTarget.style.background = 'transparent'}>
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff', fontSize: '12px', flexShrink: 0 }}>
-                          {ini(c.driver_name)}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{c.driver_name}</div>
-                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>ID: {c.driver_id}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={tdStyle}>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fmtD(c.period_from)}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>to {fmtD(c.period_to)}</div>
-                    </td>
-                    <td style={{ ...tdStyle, fontWeight: 700 }}>{c.deliveries}</td>
-                    <td style={tdStyle}>{fmt(c.base_amount || 0)}</td>
-                    <td style={{ ...tdStyle, color: '#22c55e' }}>{Number(c.bonus || 0) > 0 ? `+${fmt(c.bonus)}` : '—'}</td>
-                    <td style={{ ...tdStyle, color: '#ef4444' }}>{Number(c.deductions || 0) > 0 ? `−${fmt(c.deductions)}` : '—'}</td>
-                    <td style={{ ...tdStyle, fontWeight: 800, fontSize: '14px', color: 'var(--text-primary)' }}>{fmt(c.net_payout || 0)}</td>
-                    <td style={tdStyle}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        background: cfg.bg,
-                        color: cfg.color,
-                        border: '1px solid var(--border)',
-                      }}>{cfg.label}</span>
-                      {c.paid_at && <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>{fmtD(c.paid_at)}</div>}
-                    </td>
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: '#3b82f6', cursor: 'pointer' }} onClick={() => setViewModal(c)} title="View"><i className="ri-eye-line" /></button>
-                        {c.status !== 'paid' && (
-                          <button style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', background: '#22c55e', color: '#fff', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }} onClick={() => { setSelected(c); setPayConfirm(false); setPayNote('') }}>
-                            Pay
-                          </button>
-                        )}
-                        <button style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }} onClick={() => { setEditModal(c); setEditForm({ status: c.status, payment_ref: c.payment_ref || '' }) }} title="Edit"><i className="ri-edit-line" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-            {!loading && commissions.length > 0 && (
-              <tfoot style={{ background: 'var(--bg-hover)' }}>
-                <tr style={{ fontWeight: 700 }}>
-                  <td colSpan={6} style={{ ...tdStyle, color: 'var(--text-muted)' }}>
-                    Showing {commissions.length} of {meta.total} records
-                  </td>
-                  <td colSpan={3} style={{ ...tdStyle, fontSize: '14px', color: 'var(--text-primary)' }}>
-                    Total: {fmt(commissions.reduce((s, c) => s + Number(c.net_payout || 0), 0))}
-                  </td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
+      {/* Driver Cards */}
+      <div className="d-flex align-items-center justify-content-between mb-3">
+        <h6 className="mb-0" style={{ fontSize:14 }}>Driver Earnings</h6>
+        <div className="input-group input-group-sm" style={{ maxWidth:220 }}>
+          <span className="input-group-text bg-light border-end-0"><i className="ri-search-line text-muted"/></span>
+          <input type="text" className="form-control border-start-0 bg-light" placeholder="Search driver or zone…"
+            value={search} onChange={e=>setSearch(e.target.value)}/>
         </div>
-
-        {/* Pagination */}
-        {meta.pages > 1 && (
-          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Page {meta.page} of {meta.pages}</span>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '12px', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }} disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Prev</button>
-              <button style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '12px', cursor: page >= meta.pages ? 'not-allowed' : 'pointer', opacity: page >= meta.pages ? 0.5 : 1 }} disabled={page >= meta.pages} onClick={() => setPage(p => p + 1)}>Next</button>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* ── Pay Out Modal ────────────────────────────────────── */}
-      {selected && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-          onClick={() => { setSelected(null); setPayConfirm(false); setPayNote('') }}>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '460px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Pay Driver Commission</span>
-              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => { setSelected(null); setPayConfirm(false); setPayNote('') }}><i className="ri-close-line" /></button>
-            </div>
-            <div style={{ padding: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '8px', background: 'var(--bg-hover)', marginBottom: '20px', border: '1px solid var(--border)' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#1B4332', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff', fontSize: '16px', flexShrink: 0 }}>
-                  {ini(selected.driver_name)}
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{selected.driver_name}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    {fmtD(selected.period_from)} – {fmtD(selected.period_to)} · {selected.deliveries} deliveries
+      <div className="row g-3 mb-4">
+        {filtered.map((d, i) => {
+          const color = DRIVER_COLORS[i % DRIVER_COLORS.length]
+          const thisWeekAmt = d.deliveries * d.rate
+          return (
+            <div key={d.id} className="col-md-6 col-xl-4">
+              <div className="card border-0 shadow-sm h-100">
+                <div className="card-body p-3">
+                  {/* Driver header */}
+                  <div className="d-flex align-items-center gap-3 mb-3">
+                    <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
+                      style={{ width:44, height:44, background:color, fontSize:15 }}>
+                      {ini(d.name)}
+                    </div>
+                    <div className="flex-fill">
+                      <div className="fw-semibold" style={{ fontSize:14 }}>{d.name}</div>
+                      <div className="text-muted" style={{ fontSize:11 }}><i className="ri-map-pin-line me-1"/>{d.zone}</div>
+                    </div>
+                    <div>
+                      <span className="badge" style={{ background:'#f0fdf4', color:'#16a34a', border:'1px solid #bbf7d0', fontSize:11 }}>
+                        ★ {d.rating}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Stats grid */}
+                  <div className="row g-2 mb-3">
+                    {[
+                      { label:'This Week',  val:d.deliveries + ' trips' },
+                      { label:'Week Comm.', val:fmt(thisWeekAmt)       },
+                      { label:'All Time',   val:fmt(d.totalEarned)     },
+                      { label:'Payouts',    val:d.payouts              },
+                    ].map(s => (
+                      <div key={s.label} className="col-6">
+                        <div style={{ background:'#f8fafc', borderRadius:6, padding:'8px 10px' }}>
+                          <div className="text-muted" style={{ fontSize:10 }}>{s.label}</div>
+                          <div className="fw-semibold" style={{ fontSize:13 }}>{s.val}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Unpaid balance */}
+                  <div className="d-flex align-items-center justify-content-between p-2 rounded mb-3"
+                    style={{ background: d.unpaid>0?'#fffbeb':'#f0fdf4', border:`1px solid ${d.unpaid>0?'#fde68a':'#bbf7d0'}` }}>
+                    <div>
+                      <div style={{ fontSize:10, color: d.unpaid>0?'#92400e':'#14532d' }}>Unpaid Balance</div>
+                      <div className="fw-bold" style={{ fontSize:16, color: d.unpaid>0?'#d97706':'#22c55e' }}>
+                        {fmt(d.unpaid)}
+                      </div>
+                    </div>
+                    <div className="text-muted" style={{ fontSize:10 }}>Last paid: {d.lastPaid}</div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="d-flex gap-2">
+                    <button className="btn btn-sm btn-outline-secondary flex-fill" style={{ fontSize:11 }}
+                      onClick={()=>setViewModal(d)}>
+                      <i className="ri-eye-line me-1"/>View History
+                    </button>
+                    {d.unpaid > 0 && (
+                      <button className="btn btn-sm flex-fill" style={{ background:color, color:'#fff', fontSize:11 }}
+                        onClick={()=>{ setPayModal(d); setPayConfirm(false); setPayNote('') }}>
+                        <i className="ri-send-plane-line me-1"/>Pay {fmt(d.unpaid)}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
+            </div>
+          )
+        })}
+      </div>
 
+      {/* Monthly Commission Summary */}
+      <div className="row g-3 mb-4">
+        <div className="col-lg-7">
+          <div className="card border-0 shadow-sm">
+            <div className="card-header bg-white border-bottom">
+              <div className="fw-medium" style={{ fontSize:14 }}>Monthly Commission Summary — 2026</div>
+            </div>
+            <div className="table-responsive">
+              <table className="table align-middle mb-0" style={{ fontSize:13 }}>
+                <thead style={{ background:'#f8fafc' }}>
+                  <tr>
+                    <th className="px-3 py-2 fw-medium text-muted" style={{ fontSize:11 }}>MONTH</th>
+                    <th className="px-3 py-2 fw-medium text-muted" style={{ fontSize:11 }}>DELIVERIES</th>
+                    <th className="px-3 py-2 fw-medium text-muted" style={{ fontSize:11 }}>TOTAL PAID</th>
+                    <th className="px-3 py-2 fw-medium text-muted" style={{ fontSize:11 }}>AVG / DELIVERY</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {MONTHLY_SUMMARY.map((m,i) => (
+                    <tr key={m.month} style={{ background: i===MONTHLY_SUMMARY.length-1?'#fffbeb':'' }}>
+                      <td className="px-3 py-2">
+                        {m.month}
+                        {i===MONTHLY_SUMMARY.length-1 && <span className="badge ms-2" style={{ fontSize:9, background:'#fde68a', color:'#92400e' }}>Current</span>}
+                      </td>
+                      <td className="px-3 py-2">{m.deliveries}</td>
+                      <td className="px-3 py-2 fw-medium text-success">{fmt(m.totalPaid)}</td>
+                      <td className="px-3 py-2 text-muted">{fmt(Math.round(m.totalPaid/m.deliveries))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Payout Log */}
+        <div className="col-lg-5">
+          <div className="card border-0 shadow-sm">
+            <div className="card-header bg-white border-bottom">
+              <div className="fw-medium" style={{ fontSize:14 }}>Recent Payout Log</div>
+            </div>
+            <div className="card-body p-0">
+              {payouts.slice(0,8).map((p,i) => (
+                <div key={p.ref} className={`d-flex align-items-center gap-3 px-3 py-2 ${i<7?'border-bottom':''}`}>
+                  <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
+                    style={{ width:34, height:34, fontSize:12,
+                      background: DRIVER_COLORS[DRIVERS.findIndex(d=>d.id===p.driverId) % DRIVER_COLORS.length] || '#6b7280' }}>
+                    {ini(p.driver)}
+                  </div>
+                  <div className="flex-fill">
+                    <div style={{ fontSize:12, fontWeight:500 }}>{p.driver}</div>
+                    <div className="text-muted" style={{ fontSize:10 }}>{p.ref} · {p.date} · {p.deliveries} trips</div>
+                  </div>
+                  <div className="text-end">
+                    <div className="fw-bold text-success" style={{ fontSize:13 }}>{fmt(p.amount)}</div>
+                    <div style={{ fontSize:9, color:'#16a34a' }}>✓ Paid</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pay Out Modal */}
+      {payModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
+          onClick={()=>{ setPayModal(null); setPayConfirm(false); setPayNote('') }}>
+          <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:460, boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}
+            onClick={e=>e.stopPropagation()}>
+            <div style={{ background:'#1e293b', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <span style={{ color:'#fff', fontWeight:600, fontSize:15 }}>Pay Driver Commission</span>
+              <button className="btn-close btn-close-white btn-sm" onClick={()=>{ setPayModal(null); setPayConfirm(false); setPayNote('') }}/>
+            </div>
+            <div className="p-4">
+              {/* Driver info */}
+              <div className="d-flex align-items-center gap-3 p-3 rounded mb-4" style={{ background:'#f8fafc' }}>
+                <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
+                  style={{ width:48, height:48, background:DRIVER_COLORS[DRIVERS.findIndex(d=>d.id===payModal.id)%DRIVER_COLORS.length], fontSize:16 }}>
+                  {ini(payModal.name)}
+                </div>
+                <div>
+                  <div className="fw-semibold">{payModal.name}</div>
+                  <div className="text-muted" style={{ fontSize:12 }}>{payModal.zone} · {payModal.phone}</div>
+                </div>
+              </div>
+
+              {/* Summary */}
               {[
-                { label: 'Base Amount', val: fmt(selected.base_amount || 0) },
-                { label: 'Bonus', val: `+${fmt(selected.bonus || 0)}` },
-                { label: 'Deductions', val: `−${fmt(selected.deductions || 0)}` },
-                { label: 'Net Payout', val: fmt(selected.net_payout || 0), big: true },
+                { label:'Deliveries This Week', val:payModal.deliveries },
+                { label:'Commission Rate',       val:'₦2,300 per delivery' },
+                { label:'Amount to Pay',         val:fmt(payModal.unpaid), big:true },
               ].map(r => (
-                <div key={r.label} style={{ display: 'flex', justifycontent: 'space-between', justifyContent: 'space-between', py: '8px', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>{r.label}</span>
-                  <span style={{ fontSize: r.big ? '16px' : '13px', fontWeight: 800, color: r.big ? '#22c55e' : 'var(--text-primary)' }}>{r.val}</span>
+                <div key={r.label} className="d-flex justify-content-between py-2 border-bottom">
+                  <span className="text-muted" style={{ fontSize:13 }}>{r.label}</span>
+                  <span style={{ fontSize: r.big?16:13, fontWeight: r.big?700:500, color: r.big?'#22c55e':undefined }}>{r.val}</span>
                 </div>
               ))}
 
-              <div style={{ marginTop: '16px', marginBottom: '14px' }}>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Pay From</label>
-                <select style={inpStyle} value={payAccountId} onChange={e => setPayAccountId(e.target.value)}>
-                  <option value="">Select a bank account…</option>
-                  {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} — {a.account_name}</option>)}
-                </select>
-              </div>
-
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Payment Reference (optional)</label>
-                <input style={inpStyle} placeholder="e.g. TXN-2026-0099" value={payNote} onChange={e => setPayNote(e.target.value)} />
+              <div className="mt-3 mb-4">
+                <label className="form-label" style={{ fontSize:12 }}>Notes (optional)</label>
+                <textarea className="form-control form-control-sm" rows={2} placeholder="e.g. Week 26 payout"
+                  value={payNote} onChange={e=>setPayNote(e.target.value)}/>
               </div>
 
               {!payConfirm ? (
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-muted)', color: 'var(--text-primary)', fontWeight: 700, cursor: 'pointer' }} onClick={() => { setSelected(null); setPayNote('') }}>Cancel</button>
-                  <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#22c55e', color: '#fff', fontWeight: 700, cursor: 'pointer' }} onClick={() => setPayConfirm(true)}>
-                    Pay {fmt(selected.net_payout || 0)}
+                <div className="d-flex gap-2">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={()=>{ setPayModal(null); setPayNote('') }}>Cancel</button>
+                  <button className="btn btn-success flex-fill" onClick={()=>setPayConfirm(true)}>
+                    <i className="ri-send-plane-line me-1"/>Pay {fmt(payModal.unpaid)}
                   </button>
                 </div>
               ) : (
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>Confirm payment of <strong>{fmt(selected.net_payout || 0)}</strong> has been processed offline?</div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-muted)', color: 'var(--text-primary)', fontWeight: 700, cursor: 'pointer' }} onClick={() => setPayConfirm(false)}>Back</button>
-                    <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#22c55e', color: '#fff', fontWeight: 700, cursor: 'pointer' }} onClick={() => handleMarkPaid(selected)}>
-                      Confirm Paid
+                <div>
+                  <div className="alert mb-3" style={{ background:'#fefce8', border:'1px solid #fde68a', borderRadius:8 }}>
+                    <div className="fw-medium mb-1" style={{ fontSize:13, color:'#92400e' }}>⚠ Confirm Payment</div>
+                    <div style={{ fontSize:12, color:'#78350f' }}>
+                      You are about to pay <strong>{fmt(payModal.unpaid)}</strong> to <strong>{payModal.name}</strong> via bank transfer. This action cannot be undone.
+                    </div>
+                  </div>
+                  <div className="d-flex gap-2">
+                    <button className="btn btn-outline-secondary flex-fill" onClick={()=>setPayConfirm(false)}>Back</button>
+                    <button className="btn btn-success flex-fill" onClick={()=>processPayout(payModal)}>
+                      <i className="ri-check-line me-1"/>Confirm & Send
                     </button>
                   </div>
                 </div>
@@ -423,129 +345,56 @@ export default function DriverCommissions() {
         </div>
       )}
 
-      {/* ── Generate Commissions Modal ───────────────────────── */}
-      {generateModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-          onClick={() => setGenerateModal(false)}>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '440px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Generate Commissions</span>
-              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setGenerateModal(false)}><i className="ri-close-line" /></button>
-            </div>
-            <div style={{ padding: '24px' }}>
-              <div className="grid-form-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Period From *</label>
-                  <input type="date" style={inpStyle} value={genForm.period_from} onChange={e => setGenForm(f => ({ ...f, period_from: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Period To *</label>
-                  <input type="date" style={inpStyle} value={genForm.period_to} onChange={e => setGenForm(f => ({ ...f, period_to: e.target.value }))} />
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-muted)', color: 'var(--text-primary)', fontWeight: 700, cursor: 'pointer' }} onClick={() => setGenerateModal(false)}>Cancel</button>
-                <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#1B4332', color: '#fff', fontWeight: 700, cursor: 'pointer', opacity: (!genForm.period_from || !genForm.period_to || saving) ? 0.7 : 1 }} onClick={handleGenerate} disabled={saving || !genForm.period_from || !genForm.period_to}>
-                  {saving ? 'Generating...' : 'Generate Logs'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Edit/Status Override Modal ─────────────────────── */}
-      {editModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-          onClick={() => setEditModal(null)}>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '440px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Edit Commission Status</span>
-              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setEditModal(null)}><i className="ri-close-line" /></button>
-            </div>
-            <div style={{ padding: '24px' }}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Status</label>
-                <select style={inpStyle} value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="paid">Paid</option>
-                </select>
-              </div>
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Payment Reference</label>
-                <input style={inpStyle} placeholder="e.g. Offline Cash payout reference" value={editForm.payment_ref} onChange={e => setEditForm(f => ({ ...f, payment_ref: e.target.value }))} />
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-muted)', color: 'var(--text-primary)', fontWeight: 700, cursor: 'pointer' }} onClick={() => setEditModal(null)}>Cancel</button>
-                <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#1B4332', color: '#fff', fontWeight: 700, cursor: 'pointer' }} onClick={handleUpdateCommission} disabled={saving}>
-                  {saving ? 'Saving...' : 'Update status'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Details View Modal ───────────────────────────────── */}
+      {/* View History Modal */}
       {viewModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
-          onClick={() => setViewModal(null)}>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ background: '#1B4332', padding: '18px 24px', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
-              <div>
-                <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>Commission Summary</span>
-                <div style={{ color: '#ffffff', fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>{viewModal.driver_name} · ID: {viewModal.driver_id}</div>
-              </div>
-              <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={() => setViewModal(null)}><i className="ri-close-line" /></button>
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
+          onClick={()=>setViewModal(null)}>
+          <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:520, maxHeight:'85vh', display:'flex', flexDirection:'column', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' }}
+            onClick={e=>e.stopPropagation()}>
+            <div style={{ background:'#1e293b', borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+              <span style={{ color:'#fff', fontWeight:600, fontSize:15 }}>Commission History — {viewModal.name}</span>
+              <button className="btn-close btn-close-white btn-sm" onClick={()=>setViewModal(null)}/>
             </div>
-            <div style={{ padding: '24px' }}>
-              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <div style={{ fontSize: '28px', fontWeight: 800, color: '#22c55e', fontFamily: 'var(--heading-font)' }}>{fmt(viewModal.net_payout || 0)}</div>
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  padding: '3px 8px',
-                  borderRadius: '6px',
-                  background: STATUS_CFG[viewModal.status]?.bg || 'var(--bg-muted)',
-                  color: STATUS_CFG[viewModal.status]?.color || 'var(--text-secondary)',
-                  border: '1px solid var(--border)',
-                  marginTop: '6px',
-                }}>{STATUS_CFG[viewModal.status]?.label || viewModal.status}</span>
-              </div>
-              {[
-                { label: 'Driver', val: viewModal.driver_name },
-                { label: 'Period From', val: fmtD(viewModal.period_from) },
-                { label: 'Period To', val: fmtD(viewModal.period_to) },
-                { label: 'Deliveries Done', val: viewModal.deliveries },
-                { label: 'Base Earnings', val: fmt(viewModal.base_amount || 0) },
-                { label: 'Bonus Addons', val: fmt(viewModal.bonus || 0) },
-                { label: 'Deductions (Fines/Losses)', val: fmt(viewModal.deductions || 0) },
-                { label: 'Payment Reference', val: viewModal.payment_ref || '—' },
-                { label: 'Processed Date', val: viewModal.paid_at ? fmtD(viewModal.paid_at) : '—' },
-              ].map(row => (
-                <div key={row.label} style={{ display: 'flex', justifycontent: 'space-between', justifyContent: 'space-between', py: '8px', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{row.label}</span>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>{row.val}</span>
+            <div style={{ overflowY:'auto', flex:1 }}>
+              <div className="p-4">
+                {/* Stats */}
+                <div className="row g-2 mb-4">
+                  {[
+                    { label:'Total Earned', val:fmt(viewModal.totalEarned), color:'#3b82f6' },
+                    { label:'Total Payouts', val:viewModal.payouts,         color:'#22c55e' },
+                    { label:'Rating',        val:`★ ${viewModal.rating}`,   color:'#f59e0b' },
+                    { label:'Unpaid',        val:fmt(viewModal.unpaid),     color:'#d97706' },
+                  ].map(s => (
+                    <div key={s.label} className="col-6">
+                      <div style={{ background:'#f8fafc', borderRadius:8, padding:'10px 12px' }}>
+                        <div className="text-muted" style={{ fontSize:11 }}>{s.label}</div>
+                        <div className="fw-bold" style={{ fontSize:16, color:s.color }}>{s.val}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              <button style={{
-                width: '100%',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                background: 'var(--bg-muted)',
-                color: 'var(--text-primary)',
-                fontSize: '13px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                marginTop: '24px'
-              }} onClick={() => setViewModal(null)}>Close</button>
+
+                {/* Payout history */}
+                <div className="fw-medium mb-2" style={{ fontSize:13 }}>Payout Records</div>
+                {payouts.filter(p=>p.driverId===viewModal.id).length === 0 && (
+                  <div className="text-center text-muted py-4" style={{ fontSize:13 }}>No payouts recorded yet.</div>
+                )}
+                {payouts.filter(p=>p.driverId===viewModal.id).map((p,i,arr) => (
+                  <div key={p.ref} className={`d-flex align-items-center justify-content-between py-2 ${i<arr.length-1?'border-bottom':''}`}>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:500 }}>{p.ref}</div>
+                      <div className="text-muted" style={{ fontSize:11 }}>{p.date} · {p.deliveries} trips · {p.method}</div>
+                    </div>
+                    <div className="text-end">
+                      <div className="fw-bold text-success">{fmt(p.amount)}</div>
+                      <div style={{ fontSize:10, color:'#16a34a' }}>✓ Paid</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-3 border-top" style={{ flexShrink:0 }}>
+              <button className="btn btn-secondary w-100" onClick={()=>setViewModal(null)}>Close</button>
             </div>
           </div>
         </div>

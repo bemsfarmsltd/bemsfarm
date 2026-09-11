@@ -25,6 +25,17 @@ function parseCSV(text) {
   return { headers, rows }
 }
 
+// ── Mock URL fetch responses ──────────────────────────────────────────────────
+function mockURLData(entityName) {
+  const map = {
+    Categories:      'Name,Status\nDairy Products,active\nFresh Produce,active\nBaked Goods,active\nSnacks & Confectionery,active',
+    'Sub-Categories':'Name,Parent Category,Status\nWhole Milk,Dairy & Eggs,active\nFree-range Eggs,Dairy & Eggs,active\nLeafy Greens,Vegetables,active\nRoot Vegetables,Vegetables,active',
+    Brands:          'Name,Status\nBems Farms,active\nGreen Valley,active\nFresh Direct,active\nAgro Kings,active',
+    Products:        'Name,SKU,Category,Price,Cost,Unit,Stock,Status\nRice (5kg),GRN-RIC-002,Grains & Carbs,6500,4800,bag,50,active\nTomatoes,VEG-TOM-002,Vegetables,1200,800,kg,20,active',
+  }
+  return map[entityName] || `Name,Status\nSample Item,active`
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 export default function ImportModal({ entityName, fields, onImport, onClose }) {
   const [step, setStep]         = useState('source')   // source | mapping | review | done
@@ -35,7 +46,6 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
   const [pasteVal, setPasteVal] = useState('')
   const [isDrag, setIsDrag]     = useState(false)
   const [urlLoading, setUrlLoading] = useState(false)
-  const [urlError, setUrlError] = useState('')
   const [headers, setHeaders]   = useState([])
   const [mapping, setMapping]   = useState({})          // fieldKey → csvHeader
   const [results, setResults]   = useState(null)        // { valid, invalid }
@@ -54,19 +64,10 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
 
   async function fetchURL() {
     setUrlLoading(true)
-    setUrlError('')
-    setRawCSV('')
-    try {
-      const res = await fetch(urlVal.trim())
-      if (!res.ok) throw new Error(`Request failed with status ${res.status}`)
-      const csv = await res.text()
-      if (!csv.trim()) throw new Error('Response was empty')
-      setRawCSV(csv)
-    } catch (err) {
-      setUrlError(err.message || 'Failed to fetch URL — check the address and try again.')
-    } finally {
-      setUrlLoading(false)
-    }
+    await new Promise(r => setTimeout(r, 900))   // simulate network
+    const csv = mockURLData(entityName)
+    setRawCSV(csv)
+    setUrlLoading(false)
   }
 
   function continueFromSource() {
@@ -145,7 +146,7 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
                   Upload a CSV, paste data, or pull from a URL — then map and review before importing.
                 </div>
               </div>
-              <button className="btn-close" aria-label="Close" onClick={onClose}></button>
+              <button className="btn-close" onClick={onClose}></button>
             </div>
 
             {/* Step indicator */}
@@ -244,7 +245,7 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
                       <label className="form-label fw-medium">Data Source URL</label>
                       <div className="input-group mb-3">
                         <input className="form-control" placeholder="https://example.com/data.csv"
-                          value={urlVal} onChange={e => { setUrlVal(e.target.value); setUrlError(''); setRawCSV('') }} />
+                          value={urlVal} onChange={e => setUrlVal(e.target.value)} />
                         <button className="btn btn-primary d-flex align-items-center gap-1" onClick={fetchURL} disabled={urlLoading || !urlVal.trim()}>
                           {urlLoading ? <><span className="spinner-border spinner-border-sm"></span> Fetching…</> : <><i className="ri-cloud-download-line"></i> Fetch</>}
                         </button>
@@ -255,16 +256,9 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
                           <strong>{parseCSV(rawCSV).rows.length} rows</strong> fetched successfully.
                         </div>
                       )}
-                      {urlError && !urlLoading && (
-                        <div className="p-3 rounded bg-danger-subtle">
-                          <i className="ri-error-warning-line text-danger me-1"></i>
-                          {urlError}
-                        </div>
-                      )}
                       <div className="mt-3 text-muted" style={{ fontSize:12 }}>
                         <i className="ri-information-line me-1"></i>
-                        The URL must return a plain CSV with headers, be publicly accessible, and allow
-                        cross-origin requests (CORS). Authentication not supported.
+                        The URL must return a plain CSV with headers. Authentication not supported.
                       </div>
                     </div>
                   )}

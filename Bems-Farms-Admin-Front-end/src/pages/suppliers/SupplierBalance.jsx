@@ -1,274 +1,165 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-const fmt = (n) => '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+import { Link } from 'react-router-dom'
 
 export default function SupplierBalance() {
-  const navigate = useNavigate()
-  const [balances, setBalances] = useState([])
-  const [totalPayable, setTotalPayable] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [search, setSearch] = useState('')
-
-  // Record payment modal
-  const [showPayment, setShowPayment] = useState(false)
-  const [paymentSupplier, setPaymentSupplier] = useState(null)
-  const [paymentForm, setPaymentForm] = useState({
-    supplier_id: '', amount: '', payment_method: 'bank_transfer', reference: '', date: '', notes: '',
-  })
-  const [saving, setSaving] = useState(false)
-
-  const fetchBalances = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/admin/suppliers', { params: { limit: 500 } })
-      setBalances(res.data.suppliers || [])
-      setTotalPayable(res.data.stats?.total_outstanding || 0)
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load balance data')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { fetchBalances() }, [fetchBalances])
-
-  const openPaymentModal = (supplier) => {
-    setPaymentSupplier(supplier)
-    setPaymentForm({
-      supplier_id: supplier.id || '',
-      amount: '',
-      payment_method: 'bank_transfer',
-      reference: '',
-      date: new Date().toISOString().split('T')[0],
-      notes: '',
-    })
-    setShowPayment(true)
-  }
-
-  const handlePaymentSubmit = async (e) => {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      const { supplier_id, date, ...rest } = paymentForm
-      await api.post(`/admin/suppliers/${supplier_id}/payments`, { ...rest, payment_date: date })
-      toast.success('Payment recorded successfully')
-      setShowPayment(false)
-      fetchBalances()
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to record payment')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const filtered = balances.filter(s =>
-    !search || s.name?.toLowerCase().includes(search.toLowerCase())
-  )
-
   return (
     <div className="container-fluid">
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
-        <h6 className="flex-grow-1 mb-0">Supplier Balance Reports</h6>
-        <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><a href="#">Suppliers</a></li>
-          <li className="breadcrumb-item active">Balance Reports</li>
-        </ul>
-      </div>
-
-      {/* Summary Card */}
-      <div className="row mb-4">
-        <div className="col-md-4">
-          <div className="card border-0 bg-danger-subtle">
-            <div className="card-body d-flex align-items-center gap-3">
-              <div className="bg-danger text-white rounded d-flex align-items-center justify-content-center" style={{ width: 48, height: 48 }}>
-                <i className="ri-money-dollar-circle-line fs-4"></i>
-              </div>
-              <div>
-                <p className="text-muted mb-1 small">Total Payable to Suppliers</p>
-                <h4 className="mb-0 text-danger">{fmt(totalPayable)}</h4>
-              </div>
-            </div>
+              <h6 className="flex-grow-1 mb-0">Balance Reports</h6>
+              <ul className="breadcrumb flex-shrink-0 mb-0">
+                  <li className="breadcrumb-item"><a href="#">Suppliers</a></li>
+                  <li className="breadcrumb-item active">Balance Reports</li>
+              </ul>
           </div>
-        </div>
-        <div className="col-md-4">
-          <div className="card border-0 bg-light">
-            <div className="card-body d-flex align-items-center gap-3">
-              <div className="bg-primary text-white rounded d-flex align-items-center justify-content-center" style={{ width: 48, height: 48 }}>
-                <i className="ri-group-line fs-4"></i>
-              </div>
-              <div>
-                <p className="text-muted mb-1 small">Total Suppliers</p>
-                <h4 className="mb-0">{balances.length}</h4>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="col-md-4">
-          <div className="card border-0 bg-light">
-            <div className="card-body d-flex align-items-center gap-3">
-              <div className="bg-warning text-white rounded d-flex align-items-center justify-content-center" style={{ width: 48, height: 48 }}>
-                <i className="ri-alert-line fs-4"></i>
-              </div>
-              <div>
-                <p className="text-muted mb-1 small">Suppliers with Outstanding</p>
-                <h4 className="mb-0">{balances.filter(s => Number(s.balance) > 0).length}</h4>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-header">
-          <div className="row g-2 justify-content-between align-items-center">
-            <div className="col-md-5">
-              <div className="position-relative">
-                <input
-                  type="text"
-                  className="form-control ps-10"
-                  placeholder="Search supplier..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-                <i className="ri-search-line size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
-              </div>
-            </div>
-            <div className="col-md-3 text-end">
-              <button className="btn btn-primary" onClick={() => navigate('/suppliers/payments')}>
-                <i className="ri-add-line me-1"></i>Record Payment
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="card-body pt-0">
-          <div className="table-card table-responsive">
-            <table className="table table-hover align-middle mb-0 text-nowrap">
-              <thead className="bg-light">
-                <tr>
-                  <th className="fw-medium text-muted">Supplier Name</th>
-                  <th className="fw-medium text-muted">Total Purchased</th>
-                  <th className="fw-medium text-muted">Amount Paid</th>
-                  <th className="fw-medium text-muted">Balance Due</th>
-                  <th className="fw-medium text-muted">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={5} className="text-center py-5">
-                    <div className="spinner-border spinner-border-sm text-primary me-2" />Loading...
-                  </td></tr>
-                ) : filtered.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center text-muted py-5">No records found.</td></tr>
-                ) : filtered.map((s, i) => (
-                  <tr key={s.id || i}>
-                    <td className="fw-medium">{s.name}</td>
-                    <td>{fmt(s.total_purchases)}</td>
-                    <td>{fmt(s.total_paid)}</td>
-                    <td>
-                      {Number(s.balance) > 0
-                        ? <span className="fw-bold text-danger">{fmt(s.balance)}</span>
-                        : <span className="text-success">{fmt(s.balance)}</span>
-                      }
-                    </td>
-                    <td>
-                      {Number(s.balance) > 0 && (
-                        <button
-                          className="btn btn-sm btn-outline-primary"
-                          onClick={() => openPaymentModal(s)}
-                        >
-                          Record Payment
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {!loading && filtered.length > 0 && (
-                  <tr className="bg-light fw-bold">
-                    <td>Total</td>
-                    <td>{fmt(filtered.reduce((a, s) => a + Number(s.total_purchases || 0), 0))}</td>
-                    <td>{fmt(filtered.reduce((a, s) => a + Number(s.total_paid || 0), 0))}</td>
-                    <td className="text-danger">{fmt(filtered.reduce((a, s) => a + Number(s.balance || 0), 0))}</td>
-                    <td></td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* Record Payment Modal */}
-      {showPayment && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h6 className="modal-title">Record Payment — {paymentSupplier?.name}</h6>
-                <button className="btn-close" aria-label="Close" onClick={() => setShowPayment(false)}></button>
-              </div>
-              <form onSubmit={handlePaymentSubmit}>
-                <div className="modal-body">
-                  <div className="row g-3">
-                    <div className="col-12">
-                      <p className="text-muted small mb-0">Balance Due</p>
-                      <h5 className="text-danger">{fmt(paymentSupplier?.balance)}</h5>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Amount (₦) <span className="text-danger">*</span></label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control"
-                        placeholder="0.00"
-                        value={paymentForm.amount}
-                        onChange={e => setPaymentForm(f => ({ ...f, amount: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Payment Date <span className="text-danger">*</span></label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={paymentForm.date}
-                        onChange={e => setPaymentForm(f => ({ ...f, date: e.target.value }))}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Payment Method</label>
-                      <select className="form-select" value={paymentForm.payment_method} onChange={e => setPaymentForm(f => ({ ...f, payment_method: e.target.value }))}>
-                        <option value="bank_transfer">Bank Transfer</option>
-                        <option value="cash">Cash</option>
-                        <option value="cheque">Cheque</option>
-                        <option value="card">Card</option>
-                      </select>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Reference</label>
-                      <input className="form-control" placeholder="e.g. TXN-001" value={paymentForm.reference} onChange={e => setPaymentForm(f => ({ ...f, reference: e.target.value }))} />
-                    </div>
-                    <div className="col-12">
-                      <label className="form-label">Notes</label>
-                      <textarea className="form-control" rows="2" value={paymentForm.notes} onChange={e => setPaymentForm(f => ({ ...f, notes: e.target.value }))} />
-                    </div>
+          <div className="card">
+              <div className="card-header">
+                  <div className="row g-2 justify-content-between">
+                      <div className="col-md-6 col-lg-5 col-xl-4 col-xxl-3">
+                          <div className="position-relative">
+                              <input type="text" id="lostItemSearch" className="form-control ps-10" placeholder="Search Name, Bank & Account Number..." />
+                              <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
+                          </div>
+                      </div>
+                      <div className="col-md-3 col-lg-2 text-end">
+                          <div className="dropdown">
+                              <button type="button" className="btn btn-outline-light border" data-bs-toggle="dropdown" aria-expanded="false"><i data-lucide="arrow-down-to-line" className="size-4 me-1"></i>Export As</button>
+                              <ul className="dropdown-menu dropdown-menu-end">
+                                  <li><a className="dropdown-item" href="#" id="exportPrint">Print PDF</a></li>
+                                  <li><a className="dropdown-item" href="#" id="exportJSON">Export CSV</a></li>
+                                  <li><a className="dropdown-item" href="#" id="exportXML">Export XML</a></li>
+                              </ul>
+                          </div>
+                      </div>
                   </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-light w-50" onClick={() => setShowPayment(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary w-50" disabled={saving}>
-                    {saving ? <><span className="spinner-border spinner-border-sm me-1" />Saving...</> : 'Record Payment'}
-                  </button>
-                </div>
-              </form>
-            </div>
+              </div>
+              <div className="card-body pt-0">
+                  <div className="table-card table-responsive">
+                      <table className="table table-hover align-middle mb-0 text-nowrap">
+                          <thead className="bg-light">
+                              <tr>
+                                  <th className="fw-medium text-muted">Name</th>
+                                  <th className="fw-medium text-muted">Bank & Account Number</th>
+                                  <th className="fw-medium text-muted">Status</th>
+                                  <th className="fw-medium text-muted">Credit</th>
+                                  <th className="fw-medium text-muted">Debit</th>
+                                  <th className="fw-medium text-muted">Balance</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              <tr>
+                                  <td>Ava Mason</td>
+                                  <td>SWIZ - 3456565767787</td>
+                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
+                                  <td>$614,848</td>
+                                  <td>-$450</td>
+                                  <td>$614,389</td>
+                              </tr>
+                              <tr>
+                                  <td>Caspian Marigold</td>
+                                  <td>NBC - 4324356677889</td>
+                                  <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span></td>
+                                  <td>$1,686</td>
+                                  <td>-$700</td>
+                                  <td>$986</td>
+                              </tr>
+                              <tr>
+                                  <td>Emma James</td>
+                                  <td>NBC - 2343547586900</td>
+                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
+                                  <td>$16,547</td>
+                                  <td>-$1,000</td>
+                                  <td>$15,547</td>
+                              </tr>
+                              <tr>
+                                  <td>Isabella Jackson</td>
+                                  <td>IBO - 3434565776768</td>
+                                  <td><span className="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span></td>
+                                  <td>$77,818</td>
+                                  <td>-$300</td>
+                                  <td>$77,518</td>
+                              </tr>
+                              <tr>
+                                  <td>Olivia Ethan</td>
+                                  <td>IBO - 3453647664889</td>
+                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
+                                  <td>$141,845</td>
+                                  <td>-$1,200</td>
+                                  <td>$141,645</td>
+                              </tr>
+                              <tr>
+                                  <td>Orion Astrid</td>
+                                  <td>IBO - 4353689870544</td>
+                                  <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span></td>
+                                  <td>$1,948</td>
+                                  <td>-$100</td>
+                                  <td>$1,848</td>
+                              </tr>
+                              <tr>
+                                  <td>Liam Carter</td>
+                                  <td>SWIZ - 8765432109876</td>
+                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
+                                  <td>$12,345</td>
+                                  <td>-$500</td>
+                                  <td>$11,845</td>
+                              </tr>
+                              <tr>
+                                  <td>Mia Thompson</td>
+                                  <td>NBC - 7654321098765</td>
+                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Pending</span></td>
+                                  <td>$8,910</td>
+                                  <td>-$200</td>
+                                  <td>$8,710</td>
+                              </tr>
+                              <tr>
+                                  <td>Noah Wilson</td>
+                                  <td>IBO - 6543210987654</td>
+                                  <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span></td>
+                                  <td>$5,600</td>
+                                  <td>-$1,000</td>
+                                  <td>$4,600</td>
+                              </tr>
+                              <tr>
+                                  <td>Charlotte Lee</td>
+                                  <td>SWIZ - 5432109876543</td>
+                                  <td><span className="badge bg-warning-subtle text-warning border border-warning-subtle">Active</span></td>
+                                  <td>$23,450</td>
+                                  <td>-$1,500</td>
+                                  <td>$21,950</td>
+                              </tr>
+                              <tr>
+                                  <td>Elijah Brown</td>
+                                  <td>NBC - 4321098765432</td>
+                                  <td><span className="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span></td>
+                                  <td>$7,890</td>
+                                  <td>-$300</td>
+                                  <td>$7,590</td>
+                              </tr>
+                              <tr className="bg-light fw-bold">
+                                  <td colSpan="3">Total</td>
+                                  <td>$854,692</td>
+                                  <td>-$3,750</td>
+                                  <td>$850,942</td>
+                              </tr>
+                          </tbody>
+                      </table>
+
+                  </div>
+                  <div className="row align-items-center g-3 mt-3">
+                      <div className="col-md-6">
+                          <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b> of <b className="ms-1">16</b> Results</p>
+                      </div>
+                      <div className="col-md-6">
+                          <nav aria-label="Page navigation example">
+                              <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
+                                  <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
+                                  <li className="page-item active"><a className="page-link" href="#">1</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">2</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
+                              </ul>
+                          </nav>
+                      </div>
+                  </div>
+              </div>
           </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -1,228 +1,172 @@
-import { useState, useEffect, useCallback } from 'react'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
+import { useState, useMemo } from 'react'
 
-const SEV_CFG = {
-  out_of_stock: { label:'Out of Stock', bg:'#dc2626', color:'#fff',    icon:'ri-close-circle-fill',  border:'#f06548' },
-  critical:     { label:'Critical',     bg:'#fee2e2', color:'#991b1b', icon:'ri-error-warning-fill', border:'#f06548' },
-  low:          { label:'Low Stock',    bg:'#fef9c3', color:'#854d0e', icon:'ri-alert-fill',         border:'#f7b84b' },
-}
+const MOCK_ALERTS = [
+  { id:1, product:'Fresh Tomatoes',     sku:'VEG-TOM-001', category:'Vegetables',    unit:'kg',    stock:8,   reorder:15, severity:'critical', warehouse:'Main Store', lastUpdated:'2026-06-26' },
+  { id:2, product:'Palm Oil (25L)',      sku:'OIL-PLM-001', category:'Grains & Carbs',unit:'crate', stock:0,   reorder:5,  severity:'out_of_stock', warehouse:'Main Store', lastUpdated:'2026-06-20' },
+  { id:3, product:'Fresh Pepper',        sku:'VEG-PEP-001', category:'Vegetables',    unit:'kg',    stock:6,   reorder:10, severity:'critical', warehouse:'Main Store', lastUpdated:'2026-06-26' },
+  { id:4, product:'Cassava Flour (2kg)', sku:'GRN-CAS-001', category:'Grains & Carbs',unit:'pack',  stock:14,  reorder:15, severity:'low',      warehouse:'Dry Store',  lastUpdated:'2026-06-22' },
+  { id:5, product:'Fresh Milk (1L)',      sku:'DAI-MLK-001', category:'Dairy & Eggs',  unit:'bottle',stock:10,  reorder:12, severity:'low',      warehouse:'Cold Room',  lastUpdated:'2026-06-26' },
+  { id:6, product:'Catfish (Smoked)',    sku:'SEA-CAT-001', category:'Seafood',        unit:'kg',    stock:9,   reorder:10, severity:'low',      warehouse:'Cold Room',  lastUpdated:'2026-06-24' },
+]
 
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'var(--body-font)', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
-const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }
-const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }
-const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
-const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text-primary)' }
-const LBL  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:6 }
-
-function getSeverity(item) {
-  if (item.stock_quantity === 0) return 'out_of_stock'
-  const pct = item.reorder_level > 0 ? item.stock_quantity / item.reorder_level : 1
-  if (pct <= 0.5) return 'critical'
-  return 'low'
+const SEVERITY_CFG = {
+  out_of_stock: { label:'Out of Stock', cls:'bg-danger text-white',         icon:'ri-close-circle-fill',       border:'#f06548' },
+  critical:     { label:'Critical',     cls:'bg-danger-subtle text-danger',  icon:'ri-error-warning-fill',      border:'#f06548' },
+  low:          { label:'Low Stock',    cls:'bg-warning-subtle text-warning',icon:'ri-alert-fill',              border:'#f7b84b' },
 }
 
 export default function StockAlerts() {
-  const [alerts,      setAlerts]   = useState([])
-  const [loading,     setLoading]  = useState(false)
-  const [search,      setSearch]   = useState('')
-  const [filterSev,   setSev]      = useState('all')
-  const [editReorder, setEditReorder] = useState(null)  // { id, reorder_level }
-  const [saving,      setSaving]   = useState(false)
+  const [alerts, setAlerts]             = useState(MOCK_ALERTS)
+  const [search, setSearch]             = useState('')
+  const [filterSeverity, setFilterSev]  = useState('all')
+  const [dismissed, setDismissed]       = useState([])
 
-  const fetchAlerts = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/admin/inventory/alerts')
-      
-      const outOfStock = (res.data.out_of_stock || []).map(item => ({
-        ...item,
-        stock_quantity: 0,
-        reorder_level: item.low_stock_threshold || 0
-      }))
-      
-      const lowStock = (res.data.low_stock || []).map(item => ({
-        ...item,
-        stock_quantity: item.stock || 0,
-        reorder_level: item.low_stock_threshold || 0
-      }))
-      
-      setAlerts([...outOfStock, ...lowStock])
-    } catch (err) { toast.error(err.response?.data?.message || 'Failed to load alerts') }
-    finally { setLoading(false) }
-  }, [])
+  const visible = useMemo(() => alerts.filter(a => {
+    if (dismissed.includes(a.id)) return false
+    const m = a.product.toLowerCase().includes(search.toLowerCase()) ||
+              a.sku.toLowerCase().includes(search.toLowerCase())
+    return m && (filterSeverity === 'all' || a.severity === filterSeverity)
+  }), [alerts, search, filterSeverity, dismissed])
 
-  useEffect(() => { fetchAlerts() }, [fetchAlerts])
-
-  const enriched = alerts.map(a => ({ ...a, severity: getSeverity(a) }))
-
-  const visible = enriched.filter(a => {
-    const m = (a.name || '').toLowerCase().includes(search.toLowerCase()) ||
-              (a.sku  || '').toLowerCase().includes(search.toLowerCase())
-    return m && (filterSev === 'all' || a.severity === filterSev)
-  })
-
-  const stats = {
+  const stats = useMemo(() => ({
     total:    alerts.length,
-    out:      enriched.filter(a => a.severity === 'out_of_stock').length,
-    critical: enriched.filter(a => a.severity === 'critical').length,
-    low:      enriched.filter(a => a.severity === 'low').length,
-  }
+    out:      alerts.filter(a => a.severity === 'out_of_stock').length,
+    critical: alerts.filter(a => a.severity === 'critical').length,
+    low:      alerts.filter(a => a.severity === 'low').length,
+  }), [alerts])
 
-  function openReorder(a) { setEditReorder({ id: a.id, reorder_level: a.reorder_level }) }
-  function closeReorder() { setEditReorder(null) }
-
-  async function saveReorder(e) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      await api.patch(`/admin/inventory/products/${editReorder.id}/reorder`, { reorder_level: Number(editReorder.reorder_level) })
-      toast.success('Reorder level updated')
-      closeReorder()
-      fetchAlerts()
-    } catch (err) { toast.error(err.response?.data?.message || 'Update failed') }
-    finally { setSaving(false) }
-  }
+  function dismiss(id) { setDismissed(prev => [...prev, id]) }
 
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      {/* Page header */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24, flexWrap:'wrap', gap:12 }}>
-        <div>
-          <div style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:22, color:'var(--text-primary)' }}>Low Stock Alerts</div>
-          <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>Inventory / Low Stock Alerts</div>
-        </div>
+    <div className="container-fluid">
+      <div className="gap-2 page-heading mb-3">
+        <h6 className="flex-grow-1 mb-0">Low Stock Alerts</h6>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><a href="#">Inventory</a></li>
+          <li className="breadcrumb-item active">Low Stock Alerts</li>
+        </ul>
       </div>
 
       {/* Critical banner */}
       {stats.out > 0 && (
-        <div style={{ background:'#fef0ed', border:'1px solid #fecaca', borderRadius:10, padding:'12px 16px', display:'flex', alignItems:'center', gap:10, marginBottom:20, color:'#7f1d1d' }}>
-          <i className="ri-close-circle-fill" style={{ fontSize:24, color:'#dc2626', flexShrink:0 }}/>
-          <span style={{ fontSize:13 }}><strong>{stats.out} product{stats.out > 1 ? 's' : ''} are completely out of stock</strong> — adjust stock levels or contact suppliers.</span>
+        <div className="alert border-0 mb-4 d-flex align-items-center gap-2" style={{ background:'#fef0ed', color:'#8a1a00' }}>
+          <i className="ri-close-circle-fill fs-20 text-danger"></i>
+          <span><strong>{stats.out} product{stats.out > 1 ? 's' : ''} are completely out of stock</strong> — create a Stock In order immediately.</span>
+          <a href="/inventory/stock-in" className="btn btn-sm btn-danger ms-auto">+ Stock In</a>
         </div>
       )}
 
       {/* Stat cards */}
-      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
+      <div className="row g-3 mb-4">
         {[
-          { label:'Total Alerts', value:stats.total,    icon:'ri-alert-line',        color:'#405189', filter:'all'          },
-          { label:'Out of Stock', value:stats.out,      icon:'ri-close-circle-line',  color:'#f06548', filter:'out_of_stock' },
-          { label:'Critical',     value:stats.critical, icon:'ri-error-warning-line', color:'#ef4444', filter:'critical'     },
-          { label:'Low Stock',    value:stats.low,      icon:'ri-subtract-line',      color:'#f7b84b', filter:'low'          },
+          { label:'Total Alerts',    value: stats.total,    icon:'ri-alert-line',         color:'#405189', filter:'all'          },
+          { label:'Out of Stock',    value: stats.out,      icon:'ri-close-circle-line',   color:'#f06548', filter:'out_of_stock' },
+          { label:'Critical',        value: stats.critical, icon:'ri-error-warning-line',  color:'#ef4444', filter:'critical'     },
+          { label:'Low Stock',       value: stats.low,      icon:'ri-subtract-line',       color:'#f7b84b', filter:'low'          },
         ].map(c => (
-          <div key={c.label} onClick={() => setSev(c.filter)}
-            style={{ background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, cursor:'pointer', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-            <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <i className={c.icon} style={{ fontSize:20, color:c.color }}/>
-            </div>
-            <div>
-              <div style={{ fontSize:22, fontWeight:800, color:c.color }}>{c.value}</div>
-              <div style={{ fontSize:11, color:'var(--text-muted)' }}>{c.label}</div>
+          <div className="col-6 col-xl-3" key={c.label}>
+            <div className="card mb-0 cursor-pointer" style={{ borderLeft:`3px solid ${c.color}` }} onClick={() => setFilterSev(c.filter)}>
+              <div className="card-body d-flex align-items-center gap-3 py-3">
+                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width:44, height:44, background:`${c.color}1a` }}>
+                  <i className={`${c.icon} fs-20`} style={{ color:c.color }}></i>
+                </div>
+                <div>
+                  <div className="fs-20 fw-bold" style={{ color:c.color }}>{c.value}</div>
+                  <div className="text-muted" style={{ fontSize:12 }}>{c.label}</div>
+                </div>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Alert table card */}
-      <div style={{ background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
-        <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <div style={{ position:'relative', flex:1, minWidth:200 }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:20 }}/>
-            <input style={{ ...inp, paddingLeft:32 }} placeholder="Search product, SKU…" value={search} onChange={e => setSearch(e.target.value)}/>
+      {/* Alert table */}
+      <div className="card">
+        <div className="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+          <div className="position-relative">
+            <input className="form-control ps-9" placeholder="Search product, SKU…" value={search} onChange={e => setSearch(e.target.value)} style={{ minWidth:220 }} />
+            <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
           </div>
-          <select style={{ ...inp, width:'auto', minWidth:140 }} value={filterSev} onChange={e => setSev(e.target.value)}>
-            <option value="all">All Alerts</option>
-            <option value="out_of_stock">Out of Stock</option>
-            <option value="critical">Critical</option>
-            <option value="low">Low Stock</option>
-          </select>
+          <div className="d-flex gap-2 ms-auto">
+            <select className="form-select" style={{ width:'auto' }} value={filterSeverity} onChange={e => setFilterSev(e.target.value)}>
+              <option value="all">All Alerts</option>
+              <option value="out_of_stock">Out of Stock</option>
+              <option value="critical">Critical</option>
+              <option value="low">Low Stock</option>
+            </select>
+            <a href="/inventory/stock-in" className="btn btn-primary d-flex align-items-center gap-1">
+              <i className="ri-add-line"></i> Create Reorder
+            </a>
+          </div>
         </div>
-
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'var(--body-font)' }}>
-            <thead>
-              <tr style={{ background:'var(--bg-subtle)', borderBottom:'1px solid var(--border)' }}>
-                {['Product','SKU','Category','Warehouse','Current Stock','Reorder Level','Shortage','Severity','Action'].map(h => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={9} style={{ textAlign:'center', padding:'40px 0' }}>
-                  <div className="spinner-border spinner-border-sm text-primary me-2"/>Loading...
-                </td></tr>
-              ) : visible.length === 0 ? (
-                <tr><td colSpan={9} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
-                  <i className="ri-checkbox-circle-line" style={{ fontSize:43, display:'block', marginBottom:8, color:'#0ab39c' }}/>
-                  {alerts.length === 0 ? 'No alerts — all products well stocked!' : 'No alerts match your filters.'}
-                </td></tr>
-              ) : visible.map(a => {
-                const sc       = SEV_CFG[a.severity]
-                const shortage = Math.max(0, a.reorder_level - a.stock_quantity)
-                return (
-                  <tr key={a.id} style={{ borderLeft:`3px solid ${sc.border}` }}
-                    onMouseEnter={e => e.currentTarget.style.background='#fafafa'}
-                    onMouseLeave={e => e.currentTarget.style.background=''}>
-                    <td style={TD}>
-                      <div style={{ fontWeight:600 }}>{a.name}</div>
-                    </td>
-                    <td style={TD}><code style={{ fontSize:12, background:'var(--bg-muted)', padding:'2px 6px', borderRadius:4 }}>{a.sku}</code></td>
-                    <td style={TD}><span style={{ background:'var(--bg-subtle)', color:'var(--text-secondary)', border:'1px solid var(--border)', borderRadius:50, padding:'3px 10px', fontSize:11, fontWeight:600 }}>{a.category || '—'}</span></td>
-                    <td style={TD}>{a.warehouse_name || '—'}</td>
-                    <td style={TD}><span style={{ fontWeight:700, color: a.stock_quantity === 0 ? '#f06548' : '#f7b84b' }}>{a.stock_quantity}</span></td>
-                    <td style={TD}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <span style={{ color:'var(--text-muted)' }}>{a.reorder_level}</span>
-                        <button onClick={() => openReorder(a)} title="Edit reorder level" style={{ width:22, height:22, borderRadius:5, border:'none', background:'#dbeafe', color:'#1d4ed8', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 }}>
-                          <i className="ri-pencil-line"/>
-                        </button>
-                      </div>
-                    </td>
-                    <td style={TD}><span style={{ fontWeight:700, color:'#dc2626' }}>{shortage > 0 ? `-${shortage}` : '—'}</span></td>
-                    <td style={TD}>
-                      <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px', borderRadius:50, fontSize:11, fontWeight:700, background:sc.bg, color:sc.color }}>
-                        <i className={sc.icon}/>{sc.label}
-                      </span>
-                    </td>
-                    <td style={TD}>
-                      <a href="/admin/inventory/stock" title="Reorder" style={{ width:30, height:30, borderRadius:7, border:'none', background:'#dbeafe', color:'#1d4ed8', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', textDecoration:'none' }}>
-                        <i className="ri-shopping-cart-add-line"/>
-                      </a>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div style={{ padding:'12px 20px', fontSize:12, color:'var(--text-muted)', borderTop:'1px solid var(--border)' }}>
-          Showing {visible.length} of {stats.total} alerts
+        <div className="card-body pt-0">
+          <div className="table-responsive">
+            <table className="table align-middle text-nowrap mb-0">
+              <thead>
+                <tr className="bg-light border-bottom">
+                  <th className="fw-medium text-muted">Product</th>
+                  <th className="fw-medium text-muted">SKU</th>
+                  <th className="fw-medium text-muted">Category</th>
+                  <th className="fw-medium text-muted">Warehouse</th>
+                  <th className="fw-medium text-muted">Current Stock</th>
+                  <th className="fw-medium text-muted">Reorder Level</th>
+                  <th className="fw-medium text-muted">Shortage</th>
+                  <th className="fw-medium text-muted">Severity</th>
+                  <th className="fw-medium text-muted">Updated</th>
+                  <th className="fw-medium text-muted">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.length === 0 && (
+                  <tr><td colSpan={10} className="text-center py-5 text-muted">
+                    <i className="ri-checkbox-circle-line fs-2 d-block mb-2 text-success"></i>
+                    {dismissed.length > 0 ? 'All remaining alerts dismissed.' : 'No alerts — all products well stocked!'}
+                  </td></tr>
+                )}
+                {visible.map(a => {
+                  const sc       = SEVERITY_CFG[a.severity]
+                  const shortage = Math.max(0, a.reorder - a.stock)
+                  return (
+                    <tr key={a.id} style={{ borderLeft:`3px solid ${sc.border}` }}>
+                      <td>
+                        <div className="fw-medium">{a.product}</div>
+                        <div className="text-muted" style={{ fontSize:11 }}>{a.unit}</div>
+                      </td>
+                      <td><code style={{ fontSize:12 }}>{a.sku}</code></td>
+                      <td><span className="badge bg-light text-dark border">{a.category}</span></td>
+                      <td>{a.warehouse}</td>
+                      <td>
+                        <span className="fw-bold" style={{ color: a.stock === 0 ? '#f06548' : '#f7b84b' }}>
+                          {a.stock} {a.unit}
+                        </span>
+                      </td>
+                      <td className="text-muted">{a.reorder} {a.unit}</td>
+                      <td className="fw-bold text-danger">{shortage > 0 ? `-${shortage}` : '—'}</td>
+                      <td><span className={`badge ${sc.cls}`}><i className={`${sc.icon} me-1`}></i>{sc.label}</span></td>
+                      <td className="text-muted">{a.lastUpdated}</td>
+                      <td>
+                        <div className="d-flex gap-1">
+                          <a href="/inventory/stock-in" className="btn btn-sm btn-soft-primary px-2" title="Reorder">
+                            <i className="ri-shopping-cart-add-line"></i>
+                          </a>
+                          <button className="btn btn-sm btn-soft-secondary px-2" title="Dismiss" onClick={() => dismiss(a.id)}>
+                            <i className="ri-close-line"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 text-muted" style={{ fontSize:13 }}>
+            Showing {visible.length} of {stats.total} alerts
+            {dismissed.length > 0 && <span className="ms-2 text-secondary">({dismissed.length} dismissed this session)</span>}
+          </div>
         </div>
       </div>
-
-      {/* Edit reorder level modal */}
-      {editReorder && <>
-        <div onClick={closeReorder} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1054 }}/>
-        <div style={{ position:'fixed', inset:0, zIndex:1055, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-          <div style={{ background:'var(--bg-card)', borderRadius:14, width:'100%', maxWidth:360, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', padding:28 }}>
-            <div style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:16, marginBottom:4 }}>Update Reorder Level</div>
-            <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:20 }}>Set the minimum quantity that triggers a reorder alert.</div>
-            <form onSubmit={saveReorder}>
-              <div style={{ marginBottom:20 }}>
-                <label style={LBL}>New Reorder Level <span style={{ color:'#dc2626' }}>*</span></label>
-                <input type="number" style={inp} min="0" required value={editReorder.reorder_level} onChange={e => setEditReorder(r => ({...r, reorder_level: e.target.value}))}/>
-              </div>
-              <div style={{ display:'flex', gap:10 }}>
-                <button type="button" onClick={closeReorder} style={{ ...btnL, flex:1, justifyContent:'center' }}>Cancel</button>
-                <button type="submit" disabled={saving} style={{ ...btnP, flex:1, justifyContent:'center', opacity:saving?0.7:1 }}>
-                  {saving ? 'Saving…' : 'Update'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </>}
     </div>
   )
 }

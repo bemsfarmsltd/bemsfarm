@@ -1,391 +1,514 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-const fmt = (n) => '₦' + Number(n || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-
-function ReturnStatusBadge({ status }) {
-  const map = {
-    pending: { cls: 'bg-warning-subtle text-warning border-warning-subtle', label: 'Pending' },
-    approved: { cls: 'bg-success-subtle text-success border-success-subtle', label: 'Approved' },
-    rejected: { cls: 'bg-danger-subtle text-danger border-danger-subtle', label: 'Rejected' },
-    completed: { cls: 'bg-primary-subtle text-primary border-primary-subtle', label: 'Completed' },
-  }
-  const s = map[status] || { cls: 'bg-light text-muted', label: status || '—' }
-  return <span className={`badge border ${s.cls}`}>{s.label}</span>
-}
+import { Link } from 'react-router-dom'
 
 export default function PurchaseReturns() {
-  const [returns, setReturns] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [page, setPage] = useState(1)
-  const [meta, setMeta] = useState({ total: 0, pages: 1 })
-
-  // View modal
-  const [viewReturn, setViewReturn] = useState(null)
-  const [viewItems, setViewItems] = useState([])
-  const [viewLoading, setViewLoading] = useState(false)
-
-  // Add return modal
-  const [showAdd, setShowAdd] = useState(false)
-  const [purchaseOrders, setPurchaseOrders] = useState([])
-  const [selectedPO, setSelectedPO] = useState(null)
-  const [poItems, setPoItems] = useState([])
-  const [returnItems, setReturnItems] = useState([])
-  const [addNotes, setAddNotes] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [loadingPO, setLoadingPO] = useState(false)
-
-  const fetchReturns = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/admin/purchases/returns', { params: { page, limit: 20 } })
-      setReturns(res.data.returns || [])
-      setMeta({ total: res.data.total, pages: res.data.pages || 1 })
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load returns')
-    } finally {
-      setLoading(false)
-    }
-  }, [page])
-
-  useEffect(() => { fetchReturns() }, [fetchReturns])
-
-  const fetchPurchaseOrders = async () => {
-    try {
-      const res = await api.get('/admin/purchases', { params: { limit: 200, status: 'received,partial' } })
-      setPurchaseOrders(res.data.purchase_orders || [])
-    } catch { setPurchaseOrders([]) }
-  }
-
-  const openAdd = async () => {
-    setShowAdd(true)
-    setSelectedPO(null)
-    setPoItems([])
-    setReturnItems([])
-    setAddNotes('')
-    await fetchPurchaseOrders()
-  }
-
-  const handlePOSelect = async (poId) => {
-    if (!poId) { setSelectedPO(null); setPoItems([]); setReturnItems([]); return }
-    setLoadingPO(true)
-    try {
-      const res = await api.get(`/admin/purchases/${poId}`)
-      setSelectedPO(res.data || { id: poId })
-      const items = res.data.items || []
-      setPoItems(items)
-      setReturnItems(items.map(item => ({
-        product_id: item.product_id,
-        product_name: item.product_name,
-        unit_cost: item.unit_cost,
-        quantity: '',
-      })))
-    } catch {
-      toast.error('Failed to load PO items')
-    } finally {
-      setLoadingPO(false)
-    }
-  }
-
-  const updateReturnItem = (index, field, value) => {
-    setReturnItems(items => items.map((item, i) => i === index ? { ...item, [field]: value } : item))
-  }
-
-  const handleAddSubmit = async (e) => {
-    e.preventDefault()
-    if (!selectedPO) { toast.error('Please select a purchase order'); return }
-    const validItems = returnItems.filter(i => Number(i.quantity) > 0)
-    if (validItems.length === 0) { toast.error('Enter quantity for at least one item to return'); return }
-
-    setSaving(true)
-    try {
-      await api.post('/admin/purchases/returns', {
-        purchase_order_id: selectedPO.id,
-        items: validItems.map(i => ({
-          product_id: i.product_id,
-          product_name: i.product_name,
-          unit_cost: i.unit_cost,
-          quantity: Number(i.quantity),
-        })),
-        reason: addNotes,
-      })
-      toast.success('Return created successfully')
-      setShowAdd(false)
-      fetchReturns()
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to create return')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const openView = async (ret) => {
-    setViewReturn(ret)
-    setViewItems([])
-    setViewLoading(true)
-    try {
-      const res = await api.get(`/admin/purchases/returns/${ret.id}`)
-      setViewItems(res.data.items || [])
-    } catch { /* non-fatal */ }
-    finally { setViewLoading(false) }
-  }
-
-  const startIdx = (page - 1) * 20 + 1
-  const endIdx = Math.min(page * 20, meta.total)
-
   return (
     <div className="container-fluid">
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
-        <h6 className="flex-grow-1 mb-0">Purchase Returns</h6>
-        <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><a href="#">Purchase</a></li>
-          <li className="breadcrumb-item active">Returns</li>
-        </ul>
-      </div>
-
-      <div className="card">
-        <div className="card-header">
-          <div className="d-flex flex-wrap gap-4 align-items-center justify-content-between">
-            <h5 className="card-title mb-0">Returns List</h5>
-            <div className="d-flex align-items-center gap-2">
-              <button className="btn btn-primary" onClick={openAdd}>
-                <i className="ri-add-line size-4 me-1"></i>Add Return
-              </button>
-            </div>
+              <h6 className="flex-grow-1 mb-0">Returns</h6>
+              <ul className="breadcrumb flex-shrink-0 mb-0">
+                  <li className="breadcrumb-item"><a href="#">Purchase</a></li>
+                  <li className="breadcrumb-item active">Returns</li>
+              </ul>
           </div>
-        </div>
-
-        <div className="card-body pt-0">
-          <div className="table-card table-responsive">
-            <table className="table text-nowrap align-middle mb-0">
-              <thead>
-                <tr className="bg-light border-bottom">
-                  <th className="fw-medium text-muted">Reference</th>
-                  <th className="fw-medium text-muted">PO Reference</th>
-                  <th className="fw-medium text-muted">Supplier</th>
-                  <th className="fw-medium text-muted">Return Date</th>
-                  <th className="fw-medium text-muted">Total Amount</th>
-                  <th className="fw-medium text-muted">Status</th>
-                  <th className="fw-medium text-muted">Reason</th>
-                  <th className="fw-medium text-muted">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={8} className="text-center py-5">
-                    <div className="spinner-border spinner-border-sm text-primary me-2" />Loading...
-                  </td></tr>
-                ) : returns.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center text-muted py-5">No returns found.</td></tr>
-                ) : returns.map(r => (
-                  <tr key={r.id}>
-                    <td className="fw-medium">{r.reference || `#RET-${r.id}`}</td>
-                    <td>{r.purchase_order_id ? `#PO-${r.purchase_order_id}` : '—'}</td>
-                    <td>{r.supplier_name || '—'}</td>
-                    <td>{r.created_at ? new Date(r.created_at).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
-                    <td>{fmt(r.total_value)}</td>
-                    <td><ReturnStatusBadge status={r.status} /></td>
-                    <td className="text-wrap" style={{ maxWidth: 180 }}>{r.reason || '—'}</td>
-                    <td>
-                      <button className="btn btn-sub-primary size-8 btn-icon" title="View" onClick={() => openView(r)}>
-                        <i className="ri-eye-line"></i>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {meta.total > 0 && (
-            <div className="row align-items-center g-3 mt-3">
-              <div className="col-md-6">
-                <p className="text-muted text-center text-md-start mb-0">
-                  Showing <b className="me-1">{startIdx}-{endIdx}</b> of <b className="ms-1">{meta.total}</b> Results
-                </p>
-              </div>
-              <div className="col-md-6">
-                <nav>
-                  <ul className="pagination justify-content-center justify-content-md-end mb-0">
-                    <li className={`page-item ${page === 1 ? 'disabled' : ''}`}>
-                      <button className="page-link" onClick={() => setPage(p => p - 1)}>Previous</button>
-                    </li>
-                    {Array.from({ length: meta.pages }, (_, i) => i + 1).map(p => (
-                      <li key={p} className={`page-item ${p === page ? 'active' : ''}`}>
-                        <button className="page-link" onClick={() => setPage(p)}>{p}</button>
-                      </li>
-                    ))}
-                    <li className={`page-item ${page === meta.pages ? 'disabled' : ''}`}>
-                      <button className="page-link" onClick={() => setPage(p => p + 1)}>Next</button>
-                    </li>
-                  </ul>
-                </nav>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* View Return Modal */}
-      {viewReturn && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h6 className="modal-title">Return Details — {viewReturn.reference || `#RET-${viewReturn.id}`}</h6>
-                <button className="btn-close" aria-label="Close" onClick={() => setViewReturn(null)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="row g-3 mb-4">
-                  <div className="col-md-6">
-                    <p className="mb-1 text-muted small">Supplier</p>
-                    <p className="fw-medium mb-0">{viewReturn.supplier_name || '—'}</p>
+          <div className="card">
+              <div className="card-header">
+                  <div className="d-flex flex-wrap gap-4 align-items-center gap-2 justify-content-between mb-5">
+                      <h5 className="card-title mb-1">Returns List</h5>
+                      <div className="d-flex align-items-center gap-2">
+                          <div className="dropdown">
+                              <button type="button" className="btn btn-outline-light border" data-bs-toggle="dropdown" aria-expanded="false"><i data-lucide="arrow-down-to-line" className="size-4 me-1"></i>Export As</button>
+                              <ul className="dropdown-menu dropdown-menu-end">
+                                  <li><a className="dropdown-item" href="#" id="exportPrint">Print PDF</a></li>
+                                  <li><a className="dropdown-item" href="#" id="exportJSON">Export CSV</a></li>
+                                  <li><a className="dropdown-item" href="#" id="exportXML">Export XML</a></li>
+                              </ul>
+                          </div>
+                          <button type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addReturnModal"><i data-lucide="plus" className="size-4 me-1"></i>Add Return</button>
+                      </div>
                   </div>
-                  <div className="col-md-6">
-                    <p className="mb-1 text-muted small">Status</p>
-                    <ReturnStatusBadge status={viewReturn.status} />
+                  <div className="d-flex flex-wrap gap-4 align-items-center gap-2 justify-content-between">
+                      <div className="position-relative">
+                          <input type="text" id="returnSearch" className="form-control ps-10" placeholder="Search Returns..." />
+                          <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
+                      </div>
+                      <div className="d-flex flex-wrap gap-2 align-items-center">
+                          <div className="position-relative flex-shrink-0">
+                              <input type="text" className="form-control ps-10" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose Return Date" />
+                              <i data-lucide="calendar" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
+                          </div>
+                          <div id="filterReturnStatus" className="w-52"></div>
+                          <div id="filterSupplier" className="w-52"></div>
+                          <div id="filterWarehouse" className="w-52"></div>
+                      </div>
                   </div>
-                  <div className="col-md-6">
-                    <p className="mb-1 text-muted small">Return Date</p>
-                    <p className="fw-medium mb-0">{viewReturn.created_at ? new Date(viewReturn.created_at).toLocaleDateString('en-NG') : '—'}</p>
-                  </div>
-                  <div className="col-md-6">
-                    <p className="mb-1 text-muted small">Total Amount</p>
-                    <p className="fw-bold mb-0 text-danger">{fmt(viewReturn.total_value)}</p>
-                  </div>
-                  {viewReturn.reason && (
-                    <div className="col-12">
-                      <p className="mb-1 text-muted small">Reason</p>
-                      <p className="mb-0">{viewReturn.reason}</p>
-                    </div>
-                  )}
-                </div>
-
-                <h6 className="mb-3">Return Items</h6>
-                {viewLoading ? (
-                  <p className="text-center text-muted"><span className="spinner-border spinner-border-sm me-2" />Loading...</p>
-                ) : viewItems.length === 0 ? (
-                  <p className="text-muted text-center">No items found.</p>
-                ) : (
-                  <div className="table-responsive">
-                    <table className="table table-sm table-bordered align-middle">
-                      <thead className="bg-light">
-                        <tr>
-                          <th>Product</th>
-                          <th>Quantity</th>
-                          <th>Unit Cost</th>
-                          <th>Subtotal</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {viewItems.map((item, i) => (
-                          <tr key={item.id || i}>
-                            <td>{item.product_name || '—'}</td>
-                            <td>{item.quantity}</td>
-                            <td>{fmt(item.unit_cost)}</td>
-                            <td>{fmt(item.subtotal)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setViewReturn(null)}>Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Return Modal */}
-      {showAdd && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h6 className="modal-title">Create Purchase Return</h6>
-                <button className="btn-close" aria-label="Close" onClick={() => setShowAdd(false)}></button>
-              </div>
-              <form onSubmit={handleAddSubmit}>
-                <div className="modal-body">
-                  <div className="mb-3">
-                    <label className="form-label">Purchase Order <span className="text-danger">*</span></label>
-                    <select
-                      className="form-select"
-                      onChange={e => handlePOSelect(e.target.value)}
-                      defaultValue=""
-                    >
-                      <option value="">Select Purchase Order</option>
-                      {purchaseOrders.map(po => (
-                        <option key={po.id} value={po.id}>{po.reference} — {po.supplier_name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {loadingPO && (
-                    <p className="text-center text-muted"><span className="spinner-border spinner-border-sm me-2" />Loading items...</p>
-                  )}
-
-                  {poItems.length > 0 && (
-                    <>
-                      <h6 className="mb-2">Select Items to Return</h6>
-                      <div className="table-responsive mb-3">
-                        <table className="table table-bordered align-middle">
-                          <thead className="bg-light">
-                            <tr>
-                              <th>Product</th>
-                              <th style={{ width: 100 }}>Return Qty</th>
-                              <th style={{ width: 120 }}>Unit Cost</th>
-                            </tr>
+              <div className="card-body pt-0">
+                  <div className="table-card table-responsive">
+                      <table className="table text-nowrap align-middle mb-0">
+                          <thead>
+                              <tr className="bg-light border-bottom">
+                                  <th>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" id="checkAllReturns" />
+                                      </div>
+                                  </th>
+                                  <th className="fw-medium text-muted">Return ID</th>
+                                  <th className="fw-medium text-muted">Purchase ID</th>
+                                  <th className="fw-medium text-muted">Supplier</th>
+                                  <th className="fw-medium text-muted">Return Items</th>
+                                  <th className="fw-medium text-muted">Return Amount</th>
+                                  <th className="fw-medium text-muted">Return Status</th>
+                                  <th className="fw-medium text-muted">Created Date</th>
+                                  <th className="fw-medium text-muted">Warehouse</th>
+                                  <th className="fw-medium text-muted">Actions</th>
+                              </tr>
                           </thead>
                           <tbody>
-                            {returnItems.map((item, i) => (
-                              <tr key={i}>
-                                <td>{item.product_name}</td>
-                                <td>
-                                  <input
-                                    type="number"
-                                    className="form-control form-control-sm"
-                                    min="0"
-                                    placeholder="0"
-                                    value={item.quantity}
-                                    onChange={e => updateReturnItem(i, 'quantity', e.target.value)}
-                                  />
-                                </td>
-                                <td>{fmt(item.unit_cost)}</td>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td><a href="#">#RET-0001</a></td>
+                                  <td><a href="#" className="link link-custom-primary">#PUR-0001</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-6-BIO7_TUU.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <span className="fw-medium">Sunrise Wholesale</span>
+                                      </div>
+                                  </td>
+                                  <td>5 Items</td>
+                                  <td>$3,450.00</td>
+                                  <td><span className="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span></td>
+                                  <td>24 Dec, 2025</td>
+                                  <td>Secondary Warehouse</td>
+                                  <td>
+                                      <div className="dropdown">
+                                          <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown" aria-expanded="false">
+                                              <i className="ri-more-2-fill"></i>
+                                          </a>
+                                          <ul className="dropdown-menu">
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> Overview</a></li>
+                                              <li><a href="apps-products-add.html" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i> Delete</a></li>
+                                          </ul>
+                                      </div>
+                                  </td>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </>
-                  )}
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td><a href="#">#RET-0002</a></td>
+                                  <td><a href="#" className="link link-custom-primary">#PUR-0003</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-2-CroG7YJ0.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <span className="fw-medium">Global Traders</span>
+                                      </div>
+                                  </td>
+                                  <td>2 Items</td>
+                                  <td>$1,280.00</td>
+                                  <td>
+                                      <span className="badge bg-success-subtle text-success border border-success-subtle">
+                                          Approved
+                                      </span>
+                                  </td>
+                                  <td>23 Dec, 2025</td>
+                                  <td>Main Warehouse</td>
+                                  <td>
+                                      <div className="dropdown">
+                                          <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown">
+                                              <i className="ri-more-2-fill"></i>
+                                          </a>
+                                          <ul className="dropdown-menu">
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> Overview</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i> Delete</a></li>
+                                          </ul>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td><a href="#">#RET-0003</a></td>
+                                  <td><a href="#" className="link link-custom-primary">#PUR-0005</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-5-BsT8d_Co.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <span className="fw-medium">Oceanic Imports</span>
+                                      </div>
+                                  </td>
+                                  <td>7 Items</td>
+                                  <td>$4,750.00</td>
+                                  <td>
+                                      <span className="badge bg-info-subtle text-info border border-info-subtle">
+                                          Refunded
+                                      </span>
+                                  </td>
+                                  <td>22 Dec, 2025</td>
+                                  <td>Secondary Warehouse</td>
+                                  <td>
+                                      <div className="dropdown">
+                                          <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown">
+                                              <i className="ri-more-2-fill"></i>
+                                          </a>
+                                          <ul className="dropdown-menu">
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> Overview</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i> Delete</a></li>
+                                          </ul>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td><a href="#">#RET-0004</a></td>
+                                  <td><a href="#" className="link link-custom-primary">#PUR-0007</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-8-BAGm131G.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <span className="fw-medium">Nova Traders</span>
+                                      </div>
+                                  </td>
+                                  <td>3 Items</td>
+                                  <td>$2,100.00</td>
+                                  <td>
+                                      <span className="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                          Rejected
+                                      </span>
+                                  </td>
+                                  <td>21 Dec, 2025</td>
+                                  <td>Main Warehouse</td>
+                                  <td>
+                                      <div className="dropdown">
+                                          <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown">
+                                              <i className="ri-more-2-fill"></i>
+                                          </a>
+                                          <ul className="dropdown-menu">
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> Overview</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i> Delete</a></li>
+                                          </ul>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td><a href="#">#RET-0005</a></td>
+                                  <td><a href="#" className="link link-custom-primary">#PUR-0009</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-9-DB-6OyMr.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <span className="fw-medium">Aurora Wholesale</span>
+                                      </div>
+                                  </td>
+                                  <td>4 Items</td>
+                                  <td>$3,980.00</td>
+                                  <td>
+                                      <span className="badge bg-success-subtle text-success border border-success-subtle">
+                                          Approved
+                                      </span>
+                                  </td>
+                                  <td>20 Dec, 2025</td>
+                                  <td>Secondary Warehouse</td>
+                                  <td>
+                                      <div className="dropdown">
+                                          <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown">
+                                              <i className="ri-more-2-fill"></i>
+                                          </a>
+                                          <ul className="dropdown-menu">
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> Overview</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i> Delete</a></li>
+                                          </ul>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td><a href="#">#RET-0006</a></td>
+                                  <td><a href="#" className="link link-custom-primary">#PUR-0006</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-7-BMyy-xCq.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <span className="fw-medium">Evergreen Traders</span>
+                                      </div>
+                                  </td>
+                                  <td>6 Items</td>
+                                  <td>$4,320.00</td>
+                                  <td>
+                                      <span className="badge bg-success-subtle text-success border border-success-subtle">Approved</span>
+                                  </td>
+                                  <td>29 Dec, 2025</td>
+                                  <td>Central Warehouse</td>
+                                  <td>
+                                      <div className="dropdown">
+                                          <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown">
+                                              <i className="ri-more-2-fill"></i>
+                                          </a>
+                                          <ul className="dropdown-menu">
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> Overview</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger"><i className="ri-delete-bin-line"></i> Delete</a></li>
+                                          </ul>
+                                      </div>
+                                  </td>
+                              </tr>
 
-                  <div>
-                    <label className="form-label">Reason for Return</label>
-                    <textarea
-                      className="form-control"
-                      rows="3"
-                      placeholder="Why are these items being returned?"
-                      value={addNotes}
-                      onChange={e => setAddNotes(e.target.value)}
-                    />
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td><a href="#">#RET-0007</a></td>
+                                  <td><a href="#" className="link link-custom-primary">#PUR-0007</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-5-BsT8d_Co.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <span className="fw-medium">Rapid Imports</span>
+                                      </div>
+                                  </td>
+                                  <td>3 Items</td>
+                                  <td>$1,150.00</td>
+                                  <td>
+                                      <span className="badge bg-info-subtle text-info border border-info-subtle">Refunded</span>
+                                  </td>
+                                  <td>30 Dec, 2025</td>
+                                  <td>Secondary Warehouse</td>
+                                  <td>
+                                      <div className="dropdown">
+                                          <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown">
+                                              <i className="ri-more-2-fill"></i>
+                                          </a>
+                                          <ul className="dropdown-menu">
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> Overview</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger"><i className="ri-delete-bin-line"></i> Delete</a></li>
+                                          </ul>
+                                      </div>
+                                  </td>
+                              </tr>
+
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td><a href="#">#RET-0008</a></td>
+                                  <td><a href="#" className="link link-custom-primary">#PUR-0008</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-8-BAGm131G.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <span className="fw-medium">Starline Exports</span>
+                                      </div>
+                                  </td>
+                                  <td>8 Items</td>
+                                  <td>$6,780.00</td>
+                                  <td>
+                                      <span className="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span>
+                                  </td>
+                                  <td>31 Dec, 2025</td>
+                                  <td>Main Warehouse</td>
+                                  <td>
+                                      <div className="dropdown">
+                                          <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown">
+                                              <i className="ri-more-2-fill"></i>
+                                          </a>
+                                          <ul className="dropdown-menu">
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> Overview</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger"><i className="ri-delete-bin-line"></i> Delete</a></li>
+                                          </ul>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td><a href="#">#RET-0009</a></td>
+                                  <td><a href="#" className="link link-custom-primary">#PUR-0009</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-2-CroG7YJ0.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <span className="fw-medium">Global Distributors</span>
+                                      </div>
+                                  </td>
+                                  <td>2 Items</td>
+                                  <td>$820.00</td>
+                                  <td>
+                                      <span className="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span>
+                                  </td>
+                                  <td>02 Jan, 2026</td>
+                                  <td>Central Warehouse</td>
+                                  <td>
+                                      <div className="dropdown">
+                                          <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown">
+                                              <i className="ri-more-2-fill"></i>
+                                          </a>
+                                          <ul className="dropdown-menu">
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> Overview</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger"><i className="ri-delete-bin-line"></i> Delete</a></li>
+                                          </ul>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td><a href="#">#RET-0010</a></td>
+                                  <td><a href="#" className="link link-custom-primary">#PUR-0010</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-9-DB-6OyMr.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <span className="fw-medium">Prime Wholesale</span>
+                                      </div>
+                                  </td>
+                                  <td>7 Items</td>
+                                  <td>$5,940.00</td>
+                                  <td>
+                                      <span className="badge bg-success-subtle text-success border border-success-subtle">Approved</span>
+                                  </td>
+                                  <td>03 Jan, 2026</td>
+                                  <td>Main Warehouse</td>
+                                  <td>
+                                      <div className="dropdown">
+                                          <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown">
+                                              <i className="ri-more-2-fill"></i>
+                                          </a>
+                                          <ul className="dropdown-menu">
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> Overview</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
+                                              <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger"><i className="ri-delete-bin-line"></i> Delete</a></li>
+                                          </ul>
+                                      </div>
+                                  </td>
+                              </tr>
+                          </tbody>
+                      </table>
                   </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-light w-50" onClick={() => setShowAdd(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary w-50" disabled={saving}>
-                    {saving ? <><span className="spinner-border spinner-border-sm me-1" />Saving...</> : 'Save Return'}
-                  </button>
-                </div>
-              </form>
-            </div>
+                  <div className="row align-items-center g-3 mt-3">
+                      <div className="col-md-6">
+                          <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b> of <b className="ms-1">24</b> Results</p>
+                      </div>
+                      <div className="col-md-6">
+                          <nav aria-label="Page navigation example">
+                              <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
+                                  <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
+                                  <li className="page-item active"><a className="page-link" href="#">1</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">2</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">3</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
+                              </ul>
+                          </nav>
+                      </div>
+                  </div>
+              </div>
           </div>
-        </div>
-      )}
+
+
+          <div className="modal fade" id="addReturnModal" tabIndex="-1" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered">
+                  <div className="modal-content">
+                      <div className="modal-header">
+                          <h6 className="modal-title">Add Purchase Return</h6>
+                          <button type="button" className="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div className="modal-body">
+                          <form id="addReturnForm">
+                              <div className="row g-4">
+                                  <div className="col-12">
+                                      <label htmlFor="returnId" className="form-label">Return ID <span className="text-danger">*</span></label>
+                                      <input type="text" id="returnId" className="form-control" placeholder="#RET-0013" required />
+                                  </div>
+                                  <div className="col-12">
+                                      <label htmlFor="purchaseId" className="form-label">Purchase ID <span className="text-danger">*</span></label>
+                                      <input type="text" id="purchaseId" className="form-control" placeholder="#PUR-0010" required />
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="supplier" className="form-label">Supplier <span className="text-danger">*</span></label>
+                                      <input type="text" id="supplier" className="form-control" placeholder="Sunrise Wholesale" required />
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="warehouse" className="form-label">Warehouse <span className="text-danger">*</span></label>
+                                      <div id="warehouse"></div>
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="returnQuantity" className="form-label">Return Quantity <span className="text-danger">*</span></label>
+                                      <input type="number" id="returnQuantity" className="form-control" placeholder="1" min="1" required />
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="returnAmount" className="form-label">Return Amount ($) <span className="text-danger">*</span></label>
+                                      <input type="number" id="returnAmount" className="form-control" step="0.01" placeholder="250.00" required />
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="returnStatus" className="form-label">Return Status <span className="text-danger">*</span></label>
+                                      <div id="returnStatus"></div>
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="returnDate" className="form-label">Return Date <span className="text-danger">*</span></label>
+                                      <input type="text" id="returnDate" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose Date" required />
+                                  </div>
+                                  <div className="col-12">
+                                      <label htmlFor="returnNotes" className="form-label">Return Notes</label>
+                                      <textarea id="returnNotes" className="form-control" rows="3" placeholder="Add short return description..."></textarea>
+                                  </div>
+                              </div>
+                              <div className="d-flex gap-3 mt-4">
+                                  <button type="button" className="btn btn-light w-50" data-bs-dismiss="modal">Cancel</button>
+                                  <button type="submit" className="btn btn-primary w-50">Save Return</button>
+                              </div>
+                          </form>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+
+          <div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered modal-xs">
+                  <div className="modal-content p-7 text-center">
+                      <div className="d-flex justify-content-center mb-4">
+                          <div className="size-14 bg-danger-subtle rounded-circle d-flex align-items-center justify-content-center size-16">
+                              <i className="ri-delete-bin-line text-danger fs-2xl"></i>
+                          </div>
+                      </div>
+                      <h5 className="mb-4 lh-base">Are you sure you want to delete this Return?</h5>
+                      <div className="d-flex justify-content-center align-items-center gap-2">
+                          <button type="button" className="btn btn-danger" data-bs-dismiss="modal">Delete</button>
+                          <button type="button" className="btn btn-link text-reset" data-bs-dismiss="modal">Cancel</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
     </div>
   )
 }

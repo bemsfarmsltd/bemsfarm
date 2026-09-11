@@ -1,393 +1,355 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import api from '../../lib/api'
 
-const fmt    = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const ini    = n => (n||'??').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
-const fmtPts = n => Number(n||0).toLocaleString()+' pts'
+const fmt    = n => `₦${Number(n).toLocaleString()}`
+const ini    = name => name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
+const fmtPts = n => Number(n).toLocaleString()+' pts'
+
+const CUSTOMERS = {
+  'CUS-001':{ id:'CUS-001', name:'Adaeze Nwosu',    phone:'08031234567', email:'adaeze.nwosu@gmail.com',    zone:'Lekki Phase 1',   address:'14B Admiralty Way, Lekki Phase 1, Lagos', joined:'2024-03-14', orders:24, totalSpent:412_000, points:4120,  tier:'Gold',     status:'active',   lastOrder:'2026-06-25', device:'iOS App',     referral:'Instagram', notes:'Prefers organic produce. Morning deliveries preferred. Allergic to peanuts.', avatarColor:'#3b82f6' },
+  'CUS-002':{ id:'CUS-002', name:'Seun Adesanya',   phone:'07056789012', email:'seun.adesanya@yahoo.com',   zone:'Ikeja GRA',       address:'5 Opebi Road, Ikeja GRA, Lagos',          joined:'2024-07-02', orders:18, totalSpent:284_500, points:2845,  tier:'Silver',   status:'active',   lastOrder:'2026-06-27', device:'Android App', referral:'Friend',    notes:'Bulk orders for family household. Usually orders on weekends.', avatarColor:'#22c55e' },
+  'CUS-004':{ id:'CUS-004', name:'Funke Oladele',   phone:'08023456789', email:'funke.oladele@gmail.com',   zone:'Victoria Island', address:'5 Adeola Odeku St, Victoria Island, Lagos', joined:'2023-11-05', orders:41, totalSpent:820_000, points:9840, tier:'Platinum', status:'active',   lastOrder:'2026-06-27', device:'iOS App',     referral:'Google',    notes:'Corporate buyer — needs invoice for every order. Office deliveries only.', avatarColor:'#8b5cf6' },
+  'CUS-007':{ id:'CUS-007', name:'Babatunde Ojo',   phone:'08067890123', email:'tunde.ojo@company.ng',      zone:'Gbagada',         address:'Plot 21, Gbagada Express Way, Lagos',      joined:'2024-05-30', orders:29, totalSpent:524_000, points:5240,  tier:'Gold',     status:'active',   lastOrder:'2026-06-26', device:'Website',     referral:'TV Ad',     notes:'Bulk orders every Friday. Prefers afternoon delivery window.', avatarColor:'#f97316' },
+  'CUS-012':{ id:'CUS-012', name:'Bisi Awojobi',    phone:'08178901234', email:'bisi.awojobi@gmail.com',    zone:'Ogba',            address:'12 Aina Street, Ogba, Lagos',              joined:'2023-09-22', orders:52, totalSpent:1_040_000,points:11200,tier:'Platinum', status:'active',   lastOrder:'2026-06-27', device:'Android App', referral:'Word of mouth', notes:'Top customer. Always on time for pick-ups. Very engaged.', avatarColor:'#ef4444' },
+}
+
+const ORDER_HISTORY = {
+  'CUS-001':[
+    { id:'ORD-2026-0141', date:'2026-06-25', items:'Tomatoes ×2, Pepper ×1, Spinach ×3', total:18_500, status:'delivered'  },
+    { id:'ORD-2026-0128', date:'2026-06-18', items:'Carrots ×4, Cucumber ×2',             total:12_200, status:'delivered'  },
+    { id:'ORD-2026-0115', date:'2026-06-11', items:'Yam ×1, Plantain ×2, Pepper ×1',     total:22_000, status:'delivered'  },
+    { id:'ORD-2026-0099', date:'2026-06-04', items:'Fresh fish ×3, Tomatoes ×2',          total:35_000, status:'delivered'  },
+    { id:'ORD-2026-0082', date:'2026-05-28', items:'Mixed produce box (weekly)',           total:48_000, status:'delivered'  },
+  ],
+  'CUS-004':[
+    { id:'ORD-2026-0142', date:'2026-06-27', items:'Corporate bundle — 10kg vegetables',  total:85_000, status:'processing' },
+    { id:'ORD-2026-0130', date:'2026-06-20', items:'Mixed produce box ×3',                total:62_000, status:'delivered'  },
+    { id:'ORD-2026-0118', date:'2026-06-13', items:'Fresh herbs, Spinach ×5, Peas ×4',   total:44_000, status:'delivered'  },
+  ],
+  'CUS-007':[
+    { id:'ORD-2026-0139', date:'2026-06-26', items:'Bulk order — 20kg assorted veg',      total:120_000,status:'out_for_delivery' },
+    { id:'ORD-2026-0124', date:'2026-06-19', items:'Tomatoes ×6, Pepper ×4, Yam ×2',     total:68_000, status:'delivered'  },
+    { id:'ORD-2026-0110', date:'2026-06-12', items:'Weekly box + extra spinach',           total:54_000, status:'delivered'  },
+  ],
+  'CUS-012':[
+    { id:'ORD-2026-0143', date:'2026-06-27', items:'Platinum weekly box — 15kg',          total:95_000, status:'delivered'  },
+    { id:'ORD-2026-0131', date:'2026-06-20', items:'Platinum weekly box — 15kg',          total:95_000, status:'delivered'  },
+    { id:'ORD-2026-0119', date:'2026-06-13', items:'Platinum weekly box — 15kg',          total:95_000, status:'delivered'  },
+  ],
+}
+
+const POINTS_HISTORY = {
+  'CUS-001':[
+    { type:'earn',   desc:'Order ORD-2026-0141 — 1pt per ₦10', pts:+185,  date:'2026-06-25' },
+    { type:'earn',   desc:'Order ORD-2026-0128',                pts:+122,  date:'2026-06-18' },
+    { type:'earn',   desc:'Order ORD-2026-0115',                pts:+220,  date:'2026-06-11' },
+    { type:'redeem', desc:'Redeemed for ₦1,000 discount',       pts:-200,  date:'2026-06-05' },
+    { type:'earn',   desc:'Order ORD-2026-0099',                pts:+350,  date:'2026-06-04' },
+  ],
+  'CUS-004':[
+    { type:'earn',   desc:'Order ORD-2026-0142',                pts:+850,  date:'2026-06-27' },
+    { type:'bonus',  desc:'Platinum milestone — 2 year reward', pts:+1000, date:'2026-06-01' },
+    { type:'earn',   desc:'Order ORD-2026-0130',                pts:+620,  date:'2026-06-20' },
+    { type:'redeem', desc:'Redeemed for free delivery ×3',      pts:-500,  date:'2026-06-10' },
+  ],
+  'CUS-012':[
+    { type:'earn',   desc:'Order ORD-2026-0143',                pts:+950,  date:'2026-06-27' },
+    { type:'bonus',  desc:'Platinum weekly bonus',              pts:+500,  date:'2026-06-27' },
+    { type:'earn',   desc:'Order ORD-2026-0131',                pts:+950,  date:'2026-06-20' },
+    { type:'redeem', desc:'Redeemed for ₦5,000 off next order', pts:-1000, date:'2026-06-15' },
+  ],
+}
 
 const TIER_CFG = {
-  Platinum: { bg:'#f5f3ff', color:'#7c3aed', border:'#ddd6fe', icon:'ri-vip-crown-2-fill',  next:null,      nextPts:null  },
-  Gold:     { bg:'#fffbeb', color:'#d97706', border:'#fde68a', icon:'ri-medal-2-fill',       next:'Platinum',nextPts:10000 },
-  Silver:   { bg:'#f8fafc', color:'#64748b', border:'#cbd5e1', icon:'ri-award-fill',         next:'Gold',    nextPts:5000  },
-  Bronze:   { bg:'#fff7ed', color:'#c2410c', border:'#fed7aa', icon:'ri-star-half-fill',     next:'Silver',  nextPts:1000  },
+  Platinum:{ bg:'#f5f3ff', color:'#7c3aed', border:'#ddd6fe', icon:'ri-vip-crown-2-fill',  next:null,      nextPts:null  },
+  Gold:    { bg:'#fffbeb', color:'#d97706', border:'#fde68a', icon:'ri-medal-2-fill',       next:'Platinum',nextPts:10000 },
+  Silver:  { bg:'#f8fafc', color:'#64748b', border:'#cbd5e1', icon:'ri-award-fill',         next:'Gold',    nextPts:5000  },
+  Bronze:  { bg:'#fff7ed', color:'#c2410c', border:'#fed7aa', icon:'ri-star-half-fill',     next:'Silver',  nextPts:1000  },
 }
-const ORDER_STATUS = {
-  delivered:        { label:'Delivered',       bg:'#f0fdf4', color:'#16a34a', border:'#bbf7d0' },
-  processing:       { label:'Processing',      bg:'#eff6ff', color:'#2563eb', border:'#bfdbfe' },
-  out_for_delivery: { label:'Out for Delivery',bg:'#fffbeb', color:'#d97706', border:'#fde68a' },
-  cancelled:        { label:'Cancelled',       bg:'#fef2f2', color:'#dc2626', border:'#fecaca' },
-  pending:          { label:'Pending',         bg:'#fafafa', color:'var(--text-muted)', border:'var(--border)' },
+const ORDER_STATUS_CFG = {
+  delivered:        { label:'Delivered',        bg:'#f0fdf4', color:'#16a34a', border:'#bbf7d0' },
+  processing:       { label:'Processing',       bg:'#eff6ff', color:'#2563eb', border:'#bfdbfe' },
+  out_for_delivery: { label:'Out for Delivery', bg:'#fffbeb', color:'#d97706', border:'#fde68a' },
+  cancelled:        { label:'Cancelled',        bg:'#fef2f2', color:'#dc2626', border:'#fecaca' },
 }
 const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec4899','#f97316']
-
-const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
-
-function Spinner() {
-  return <span style={{ width:28, height:28, border:'3px solid #d1fae5', borderTopColor:'#1B4332', borderRadius:'50%', animation:'spin 0.7s linear infinite', display:'inline-block' }} />
-}
+const DEMO_ID = 'CUS-001'
 
 export default function CustomerDetail() {
   const { id } = useParams()
-  const [customer, setCustomer] = useState(null)
-  const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState(null)
+  const customer = CUSTOMERS[id] || CUSTOMERS[DEMO_ID]
+  const orders   = ORDER_HISTORY[customer.id]  || ORDER_HISTORY[DEMO_ID]
+  const pts      = POINTS_HISTORY[customer.id] || POINTS_HISTORY[DEMO_ID]
+
   const [activeTab, setActiveTab] = useState('orders')
 
-  const [insights, setInsights] = useState(null)
-  const [loadingInsights, setLoadingInsights] = useState(false)
-  const [insightsError, setInsightsError] = useState(null)
-
-  const fetchInsights = async () => {
-    if (insights || loadingInsights) return
-    setLoadingInsights(true)
-    setInsightsError(null)
-    try {
-      const res = await api.get(`/admin/customers/${id}/insights`)
-      setInsights(res.data.insights)
-    } catch (err) {
-      setInsightsError(err.response?.data?.message || 'Failed to generate AI insights')
-    } finally {
-      setLoadingInsights(false)
-    }
-  }
-
-  useEffect(() => {
-    api.get(`/admin/customers/${id}`)
-      .then(r => setCustomer(r.data))
-      .catch(err => setError(err.response?.data?.message || 'Customer not found'))
-      .finally(() => setLoading(false))
-  }, [id])
-
-  useEffect(() => {
-    if (activeTab === 'insights') {
-      fetchInsights()
-    }
-  }, [activeTab])
-
-  if (loading) return (
-    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'var(--body-font)' }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <Spinner />
-    </div>
-  )
-
-  if (error) return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:10, padding:'12px 16px', color:'#dc2626', fontSize:13, marginBottom:16 }}>{error}</div>
-      <Link to="/customers" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', textDecoration:'none', fontSize:13, fontWeight:600 }}>← Back</Link>
-    </div>
-  )
-
-  const c = customer
-  const tc = TIER_CFG[c.tier] || TIER_CFG.Bronze
-  const ptsToNext = tc.next ? tc.nextPts - c.points : 0
-  const pctToNext = tc.next ? Math.min(100, (c.points / tc.nextPts) * 100) : 100
+  const tc = TIER_CFG[customer.tier]
+  const ptsToNext  = tc.next ? tc.nextPts - customer.points : 0
+  const pctToNext  = tc.next ? Math.min(100,(customer.points/tc.nextPts)*100) : 100
 
   const TABS = [
-    { id:'orders', label:'Order History',  icon:'ri-shopping-bag-line', count:(c.orders||[]).length },
-    { id:'points', label:'Loyalty Points', icon:'ri-medal-line',        count:null },
-    { id:'notes',  label:'Notes & Info',   icon:'ri-sticky-note-line',  count:null },
-    { id:'insights', label:'AI Insights',   icon:'ri-sparkling-2-line',  count:null },
+    { id:'orders', label:'Order History',  icon:'ri-shopping-bag-line',  count:orders.length },
+    { id:'points', label:'Loyalty Points', icon:'ri-medal-line',          count:null          },
+    { id:'notes',  label:'Notes & Info',   icon:'ri-sticky-note-line',    count:null          },
   ]
 
-  const pill = (text, bg, color, border, icon) => (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:50, background:bg, color, border:`1px solid ${border}` }}>
-      {icon && <i className={icon} />}{text}
-    </span>
-  )
-
-  const custColor = AVATAR_COLORS[(c.id||0) % AVATAR_COLORS.length] || '#3b82f6'
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-
-      {/* Breadcrumb header */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:8 }}>
+    <div className="container-fluid">
+      <div className="page-heading d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <div>
-          <div style={{ fontSize:18, fontWeight:800, color:'#1B4332', fontFamily:'var(--heading-font)' }}>{c.name}</div>
-          <div style={{ fontSize:12, color:'#94a3b8' }}>Customer Profile · {c.customer_code}</div>
+          <h6 className="mb-0">{customer.name}</h6>
+          <p className="text-muted mb-0" style={{fontSize:12}}>Customer Profile · {customer.id}</p>
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#64748b' }}>
-          <Link to="/customers" style={{ color:'#64748b', textDecoration:'none' }}>Customers</Link>
-          <i className="ri-arrow-right-s-line" />
-          <span style={{ color:'#1B4332', fontWeight:600 }}>{c.name}</span>
-        </div>
+        <ul className="breadcrumb mb-0">
+          <li className="breadcrumb-item text-muted">
+            <Link to="/customers" style={{color:'inherit',textDecoration:'none'}}>Customers</Link>
+          </li>
+          <li className="breadcrumb-item active">{customer.name}</li>
+        </ul>
       </div>
 
-      <div className="grid-sidebar-split" style={{ display:'grid', gridTemplateColumns:'300px 1fr', gap:20, alignItems:'start' }}>
-        {/* Left sidebar */}
-        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      <div className="row g-4">
+        {/* ── Left sidebar ── */}
+        <div className="col-lg-4 col-xl-3">
+
           {/* Profile card */}
-          <div style={{ ...card, padding:'24px 20px', textAlign:'center' }}>
-            <div style={{ width:68, height:68, borderRadius:'50%', background:custColor, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:22, margin:'0 auto 12px' }}>{ini(c.name)}</div>
-            <div style={{ fontWeight:800, fontSize:17, fontFamily:'var(--heading-font)', marginBottom:4 }}>{c.name}</div>
-            <div style={{ fontSize:12, color:'#94a3b8', marginBottom:12 }}>{c.customer_code}</div>
-            <div style={{ display:'flex', justifyContent:'center', gap:6, marginBottom:16, flexWrap:'wrap' }}>
-              {pill(`${c.tier} Member`, tc.bg, tc.color, tc.border, tc.icon)}
-              {pill(c.status==='active'?'Active':'Inactive', c.status==='active'?'#f0fdf4':'#fef2f2', c.status==='active'?'#16a34a':'#dc2626', c.status==='active'?'#bbf7d0':'#fecaca')}
-            </div>
+          <div className="card border-0 shadow-sm mb-3">
+            <div className="card-body p-4 text-center">
+              <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white mx-auto mb-3"
+                style={{width:68,height:68,background:customer.avatarColor||AVATAR_COLORS[0],fontSize:22}}>
+                {ini(customer.name)}
+              </div>
+              <div className="fw-bold mb-1" style={{fontSize:17}}>{customer.name}</div>
+              <div className="text-muted mb-3" style={{fontSize:12}}>
+                <i className="ri-smartphone-line me-1"/>{customer.device} · {customer.id}
+              </div>
+              <div className="d-flex align-items-center justify-content-center gap-2 mb-3">
+                <span className="badge d-flex align-items-center gap-1"
+                  style={{fontSize:11,background:tc.bg,color:tc.color,border:`1px solid ${tc.border}`}}>
+                  <i className={tc.icon}/>{customer.tier} Member
+                </span>
+                <span className="badge"
+                  style={{fontSize:11,background:customer.status==='active'?'#f0fdf4':'#fef2f2',color:customer.status==='active'?'#16a34a':'#dc2626',border:`1px solid ${customer.status==='active'?'#bbf7d0':'#fecaca'}`}}>
+                  {customer.status==='active'?'Active':'Inactive'}
+                </span>
+              </div>
 
-            {/* Points progress */}
-            <div style={{ background:'var(--bg-subtle)', borderRadius:10, padding:14, marginBottom:16, textAlign:'left' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
-                <span style={{ fontSize:11, color:'#64748b' }}>{c.tier}</span>
-                {tc.next ? <span style={{ fontSize:11, color:tc.color }}>{tc.next}</span> : <span style={{ fontSize:11, color:'#7c3aed' }}>Max Tier ✓</span>}
+              {/* Points progress bar */}
+              <div className="p-3 rounded mb-3" style={{background:'#f8fafc'}}>
+                <div className="d-flex justify-content-between mb-1">
+                  <span style={{fontSize:11,color:'#64748b'}}>{customer.tier}</span>
+                  {tc.next
+                    ? <span style={{fontSize:11,color:tc.color}}>{tc.next}</span>
+                    : <span style={{fontSize:11,color:'#7c3aed'}}>Max Tier ✓</span>
+                  }
+                </div>
+                <div style={{background:'#e2e8f0',borderRadius:4,height:6,overflow:'hidden'}}>
+                  <div style={{width:`${pctToNext}%`,height:'100%',background:tc.color,borderRadius:4,transition:'width 0.5s'}}/>
+                </div>
+                <div className="text-muted mt-1" style={{fontSize:11}}>
+                  {fmtPts(customer.points)}
+                  {tc.next && ` · ${fmtPts(ptsToNext)} to ${tc.next}`}
+                </div>
               </div>
-              <div style={{ background:'#e2e8f0', borderRadius:4, height:6, overflow:'hidden' }}>
-                <div style={{ width:`${pctToNext}%`, height:'100%', background:tc.color, borderRadius:4, transition:'width 0.5s' }} />
-              </div>
-              <div style={{ fontSize:11, color:'#94a3b8', marginTop:6 }}>
-                {fmtPts(c.points)}{tc.next && ` · ${fmtPts(ptsToNext)} to ${tc.next}`}
-              </div>
-            </div>
 
-            {c.phone && (
-              <a href={`tel:${c.phone}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'8px', borderRadius:8, border:'1.5px solid #bfdbfe', color:'#2563eb', textDecoration:'none', fontSize:12, fontWeight:600, marginBottom:8 }}>
-                <i className="ri-phone-line" />Call Customer
+              <a href={`tel:${customer.phone}`} className="btn btn-sm btn-outline-primary w-100 mb-2">
+                <i className="ri-phone-line me-1"/>Call Customer
               </a>
-            )}
-            {c.email && (
-              <a href={`mailto:${c.email}`} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'8px', borderRadius:8, border:'1.5px solid var(--border)', color:'var(--text-secondary)', textDecoration:'none', fontSize:12, fontWeight:600 }}>
-                <i className="ri-mail-line" />Send Email
+              <a href={`mailto:${customer.email}`} className="btn btn-sm btn-outline-secondary w-100">
+                <i className="ri-mail-line me-1"/>Send Email
               </a>
-            )}
+            </div>
           </div>
 
           {/* Stats */}
-          <div style={{ ...card, padding:14 }}>
-            <div className="grid-form-cols" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-              {[
-                { label:'Total Orders', val:c.total_orders||0, color:'#3b82f6' },
-                { label:'Total Spent',  val:fmt(c.total_spent), color:'#22c55e' },
-                { label:'Loyalty Pts',  val:fmtPts(c.points),   color:'#8b5cf6' },
-                { label:'Wallet',       val:fmt(c.wallet_balance), color:'#f59e0b' },
-              ].map(s => (
-                <div key={s.label} style={{ background:'var(--bg-subtle)', borderRadius:8, padding:'10px 12px' }}>
-                  <div style={{ fontSize:10, color:'#94a3b8', marginBottom:2 }}>{s.label}</div>
-                  <div style={{ fontSize:13, fontWeight:700, color:s.color }}>{s.val}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Contact info */}
-          <div style={card}>
-            <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', fontSize:13, fontWeight:700, color:'var(--text-secondary)' }}>Contact & Delivery</div>
-            <div style={{ padding:'4px 0' }}>
-              {[
-                { icon:'ri-phone-line',    label:'Phone',  val:c.phone,  href:`tel:${c.phone}` },
-                { icon:'ri-mail-line',     label:'Email',  val:c.email,  href:`mailto:${c.email}` },
-                { icon:'ri-map-pin-line',  label:'Zone',   val:c.area,   href:null },
-                { icon:'ri-calendar-line', label:'Joined', val:c.joined_at ? new Date(c.joined_at).toLocaleDateString('en-NG') : '—', href:null },
-              ].filter(r => r.val).map(r => (
-                <div key={r.label} style={{ display:'flex', gap:12, padding:'10px 16px', borderBottom:'1px solid #f9fafb' }}>
-                  <i className={r.icon} style={{ color:'#94a3b8', fontSize:14, marginTop:2, flexShrink:0 }} />
-                  <div>
-                    <div style={{ fontSize:10, color:'#94a3b8', marginBottom:2 }}>{r.label}</div>
-                    {r.href
-                      ? <a href={r.href} style={{ fontSize:12, color:'#3b82f6', textDecoration:'none' }}>{r.val}</a>
-                      : <div style={{ fontSize:12, color:'var(--text-secondary)' }}>{r.val}</div>
-                    }
-                  </div>
-                </div>
-              ))}
-              {(c.addresses||[]).map((addr,i) => (
-                <div key={i} style={{ display:'flex', gap:12, padding:'10px 16px', borderBottom:'1px solid #f9fafb' }}>
-                  <i className="ri-home-3-line" style={{ color:'#94a3b8', fontSize:19, marginTop:2, flexShrink:0 }} />
-                  <div>
-                    <div style={{ fontSize:10, color:'#94a3b8', marginBottom:2 }}>{addr.label||'Address'}{addr.is_default?' (Default)':''}</div>
-                    <div style={{ fontSize:12, color:'var(--text-secondary)' }}>{addr.full_address}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right content */}
-        <div style={card}>
-          {/* Tabs */}
-          <div style={{ padding:'0 16px', borderBottom:'1px solid var(--border)', display:'flex', gap:4 }}>
-            {TABS.map(t => (
-              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'14px 14px 12px', border:'none', background:'none', cursor:'pointer', fontSize:13, fontFamily:'var(--body-font)', fontWeight: activeTab===t.id ? 700 : 500, color: activeTab===t.id ? '#1B4332' : '#64748b', borderBottom: `2px solid ${activeTab===t.id ? '#1B4332' : 'transparent'}`, marginBottom:-1 }}>
-                <i className={t.icon} />
-                {t.label}
-                {t.count!==null && (
-                  <span style={{ fontSize:10, padding:'1px 7px', borderRadius:50, background: activeTab===t.id?'#d1fae5':'#f1f5f9', color: activeTab===t.id?'#065f46':'#64748b', fontWeight:700 }}>{t.count}</span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Order History */}
-          {activeTab==='orders' && (
-            <div>
-              {(c.orders||[]).length===0 && <div style={{ textAlign:'center', padding:'48px 0', color:'#94a3b8', fontSize:13 }}>No orders yet.</div>}
-              {(c.orders||[]).map((o,i) => {
-                const sc = ORDER_STATUS[o.status] || ORDER_STATUS.pending
-                return (
-                  <div key={o.id} style={{ display:'flex', alignItems:'flex-start', gap:14, padding:'16px 20px', borderBottom: i<(c.orders.length-1)?'1px solid var(--border)':'none' }}>
-                    <div style={{ width:40, height:40, borderRadius:'50%', background:'#f0fdf4', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <i className="ri-shopping-bag-line" style={{ color:'#22c55e', fontSize:22 }} />
-                    </div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8, marginBottom:4 }}>
-                        <Link to={`/orders/${o.id}`} style={{ fontWeight:700, fontSize:14, color:'#1B4332', textDecoration:'none' }}>{o.id}</Link>
-                        <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:50, background:sc.bg, color:sc.color, border:`1px solid ${sc.border}` }}>{sc.label}</span>
-                      </div>
-                      {o.items_summary && <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:4 }}>{o.items_summary}</div>}
-                      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                        <span style={{ fontSize:11, color:'#94a3b8' }}>{new Date(o.created_at).toLocaleDateString('en-NG')}</span>
-                        <span style={{ fontSize:13, fontWeight:700, color:'#16a34a' }}>{fmt(o.total)}</span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Loyalty Points */}
-          {activeTab==='points' && (
-            <div>
-              <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', background:'var(--bg-subtle)' }}>
-                <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:10 }}>
-                  {[
-                    { label:'Current Balance', val:fmtPts(c.points), color:'#8b5cf6', big:true },
-                    { label:'Tier',            val:c.tier,            color:tc.color           },
-                    { label:'Points to Next',  val:tc.next?fmtPts(ptsToNext):'Max tier ✓', color:tc.next?'#f59e0b':'#22c55e' },
-                    { label:'Rate',            val:'100 pts = ₦400',  color:'#64748b'          },
-                  ].map(s => (
-                    <div key={s.label} style={{ background:'var(--bg-card)', borderRadius:8, padding:12, border:'1px solid #e2e8f0' }}>
-                      <div style={{ fontSize:10, color:'#94a3b8', marginBottom:4 }}>{s.label}</div>
-                      <div style={{ fontSize:s.big?18:14, fontWeight:700, color:s.color }}>{s.val}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={{ padding:'12px 20px', borderBottom:'1px solid var(--border)', fontSize:13, fontWeight:700, color:'var(--text-secondary)' }}>Points History</div>
-              {(c.loyalty||[]).length===0
-                ? <div style={{ textAlign:'center', padding:'32px 0', color:'#94a3b8', fontSize:13 }}>No loyalty transactions yet</div>
-                : (c.loyalty||[]).map((p,i) => (
-                  <div key={i} style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 20px', borderBottom: i<(c.loyalty.length-1)?'1px solid #f9fafb':'none' }}>
-                    <div style={{ width:36, height:36, borderRadius:'50%', background: p.type==='earned'?'#f0fdf4':p.type==='bonus'?'#f5f3ff':'#fef2f2', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <i className={p.type==='earned'?'ri-add-line':p.type==='bonus'?'ri-gift-line':'ri-subtract-line'} style={{ fontSize:19, color:p.type==='earned'?'#22c55e':p.type==='bonus'?'#8b5cf6':'#ef4444' }} />
-                    </div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontSize:13 }}>{p.description}</div>
-                      <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{new Date(p.created_at).toLocaleDateString('en-NG')}</div>
-                    </div>
-                    <div style={{ fontSize:14, fontWeight:700, color: p.points>0?'#22c55e':'#ef4444', flexShrink:0 }}>
-                      {p.points>0?'+':''}{Number(p.points).toLocaleString()} pts
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
-          )}
-
-          {/* Notes & Info */}
-          {activeTab==='notes' && (
-            <div style={{ padding:20 }}>
-              {c.notes && (
-                <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:10, padding:'12px 16px', marginBottom:20 }}>
-                  <div style={{ fontWeight:700, fontSize:13, color:'#92400e', marginBottom:6 }}><i className="ri-sticky-note-line" style={{ marginRight:6 }} />Internal Notes</div>
-                  <div style={{ fontSize:13, color:'#78350f', lineHeight:1.6 }}>{c.notes}</div>
-                </div>
-              )}
-              <div className="grid-form-cols" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:20 }}>
+          <div className="card border-0 shadow-sm mb-3">
+            <div className="card-body p-3">
+              <div className="row g-2">
                 {[
-                  { icon:'ri-map-pin-2-line',    label:'Delivery zone',   val:c.area,       color:'#0ea5e9' },
-                  { icon:'ri-calendar-check-line',label:'Member since',    val:c.joined_at ? new Date(c.joined_at).toLocaleDateString('en-NG') : '—', color:'#8b5cf6' },
-                  { icon:'ri-shopping-bag-line',  label:'Last order',      val:c.last_order_at ? new Date(c.last_order_at).toLocaleDateString('en-NG') : '—', color:'#f59e0b' },
-                  { icon:'ri-shield-check-line',  label:'Account status',  val:c.status==='active'?'Active ✓':'Inactive', color:c.status==='active'?'#22c55e':'#ef4444' },
-                ].map(r => (
-                  <div key={r.label} style={{ display:'flex', alignItems:'center', gap:12, padding:12, borderRadius:10, background:'var(--bg-subtle)' }}>
-                    <div style={{ width:36, height:36, borderRadius:8, background:'var(--bg-card)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <i className={r.icon} style={{ color:r.color, fontSize:16 }} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize:11, color:'#94a3b8', marginBottom:2 }}>{r.label}</div>
-                      <div style={{ fontSize:13, fontWeight:600, color:r.color }}>{r.val||'—'}</div>
+                  { label:'Total Orders',  val:customer.orders,          color:'#3b82f6' },
+                  { label:'Total Spent',   val:fmt(customer.totalSpent),  color:'#22c55e' },
+                  { label:'Loyalty Pts',   val:fmtPts(customer.points),  color:'#8b5cf6' },
+                  { label:'Last Order',    val:customer.lastOrder,        color:'#f59e0b' },
+                ].map(s=>(
+                  <div key={s.label} className="col-6">
+                    <div style={{background:'#f8fafc',borderRadius:8,padding:'10px 12px'}}>
+                      <div className="text-muted" style={{fontSize:10}}>{s.label}</div>
+                      <div className="fw-bold" style={{fontSize:13,color:s.color}}>{s.val}</div>
                     </div>
                   </div>
                 ))}
               </div>
-              {(c.activity||[]).length > 0 && (
-                <div>
-                  <div style={{ fontWeight:700, fontSize:13, marginBottom:12, color:'var(--text-secondary)' }}>Recent Activity</div>
-                  {c.activity.map((a,i) => (
-                    <div key={i} style={{ display:'flex', gap:12, padding:'10px 0', borderBottom: i<(c.activity.length-1)?'1px solid #f9fafb':'none' }}>
-                      <i className="ri-history-line" style={{ color:'#94a3b8', fontSize:19, marginTop:2 }} />
-                      <div>
-                        <div style={{ fontSize:12 }}>{a.description}</div>
-                        <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>{new Date(a.created_at).toLocaleString('en-NG')}</div>
+            </div>
+          </div>
+
+          {/* Contact info */}
+          <div className="card border-0 shadow-sm">
+            <div className="card-header bg-white border-bottom">
+              <span className="fw-medium" style={{fontSize:13}}>Contact & Delivery</span>
+            </div>
+            <div className="card-body p-3">
+              {[
+                { icon:'ri-phone-line',    label:'Phone',   val:customer.phone,   href:`tel:${customer.phone}`       },
+                { icon:'ri-mail-line',     label:'Email',   val:customer.email,   href:`mailto:${customer.email}`    },
+                { icon:'ri-map-pin-line',  label:'Zone',    val:customer.zone,    href:null                          },
+                { icon:'ri-home-3-line',   label:'Address', val:customer.address, href:null                          },
+                { icon:'ri-calendar-line', label:'Joined',  val:customer.joined,  href:null                          },
+                { icon:'ri-share-line',    label:'Referred',val:customer.referral||'Organic', href:null              },
+              ].map(r=>(
+                <div key={r.label} className="d-flex gap-3 py-2 border-bottom">
+                  <i className={r.icon} style={{color:'#94a3b8',fontSize:14,marginTop:2,flexShrink:0}}/>
+                  <div>
+                    <div className="text-muted" style={{fontSize:10}}>{r.label}</div>
+                    {r.href
+                      ? <a href={r.href} style={{fontSize:12,color:'#3b82f6'}}>{r.val}</a>
+                      : <div style={{fontSize:12}}>{r.val}</div>
+                    }
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Right content ── */}
+        <div className="col-lg-8 col-xl-9">
+          <div className="card border-0 shadow-sm">
+            {/* Tabs */}
+            <div className="card-header bg-white border-bottom">
+              <ul className="nav nav-tabs card-header-tabs" style={{borderBottom:'none'}}>
+                {TABS.map(t=>(
+                  <li key={t.id} className="nav-item">
+                    <button
+                      onClick={()=>setActiveTab(t.id)}
+                      className={`nav-link d-flex align-items-center gap-2 ${activeTab===t.id?'active':''}`}
+                      style={{fontSize:13,cursor:'pointer',border:'none',background:'none',
+                        color:activeTab===t.id?'#3b82f6':'#64748b',borderBottom:activeTab===t.id?'2px solid #3b82f6':'2px solid transparent',paddingBottom:12}}>
+                      <i className={t.icon}/>
+                      {t.label}
+                      {t.count!==null && (
+                        <span className="badge"
+                          style={{fontSize:10,background:activeTab===t.id?'#eff6ff':'#f1f5f9',color:activeTab===t.id?'#2563eb':'#64748b'}}>
+                          {t.count}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* ── ORDER HISTORY ── */}
+            {activeTab==='orders' && (
+              <div>
+                {orders.length===0 && (
+                  <div className="text-center text-muted py-5">No orders yet.</div>
+                )}
+                {orders.map((o,i)=>{
+                  const sc = ORDER_STATUS_CFG[o.status]||ORDER_STATUS_CFG.delivered
+                  return (
+                    <div key={o.id} className={`d-flex align-items-start gap-3 p-4 ${i<orders.length-1?'border-bottom':''}`}>
+                      <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style={{width:40,height:40,background:'#f0fdf4'}}>
+                        <i className="ri-shopping-bag-line" style={{color:'#22c55e',fontSize:16}}/>
+                      </div>
+                      <div className="flex-fill">
+                        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                          <span className="fw-semibold" style={{fontSize:14}}>{o.id}</span>
+                          <span className="badge" style={{fontSize:11,background:sc.bg,color:sc.color,border:`1px solid ${sc.border}`}}>
+                            {sc.label}
+                          </span>
+                        </div>
+                        <div className="text-muted" style={{fontSize:12,margin:'4px 0'}}>{o.items}</div>
+                        <div className="d-flex align-items-center gap-3">
+                          <span className="text-muted" style={{fontSize:11}}>{o.date}</span>
+                          <span className="fw-bold text-success" style={{fontSize:13}}>{fmt(o.total)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* ── LOYALTY POINTS ── */}
+            {activeTab==='points' && (
+              <div>
+                {/* Points summary */}
+                <div className="p-4 border-bottom" style={{background:'#f8fafc'}}>
+                  <div className="row g-3">
+                    {[
+                      { label:'Current Balance', val:fmtPts(customer.points), color:'#8b5cf6', big:true },
+                      { label:'Tier',            val:customer.tier,           color:tc.color           },
+                      { label:'Points to Next',  val:tc.next?fmtPts(ptsToNext):'Max tier ✓', color:tc.next?'#f59e0b':'#22c55e' },
+                      { label:'Redemption Rate', val:'100 pts = ₦400',       color:'#64748b'          },
+                    ].map(s=>(
+                      <div key={s.label} className="col-6 col-md-3">
+                        <div style={{background:'#fff',borderRadius:8,padding:'12px',border:'1px solid #e2e8f0'}}>
+                          <div className="text-muted" style={{fontSize:10}}>{s.label}</div>
+                          <div className="fw-bold" style={{fontSize:s.big?18:14,color:s.color}}>{s.val}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* History */}
+                <div className="px-4 py-3 border-bottom">
+                  <div className="fw-medium" style={{fontSize:13}}>Points History</div>
+                </div>
+                {pts.map((p,i)=>(
+                  <div key={i} className={`d-flex align-items-center gap-3 px-4 py-3 ${i<pts.length-1?'border-bottom':''}`}>
+                    <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                      style={{width:36,height:36,background:p.type==='earn'?'#f0fdf4':p.type==='bonus'?'#f5f3ff':'#fef2f2'}}>
+                      <i className={p.type==='earn'?'ri-add-line':p.type==='bonus'?'ri-gift-line':'ri-subtract-line'}
+                        style={{fontSize:14,color:p.type==='earn'?'#22c55e':p.type==='bonus'?'#8b5cf6':'#ef4444'}}/>
+                    </div>
+                    <div className="flex-fill">
+                      <div style={{fontSize:13}}>{p.desc}</div>
+                      <div className="text-muted" style={{fontSize:11}}>{p.date}</div>
+                    </div>
+                    <div className="fw-bold" style={{fontSize:14,color:p.pts>0?'#22c55e':'#ef4444'}}>
+                      {p.pts>0?'+':''}{p.pts.toLocaleString()} pts
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ── NOTES & INFO ── */}
+            {activeTab==='notes' && (
+              <div className="p-4">
+                <div className="p-3 rounded mb-4" style={{background:'#fffbeb',border:'1px solid #fde68a'}}>
+                  <div className="fw-medium mb-1" style={{fontSize:13,color:'#92400e'}}>
+                    <i className="ri-sticky-note-line me-1"/>Internal Notes
+                  </div>
+                  <div style={{fontSize:13,color:'#78350f',lineHeight:1.6}}>{customer.notes}</div>
+                </div>
+                <div className="row g-3">
+                  {[
+                    { icon:'ri-smartphone-line',   label:'Registered via',   val:customer.device,    color:'#3b82f6' },
+                    { icon:'ri-share-line',         label:'Referral source',  val:customer.referral||'Organic', color:'#22c55e' },
+                    { icon:'ri-calendar-check-line',label:'Member since',     val:customer.joined,    color:'#8b5cf6' },
+                    { icon:'ri-shopping-bag-line',  label:'Last order',       val:customer.lastOrder, color:'#f59e0b' },
+                    { icon:'ri-map-pin-2-line',     label:'Delivery zone',    val:customer.zone,      color:'#0ea5e9' },
+                    { icon:'ri-shield-check-line',  label:'Account status',   val:customer.status==='active'?'Active ✓':'Inactive', color:customer.status==='active'?'#22c55e':'#ef4444' },
+                  ].map(r=>(
+                    <div key={r.label} className="col-md-6">
+                      <div className="d-flex align-items-center gap-3 p-3 rounded" style={{background:'#f8fafc'}}>
+                        <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                          style={{width:36,height:36,background:'#fff'}}>
+                          <i className={r.icon} style={{color:r.color,fontSize:16}}/>
+                        </div>
+                        <div>
+                          <div className="text-muted" style={{fontSize:11}}>{r.label}</div>
+                          <div style={{fontSize:13,fontWeight:600,color:r.color}}>{r.val}</div>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* AI Insights */}
-          {activeTab==='insights' && (
-            <div style={{ padding:20 }}>
-              {loadingInsights && (
-                <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, color:'var(--orange-accent)', fontWeight:700, fontSize:13 }}>
-                    <i className="ri-sparkling-2-line animate-pulse" />
-                    <span>Bems Farms AI is analyzing purchase history and generating strategic recommendations...</span>
-                  </div>
-                  <div style={{ background:'var(--bg-muted)', height:16, width:'90%', borderRadius:4 }} />
-                  <div style={{ background:'var(--bg-muted)', height:16, width:'85%', borderRadius:4 }} />
-                  <div style={{ background:'var(--bg-muted)', height:16, width:'95%', borderRadius:4 }} />
-                  <div style={{ background:'var(--bg-muted)', height:16, width:'60%', borderRadius:4 }} />
-                </div>
-              )}
-              {insightsError && (
-                <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:12, color:'#dc2626', fontSize:13 }}>
-                  {insightsError}
-                  <button style={{ ...btnL, display:'block', marginTop:8, padding:'4px 8px', fontSize:11 }} onClick={fetchInsights}>Try Again</button>
-                </div>
-              )}
-              {insights && (
-                <div style={{ color:'var(--text-secondary)', fontSize:13, lineHeight:1.6 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:6, color:'var(--orange-accent)', fontWeight:700, fontSize:14, marginBottom:16, paddingBottom:8, borderBottom:'1px solid var(--border)' }}>
-                    <i className="ri-sparkling-2-line" />
-                    <span>AI Customer Success Insights</span>
-                  </div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                    {insights.split("\n\n").map((block, idx) => {
-                      if (block.startsWith("###")) {
-                        return (
-                          <h4 key={idx} style={{ margin:'8px 0 4px', fontSize:14, fontWeight:700, color:'#1B4332', fontFamily:'var(--heading-font)' }}>
-                            {block.replace("###", "").trim()}
-                          </h4>
-                        );
-                      }
-                      return (
-                        <p key={idx} style={{ margin:0 }}>
-                          {block.split("\n").map((line, lIdx) => {
-                            if (line.trim().startsWith("-") || line.trim().startsWith("*")) {
-                              return (
-                                <span key={lIdx} style={{ display:'block', paddingLeft:12, textIndent:-12, marginBottom:4 }}>
-                                  • {line.trim().slice(1).trim()}
-                                </span>
-                              );
-                            }
-                            return <span key={lIdx} style={{ display:'block' }}>{line}</span>;
-                          })}
-                        </p>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

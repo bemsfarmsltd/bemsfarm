@@ -1,244 +1,1224 @@
-import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-import { ROLE_META } from '../../lib/roles'
-
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13,textDecoration:'none' }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const btnD = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
-const B = 'var(--border)', S = '#6b7280'
-
-const STATUSES = ['active', 'inactive', 'on_leave']
-
-function statusBadge(status) {
-  const map = {
-    active:   { color:'#166534', bg:'#dcfce7', label:'Active' },
-    inactive: { color:'var(--text-muted)', bg:'var(--border)', label:'Inactive' },
-    on_leave: { color:'#92400e', bg:'#fef3c7', label:'On Leave' },
-  }
-  const s = map[status] || { color:S, bg:'var(--border)', label:status||'—' }
-  return <span style={{ background:s.bg,color:s.color,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}>{s.label}</span>
-}
-
-function roleBadge(systemRole) {
-  const meta = ROLE_META[systemRole]
-  if (!meta) return <span style={{ fontSize:12,color:S }}>{systemRole||'—'}</span>
-  return (
-    <span style={{ display:'inline-flex',alignItems:'center',gap:4,background:meta.bg,color:meta.color,borderRadius:50,padding:'2px 9px',fontSize:11,fontWeight:600 }}>
-      <i className={meta.icon} style={{ fontSize:11 }}/>{meta.label}
-    </span>
-  )
-}
 
 export default function StaffList() {
-  const [staff, setStaff]         = useState([])
-  const [stats, setStats]         = useState({})
-  const [loading, setLoading]     = useState(true)
-  const [search, setSearch]       = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [page, setPage]           = useState(1)
-  const [total, setTotal]         = useState(0)
-  const [statusTarget, setStatusTarget] = useState(null) // { staff, next }
-  const [deleteItem, setDeleteItem] = useState(null)
-  const [saving, setSaving]       = useState(false)
-
-  const load = useCallback(() => {
-    setLoading(true)
-    api.get('/admin/staff', { params: { page, limit: 20, search: search || undefined, status: statusFilter || undefined } })
-      .then(r => { setStaff(r.data.staff || []); setTotal(r.data.total || 0); setStats(r.data.stats || {}) })
-      .catch(() => toast.error('Failed to load staff'))
-      .finally(() => setLoading(false))
-  }, [page, search, statusFilter])
-
-  useEffect(() => { load() }, [load])
-
-  async function changeStatus() {
-    setSaving(true)
-    try {
-      await api.patch(`/admin/staff/${statusTarget.staff.id}/status`, { status: statusTarget.next })
-      toast.success(`Marked ${statusTarget.next.replace('_', ' ')}`)
-      setStatusTarget(null)
-      load()
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to update status')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleDelete() {
-    setSaving(true)
-    try {
-      await api.delete(`/admin/staff/${deleteItem.id}`)
-      toast.success('Staff member deactivated')
-      setDeleteItem(null)
-      load()
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to remove staff member')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const statCards = [
-    { label:'Total Staff',   value:stats.total ?? '—',          icon:'ri-team-line',        color:'#405189' },
-    { label:'Active',        value:stats.active ?? '—',         icon:'ri-checkbox-circle-line', color:'#0ab39c' },
-    { label:'On Duty Today', value:stats.on_duty_today ?? '—',  icon:'ri-time-line',        color:'#f7b84b' },
-    { label:'Departments',   value:stats.departments ?? '—',    icon:'ri-building-line',    color:'#a78bfa' },
-  ]
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ marginBottom:20, display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
-        <div>
-          <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Staff Directory</div>
-          <div style={{ fontSize:12,color:S,marginTop:2 }}>Manage employee records, roles, and access.</div>
-        </div>
-        <Link to="/staff/add" style={btnP}><i className="ri-user-add-line"/>Add Staff</Link>
-      </div>
-
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:20 }}>
-        {statCards.map(c => (
-          <div key={c.label} style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, padding:'14px 16px', display:'flex', alignItems:'center', gap:14, boxShadow:'0 1px 4px rgba(0,0,0,.05)' }}>
-            <div style={{ width:40, height:40, borderRadius:9, background:c.color+'20', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <i className={c.icon} style={{ color:c.color, fontSize:18 }}/>
-            </div>
-            <div>
-              <div style={{ fontSize:11, color:S }}>{c.label}</div>
-              <div style={{ fontSize:20, fontWeight:800, color:'var(--text-primary)', fontFamily:'var(--heading-font)' }}>{c.value}</div>
-            </div>
+    <div className="container-fluid">
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
+              <h6 className="flex-grow-1 mb-0">Staff List</h6>
+              <ul className="breadcrumb flex-shrink-0 mb-0">
+                  <li className="breadcrumb-item"><a href="#">Staff</a></li>
+                  <li className="breadcrumb-item active">Staff List</li>
+              </ul>
           </div>
-        ))}
-      </div>
-
-      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
-        <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10 }}>
-          <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14 }}>All Staff</span>
-          <div style={{ display:'flex',gap:10,alignItems:'center' }}>
-            <div style={{ position:'relative' }}>
-              <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
-              <input type="text" placeholder="Search name, email, code…" value={search} onChange={e=>{ setSearch(e.target.value); setPage(1) }} style={{ ...inp,paddingLeft:34,width:220 }}/>
-            </div>
-            <select value={statusFilter} onChange={e=>{ setStatusFilter(e.target.value); setPage(1) }} style={{ ...inp, width:150 }}>
-              <option value="">All Statuses</option>
-              {STATUSES.map(s => <option key={s} value={s}>{s.replace('_',' ')}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {loading ? (
-          <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
-        ) : (
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%',borderCollapse:'collapse' }}>
-              <thead>
-                <tr>{['Employee','Code','Department','Role','System Role','Shift','Status','Actions'].map(h=><th key={h} style={TH}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {staff.length === 0 && (
-                  <tr><td colSpan={8} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                    <i className="ri-team-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No staff found
-                  </td></tr>
-                )}
-                {staff.map(m => (
-                  <tr key={m.id}>
-                    <td style={TD}>
-                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <div style={{ width:32, height:32, borderRadius:'50%', background:'#40518920', color:'#405189', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>
-                          {(m.name||'?').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight:600 }}>{m.name}</div>
-                          <div style={{ fontSize:11, color:S }}>{m.email}</div>
-                        </div>
+          <div className="card">
+              <div className="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                  <h5 className="card-title mb-0">Staff List</h5>
+                  <div className="d-flex flex-wrap gap-2 ">
+                      <div className="position-relative">
+                          <input type="text" id="tableSearch" className="form-control ps-10" placeholder="Search products..." />
+                          <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
                       </div>
-                    </td>
-                    <td style={TD}><code style={{ background:'var(--bg-muted)',padding:'2px 8px',borderRadius:4,fontSize:11,fontWeight:700 }}>{m.employee_code}</code></td>
-                    <td style={{ ...TD, color:S, fontSize:12 }}>{m.department}</td>
-                    <td style={{ ...TD, fontSize:12 }}>{m.role}</td>
-                    <td style={TD}>{roleBadge(m.system_role)}</td>
-                    <td style={{ ...TD, fontSize:12, color:S, textTransform:'capitalize' }}>{m.shift}</td>
-                    <td style={TD}>{statusBadge(m.status)}</td>
-                    <td style={TD}>
-                      <div style={{ display:'flex',gap:4 }}>
-                        {m.status !== 'active' && (
-                          <button onClick={()=>setStatusTarget({ staff:m, next:'active' })} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0fdf4',color:'#166534',cursor:'pointer' }} title="Reactivate"><i className="ri-play-circle-line"/></button>
-                        )}
-                        {m.status === 'active' && (
-                          <button onClick={()=>setStatusTarget({ staff:m, next:'on_leave' })} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#fffbeb',color:'#92400e',cursor:'pointer' }} title="Mark on leave"><i className="ri-pause-circle-line"/></button>
-                        )}
-                        <button onClick={()=>setDeleteItem(m)} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#fff0f0',color:'#f06548',cursor:'pointer' }} title="Deactivate"><i className="ri-delete-bin-line"/></button>
+                      <div id="staffRole" className="w-56"></div>
+                      <div id="staffStatus" className="w-40"></div>
+                      <a href="apps-staff-add.html" className="btn btn-primary"><i data-lucide="plus" className="size-4 me-1"></i>Add Staff</a>
+                  </div>
+              </div>
+              <div className="card-body pt-0">
+                  <div className="table-card table-responsive">
+                      <table className="table text-nowrap align-middle mb-0">
+                          <thead>
+                              <tr className="bg-light border-bottom">
+                                  <th>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" id="checkAllSales" />
+                                      </div>
+                                  </th>
+                                  <th className="text-muted fw-medium">Staff</th>
+                                  <th className="text-muted fw-medium">Role</th>
+                                  <th className="text-muted fw-medium">Email</th>
+                                  <th className="text-muted fw-medium">Phone</th>
+                                  <th className="text-muted fw-medium">Status</th>
+                                  <th className="text-muted fw-medium">Last Login</th>
+                                  <th className="text-muted fw-medium">Total Sales</th>
+                                  <th className="text-muted fw-medium">Action</th>
+                              </tr>
+                          </thead>
+                          <tbody className="accordion" id="staffAccordion">
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-3">
+                                          <img src="../assets/user-1-xhBXJtq9.png" loading="lazy" alt="John Doe" className="img-fluid size-9 rounded-1" />
+                                          <div>
+                                              <a href="#" className="text-reset fw-medium">John Doe</a>
+                                              <p className="text-muted fs-sm">Joined: 12 Jan 2025</p>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  <td>Manager</td>
+                                  <td>john.doe@example.com</td>
+                                  <td>+91 9876543210</td>
+                                  <td>
+                                      <span className="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                                  </td>
+                                  <td>28 Dec 2025</td>
+                                  <td>$12,500</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button className="accordion-button edit-icon-btn collapsed bg-body-secondary border shadow-none rounded text-muted p-0 size-8" type="button" data-bs-toggle="collapse" data-bs-target="#staff1" aria-expanded="false"></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td colSpan="9" className="p-0 border-0 bg-light bg-opacity-75">
+                                      <div id="staff1" className="accordion-collapse collapse" data-bs-parent="#staffAccordion">
+                                          <div className="accordion-body py-7 px-0">
+                                              <form>
+                                                  <div className="row g-5">
+                                                      <div className="col-3 col-md-2">
+                                                          <img src="../assets/user-1-xhBXJtq9.png" className="img-fluid mb-6 size-40 rounded" alt="Staff Image" />
+                                                          <div className="w-48">
+                                                              <label className="form-label" htmlFor="role">Role</label>
+                                                              <input type="text" className="form-control" id="role" defaultValue="Manager" />
+                                                          </div>
+                                                      </div>
+                                                      <div className="col-9 col-md-10">
+                                                          <div className="row g-5">
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="name">Name</label>
+                                                                  <input type="text" className="form-control" id="name" defaultValue="John Doe" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Email</label>
+                                                                  <input type="email" className="form-control" id="email" defaultValue="john.doe@example.com" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Joined Date</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose date" defaultValue="12-01-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="phone">Phone</label>
+                                                                  <input type="text" className="form-control" id="phone" defaultValue="+91 9876543210" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="lastLogin">Last Login</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose date" defaultValue="25-12-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="status">Status</label>
+                                                                  <div id="staffStatus" className="d-block"></div>
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="totalSales">Total Sales</label>
+                                                                  <input type="text" className="form-control" id="totalSales" defaultValue="$12,500" readOnly />
+                                                              </div>
+                                                              <div className="col-2">
+                                                                  <label className="form-label" htmlFor="department">Department</label>
+                                                                  <input type="text" className="form-control" id="department" defaultValue="Sales" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="address">Address</label>
+                                                                  <input type="text" className="form-control" id="address" defaultValue="123 Main St, Brooklyn, NY" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="city">City</label>
+                                                                  <input type="text" className="form-control" id="city" defaultValue="Brooklyn" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="country">Country</label>
+                                                                  <input type="text" className="form-control" id="country" defaultValue="USA" />
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              </form>
+                                              <div className="col-12 mt-5 text-end">
+                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
+                                                  <button type="submit" className="btn btn-secondary">Update</button>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-3">
+                                          <img src="../assets/user-2-CroG7YJ0.png" loading="lazy" alt="Sarah Smith" className="img-fluid size-9 rounded-1" />
+                                          <div>
+                                              <a href="#" className="text-reset fw-medium">Sarah Smith</a>
+                                              <p className="text-muted fs-sm">Joined: 05 Feb 2025</p>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  <td>Sales Executive</td>
+                                  <td>sarah.smith@example.com</td>
+                                  <td>+91 9123456780</td>
+                                  <td>
+                                      <span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span>
+                                  </td>
+                                  <td>22 Dec 2025</td>
+                                  <td>$8,300</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button className="accordion-button edit-icon-btn collapsed bg-body-secondary border shadow-none rounded text-muted p-0 size-8" type="button" data-bs-toggle="collapse" data-bs-target="#staff2" aria-expanded="false"></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                              <i className="ri-delete-bin-line"></i>
+                                          </button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td colSpan="9" className="p-0 border-0 bg-light bg-opacity-75">
+                                      <div id="staff2" className="accordion-collapse collapse" data-bs-parent="#staffAccordion">
+                                          <div className="accordion-body py-7 px-0">
+                                              <form>
+                                                  <div className="row g-5">
+                                                      <div className="col-3 col-md-2">
+                                                          <img src="../assets/user-2-CroG7YJ0.png" className="img-fluid mb-6 size-40 rounded" alt="Staff Image" />
+                                                          <div className="w-48">
+                                                              <label className="form-label" htmlFor="role">Role</label>
+                                                              <input type="text" className="form-control" id="role" defaultValue="Sales Executive" />
+                                                          </div>
+                                                      </div>
+                                                      <div className="col-9 col-md-10">
+                                                          <div className="row g-5">
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="name">Name</label>
+                                                                  <input type="text" className="form-control" id="name" defaultValue="Sarah Smith" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Email</label>
+                                                                  <input type="email" className="form-control" id="email" defaultValue="sarah.smith@example.com" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Joined Date</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="05-02-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="phone">Phone</label>
+                                                                  <input type="text" className="form-control" id="phone" defaultValue="+91 9123456780" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="lastLogin">Last Login</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="22-12-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="status">Status</label>
+                                                                  <div id="staffStatus" className="d-block"></div>
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="totalSales">Total Sales</label>
+                                                                  <input type="text" className="form-control" id="totalSales" defaultValue="$8,300" readOnly />
+                                                              </div>
+                                                              <div className="col-2">
+                                                                  <label className="form-label" htmlFor="department">Department</label>
+                                                                  <input type="text" className="form-control" id="department" defaultValue="Sales" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="address">Address</label>
+                                                                  <input type="text" className="form-control" id="address" defaultValue="45 Market Road, Andheri" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="city">City</label>
+                                                                  <input type="text" className="form-control" id="city" defaultValue="Mumbai" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="country">Country</label>
+                                                                  <input type="text" className="form-control" id="country" defaultValue="India" />
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              </form>
+                                              <div className="col-12 mt-5 text-end">
+                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
+                                                  <button type="submit" className="btn btn-secondary">Update</button>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-3">
+                                          <img src="../assets/user-3-Bz6g7hsE.png" loading="lazy" alt="Amit Patel" className="img-fluid size-9 rounded-1" />
+                                          <div>
+                                              <a href="#" className="text-reset fw-medium">Amit Patel</a>
+                                              <p className="text-muted fs-sm">Joined: 18 Mar 2025</p>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  <td>Account Executive</td>
+                                  <td>amit.patel@example.com</td>
+                                  <td>+91 9988776655</td>
+                                  <td>
+                                      <span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span>
+                                  </td>
+                                  <td>20 Dec 2025</td>
+                                  <td>$6,750</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button className="accordion-button edit-icon-btn collapsed bg-body-secondary border shadow-none rounded text-muted p-0 size-8" type="button" data-bs-toggle="collapse" data-bs-target="#staff3" aria-expanded="false"></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                              <i className="ri-delete-bin-line"></i>
+                                          </button>
+                                      </div>
+                                  </td>
+                              </tr>
+
+                              <tr>
+                                  <td colSpan="9" className="p-0 border-0 bg-light bg-opacity-75">
+                                      <div id="staff3" className="accordion-collapse collapse" data-bs-parent="#staffAccordion">
+                                          <div className="accordion-body py-7 px-0">
+                                              <form>
+                                                  <div className="row g-5">
+                                                      <div className="col-3 col-md-2">
+                                                          <img src="../assets/user-3-Bz6g7hsE.png" className="img-fluid mb-6 size-40 rounded" alt="Staff Image" />
+                                                          <div className="w-48">
+                                                              <label className="form-label" htmlFor="role">Role</label>
+                                                              <input type="text" className="form-control" id="role" defaultValue="Account Executive" />
+                                                          </div>
+                                                      </div>
+                                                      <div className="col-9 col-md-10">
+                                                          <div className="row g-5">
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="name">Name</label>
+                                                                  <input type="text" className="form-control" id="name" defaultValue="Amit Patel" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Email</label>
+                                                                  <input type="email" className="form-control" id="email" defaultValue="amit.patel@example.com" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Joined Date</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="18-03-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="phone">Phone</label>
+                                                                  <input type="text" className="form-control" id="phone" defaultValue="+91 9988776655" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="lastLogin">Last Login</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="20-12-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="status">Status</label>
+                                                                  <div id="staffStatus" className="d-block"></div>
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="totalSales">Total Sales</label>
+                                                                  <input type="text" className="form-control" id="totalSales" defaultValue="$6,750" readOnly />
+                                                              </div>
+                                                              <div className="col-2">
+                                                                  <label className="form-label" htmlFor="department">Department</label>
+                                                                  <input type="text" className="form-control" id="department" defaultValue="Accounts" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="address">Address</label>
+                                                                  <input type="text" className="form-control" id="address" defaultValue="72 Business Park, SG Highway" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="city">City</label>
+                                                                  <input type="text" className="form-control" id="city" defaultValue="Ahmedabad" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="country">Country</label>
+                                                                  <input type="text" className="form-control" id="country" defaultValue="India" />
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              </form>
+                                              <div className="col-12 mt-5 text-end">
+                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
+                                                  <button type="submit" className="btn btn-secondary">Update</button>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-3">
+                                          <img src="../assets/user-4-7l52E1Lo.png" loading="lazy" alt="Priya Sharma" className="img-fluid size-9 rounded-1" />
+                                          <div>
+                                              <a href="#" className="text-reset fw-medium">Priya Sharma</a>
+                                              <p className="text-muted fs-sm">Joined: 09 Apr 2025</p>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  <td>HR Executive</td>
+                                  <td>priya.sharma@example.com</td>
+                                  <td>+91 9012345678</td>
+                                  <td>
+                                      <span className="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                                  </td>
+                                  <td>18 Dec 2025</td>
+                                  <td>$5,200</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button className="accordion-button edit-icon-btn collapsed bg-body-secondary border shadow-none rounded text-muted p-0 size-8" type="button" data-bs-toggle="collapse" data-bs-target="#staff4" aria-expanded="false"></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                              <i className="ri-delete-bin-line"></i>
+                                          </button>
+                                      </div>
+                                  </td>
+                              </tr>
+
+                              <tr>
+                                  <td colSpan="9" className="p-0 border-0 bg-light bg-opacity-75">
+                                      <div id="staff4" className="accordion-collapse collapse" data-bs-parent="#staffAccordion">
+                                          <div className="accordion-body py-7 px-0">
+                                              <form>
+                                                  <div className="row g-5">
+                                                      <div className="col-3 col-md-2">
+                                                          <img src="../assets/user-4-7l52E1Lo.png" className="img-fluid mb-6 size-40 rounded" alt="Staff Image" />
+                                                          <div className="w-48">
+                                                              <label className="form-label" htmlFor="role">Role</label>
+                                                              <input type="text" className="form-control" id="role" defaultValue="HR Executive" />
+                                                          </div>
+                                                      </div>
+                                                      <div className="col-9 col-md-10">
+                                                          <div className="row g-5">
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="name">Name</label>
+                                                                  <input type="text" className="form-control" id="name" defaultValue="Priya Sharma" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Email</label>
+                                                                  <input type="email" className="form-control" id="email" defaultValue="priya.sharma@example.com" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Joined Date</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="09-04-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="phone">Phone</label>
+                                                                  <input type="text" className="form-control" id="phone" defaultValue="+91 9012345678" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="lastLogin">Last Login</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="18-12-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="status">Status</label>
+                                                                  <div id="staffStatus" className="d-block"></div>
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="totalSales">Total Sales</label>
+                                                                  <input type="text" className="form-control" id="totalSales" defaultValue="$5,200" readOnly />
+                                                              </div>
+                                                              <div className="col-2">
+                                                                  <label className="form-label" htmlFor="department">Department</label>
+                                                                  <input type="text" className="form-control" id="department" defaultValue="Human Resources" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="address">Address</label>
+                                                                  <input type="text" className="form-control" id="address" defaultValue="14 Corporate Avenue, Powai" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="city">City</label>
+                                                                  <input type="text" className="form-control" id="city" defaultValue="Mumbai" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="country">Country</label>
+                                                                  <input type="text" className="form-control" id="country" defaultValue="India" />
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              </form>
+                                              <div className="col-12 mt-5 text-end">
+                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
+                                                  <button type="submit" className="btn btn-secondary">Update</button>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-3">
+                                          <img src="../assets/user-5-BsT8d_Co.png" loading="lazy" alt="Rahul Mehta" className="img-fluid size-9 rounded-1" />
+                                          <div>
+                                              <a href="#" className="text-reset fw-medium">Rahul Mehta</a>
+                                              <p className="text-muted fs-sm">Joined: 21 May 2025</p>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  <td>Finance Officer</td>
+                                  <td>rahul.mehta@example.com</td>
+                                  <td>+91 8899776655</td>
+                                  <td>
+                                      <span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span>
+                                  </td>
+                                  <td>16 Dec 2025</td>
+                                  <td>$9,450</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button className="accordion-button edit-icon-btn collapsed bg-body-secondary border shadow-none rounded text-muted p-0 size-8" type="button" data-bs-toggle="collapse" data-bs-target="#staff5" aria-expanded="false"></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                              <i className="ri-delete-bin-line"></i>
+                                          </button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td colSpan="9" className="p-0 border-0 bg-light bg-opacity-75">
+                                      <div id="staff5" className="accordion-collapse collapse" data-bs-parent="#staffAccordion">
+                                          <div className="accordion-body py-7 px-0">
+                                              <form>
+                                                  <div className="row g-5">
+                                                      <div className="col-3 col-md-2">
+                                                          <img src="../assets/user-5-BsT8d_Co.png" className="img-fluid mb-6 size-40 rounded" alt="Staff Image" />
+                                                          <div className="w-48">
+                                                              <label className="form-label" htmlFor="role">Role</label>
+                                                              <input type="text" className="form-control" id="role" defaultValue="Finance Officer" />
+                                                          </div>
+                                                      </div>
+                                                      <div className="col-9 col-md-10">
+                                                          <div className="row g-5">
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="name">Name</label>
+                                                                  <input type="text" className="form-control" id="name" defaultValue="Rahul Mehta" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Email</label>
+                                                                  <input type="email" className="form-control" id="email" defaultValue="rahul.mehta@example.com" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Joined Date</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="21-05-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="phone">Phone</label>
+                                                                  <input type="text" className="form-control" id="phone" defaultValue="+91 8899776655" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="lastLogin">Last Login</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="16-12-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="status">Status</label>
+                                                                  <div id="staffStatus" className="d-block"></div>
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="totalSales">Total Sales</label>
+                                                                  <input type="text" className="form-control" id="totalSales" defaultValue="$9,450" readOnly />
+                                                              </div>
+                                                              <div className="col-2">
+                                                                  <label className="form-label" htmlFor="department">Department</label>
+                                                                  <input type="text" className="form-control" id="department" defaultValue="Finance" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="address">Address</label>
+                                                                  <input type="text" className="form-control" id="address" defaultValue="88 Corporate Plaza, BKC" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="city">City</label>
+                                                                  <input type="text" className="form-control" id="city" defaultValue="Mumbai" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="country">Country</label>
+                                                                  <input type="text" className="form-control" id="country" defaultValue="India" />
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              </form>
+                                              <div className="col-12 mt-5 text-end">
+                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
+                                                  <button type="submit" className="btn btn-secondary">Update</button>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-3">
+                                          <img src="../assets/user-6-BIO7_TUU.png" loading="lazy" alt="Neha Verma" className="img-fluid size-9 rounded-1" />
+                                          <div>
+                                              <a href="#" className="text-reset fw-medium">Neha Verma</a>
+                                              <p className="text-muted fs-sm">Joined: 02 Jun 2025</p>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  <td>Operations Manager</td>
+                                  <td>neha.verma@example.com</td>
+                                  <td>+91 8877665544</td>
+                                  <td>
+                                      <span className="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                                  </td>
+                                  <td>27 Dec 2025</td>
+                                  <td>$14,800</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button className="accordion-button edit-icon-btn collapsed bg-body-secondary border shadow-none rounded text-muted p-0 size-8" type="button" data-bs-toggle="collapse" data-bs-target="#staff6" aria-expanded="false"></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                              <i className="ri-delete-bin-line"></i>
+                                          </button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td colSpan="9" className="p-0 border-0 bg-light bg-opacity-75">
+                                      <div id="staff6" className="accordion-collapse collapse" data-bs-parent="#staffAccordion">
+                                          <div className="accordion-body py-7 px-0">
+                                              <form>
+                                                  <div className="row g-5">
+                                                      <div className="col-3 col-md-2">
+                                                          <img src="../assets/user-6-BIO7_TUU.png" className="img-fluid mb-6 size-40 rounded" alt="Staff Image" />
+                                                          <div className="w-48">
+                                                              <label className="form-label" htmlFor="role">Role</label>
+                                                              <input type="text" className="form-control" id="role" defaultValue="Operations Manager" />
+                                                          </div>
+                                                      </div>
+                                                      <div className="col-9 col-md-10">
+                                                          <div className="row g-5">
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="name">Name</label>
+                                                                  <input type="text" className="form-control" id="name" defaultValue="Neha Verma" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Email</label>
+                                                                  <input type="email" className="form-control" id="email" defaultValue="neha.verma@example.com" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Joined Date</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="02-06-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="phone">Phone</label>
+                                                                  <input type="text" className="form-control" id="phone" defaultValue="+91 8877665544" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="lastLogin">Last Login</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="27-12-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="status">Status</label>
+                                                                  <div id="staffStatus" className="d-block"></div>
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="totalSales">Total Sales</label>
+                                                                  <input type="text" className="form-control" id="totalSales" defaultValue="$14,800" readOnly />
+                                                              </div>
+                                                              <div className="col-2">
+                                                                  <label className="form-label" htmlFor="department">Department</label>
+                                                                  <input type="text" className="form-control" id="department" defaultValue="Operations" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="address">Address</label>
+                                                                  <input type="text" className="form-control" id="address" defaultValue="301 Business Hub, Sector 62" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="city">City</label>
+                                                                  <input type="text" className="form-control" id="city" defaultValue="Noida" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="country">Country</label>
+                                                                  <input type="text" className="form-control" id="country" defaultValue="India" />
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              </form>
+                                              <div className="col-12 mt-5 text-end">
+                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
+                                                  <button type="submit" className="btn btn-secondary">Update</button>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-3">
+                                          <img src="../assets/user-7-BMyy-xCq.png" loading="lazy" alt="Karan Singh" className="img-fluid size-9 rounded-1" />
+                                          <div>
+                                              <a href="#" className="text-reset fw-medium">Karan Singh</a>
+                                              <p className="text-muted fs-sm">Joined: 15 Jul 2025</p>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  <td>IT Administrator</td>
+                                  <td>karan.singh@example.com</td>
+                                  <td>+91 8765432109</td>
+                                  <td>
+                                      <span className="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                                  </td>
+                                  <td>29 Dec 2025</td>
+                                  <td>$11,200</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button className="accordion-button edit-icon-btn collapsed bg-body-secondary border shadow-none rounded text-muted p-0 size-8" type="button" data-bs-toggle="collapse" data-bs-target="#staff7" aria-expanded="false"></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                              <i className="ri-delete-bin-line"></i>
+                                          </button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td colSpan="9" className="p-0 border-0 bg-light bg-opacity-75">
+                                      <div id="staff7" className="accordion-collapse collapse" data-bs-parent="#staffAccordion">
+                                          <div className="accordion-body py-7 px-0">
+                                              <form>
+                                                  <div className="row g-5">
+                                                      <div className="col-3 col-md-2">
+                                                          <img src="../assets/user-7-BMyy-xCq.png" className="img-fluid mb-6 size-40 rounded" alt="Staff Image" />
+                                                          <div className="w-48">
+                                                              <label className="form-label" htmlFor="role">Role</label>
+                                                              <input type="text" className="form-control" id="role" defaultValue="IT Administrator" />
+                                                          </div>
+                                                      </div>
+                                                      <div className="col-9 col-md-10">
+                                                          <div className="row g-5">
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="name">Name</label>
+                                                                  <input type="text" className="form-control" id="name" defaultValue="Karan Singh" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Email</label>
+                                                                  <input type="email" className="form-control" id="email" defaultValue="karan.singh@example.com" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Joined Date</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="15-07-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="phone">Phone</label>
+                                                                  <input type="text" className="form-control" id="phone" defaultValue="+91 8765432109" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="lastLogin">Last Login</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="29-12-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="status">Status</label>
+                                                                  <div id="staffStatus" className="d-block"></div>
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="totalSales">Total Sales</label>
+                                                                  <input type="text" className="form-control" id="totalSales" defaultValue="$11,200" readOnly />
+                                                              </div>
+                                                              <div className="col-2">
+                                                                  <label className="form-label" htmlFor="department">Department</label>
+                                                                  <input type="text" className="form-control" id="department" defaultValue="IT" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="address">Address</label>
+                                                                  <input type="text" className="form-control" id="address" defaultValue="512 Tech Park, Whitefield" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="city">City</label>
+                                                                  <input type="text" className="form-control" id="city" defaultValue="Bengaluru" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="country">Country</label>
+                                                                  <input type="text" className="form-control" id="country" defaultValue="India" />
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              </form>
+                                              <div className="col-12 mt-5 text-end">
+                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
+                                                  <button type="submit" className="btn btn-secondary">Update</button>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-8-BAGm131G.png" loading="lazy" alt="Vikas Rao" className="img-fluid size-9 rounded-1" />
+                                          <div>
+                                              <a href="#" className="text-reset fw-medium">Vikas Rao</a>
+                                              <p className="text-muted fs-sm">Joined: 03 Aug 2025</p>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  <td>Warehouse Supervisor</td>
+                                  <td>vikas.rao@example.com</td>
+                                  <td>+91 9345678120</td>
+                                  <td>
+                                      <span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span>
+                                  </td>
+                                  <td>14 Dec 2025</td>
+                                  <td>$4,980</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button className="accordion-button edit-icon-btn collapsed bg-body-secondary border shadow-none rounded text-muted p-0 size-8" type="button" data-bs-toggle="collapse" data-bs-target="#staff8" aria-expanded="false"></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                              <i className="ri-delete-bin-line"></i>
+                                          </button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td colSpan="9" className="p-0 border-0 bg-light bg-opacity-75">
+                                      <div id="staff8" className="accordion-collapse collapse" data-bs-parent="#staffAccordion">
+                                          <div className="accordion-body py-7 px-0">
+                                              <form>
+                                                  <div className="row g-5">
+                                                      <div className="col-3 col-md-2">
+                                                          <img src="../assets/user-8-BAGm131G.png" className="img-fluid mb-6 size-40 rounded" alt="Staff Image" />
+                                                          <div className="w-48">
+                                                              <label className="form-label" htmlFor="role">Role</label>
+                                                              <input type="text" className="form-control" id="role" defaultValue="Warehouse Supervisor" />
+                                                          </div>
+                                                      </div>
+                                                      <div className="col-9 col-md-10">
+                                                          <div className="row g-5">
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="name">Name</label>
+                                                                  <input type="text" className="form-control" id="name" defaultValue="Vikas Rao" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Email</label>
+                                                                  <input type="email" className="form-control" id="email" defaultValue="vikas.rao@example.com" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Joined Date</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="03-08-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="phone">Phone</label>
+                                                                  <input type="text" className="form-control" id="phone" defaultValue="+91 9345678120" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="lastLogin">Last Login</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="14-12-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="status">Status</label>
+                                                                  <div id="staffStatus" className="d-block"></div>
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="totalSales">Total Sales</label>
+                                                                  <input type="text" className="form-control" id="totalSales" defaultValue="$4,980" readOnly />
+                                                              </div>
+                                                              <div className="col-2">
+                                                                  <label className="form-label" htmlFor="department">Department</label>
+                                                                  <input type="text" className="form-control" id="department" defaultValue="Warehouse" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="address">Address</label>
+                                                                  <input type="text" className="form-control" id="address" defaultValue="Plot 19, Industrial Area" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="city">City</label>
+                                                                  <input type="text" className="form-control" id="city" defaultValue="Pune" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="country">Country</label>
+                                                                  <input type="text" className="form-control" id="country" defaultValue="India" />
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              </form>
+                                              <div className="col-12 mt-5 text-end">
+                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
+                                                  <button type="submit" className="btn btn-secondary">Update</button>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-9-DB-6OyMr.png" loading="lazy" alt="Ankit Kumar" className="img-fluid size-9 rounded-1" />
+                                          <div>
+                                              <a href="#" className="text-reset fw-medium">Ankit Kumar</a>
+                                              <p className="text-muted fs-sm">Joined: 26 Aug 2025</p>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  <td>Customer Support Lead</td>
+                                  <td>ankit.kumar@example.com</td>
+                                  <td>+91 9955443322</td>
+                                  <td>
+                                      <span className="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                                  </td>
+                                  <td>28 Dec 2025</td>
+                                  <td>$7,650</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button className="accordion-button edit-icon-btn collapsed bg-body-secondary border shadow-none rounded text-muted p-0 size-8" type="button" data-bs-toggle="collapse" data-bs-target="#staff9" aria-expanded="false"></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                              <i className="ri-delete-bin-line"></i>
+                                          </button>
+                                      </div>
+                                  </td>
+                              </tr>
+
+                              <tr>
+                                  <td colSpan="9" className="p-0 border-0 bg-light bg-opacity-75">
+                                      <div id="staff9" className="accordion-collapse collapse" data-bs-parent="#staffAccordion">
+                                          <div className="accordion-body py-7 px-0">
+                                              <form>
+                                                  <div className="row g-5">
+                                                      <div className="col-3 col-md-2">
+                                                          <img src="../assets/user-9-DB-6OyMr.png" className="img-fluid mb-6 size-40 rounded" alt="Staff Image" />
+                                                          <div className="w-48">
+                                                              <label className="form-label" htmlFor="role">Role</label>
+                                                              <input type="text" className="form-control" id="role" defaultValue="Customer Support Lead" />
+                                                          </div>
+                                                      </div>
+                                                      <div className="col-9 col-md-10">
+                                                          <div className="row g-5">
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="name">Name</label>
+                                                                  <input type="text" className="form-control" id="name" defaultValue="Ankit Kumar" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Email</label>
+                                                                  <input type="email" className="form-control" id="email" defaultValue="ankit.kumar@example.com" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Joined Date</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="26-08-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="phone">Phone</label>
+                                                                  <input type="text" className="form-control" id="phone" defaultValue="+91 9955443322" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="lastLogin">Last Login</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="28-12-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="status">Status</label>
+                                                                  <div id="staffStatus" className="d-block"></div>
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="totalSales">Total Sales</label>
+                                                                  <input type="text" className="form-control" id="totalSales" defaultValue="$7,650" readOnly />
+                                                              </div>
+                                                              <div className="col-2">
+                                                                  <label className="form-label" htmlFor="department">Department</label>
+                                                                  <input type="text" className="form-control" id="department" defaultValue="Customer Support" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="address">Address</label>
+                                                                  <input type="text" className="form-control" id="address" defaultValue="Block C, Tech Residency" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="city">City</label>
+                                                                  <input type="text" className="form-control" id="city" defaultValue="Gurugram" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="country">Country</label>
+                                                                  <input type="text" className="form-control" id="country" defaultValue="India" />
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              </form>
+                                              <div className="col-12 mt-5 text-end">
+                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
+                                                  <button type="submit" className="btn btn-secondary">Update</button>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-10-CzpspsdB.png" loading="lazy" alt="Riya Patel" className="img-fluid size-9 rounded-1" />
+                                          <div>
+                                              <a href="#" className="text-reset fw-medium">Riya Patel</a>
+                                              <p className="text-muted fs-sm">Joined: 12 Sep 2025</p>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  <td>Marketing Executive</td>
+                                  <td>riya.patel@example.com</td>
+                                  <td>+91 9988776655</td>
+                                  <td>
+                                      <span className="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                                  </td>
+                                  <td>29 Dec 2025</td>
+                                  <td>$6,750</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button className="accordion-button edit-icon-btn collapsed bg-body-secondary border shadow-none rounded text-muted p-0 size-8" type="button" data-bs-toggle="collapse" data-bs-target="#staff10" aria-expanded="false"></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                              <i className="ri-delete-bin-line"></i>
+                                          </button>
+                                      </div>
+                                  </td>
+                              </tr>
+
+                              <tr>
+                                  <td colSpan="9" className="p-0 border-0 bg-light bg-opacity-75">
+                                      <div id="staff10" className="accordion-collapse collapse" data-bs-parent="#staffAccordion">
+                                          <div className="accordion-body py-7 px-0">
+                                              <form>
+                                                  <div className="row g-5">
+                                                      <div className="col-3 col-md-2">
+                                                          <img src="../assets/user-10-CzpspsdB.png" className="img-fluid mb-6 size-40 rounded" alt="Staff Image" />
+                                                          <div className="w-48">
+                                                              <label className="form-label" htmlFor="role">Role</label>
+                                                              <input type="text" className="form-control" id="role" defaultValue="Marketing Executive" />
+                                                          </div>
+                                                      </div>
+                                                      <div className="col-9 col-md-10">
+                                                          <div className="row g-5">
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="name">Name</label>
+                                                                  <input type="text" className="form-control" id="name" defaultValue="Riya Patel" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Email</label>
+                                                                  <input type="email" className="form-control" id="email" defaultValue="riya.patel@example.com" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Joined Date</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="12-09-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="phone">Phone</label>
+                                                                  <input type="text" className="form-control" id="phone" defaultValue="+91 9988776655" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="lastLogin">Last Login</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="29-12-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="status">Status</label>
+                                                                  <div id="staffStatus" className="d-block"></div>
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="totalSales">Total Sales</label>
+                                                                  <input type="text" className="form-control" id="totalSales" defaultValue="$6,750" readOnly />
+                                                              </div>
+                                                              <div className="col-2">
+                                                                  <label className="form-label" htmlFor="department">Department</label>
+                                                                  <input type="text" className="form-control" id="department" defaultValue="Marketing" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="address">Address</label>
+                                                                  <input type="text" className="form-control" id="address" defaultValue="45 Garden Street, Andheri" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="city">City</label>
+                                                                  <input type="text" className="form-control" id="city" defaultValue="Mumbai" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="country">Country</label>
+                                                                  <input type="text" className="form-control" id="country" defaultValue="India" />
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              </form>
+                                              <div className="col-12 mt-5 text-end">
+                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
+                                                  <button type="submit" className="btn btn-secondary">Update</button>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-10-CzpspsdB.png" loading="lazy" alt="Riya Patel" className="img-fluid size-9 rounded-1" />
+                                          <div>
+                                              <a href="#" className="text-reset fw-medium">Riya Patel</a>
+                                              <p className="text-muted fs-sm">Joined: 12 Sep 2025</p>
+                                          </div>
+                                      </div>
+                                  </td>
+                                  <td>Marketing Executive</td>
+                                  <td>riya.patel@example.com</td>
+                                  <td>+91 9988776655</td>
+                                  <td>
+                                      <span className="badge bg-success-subtle text-success border border-success-subtle">Active</span>
+                                  </td>
+                                  <td>29 Dec 2025</td>
+                                  <td>$6,750</td>
+                                  <td>
+                                      <div className="d-flex gap-2">
+                                          <button className="accordion-button edit-icon-btn collapsed bg-body-secondary border shadow-none rounded text-muted p-0 size-8" type="button" data-bs-toggle="collapse" data-bs-target="#staff10" aria-expanded="false"></button>
+                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                              <i className="ri-delete-bin-line"></i>
+                                          </button>
+                                      </div>
+                                  </td>
+                              </tr>
+                              <tr>
+                                  <td colSpan="9" className="p-0 border-0 bg-light bg-opacity-75">
+                                      <div id="staff10" className="accordion-collapse collapse" data-bs-parent="#staffAccordion">
+                                          <div className="accordion-body py-7 px-0">
+                                              <form>
+                                                  <div className="row g-5">
+                                                      <div className="col-3 col-md-2">
+                                                          <img src="../assets/user-10-CzpspsdB.png" className="img-fluid mb-6 size-40 rounded" alt="Staff Image" />
+                                                          <div className="w-48">
+                                                              <label className="form-label" htmlFor="role">Role</label>
+                                                              <input type="text" className="form-control" id="role" defaultValue="Marketing Executive" />
+                                                          </div>
+                                                      </div>
+                                                      <div className="col-9 col-md-10">
+                                                          <div className="row g-5">
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="name">Name</label>
+                                                                  <input type="text" className="form-control" id="name" defaultValue="Riya Patel" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Email</label>
+                                                                  <input type="email" className="form-control" id="email" defaultValue="riya.patel@example.com" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="email">Joined Date</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="12-09-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="phone">Phone</label>
+                                                                  <input type="text" className="form-control" id="phone" defaultValue="+91 9988776655" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="lastLogin">Last Login</label>
+                                                                  <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" defaultValue="29-12-2025" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="status">Status</label>
+                                                                  <div id="staffStatus" className="d-block"></div>
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="totalSales">Total Sales</label>
+                                                                  <input type="text" className="form-control" id="totalSales" defaultValue="$6,750" readOnly />
+                                                              </div>
+                                                              <div className="col-2">
+                                                                  <label className="form-label" htmlFor="department">Department</label>
+                                                                  <input type="text" className="form-control" id="department" defaultValue="Marketing" />
+                                                              </div>
+                                                              <div className="col-4">
+                                                                  <label className="form-label" htmlFor="address">Address</label>
+                                                                  <input type="text" className="form-control" id="address" defaultValue="45 Garden Street, Andheri" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="city">City</label>
+                                                                  <input type="text" className="form-control" id="city" defaultValue="Mumbai" />
+                                                              </div>
+                                                              <div className="col-3">
+                                                                  <label className="form-label" htmlFor="country">Country</label>
+                                                                  <input type="text" className="form-control" id="country" defaultValue="India" />
+                                                              </div>
+                                                          </div>
+                                                      </div>
+                                                  </div>
+                                              </form>
+                                              <div className="col-12 mt-5 text-end">
+                                                  <button type="button" className="btn btn-danger me-1">Delete</button>
+                                                  <button type="submit" className="btn btn-secondary">Update</button>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  </td>
+                              </tr>
+
+                          </tbody>
+                      </table>
+                  </div>
+                  <div className="row align-items-center g-3 mt-3">
+                      <div className="col-md-6">
+                          <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b> of <b className="ms-1">25</b> Results</p>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <div className="col-md-6">
+                          <nav aria-label="Page navigation example">
+                              <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
+                                  <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
+                                  <li className="page-item active"><a className="page-link" href="#">1</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">2</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">3</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
+                              </ul>
+                          </nav>
+                      </div>
+                  </div>
+              </div>
           </div>
-        )}
-        <div style={{ padding:'10px 20px',borderTop:`1px solid ${B}`,fontSize:12,color:S,display:'flex',alignItems:'center',justifyContent:'space-between' }}>
-          <span>Showing {staff.length} of {total} staff</span>
-          <div style={{ display:'flex',gap:6 }}>
-            <button style={{ ...btnL,padding:'4px 10px',fontSize:12 }} disabled={page<=1} onClick={()=>setPage(p=>p-1)}>Prev</button>
-            <span style={{ padding:'4px 8px',fontSize:12,color:S }}>Page {page}</span>
-            <button style={{ ...btnL,padding:'4px 10px',fontSize:12 }} disabled={staff.length<20} onClick={()=>setPage(p=>p+1)}>Next</button>
-          </div>
-        </div>
-      </div>
 
-      {/* STATUS CHANGE CONFIRM */}
-      {statusTarget && (
-        <>
-          <div onClick={()=>setStatusTarget(null)} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <i className="ri-user-settings-line" style={{ fontSize:30 }}/>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>Update Status?</span>
-                <button onClick={()=>setStatusTarget(null)} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
-              </div>
-              <div style={{ padding:24,textAlign:'center' }}>
-                <p style={{ color:S,fontSize:14,marginBottom:24 }}>
-                  Mark <strong style={{ color:'var(--text-primary)' }}>{statusTarget.staff.name}</strong> as <strong>{statusTarget.next.replace('_',' ')}</strong>?
-                </p>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={()=>setStatusTarget(null)}>Cancel</button>
-                  <button style={{ ...btnP,flex:1,justifyContent:'center' }} onClick={changeStatus} disabled={saving}>{saving?'Saving…':'Confirm'}</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
 
-      {/* DELETE CONFIRM */}
-      {deleteItem && (
-        <>
-          <div onClick={()=>setDeleteItem(null)} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <i className="ri-delete-bin-line" style={{ fontSize:30 }}/>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>Deactivate Staff?</span>
-                <button onClick={()=>setDeleteItem(null)} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+          <div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered modal-xs">
+                  <div className="modal-content p-7 text-center">
+                      <div className="d-flex justify-content-center mb-4">
+                          <div className="size-14 bg-danger-subtle rounded-circle d-flex align-items-center justify-content-center size-16">
+                              <i className="ri-delete-bin-line text-danger fs-2xl"></i>
+                          </div>
+                      </div>
+                      <h5 className="mb-4 lh-base">Are you sure you want to delete this Staff?</h5>
+                      <div className="d-flex justify-content-center align-items-center gap-2">
+                          <button type="button" className="btn btn-danger" data-bs-dismiss="modal">Delete</button>
+                          <button type="button" className="btn btn-link text-reset" data-bs-dismiss="modal">Cancel</button>
+                      </div>
+                  </div>
               </div>
-              <div style={{ padding:24,textAlign:'center' }}>
-                <p style={{ color:S,fontSize:14,marginBottom:24 }}>
-                  Deactivate <strong style={{ color:'var(--text-primary)' }}>{deleteItem.name}</strong>? Their account access will be disabled. This can be reversed by reactivating them later.
-                </p>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={()=>setDeleteItem(null)}>Cancel</button>
-                  <button style={{ ...btnD,flex:1,justifyContent:'center' }} onClick={handleDelete} disabled={saving}>{saving?'Deactivating…':'Deactivate'}</button>
-                </div>
-              </div>
-            </div>
           </div>
-        </>
-      )}
     </div>
   )
 }

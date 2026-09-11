@@ -1,207 +1,191 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
+import { useMemo } from 'react'
 
-const CAT_COLORS = ['#405189','#0ab39c','#f7b84b','#f06548','#299cdb','#845ec2','#ff9671','#4b8bbe']
-
-const TH = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
-const TD = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text-primary)' }
+const MOCK_VALUATION = [
+  { id:1,  product:'Basmati Rice (5kg)',  sku:'GRN-RIC-001', category:'Grains & Carbs', unit:'bag',    qty:120, cost:4800,  price:6500  },
+  { id:2,  product:'Fresh Tomatoes',      sku:'VEG-TOM-001', category:'Vegetables',     unit:'kg',     qty:8,   cost:800,   price:1200  },
+  { id:3,  product:'Palm Oil (25L)',       sku:'OIL-PLM-001', category:'Grains & Carbs', unit:'crate',  qty:0,   cost:18000, price:24000 },
+  { id:4,  product:'Catfish (Smoked)',    sku:'SEA-CAT-001', category:'Seafood',         unit:'kg',     qty:35,  cost:3200,  price:4500  },
+  { id:5,  product:'Fresh Pepper',        sku:'VEG-PEP-001', category:'Vegetables',     unit:'kg',     qty:6,   cost:700,   price:1100  },
+  { id:6,  product:'Chicken (Whole)',     sku:'MEA-CHK-001', category:'Meat',            unit:'kg',     qty:52,  cost:2800,  price:3800  },
+  { id:7,  product:'Fresh Yam (Tuber)',   sku:'GRN-YAM-001', category:'Grains & Carbs', unit:'tuber',  qty:90,  cost:1200,  price:1800  },
+  { id:8,  product:'Cassava Flour (2kg)', sku:'GRN-CAS-001', category:'Grains & Carbs', unit:'pack',   qty:14,  cost:1100,  price:1600  },
+  { id:9,  product:'Fresh Milk (1L)',     sku:'DAI-MLK-001', category:'Dairy & Eggs',   unit:'bottle', qty:40,  cost:900,   price:1400  },
+  { id:10, product:'Plantain (Bunch)',    sku:'FRM-PLT-001', category:'Fresh Farm',     unit:'bunch',  qty:25,  cost:1500,  price:2200  },
+]
 
 export default function StockValuation() {
-  const navigate = useNavigate()
-  const [products,   setProducts]  = useState([])
-  const [loading,    setLoading]   = useState(false)
+  const enriched = useMemo(() => MOCK_VALUATION.map(p => ({
+    ...p,
+    costValue:   p.qty * p.cost,
+    retailValue: p.qty * p.price,
+    profit:      p.qty * (p.price - p.cost),
+    margin:      p.cost > 0 ? Math.round(((p.price - p.cost) / p.price) * 100) : 0,
+  })), [])
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/admin/inventory', { params: { limit:1000, page:1 } })
-      setProducts(res.data.products || [])
-    } catch (err) { 
-      toast.error(err.response?.data?.message || 'Failed to load products') 
-    } finally { 
-      setLoading(false) 
-    }
-  }, [])
+  const totals = useMemo(() => ({
+    costValue:   enriched.reduce((s,p) => s + p.costValue, 0),
+    retailValue: enriched.reduce((s,p) => s + p.retailValue, 0),
+    profit:      enriched.reduce((s,p) => s + p.profit, 0),
+    products:    enriched.length,
+  }), [enriched])
 
-  useEffect(() => { fetchAll() }, [fetchAll])
+  // Category breakdown
+  const byCategory = useMemo(() => {
+    const map = {}
+    enriched.forEach(p => {
+      if (!map[p.category]) map[p.category] = { category: p.category, costValue:0, retailValue:0, products:0, qty:0 }
+      map[p.category].costValue   += p.costValue
+      map[p.category].retailValue += p.retailValue
+      map[p.category].products    += 1
+      map[p.category].qty         += p.qty
+    })
+    return Object.values(map).sort((a,b) => b.retailValue - a.retailValue)
+  }, [enriched])
 
-  const enriched = useMemo(() => products.map(p => {
-    const qty = p.stock || p.stock_quantity || 0
-    const cost = p.cost_price || 0
-    const price = p.unit_price || p.price || 0
-    return {
-      ...p,
-      stock_quantity: qty,
-      cost_price: cost,
-      unit_price: price,
-      costValue:   qty * cost,
-      retailValue: qty * price,
-      profit:      qty * (price - cost),
-      margin:      price > 0 ? Math.round(((price - cost) / price) * 100) : 0,
-    }
-  }), [products])
-
-  const totals = useMemo(() => enriched.reduce((acc,p) => ({
-    costValue:   acc.costValue   + p.costValue,
-    retailValue: acc.retailValue + p.retailValue,
-    profit:      acc.profit      + p.profit,
-    units:       acc.units       + p.stock_quantity,
-  }), { costValue:0, retailValue:0, profit:0, units:0 }), [enriched])
-
-  const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))], [products])
-
-  const byCategory = useMemo(() => categories.map((cat, i) => {
-    const items    = enriched.filter(p => p.category === cat)
-    const catCost  = items.reduce((s,p) => s + p.costValue, 0)
-    const catValue = items.reduce((s,p) => s + p.retailValue, 0)
-    const totalQty = items.reduce((s,p) => s + p.stock_quantity, 0)
-    const pct      = totals.retailValue > 0 ? Math.round((catValue / totals.retailValue) * 100) : 0
-    return { cat, count: items.length, totalQty, costVal: catCost, retailVal: catValue, pct, color: CAT_COLORS[i % CAT_COLORS.length] }
-  }).sort((a,b) => b.retailVal - a.retailVal), [categories, enriched, totals])
-
-  const avgMargin = totals.retailValue > 0
-    ? Math.round((totals.profit / totals.retailValue) * 100)
-    : 0
-
-  const B = 'var(--border)', S = '#6b7280'
-
-  if (loading) return (
-    <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:300, fontFamily:'var(--body-font)', color:'var(--text-muted)' }}>
-      <i className="ri-loader-4-line" style={{ fontSize:49, display:'block', marginBottom:8, textAlign:'center' }}/>
-    </div>
-  )
+  const CAT_COLORS = ['#405189','#0ab39c','#f7b84b','#f06548','#299cdb','#6559cc','#e83e8c']
 
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      {/* Header & Breadcrumbs */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
-        <div>
-          <div style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>Stock Valuation</div>
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
-          <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Inventory</span>
-          <i className="ri-arrow-right-s-line" style={{ fontSize:19 }} />
-          <span style={{ fontWeight:600, color:'var(--text-primary)' }}>Valuation</span>
-        </div>
+    <div className="container-fluid">
+      <div className="gap-2 page-heading mb-3">
+        <h6 className="flex-grow-1 mb-0">Stock Valuation</h6>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><a href="#">Inventory</a></li>
+          <li className="breadcrumb-item active">Valuation</li>
+        </ul>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
+      {/* Summary cards */}
+      <div className="row g-3 mb-4">
         {[
-          { label:'Cost Value (Stock)', value:`₦${totals.costValue.toLocaleString()}`, subText:'At purchase price', icon:'ri-box-3-line', color:'#405189', valueColor:'#405189' },
-          { label:'Retail Value (Stock)', value:`₦${totals.retailValue.toLocaleString()}`, subText:'At selling price', icon:'ri-store-line', color:'#0ab39c', valueColor:'#0ab39c' },
-          { label:'Potential Profit', value:`₦${totals.profit.toLocaleString()}`, subText:'If all stock sold', icon:'ri-line-chart-line', color:'#299cdb', valueColor:'#299cdb' },
-          { label:'Avg Gross Margin', value:`${avgMargin}%`, subText:'Across all products', icon:'ri-percent-line', color:'#f7b84b', valueColor:'#f7b84b' },
+          { label:'Cost Value (Stock)',   value:`₦${totals.costValue.toLocaleString()}`,   icon:'ri-price-tag-3-line',          color:'#405189', sub:'At purchase price' },
+          { label:'Retail Value (Stock)', value:`₦${totals.retailValue.toLocaleString()}`, icon:'ri-store-2-line',              color:'#0ab39c', sub:'At selling price'  },
+          { label:'Potential Profit',     value:`₦${totals.profit.toLocaleString()}`,      icon:'ri-line-chart-line',           color:'#299cdb', sub:'If all stock sold'  },
+          { label:'Avg Gross Margin',     value:`${Math.round((totals.profit / totals.retailValue) * 100)}%`, icon:'ri-percent-line', color:'#f7b84b', sub:'Across all products' },
         ].map(c => (
-          <div key={c.label} style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-            <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <i className={c.icon} style={{ fontSize:20, color:c.color }}/>
-            </div>
-            <div style={{ minWidth:0, overflow:'hidden' }}>
-              <div style={{ fontSize:22, fontWeight:800, color:c.valueColor, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.value}</div>
-              <div style={{ fontSize:11, color:S, fontWeight:600 }}>{c.label}</div>
-              <div style={{ fontSize:10, color:S, marginTop:2 }}>{c.subText}</div>
+          <div className="col-6 col-xl-3" key={c.label}>
+            <div className="card mb-0" style={{ borderLeft:`3px solid ${c.color}` }}>
+              <div className="card-body py-3">
+                <div className="d-flex align-items-center gap-3 mb-1">
+                  <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                    style={{ width:40, height:40, background:`${c.color}1a` }}>
+                    <i className={`${c.icon} fs-18`} style={{ color:c.color }}></i>
+                  </div>
+                  <div>
+                    <div className="fw-bold" style={{ fontSize:18, color:c.color }}>{c.value}</div>
+                    <div className="text-muted" style={{ fontSize:12 }}>{c.label}</div>
+                  </div>
+                </div>
+                <div className="text-muted" style={{ fontSize:11, paddingLeft:52 }}>{c.sub}</div>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Valuation by Category */}
-      <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', padding:24, marginBottom:24 }}>
-        <div style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:14, marginBottom:16, color:'var(--text-primary)' }}>Valuation by Category</div>
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-            <thead>
-              <tr style={{ background:'var(--bg-subtle)', borderBottom:`1px solid ${B}` }}>
-                {['Category','Products','Total Qty','Cost Value','Retail Value','% of Total'].map(h => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {byCategory.map(c => (
-                <tr key={c.cat}>
-                  <td style={TD}>
-                    <div style={{ display:'flex', alignItems:'center', gap:8, fontWeight:600 }}>
-                      <div style={{ width:8, height:8, borderRadius:'50%', background:c.color }}/>
-                      {c.cat}
-                    </div>
-                  </td>
-                  <td style={TD}>{c.count}</td>
-                  <td style={TD}>{c.totalQty}</td>
-                  <td style={TD}>₦{c.costVal.toLocaleString()}</td>
-                  <td style={{ ...TD, fontWeight:600 }}>₦{c.retailVal.toLocaleString()}</td>
-                  <td style={TD}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ height:6, background:'var(--bg-muted)', borderRadius:50, overflow:'hidden', flex:1, minWidth:100 }}>
-                        <div style={{ height:'100%', width:`${c.pct}%`, background:c.color, borderRadius:50 }}/>
-                      </div>
-                      <span style={{ fontSize:11, color:S, width:26, textAlign:'right' }}>{c.pct}%</span>
-                    </div>
-                  </td>
+      {/* Category breakdown */}
+      <div className="card mb-4">
+        <div className="card-header">
+          <h6 className="mb-0 fw-semibold">Valuation by Category</h6>
+        </div>
+        <div className="card-body pt-0">
+          <div className="table-responsive">
+            <table className="table align-middle mb-0">
+              <thead>
+                <tr className="bg-light border-bottom">
+                  <th className="fw-medium text-muted">Category</th>
+                  <th className="fw-medium text-muted">Products</th>
+                  <th className="fw-medium text-muted">Total Qty</th>
+                  <th className="fw-medium text-muted">Cost Value</th>
+                  <th className="fw-medium text-muted">Retail Value</th>
+                  <th className="fw-medium text-muted">% of Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {byCategory.map((c, i) => {
+                  const pct = Math.round((c.retailValue / totals.retailValue) * 100)
+                  return (
+                    <tr key={c.category}>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <div style={{ width:10, height:10, borderRadius:'50%', background: CAT_COLORS[i % CAT_COLORS.length] }}></div>
+                          <span className="fw-medium">{c.category}</span>
+                        </div>
+                      </td>
+                      <td>{c.products}</td>
+                      <td>{c.qty}</td>
+                      <td>₦{c.costValue.toLocaleString()}</td>
+                      <td className="fw-medium">₦{c.retailValue.toLocaleString()}</td>
+                      <td style={{ minWidth:140 }}>
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="progress flex-grow-1" style={{ height:6 }}>
+                            <div className="progress-bar" style={{ width:`${pct}%`, background: CAT_COLORS[i % CAT_COLORS.length] }}></div>
+                          </div>
+                          <span style={{ fontSize:12, minWidth:32 }}>{pct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      {/* Product-Level Valuation */}
-      <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
-        <div style={{ padding:'16px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:14, color:'var(--text-primary)' }}>Product-Level Valuation</div>
-          <span style={{ background:'var(--bg-muted)', color:S, fontSize:11, padding:'3px 10px', borderRadius:50, fontWeight:600 }}>
-            {products.length} product{products.length !== 1 ? 's' : ''}
-          </span>
+      {/* Full product valuation table */}
+      <div className="card">
+        <div className="card-header d-flex justify-content-between align-items-center">
+          <h6 className="mb-0 fw-semibold">Product-Level Valuation</h6>
+          <span className="badge bg-light text-dark border">{enriched.length} products</span>
         </div>
-
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
-            <thead>
-              <tr style={{ background:'var(--bg-subtle)', borderBottom:`1px solid ${B}` }}>
-                {['Product','SKU','Category','Qty','Unit Cost','Sell Price','Cost Value','Retail Value','Potential Profit'].map(h => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {enriched.length === 0 ? (
-                <tr><td colSpan={9} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
-                  <i className="ri-bar-chart-line" style={{ fontSize:43, display:'block', marginBottom:8 }}/>No products found
-                </td></tr>
-              ) : enriched.map(p => (
-                <tr key={p.id}
-                  onMouseEnter={e => e.currentTarget.style.background='#fafafa'}
-                  onMouseLeave={e => e.currentTarget.style.background=''}>
-                  <td style={{ ...TD, fontWeight:600 }}>{p.name}</td>
-                  <td style={TD}>
-                    <span style={{ fontSize:12, color:'#d53f8c', fontWeight:600, fontFamily:'var(--font-mono, monospace)' }}>{p.sku}</span>
-                  </td>
-                  <td style={TD}>
-                    <span style={{ background:'var(--bg-subtle)', color:'var(--text-secondary)', border:`1px solid ${B}`, borderRadius:4, padding:'3px 10px', fontSize:11, fontWeight:600 }}>
-                      {p.category || '—'}
-                    </span>
-                  </td>
-                  <td style={{ ...TD, fontWeight:600 }}>{p.stock_quantity}</td>
-                  <td style={TD}>₦{Number(p.cost_price || 0).toLocaleString()}</td>
-                  <td style={TD}>₦{Number(p.unit_price || 0).toLocaleString()}</td>
-                  <td style={TD}>₦{p.costValue.toLocaleString()}</td>
-                  <td style={{ ...TD, fontWeight:600 }}>₦{p.retailValue.toLocaleString()}</td>
-                  <td style={{ ...TD, fontWeight:600, color:'#0ab39c' }}>₦{p.profit.toLocaleString()}</td>
+        <div className="card-body pt-0">
+          <div className="table-responsive">
+            <table className="table align-middle text-nowrap mb-0">
+              <thead>
+                <tr className="bg-light border-bottom">
+                  <th className="fw-medium text-muted">Product</th>
+                  <th className="fw-medium text-muted">SKU</th>
+                  <th className="fw-medium text-muted">Category</th>
+                  <th className="fw-medium text-muted">Qty</th>
+                  <th className="fw-medium text-muted">Unit Cost</th>
+                  <th className="fw-medium text-muted">Sell Price</th>
+                  <th className="fw-medium text-muted">Cost Value</th>
+                  <th className="fw-medium text-muted">Retail Value</th>
+                  <th className="fw-medium text-muted">Potential Profit</th>
+                  <th className="fw-medium text-muted">Margin</th>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr style={{ background:'var(--bg-subtle)', borderTop:`2px solid ${B}` }}>
-                <td colSpan={6} style={{ ...TD, fontWeight:700, fontSize:12 }}>Total</td>
-                <td style={{ ...TD, fontWeight:700 }}>₦{totals.costValue.toLocaleString()}</td>
-                <td style={{ ...TD, fontWeight:700 }}>₦{totals.retailValue.toLocaleString()}</td>
-                <td style={{ ...TD, fontWeight:700, color:'#0ab39c' }}>₦{totals.profit.toLocaleString()}</td>
-              </tr>
-            </tfoot>
-          </table>
+              </thead>
+              <tbody>
+                {enriched.map(p => (
+                  <tr key={p.id} style={{ opacity: p.qty === 0 ? 0.5 : 1 }}>
+                    <td className="fw-medium">{p.product}</td>
+                    <td><code style={{ fontSize:12 }}>{p.sku}</code></td>
+                    <td><span className="badge bg-light text-dark border">{p.category}</span></td>
+                    <td className={p.qty === 0 ? 'text-danger fw-bold' : 'fw-medium'}>{p.qty}</td>
+                    <td>₦{p.cost.toLocaleString()}</td>
+                    <td>₦{p.price.toLocaleString()}</td>
+                    <td>₦{p.costValue.toLocaleString()}</td>
+                    <td className="fw-medium">₦{p.retailValue.toLocaleString()}</td>
+                    <td className="text-success fw-medium">₦{p.profit.toLocaleString()}</td>
+                    <td>
+                      <span className="badge" style={{ background: p.margin >= 30 ? '#d1fae5' : p.margin >= 15 ? '#fef3c7' : '#fee2e2', color: p.margin >= 30 ? '#065f46' : p.margin >= 15 ? '#92400e' : '#991b1b' }}>
+                        {p.margin}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-top">
+                <tr style={{ background:'#f8f9fa' }}>
+                  <td colSpan={6} className="fw-bold">Total</td>
+                  <td className="fw-bold">₦{totals.costValue.toLocaleString()}</td>
+                  <td className="fw-bold">₦{totals.retailValue.toLocaleString()}</td>
+                  <td className="fw-bold text-success">₦{totals.profit.toLocaleString()}</td>
+                  <td className="fw-bold">{Math.round((totals.profit / totals.retailValue) * 100)}%</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       </div>
     </div>

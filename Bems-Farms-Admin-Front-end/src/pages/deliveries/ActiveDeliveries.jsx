@@ -1,193 +1,376 @@
-import { useState, useEffect, useCallback } from 'react'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-import PageHeader from '../../components/ui/PageHeader'
+import { useState, useMemo } from 'react'
+
+// ─── Config ───────────────────────────────────────────────────────────────────
 
 const STATUS_CFG = {
-  assigned:           { label:'Awaiting Pickup',     color:'#06b6d4', bg:'#cffafe', icon:'ri-user-location-line' },
-  driver_assigned:    { label:'Awaiting Pickup',     color:'#06b6d4', bg:'#cffafe', icon:'ri-user-location-line' },
-  out_for_delivery:   { label:'En Route',            color:'#3b82f6', bg:'#dbeafe', icon:'ri-truck-line'         },
-  shipped:            { label:'En Route',            color:'#3b82f6', bg:'#dbeafe', icon:'ri-truck-line'         },
-  delivery_attempted: { label:'Delivery Attempted',  color:'#f97316', bg:'#ffedd5', icon:'ri-route-line'         },
+  assigned:           { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'   },
+  shipped:            { label: 'En Route',           color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'           },
+  delivery_attempted: { label: 'Delivery Attempted', color: '#f97316', bg: '#ffedd5', icon: 'ri-route-line'           },
 }
+
+// ─── Mock Data ────────────────────────────────────────────────────────────────
+
+const DRIVERS_ALL = [
+  { id: 1, name: 'Tunde Adeyemi', phone: '08031234567', bike: 'LAG-234-AB', zone: 'Ikeja / GRA',        active: true  },
+  { id: 2, name: 'Emeka Okafor',  phone: '08045678901', bike: 'LAG-567-CD', zone: 'Victoria Island',    active: true  },
+  { id: 3, name: 'Bola Akinwale', phone: '08056789012', bike: 'LAG-890-EF', zone: 'Surulere / Yaba',    active: true  },
+  { id: 4, name: 'Chidi Eze',     phone: '08067890123', bike: 'LAG-123-GH', zone: 'Lekki Phase 1',      active: false },
+  { id: 5, name: 'Femi Adeleye',  phone: '08078901234', bike: 'LAG-456-IJ', zone: 'Maryland / Gbagada', active: true  },
+]
+
+const ACTIVE_DELIVERIES_INIT = [
+  {
+    id: 'DEL-2026-0042',
+    orderId: 'ORD-2026-0138',
+    status: 'shipped',
+    driver: DRIVERS_ALL[1],
+    customer: { name: 'Kemi Balogun', phone: '08167891234', address: '18 Surulere, Lagos' },
+    items: [{ name: 'Fresh Tomatoes', qty: '3 kg' }, { name: 'Red Bell Pepper', qty: '2 kg' }],
+    total: 16100,
+    dispatchTime: '15:45',
+    eta: '~18 min',
+    zone: 'Surulere / Yaba',
+    attempts: 0,
+    notes: '',
+  },
+  {
+    id: 'DEL-2026-0041',
+    orderId: 'ORD-2026-0139',
+    status: 'assigned',
+    driver: DRIVERS_ALL[0],
+    customer: { name: 'Seun Adesanya', phone: '09012341234', address: '5 Victoria Island, Lagos' },
+    items: [{ name: 'Ginger', qty: '1 kg' }, { name: 'Garlic', qty: '1 kg' }, { name: 'Sweet Corn', qty: '6 cobs' }],
+    total: 14200,
+    dispatchTime: '17:20',
+    eta: '—',
+    zone: 'Ikeja / GRA',
+    attempts: 0,
+    notes: 'Driver notified. Awaiting pickup confirmation.',
+  },
+  {
+    id: 'DEL-2026-0040',
+    orderId: 'ORD-2026-0137',
+    status: 'delivery_attempted',
+    driver: DRIVERS_ALL[2],
+    customer: { name: 'Tobi Adekunle', phone: '07056781234', address: '3 Ojota Estate, Lagos' },
+    items: [{ name: 'Plantain', qty: '4 hands' }, { name: 'Ugwu', qty: '3 bunches' }],
+    total: 12400,
+    dispatchTime: '12:40',
+    eta: '—',
+    zone: 'Surulere / Yaba',
+    attempts: 1,
+    notes: 'Customer did not respond. 15-min timer expired. Attempt 1/2.',
+  },
+  {
+    id: 'DEL-2026-0039',
+    orderId: 'ORD-2026-0141',
+    status: 'assigned',
+    driver: DRIVERS_ALL[4],
+    customer: { name: 'Adaeze Nwosu', phone: '07098765432', address: '7 Lekki Phase 1, Lagos' },
+    items: [{ name: 'Fresh Tomatoes', qty: '8 kg' }, { name: 'Red Bell Pepper', qty: '4 kg' }, { name: '+ 2 more', qty: '' }],
+    total: 48100,
+    dispatchTime: '—',
+    eta: '—',
+    zone: 'Maryland / Gbagada',
+    attempts: 0,
+    notes: 'Order packed. Driver assigned. Awaiting pickup.',
+  },
+]
+
+const fmt = (n) => `₦${Number(n).toLocaleString()}`
+
+// ─── Auto Assignment Log ──────────────────────────────────────────────────────
+// Records every time the system matched an order to a driver automatically
+// (zone match + availability). Manager can review and override.
+
+const AUTO_ASSIGN_LOG = [
+  {
+    id: 'AA-2026-0018', orderId: 'ORD-2026-0138', time: '2026-06-26 15:10',
+    customer: 'Kemi Balogun', zone: 'Surulere / Yaba',
+    driver: { name: 'Emeka Okafor', bike: 'LAG-567-CD' },
+    rule: 'Zone match (Surulere/Yaba) · Driver available · 0 active orders',
+    confidence: 'High', overriddenBy: null, status: 'active',
+  },
+  {
+    id: 'AA-2026-0017', orderId: 'ORD-2026-0139', time: '2026-06-26 17:20',
+    customer: 'Seun Adesanya', zone: 'Ikeja / GRA',
+    driver: { name: 'Tunde Adeyemi', bike: 'LAG-234-AB' },
+    rule: 'Zone match (Ikeja/GRA) · Driver available · 1 active order',
+    confidence: 'High', overriddenBy: null, status: 'active',
+  },
+  {
+    id: 'AA-2026-0016', orderId: 'ORD-2026-0137', time: '2026-06-26 12:05',
+    customer: 'Tobi Adekunle', zone: 'Surulere / Yaba',
+    driver: { name: 'Bola Akinwale', bike: 'LAG-890-EF' },
+    rule: 'Zone match (Surulere/Yaba) · Driver available · 0 active orders',
+    confidence: 'High', overriddenBy: null, status: 'active',
+  },
+  {
+    id: 'AA-2026-0015', orderId: 'ORD-2026-0136', time: '2026-06-26 10:00',
+    customer: 'Funmi Ogundele', zone: 'Maryland / Gbagada',
+    driver: { name: 'Tunde Adeyemi', bike: 'LAG-234-AB' },
+    rule: 'Zone match (Maryland/Gbagada) · Nearest available driver',
+    confidence: 'Medium', overriddenBy: null, status: 'delivered',
+  },
+  {
+    id: 'AA-2026-0014', orderId: 'ORD-2026-0135', time: '2026-06-25 16:30',
+    customer: 'Chukwuemeka Nze', zone: 'Isolo / Oshodi',
+    driver: { name: 'Femi Adeleye', bike: 'LAG-456-IJ' },
+    rule: 'Zone match (Isolo/Oshodi) · Driver available · 0 active orders',
+    confidence: 'High', overriddenBy: null, status: 'dispute',
+  },
+  {
+    id: 'AA-2026-0013', orderId: 'ORD-2026-0134', time: '2026-06-25 12:00',
+    customer: 'Hauwa Musa', zone: 'Surulere / Yaba',
+    driver: { name: 'Bola Akinwale', bike: 'LAG-890-EF' },
+    rule: 'Zone match (Surulere/Yaba) · Driver available',
+    confidence: 'High', overriddenBy: null, status: 'cancelled',
+  },
+  {
+    id: 'AA-2026-0012', orderId: 'ORD-2026-0132', time: '2026-06-24 18:45',
+    customer: 'Yetunde Adeniyi', zone: 'Victoria Island',
+    driver: { name: 'Emeka Okafor', bike: 'LAG-567-CD' },
+    rule: 'Zone match (Victoria Island) · Driver available · 0 active orders',
+    confidence: 'High', overriddenBy: null, status: 'delivered',
+  },
+  {
+    id: 'AA-2026-0011', orderId: 'ORD-2026-0131', time: '2026-06-24 15:05',
+    customer: 'Rasheedat Lawal', zone: 'Maryland / Gbagada',
+    driver: { name: 'Femi Adeleye', bike: 'LAG-456-IJ' },
+    rule: 'Zone match (Maryland/Gbagada) · Driver available',
+    confidence: 'High',
+    overriddenBy: null, status: 'delivered',
+  },
+  {
+    id: 'AA-2026-0010', orderId: 'ORD-2026-0129', time: '2026-06-24 11:00',
+    customer: 'Chidi Okonkwo', zone: 'Lekki Phase 2',
+    driver: { name: 'Emeka Okafor', bike: 'LAG-567-CD' },
+    rule: 'No exact zone match · Nearest driver selected (Lekki Ph.1 → Ph.2)',
+    confidence: 'Low',
+    overriddenBy: 'Admin (Manual Reassign) → Bola Akinwale', status: 'delivered',
+  },
+]
+
+const CONFIDENCE_CFG = {
+  High:   { color: '#22c55e', bg: '#dcfce7' },
+  Medium: { color: '#f59e0b', bg: '#fef3c7' },
+  Low:    { color: '#ef4444', bg: '#fee2e2' },
+}
+
 const LOG_STATUS_CFG = {
-  driver_assigned:  { label:'In Progress', color:'#3b82f6', bg:'#dbeafe' },
-  out_for_delivery: { label:'In Progress', color:'#3b82f6', bg:'#dbeafe' },
-  delivered:        { label:'Delivered',   color:'#22c55e', bg:'#dcfce7' },
-  cancelled:        { label:'Cancelled',   color:'var(--text-muted)', bg:'var(--border)' },
-  dispute:          { label:'Dispute',     color:'#ef4444', bg:'#fee2e2' },
+  active:    { label: 'In Progress', color: '#3b82f6', bg: '#dbeafe' },
+  delivered: { label: 'Delivered',   color: '#22c55e', bg: '#dcfce7' },
+  cancelled: { label: 'Cancelled',   color: '#6b7280', bg: '#f3f4f6' },
+  dispute:   { label: 'Dispute',     color: '#ef4444', bg: '#fee2e2' },
 }
 
-const fmt = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const card = { background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }
-const inp  = { width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)', fontSize:13, fontFamily:'var(--body-font)', outline:'none', boxSizing:'border-box', color:'var(--text-primary)', background:'var(--bg-card)' }
-const lbl  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
-
-const TH = ({ children }) => <th style={{ padding:'8px 12px', fontSize:10, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.04em', whiteSpace:'nowrap', background:'var(--bg-subtle)', borderBottom:'1px solid var(--border)' }}>{children}</th>
-const TD = ({ children, style }) => <td style={{ padding:'10px 12px', fontSize:13, borderBottom:'1px solid #f9fafb', verticalAlign:'middle', ...style }}>{children}</td>
-
-function ModalShell({ title, onClose, children, maxWidth=460, headerBg='#1B4332' }) {
-  return (
-    <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth, maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
-      <div style={{ background:headerBg, borderRadius:'12px 12px 0 0', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-        <span style={{ color:'#fff', fontWeight:700, fontSize:15, fontFamily:'var(--heading-font)' }}>{title}</span>
-        <button onClick={onClose} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.7)', fontSize:20, padding:0, display:'flex', alignItems:'center' }}><i className="ri-close-line" /></button>
-      </div>
-      {children}
-    </div>
-  )
-}
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ActiveDeliveries() {
-  const [deliveries, setDeliveries]       = useState([])
-  const [autoLog, setAutoLog]             = useState([])
-  const [stats, setStats]                 = useState({})
-  const [drivers, setDrivers]             = useState([])
-  const [loading, setLoading]             = useState(true)
-  const [search, setSearch]               = useState('')
-  const [filterStatus, setFilterStatus]   = useState('all')
-  const [activeTab, setActiveTab]         = useState('live')
-  const [activeModal, setActiveModal]     = useState(null)
-  const [selected, setSelected]           = useState(null)
-  const [submitting, setSubmitting]       = useState(false)
+  const [deliveries, setDeliveries] = useState(ACTIVE_DELIVERIES_INIT)
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [search, setSearch]             = useState('')
+  const [activeModal, setActiveModal]   = useState(null)
+  const [selected, setSelected]         = useState(null)
   const [reassignDriverId, setReassignDriverId] = useState('')
-  const [attemptNote, setAttemptNote]     = useState('')
-  const [retryNote, setRetryNote]         = useState('')
-  const [cancelReason, setCancelReason]   = useState('')
-  const [cancelStep, setCancelStep]       = useState(1)
+  const [attemptNote, setAttemptNote]   = useState('')
+  const [activeTab, setActiveTab]       = useState('live') // 'live' | 'auto_log'
+  const [retryNote, setRetryNote]       = useState('')
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelStep, setCancelStep]     = useState(1) // 1=reason, 2=return-goods, 3=done
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [liveRes, logRes, driversRes] = await Promise.all([
-        api.get('/admin/deliveries/active', { params:{ search, status: filterStatus==='all'?'':filterStatus } }),
-        api.get('/admin/deliveries/auto-log'),
-        api.get('/admin/deliveries/drivers', { params:{ status:'active,on_delivery' } }),
-      ])
-      
-      setDeliveries(liveRes.data.deliveries || [])
-      setStats(liveRes.data.stats || {})
-      setAutoLog(logRes.data.log || [])
-      setDrivers((driversRes.data.drivers||[]).filter(d => !['suspended','off_duty'].includes(d.status)))
-    } catch {
-      toast.error('Failed to load deliveries')
-    } finally { setLoading(false) }
-  }, [search, filterStatus])
-
-  useEffect(() => { load() }, [load])
-
-  const openModal = (type, del) => {
+  const openModal  = (type, del) => {
     setSelected(del); setActiveModal(type)
     setReassignDriverId(''); setAttemptNote(''); setRetryNote(''); setCancelReason(''); setCancelStep(1)
   }
   const closeModal = () => { setActiveModal(null); setSelected(null) }
 
-  const doAction = async fn => {
-    setSubmitting(true)
-    try { await fn(); toast.success('Updated'); closeModal(); load() }
-    catch (err) { toast.error(err.response?.data?.message || 'Action failed') }
-    finally { setSubmitting(false) }
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  const stats = useMemo(() => ({
+    total:     deliveries.length,
+    enRoute:   deliveries.filter(d => d.status === 'shipped').length,
+    awaiting:  deliveries.filter(d => d.status === 'assigned').length,
+    attempted: deliveries.filter(d => d.status === 'delivery_attempted').length,
+  }), [deliveries])
+
+  // ── Filtered ───────────────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    return deliveries.filter(d => {
+      const okStatus = filterStatus === 'all' || d.status === filterStatus
+      const okSearch = !q || d.id.toLowerCase().includes(q) || d.orderId.toLowerCase().includes(q)
+        || d.customer.name.toLowerCase().includes(q) || d.driver.name.toLowerCase().includes(q)
+      return okStatus && okSearch
+    })
+  }, [deliveries, filterStatus, search])
+
+  // ── Actions ────────────────────────────────────────────────────────────────
+  const reassignDriver = () => {
+    if (!reassignDriverId) return
+    const driver = DRIVERS_ALL.find(d => d.id === Number(reassignDriverId))
+    setDeliveries(prev => prev.map(d =>
+      d.id !== selected.id ? d : { ...d, driver, notes: `Driver reassigned to: ${driver.name}` }
+    ))
+    closeModal()
   }
 
-  const reassignDriver   = () => doAction(async () => {
-    if (!reassignDriverId) throw new Error('Select a driver')
-    await api.patch(`/admin/deliveries/${selected.id}/reassign`, { driver_id: parseInt(reassignDriverId) })
-  })
-  const markAttempted    = () => doAction(() => api.patch(`/admin/deliveries/${selected.id}/attempt`, { notes:attemptNote }))
-  const markDelivered    = () => doAction(() => api.patch(`/admin/deliveries/${selected.id}/status`, { status:'delivered', notes:'Confirmed delivered by admin' }))
-  const scheduleRetry    = () => doAction(async () => {
-    if (!retryNote) throw new Error('Add re-attempt notes')
-    await api.patch(`/admin/deliveries/${selected.id}/status`, { status:'assigned', notes:retryNote })
-  })
-  const cancelAndReturn  = () => doAction(() => api.patch(`/admin/deliveries/${selected.id}/status`, { status:'cancelled', notes:cancelReason }))
+  const markAttempted = () => {
+    setDeliveries(prev => prev.map(d =>
+      d.id !== selected.id ? d : {
+        ...d, status: 'delivery_attempted',
+        attempts: d.attempts + 1,
+        notes: attemptNote || 'Customer unavailable. 15-min timer expired.',
+      }
+    ))
+    closeModal()
+  }
 
-  const filtered = deliveries.filter(d => {
-    const norm = s => ['assigned','driver_assigned'].includes(s)?'assigned':['shipped','out_for_delivery'].includes(s)?'out_for_delivery':s
-    const okStatus = filterStatus==='all' || norm(d.status)===filterStatus
-    const q = search.toLowerCase()
-    const okSearch = !q||(d.delivery_ref||'').toLowerCase().includes(q)||(d.order_id||'').toLowerCase().includes(q)||(d.customer_name||'').toLowerCase().includes(q)||(d.driver_name||'').toLowerCase().includes(q)
-    return okStatus && okSearch
-  })
+  const markDelivered = () => {
+    setDeliveries(prev => prev.filter(d => d.id !== selected.id))
+    closeModal()
+  }
 
-  const pill = (bg, color, icon, text) => (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:50, background:bg, color, whiteSpace:'nowrap' }}>
-      {icon && <i className={icon} />}{text}
-    </span>
-  )
+  const scheduleRetry = () => {
+    setDeliveries(prev => prev.map(d =>
+      d.id !== selected.id ? d : {
+        ...d, status: 'assigned',
+        notes: retryNote || 'New delivery attempt scheduled by Admin. Driver notified.',
+      }
+    ))
+    closeModal()
+  }
+
+  const cancelAndReturnStock = () => {
+    // Remove from active deliveries — order is now cancelled/returned
+    setDeliveries(prev => prev.filter(d => d.id !== selected.id))
+    closeModal()
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <PageHeader title="Active Deliveries" subtitle="Live delivery tracking" actions={
-        <button onClick={load} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 14px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:13, fontFamily:'var(--body-font)', fontWeight:600, color:'var(--text-secondary)' }}>
-          <i className="ri-refresh-line" />Refresh
-        </button>
-      } />
+    <div className="container-fluid">
 
-      {/* Tabs */}
-      <div style={{ ...card, padding:'6px', marginBottom:20, display:'flex', gap:6 }}>
-        {[
-          { key:'live',     label:'Live Deliveries',      icon:'ri-truck-line',  count:deliveries.length },
-          { key:'auto_log', label:'Auto Assignment Log',  icon:'ri-cpu-line',    count:autoLog.length },
-        ].map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:'none', background: activeTab===t.key?'#1B4332':'transparent', color: activeTab===t.key?'#fff':'#6b7280', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>
-            <i className={t.icon} />{t.label}
-            <span style={{ fontSize:10, fontWeight:700, padding:'1px 7px', borderRadius:50, background: activeTab===t.key?'rgba(255,255,255,0.25)':'var(--border)', color: activeTab===t.key?'#fff':'#374151' }}>{t.count}</span>
-          </button>
-        ))}
+      {/* Page Header */}
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
+        <h6 className="flex-grow-1 mb-0">Active Deliveries</h6>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><a href="#">Deliveries</a></li>
+          <li className="breadcrumb-item active">Active Deliveries</li>
+        </ul>
       </div>
 
-      {/* ── AUTO LOG ── */}
-      {activeTab==='auto_log' && (
+      {/* Page Tabs */}
+      <div className="card mb-4">
+        <div className="card-body d-flex gap-1 p-2">
+          <button className={`btn btn-sm ${activeTab === 'live' ? 'btn-primary' : 'btn-outline-secondary'}`}
+            onClick={() => setActiveTab('live')}>
+            <i className="ri-truck-line me-1" />Live Deliveries
+            <span className="badge rounded-pill ms-2" style={{ background: activeTab === 'live' ? 'rgba(255,255,255,0.3)' : '#e5e7eb', color: activeTab === 'live' ? '#fff' : '#374151' }}>
+              {deliveries.length}
+            </span>
+          </button>
+          <button className={`btn btn-sm ${activeTab === 'auto_log' ? 'btn-primary' : 'btn-outline-secondary'}`}
+            onClick={() => setActiveTab('auto_log')}>
+            <i className="ri-cpu-line me-1" />Auto Assignment Log
+            <span className="badge rounded-pill ms-2" style={{ background: activeTab === 'auto_log' ? 'rgba(255,255,255,0.3)' : '#e5e7eb', color: activeTab === 'auto_log' ? '#fff' : '#374151' }}>
+              {AUTO_ASSIGN_LOG.length}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── AUTO ASSIGNMENT LOG ───────────────────────────────────────────────── */}
+      {activeTab === 'auto_log' && (
         <div>
-          <div style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'12px 16px', borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1d4ed8', fontSize:12, marginBottom:16 }}>
-            <i className="ri-cpu-line" style={{ marginTop:1, flexShrink:0, fontSize:19 }} />
-            <div><strong>System Auto Assignment</strong> — Every automatic driver match is logged here. Managers can review and override from the Orders page.</div>
+          <div className="alert alert-info small mb-3 d-flex gap-2 align-items-start">
+            <i className="ri-cpu-line mt-1 flex-shrink-0" />
+            <div>
+              <strong>System Auto Assignment</strong> — When an order is packed and ready, Bems Admin automatically matches
+              it to the best available driver based on zone, current load, and availability.
+              Managers can review every auto-assignment here and override with a manual reassignment from the Orders page.
+            </div>
           </div>
-          <div style={card}>
-            <div style={{ overflowX:'auto' }}>
-              <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                <thead>
-                  <tr>{['Log ID','Time','Order / Customer','Zone','Auto Driver','Override?','Outcome'].map(h => <TH key={h}>{h}</TH>)}</tr>
+
+          <div className="card">
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th>Log ID</th>
+                    <th>Time</th>
+                    <th>Order / Customer</th>
+                    <th>Zone</th>
+                    <th>Auto-Assigned Driver</th>
+                    <th>Matching Rule</th>
+                    <th>Confidence</th>
+                    <th>Override?</th>
+                    <th>Outcome</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {loading && [...Array(5)].map((_,i) => (
-                    <tr key={i}>{[...Array(7)].map((_,j) => <TD key={j}><div style={{ height:14, background:'#f0f0f0', borderRadius:4 }} /></TD>)}</tr>
-                  ))}
-                  {!loading && autoLog.length===0 && (
-                    <tr><td colSpan={7} style={{ textAlign:'center', color:'var(--text-light)', padding:'32px 0', fontSize:13 }}>No auto-assignment records yet</td></tr>
-                  )}
-                  {!loading && autoLog.map(log => {
-                    const sc   = LOG_STATUS_CFG[log.order_status] || { label:log.order_status, color:'var(--text-muted)', bg:'var(--border)' }
+                  {AUTO_ASSIGN_LOG.map(log => {
+                    const confCfg   = CONFIDENCE_CFG[log.confidence]
+                    const statusCfg = LOG_STATUS_CFG[log.status]
                     return (
                       <tr key={log.id}>
-                        <TD><span style={{ fontWeight:600, fontSize:12 }}>{log.id}</span></TD>
-                        <TD>
-                          <div style={{ fontSize:12 }}>{new Date(log.created_at).toLocaleDateString('en-NG')}</div>
-                          <div style={{ fontSize:11, color:'var(--text-light)' }}>{new Date(log.created_at).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})}</div>
-                        </TD>
-                        <TD>
-                          <div style={{ fontWeight:600, fontSize:12, color:'#3b82f6' }}>{log.order_id}</div>
-                          <div style={{ fontSize:11, color:'var(--text-light)' }}>{log.customer_name}</div>
-                        </TD>
-                        <TD style={{ fontSize:12 }}><i className="ri-map-pin-line" style={{ color:'var(--text-light)', marginRight:4 }} />{log.zone||'—'}</TD>
-                        <TD>
-                          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                            <div style={{ width:28, height:28, borderRadius:'50%', background:'#dbeafe', color:'#3b82f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:700, flexShrink:0 }}>
-                              {(log.driver_name||'?').split(' ').map(n=>n[0]).join('')}
+                        <td>
+                          <div className="fw-medium small">{log.id}</div>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: 12 }}>{log.time.split(' ')[0]}</div>
+                          <div className="text-muted" style={{ fontSize: 11 }}>{log.time.split(' ')[1]}</div>
+                        </td>
+                        <td>
+                          <div className="fw-medium small text-primary">{log.orderId}</div>
+                          <div className="text-muted" style={{ fontSize: 11 }}>{log.customer}</div>
+                        </td>
+                        <td>
+                          <div className="d-flex align-items-center gap-1">
+                            <i className="ri-map-pin-line text-muted" style={{ fontSize: 12 }} />
+                            <span style={{ fontSize: 12 }}>{log.zone}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
+                            <div className="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white flex-shrink-0"
+                              style={{ width: 28, height: 28, fontSize: 9, fontWeight: 700 }}>
+                              {log.driver.name.split(' ').map(n => n[0]).join('')}
                             </div>
                             <div>
-                              <div style={{ fontWeight:600, fontSize:12 }}>{log.driver_name||'—'}</div>
-                              <div style={{ fontSize:10, color:'var(--text-light)' }}>{log.driver_plate}</div>
+                              <div className="fw-medium" style={{ fontSize: 12 }}>{log.driver.name}</div>
+                              <div className="text-muted" style={{ fontSize: 10 }}>{log.driver.bike}</div>
                             </div>
                           </div>
-                        </TD>
-                        <TD>
-                          {log.overridden_by_name
-                            ? <div><span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:50, background:'#fef3c7', color:'#d97706' }}><i className="ri-edit-line" />Overridden</span><div style={{ fontSize:10, color:'var(--text-light)', marginTop:2 }}>{log.overridden_by_name}</div></div>
-                            : <span style={{ display:'inline-flex', alignItems:'center', gap:3, fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:50, background:'#dcfce7', color:'#16a34a' }}><i className="ri-checkbox-circle-line" />No override</span>
+                        </td>
+                        <td>
+                          <div className="text-muted" style={{ fontSize: 11, maxWidth: 200 }}>{log.rule}</div>
+                        </td>
+                        <td>
+                          <span className="badge" style={{ background: confCfg.bg, color: confCfg.color, fontSize: 10 }}>
+                            {log.confidence}
+                          </span>
+                        </td>
+                        <td>
+                          {log.overriddenBy
+                            ? <div>
+                                <span className="badge" style={{ background: '#fef3c7', color: '#d97706', fontSize: 10 }}>
+                                  <i className="ri-edit-line me-1" />Overridden
+                                </span>
+                                <div className="text-muted" style={{ fontSize: 10, marginTop: 2 }}>{log.overriddenBy}</div>
+                              </div>
+                            : <span className="badge" style={{ background: '#dcfce7', color: '#16a34a', fontSize: 10 }}>
+                                <i className="ri-checkbox-circle-line me-1" />No override
+                              </span>
                           }
-                        </TD>
-                        <TD>{pill(sc.bg, sc.color, null, sc.label)}</TD>
+                        </td>
+                        <td>
+                          <span className="badge" style={{ background: statusCfg.bg, color: statusCfg.color, fontSize: 10 }}>
+                            {statusCfg.label}
+                          </span>
+                        </td>
                       </tr>
                     )
                   })}
@@ -198,446 +381,641 @@ export default function ActiveDeliveries() {
         </div>
       )}
 
-      {/* ── LIVE DELIVERIES ── */}
-      {activeTab==='live' && (
-        <>
-          {/* Stat Cards */}
-          <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:20 }}>
-            {[
-              { label:'Total Active',       value:parseInt(stats.total||0),    color:'#6366f1', icon:'ri-route-line',          filter:'all'                },
-              { label:'En Route',           value:parseInt(stats.en_route||0), color:'#3b82f6', icon:'ri-truck-line',          filter:'out_for_delivery'   },
-              { label:'Awaiting Pickup',    value:parseInt(stats.awaiting||0), color:'#06b6d4', icon:'ri-user-location-line',  filter:'assigned'           },
-              { label:'Delivery Attempted', value:parseInt(stats.attempted||0),color:'#f97316', icon:'ri-error-warning-line',  filter:'delivery_attempted' },
-            ].map(c => (
-              <div key={c.label} onClick={() => setFilterStatus(c.filter)} style={{ ...card, padding:'14px 16px', display:'flex', alignItems:'center', gap:14, cursor:'pointer', borderLeft:`3px solid ${c.color}` }}>
-                <div style={{ width:40, height:40, borderRadius:9, background:c.color+'20', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                  <i className={c.icon} style={{ color:c.color, fontSize:18 }} />
+      {/* ── LIVE DELIVERIES ───────────────────────────────────────────────────── */}
+      {activeTab === 'live' && (<>
+
+      {/* Stat Cards */}
+      <div className="row g-3 mb-4">
+        {[
+          { label: 'Total Active',       value: stats.total,     color: '#6366f1', icon: 'ri-route-line',           filter: 'all'               },
+          { label: 'En Route',           value: stats.enRoute,   color: '#3b82f6', icon: 'ri-truck-line',           filter: 'shipped'           },
+          { label: 'Awaiting Pickup',    value: stats.awaiting,  color: '#06b6d4', icon: 'ri-user-location-line',   filter: 'assigned'          },
+          { label: 'Delivery Attempted', value: stats.attempted, color: '#f97316', icon: 'ri-error-warning-line',   filter: 'delivery_attempted'},
+        ].map(c => (
+          <div key={c.label} className="col-6 col-md-3">
+            <div className="card p-3" style={{ borderLeft: `3px solid ${c.color}`, cursor: 'pointer' }}
+              onClick={() => setFilterStatus(c.filter)}>
+              <div className="d-flex align-items-center gap-3">
+                <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: 40, height: 40, background: c.color + '20' }}>
+                  <i className={`${c.icon} fs-18`} style={{ color: c.color }} />
                 </div>
                 <div>
-                  <div style={{ fontSize:11, color:'#64748b' }}>{c.label}</div>
-                  <div style={{ fontSize:22, fontWeight:800, color:'var(--text-primary)', fontFamily:'var(--heading-font)', lineHeight:1 }}>{c.value}</div>
+                  <div className="text-muted" style={{ fontSize: 11 }}>{c.label}</div>
+                  <div className="fw-bold fs-24">{c.value}</div>
                 </div>
               </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter Bar */}
+      <div className="card mb-3">
+        <div className="card-body d-flex flex-wrap gap-2 align-items-center">
+          <div className="input-group" style={{ maxWidth: 280 }}>
+            <span className="input-group-text"><i className="ri-search-line" /></span>
+            <input className="form-control" placeholder="Delivery ID, order, customer, driver..."
+              value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          {filterStatus !== 'all' && (
+            <button className="btn btn-sm btn-outline-secondary" onClick={() => setFilterStatus('all')}>
+              <i className="ri-close-line me-1" />Clear Filter
+            </button>
+          )}
+          <div className="ms-auto">
+            <span className="badge rounded-pill bg-success me-1" style={{ fontSize: 11 }}>
+              <i className="ri-checkbox-blank-circle-fill me-1" style={{ fontSize: 8 }} />Live
+            </span>
+            <span className="text-muted small">{filtered.length} active</span>
+          </div>
+        </div>
+        {/* Status tabs */}
+        <div className="border-top px-3" style={{ overflowX: 'auto' }}>
+          <div className="d-flex" style={{ whiteSpace: 'nowrap' }}>
+            {[{ key: 'all', label: 'All Active' }, ...Object.entries(STATUS_CFG).map(([k, v]) => ({ key: k, label: v.label }))].map(t => (
+              <button key={t.key} className="btn btn-sm border-0 rounded-0 py-2 px-3"
+                style={{
+                  borderBottom: filterStatus === t.key ? '2px solid #6366f1' : '2px solid transparent',
+                  color: filterStatus === t.key ? '#6366f1' : '#6b7280',
+                  fontWeight: filterStatus === t.key ? 600 : 400,
+                  background: 'transparent',
+                }}
+                onClick={() => setFilterStatus(t.key)}>{t.label}</button>
             ))}
           </div>
+        </div>
+      </div>
 
-          {/* Filter Bar */}
-          <div style={{ ...card, marginBottom:16 }}>
-            <div style={{ padding:'10px 14px', display:'flex', flexWrap:'wrap', gap:10, alignItems:'center' }}>
-              <div style={{ position:'relative', maxWidth:280, flex:1 }}>
-                <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Delivery ref, order, customer, driver…" style={{ ...inp, paddingLeft:32 }} />
-              </div>
-              {filterStatus!=='all' && (
-                <button onClick={() => setFilterStatus('all')} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'7px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:12, fontFamily:'var(--body-font)', color:'var(--text-secondary)' }}>
-                  <i className="ri-close-line" />Clear
-                </button>
-              )}
-              <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8 }}>
-                <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:600, padding:'3px 9px', borderRadius:50, background:'#dcfce7', color:'#16a34a' }}>
-                  <i className="ri-checkbox-blank-circle-fill" style={{ fontSize:9 }} />Live
-                </span>
-                <span style={{ fontSize:12, color:'var(--text-muted)' }}>{filtered.length} active</span>
-              </div>
-            </div>
-            <div style={{ borderTop:'1px solid var(--border)', overflowX:'auto' }}>
-              <div style={{ display:'flex', whiteSpace:'nowrap' }}>
-                {[
-                  { key:'all',                label:'All Active'          },
-                  { key:'out_for_delivery',   label:'En Route'            },
-                  { key:'assigned',           label:'Awaiting Pickup'     },
-                  { key:'delivery_attempted', label:'Delivery Attempted'  },
-                ].map(t => (
-                  <button key={t.key} onClick={() => setFilterStatus(t.key)} style={{ padding:'10px 16px', border:'none', borderBottom: filterStatus===t.key?'2px solid #1B4332':'2px solid transparent', background:'transparent', color: filterStatus===t.key?'#1B4332':'#6b7280', fontWeight: filterStatus===t.key?700:400, fontSize:12, cursor:'pointer', fontFamily:'var(--body-font)', whiteSpace:'nowrap' }}>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Delivery Cards */}
-          {loading && (
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))', gap:14 }}>
-              {[...Array(4)].map((_,i) => (
-                <div key={i} style={{ ...card, height:280, padding:20, display:'flex', flexDirection:'column', gap:16 }}>
-                  {[120,80,60,40].map(w => <div key={w} style={{ height:14, background:'#f0f0f0', borderRadius:4, width:`${w}%` }} />)}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!loading && filtered.length===0 && (
-            <div style={{ ...card, padding:'48px', textAlign:'center', color:'var(--text-light)' }}>
-              <i className="ri-truck-line" style={{ fontSize:49, display:'block', marginBottom:8 }} />
-              <div style={{ fontSize:13 }}>No active deliveries{filterStatus!=='all'?' matching this filter':''}</div>
-            </div>
-          )}
-
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))', gap:14 }}>
-            {!loading && filtered.map(del => {
-              const cfg = STATUS_CFG[del.status] || STATUS_CFG.assigned
-              const items = del.items || []
-              const isEnRoute  = ['shipped','out_for_delivery'].includes(del.status)
-              const isAssigned = ['assigned','driver_assigned'].includes(del.status)
-              const isAttempted = del.status==='delivery_attempted'
-
-              return (
-                <div key={del.id} style={{ ...card, borderTop:`3px solid ${cfg.color}`, display:'flex', flexDirection:'column' }}>
-                  <div style={{ padding:'16px', display:'flex', flexDirection:'column', gap:14, flex:1 }}>
-                    {/* Header */}
-                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
-                      <div>
-                        <div style={{ fontWeight:700, fontSize:13 }}>{del.delivery_ref}</div>
-                        <div style={{ fontSize:11, color:'var(--text-light)' }}><i className="ri-link" style={{ marginRight:3 }} />{del.order_id}</div>
-                      </div>
-                      {pill(cfg.bg, cfg.color, cfg.icon, cfg.label)}
-                    </div>
-
-                    {/* Customer */}
-                    <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
-                      <div style={{ width:32, height:32, borderRadius:'50%', background:'#dbeafe', color:'#3b82f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>
-                        {(del.customer_name||'?').split(' ').map(n=>n[0]).join('').slice(0,2)}
-                      </div>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontWeight:600, fontSize:13 }}>{del.customer_name}</div>
-                        <div style={{ fontSize:11, color:'var(--text-muted)' }}>{del.customer_phone}</div>
-                        <div style={{ fontSize:11, color:'var(--text-muted)' }}><i className="ri-map-pin-line" style={{ marginRight:3 }} />{del.delivery_address||'—'}</div>
-                      </div>
-                      {del.customer_phone && (
-                        <a href={`tel:${del.customer_phone}`} style={{ width:32, height:32, borderRadius:'50%', border:'1.5px solid var(--border)', background:'var(--bg-card)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-secondary)', flexShrink:0 }}>
-                          <i className="ri-phone-line" style={{ fontSize:18 }} />
-                        </a>
-                      )}
-                    </div>
-
-                    {/* Items */}
-                    <div style={{ borderRadius:8, background:'var(--bg-subtle)', padding:'10px 12px', fontSize:12 }}>
-                      {items.slice(0,3).map((item,i) => (
-                        <div key={i} style={{ display:'flex', justifyContent:'space-between' }}>
-                          <span>{item.name}</span><span style={{ color:'var(--text-muted)' }}>{item.qty}</span>
-                        </div>
-                      ))}
-                      {items.length>3 && <div style={{ color:'var(--text-light)' }}>+{items.length-3} more</div>}
-                      <div style={{ borderTop:'1px solid var(--border)', marginTop:6, paddingTop:6, fontWeight:700, display:'flex', justifyContent:'space-between' }}>
-                        <span>Total</span><span>{fmt(del.order_total)}</span>
-                      </div>
-                    </div>
-
-                    {/* Driver */}
-                    {del.driver_name && (
-                      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:8, background:cfg.bg+'40', border:'1px solid '+cfg.color+'30' }}>
-                        <div style={{ width:32, height:32, borderRadius:'50%', background:cfg.color, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>
-                          {del.driver_name.split(' ').map(n=>n[0]).join('')}
-                        </div>
-                        <div style={{ flex:1 }}>
-                          <div style={{ fontWeight:600, fontSize:12 }}>{del.driver_name}</div>
-                          <div style={{ fontSize:11, color:'var(--text-muted)' }}>{del.driver_phone} · {del.driver_plate}</div>
-                        </div>
-                        {del.driver_phone && (
-                          <a href={`tel:${del.driver_phone}`} style={{ padding:'4px 9px', borderRadius:7, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', fontSize:11, display:'inline-flex', alignItems:'center' }}>
-                            <i className="ri-phone-line" />
-                          </a>
-                        )}
-                      </div>
-                    )}
-
-                    {/* ETA row */}
-                    <div style={{ display:'flex', gap:8 }}>
-                      {[
-                        { label:'DISPATCHED', val:del.dispatched_at_str || (del.dispatched_at?new Date(del.dispatched_at).toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'}):'—'), color:null },
-                        { label:'ETA', val:del.eta_minutes?`~${del.eta_minutes} min`:'—', color:cfg.color },
-                        ...(del.attempts||0)>0?[{ label:'ATTEMPTS', val:`${del.attempts}/2`, color:'#dc2626' }]:[],
-                      ].map(box => (
-                        <div key={box.label} style={{ flex:1, border:'1px solid var(--border)', borderRadius:8, padding:'8px 10px', textAlign:'center', fontSize:12 }}>
-                          <div style={{ fontSize:10, color:'var(--text-light)' }}>{box.label}</div>
-                          <div style={{ fontWeight:700, color:box.color||'#111827' }}>{box.val}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Status info text */}
-                    {del.status_text && (
-                      <div style={{ padding:'10px 12px', background:'var(--bg-subtle)', borderRadius:8, borderLeft:'3px solid var(--orange-accent)', fontSize:11, color:'#475569', marginTop:8 }}>
-                        {del.status_text}
-                      </div>
-                    )}
-
-                    {/* Attempted warning */}
-                    {isAttempted && (
-                      <div style={{ borderRadius:8, padding:'10px 12px', background:'#fff7ed', borderLeft:'3px solid #f97316', marginTop:8 }}>
-                        <div style={{ fontWeight:700, fontSize:12, color:'#dc2626', display:'flex', alignItems:'center', gap:4, marginBottom:4 }}>
-                          <i className="ri-alarm-warning-line" />
-                          {del.warning_title || 'Admin Action Required'}
-                        </div>
-                        <div style={{ fontSize:11, color:'#92400e' }}>
-                          {del.warning_text || `Customer unavailable. Attempt ${del.attempts||1} of 2.`}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    <div style={{ display:'flex', gap:8, marginTop:'auto', flexWrap:'wrap' }}>
-                      <button onClick={() => openModal('view', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontSize:11, fontFamily:'var(--body-font)', fontWeight:600, color:'var(--text-secondary)' }}>
-                        <i className="ri-eye-line" />Details
-                      </button>
-                      {isEnRoute && <>
-                        <button onClick={() => openModal('attempted', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'none', background:'#fef3c7', color:'#d97706', cursor:'pointer', fontSize:11, fontFamily:'var(--body-font)', fontWeight:700, flex:1 }}>
-                          <i className="ri-route-line" />Mark Attempted
-                        </button>
-                        <button onClick={() => openModal('delivered', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'none', background:'#22c55e', color:'#fff', cursor:'pointer', fontSize:11, fontFamily:'var(--body-font)', fontWeight:700, flex:1 }}>
-                          <i className="ri-checkbox-circle-line" />Delivered
-                        </button>
-                      </>}
-                      {isAssigned && (
-                        <button onClick={() => openModal('reassign', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'1.5px solid var(--orange-accent)', background:'var(--bg-card)', color:'var(--orange-accent)', cursor:'pointer', fontSize:11, fontFamily:'var(--body-font)', fontWeight:700, flex:1, justifyContent:'center' }}>
-                          <i className="ri-user-follow-line" />Reassign Driver
-                        </button>
-                      )}
-                      {isAttempted && (del.attempts||0)<2 && (
-                        <button onClick={() => openModal('scheduleRetry', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', cursor:'pointer', fontSize:11, fontFamily:'var(--body-font)', fontWeight:700, flex:1 }}>
-                          <i className="ri-refresh-line" />Schedule Retry
-                        </button>
-                      )}
-                      {isAttempted && (
-                        <button onClick={() => openModal('cancelReturn', del)} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontSize:11, fontFamily:'var(--body-font)', fontWeight:700, flex:1 }}>
-                          <i className="ri-close-circle-line" />Cancel Order
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </>
+      {/* Delivery Cards Grid */}
+      {filtered.length === 0 && (
+        <div className="card p-5 text-center text-muted">
+          <i className="ri-truck-line fs-1 mb-2" />
+          <div>No active deliveries</div>
+        </div>
       )}
 
-      {/* ── MODALS ── */}
-      {activeModal && selected && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
-          onClick={e => e.target===e.currentTarget && closeModal()}>
+      <div className="row g-3">
+        {filtered.map(del => {
+          const cfg = STATUS_CFG[del.status]
+          return (
+            <div key={del.id} className="col-md-6 col-xl-4">
+              <div className="card h-100" style={{ borderTop: `3px solid ${cfg.color}` }}>
+                <div className="card-body d-flex flex-column gap-3">
 
-          {/* VIEW */}
-          {activeModal==='view' && (
-            <ModalShell title={selected.delivery_ref} onClose={closeModal} maxWidth={520}>
-              <div style={{ padding:24, display:'flex', flexDirection:'column', gap:16, overflowY:'auto' }}>
-                <div>
-                  <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4, fontWeight:700, textTransform:'uppercase' }}>Customer</div>
-                  <div style={{ fontWeight:600 }}>{selected.customer_name}</div>
-                  <div style={{ fontSize:13 }}>{selected.customer_phone}</div>
-                  <div style={{ fontSize:12, color:'var(--text-muted)' }}><i className="ri-map-pin-line" style={{ marginRight:4 }} />{selected.delivery_address||'—'}</div>
-                </div>
-                {selected.driver_name && (
-                  <div>
-                    <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:6, fontWeight:700, textTransform:'uppercase' }}>Driver</div>
-                    <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', border:'1px solid var(--border)', borderRadius:8 }}>
-                      <div style={{ width:36, height:36, borderRadius:'50%', background:'#dbeafe', color:'#3b82f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, flexShrink:0 }}>
-                        {selected.driver_name.split(' ').map(n=>n[0]).join('')}
+                  {/* Top Row — IDs + Status */}
+                  <div className="d-flex align-items-start justify-content-between">
+                    <div>
+                      <div className="fw-bold" style={{ fontSize: 13 }}>{del.id}</div>
+                      <div className="text-muted" style={{ fontSize: 11 }}>
+                        <i className="ri-link me-1" />{del.orderId}
                       </div>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontWeight:600 }}>{selected.driver_name}</div>
-                        <div style={{ fontSize:12, color:'var(--text-muted)' }}>{selected.driver_phone} · {selected.driver_plate}</div>
+                    </div>
+                    <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: 11 }}>
+                      <i className={`${cfg.icon} me-1`} />{cfg.label}
+                    </span>
+                  </div>
+
+                  {/* Customer */}
+                  <div className="d-flex gap-2 align-items-start">
+                    <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white flex-shrink-0"
+                      style={{ width: 32, height: 32, fontSize: 11 }}>
+                      {del.customer.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </div>
+                    <div className="flex-fill">
+                      <div className="fw-medium" style={{ fontSize: 13 }}>{del.customer.name}</div>
+                      <div className="text-muted" style={{ fontSize: 11 }}>{del.customer.phone}</div>
+                      <div className="text-muted" style={{ fontSize: 11 }}>
+                        <i className="ri-map-pin-line me-1" />{del.customer.address}
                       </div>
-                      <a href={`tel:${selected.driver_phone}`} style={{ padding:'6px 12px', borderRadius:8, border:'none', background:'#22c55e', color:'#fff', fontSize:12, fontWeight:700, display:'inline-flex', alignItems:'center', gap:5, textDecoration:'none' }}>
-                        <i className="ri-phone-line" />Call
-                      </a>
+                    </div>
+                    <a href={`tel:${del.customer.phone}`}
+                      className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center flex-shrink-0"
+                      style={{ width: 32, height: 32, padding: 0, borderRadius: '50%' }}
+                      title={`Call ${del.customer.name}`}>
+                      <i className="ri-phone-line" style={{ fontSize: 13 }}/>
+                    </a>
+                  </div>
+
+                  {/* Items preview */}
+                  <div className="border rounded p-2" style={{ background: '#f8fafc', fontSize: 12 }}>
+                    {del.items.map((item, i) => (
+                      <div key={i} className="d-flex justify-content-between">
+                        <span>{item.name}</span>
+                        <span className="text-muted">{item.qty}</span>
+                      </div>
+                    ))}
+                    <div className="border-top mt-1 pt-1 fw-bold d-flex justify-content-between">
+                      <span>Order Total</span><span>{fmt(del.total)}</span>
                     </div>
                   </div>
-                )}
-                <div style={{ display:'flex', gap:10, paddingTop:16, borderTop:'1px solid var(--border)' }}>
-                  <button onClick={() => { closeModal(); setTimeout(() => openModal('reassign', selected), 100) }} style={{ flex:1, padding:'9px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13, display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                    <i className="ri-user-add-line" />Reassign Driver
-                  </button>
-                  <button onClick={closeModal} style={{ padding:'9px 16px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Close</button>
-                </div>
-              </div>
-            </ModalShell>
-          )}
 
-          {/* REASSIGN */}
-          {activeModal==='reassign' && (
-            <ModalShell title="Reassign Driver" onClose={closeModal} maxWidth={460}>
-              <div style={{ padding:24, overflowY:'auto' }}>
-                <div style={{ padding:'10px 12px', borderRadius:8, background:'var(--bg-subtle)', border:'1px solid var(--border)', fontSize:12, color:'var(--text-secondary)', marginBottom:16 }}>
-                  <strong>{selected.delivery_ref}</strong> · {selected.customer_name} · {selected.delivery_address}
-                </div>
-                {selected.driver_name && <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:10 }}>Current: <strong>{selected.driver_name}</strong></div>}
-                <label style={lbl}>Select Replacement Driver</label>
-                {drivers.filter(d=>d.id!==selected.driver_id).map(driver => (
-                  <div key={driver.id} onClick={() => setReassignDriverId(String(driver.id))} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px', border:`1.5px solid ${Number(reassignDriverId)===driver.id?'#8b5cf6':'var(--border)'}`, borderRadius:8, marginBottom:8, cursor:'pointer', background:Number(reassignDriverId)===driver.id?'#ede9fe':'#fff' }}>
-                    <div style={{ width:36, height:36, borderRadius:'50%', background:'#dbeafe', color:'#3b82f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>
-                      {driver.name.split(' ').map(n=>n[0]).join('')}
+                  {/* Driver */}
+                  <div className="d-flex align-items-center gap-2 p-2 border rounded"
+                    style={{ background: cfg.bg + '40' }}>
+                    <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                      style={{ width: 32, height: 32, background: cfg.color, color: '#fff', fontSize: 11 }}>
+                      {del.driver.name.split(' ').map(n => n[0]).join('')}
                     </div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontWeight:600, fontSize:13 }}>{driver.name}</div>
-                      <div style={{ fontSize:11, color:'var(--text-muted)' }}>{driver.phone} · {driver.zone}</div>
+                    <div className="flex-grow-1">
+                      <div className="fw-medium" style={{ fontSize: 12 }}>{del.driver.name}</div>
+                      <div className="text-muted" style={{ fontSize: 11 }}>{del.driver.phone} · {del.driver.bike}</div>
                     </div>
-                    {Number(reassignDriverId)===driver.id && <i className="ri-checkbox-circle-fill" style={{ color:'#8b5cf6', fontSize:24 }} />}
+                    <a href={`tel:${del.driver.phone}`} className="btn btn-sm btn-outline-secondary" title="Call Driver">
+                      <i className="ri-phone-line" />
+                    </a>
                   </div>
-                ))}
-                {drivers.length===0 && <div style={{ textAlign:'center', color:'var(--text-light)', padding:'24px 0', fontSize:13 }}>No available drivers</div>}
-                <div style={{ display:'flex', gap:10, marginTop:16 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
-                  <button onClick={reassignDriver} disabled={!reassignDriverId||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:(!reassignDriverId||submitting)?'not-allowed':'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13, opacity:(!reassignDriverId||submitting)?0.6:1 }}>
-                    {submitting?'Reassigning…':'Reassign & Notify'}
-                  </button>
-                </div>
-              </div>
-            </ModalShell>
-          )}
 
-          {/* ATTEMPTED */}
-          {activeModal==='attempted' && (
-            <ModalShell title="Mark Delivery Attempted" onClose={closeModal} maxWidth={440}>
-              <div style={{ padding:24 }}>
-                <div style={{ padding:'10px 14px', borderRadius:8, background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', fontSize:12, marginBottom:16 }}>
-                  <i className="ri-route-line" style={{ marginRight:5 }} />
-                  Attempt <strong>{(selected.attempts||0)+1}</strong> of 2.
-                  {(selected.attempts||0)>=1 && <><br /><strong style={{ color:'#dc2626' }}>This is the final attempt.</strong></>}
-                </div>
-                <div style={{ marginBottom:16 }}>
-                  <label style={lbl}>Notes</label>
-                  <textarea rows={3} placeholder="e.g. No response after calling twice." value={attemptNote} onChange={e=>setAttemptNote(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
-                </div>
-                <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
-                  <button onClick={markAttempted} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }}>
-                    {submitting?'Saving…':'Confirm Attempted'}
-                  </button>
-                </div>
-              </div>
-            </ModalShell>
-          )}
-
-          {/* DELIVERED */}
-          {activeModal==='delivered' && (
-            <ModalShell title="Confirm Delivery" onClose={closeModal} maxWidth={420}>
-              <div style={{ padding:24 }}>
-                <div style={{ padding:'10px 14px', borderRadius:8, background:'#f0fdf4', border:'1px solid #bbf7d0', color:'#166534', fontSize:12, marginBottom:16 }}>
-                  Confirming delivery for <strong>{selected.customer_name}</strong> by <strong>{selected.driver_name||'driver'}</strong>.
-                </div>
-                <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
-                  <button onClick={markDelivered} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#22c55e', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }}>
-                    {submitting?'Saving…':'Mark as Delivered'}
-                  </button>
-                </div>
-              </div>
-            </ModalShell>
-          )}
-
-          {/* SCHEDULE RETRY */}
-          {activeModal==='scheduleRetry' && (
-            <ModalShell title="Schedule New Delivery Attempt" onClose={closeModal} maxWidth={500}>
-              <div style={{ padding:24 }}>
-                <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:16 }}>{selected.order_id} · {selected.customer_name}</div>
-                <div style={{ padding:'10px 14px', borderRadius:8, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1d4ed8', fontSize:12, marginBottom:16 }}>
-                  <i className="ri-information-line" style={{ marginRight:5 }} />
-                  Scheduling a retry moves this delivery back to <strong>Awaiting Pickup</strong>. <strong>Max 2 attempts total.</strong>
-                </div>
-                <div style={{ marginBottom:16 }}>
-                  <label style={lbl}>Re-attempt Notes <span style={{ color:'#dc2626' }}>*</span></label>
-                  <textarea rows={3} placeholder="e.g. Customer confirmed available after 5pm. Called and verified." value={retryNote} onChange={e=>setRetryNote(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
-                </div>
-                <div style={{ display:'flex', gap:10 }}>
-                  <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
-                  <button onClick={scheduleRetry} disabled={!retryNote||submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', cursor:(!retryNote||submitting)?'not-allowed':'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13, opacity:(!retryNote||submitting)?0.6:1 }}>
-                    {submitting?'Saving…':'Confirm — Schedule Retry'}
-                  </button>
-                </div>
-              </div>
-            </ModalShell>
-          )}
-
-          {/* CANCEL & RETURN */}
-          {activeModal==='cancelReturn' && (
-            <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth:520 }}>
-              <div style={{ background:'#7f1d1d', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                  <div>
-                    <div style={{ fontWeight:700, fontSize:15, fontFamily:'var(--heading-font)' }}>
-                      <i className="ri-close-circle-line" style={{ marginRight:8 }} />
-                      {(selected.attempts||0)>=2?'Cancel Order — 2 Attempts Exhausted':'Cancel Order & Return Goods'}
+                  {/* ETA + Dispatch */}
+                  <div className="d-flex gap-2">
+                    <div className="flex-fill border rounded p-2 text-center" style={{ fontSize: 12 }}>
+                      <div className="text-muted" style={{ fontSize: 10 }}>DISPATCHED</div>
+                      <div className="fw-medium">{del.dispatchTime}</div>
                     </div>
-                    <div style={{ fontSize:12, opacity:0.7 }}>{selected.order_id} · {selected.customer_name}</div>
-                  </div>
-                  <button onClick={closeModal} aria-label="Close" style={{ background:'rgba(255,255,255,0.15)', border:'none', cursor:'pointer', color:'#fff', fontSize:18, padding:'4px 8px', borderRadius:6 }}>
-                    <i className="ri-close-line" />
-                  </button>
-                </div>
-              </div>
-              <div style={{ padding:24 }}>
-                {cancelStep===1 && (
-                  <>
-                    {(selected.attempts||0)>=2 && (
-                      <div style={{ padding:'10px 14px', borderRadius:8, background:'#fef2f2', border:'1px solid #fecaca', color:'#991b1b', fontSize:12, marginBottom:16 }}>
-                        <i className="ri-alarm-warning-line" style={{ marginRight:5 }} />
-                        <strong>Maximum 2 attempts reached.</strong> Order must be cancelled.
+                    <div className="flex-fill border rounded p-2 text-center" style={{ fontSize: 12 }}>
+                      <div className="text-muted" style={{ fontSize: 10 }}>ETA</div>
+                      <div className="fw-medium" style={{ color: cfg.color }}>{del.eta}</div>
+                    </div>
+                    {del.attempts > 0 && (
+                      <div className="flex-fill border rounded p-2 text-center" style={{ fontSize: 12, borderColor: '#f97316 !important' }}>
+                        <div className="text-muted" style={{ fontSize: 10 }}>ATTEMPTS</div>
+                        <div className="fw-bold text-danger">{del.attempts}/2</div>
                       </div>
                     )}
-                    <div style={{ border:'1px solid var(--border)', borderRadius:8, padding:'14px 16px', background:'var(--bg-subtle)', fontSize:12, marginBottom:20 }}>
-                      <div style={{ fontWeight:700, fontSize:11, color:'var(--text-muted)', marginBottom:10, textTransform:'uppercase' }}>This cancellation will trigger:</div>
-                      {['Refund via Monnify to customer','Driver instructed to return goods to store','Admin checks goods back in','Stock quantities restored'].map((s,i) => (
-                        <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'4px 0' }}>
-                          <i className="ri-arrow-right-s-line" style={{ color:'var(--text-light)' }} /><span>{s}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ marginBottom:20 }}>
-                      <label style={lbl}>Cancellation Reason <span style={{ color:'#dc2626' }}>*</span></label>
-                      <textarea rows={3} placeholder="Why is this being cancelled?" value={cancelReason} onChange={e=>setCancelReason(e.target.value)} style={{ ...inp, resize:'vertical', lineHeight:1.5 }} />
-                    </div>
-                    <div style={{ display:'flex', gap:10 }}>
-                      <button onClick={closeModal} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Go Back</button>
-                      <button disabled={!cancelReason} onClick={() => setCancelStep(2)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:!cancelReason?'not-allowed':'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13, opacity:!cancelReason?0.6:1 }}>
-                        Next — Return Goods to Store
-                      </button>
-                    </div>
-                  </>
-                )}
-                {cancelStep===2 && (
-                  <>
-                    <div style={{ textAlign:'center', marginBottom:24 }}>
-                      <div style={{ width:56, height:56, borderRadius:'50%', background:'#dbeafe', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 12px' }}>
-                        <i className="ri-store-2-fill" style={{ fontSize:32, color:'#3b82f6' }} />
+                  </div>
+
+                  {/* Admin Action Required banner — delivery_attempted */}
+                  {del.status === 'delivery_attempted' && (
+                    <div className="rounded p-2" style={{ background:'#fff7ed', borderLeft:'3px solid #f97316' }}>
+                      <div className="fw-medium small text-danger d-flex align-items-center gap-1 mb-1">
+                        <i className="ri-alarm-warning-line" />
+                        {del.attempts >= 2
+                          ? '⚠️ FINAL ATTEMPT — Cancel order mandatory'
+                          : '⚠️ Admin Action Required'}
                       </div>
-                      <div style={{ fontWeight:700, fontSize:16, marginBottom:6 }}>Instruct Driver to Return Goods</div>
-                      <div style={{ fontSize:13, color:'var(--text-muted)' }}>
-                        Call <strong>{selected.driver_name||'the driver'}</strong> ({selected.driver_phone||'—'}) and instruct them to return all goods to store.
+                      <div style={{ fontSize:11, color:'#92400e' }}>
+                        Driver tapped CUSTOMER UNAVAILABLE. Push + SMS sent. 15-min timer expired.
+                        Attempt <strong>{del.attempts}</strong> of 2.
                       </div>
                     </div>
-                    <div style={{ padding:'10px 14px', borderRadius:8, background:'#fffbeb', border:'1px solid #fde68a', color:'#92400e', fontSize:12, marginBottom:20 }}>
-                      <i className="ri-phone-line" style={{ marginRight:5 }} />
-                      Driver returning goods from: <strong>{selected.delivery_address||'—'}</strong>
+                  )}
+
+                  {/* Notes */}
+                  {del.notes && del.status !== 'delivery_attempted' && (
+                    <div className="small text-muted border-start border-warning ps-2">
+                      {del.notes}
                     </div>
-                    <div style={{ display:'flex', gap:10 }}>
-                      <button onClick={() => setCancelStep(1)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Back</button>
-                      <button onClick={() => setCancelStep(3)} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#1B4332', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }}>
-                        Driver Contacted — Next
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="d-flex gap-2 mt-auto flex-wrap">
+                    <button className="btn btn-sm btn-outline-secondary" onClick={() => openModal('view', del)}>
+                      <i className="ri-eye-line me-1" />Details
+                    </button>
+
+                    {/* En Route actions */}
+                    {del.status === 'shipped' && (
+                      <button className="btn btn-sm btn-outline-warning flex-fill" onClick={() => openModal('attempted', del)}>
+                        <i className="ri-route-line me-1" />Mark Attempted
                       </button>
+                    )}
+                    {del.status === 'shipped' && (
+                      <button className="btn btn-sm btn-success flex-fill" onClick={() => openModal('delivered', del)}>
+                        <i className="ri-checkbox-circle-line me-1" />Delivered
+                      </button>
+                    )}
+
+                    {/* Awaiting pickup — reassign only */}
+                    {del.status === 'assigned' && (
+                      <button className="btn btn-sm btn-outline-primary flex-fill" onClick={() => openModal('reassign', del)}>
+                        <i className="ri-user-follow-line me-1" />Reassign Driver
+                      </button>
+                    )}
+
+                    {/* Delivery attempted — Schedule Retry or Cancel */}
+                    {del.status === 'delivery_attempted' && del.attempts < 2 && (
+                      <button className="btn btn-sm btn-warning flex-fill" onClick={() => openModal('scheduleRetry', del)}>
+                        <i className="ri-refresh-line me-1" />Schedule Retry
+                      </button>
+                    )}
+                    {del.status === 'delivery_attempted' && (
+                      <button className="btn btn-sm btn-danger flex-fill" onClick={() => openModal('cancelReturn', del)}>
+                        <i className="ri-close-circle-line me-1" />
+                        {del.attempts >= 2 ? 'Cancel Order (Mandatory)' : 'Cancel Order'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      </>)} {/* end activeTab === 'live' */}
+
+      {/* ════════════════════════════════════════════════
+          MODALS (shared across both tabs)
+      ════════════════════════════════════════════════ */}
+
+      {activeModal && selected && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={e => e.target === e.currentTarget && closeModal()}>
+
+          {/* ── VIEW DETAILS ──────────────────────────── */}
+          {activeModal === 'view' && (
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
+              <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
+                <div>
+                  <h5 className="mb-0">{selected.id}</h5>
+                  <div className="text-muted small">{selected.orderId}</div>
+                </div>
+                <div className="d-flex gap-2 align-items-center">
+                  {(() => { const c = STATUS_CFG[selected.status]; return (
+                    <span className="badge" style={{ background: c.bg, color: c.color }}>
+                      <i className={`${c.icon} me-1`} />{c.label}
+                    </span>
+                  )})()}
+                  <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
+                </div>
+              </div>
+              <div className="p-4 d-flex flex-column gap-3">
+                {/* Customer */}
+                <div>
+                  <div className="text-muted small mb-1 fw-medium">Customer</div>
+                  <div className="fw-medium">{selected.customer.name}</div>
+                  <div className="small">{selected.customer.phone}</div>
+                  <div className="small text-muted"><i className="ri-map-pin-line me-1" />{selected.customer.address}</div>
+                </div>
+                {/* Driver */}
+                <div>
+                  <div className="text-muted small mb-1 fw-medium">Driver</div>
+                  <div className="d-flex align-items-center gap-2 p-2 border rounded">
+                    <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white flex-shrink-0"
+                      style={{ width: 36, height: 36, fontSize: 12 }}>
+                      {selected.driver.name.split(' ').map(n => n[0]).join('')}
                     </div>
-                  </>
-                )}
-                {cancelStep===3 && (
-                  <>
-                    <div style={{ textAlign:'center', marginBottom:24 }}>
-                      <div style={{ width:56, height:56, borderRadius:'50%', background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 12px' }}>
-                        <i className="ri-database-2-fill" style={{ fontSize:32, color:'#22c55e' }} />
+                    <div className="flex-grow-1">
+                      <div className="fw-medium">{selected.driver.name}</div>
+                      <div className="small text-muted">{selected.driver.phone} · {selected.driver.bike}</div>
+                      <div className="small text-muted">{selected.driver.zone}</div>
+                    </div>
+                    <a href={`tel:${selected.driver.phone}`} className="btn btn-sm btn-success">
+                      <i className="ri-phone-line me-1" />Call
+                    </a>
+                  </div>
+                </div>
+                {/* Items */}
+                <div>
+                  <div className="text-muted small mb-1 fw-medium">Items</div>
+                  <div className="border rounded p-2" style={{ fontSize: 13 }}>
+                    {selected.items.map((item, i) => (
+                      <div key={i} className="d-flex justify-content-between py-1 border-bottom">
+                        <span>{item.name}</span><span className="text-muted">{item.qty}</span>
                       </div>
-                      <div style={{ fontWeight:700, fontSize:16 }}>Confirm Goods Received & Stock Restored</div>
+                    ))}
+                    <div className="d-flex justify-content-between pt-1 fw-bold">
+                      <span>Total</span><span>{fmt(selected.total)}</span>
                     </div>
-                    <div style={{ display:'flex', gap:10 }}>
-                      <button onClick={() => setCancelStep(2)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Back</button>
-                      <button onClick={cancelAndReturn} disabled={submitting} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }}>
-                        {submitting?'Cancelling…':'Confirm — Cancel Order & Restore Stock'}
-                      </button>
+                  </div>
+                </div>
+                {/* Meta */}
+                <div className="row g-2">
+                  <div className="col-6">
+                    <div className="border rounded p-2 text-center">
+                      <div className="text-muted" style={{ fontSize: 10 }}>ZONE</div>
+                      <div className="fw-medium small">{selected.zone}</div>
                     </div>
-                  </>
+                  </div>
+                  <div className="col-6">
+                    <div className="border rounded p-2 text-center">
+                      <div className="text-muted" style={{ fontSize: 10 }}>DISPATCHED</div>
+                      <div className="fw-medium small">{selected.dispatchTime}</div>
+                    </div>
+                  </div>
+                  {selected.attempts > 0 && (
+                    <div className="col-12">
+                      <div className="alert alert-warning p-2 mb-0 small">
+                        <i className="ri-error-warning-line me-1" />
+                        {selected.attempts} delivery attempt(s). Max 2 allowed.
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {selected.notes && (
+                  <div className="small text-muted border-start border-warning ps-2">{selected.notes}</div>
                 )}
+                <div className="d-flex gap-2 pt-2 border-top">
+                  <button className="btn btn-outline-primary flex-fill" onClick={() => { closeModal(); setTimeout(() => openModal('reassign', selected), 100) }}>
+                    <i className="ri-user-add-line me-1" />Reassign Driver
+                  </button>
+                  <button className="btn btn-outline-secondary" onClick={closeModal}>Close</button>
+                </div>
               </div>
             </div>
           )}
+
+          {/* ── REASSIGN DRIVER ───────────────────────── */}
+          {activeModal === 'reassign' && (
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 460 }}>
+              <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
+                <h5 className="mb-0">Reassign Driver</h5>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
+              </div>
+              <div className="p-4">
+                <div className="small text-muted mb-3 p-2 border rounded bg-light">
+                  <strong>{selected.id}</strong> · {selected.customer.name} · {selected.customer.address}
+                </div>
+                <div className="mb-2 small text-muted">Current driver: <strong>{selected.driver.name}</strong></div>
+                <label className="form-label fw-medium small">Select Replacement Driver</label>
+                {DRIVERS_ALL.filter(d => d.active && d.id !== selected.driver.id).map(driver => (
+                  <div key={driver.id}
+                    className="d-flex align-items-center gap-3 p-3 border rounded mb-2"
+                    style={{ cursor: 'pointer',
+                      background: Number(reassignDriverId) === driver.id ? '#ede9fe' : '#fff',
+                      borderColor: Number(reassignDriverId) === driver.id ? '#8b5cf6' : '#dee2e6' }}
+                    onClick={() => setReassignDriverId(String(driver.id))}>
+                    <div className="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white flex-shrink-0"
+                      style={{ width: 36, height: 36, fontSize: 11 }}>
+                      {driver.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div className="flex-grow-1">
+                      <div className="fw-medium small">{driver.name}</div>
+                      <div className="text-muted" style={{ fontSize: 11 }}>{driver.phone} · {driver.zone}</div>
+                    </div>
+                    {Number(reassignDriverId) === driver.id && <i className="ri-checkbox-circle-fill text-primary fs-18" />}
+                  </div>
+                ))}
+                <div className="d-flex gap-2 mt-3">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-primary flex-fill" onClick={reassignDriver} disabled={!reassignDriverId}>
+                    <i className="ri-user-add-line me-1" />Reassign & Notify
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── DELIVERY ATTEMPTED ────────────────────── */}
+          {activeModal === 'attempted' && (
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 440 }}>
+              <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
+                <h5 className="mb-0">Mark Delivery Attempted</h5>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
+              </div>
+              <div className="p-4">
+                <div className="alert alert-warning mb-3 small">
+                  <i className="ri-route-line me-1" />
+                  Customer did not respond or was unavailable. This was attempt <strong>{selected.attempts + 1}</strong> of 2.
+                  {selected.attempts >= 1 && <><br/><strong className="text-danger">This is the final attempt. If failed again, the order must be cancelled.</strong></>}
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-medium small">Notes</label>
+                  <textarea className="form-control" rows={3}
+                    placeholder="e.g. No response after knocking and calling twice. 15-min timer expired."
+                    value={attemptNote} onChange={e => setAttemptNote(e.target.value)} />
+                </div>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-warning flex-fill" onClick={markAttempted}>
+                    <i className="ri-route-line me-1" />Confirm Attempted
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── CONFIRM DELIVERED ─────────────────────── */}
+          {activeModal === 'delivered' && (
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 420 }}>
+              <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
+                <h5 className="mb-0">Confirm Delivery</h5>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
+              </div>
+              <div className="p-4">
+                <div className="alert alert-success mb-3 small">
+                  <i className="ri-checkbox-circle-line me-1" />
+                  Confirming that <strong>{selected.customer.name}</strong>'s order has been successfully delivered by <strong>{selected.driver.name}</strong>.
+                  This order will be marked as <strong>Delivered</strong> and removed from active deliveries.
+                </div>
+                <div className="small text-muted mb-3">
+                  Note: Customer must have confirmed delivery on the app, and driver must have confirmed on the Driver App for this to be valid.
+                </div>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-success flex-fill" onClick={markDelivered}>
+                    <i className="ri-checkbox-circle-line me-1" />Mark as Delivered
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── SCHEDULE RETRY ────────────────────────── */}
+          {activeModal === 'scheduleRetry' && (
+            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:500 }}>
+              {/* Dark header */}
+              <div style={{ background:'#1e293b', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
+                <div className="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div className="fw-bold fs-15">
+                      <i className="ri-refresh-line me-2 text-warning"/>Schedule New Delivery Attempt
+                    </div>
+                    <div style={{ fontSize:12, opacity:0.7, marginTop:4 }}>{selected.orderId} · {selected.customer.name}</div>
+                  </div>
+                  <button className="btn btn-sm btn-outline-light" onClick={closeModal}><i className="ri-close-line"/></button>
+                </div>
+              </div>
+
+              <div className="p-4">
+                {/* What happened */}
+                <div className="border rounded p-3 mb-4" style={{ background:'#fffbeb', fontSize:12 }}>
+                  <div className="fw-medium small mb-2" style={{ color:'#92400e' }}>What happened (Attempt {selected.attempts} of 2):</div>
+                  {[
+                    { icon:'ri-truck-line',         text:`${selected.driver.name} arrived at delivery location` },
+                    { icon:'ri-tap-line',            text:'Driver tapped CUSTOMER UNAVAILABLE on Driver App' },
+                    { icon:'ri-notification-3-line', text:'System sent push notification + SMS to customer' },
+                    { icon:'ri-timer-line',          text:'15-minute timer expired — customer did not respond' },
+                  ].map((s, i) => (
+                    <div key={i} className="d-flex align-items-center gap-2 py-1">
+                      <i className={`${s.icon} text-warning flex-shrink-0`} style={{ fontSize:12 }}/>
+                      <span>{s.text}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Action */}
+                <div className="alert alert-info small mb-3">
+                  <i className="ri-information-line me-1"/>
+                  Scheduling a new attempt will move this delivery back to <strong>Awaiting Pickup</strong>.
+                  The driver will be notified to attempt delivery again. <strong>Maximum 2 attempts total.</strong>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-medium small">Re-attempt Notes <span className="text-danger">*</span></label>
+                  <textarea className="form-control" rows={3}
+                    placeholder="e.g. Customer confirmed available after 5pm. Called on 08167891234. Admin verified."
+                    value={retryNote} onChange={e => setRetryNote(e.target.value)}/>
+                  <div className="text-muted" style={{ fontSize:11, marginTop:4 }}>
+                    This note is added to the order timeline and shown to the driver.
+                  </div>
+                </div>
+
+                <div className="d-flex gap-2">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-warning flex-fill" onClick={scheduleRetry} disabled={!retryNote}>
+                    <i className="ri-refresh-line me-1"/>Confirm — Schedule Retry
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── CANCEL ORDER & RETURN STOCK ───────────── */}
+          {activeModal === 'cancelReturn' && (
+            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:520 }}>
+              {/* Dark header */}
+              <div style={{ background:'#7f1d1d', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
+                <div className="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div className="fw-bold fs-15">
+                      <i className="ri-close-circle-line me-2"/>
+                      {selected.attempts >= 2 ? 'Cancel Order — 2 Attempts Exhausted' : 'Cancel Order & Return Goods'}
+                    </div>
+                    <div style={{ fontSize:12, opacity:0.7, marginTop:4 }}>{selected.orderId} · {selected.customer.name}</div>
+                  </div>
+                  <button className="btn btn-sm btn-outline-light" onClick={closeModal}><i className="ri-close-line"/></button>
+                </div>
+              </div>
+
+              <div className="p-4">
+
+                {/* Step 1 — Reason */}
+                {cancelStep === 1 && (
+                  <>
+                    {selected.attempts >= 2 && (
+                      <div className="alert alert-danger small mb-3">
+                        <i className="ri-alarm-warning-line me-1"/>
+                        <strong>Maximum 2 delivery attempts reached.</strong> This order cannot be re-attempted and must be cancelled.
+                      </div>
+                    )}
+
+                    <div className="border rounded p-3 mb-4" style={{ background:'#f8fafc', fontSize:12 }}>
+                      <div className="fw-medium small mb-2 text-muted">This cancellation will trigger:</div>
+                      {[
+                        { icon:'ri-refund-2-line',       color:'#22c55e', text:'Refund via Paystack to customer' },
+                        { icon:'ri-store-2-line',        color:'#3b82f6', text:'Driver instructed to return goods to store' },
+                        { icon:'ri-archive-line',        color:'#f59e0b', text:'Admin / Dispatch Manager checks goods in' },
+                        { icon:'ri-database-2-line',     color:'#8b5cf6', text:'Stock quantities restored in system' },
+                      ].map((s, i) => (
+                        <div key={i} className="d-flex align-items-center gap-2 py-1">
+                          <i className={`${s.icon} flex-shrink-0`} style={{ color:s.color, fontSize:13 }}/>
+                          <span>{s.text}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label fw-medium small">Cancellation Reason <span className="text-danger">*</span></label>
+                      <textarea className="form-control" rows={3}
+                        placeholder={selected.attempts >= 2
+                          ? 'Customer unreachable after 2 delivery attempts. Goods returned to store.'
+                          : 'Why is this order being cancelled?'}
+                        value={cancelReason} onChange={e => setCancelReason(e.target.value)}/>
+                    </div>
+
+                    <div className="d-flex gap-2">
+                      <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Go Back</button>
+                      <button className="btn btn-danger flex-fill" onClick={() => setCancelStep(2)} disabled={!cancelReason}>
+                        <i className="ri-arrow-right-line me-1"/>Next — Return Goods to Store
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* Step 2 — Return goods confirmation */}
+                {cancelStep === 2 && (
+                  <>
+                    <div className="text-center mb-4">
+                      <div className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                        style={{ width:56, height:56, background:'#dbeafe' }}>
+                        <i className="ri-store-2-fill fs-24" style={{ color:'#3b82f6' }}/>
+                      </div>
+                      <h5>Instruct Driver to Return Goods</h5>
+                      <p className="text-muted small mb-0">
+                        Call or message <strong>{selected.driver.name}</strong> ({selected.driver.phone}) and instruct them to bring all goods back to the Bems Farms store immediately.
+                      </p>
+                    </div>
+
+                    <div className="alert alert-warning small mb-4">
+                      <i className="ri-phone-line me-1"/>
+                      <strong>Call {selected.driver.name}:</strong> {selected.driver.phone}
+                      <br/>Driver is returning goods from: <strong>{selected.customer.address}</strong>
+                    </div>
+
+                    {/* Summary of goods */}
+                    <div className="border rounded p-3 mb-4" style={{ fontSize:12 }}>
+                      <div className="fw-medium small mb-2">Goods to be returned:</div>
+                      {selected.items.map((item, i) => (
+                        <div key={i} className="d-flex justify-content-between py-1 border-bottom">
+                          <span>{item.name}</span>
+                          <span className="text-muted">{item.qty}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="d-flex gap-2">
+                      <button className="btn btn-outline-secondary flex-fill" onClick={() => setCancelStep(1)}>Back</button>
+                      <button className="btn btn-primary flex-fill" onClick={() => setCancelStep(3)}>
+                        <i className="ri-check-line me-1"/>Driver Contacted — Next
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* Step 3 — Stock restoration confirmation */}
+                {cancelStep === 3 && (
+                  <>
+                    <div className="text-center mb-4">
+                      <div className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                        style={{ width:56, height:56, background:'#dcfce7' }}>
+                        <i className="ri-database-2-fill fs-24 text-success"/>
+                      </div>
+                      <h5>Confirm Goods Received & Stock Restored</h5>
+                      <p className="text-muted small mb-0">
+                        Once the driver returns goods to the store, confirm receipt and stock will be restored.
+                      </p>
+                    </div>
+
+                    <div className="border rounded p-3 mb-4" style={{ background:'#f0fdf4', fontSize:12 }}>
+                      <div className="fw-medium small mb-2 text-success">Checklist before confirming:</div>
+                      {[
+                        'All goods physically received and counted at store',
+                        'Items checked for damage',
+                        'Quantities match the original order',
+                        'Stock will be incremented back in the system',
+                      ].map((item, i) => (
+                        <div key={i} className="d-flex align-items-center gap-2 py-1">
+                          <i className="ri-checkbox-circle-line text-success flex-shrink-0"/>
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="d-flex gap-2">
+                      <button className="btn btn-outline-secondary flex-fill" onClick={() => setCancelStep(2)}>Back</button>
+                      <button className="btn btn-danger flex-fill" onClick={cancelAndReturnStock}>
+                        <i className="ri-close-circle-line me-1"/>Confirm — Cancel Order & Restore Stock
+                      </button>
+                    </div>
+                  </>
+                )}
+
+              </div>
+            </div>
+          )}
+
         </div>
       )}
     </div>

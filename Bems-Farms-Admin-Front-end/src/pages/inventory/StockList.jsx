@@ -1,209 +1,287 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
+import { useState, useMemo } from 'react'
 
-const STATUS_CFG = {
-  in_stock:     { label:'In Stock',     bg:'#dcfce7', color:'#166534' },
-  low_stock:    { label:'Low Stock',    bg:'#fef9c3', color:'#854d0e' },
-  out_of_stock: { label:'Out of Stock', bg:'#fee2e2', color:'#991b1b' },
+const MOCK_STOCK = [
+  { id:1, name:'Basmati Rice (5kg)', sku:'GRN-RIC-001', category:'Grains & Carbs', unit:'bag',   stock:120, reorder:20, cost:4800,  price:6500,  status:'in_stock',    updated:'2026-06-25' },
+  { id:2, name:'Fresh Tomatoes',      sku:'VEG-TOM-001', category:'Vegetables',    unit:'kg',    stock:8,   reorder:15, cost:800,   price:1200,  status:'low_stock',   updated:'2026-06-26' },
+  { id:3, name:'Palm Oil (25L)',       sku:'OIL-PLM-001', category:'Grains & Carbs',unit:'crate', stock:0,   reorder:5,  cost:18000, price:24000, status:'out_of_stock', updated:'2026-06-20' },
+  { id:4, name:'Catfish (Smoked)',     sku:'SEA-CAT-001', category:'Seafood',       unit:'kg',    stock:35,  reorder:10, cost:3200,  price:4500,  status:'in_stock',    updated:'2026-06-24' },
+  { id:5, name:'Fresh Pepper (Tatashe)',sku:'VEG-PEP-001',category:'Vegetables',   unit:'kg',    stock:6,   reorder:10, cost:700,   price:1100,  status:'low_stock',   updated:'2026-06-26' },
+  { id:6, name:'Chicken (Whole)',      sku:'MEA-CHK-001', category:'Meat',          unit:'kg',    stock:52,  reorder:20, cost:2800,  price:3800,  status:'in_stock',    updated:'2026-06-25' },
+  { id:7, name:'Fresh Yam (Tuber)',    sku:'GRN-YAM-001', category:'Grains & Carbs',unit:'tuber', stock:90,  reorder:30, cost:1200,  price:1800,  status:'in_stock',    updated:'2026-06-23' },
+  { id:8, name:'Cassava Flour (2kg)', sku:'GRN-CAS-001', category:'Grains & Carbs',unit:'pack',  stock:14,  reorder:15, cost:1100,  price:1600,  status:'low_stock',   updated:'2026-06-22' },
+  { id:9, name:'Fresh Milk (1L)',      sku:'DAI-MLK-001', category:'Dairy & Eggs',  unit:'bottle',stock:40,  reorder:12, cost:900,   price:1400,  status:'in_stock',    updated:'2026-06-26' },
+  { id:10,'name':'Plantain (Bunch)',   sku:'FRM-PLT-001', category:'Fresh Farm',    unit:'bunch', stock:25,  reorder:10, cost:1500,  price:2200,  status:'in_stock',    updated:'2026-06-24' },
+]
+
+const STATUS_CONFIG = {
+  in_stock:    { label:'In Stock',     cls:'bg-success-subtle text-success' },
+  low_stock:   { label:'Low Stock',    cls:'bg-warning-subtle text-warning' },
+  out_of_stock:{ label:'Out of Stock', cls:'bg-danger-subtle text-danger'   },
 }
 
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'var(--orange-accent)',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }
-const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
-const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text-primary)' }
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'var(--body-font)', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
-
 export default function StockList() {
-  const navigate = useNavigate()
-  const [products,    setProducts]  = useState([])
-  const [loading,     setLoading]   = useState(false)
-  const [page,        setPage]      = useState(1)
-  const [search,      setSearch]    = useState('')
-  const [selected,    setSelected]  = useState([])
-  const [meta,        setMeta]      = useState({ total:0, pages:1, stats:{} })
-  const [stockStatus, setStockStatus] = useState('')
+  const [search, setSearch]     = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [activeModal, setActiveModal] = useState(null)
+  const [editItem, setEditItem] = useState(null)
+  const [stock, setStock]       = useState(MOCK_STOCK)
+  const [form, setForm]         = useState({ name:'', sku:'', category:'', unit:'', stock:0, reorder:10, cost:0, price:0 })
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = { page, limit:20, search }
-      if (stockStatus) params.stock_status = stockStatus
-      const res = await api.get('/admin/inventory', { params })
-      setProducts(res.data.products || [])
-      setMeta({ total: res.data.total || 0, pages: res.data.pages || 1, stats: res.data.stats || {} })
-    } catch (err) { 
-      toast.error(err.response?.data?.message || 'Failed to load products') 
-    } finally { 
-      setLoading(false) 
+  const filtered = useMemo(() => stock.filter(s => {
+    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) ||
+                        s.sku.toLowerCase().includes(search.toLowerCase()) ||
+                        s.category.toLowerCase().includes(search.toLowerCase())
+    const matchStatus = filterStatus === 'all' || s.status === filterStatus
+    return matchSearch && matchStatus
+  }), [stock, search, filterStatus])
+
+  const totals = useMemo(() => ({
+    all:      stock.length,
+    in_stock: stock.filter(s => s.status === 'in_stock').length,
+    low:      stock.filter(s => s.status === 'low_stock').length,
+    out:      stock.filter(s => s.status === 'out_of_stock').length,
+  }), [stock])
+
+  function openAdd() {
+    setEditItem(null)
+    setForm({ name:'', sku:'', category:'', unit:'piece', stock:0, reorder:10, cost:0, price:0 })
+    setActiveModal('add')
+  }
+  function openEdit(item) {
+    setEditItem(item)
+    setForm({ name:item.name, sku:item.sku, category:item.category, unit:item.unit, stock:item.stock, reorder:item.reorder, cost:item.cost, price:item.price })
+    setActiveModal('add')
+  }
+  function openDelete(item) { setEditItem(item); setActiveModal('delete') }
+  function closeModal() { setActiveModal(null); setEditItem(null) }
+
+  function computeStatus(qty, reorder) {
+    if (qty === 0) return 'out_of_stock'
+    if (qty <= reorder) return 'low_stock'
+    return 'in_stock'
+  }
+
+  function saveForm(e) {
+    e.preventDefault()
+    const status = computeStatus(Number(form.stock), Number(form.reorder))
+    const today  = new Date().toISOString().slice(0,10)
+    if (editItem) {
+      setStock(prev => prev.map(s => s.id === editItem.id ? { ...s, ...form, status, updated: today } : s))
+    } else {
+      const newId = Math.max(...stock.map(s => s.id)) + 1
+      setStock(prev => [...prev, { id:newId, ...form, status, updated: today }])
     }
-  }, [page, search, stockStatus])
-
-  useEffect(() => { fetchProducts() }, [fetchProducts])
-  useEffect(() => { setPage(1) }, [search, stockStatus])
-
-  const totals = {
-    all: Number(meta.stats?.total_skus || 0),
-    low: Number(meta.stats?.low_stock || 0),
-    out: Number(meta.stats?.out_of_stock || 0),
+    closeModal()
   }
 
-  function stockColor(p) {
-    if (p.stock === 0) return '#f06548'
-    if (p.stock <= (p.low_stock_threshold || 0)) return '#f7b84b'
-    return '#0ab39c'
+  function confirmDelete() {
+    setStock(prev => prev.filter(s => s.id !== editItem.id))
+    closeModal()
   }
-
-  function getStatusCfg(p) {
-    if (p.stock_status === 'out_of_stock') return STATUS_CFG.out_of_stock
-    if (p.stock_status === 'low') return STATUS_CFG.low_stock
-    return STATUS_CFG.in_stock
-  }
-
-  function toggleSelect(id) {
-    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
-  }
-
-  function toggleAll() {
-    setSelected(prev => prev.length === products.length ? [] : products.map(p => p.id))
-  }
-
-  function formatDate(dateStr) {
-    if (!dateStr) return '—'
-    const date = new Date(dateStr)
-    return date.toISOString().slice(0, 10)
-  }
-
-  const B = 'var(--border)', S = '#6b7280'
 
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      {/* Page header & Breadcrumbs */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
-        <div>
-          <div style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>Stock List</div>
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
-          <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Inventory</span>
-          <i className="ri-arrow-right-s-line" style={{ fontSize:19 }} />
-          <span style={{ fontWeight:600, color:'var(--text-primary)' }}>Stock List</span>
-        </div>
+    <div className="container-fluid">
+      {/* Breadcrumb */}
+      <div className="gap-2 page-heading mb-3">
+        <h6 className="flex-grow-1 mb-0">Stock List</h6>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><a href="#">Inventory</a></li>
+          <li className="breadcrumb-item active">Stock List</li>
+        </ul>
       </div>
 
       {/* Stat cards */}
-      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16, marginBottom:24 }}>
+      <div className="row g-3 mb-4">
         {[
-          { label:'Total SKUs',   value:totals.all, icon:'ri-box-3-line', color:'#405189', valueColor:'var(--text-primary)' },
-          { label:'In Stock',     value:Math.max(0, totals.all - totals.low - totals.out), icon:'ri-checkbox-circle-line', color:'#0ab39c', valueColor:'var(--text-primary)' },
-          { label:'Low Stock',    value:totals.low, icon:'ri-alert-line', color:'#f7b84b', valueColor:'#f59e0b' },
-          { label:'Out of Stock', value:totals.out, icon:'ri-close-circle-line', color:'#f06548', valueColor:'#ef4444' },
+          { label:'Total SKUs',    value: totals.all,      icon:'ri-box-3-line',           color:'#405189', filter:'all' },
+          { label:'In Stock',      value: totals.in_stock, icon:'ri-checkbox-circle-line',  color:'#0ab39c', filter:'in_stock' },
+          { label:'Low Stock',     value: totals.low,      icon:'ri-alert-line',            color:'#f7b84b', filter:'low_stock' },
+          { label:'Out of Stock',  value: totals.out,      icon:'ri-close-circle-line',     color:'#f06548', filter:'out_of_stock' },
         ].map(c => (
-          <div key={c.label} style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-            <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <i className={c.icon} style={{ fontSize:20, color:c.color }}/>
-            </div>
-            <div>
-              <div style={{ fontSize:22, fontWeight:800, color:c.valueColor }}>{c.value}</div>
-              <div style={{ fontSize:11, color:S }}>{c.label}</div>
+          <div className="col-6 col-xl-3" key={c.label}>
+            <div className="card mb-0 cursor-pointer" style={{ borderLeft:`3px solid ${c.color}` }} onClick={() => setFilterStatus(c.filter)}>
+              <div className="card-body d-flex align-items-center gap-3 py-3">
+                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width:44, height:44, background:`${c.color}1a` }}>
+                  <i className={`${c.icon} fs-20`} style={{ color:c.color }}></i>
+                </div>
+                <div>
+                  <div className="fs-22 fw-bold" style={{ color:c.color }}>{c.value}</div>
+                  <div className="text-muted" style={{ fontSize:12 }}>{c.label}</div>
+                </div>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
       {/* Table card */}
-      <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
-        <div style={{ padding:'16px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <div style={{ position:'relative', flex:1, minWidth:200 }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:20 }}/>
-            <input style={{ ...inp, paddingLeft:32 }} placeholder="Search product, SKU..." value={search} onChange={e => setSearch(e.target.value)}/>
+      <div className="card">
+        <div className="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+          <div className="position-relative">
+            <input type="text" className="form-control ps-9" placeholder="Search product, SKU…" value={search} onChange={e => setSearch(e.target.value)} style={{ minWidth:220 }} />
+            <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
           </div>
-          <select style={{ ...inp, width:'auto', minWidth:140 }} value={stockStatus} onChange={e => setStockStatus(e.target.value)}>
-            <option value="">All Status</option>
-            <option value="ok">In Stock</option>
-            <option value="low">Low Stock</option>
-            <option value="out">Out of Stock</option>
-          </select>
-          <button style={btnP} onClick={() => navigate('/products/add')}><i className="ri-add-line"/>Add Product</button>
+          <div className="d-flex gap-2 ms-auto flex-wrap">
+            <select className="form-select" style={{ width:'auto' }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+              <option value="all">All Status</option>
+              <option value="in_stock">In Stock</option>
+              <option value="low_stock">Low Stock</option>
+              <option value="out_of_stock">Out of Stock</option>
+            </select>
+            <button className="btn btn-primary d-flex align-items-center gap-1" onClick={openAdd}>
+              <i className="ri-add-line"></i> Add Product
+            </button>
+          </div>
         </div>
-
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'var(--body-font)' }}>
-            <thead>
-              <tr style={{ background:'var(--bg-subtle)', borderBottom:`1px solid ${B}` }}>
-                <th style={TH}>
-                  <input type="checkbox" checked={selected.length === products.length && products.length > 0} onChange={toggleAll} style={{ cursor:'pointer' }}/>
-                </th>
-                {['Product','SKU','Category','Stock','Reorder','Status','Cost (₦)','Price (₦)','Updated'].map(h => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={10} style={{ textAlign:'center', padding:'40px 0' }}>
-                  <div className="spinner-border spinner-border-sm text-primary me-2"/>Loading...
-                </td></tr>
-              ) : products.length === 0 ? (
-                <tr><td colSpan={10} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
-                  <i className="ri-box-3-line" style={{ fontSize:43, display:'block', marginBottom:8 }}/>No products found
-                </td></tr>
-              ) : products.map(p => {
-                const sc = getStatusCfg(p)
-                return (
-                  <tr key={p.id}
-                    onMouseEnter={e => e.currentTarget.style.background='#fafafa'}
-                    onMouseLeave={e => e.currentTarget.style.background=''}>
-                    <td style={TD}>
-                      <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggleSelect(p.id)} style={{ cursor:'pointer' }}/>
-                    </td>
-                    <td style={TD}>
-                      <div style={{ fontWeight:600 }}>{p.name}</div>
-                      <div style={{ fontSize:11, color:S }}>{p.unit_of_measure || p.unit}</div>
-                    </td>
-                    <td style={TD}>
-                      <span style={{ fontSize:12, color:'#d53f8c', fontWeight:600, fontFamily:'var(--font-mono, monospace)' }}>{p.sku}</span>
-                    </td>
-                    <td style={TD}>
-                      <span style={{ background:'var(--bg-subtle)', color:'var(--text-secondary)', border:`1px solid ${B}`, borderRadius:4, padding:'3px 10px', fontSize:11, fontWeight:600 }}>
-                        {p.category || '—'}
-                      </span>
-                    </td>
-                    <td style={TD}>
-                      <span style={{ fontWeight:700, color:stockColor(p) }}>{p.stock}</span>
-                    </td>
-                    <td style={{ ...TD, color:S }}>{p.low_stock_threshold || 0}</td>
-                    <td style={TD}>
-                      <span style={{ fontWeight: r => r.status==='active'?700:500 }}>
-                        ₦{Number(p.cost_price || 0).toLocaleString()}
-                      </span>
-                    </td>
-                    <td style={TD}>₦{Number(p.unit_price || p.price || 0).toLocaleString()}</td>
-                    <td style={TD}><span style={{ color:S }}>{formatDate(p.updated_at || p.created_at)}</span></td>
-                    <td style={TD}><span style={{ background:sc.bg, color:sc.color, borderRadius:50, padding:'3px 10px', fontSize:11, fontWeight:700 }}>{sc.label}</span></td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div style={{ padding:'12px 20px', fontSize:12, color:S, borderTop:`1px solid ${B}`, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
-          <span>Showing {products.length} of {meta.total} products</span>
-          {meta.pages > 1 && (
-            <div style={{ display:'flex', gap:6 }}>
-              <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===1?0.4:1 }}>
-                <i className="ri-arrow-left-s-line"/>Prev
-              </button>
-              <span style={{ display:'flex', alignItems:'center', fontSize:12, color:'var(--text-secondary)', fontWeight:600 }}>Page {page} / {meta.pages}</span>
-              <button onClick={() => setPage(p => Math.min(meta.pages,p+1))} disabled={page===meta.pages} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===meta.pages?0.4:1 }}>
-                Next<i className="ri-arrow-right-s-line"/>
-              </button>
-            </div>
-          )}
+        <div className="card-body pt-0">
+          <div className="table-responsive">
+            <table className="table align-middle text-nowrap mb-0">
+              <thead>
+                <tr className="bg-light border-bottom">
+                  <th><input type="checkbox" className="form-check-input" /></th>
+                  <th className="fw-medium text-muted">Product</th>
+                  <th className="fw-medium text-muted">SKU</th>
+                  <th className="fw-medium text-muted">Category</th>
+                  <th className="fw-medium text-muted">Stock</th>
+                  <th className="fw-medium text-muted">Reorder</th>
+                  <th className="fw-medium text-muted">Status</th>
+                  <th className="fw-medium text-muted">Cost (₦)</th>
+                  <th className="fw-medium text-muted">Price (₦)</th>
+                  <th className="fw-medium text-muted">Updated</th>
+                  <th className="fw-medium text-muted">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr><td colSpan={11} className="text-center py-5 text-muted">
+                    <i className="ri-box-3-line fs-2 d-block mb-2"></i>No products found
+                  </td></tr>
+                )}
+                {filtered.map(s => {
+                  const sc = STATUS_CONFIG[s.status]
+                  return (
+                    <tr key={s.id}>
+                      <td><input type="checkbox" className="form-check-input" /></td>
+                      <td>
+                        <div className="fw-medium">{s.name}</div>
+                        <div className="text-muted" style={{ fontSize:11 }}>{s.unit}</div>
+                      </td>
+                      <td><code style={{ fontSize:12 }}>{s.sku}</code></td>
+                      <td><span className="badge bg-light text-dark border">{s.category}</span></td>
+                      <td>
+                        <span className="fw-bold" style={{ color: s.status === 'out_of_stock' ? '#f06548' : s.status === 'low_stock' ? '#f7b84b' : '#0ab39c' }}>
+                          {s.stock}
+                        </span>
+                      </td>
+                      <td className="text-muted">{s.reorder}</td>
+                      <td><span className={`badge ${sc.cls}`}>{sc.label}</span></td>
+                      <td>₦{s.cost.toLocaleString()}</td>
+                      <td>₦{s.price.toLocaleString()}</td>
+                      <td className="text-muted">{s.updated}</td>
+                      <td>
+                        <div className="d-flex gap-1">
+                          <button className="btn btn-sm btn-soft-primary p-1 px-2" onClick={() => openEdit(s)} title="Edit"><i className="ri-pencil-line"></i></button>
+                          <button className="btn btn-sm btn-soft-danger p-1 px-2" onClick={() => openDelete(s)} title="Delete"><i className="ri-delete-bin-line"></i></button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 text-muted" style={{ fontSize:13 }}>Showing {filtered.length} of {stock.length} products</div>
         </div>
       </div>
+
+      {/* Add / Edit Modal */}
+      {activeModal === 'add' && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
+            <div className="modal-dialog modal-dialog-centered modal-lg">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h6 className="modal-title">{editItem ? 'Edit Product Stock' : 'Add Product to Stock'}</h6>
+                  <button className="btn-close" onClick={closeModal}></button>
+                </div>
+                <div className="modal-body">
+                  <form onSubmit={saveForm}>
+                    <div className="row g-3">
+                      <div className="col-12">
+                        <label className="form-label fw-medium">Product Name <span className="text-danger">*</span></label>
+                        <input className="form-control" required value={form.name} onChange={e => setForm(f => ({...f, name:e.target.value}))} placeholder="e.g., Basmati Rice 5kg" />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">SKU <span className="text-danger">*</span></label>
+                        <input className="form-control" required value={form.sku} onChange={e => setForm(f => ({...f, sku:e.target.value}))} placeholder="e.g., GRN-RIC-001" />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Category</label>
+                        <select className="form-select" value={form.category} onChange={e => setForm(f => ({...f, category:e.target.value}))}>
+                          <option value="">— Select —</option>
+                          {['Grains & Carbs','Vegetables','Meat','Seafood','Dairy & Eggs','Beverages','Fresh Farm','Meals'].map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Unit</label>
+                        <select className="form-select" value={form.unit} onChange={e => setForm(f => ({...f, unit:e.target.value}))}>
+                          {['kg','g','litre','ml','pack','piece','bunch','bag','crate','tuber','bottle','dozen','carton'].map(u => <option key={u}>{u}</option>)}
+                        </select>
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-medium">Stock Qty <span className="text-danger">*</span></label>
+                        <input type="number" className="form-control" min="0" required value={form.stock} onChange={e => setForm(f => ({...f, stock:e.target.value}))} />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-medium">Reorder Level</label>
+                        <input type="number" className="form-control" min="0" value={form.reorder} onChange={e => setForm(f => ({...f, reorder:e.target.value}))} />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-medium">Cost (₦)</label>
+                        <input type="number" className="form-control" min="0" value={form.cost} onChange={e => setForm(f => ({...f, cost:e.target.value}))} />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-medium">Selling Price (₦)</label>
+                        <input type="number" className="form-control" min="0" value={form.price} onChange={e => setForm(f => ({...f, price:e.target.value}))} />
+                      </div>
+                    </div>
+                    <div className="d-flex gap-2 mt-4">
+                      <button type="button" className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
+                      <button type="submit" className="btn btn-primary w-100">{editItem ? 'Save Changes' : 'Add to Stock'}</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
+        </>
+      )}
+
+      {/* Delete Modal */}
+      {activeModal === 'delete' && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
+            <div className="modal-dialog modal-dialog-centered modal-sm">
+              <div className="modal-content p-4 text-center">
+                <div className="d-flex justify-content-center mb-3">
+                  <div className="rounded-circle bg-danger-subtle d-flex align-items-center justify-content-center" style={{ width:56, height:56 }}>
+                    <i className="ri-delete-bin-line text-danger fs-22"></i>
+                  </div>
+                </div>
+                <h6 className="mb-1">Remove from Stock?</h6>
+                <p className="text-muted mb-4" style={{ fontSize:13 }}>{editItem?.name}</p>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-danger w-100" onClick={confirmDelete}>Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
+        </>
+      )}
     </div>
   )
 }

@@ -1,330 +1,411 @@
-import { useState, useEffect, useCallback } from 'react'
-import PageHeader from '../../components/ui/PageHeader'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-import { useAuth } from '../../context/AuthContext'
+import { useState } from 'react'
 
-const inp = {
-  width:'100%', padding:'9px 12px', borderRadius:8, border:'1.5px solid var(--border)',
-  fontSize:13, fontFamily:'var(--body-font)', outline:'none', boxSizing:'border-box',
-  color:'var(--text-primary)', background:'var(--bg-card)',
+const CATEGORIES = ['Allergy', 'Dietary Preference', 'Medical Condition', 'Religious', 'Lifestyle']
+
+const INITIAL_RULES = [
+  {
+    id: 1, name: 'Lactose Intolerance', category: 'Medical Condition', priority: 'high',
+    description: 'Excludes all dairy products and derivatives. Affects customers with lactase deficiency.',
+    tags: ['dairy', 'milk', 'cheese', 'butter', 'cream', 'yoghurt', 'whey'],
+    excludeCategories: ['Dairy Products', 'Cream-based Sauces'],
+    affectedMeals: 8, active: true, customersTagged: 24,
+  },
+  {
+    id: 2, name: 'Gluten-Free', category: 'Medical Condition', priority: 'high',
+    description: 'Excludes wheat, barley, rye and all gluten-containing grains. Critical for celiac patients.',
+    tags: ['wheat', 'barley', 'rye', 'bread', 'pasta', 'flour', 'starch'],
+    excludeCategories: ['Bread & Pastries', 'Breaded Items', 'Wheat-Based Snacks'],
+    affectedMeals: 6, active: true, customersTagged: 11,
+  },
+  {
+    id: 3, name: 'Vegan', category: 'Dietary Preference', priority: 'medium',
+    description: 'Excludes all animal products including meat, dairy, eggs, and honey.',
+    tags: ['meat', 'dairy', 'eggs', 'honey', 'fish', 'chicken', 'beef', 'cream', 'butter'],
+    excludeCategories: ['Meat & Poultry', 'Seafood', 'Dairy Products', 'Egg-Based Dishes'],
+    affectedMeals: 15, active: true, customersTagged: 9,
+  },
+  {
+    id: 4, name: 'Vegetarian', category: 'Dietary Preference', priority: 'medium',
+    description: 'Excludes all meat, poultry, and fish. Dairy and eggs are permitted.',
+    tags: ['meat', 'poultry', 'fish', 'seafood', 'chicken', 'beef', 'goat', 'turkey'],
+    excludeCategories: ['Meat & Poultry', 'Seafood'],
+    affectedMeals: 12, active: true, customersTagged: 17,
+  },
+  {
+    id: 5, name: 'Low Carb / Keto', category: 'Medical Condition', priority: 'medium',
+    description: 'Restricts high-carbohydrate foods. Suitable for diabetics, weight loss, and keto diet followers.',
+    tags: ['rice', 'bread', 'potato', 'sugar', 'pasta', 'yam', 'plantain', 'starch'],
+    excludeCategories: ['High-Carb Sides', 'Sweets & Desserts', 'Beverages (Sugary)'],
+    affectedMeals: 18, active: true, customersTagged: 31,
+  },
+  {
+    id: 6, name: 'Peanut / Nut Allergy', category: 'Allergy', priority: 'critical',
+    description: 'Strict exclusion of all nuts and nut derivatives. Life-threatening reaction possible.',
+    tags: ['peanut', 'groundnut', 'almond', 'cashew', 'walnut', 'nut oil', 'groundnut oil'],
+    excludeCategories: ['Nut-Based Snacks', 'Groundnut Dishes'],
+    affectedMeals: 5, active: true, customersTagged: 8,
+  },
+  {
+    id: 7, name: 'Halal', category: 'Religious', priority: 'high',
+    description: 'Only halal-certified meat allowed. Pork and alcohol strictly excluded.',
+    tags: ['pork', 'alcohol', 'lard', 'gelatin', 'non-halal', 'wine'],
+    excludeCategories: ['Pork Products', 'Alcohol-Infused Dishes'],
+    affectedMeals: 3, active: true, customersTagged: 42,
+  },
+  {
+    id: 8, name: 'Diabetic-Friendly', category: 'Medical Condition', priority: 'high',
+    description: 'Low glycemic index diet. Controls blood sugar spikes for Type 1 and Type 2 diabetics.',
+    tags: ['sugar', 'white rice', 'white bread', 'honey', 'syrup', 'sweets', 'fizzy drinks'],
+    excludeCategories: ['Sweets & Desserts', 'Beverages (Sugary)', 'Refined Grains'],
+    affectedMeals: 20, active: true, customersTagged: 19,
+  },
+  {
+    id: 9, name: 'Pescatarian', category: 'Dietary Preference', priority: 'low',
+    description: 'Avoids all meat and poultry but consumes fish and seafood.',
+    tags: ['chicken', 'beef', 'goat', 'lamb', 'pork', 'turkey', 'meat'],
+    excludeCategories: ['Meat & Poultry'],
+    affectedMeals: 9, active: false, customersTagged: 4,
+  },
+  {
+    id: 10, name: 'High-Protein', category: 'Lifestyle', priority: 'low',
+    description: 'Prioritises high-protein options. Suitable for athletes, bodybuilders, and gym-goers.',
+    tags: ['low-protein', 'processed', 'refined'],
+    excludeCategories: ['Low-Protein Snacks'],
+    affectedMeals: 10, active: true, customersTagged: 14,
+  },
+  {
+    id: 11, name: 'Low Sodium', category: 'Medical Condition', priority: 'high',
+    description: 'Limits salt and sodium intake. Essential for hypertension and kidney disease patients.',
+    tags: ['salt', 'soy sauce', 'stock cubes', 'brine', 'processed meat', 'MSG'],
+    excludeCategories: ['Processed & Cured Meats', 'Heavily Seasoned Dishes'],
+    affectedMeals: 14, active: true, customersTagged: 7,
+  },
+]
+
+const PRIORITY_CFG = {
+  critical: { bg: '#fee2e2', color: '#991b1b', label: 'Critical' },
+  high:     { bg: '#fef3c7', color: '#92400e', label: 'High' },
+  medium:   { bg: '#dbeafe', color: '#1e40af', label: 'Medium' },
+  low:      { bg: '#f0fdf4', color: '#166534', label: 'Low' },
 }
-const lbl = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:5 }
 
-const btn = (bg, color, border) => ({
-  display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px',
-  borderRadius:8, border: border ?? 'none', cursor:'pointer',
-  background:bg, color, fontSize:13, fontWeight:700, fontFamily:'var(--body-font)',
-})
+const EMPTY_RULE = { name: '', category: 'Allergy', priority: 'medium', description: '', tagInput: '', catInput: '', tags: [], excludeCategories: [] }
 
-function Spinner({ size = 32, inline = false }) {
+/* ── Small modal backdrop ── */
+function Modal({ show, onClose, title, children, size = '' }) {
+  if (!show) return null
   return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding: inline ? 0 : 48 }}>
-      <div style={{ width:size, height:size, border:'3px solid var(--border)', borderTopColor:'#1B4332', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  )
-}
-
-function Modal({ open, onClose, title, danger, children }) {
-  if (!open) return null
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div onClick={onClose} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)' }} />
-      <div style={{ position:'relative', background:'var(--bg-card)', borderRadius:14, padding:'24px 28px', width:'100%', maxWidth:560, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.25)', zIndex:1 }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-          <h3 style={{ margin:0, fontSize:16, fontWeight:800, color:danger?'#dc2626':'var(--text-primary)', fontFamily:'var(--heading-font)' }}>{title}</h3>
-          <button onClick={onClose} aria-label="Close" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', fontSize:20, padding:2, display:'flex', alignItems:'center' }}>
-            <i className="ri-close-line" />
-          </button>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={onClose}>
+      <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: size === 'sm' ? 400 : 600, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ background: '#1e293b', color: '#fff', padding: '16px 20px', borderRadius: '12px 12px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span className="fw-semibold">{title}</span>
+          <button className="btn-close btn-close-white btn-sm" onClick={onClose}></button>
         </div>
-        {children}
-      </div>
-    </div>
-  )
-}
-
-const BLANK = { condition:'', rule_text:'', tags:'', priority:0 }
-
-function RuleForm({ form, setForm }) {
-  return (
-    <div style={{ display:'grid', gap:16 }}>
-      <div>
-        <label style={lbl}>Condition <span style={{ color:'#dc2626' }}>*</span></label>
-        <input value={form.condition} onChange={e => setForm(f => ({...f, condition:e.target.value}))} placeholder="e.g. Lactose Intolerance" style={inp} />
-        <div style={{ fontSize:11, color:'var(--text-light)', marginTop:4 }}>The dietary condition or restriction (used by Chef Bems AI for matching)</div>
-      </div>
-      <div>
-        <label style={lbl}>Rule Text <span style={{ color:'#dc2626' }}>*</span></label>
-        <textarea value={form.rule_text} onChange={e => setForm(f => ({...f, rule_text:e.target.value}))} rows={4}
-          placeholder="Describe what the AI should do when this condition is detected..." style={{ ...inp, resize:'vertical', lineHeight:1.6 }} />
-      </div>
-      <div>
-        <label style={lbl}>Tags</label>
-        <input value={form.tags} onChange={e => setForm(f => ({...f, tags:e.target.value}))} placeholder="e.g. dairy-free, no-milk, no-cheese" style={inp} />
-        <div style={{ fontSize:11, color:'var(--text-light)', marginTop:4 }}>Comma-separated tags used for AI context matching</div>
-      </div>
-      <div>
-        <label style={lbl}>Priority</label>
-        <input type="number" min={0} max={100} value={form.priority} onChange={e => setForm(f => ({...f, priority:+e.target.value}))} style={{ ...inp, width:120 }} />
-        <div style={{ fontSize:11, color:'var(--text-light)', marginTop:4 }}>Higher number = higher priority (0 = default)</div>
+        <div style={{ padding: 24 }}>{children}</div>
       </div>
     </div>
   )
 }
 
 export default function DietaryRules() {
-  const { user }  = useAuth()
-  const [rules, setRules]           = useState([])
-  const [total, setTotal]           = useState(0)
-  const [loading, setLoading]       = useState(true)
-  const [saving, setSaving]         = useState(false)
+  const [rules, setRules]           = useState(INITIAL_RULES)
   const [search, setSearch]         = useState('')
-  const [searchInput, setSearchInput] = useState('')
+  const [catFilter, setCatFilter]   = useState('all')
   const [addModal, setAddModal]     = useState(false)
-  const [editModal, setEditModal]   = useState(null)   // rule object
-  const [deleteModal, setDeleteModal] = useState(null) // rule object
-  const [form, setForm]             = useState({ ...BLANK })
-  const [editForm, setEditForm]     = useState({ ...BLANK })
+  const [editModal, setEditModal]   = useState(null)
+  const [deleteModal, setDeleteModal] = useState(null)
+  const [form, setForm]             = useState(EMPTY_RULE)
+  const [tagInput, setTagInput]     = useState('')
+  const [catInput, setCatInput]     = useState('')
 
-  const fetchRules = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = { limit:50 }
-      if (search) params.search = search
-      const { data } = await api.get('/admin/chef-bems/dietary-rules', { params })
-      setRules(data.rules || [])
-      setTotal(data.total || 0)
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load dietary rules')
-    } finally {
-      setLoading(false)
+  const toggle = id => setRules(prev => prev.map(r => r.id === id ? { ...r, active: !r.active } : r))
+
+  const filtered = rules.filter(r => {
+    const matchSearch = r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.description.toLowerCase().includes(search.toLowerCase())
+    const matchCat = catFilter === 'all' || r.category === catFilter
+    return matchSearch && matchCat
+  })
+
+  const openEdit = rule => {
+    setForm({ ...rule, tagInput: '', catInput: '' })
+    setTagInput('')
+    setCatInput('')
+    setEditModal(rule.id)
+  }
+
+  const saveRule = () => {
+    const newRule = {
+      ...form,
+      id: Date.now(),
+      affectedMeals: 0,
+      customersTagged: 0,
+      active: true,
+      tags: form.tags,
+      excludeCategories: form.excludeCategories,
     }
-  }, [search])
-
-  useEffect(() => { fetchRules() }, [fetchRules])
-
-  useEffect(() => {
-    const t = setTimeout(() => setSearch(searchInput), 400)
-    return () => clearTimeout(t)
-  }, [searchInput])
-
-  const saveRule = async () => {
-    if (!form.condition.trim()) { toast.error('Condition is required'); return }
-    if (!form.rule_text.trim()) { toast.error('Rule text is required'); return }
-    setSaving(true)
-    try {
-      const { data } = await api.post('/admin/chef-bems/dietary-rules', form)
-      setRules(prev => [data.rule, ...prev])
-      setTotal(t => t+1)
-      setForm({ ...BLANK })
-      setAddModal(false)
-      toast.success('Dietary rule added')
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save rule')
-    } finally {
-      setSaving(false)
-    }
+    setRules(prev => [...prev, newRule])
+    setAddModal(false)
+    setForm(EMPTY_RULE)
+    setTagInput('')
+    setCatInput('')
   }
 
-  const updateRule = async () => {
-    if (!editForm.condition.trim()) { toast.error('Condition is required'); return }
-    setSaving(true)
-    try {
-      const { data } = await api.put(`/admin/chef-bems/dietary-rules/${editModal.id}`, editForm)
-      setRules(prev => prev.map(r => r.id === editModal.id ? data.rule : r))
-      setEditModal(null)
-      toast.success('Rule updated')
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update rule')
-    } finally {
-      setSaving(false)
-    }
+  const updateRule = () => {
+    setRules(prev => prev.map(r => r.id === editModal ? { ...form } : r))
+    setEditModal(null)
   }
 
-  const deleteRule = async () => {
-    setSaving(true)
-    try {
-      await api.delete(`/admin/chef-bems/dietary-rules/${deleteModal.id}`)
-      setRules(prev => prev.filter(r => r.id !== deleteModal.id))
-      setTotal(t => t-1)
-      setDeleteModal(null)
-      toast.success('Dietary rule deleted')
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete rule')
-    } finally {
-      setSaving(false)
-    }
+  const deleteRule = () => {
+    setRules(prev => prev.filter(r => r.id !== deleteModal))
+    setDeleteModal(null)
   }
 
-  const openEdit = (r) => {
-    setEditForm({ condition: r.condition||'', rule_text: r.rule_text||'', tags: r.tags||'', priority: r.priority||0 })
-    setEditModal(r)
+  const addTag = (target) => {
+    const val = tagInput.trim().toLowerCase()
+    if (!val) return
+    if (target === 'form') setForm(f => ({ ...f, tags: [...new Set([...f.tags, val])] }))
+    setTagInput('')
   }
 
-  const kpi = {
-    total,
-    high: rules.filter(r => (r.priority||0) >= 70).length,
-    recent: rules.filter(r => { const d = new Date(r.created_at); return Date.now() - d < 7*24*3600*1000 }).length,
+  const addCat = () => {
+    const val = catInput.trim()
+    if (!val) return
+    setForm(f => ({ ...f, excludeCategories: [...new Set([...f.excludeCategories, val])] }))
+    setCatInput('')
   }
+
+  const removeTag = (tag) => setForm(f => ({ ...f, tags: f.tags.filter(t => t !== tag) }))
+  const removeCat = (cat) => setForm(f => ({ ...f, excludeCategories: f.excludeCategories.filter(c => c !== cat) }))
+
+  const totalActive = rules.filter(r => r.active).length
+  const totalTagged = rules.reduce((s, r) => s + r.customersTagged, 0)
+  const totalMeals  = Math.max(...rules.map(r => r.affectedMeals))
+
+  /* ── Rule Form (shared by Add and Edit) ── */
+  const RuleForm = () => (
+    <div className="row g-3">
+      <div className="col-12">
+        <label className="form-label fw-medium">Rule Name <span className="text-danger">*</span></label>
+        <input type="text" className="form-control" placeholder="e.g. Pregnancy-Safe" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} />
+      </div>
+      <div className="col-md-6">
+        <label className="form-label fw-medium">Category</label>
+        <select className="form-select" value={form.category} onChange={e => setForm(f => ({...f, category: e.target.value}))}>
+          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+        </select>
+      </div>
+      <div className="col-md-6">
+        <label className="form-label fw-medium">Priority Level</label>
+        <select className="form-select" value={form.priority} onChange={e => setForm(f => ({...f, priority: e.target.value}))}>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div className="col-12">
+        <label className="form-label fw-medium">Description</label>
+        <textarea className="form-control" rows={2} placeholder="Describe what this rule covers..." value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} />
+      </div>
+      <div className="col-12">
+        <label className="form-label fw-medium">Ingredient Tags to Exclude</label>
+        <div className="input-group mb-2">
+          <input type="text" className="form-control" placeholder="Type ingredient and press Add" value={tagInput}
+            onChange={e => setTagInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag('form'))} />
+          <button className="btn btn-outline-secondary" type="button" onClick={() => addTag('form')}>Add</button>
+        </div>
+        <div className="d-flex flex-wrap gap-1">
+          {form.tags.map(t => (
+            <span key={t} className="badge d-inline-flex align-items-center gap-1" style={{ background: '#fee2e2', color: '#991b1b', fontSize: 11 }}>
+              {t}
+              <button className="btn-close" style={{ fontSize: 8 }} onClick={() => removeTag(t)}></button>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="col-12">
+        <label className="form-label fw-medium">Product Categories to Exclude</label>
+        <div className="input-group mb-2">
+          <input type="text" className="form-control" placeholder="Type category and press Add" value={catInput}
+            onChange={e => setCatInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCat())} />
+          <button className="btn btn-outline-secondary" type="button" onClick={addCat}>Add</button>
+        </div>
+        <div className="d-flex flex-wrap gap-1">
+          {form.excludeCategories.map(c => (
+            <span key={c} className="badge d-inline-flex align-items-center gap-1" style={{ background: '#fef3c7', color: '#92400e', fontSize: 11 }}>
+              {c}
+              <button className="btn-close" style={{ fontSize: 8 }} onClick={() => removeCat(c)}></button>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <PageHeader
-        title="Chef Bems AI — Dietary Rules"
-        subtitle="Manage the dietary rules that guide Chef Bems AI responses to customer meal queries."
-        actions={
-          <button onClick={() => { setForm({...BLANK}); setAddModal(true) }} style={btn('#1B4332','#fff')}>
-            <i className="ri-add-line" />New Rule
-          </button>
-        }
-      />
+    <div className="container-fluid">
+      {/* Header */}
+      <div className="d-flex align-items-center justify-content-between mb-4">
+        <div>
+          <h4 className="fs-xl mb-1">
+            <i className="ri-shield-check-line me-2 text-success"></i>Dietary Rules
+          </h4>
+          <p className="text-muted mb-0">Configure ingredient exclusion rules for Chef Bems AI recommendations.</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => { setForm(EMPTY_RULE); setTagInput(''); setCatInput(''); setAddModal(true) }}>
+          <i className="ri-add-line me-1"></i>Add Rule
+        </button>
+      </div>
 
       {/* KPI Strip */}
-      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
+      <div className="row g-3 mb-4">
         {[
-          { label:'Total Rules',      value:total,      icon:'ri-file-list-3-line',     bg:'#eff6ff', color:'#1d4ed8' },
-          { label:'High Priority',    value:kpi.high,   icon:'ri-alarm-warning-line',   bg:'#fef2f2', color:'#dc2626' },
-          { label:'Added This Week',  value:kpi.recent, icon:'ri-calendar-check-line',  bg:'#f0fdf4', color:'#15803d' },
+          { label: 'Total Rules',       value: rules.length,   icon: 'ri-list-check-2',        bg: '#e0f2fe', color: '#0369a1' },
+          { label: 'Active Rules',      value: totalActive,    icon: 'ri-checkbox-circle-line', bg: '#dcfce7', color: '#15803d' },
+          { label: 'Customers Tagged',  value: totalTagged,    icon: 'ri-user-heart-line',      bg: '#ede9fe', color: '#7c3aed' },
+          { label: 'Critical Alerts',   value: rules.filter(r=>r.priority==='critical').length, icon: 'ri-alarm-warning-line', bg: '#fee2e2', color: '#dc2626' },
+          { label: 'Meals Covered',     value: `${totalMeals}+`, icon: 'ri-restaurant-line',   bg: '#fef3c7', color: '#b45309' },
         ].map(k => (
-          <div key={k.label} style={{ background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', padding:'16px 20px', display:'flex', alignItems:'center', gap:14, boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
-            <div style={{ width:44, height:44, borderRadius:10, background:k.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <i className={k.icon} style={{ fontSize:20, color:k.color }} />
-            </div>
-            <div>
-              <div style={{ fontSize:22, fontWeight:800, color:'var(--text-primary)', fontFamily:'var(--heading-font)', lineHeight:1 }}>{k.value}</div>
-              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{k.label}</div>
+          <div className="col" key={k.label}>
+            <div className="card mb-0 border-0" style={{ background: k.bg }}>
+              <div className="card-body py-3 px-3">
+                <div className="d-flex align-items-center gap-2">
+                  <i className={`${k.icon} fs-4`} style={{ color: k.color }}></i>
+                  <div>
+                    <div className="fw-bold fs-5 lh-1" style={{ color: k.color }}>{k.value}</div>
+                    <div style={{ fontSize: 11, color: k.color, opacity: 0.85 }}>{k.label}</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Filter Bar */}
-      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
-        <div style={{ position:'relative', flex:1 }}>
-          <i className="ri-search-line" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
-          <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search conditions, rule text, or tags..."
-            style={{ ...inp, paddingLeft:34 }} />
-        </div>
-        <button onClick={fetchRules} style={{ ...btn('#f1f5f9','#374151'), padding:'9px 14px' }}>
-          <i className="ri-refresh-line" />
-        </button>
-      </div>
-
-      {/* Table */}
-      <div style={{ background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.04)', overflow:'hidden' }}>
-        <table style={{ width:'100%', borderCollapse:'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom:'1px solid var(--border)', background:'var(--bg-subtle)' }}>
-              {['Condition','Rule Text','Tags','Priority','Created','Actions'].map(h => (
-                <th key={h} style={{ padding:'11px 16px', textAlign:'left', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.05em', fontFamily:'var(--body-font)', whiteSpace:'nowrap' }}>{h}</th>
+      {/* Filters */}
+      <div className="card mb-4">
+        <div className="card-body py-3">
+          <div className="d-flex flex-wrap gap-2 align-items-center">
+            <input type="text" className="form-control form-control-sm" style={{ maxWidth: 240 }} placeholder="Search rules..." value={search} onChange={e => setSearch(e.target.value)} />
+            <div className="d-flex gap-1 flex-wrap">
+              {['all', ...CATEGORIES].map(c => (
+                <button key={c} onClick={() => setCatFilter(c)}
+                  className="btn btn-sm"
+                  style={{ fontSize: 12, background: catFilter === c ? '#0ea5e9' : '#f1f5f9', color: catFilter === c ? '#fff' : '#475569', border: 'none' }}>
+                  {c === 'all' ? 'All Categories' : c}
+                </button>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={6}><Spinner /></td></tr>
-            ) : rules.length === 0 ? (
-              <tr>
-                <td colSpan={6} style={{ textAlign:'center', padding:'48px 0', color:'var(--text-light)' }}>
-                  <i className="ri-file-list-3-line" style={{ fontSize:49, display:'block', marginBottom:8 }} />
-                  <div>No dietary rules found. {search && 'Try a different search.'}</div>
-                  {!search && <button onClick={() => { setForm({...BLANK}); setAddModal(true) }} style={{ ...btn('#1B4332','#fff'), marginTop:12 }}><i className="ri-add-line" />Add First Rule</button>}
-                </td>
-              </tr>
-            ) : rules.map((r, i) => {
-              const priority = r.priority || 0
-              const priBg = priority >= 70 ? '#fee2e2' : priority >= 40 ? '#fef3c7' : '#f1f5f9'
-              const priColor = priority >= 70 ? '#dc2626' : priority >= 40 ? '#b45309' : '#475569'
-              return (
-                <tr key={r.id} style={{ borderBottom:'1px solid var(--border)', background: i%2===0 ? 'var(--bg-card)' : 'var(--bg-subtle)' }}>
-                  <td style={{ padding:'12px 16px', fontSize:13, fontWeight:700, color:'var(--text-primary)', fontFamily:'var(--body-font)', maxWidth:160 }}>
-                    {r.condition}
-                  </td>
-                  <td style={{ padding:'12px 16px', fontSize:12, color:'var(--text-secondary)', fontFamily:'var(--body-font)', maxWidth:240 }}>
-                    <div style={{ overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', lineHeight:1.5 }}>
-                      {r.rule_text}
-                    </div>
-                  </td>
-                  <td style={{ padding:'12px 16px', maxWidth:180 }}>
-                    {r.tags ? (
-                      <div style={{ display:'flex', flexWrap:'wrap', gap:3 }}>
-                        {r.tags.split(',').slice(0,3).map(t => t.trim()).filter(Boolean).map(t => (
-                          <span key={t} style={{ fontSize:10, fontWeight:600, padding:'2px 7px', borderRadius:50, background:'#e0f2fe', color:'#0369a1' }}>{t}</span>
-                        ))}
-                        {r.tags.split(',').length > 3 && <span style={{ fontSize:10, color:'var(--text-light)' }}>+{r.tags.split(',').length-3}</span>}
-                      </div>
-                    ) : <span style={{ fontSize:11, color:'var(--border-strong)' }}>—</span>}
-                  </td>
-                  <td style={{ padding:'12px 16px' }}>
-                    <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:50, background:priBg, color:priColor }}>{priority}</span>
-                  </td>
-                  <td style={{ padding:'12px 16px', fontSize:11, color:'var(--text-light)', fontFamily:'var(--body-font)', whiteSpace:'nowrap' }}>
-                    {r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}
-                  </td>
-                  <td style={{ padding:'12px 16px' }}>
-                    <div style={{ display:'flex', gap:6 }}>
-                      <button onClick={() => openEdit(r)} style={{ ...btn('#1B4332','#fff'), padding:'5px 10px', fontSize:11 }}>
-                        <i className="ri-edit-line" />Edit
-                      </button>
-                      {user?.role === 'superadmin' && (
-                        <button onClick={() => setDeleteModal(r)} style={{ ...btn('transparent','#dc2626','1.5px solid #fca5a5'), padding:'5px 10px', fontSize:11 }}>
-                          <i className="ri-delete-bin-line" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+            </div>
+            <span className="text-muted ms-auto" style={{ fontSize: 12 }}>{filtered.length} rules</span>
+          </div>
+        </div>
       </div>
 
-      {/* Add Modal */}
-      <Modal open={addModal} onClose={() => setAddModal(false)} title="Add Dietary Rule">
-        <RuleForm form={form} setForm={setForm} />
-        <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:20 }}>
-          <button onClick={() => setAddModal(false)} style={btn('#f1f5f9','#374151')}>Cancel</button>
-          <button onClick={saveRule} disabled={saving} style={{ ...btn('#1B4332','#fff'), opacity:saving?0.7:1 }}>
-            {saving ? <Spinner size={14} inline /> : <i className="ri-save-line" />}Save Rule
-          </button>
-        </div>
-      </Modal>
+      {/* Rule Cards */}
+      <div className="row g-4">
+        {filtered.map(rule => {
+          const pCfg = PRIORITY_CFG[rule.priority]
+          return (
+            <div className="col-md-6 col-xl-4" key={rule.id}>
+              <div className="card mb-0 h-100" style={{ opacity: rule.active ? 1 : 0.65 }}>
+                <div className="card-body d-flex flex-column">
+                  {/* Title row */}
+                  <div className="d-flex align-items-start justify-content-between mb-2">
+                    <div className="flex-grow-1">
+                      <div className="d-flex align-items-center gap-2 mb-1">
+                        <h6 className="fw-semibold mb-0" style={{ fontSize: 14 }}>{rule.name}</h6>
+                        <span className="badge rounded-pill" style={{ background: pCfg.bg, color: pCfg.color, fontSize: 10 }}>{pCfg.label}</span>
+                      </div>
+                      <span className="badge bg-light text-secondary border" style={{ fontSize: 10 }}>{rule.category}</span>
+                    </div>
+                    <div className="form-check form-switch mb-0 ms-2">
+                      <input className="form-check-input" type="checkbox" checked={rule.active} onChange={() => toggle(rule.id)} />
+                    </div>
+                  </div>
 
-      {/* Edit Modal */}
-      <Modal open={!!editModal} onClose={() => setEditModal(null)} title="Edit Dietary Rule">
-        <RuleForm form={editForm} setForm={setEditForm} />
-        <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:20 }}>
-          <button onClick={() => setEditModal(null)} style={btn('#f1f5f9','#374151')}>Cancel</button>
-          <button onClick={updateRule} disabled={saving} style={{ ...btn('#1B4332','#fff'), opacity:saving?0.7:1 }}>
-            {saving ? <Spinner size={14} inline /> : <i className="ri-save-line" />}Update Rule
-          </button>
-        </div>
-      </Modal>
+                  <p className="text-muted mb-3" style={{ fontSize: 12 }}>{rule.description}</p>
 
-      {/* Delete Modal */}
-      <Modal open={!!deleteModal} onClose={() => setDeleteModal(null)} title="Delete Dietary Rule" danger>
-        {deleteModal && (
-          <>
-            <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:10, padding:'14px 16px', marginBottom:20, display:'flex', gap:10 }}>
-              <i className="ri-alarm-warning-line" style={{ fontSize:27, color:'#ea580c', flexShrink:0, marginTop:1 }} />
-              <div>
-                <div style={{ fontWeight:700, fontSize:13, color:'#c2410c', marginBottom:4 }}>Warning: This affects live AI responses</div>
-                <p style={{ fontSize:12, color:'#9a3412', margin:0, lineHeight:1.6 }}>
-                  Deleting <strong>"{deleteModal.condition}"</strong> will remove this rule from Chef Bems AI immediately.
-                </p>
+                  {/* Stats row */}
+                  <div className="d-flex gap-3 mb-3" style={{ fontSize: 12 }}>
+                    <span><i className="ri-restaurant-line me-1 text-muted"></i><strong>{rule.affectedMeals}</strong> meals</span>
+                    <span><i className="ri-user-heart-line me-1 text-muted"></i><strong>{rule.customersTagged}</strong> customers</span>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="mb-2">
+                    <p className="mb-1" style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Excluded Ingredients
+                    </p>
+                    <div className="d-flex flex-wrap gap-1">
+                      {rule.tags.slice(0, 5).map(tag => (
+                        <span key={tag} className="badge" style={{ background: '#fee2e2', color: '#991b1b', fontSize: 10 }}>{tag}</span>
+                      ))}
+                      {rule.tags.length > 5 && <span className="badge bg-light text-secondary" style={{ fontSize: 10 }}>+{rule.tags.length - 5} more</span>}
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <p className="mb-1" style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Excluded Categories
+                    </p>
+                    <div className="d-flex flex-wrap gap-1">
+                      {rule.excludeCategories.map(cat => (
+                        <span key={cat} className="badge" style={{ background: '#fef3c7', color: '#92400e', fontSize: 10 }}>{cat}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="d-flex gap-2 mt-auto">
+                    <button className="btn btn-sm btn-outline-secondary flex-grow-1" onClick={() => openEdit(rule)}>
+                      <i className="ri-pencil-line me-1"></i>Edit
+                    </button>
+                    <button className="btn btn-sm btn-outline-danger" onClick={() => setDeleteModal(rule.id)}>
+                      <i className="ri-delete-bin-line"></i>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
-              <button onClick={() => setDeleteModal(null)} style={btn('#f1f5f9','#374151')}>Cancel</button>
-              <button onClick={deleteRule} disabled={saving} style={{ ...btn('#dc2626','#fff'), opacity:saving?0.7:1 }}>
-                {saving ? <Spinner size={14} inline /> : <i className="ri-delete-bin-line" />}Delete Rule
-              </button>
-            </div>
-          </>
-        )}
+          )
+        })}
+      </div>
+
+      {/* ── Add Rule Modal ── */}
+      <Modal show={addModal} onClose={() => setAddModal(false)} title="Add Dietary Rule">
+        <RuleForm />
+        <div className="d-flex justify-content-end gap-2 mt-4">
+          <button className="btn btn-light" onClick={() => setAddModal(false)}>Cancel</button>
+          <button className="btn btn-primary" onClick={saveRule} disabled={!form.name.trim()}>Save Rule</button>
+        </div>
+      </Modal>
+
+      {/* ── Edit Rule Modal ── */}
+      <Modal show={!!editModal} onClose={() => setEditModal(null)} title="Edit Dietary Rule">
+        <RuleForm />
+        <div className="d-flex justify-content-end gap-2 mt-4">
+          <button className="btn btn-light" onClick={() => setEditModal(null)}>Cancel</button>
+          <button className="btn btn-primary" onClick={updateRule}>Save Changes</button>
+        </div>
+      </Modal>
+
+      {/* ── Delete Confirm Modal ── */}
+      <Modal show={!!deleteModal} onClose={() => setDeleteModal(null)} title="Delete Rule" size="sm">
+        <div className="text-center py-2">
+          <i className="ri-delete-bin-line fs-1 text-danger d-block mb-3"></i>
+          <p className="fw-medium mb-1">Delete this dietary rule?</p>
+          <p className="text-muted fs-sm mb-4">
+            This will remove it from Chef Bems AI. Customers tagged with this rule will lose the filter.
+          </p>
+          <div className="d-flex gap-2 justify-content-center">
+            <button className="btn btn-light px-4" onClick={() => setDeleteModal(null)}>Cancel</button>
+            <button className="btn btn-danger px-4" onClick={deleteRule}>Delete</button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

@@ -1,152 +1,220 @@
-import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-const NAV = [
-  { label:'General',     to:'/settings/general'       },
-  { label:'Tax',         to:'/settings/tax'           },
-  { label:'Coupons',     to:'/settings/coupons'       },
-  { label:'POS',         to:'/settings/pos'           },
-  { label:'Payment',     to:'/settings/payment'       },
-  { label:'Currencies',  to:'/settings/currencies'    },
-  { label:'Receipts',    to:'/settings/invoices'      },
-  { label:'Manager',     to:'/settings/manager'       },
-  { label:'Notifications',to:'/settings/notifications'},
-]
-
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const B = 'var(--border)', S = '#6b7280'
-
-function Card({ title, subtitle, children }) {
-  return (
-    <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
-      <div style={{ padding:'16px 24px',borderBottom:`1px solid ${B}` }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,color:'var(--text-primary)',marginBottom:2 }}>{title}</div>
-        {subtitle&&<div style={{ fontSize:12,color:S }}>{subtitle}</div>}
-      </div>
-      <div style={{ padding:24 }}>{children}</div>
-    </div>
-  )
-}
-
-function Row({ label, desc, children }) {
-  return (
-    <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,paddingBottom:18,marginBottom:18,borderBottom:`1px solid var(--border)`,alignItems:'start' }}>
-      <div>
-        <div style={{ fontWeight:600,fontSize:13,color:'var(--text-primary)',marginBottom:2 }}>{label}</div>
-        {desc&&<div style={{ fontSize:12,color:S }}>{desc}</div>}
-      </div>
-      <div>{children}</div>
-    </div>
-  )
-}
-
-function SettingsNav() {
-  const { pathname } = useLocation()
-  return (
-    <div style={{ display:'flex',gap:0,borderBottom:`2px solid ${B}`,marginBottom:24,overflowX:'auto' }}>
-      {NAV.map(n=>(
-        <Link key={n.to} to={n.to} style={{ padding:'10px 16px',border:'none',borderBottom:pathname===n.to?'2px solid #1B4332':'2px solid transparent',background:'transparent',fontFamily:'var(--body-font)',fontWeight:pathname===n.to?700:500,fontSize:13,color:pathname===n.to?'#1B4332':S,cursor:'pointer',textDecoration:'none',whiteSpace:'nowrap',marginBottom:-2 }}>
-          {n.label}
-        </Link>
-      ))}
-    </div>
-  )
-}
-
-const BLANK = { store_name:'', store_email:'', store_phone:'', store_address:'', store_logo_url:'', store_timezone:'Africa/Lagos', store_currency:'NGN' }
+import { Link } from 'react-router-dom'
 
 export default function GeneralSettings() {
-  const [form, setForm]     = useState(BLANK)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving]   = useState(false)
-
-  useEffect(() => {
-    api.get('/admin/settings/general')
-      .then(r => setForm({ ...BLANK, ...r.data.settings }))
-      .catch(() => toast.error('Failed to load general settings'))
-      .finally(() => setLoading(false))
-  }, [])
-
-  async function handleSave(e) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      await api.post('/admin/settings/general', form)
-      toast.success('General settings saved successfully')
-    } catch {
-      toast.error('Failed to save settings')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  function set(key, val) { setForm(f => ({ ...f, [key]: val })) }
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Settings</div>
-        <div style={{ fontSize:12,color:S,marginTop:2 }}>Manage store preferences and system configurations.</div>
-      </div>
-      <SettingsNav/>
-
-      {loading ? (
-        <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
-      ) : (
-        <form onSubmit={handleSave}>
-          <Card title="Store & Business Information" subtitle="Displayed on receipts, and customer-facing documents.">
-            <Row label="Shop Name" desc="Appears on all receipts.">
-              <input style={inp} value={form.store_name} onChange={e=>set('store_name',e.target.value)} placeholder="Bems Farms"/>
-            </Row>
-            <Row label="Shop Email" desc="Receives system alerts and notifications.">
-              <input type="email" style={inp} value={form.store_email} onChange={e=>set('store_email',e.target.value)} placeholder="info@bemsfarms.com"/>
-            </Row>
-            <Row label="Shop Phone" desc="Used for customer support communication.">
-              <input style={inp} value={form.store_phone} onChange={e=>set('store_phone',e.target.value)} placeholder="+234 802 345 6789"/>
-            </Row>
-            <Row label="Shop Address" desc="Printed on receipts and delivery notes.">
-              <textarea style={{ ...inp,resize:'vertical' }} rows={2} value={form.store_address} onChange={e=>set('store_address',e.target.value)} placeholder="14 Farm Road, Epe, Lagos"/>
-            </Row>
-            <Row label="Logo URL" desc="URL to your store logo (PNG/SVG). Shown on receipts.">
-              <input style={inp} value={form.store_logo_url} onChange={e=>set('store_logo_url',e.target.value)} placeholder="https://..."/>
-              {form.store_logo_url && (
-                <img src={form.store_logo_url} alt="logo preview" style={{ marginTop:8,height:40,objectFit:'contain',borderRadius:6,border:`1px solid ${B}` }}/>
-              )}
-            </Row>
-            <Row label="Timezone" desc="Used for timestamps, reports and scheduled tasks.">
-              <select style={inp} value={form.store_timezone} onChange={e=>set('store_timezone',e.target.value)}>
-                <option value="Africa/Lagos">Africa/Lagos (WAT +01:00)</option>
-                <option value="UTC">UTC</option>
-                <option value="Africa/Accra">Africa/Accra</option>
-                <option value="Europe/London">Europe/London</option>
-                <option value="America/New_York">America/New_York</option>
-              </select>
-            </Row>
-            <Row label="Default Currency" desc="Applied to all pricing and billing.">
-              <select style={inp} value={form.store_currency} onChange={e=>set('store_currency',e.target.value)}>
-                <option value="NGN">NGN — Nigerian Naira (₦)</option>
-                <option value="USD">USD — US Dollar ($)</option>
-                <option value="GBP">GBP — British Pound (£)</option>
-                <option value="EUR">EUR — Euro (€)</option>
-              </select>
-            </Row>
-          </Card>
-
-          <div style={{ display:'flex',justifyContent:'flex-end',gap:10 }}>
-            <button type="button" style={btnL} onClick={()=>{ setLoading(true); api.get('/admin/settings/general').then(r=>setForm({...BLANK,...r.data.settings})).finally(()=>setLoading(false)) }}>
-              <i className="ri-refresh-line"/>Reset
-            </button>
-            <button type="submit" style={btnP} disabled={saving}>
-              <i className="ri-save-line"/>{saving?'Saving…':'Save Changes'}
-            </button>
+    <div className="container-fluid">
+      <div className="mb-5">
+              <h4 className="fs-xl">Settings</h4>
+              <p className="text-muted">Manage overall store preferences and system configurations.</p>
           </div>
-        </form>
-      )}
+          <ul className="nav nav-underline mb-5 border-bottom nav-primary" id="settings-tab" role="tablist">
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-tax.html" className="nav-link py-6px" aria-current="page">Tax</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-coupons.html" className="nav-link py-6px" aria-current="page">Coupons</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-general.html" className="nav-link py-6px active" aria-current="page">General</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-pos.html" className="nav-link py-6px" aria-current="page">POS</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-payment-gateway.html" className="nav-link py-6px" aria-current="page">Payment Gateway</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-currencies.html" className="nav-link py-6px" aria-current="page">Currencies</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-invoices.html" className="nav-link py-6px" aria-current="page">Invoices</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-manager.html" className="nav-link py-6px" aria-current="page">Manager</a>
+              </li>
+          </ul>
+
+          <div className="accordion accordion-boxed accordion-solid-secondary mb-5" id="accordionSecondary">
+              <div className="accordion-item">
+                  <h2 className="accordion-header">
+                      <button className="accordion-button bg-body-secondary shadow-none border rounded-0 p-5 text-body fw-medium" type="button" data-bs-toggle="collapse" data-bs-target="#storeInfo" aria-expanded="true">
+                          Store & Business Information
+                      </button>
+                  </h2>
+                  <div id="storeInfo" className="accordion-collapse collapse show" data-bs-parent="#accordionSecondary">
+                      <div className="accordion-body border border-top-0 p-5">
+                          <div className="row g-5 g-md-6 align-items-center justify-content-between">
+                              <div className="col-md-8 col-lg-6">
+                                  <h6 className="mb-1 fw-medium">Store Name</h6>
+                                  <p className="text-muted">Displayed on invoices, receipts, and other customer-facing documents.</p>
+                              </div>
+                              <div className="col-md-4 col-lg-3 col-xxl-2">
+                                  <input type="text" className="form-control" placeholder="My POS Store" />
+                              </div>
+                              <div className="col-md-8 col-lg-6">
+                                  <h6 className="mb-1 fw-medium">Contact Number</h6>
+                                  <p className="text-muted">Used for customer support and store communication.</p>
+                              </div>
+                              <div className="col-md-4 col-lg-3 col-xxl-2">
+                                  <input type="text" className="form-control" placeholder="+91 00000 00000" />
+                              </div>
+                              <div className="col-md-8 col-lg-6">
+                                  <h6 className="mb-1 fw-medium">Email Address</h6>
+                                  <p className="text-muted">Receives system alerts and important notifications.</p>
+                              </div>
+                              <div className="col-md-4 col-lg-3 col-xxl-2">
+                                  <input type="email" className="form-control" placeholder="store@email.com" />
+                              </div>
+                              <div className="col-md-8 col-lg-6">
+                                  <h6 className="mb-1 fw-medium">Default Currency</h6>
+                                  <p className="text-muted">Applied to pricing and billing calculations.</p>
+                              </div>
+                              <div className="col-md-4 col-lg-3 col-xxl-2">
+                                  <div id="defaultCurrency"></div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          <div className="accordion accordion-boxed accordion-solid-secondary mb-5" id="accordionSecondary">
+              <div className="accordion-item">
+                  <h2 className="accordion-header">
+                      <button className="accordion-button collapsed bg-body-secondary shadow-none border rounded-0 p-5 text-body fw-medium" type="button" data-bs-toggle="collapse" data-bs-target="#posBehavior" aria-expanded="true">
+                          POS Behavior & Billing Flow
+                      </button>
+                  </h2>
+                  <div id="posBehavior" className="accordion-collapse collapse show" data-bs-parent="#accordionSecondary">
+                      <div className="accordion-body border border-top-0 p-5">
+                          <div className="d-flex flex-wrap gap-4 justify-content-between align-items-center mb-5 mb-md-6">
+                              <div>
+                                  <h6 className="mb-1 fw-medium">Enable Quick Sale Mode</h6>
+                                  <p className="text-muted">Enable faster checkout by skipping optional billing steps.</p>
+                              </div>
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="switch-light-1" defaultChecked /><label className="label" htmlFor="switch-light-1"></label>
+                              </div>
+                          </div>
+                          <div className="d-flex flex-wrap gap-4 justify-content-between align-items-center mb-5 mb-md-6">
+                              <div>
+                                  <h6 className="mb-1 fw-medium">Default Product Visibility</h6>
+                                  <p className="text-muted">Control who can view products by default in the POS.</p>
+                              </div>
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="switch-light-2" /><label className="label" htmlFor="switch-light-2"></label>
+                              </div>
+                          </div>
+                          <div className="d-flex flex-wrap gap-4 justify-content-between align-items-center mb-5 mb-md-6">
+                              <div>
+                                  <h6 className="mb-1 fw-medium">Default Tax Percentage</h6>
+                                  <p className="text-muted">Applied automatically to taxable items during billing.</p>
+                              </div>
+                              <div className="d-flex align-items-center gap-2">
+                                  <input type="number" className="form-control w-36" placeholder="0" />
+                                  <span className="text-muted">%</span>
+                              </div>
+                          </div>
+                          <div className="d-flex flex-wrap gap-4 justify-content-between align-items-center">
+                              <div>
+                                  <h6 className="mb-1 fw-medium">Enable VAT Calculation</h6>
+                                  <p className="text-muted mb-0">Turn on VAT and apply the entered percentage to sales.</p>
+                              </div>
+                              <div className="d-flex align-items-center gap-3">
+                                  <input type="number" className="form-control w-36" placeholder="0" />
+                                  <span className="text-muted">%</span>
+                                  <div className="form-switch switch-light-primary">
+                                      <input type="checkbox" id="switch-light-3" /><label className="label" htmlFor="switch-light-3"></label>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          <div className="accordion accordion-boxed accordion-solid-secondary mb-5" id="accordionSecondary">
+              <div className="accordion-item">
+                  <h2 className="accordion-header">
+                      <button className="accordion-button collapsed bg-body-secondary shadow-none border rounded-0 p-5 text-body fw-medium" type="button" data-bs-toggle="collapse" data-bs-target="#pricingRules">Pricing, Tax & Rounding Rules</button>
+                  </h2>
+                  <div id="pricingRules" className="accordion-collapse collapse show" data-bs-parent="#accordionSecondary">
+                      <div className="accordion-body border border-top-0 p-5">
+                          <div className="d-flex flex-wrap gap-4 justify-content-between align-items-center mb-5 mb-md-6">
+                              <div>
+                                  <h6 className="mb-1 fw-medium">Prices Include Tax</h6>
+                                  <p className="text-muted mb-0">Define whether product prices are entered inclusive of tax.</p>
+                              </div>
+                              <div>
+                                  <div id="includeTax"></div>
+                              </div>
+                          </div>
+                          <div className="d-flex flex-wrap gap-4 justify-content-between align-items-center mb-5 mb-md-6">
+                              <div>
+                                  <h6 className="mb-1 fw-medium">Rounding Method</h6>
+                                  <p className="text-muted mb-0">Choose how totals are rounded during checkout.</p>
+                              </div>
+                              <div>
+                                  <div id="roundingMethod"></div>
+                              </div>
+                          </div>
+                          <div className="d-flex flex-wrap gap-4 justify-content-between align-items-center mb-5 mb-md-6">
+                              <div>
+                                  <h6 className="mb-1 fw-medium">Decimal Precision</h6>
+                                  <p className="text-muted mb-0">Number of decimal places shown in prices and totals.</p>
+                              </div>
+                              <div>
+                                  <input type="number" className="form-control w-28" defaultValue="2" />
+                              </div>
+                          </div>
+                          <div className="d-flex flex-wrap gap-4 justify-content-between align-items-center">
+                              <div>
+                                  <h6 className="mb-1 fw-medium">Allow Manual Price Edit</h6>
+                                  <p className="text-muted mb-0">Permit staff to change prices during billing.</p>
+                              </div>
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="switch-light-3" defaultChecked /><label className="label" htmlFor="switch-light-3"></label>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          <div className="accordion accordion-boxed accordion-solid-secondary mb-5" id="accordionSecondary">
+              <div className="accordion-item">
+                  <h2 className="accordion-header">
+                      <button className="accordion-button collapsed bg-body-secondary shadow-none border rounded-0 p-5 text-body fw-medium" type="button" data-bs-toggle="collapse" data-bs-target="#inventoryRules">
+                          Inventory & Stock Behavior
+                      </button>
+                  </h2>
+                  <div id="inventoryRules" className="accordion-collapse collapse show" data-bs-parent="#accordionSecondary">
+                      <div className="accordion-body border border-top-0 p-5">
+                          <div className="d-flex flex-wrap gap-4 justify-content-between align-items-center mb-5 mb-md-6">
+                              <div>
+                                  <h6 className="mb-1 fw-medium">Auto Deduct Stock After Sale</h6>
+                                  <p className="text-muted mb-0">
+                                      Automatically reduce inventory when a sale is completed.
+                                  </p>
+                              </div>
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="autoStock" defaultChecked />
+                                  <label className="label" htmlFor="autoStock"></label>
+                              </div>
+                          </div>
+                          <div className="d-flex flex-wrap gap-4 justify-content-between align-items-center">
+                              <div>
+                                  <h6 className="mb-1 fw-medium">Allow Negative Stock</h6>
+                                  <p className="text-muted mb-0">
+                                      Continue selling even when available stock is insufficient.
+                                  </p>
+                              </div>
+                              <div className="form-switch switch-light-primary">
+                                  <input type="checkbox" id="negativeStock" />
+                                  <label className="label" htmlFor="negativeStock"></label>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
     </div>
   )
 }

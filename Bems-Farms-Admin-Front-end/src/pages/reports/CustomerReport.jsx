@@ -1,133 +1,148 @@
-import { useState, useCallback } from 'react'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
+import { useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 
-const S = '#6b7280', B = 'var(--border)'
-const TH = { padding:'10px 16px',fontSize:11,fontWeight:700,color:S,textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',background:'var(--bg-subtle)',whiteSpace:'nowrap' }
-const TD = { padding:'11px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
-const inp = { padding:'8px 12px',border:`1.5px solid ${B}`,borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',color:'var(--text-primary)' }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 20px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
+function useApexChart(ref, options, deps = []) {
+  useEffect(() => {
+    if (!ref.current || !window.ApexCharts) return
+    ref.current.innerHTML = ''
+    const chart = new window.ApexCharts(ref.current, options)
+    chart.render()
+    return () => chart.destroy()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps)
+}
 
-function ngn(v) { return `₦${Number(v||0).toLocaleString()}` }
+const TOP_CUSTOMERS = [
+  { rank: 1, name: 'Mrs. Okonkwo',   orders: 34, spent: '₦420,000', tier: 'Platinum', trend: '+12%' },
+  { rank: 2, name: 'Amara Obi',      orders: 18, spent: '₦248,000', tier: 'Gold',     trend: '+8%'  },
+  { rank: 3, name: 'Tunde Adeyemi',  orders: 15, spent: '₦174,000', tier: 'Silver',   trend: '+5%'  },
+  { rank: 4, name: 'Seun Abiodun',   orders: 10, spent: '₦118,000', tier: 'Silver',   trend: '+3%'  },
+  { rank: 5, name: 'Kemi Balogun',   orders:  5, spent: '₦62,000',  tier: 'Bronze',   trend: 'New'  },
+]
 
-const today = new Date().toISOString().slice(0,10)
-const monthStart = today.slice(0,7)+'-01'
+const tierColor = { Platinum: 'primary', Gold: 'warning', Silver: 'secondary', Bronze: 'danger' }
 
 export default function CustomerReport() {
-  const [filters, setFilters] = useState({ from:monthStart, to:today })
-  const [data, setData]       = useState(null)
-  const [loading, setLoading] = useState(false)
+  const growthRef = useRef(null)
+  const tierRef   = useRef(null)
 
-  const generate = useCallback(async () => {
-    setLoading(true)
-    try {
-      const r = await api.get('/admin/reports/customers', { params: filters })
-      setData(r.data)
-    } catch {
-      toast.error('Failed to generate customer report')
-    } finally {
-      setLoading(false)
-    }
-  }, [filters])
+  useApexChart(growthRef, {
+    chart: { type: 'area', height: 240, toolbar: { show: false } },
+    series: [{ name: 'New Customers', data: [12, 18, 14, 22, 19, 28, 31] }],
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 2 },
+    fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.05 } },
+    colors: ['#405189'],
+    xaxis: { categories: ['Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], axisBorder: { show: false } },
+    grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
+  }, [])
+
+  useApexChart(tierRef, {
+    chart: { type: 'donut', height: 240 },
+    series: [1, 1, 2, 1],
+    labels: ['Platinum', 'Gold', 'Silver', 'Bronze'],
+    colors: ['#405189', '#f7b84b', '#878a99', '#f06548'],
+    legend: { position: 'bottom' },
+    dataLabels: { enabled: true },
+  }, [])
 
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Customer Report</div>
-        <div style={{ fontSize:12,color:S,marginTop:2 }}>New vs returning customers, top spenders, and growth trends.</div>
+    <div className="container-fluid">
+      <div className="d-flex align-items-center justify-content-between mb-5">
+        <div>
+          <h4 className="fs-xl mb-1">Customer Report</h4>
+          <p className="text-muted mb-0">Customer growth, retention, and spending analytics.</p>
+        </div>
+        <div className="d-flex gap-2">
+          <select className="form-select form-select-sm">
+            <option>Last 7 months</option>
+            <option>Last 30 days</option>
+            <option>This year</option>
+          </select>
+          <button className="btn btn-outline-light border btn-sm">
+            <i className="ri-download-2-line me-1"></i>Export
+          </button>
+        </div>
       </div>
 
-      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:'16px 20px',marginBottom:20,display:'flex',flexWrap:'wrap',gap:12,alignItems:'flex-end' }}>
-        <div>
-          <div style={{ fontSize:11,fontWeight:700,color:S,marginBottom:4 }}>FROM DATE</div>
-          <input type="date" style={inp} value={filters.from} onChange={e=>setFilters(f=>({...f,from:e.target.value}))}/>
-        </div>
-        <div>
-          <div style={{ fontSize:11,fontWeight:700,color:S,marginBottom:4 }}>TO DATE</div>
-          <input type="date" style={inp} value={filters.to} onChange={e=>setFilters(f=>({...f,to:e.target.value}))}/>
-        </div>
-        <button style={btnP} onClick={generate} disabled={loading}>
-          <i className="ri-user-3-line"/>{loading?'Generating…':'Generate Report'}
-        </button>
-      </div>
-
-      {!data && !loading && (
-        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
-          <i className="ri-user-3-line" style={{ fontSize:54,display:'block',marginBottom:10 }}/>
-          <div style={{ fontSize:14,fontWeight:600 }}>Select date range and click Generate Report</div>
-        </div>
-      )}
-
-      {loading && (
-        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
-          <i className="ri-loader-4-line" style={{ fontSize:43,display:'block',marginBottom:8 }}/>Loading…
-        </div>
-      )}
-
-      {data && !loading && (
-        <>
-          <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:14,marginBottom:20 }}>
-            {[
-              { label:'Total Customers',    value:Number(data.kpis?.total_customers||0).toLocaleString(),          color:'#1B4332', bg:'#dcfce7', icon:'ri-group-line' },
-              { label:'New Customers',      value:Number(data.kpis?.new_customers||0).toLocaleString(),  color:'#0369a1', bg:'#e0f2fe', icon:'ri-user-add-line' },
-              { label:'Returning',          value:Number(data.new_vs_returning?.find(r=>r.customer_type==='returning')?.buyers||0).toLocaleString(),      color:'#b45309', bg:'#fef3c7', icon:'ri-user-follow-line' },
-              { label:'Top Spender',        value:data.top_spenders?.[0]?.name||'—',                           color:'#7c3aed', bg:'#ede9fe', icon:'ri-vip-crown-line' },
-            ].map(k=>(
-              <div key={k.label} style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:18,display:'flex',alignItems:'center',gap:12 }}>
-                <div style={{ width:40,height:40,borderRadius:10,background:k.bg,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-                  <i className={k.icon} style={{ fontSize:20,color:k.color }}/>
+      {/* Stats */}
+      <div className="row g-4 mb-5">
+        {[
+          { label: 'Total Customers', value: '1,247', sub: '↑ 18 new this week',  icon: 'ri-user-3-line',        color: 'primary' },
+          { label: 'Active (30 days)', value: '892',  sub: '71.5% of total',       icon: 'ri-user-heart-line',    color: 'success' },
+          { label: 'Avg. Order Value', value: '₦14,200', sub: '↑ 6% vs last month', icon: 'ri-money-dollar-circle-line', color: 'warning' },
+          { label: 'Retention Rate',  value: '74%',   sub: 'Industry avg: 65%',    icon: 'ri-repeat-line',        color: 'info'    },
+        ].map(({ label, value, sub, icon, color }) => (
+          <div className="col-sm-6 col-xl-3" key={label}>
+            <div className="card mb-0">
+              <div className="card-body d-flex align-items-center gap-3 py-3">
+                <div className={`avatar size-10 rounded bg-${color}-subtle text-${color} d-flex align-items-center justify-content-center`}>
+                  <i className={`${icon} fs-4`}></i>
                 </div>
                 <div>
-                  <div style={{ fontSize:11,color:S,fontWeight:600,marginBottom:2 }}>{k.label}</div>
-                  <div style={{ fontSize:16,fontWeight:800,color:'var(--text-primary)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:120 }}>{k.value}</div>
+                  <h5 className="fw-bold mb-0">{value}</h5>
+                  <p className="text-muted fs-xs mb-0">{sub}</p>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
+        ))}
+      </div>
 
-          <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16 }}>
-            {/* Top Customers */}
-            {data.top_spenders?.length > 0 && (
-              <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
-                <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Top Customers</div>
-                <table style={{ width:'100%',borderCollapse:'collapse' }}>
-                  <thead><tr>{['Customer','Orders','Total Spent'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
-                  <tbody>
-                    {data.top_spenders.map((c,i)=>(
-                      <tr key={i}>
-                        <td style={TD}>
-                          <div style={{ fontWeight:600 }}>{c.name}</div>
-                          <div style={{ fontSize:11,color:S }}>{c.email}</div>
-                        </td>
-                        <td style={TD}>{Number(c.order_count||0).toLocaleString()}</td>
-                        <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{ngn(c.total_spend)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* By Month */}
-            {data.timeline?.length > 0 && (
-              <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
-                <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>New Customers by Month</div>
-                <table style={{ width:'100%',borderCollapse:'collapse' }}>
-                  <thead><tr>{['Month','New Customers'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
-                  <tbody>
-                    {data.timeline.map((r,i)=>(
-                      <tr key={i}>
-                        <td style={{ ...TD,fontWeight:600 }}>{new Date(r.period).toLocaleDateString('en-NG',{month:'short',year:'numeric'})}</td>
-                        <td style={TD}>{Number(r.new_signups||0).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+      {/* Charts */}
+      <div className="row g-4 mb-4">
+        <div className="col-xl-8">
+          <div className="card mb-0">
+            <div className="card-body">
+              <h6 className="fw-semibold mb-0">Customer Growth</h6>
+              <p className="text-muted fs-xs mb-3">New customers per month</p>
+              <div ref={growthRef}></div>
+            </div>
           </div>
-        </>
-      )}
+        </div>
+        <div className="col-xl-4">
+          <div className="card mb-0">
+            <div className="card-body">
+              <h6 className="fw-semibold mb-0">Tier Distribution</h6>
+              <p className="text-muted fs-xs mb-3">Loyalty tier breakdown</p>
+              <div ref={tierRef}></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Top customers */}
+      <div className="card mb-0">
+        <div className="card-header d-flex align-items-center justify-content-between">
+          <h6 className="fw-semibold mb-0">Top Customers by Spend</h6>
+          <Link to="/customers" className="link link-custom fs-sm">View all →</Link>
+        </div>
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover table-nowrap mb-0">
+              <thead className="table-light">
+                <tr><th>#</th><th>Customer</th><th>Orders</th><th>Total Spent</th><th>Tier</th><th>Trend</th></tr>
+              </thead>
+              <tbody>
+                {TOP_CUSTOMERS.map(c => (
+                  <tr key={c.rank}>
+                    <td className="text-muted fw-medium">{c.rank}</td>
+                    <td>
+                      <Link to="/customers" className="fw-medium link link-custom">{c.name}</Link>
+                    </td>
+                    <td>{c.orders}</td>
+                    <td className="fw-semibold">{c.spent}</td>
+                    <td>
+                      <span className={`badge bg-${tierColor[c.tier]}-subtle text-${tierColor[c.tier]}`}>{c.tier}</span>
+                    </td>
+                    <td className={c.trend === 'New' ? 'text-muted' : 'text-success fw-medium'}>{c.trend}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

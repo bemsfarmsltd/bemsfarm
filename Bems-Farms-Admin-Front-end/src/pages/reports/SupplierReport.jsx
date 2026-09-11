@@ -1,158 +1,453 @@
-import { useState, useCallback } from 'react'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-const S = '#6b7280', B = 'var(--border)'
-const TH = { padding:'10px 16px',fontSize:11,fontWeight:700,color:S,textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',background:'var(--bg-subtle)',whiteSpace:'nowrap' }
-const TD = { padding:'11px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
-const inp = { padding:'8px 12px',border:`1.5px solid ${B}`,borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',color:'var(--text-primary)' }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 20px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-
-function ngn(v) { return `₦${Number(v||0).toLocaleString()}` }
-
-function paymentStatusBadge(status) {
-  const map = {
-    paid:     { bg:'#dcfce7', color:'#166534' },
-    partial:  { bg:'#fef3c7', color:'#92400e' },
-    pending:  { bg:'#e0f2fe', color:'#0369a1' },
-    overdue:  { bg:'#fee2e2', color:'#991b1b' },
-  }
-  const key = (status||'').toLowerCase()
-  const style = map[key] || { bg:'var(--border)', color:S }
-  return (
-    <span style={{ background:style.bg,color:style.color,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600,textTransform:'capitalize' }}>
-      {status||'—'}
-    </span>
-  )
-}
-
-// The backend doesn't compute a payment_status field (no due-date tracking
-// to derive "overdue" from) — paid/partial/pending is inferred here from the
-// real balance/total_paid figures it does return.
-function derivePaymentStatus(s) {
-  if (Number(s.balance||0) <= 0) return 'paid'
-  if (Number(s.total_paid||0) > 0) return 'partial'
-  return 'pending'
-}
-
-const today = new Date().toISOString().slice(0,10)
-const monthStart = today.slice(0,7)+'-01'
+import { Link } from 'react-router-dom'
 
 export default function SupplierReport() {
-  const [filters, setFilters] = useState({ from:monthStart, to:today })
-  const [data, setData]       = useState(null)
-  const [loading, setLoading] = useState(false)
-
-  const generate = useCallback(async () => {
-    setLoading(true)
-    try {
-      const r = await api.get('/admin/reports/suppliers', { params: filters })
-      setData(r.data)
-    } catch {
-      toast.error('Failed to generate supplier report')
-    } finally {
-      setLoading(false)
-    }
-  }, [filters])
-
-  function set(k, v) { setFilters(f => ({ ...f, [k]: v })) }
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Supplier Report</div>
-        <div style={{ fontSize:12,color:S,marginTop:2 }}>View total purchases, outstanding balances, and payment status per supplier.</div>
-      </div>
-
-      {/* Filters */}
-      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:'16px 20px',marginBottom:20,display:'flex',flexWrap:'wrap',gap:12,alignItems:'flex-end' }}>
-        <div>
-          <div style={{ fontSize:11,fontWeight:700,color:S,marginBottom:4 }}>FROM DATE</div>
-          <input type="date" style={inp} value={filters.from} onChange={e=>set('from',e.target.value)}/>
-        </div>
-        <div>
-          <div style={{ fontSize:11,fontWeight:700,color:S,marginBottom:4 }}>TO DATE</div>
-          <input type="date" style={inp} value={filters.to} onChange={e=>set('to',e.target.value)}/>
-        </div>
-        <button style={btnP} onClick={generate} disabled={loading}>
-          <i className="ri-truck-line"/>{loading?'Generating…':'Generate Report'}
-        </button>
-      </div>
-
-      {/* Empty state */}
-      {!data && !loading && (
-        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
-          <i className="ri-truck-line" style={{ fontSize:54,display:'block',marginBottom:10 }}/>
-          <div style={{ fontSize:14,fontWeight:600 }}>Select a date range and click Generate Report</div>
-        </div>
-      )}
-
-      {loading && (
-        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
-          <i className="ri-loader-4-line" style={{ fontSize:43,display:'block',marginBottom:8 }}/>Loading…
-        </div>
-      )}
-
-      {data && !loading && (
-        <>
-          {/* Summary count badge */}
-          {data.top_suppliers && data.top_suppliers.length > 0 && (
-            <div style={{ marginBottom:14,fontSize:13,color:S }}>
-              Showing <strong style={{ color:'var(--text-primary)' }}>{data.top_suppliers.length}</strong> supplier{data.top_suppliers.length!==1?'s':''} for selected period.
-            </div>
-          )}
-
-          {/* Supplier Table */}
-          <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
-            <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14 }}>
-              Supplier Summary
-            </div>
-            {(!data.top_suppliers || data.top_suppliers.length === 0) ? (
-              <div style={{ padding:60,textAlign:'center',color:S }}>
-                <i className="ri-inbox-line" style={{ fontSize:43,display:'block',marginBottom:8 }}/>
-                <div style={{ fontSize:13 }}>No supplier data found for the selected period.</div>
-              </div>
-            ) : (
-              <div style={{ overflowX:'auto' }}>
-                <table style={{ width:'100%',borderCollapse:'collapse' }}>
-                  <thead>
-                    <tr>
-                      {['#','Supplier','Total Purchased','Balance Due','Payment Status'].map(h=>(
-                        <th key={h} style={TH}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.top_suppliers.map((s,i)=>(
-                      <tr key={i}>
-                        <td style={{ ...TD,color:S,width:40,fontWeight:600 }}>{i+1}</td>
-                        <td style={{ ...TD,fontWeight:600 }}>{s.name}</td>
-                        <td style={{ ...TD,fontWeight:600,color:'#1B4332' }}>{ngn(s.total_purchases)}</td>
-                        <td style={{ ...TD,fontWeight:600,color:Number(s.balance||0)>0?'#991b1b':'#166534' }}>
-                          {ngn(s.balance)}
-                        </td>
-                        <td style={TD}>{paymentStatusBadge(derivePaymentStatus(s))}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr style={{ background:'var(--bg-subtle)' }}>
-                      <td colSpan={2} style={{ ...TD,fontWeight:700,color:'var(--text-primary)',borderTop:'2px solid var(--border)' }}>TOTAL</td>
-                      <td style={{ ...TD,fontWeight:700,color:'#1B4332',borderTop:'2px solid var(--border)' }}>
-                        {ngn(data.top_suppliers.reduce((acc,s)=>acc+Number(s.total_purchases||0),0))}
-                      </td>
-                      <td style={{ ...TD,fontWeight:700,color:'#991b1b',borderTop:'2px solid var(--border)' }}>
-                        {ngn(data.top_suppliers.reduce((acc,s)=>acc+Number(s.balance||0),0))}
-                      </td>
-                      <td style={{ ...TD,borderTop:'2px solid var(--border)' }}/>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            )}
+    <div className="container-fluid">
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
+              <h6 className="flex-grow-1 mb-0">Supplier</h6>
+              <ul className="breadcrumb flex-shrink-0 mb-0">
+                  <li className="breadcrumb-item"><a href="#">Reports</a></li>
+                  <li className="breadcrumb-item active">Supplier</li>
+              </ul>
           </div>
-        </>
-      )}
+          <div className="row">
+              <div className="col-xxl-2 col-md-4 col-sm-6">
+                  <div className="card">
+                      <div className="card-body d-flex align-items-center gap-5">
+                          <div className="avatar size-11 bg-primary text-white rounded-1">
+                              <i className="ri-shopping-cart-2-line fs-xl"></i>
+                          </div>
+                          <div>
+                              <h5 className="mb-1">256</h5>
+                              <p className="text-muted">Total Suppliers</p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              <div className="col-xxl-2 col-md-4 col-sm-6">
+                  <div className="card">
+                      <div className="card-body d-flex align-items-center gap-5">
+                          <div className="avatar size-11 bg-primary text-white rounded-1">
+                              <i className="ri-wallet-3-line fs-xl"></i>
+                          </div>
+                          <div>
+                              <h5 className="mb-1">$208,000</h5>
+                              <p className="text-muted">Total Purchases</p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              <div className="col-xxl-2 col-md-4 col-sm-6">
+                  <div className="card">
+                      <div className="card-body d-flex align-items-center gap-5">
+                          <div className="avatar size-11 bg-primary text-white rounded-1">
+                              <i className="ri-bank-line fs-xl"></i>
+                          </div>
+                          <div>
+                              <h5 className="mb-1">$170,000</h5>
+                              <p className="text-muted">Total Paid</p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              <div className="col-xxl-2 col-md-4 col-sm-6">
+                  <div className="card">
+                      <div className="card-body d-flex align-items-center gap-5">
+                          <div className="avatar size-11 bg-primary text-white rounded-1">
+                              <i className="ri-stack-line fs-xl"></i>
+                          </div>
+                          <div>
+                              <h5 className="mb-1">133</h5>
+                              <p className="text-muted">Total Items</p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              <div className="col-xxl-2 col-md-4 col-sm-6">
+                  <div className="card">
+                      <div className="card-body d-flex align-items-center gap-5">
+                          <div className="avatar size-11 bg-primary text-white rounded-1">
+                              <i className="ri-user-line fs-xl"></i>
+                          </div>
+                          <div>
+                              <h5 className="mb-1">120</h5>
+                              <p className="text-muted">Active Suppliers</p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              <div className="col-xxl-2 col-md-4 col-sm-6">
+                  <div className="card">
+                      <div className="card-body d-flex align-items-center gap-5">
+                          <div className="avatar size-11 bg-primary text-white rounded-1">
+                              <i className="ri-user-3-line fs-xl"></i>
+                          </div>
+                          <div>
+                              <h5 className="mb-1">36</h5>
+                              <p className="text-muted">Inactive Suppliers</p>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          <div className="card">
+              <div className="card-header d-flex flex-wrap justify-content-between gap-2 align-items-center">
+                  <div className="position-relative">
+                      <input type="text" id="tableSearch" className="form-control ps-10" placeholder="Search products..." />
+                      <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
+                  </div>
+                  <div className="d-flex flex-wrap align-items-center gap-2">
+                      <input type="number" className="form-control w-32" placeholder="Min Items" />
+                      <span>-</span>
+                      <input type="number" className="form-control w-32" placeholder="Max Items" />
+                      <div className="position-relative flex-shrink-0 w-48">
+                          <input type="text" id="filterDate" className="form-control ps-10" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose date" />
+                          <i data-lucide="calendar" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
+                      </div>
+                      <div id="vsStatusFilter" className="w-40"></div>
+                      <div id="vsPaymentMethod" className="w-44"></div>
+                      <button type="button" className="btn btn-primary">Generate</button>
+                      <div className="dropdown">
+                          <button type="button" className="btn btn-light btn-icon" data-bs-toggle="dropdown" aria-expanded="false"><i data-lucide="arrow-down-to-line" className="size-4"></i></button>
+                          <ul className="dropdown-menu dropdown-menu-end">
+                              <li><a className="dropdown-item" href="#" id="exportPrint">Print PDF</a></li>
+                              <li><a className="dropdown-item" href="#" id="exportJSON">Export CSV</a></li>
+                              <li><a className="dropdown-item" href="#" id="exportXML">Export XML</a></li>
+                          </ul>
+                      </div>
+                  </div>
+              </div>
+              <div className="card-body pt-0">
+                  <div className="table-card table-responsive">
+                      <table className="table text-nowrap align-middle mb-0">
+                          <thead>
+                              <tr className="bg-light border-bottom">
+                                  <th>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" id="checkAllSuppliers" />
+                                      </div>
+                                  </th>
+                                  <th className="text-muted fw-medium">Supplier ID</th>
+                                  <th className="text-muted fw-medium">Supplier</th>
+                                  <th className="text-muted fw-medium">Total Purchase</th>
+                                  <th className="text-muted fw-medium">Total Paid</th>
+                                  <th className="text-muted fw-medium">Total Items</th>
+                                  <th className="text-muted fw-medium">Payment</th>
+                                  <th className="text-muted fw-medium">Last Purchase</th>
+                                  <th className="text-muted fw-medium">Avg Order Value</th>
+                                  <th className="text-muted fw-medium">Status</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" />
+                                      </div>
+                                  </td>
+                                  <td><a href="#" className="link link-custom-primary">#SUP-0001</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-6-BIO7_TUU.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <a href="#" className="text-reset fw-medium d-block">Sunrise Wholesale</a>
+                                      </div>
+                                  </td>
+                                  <td>$42,380</td>
+                                  <td>$38,000</td>
+                                  <td>25</td>
+                                  <td>Cash</td>
+                                  <td>12 Dec, 2025</td>
+                                  <td>$2,118</td>
+                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td><a href="#" className="link link-custom-primary">#SUP-0002</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-7-BMyy-xCq.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <a href="#" className="text-reset fw-medium d-block">Fresh Valley Traders</a>
+                                      </div>
+                                  </td>
+                                  <td>$18,920</td>
+                                  <td>$12,500</td>
+                                  <td>14</td>
+                                  <td>Bank</td>
+                                  <td>01 Dec, 2025</td>
+                                  <td>$1,351</td>
+                                  <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span></td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td><a href="#" className="link link-custom-primary">#SUP-0003</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-8-BAGm131G.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <a href="#" className="text-reset fw-medium d-block">Global Foods Ltd.</a>
+                                      </div>
+                                  </td>
+                                  <td>$30,500</td>
+                                  <td>$30,500</td>
+                                  <td>18</td>
+                                  <td>Online</td>
+                                  <td>08 Dec, 2025</td>
+                                  <td>$1,694</td>
+                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td><a href="#" className="link link-custom-primary">#SUP-0004</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-9-DB-6OyMr.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <a href="#" className="text-reset fw-medium d-block">EcoMart Suppliers</a>
+                                      </div>
+                                  </td>
+                                  <td>$25,700</td>
+                                  <td>$21,300</td>
+                                  <td>16</td>
+                                  <td>Cheque</td>
+                                  <td>05 Dec, 2025</td>
+                                  <td>$1,606</td>
+                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td><a href="#" className="link link-custom-primary">#SUP-0005</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-10-CzpspsdB.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <a href="#" className="text-reset fw-medium d-block">FreshMart Co.</a>
+                                      </div>
+                                  </td>
+                                  <td>$12,800</td>
+                                  <td>$9,200</td>
+                                  <td>11</td>
+                                  <td>Cash</td>
+                                  <td>29 Nov, 2025</td>
+                                  <td>$1,163</td>
+                                  <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span></td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td><a href="#" className="link link-custom-primary">#SUP-0006</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-11-bzS6tHsV.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <a href="#" className="text-reset fw-medium d-block">GreenLeaf Traders</a>
+                                      </div>
+                                  </td>
+                                  <td>$8,450</td>
+                                  <td>$8,450</td>
+                                  <td>9</td>
+                                  <td>Online</td>
+                                  <td>02 Dec, 2025</td>
+                                  <td>$939</td>
+                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td><a href="#" className="link link-custom-primary">#SUP-0007</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-12-CfsiEgBV.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <a href="#" className="text-reset fw-medium d-block">Oceanic Suppliers</a>
+                                      </div>
+                                  </td>
+                                  <td>$21,900</td>
+                                  <td>$15,000</td>
+                                  <td>13</td>
+                                  <td>Bank</td>
+                                  <td>27 Nov, 2025</td>
+                                  <td>$1,684</td>
+                                  <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span></td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td><a href="#" className="link link-custom-primary">#SUP-0008</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-13-NgroKY8u.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <a href="#" className="text-reset fw-medium d-block">GreenFields Co.</a>
+                                      </div>
+                                  </td>
+                                  <td>$15,600</td>
+                                  <td>$15,600</td>
+                                  <td>12</td>
+                                  <td>Cash</td>
+                                  <td>30 Nov, 2025</td>
+                                  <td>$1,300</td>
+                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td><a href="#" className="link link-custom-primary">#SUP-0009</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-14-BWimhkHc.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <a href="#" className="text-reset fw-medium d-block">Harvest Traders</a>
+                                      </div>
+                                  </td>
+                                  <td>$9,750</td>
+                                  <td>$7,100</td>
+                                  <td>8</td>
+                                  <td>Cheque</td>
+                                  <td>20 Nov, 2025</td>
+                                  <td>$1,219</td>
+                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
+                              </tr>
+                              <tr>
+                                  <td>
+                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
+                                  </td>
+                                  <td><a href="#" className="link link-custom-primary">#SUP-0010</a></td>
+                                  <td>
+                                      <div className="d-flex align-items-center gap-2">
+                                          <img src="../assets/user-15-Bm8xnKEs.png" className="size-8 rounded-circle img-fluid" alt="Supplier" />
+                                          <a href="#" className="text-reset fw-medium d-block">Evergreen Suppliers</a>
+                                      </div>
+                                  </td>
+                                  <td>$28,400</td>
+                                  <td>$26,000</td>
+                                  <td>19</td>
+                                  <td>Online</td>
+                                  <td>10 Dec, 2025</td>
+                                  <td>$1,495</td>
+                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
+                              </tr>
+                          </tbody>
+                      </table>
+                  </div>
+                  <div className="row align-items-center g-3 mt-3">
+                      <div className="col-md-6">
+                          <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b> of <b className="ms-1">19</b> Results</p>
+                      </div>
+                      <div className="col-md-6">
+                          <nav aria-label="Page navigation example">
+                              <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
+                                  <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
+                                  <li className="page-item active"><a className="page-link" href="#">1</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">2</a></li>
+                                  <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
+                              </ul>
+                          </nav>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          <div className="modal fade" id="financeModal" tabIndex="-1" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered">
+                  <div className="modal-content">
+                      <div className="h-24 rounded-top-2 pattern-bg"></div>
+                      <div className="modal-body position-relative">
+                          <form>
+                              <input type="hidden" id="stockInId" />
+                              <div className="text-center mb-2">
+                                  <label className="avatar border bg-body-secondary size-24 rounded p-3 mt-n20 cursor-pointer position-relative d-inline-block overflow-hidden" htmlFor="supplierLogoInput" id="logoPreviewLabel">
+                                      <img id="supplierLogoPreview" src="#" className="w-100 h-100 object-fit-cover rounded d-none" />
+                                      <div id="uploadIcon" className="d-flex align-items-center justify-content-center w-100 h-100 position-absolute top-0 start-0">
+                                          <i className="ri-upload-cloud-2-line fs-2xl text-muted"></i>
+                                      </div>
+                                      <input type="file" id="supplierLogoInput" className="d-none" accept="image/*" />
+                                  </label>
+                              </div>
+                              <div className="row g-5">
+                                  <div className="col-md-7">
+                                      <label htmlFor="financeProduct" className="form-label">Product</label>
+                                      <input id="financeProduct" type="text" className="form-control" placeholder="Enter product name" />
+                                  </div>
+                                  <div className="col-md-5">
+                                      <label htmlFor="financeSKU" className="form-label">SKU</label>
+                                      <input id="financeSKU" type="text" className="form-control" placeholder="Enter SKU" />
+                                  </div>
+                                  <div className="col-md-5">
+                                      <label htmlFor="financeCategory" className="form-label">Category</label>
+                                      <input id="financeCategory" type="text" className="form-control" placeholder="Product category" />
+                                  </div>
+                                  <div className="col-md-4">
+                                      <label htmlFor="financeUnitsSold" className="form-label">Units Sold</label>
+                                      <input id="financeUnitsSold" type="number" className="form-control" placeholder="e.g. 120" />
+                                  </div>
+                                  <div className="col-md-3">
+                                      <label htmlFor="financeDiscount" className="form-label">Discount (%)</label>
+                                      <input id="financeDiscount" type="number" className="form-control" placeholder="0" />
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="financeCostPrice" className="form-label">Cost Price</label>
+                                      <input id="financeCostPrice" type="number" className="form-control" placeholder="e.g. 10.00" />
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="financeSellingPrice" className="form-label">Selling Price</label>
+                                      <input id="financeSellingPrice" type="number" className="form-control" placeholder="e.g. 18.00" />
+                                  </div>
+                                  <div className="col-md-4">
+                                      <label htmlFor="financeTaxAmount" className="form-label">Tax Amount</label>
+                                      <input id="financeTaxAmount" type="number" className="form-control" placeholder="e.g. 180.00" />
+                                  </div>
+                                  <div className="col-md-4">
+                                      <label htmlFor="financeTotalCost" className="form-label">Total Cost</label>
+                                      <input id="financeTotalCost" type="text" className="form-control" placeholder="$0.00" />
+                                  </div>
+                                  <div className="col-md-4">
+                                      <label htmlFor="financeMargin" className="form-label">Margin (%)</label>
+                                      <input id="financeMargin" type="text" className="form-control" placeholder="0%" />
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="financeGrossProfit" className="form-label">Gross Profit</label>
+                                      <input id="financeGrossProfit" type="text" className="form-control text-success" placeholder="$0.00" readOnly />
+                                  </div>
+                                  <div className="col-md-6">
+                                      <label htmlFor="financeRevenue" className="form-label">Revenue</label>
+                                      <input id="financeRevenue" type="text" className="form-control" placeholder="$0.00" />
+                                  </div>
+                                  <div className="col-md-12">
+                                      <label htmlFor="financeStatus" className="form-label">Status</label>
+                                      <div id="financeStatus"></div>
+                                  </div>
+                              </div>
+                              <div className="d-flex gap-2 mt-7">
+                                  <button type="button" className="btn btn-light w-100" data-bs-dismiss="modal">Close</button>
+                                  <button type="submit" className="btn btn-primary w-100">Add Finance</button>
+                              </div>
+                          </form>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+
+          <div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+              <div className="modal-dialog modal-dialog-centered modal-xs">
+                  <div className="modal-content p-7 text-center">
+                      <div className="d-flex justify-content-center mb-4">
+                          <div className="size-14 bg-danger-subtle rounded-circle d-flex align-items-center justify-content-center size-16">
+                              <i className="ri-delete-bin-line text-danger fs-2xl"></i>
+                          </div>
+                      </div>
+                      <h5 className="mb-4 lh-base">Are you sure you want to delete this Finance?</h5>
+                      <div className="d-flex justify-content-center align-items-center gap-2">
+                          <button type="button" className="btn btn-danger" data-bs-dismiss="modal">Delete</button>
+                          <button type="button" className="btn btn-link text-reset" data-bs-dismiss="modal">Cancel</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
     </div>
   )
 }

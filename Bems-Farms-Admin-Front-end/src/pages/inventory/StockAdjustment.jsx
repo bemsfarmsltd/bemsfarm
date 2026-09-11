@@ -1,340 +1,293 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
+import { useState, useMemo } from 'react'
 
-const REASONS = ['Physical Count Correction','Spoilage/Damage','Expiry Write-off','Theft/Loss','System Error Correction','Quality Rejection','Production Use','Promotional Giveaway','Other']
+const PRODUCTS   = ['Basmati Rice (5kg)','Fresh Tomatoes','Palm Oil (25L)','Catfish (Smoked)','Fresh Pepper','Chicken (Whole)','Fresh Yam','Cassava Flour','Fresh Milk','Plantain (Bunch)']
+const WAREHOUSES = ['Main Store','Cold Room','Dry Store','Farm Store']
+const REASONS    = ['Physical Count Correction','Spoilage/Damage','Expiry Write-off','Theft/Loss','System Error Correction','Quality Rejection','Production Use','Promotional Giveaway']
 
-const inp  = { display:'block', width:'100%', padding:'9px 12px', border:'1.5px solid var(--border)', borderRadius:8, fontFamily:'var(--body-font)', fontSize:13, outline:'none', background:'var(--bg-card)', color:'var(--text-primary)', boxSizing:'border-box' }
-const btnP = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:9, border:'none', background:'var(--orange-accent)', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }
-const btnL = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:9, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-secondary)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }
-const TH   = { padding:'10px 16px', fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left', whiteSpace:'nowrap' }
-const TD   = { padding:'12px 16px', verticalAlign:'middle', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text-primary)' }
-const LBL  = { display:'block', fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:6 }
+const MOCK_ADJ = [
+  { id:1, ref:'ADJ-2026-001', product:'Fresh Tomatoes',     type:'subtract', date:'2026-06-15', warehouse:'Main Store', before:25, adjust:8,  after:17, reason:'Spoilage/Damage',           staff:'Emeka A.', status:'approved' },
+  { id:2, ref:'ADJ-2026-002', product:'Basmati Rice (5kg)', type:'add',      date:'2026-06-16', warehouse:'Dry Store',  before:80, adjust:40, after:120,reason:'Physical Count Correction',  staff:'Admin',    status:'approved' },
+  { id:3, ref:'ADJ-2026-003', product:'Palm Oil (25L)',      type:'subtract', date:'2026-06-18', warehouse:'Main Store', before:6,  adjust:6,  after:0,  reason:'Expiry Write-off',          staff:'Ngozi B.', status:'approved' },
+  { id:4, ref:'ADJ-2026-004', product:'Fresh Milk',          type:'subtract', date:'2026-06-20', warehouse:'Cold Room',  before:15, adjust:3,  after:12, reason:'Spoilage/Damage',           staff:'Emeka A.', status:'approved' },
+  { id:5, ref:'ADJ-2026-005', product:'Cassava Flour',       type:'add',      date:'2026-06-22', warehouse:'Dry Store',  before:10, adjust:5,  after:15, reason:'Physical Count Correction',  staff:'Admin',    status:'pending'  },
+  { id:6, ref:'ADJ-2026-006', product:'Fresh Pepper',        type:'subtract', date:'2026-06-24', warehouse:'Main Store', before:14, adjust:6,  after:8,  reason:'Quality Rejection',         staff:'Ngozi B.', status:'approved' },
+  { id:7, ref:'ADJ-2026-007', product:'Chicken (Whole)',     type:'add',      date:'2026-06-25', warehouse:'Cold Room',  before:45, adjust:10, after:55, reason:'Physical Count Correction',  staff:'Admin',    status:'pending'  },
+  { id:8, ref:'ADJ-2026-008', product:'Plantain (Bunch)',    type:'subtract', date:'2026-06-26', warehouse:'Farm Store', before:30, adjust:5,  after:25, reason:'Promotional Giveaway',      staff:'Emeka A.', status:'approved' },
+]
 
-function Modal({ title, onClose, children }) {
-  return <>
-    <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1054 }}/>
-    <div style={{ position:'fixed', inset:0, zIndex:1055, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
-      <div style={{ background:'var(--bg-card)', borderRadius:14, width:'100%', maxWidth:640, boxShadow:'0 8px 40px rgba(0,0,0,0.18)', overflow:'hidden', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
-        <div style={{ background:'var(--orange-accent)', color:'#fff', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-          <span style={{ fontFamily:'var(--heading-font)', fontWeight:700, fontSize:15 }}>{title}</span>
-          <button onClick={onClose} aria-label="Close" style={{ background:'none', border:'none', color:'rgba(255,255,255,0.8)', cursor:'pointer', fontSize:20, display:'flex', padding:4 }}><i className="ri-close-line"/></button>
-        </div>
-        <div style={{ padding:24, overflowY:'auto' }}>{children}</div>
-      </div>
-    </div>
-  </>
+const TYPE_CFG   = { add:{ label:'+Addition', cls:'bg-success-subtle text-success' }, subtract:{ label:'-Deduction', cls:'bg-danger-subtle text-danger' } }
+const STATUS_CFG = { approved:{ label:'Approved', cls:'bg-success-subtle text-success' }, pending:{ label:'Pending', cls:'bg-warning-subtle text-warning' } }
+
+function nextRef(list) {
+  const max = list.reduce((m, r) => Math.max(m, Number(r.ref.split('-')[2])), 0)
+  return `ADJ-2026-${String(max + 1).padStart(3,'0')}`
 }
 
-const BLANK_FORM = { product_id:'', warehouse_id:'', quantity:1, unit_cost:0, notes:'' }
-
 export default function StockAdjustment() {
-  const navigate = useNavigate()
-  const [movements,  setMovements] = useState([])
-  const [loading,    setLoading]   = useState(false)
-  const [page,       setPage]      = useState(1)
-  const [search,     setSearch]    = useState('')
-  const [meta,       setMeta]      = useState({ total:0, pages:1, stats:{ added:0, deducted:0 } })
-  const [products,   setProducts]  = useState([])
-  const [warehouses, setWarehouses]= useState([])
-  const [showForm,   setShowForm]  = useState(false)
-  const [form,       setForm]      = useState(BLANK_FORM)
-  const [reason,     setReason]    = useState(REASONS[0])
-  const [adjType,    setAdjType]   = useState('subtract')
-  const [saving,     setSaving]    = useState(false)
-  const [filterType, setFilterType] = useState('')
+  const [records, setRecords] = useState(MOCK_ADJ)
+  const [search, setSearch]   = useState('')
+  const [filterType, setFilterType]   = useState('all')
+  const [activeModal, setActiveModal] = useState(null)
+  const [editItem, setEditItem]       = useState(null)
+  const [form, setForm] = useState({
+    ref:'', product: PRODUCTS[0], type:'subtract', date:'',
+    warehouse:'Main Store', before:0, adjust:0, reason: REASONS[0], staff:'Admin', status:'pending'
+  })
 
-  const fetchMovements = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = { page, limit:20, type:'adjustment', search }
-      const res = await api.get('/admin/inventory/movements', { params })
-      setMovements(res.data.movements || [])
-      setMeta({ total: res.data.total || 0, pages: res.data.pages || 1, stats: res.data.stats || { added: 0, deducted: 0 } })
-    } catch (err) { 
-      toast.error(err.response?.data?.message || 'Failed to load adjustments') 
-    } finally { 
-      setLoading(false) 
-    }
-  }, [page, search])
+  const filtered = useMemo(() => records.filter(r => {
+    const m = r.product.toLowerCase().includes(search.toLowerCase()) || r.ref.toLowerCase().includes(search.toLowerCase())
+    return m && (filterType === 'all' || r.type === filterType)
+  }), [records, search, filterType])
 
-  const fetchLookups = useCallback(async () => {
-    try {
-      const [pRes, wRes] = await Promise.all([
-        api.get('/admin/inventory', { params: { limit:200 } }),
-        api.get('/admin/inventory/warehouses'),
-      ])
-      setProducts(pRes.data.products || [])
-      setWarehouses(wRes.data.warehouses || [])
-    } catch { /* silent */ }
-  }, [])
+  const stats = useMemo(() => ({
+    total:   records.length,
+    adds:    records.filter(r => r.type === 'add').reduce((s,r) => s + r.adjust, 0),
+    subs:    records.filter(r => r.type === 'subtract').reduce((s,r) => s + r.adjust, 0),
+    pending: records.filter(r => r.status === 'pending').length,
+  }), [records])
 
-  useEffect(() => { fetchLookups() }, [fetchLookups])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchMovements() }, [page])
-  useEffect(() => { setPage(1) }, [search, filterType])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { const t = setTimeout(() => fetchMovements(), 400); return () => clearTimeout(t) }, [search])
+  function openAdd() {
+    setEditItem(null)
+    setForm({ ref: nextRef(records), product: PRODUCTS[0], type:'subtract', date: new Date().toISOString().slice(0,10), warehouse:'Main Store', before:0, adjust:0, reason: REASONS[0], staff:'Admin', status:'pending' })
+    setActiveModal('form')
+  }
+  function openEdit(r) { setEditItem(r); setForm({ ...r }); setActiveModal('form') }
+  function openDelete(r) { setEditItem(r); setActiveModal('delete') }
+  function closeModal() { setActiveModal(null); setEditItem(null) }
 
-  function openForm() { setForm(BLANK_FORM); setReason(REASONS[0]); setAdjType('subtract'); setShowForm(true) }
-  function close()    { setShowForm(false) }
+  const computedAfter = form.type === 'add'
+    ? Number(form.before) + Number(form.adjust)
+    : Number(form.before) - Number(form.adjust)
 
-  async function saveForm(e) {
+  function saveForm(e) {
     e.preventDefault()
-    setSaving(true)
-    try {
-      const selectedProduct = products.find(p => p.id === Number(form.product_id))
-      const currentStock = selectedProduct ? (selectedProduct.stock_quantity || selectedProduct.stock || 0) : 0
-      const delta = adjType === 'add' ? Number(form.quantity) : -Number(form.quantity)
-      const newQty = Math.max(0, currentStock + delta)
-
-      const notes = `[${adjType === 'add' ? '+Addition' : '-Deduction'}] Reason: ${reason}${form.notes ? '. ' + form.notes : ''}`
-      await api.post('/admin/inventory/adjust', {
-        product_id: Number(form.product_id),
-        warehouse_id: form.warehouse_id ? Number(form.warehouse_id) : null,
-        new_quantity: newQty,
-        reason: reason,
-        notes,
-      })
-      toast.success('Adjustment recorded')
-      close()
-      fetchMovements()
-    } catch (err) { 
-      toast.error(err.response?.data?.message || 'Failed to record adjustment') 
-    } finally { 
-      setSaving(false) 
+    const after = computedAfter
+    if (editItem) {
+      setRecords(prev => prev.map(r => r.id === editItem.id ? { ...r, ...form, after } : r))
+    } else {
+      setRecords(prev => [...prev, { id: Math.max(...prev.map(r=>r.id))+1, ...form, after }])
     }
+    closeModal()
   }
 
-  const filteredMovements = useMemo(() => {
-    return movements.filter(m => {
-      if (!filterType) return true
-      const notes = m.notes || ''
-      if (filterType === 'add') return notes.includes('+Addition')
-      if (filterType === 'subtract') return notes.includes('-Deduction')
-      return true
-    })
-  }, [movements, filterType])
-
-  // added/deducted now come from the backend, computed across every
-  // matching row (not just the 20 on this page) from before_qty/after_qty.
-  const statValues = useMemo(() => ({
-    total: meta.total || 0,
-    added: `+${meta.stats?.added || 0}`,
-    deducted: `-${meta.stats?.deducted || 0}`,
-  }), [meta])
-
-  function formatDate(d) {
-    if (!d) return '—'
-    const date = new Date(d)
-    return date.toISOString().slice(0, 10)
+  function confirmDelete() {
+    setRecords(prev => prev.filter(r => r.id !== editItem.id))
+    closeModal()
   }
-
-  function yearOf(d) {
-    return new Date(d || Date.now()).getFullYear()
-  }
-
-  function getAdjType(m) {
-    const notes = m.notes || ''
-    if (notes.includes('+Addition')) return { label:'+Addition', bg:'#dcfce7', color:'#166534' }
-    if (notes.includes('-Deduction')) return { label:'-Deduction', bg:'#fee2e2', color:'#991b1b' }
-    return { label:'Adjustment', bg:'var(--border)', color:'var(--text-secondary)' }
-  }
-
-  function extractReason(m) {
-    const notes = m.notes || ''
-    const match = notes.match(/Reason: ([^.]+)/)
-    return match ? match[1] : notes
-  }
-
-  const B = 'var(--border)', S = '#6b7280'
 
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      {/* Header & Breadcrumbs */}
-      <div style={{ display:'flex', alignItems:'center', justifyContext:'space-between', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
-        <div>
-          <div style={{ fontFamily:'var(--heading-font)', fontWeight:800, fontSize:20, color:'var(--text-primary)' }}>Stock Adjustments</div>
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'var(--text-muted)' }}>
-          <span style={{ cursor:'pointer' }} onClick={()=>navigate('/products')}>Inventory</span>
-          <i className="ri-arrow-right-s-line" style={{ fontSize:19 }} />
-          <span style={{ fontWeight:600, color:'var(--text-primary)' }}>Adjustments</span>
-        </div>
+    <div className="container-fluid">
+      <div className="gap-2 page-heading mb-3">
+        <h6 className="flex-grow-1 mb-0">Stock Adjustments</h6>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><a href="#">Inventory</a></li>
+          <li className="breadcrumb-item active">Adjustments</li>
+        </ul>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:24 }}>
+      <div className="row g-3 mb-4">
         {[
-          { label:'Total Adjustments', value:statValues.total, icon:'ri-equalizer-line', color:'#405189', valueColor:'var(--text-primary)' },
-          { label:'Units Added',       value:statValues.added, icon:'ri-add-circle-line', color:'#0ab39c', valueColor:'#0ab39c' },
-          { label:'Units Deducted',    value:statValues.deducted, icon:'ri-indeterminate-circle-line', color:'#f06548', valueColor:'#f06548' },
+          { label:'Total Adjustments', value: stats.total,      icon:'ri-equalizer-line',             color:'#405189' },
+          { label:'Units Added',        value:`+${stats.adds}`,  icon:'ri-add-circle-line',            color:'#0ab39c' },
+          { label:'Units Deducted',     value:`-${stats.subs}`,  icon:'ri-indeterminate-circle-line',  color:'#f06548' },
+          { label:'Pending Approval',   value: stats.pending,    icon:'ri-time-line',                  color:'#f7b84b' },
         ].map(c => (
-          <div key={c.label} style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, borderLeft:`3px solid ${c.color}`, padding:'16px 20px', display:'flex', alignItems:'center', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-            <div style={{ width:44, height:44, borderRadius:'50%', background:`${c.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <i className={c.icon} style={{ fontSize:20, color:c.color }}/>
-            </div>
-            <div>
-              <div style={{ fontSize:22, fontWeight:800, color:c.valueColor }}>{c.value}</div>
-              <div style={{ fontSize:11, color:S }}>{c.label}</div>
+          <div className="col-6 col-xl-3" key={c.label}>
+            <div className="card mb-0" style={{ borderLeft:`3px solid ${c.color}` }}>
+              <div className="card-body d-flex align-items-center gap-3 py-3">
+                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width:44, height:44, background:`${c.color}1a` }}>
+                  <i className={`${c.icon} fs-20`} style={{ color:c.color }}></i>
+                </div>
+                <div>
+                  <div className="fs-20 fw-bold" style={{ color:c.color }}>{c.value}</div>
+                  <div className="text-muted" style={{ fontSize:12 }}>{c.label}</div>
+                </div>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Table card */}
-      <div style={{ background:'var(--bg-card)', borderRadius:12, border:`1px solid ${B}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)', overflow:'hidden' }}>
-        <div style={{ padding:'16px 20px', borderBottom:`1px solid ${B}`, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <div style={{ position:'relative', flex:1, minWidth:200 }}>
-            <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:20 }}/>
-            <input style={{ ...inp, paddingLeft:32 }} placeholder="Search product, ref..." value={search} onChange={e => setSearch(e.target.value)}/>
+      <div className="card">
+        <div className="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+          <div className="position-relative">
+            <input className="form-control ps-9" placeholder="Search product, ref…" value={search} onChange={e => setSearch(e.target.value)} style={{ minWidth:220 }} />
+            <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
           </div>
-          <select style={{ ...inp, width:'auto', minWidth:140 }} value={filterType} onChange={e => setFilterType(e.target.value)}>
-            <option value="">All Types</option>
-            <option value="add">Addition</option>
-            <option value="subtract">Deduction</option>
-          </select>
-          <button style={btnP} onClick={openForm}><i className="ri-add-line"/>Add Adjustment</button>
+          <div className="d-flex gap-2 ms-auto flex-wrap">
+            <select className="form-select" style={{ width:'auto' }} value={filterType} onChange={e => setFilterType(e.target.value)}>
+              <option value="all">All Types</option>
+              <option value="add">Additions</option>
+              <option value="subtract">Deductions</option>
+            </select>
+            <button className="btn btn-primary d-flex align-items-center gap-1" onClick={openAdd}>
+              <i className="ri-add-line"></i> Add Adjustment
+            </button>
+          </div>
         </div>
-
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, fontFamily:'var(--body-font)' }}>
-            <thead>
-              <tr style={{ background:'var(--bg-subtle)', borderBottom:`1px solid ${B}` }}>
-                {['Ref No','Product','Type','Date','Warehouse','Before','Adjusted','After','Reason','Staff'].map(h => (
-                  <th key={h} style={TH}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={10} style={{ textAlign:'center', padding:'40px 0' }}>
-                  <div className="spinner-border spinner-border-sm text-primary me-2"/>Loading...
-                </td></tr>
-              ) : filteredMovements.length === 0 ? (
-                <tr><td colSpan={10} style={{ ...TD, textAlign:'center', padding:40, color:'var(--text-light)' }}>
-                  <i className="ri-equalizer-line" style={{ fontSize:43, display:'block', marginBottom:8 }}/>No adjustments found
-                </td></tr>
-              ) : filteredMovements.map(m => {
-                const tc = getAdjType(m)
-                const isAdd = tc.label.includes('+')
-                const refNo = m.reference || `ADJ-${yearOf(m.created_at)}-00${m.id}`
-                const adjustedQty = isAdd ? m.quantity : -m.quantity
-                const beforeQty = m.before_qty ?? (m.after_qty - adjustedQty)
-                const afterQty = m.after_qty ?? 0
-                return (
-                  <tr key={m.id}
-                    onMouseEnter={e => e.currentTarget.style.background='#fafafa'}
-                    onMouseLeave={e => e.currentTarget.style.background=''}>
-                    <td style={{ ...TD, color:'#b45309', fontWeight:600 }}>{refNo}</td>
-                    <td style={{ ...TD, fontWeight:600 }}>{m.product_name}</td>
-                    <td style={TD}>
-                      <span style={{ background:tc.bg, color:tc.color, borderRadius:4, padding:'3px 10px', fontSize:11, fontWeight:700 }}>
-                        {tc.label}
-                      </span>
-                    </td>
-                    <td style={TD}><span style={{ color:S }}>{formatDate(m.created_at)}</span></td>
-                    <td style={TD}>
-                      <span style={{ background:'var(--bg-muted)', color:'var(--text-secondary)', borderRadius:4, padding:'3px 8px', fontSize:11, fontWeight:600 }}>
-                        {m.warehouse_name || 'Main Store'}
-                      </span>
-                    </td>
-                    <td style={{ ...TD, fontWeight:500 }}>{beforeQty}</td>
-                    <td style={TD}>
-                      <span style={{ fontWeight:700, color: isAdd ? '#0ab39c' : '#f06548' }}>
-                        {isAdd ? '+' : '-'}{Math.abs(m.quantity)}
-                      </span>
-                    </td>
-                    <td style={{ ...TD, fontWeight:700 }}>{afterQty}</td>
-                    <td style={{ ...TD, maxWidth:160, whiteSpace:'normal', fontSize:12, color:S }}>{extractReason(m)}</td>
-                    <td style={TD}>{m.created_by_name || 'System'}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div style={{ padding:'12px 20px', fontSize:12, color:S, borderTop:`1px solid ${B}`, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
-          <span>Showing {filteredMovements.length} of {meta.total} adjustments</span>
-          {meta.pages > 1 && (
-            <div style={{ display:'flex', gap:6 }}>
-              <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===1?0.4:1 }}>
-                <i className="ri-arrow-left-s-line"/>Prev
-              </button>
-              <span style={{ display:'flex', alignItems:'center', fontSize:12, color:'var(--text-secondary)', fontWeight:600 }}>Page {page} / {meta.pages}</span>
-              <button onClick={() => setPage(p => Math.min(meta.pages,p+1))} disabled={page===meta.pages} style={{ ...btnL, padding:'5px 12px', fontSize:12, opacity:page===meta.pages?0.4:1 }}>
-                Next<i className="ri-arrow-right-s-line"/>
-              </button>
-            </div>
-          )}
+        <div className="card-body pt-0">
+          <div className="table-responsive">
+            <table className="table align-middle text-nowrap mb-0">
+              <thead>
+                <tr className="bg-light border-bottom">
+                  <th className="fw-medium text-muted">Ref No</th>
+                  <th className="fw-medium text-muted">Product</th>
+                  <th className="fw-medium text-muted">Type</th>
+                  <th className="fw-medium text-muted">Date</th>
+                  <th className="fw-medium text-muted">Warehouse</th>
+                  <th className="fw-medium text-muted">Before</th>
+                  <th className="fw-medium text-muted">Adjusted</th>
+                  <th className="fw-medium text-muted">After</th>
+                  <th className="fw-medium text-muted">Reason</th>
+                  <th className="fw-medium text-muted">Staff</th>
+                  <th className="fw-medium text-muted">Status</th>
+                  <th className="fw-medium text-muted">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr><td colSpan={12} className="text-center py-5 text-muted">
+                    <i className="ri-equalizer-line fs-2 d-block mb-2"></i>No adjustments found
+                  </td></tr>
+                )}
+                {filtered.map(r => {
+                  const tc = TYPE_CFG[r.type]
+                  const sc = STATUS_CFG[r.status]
+                  return (
+                    <tr key={r.id}>
+                      <td><span className="fw-medium text-primary">{r.ref}</span></td>
+                      <td className="fw-medium">{r.product}</td>
+                      <td><span className={`badge ${tc.cls}`}>{tc.label}</span></td>
+                      <td>{r.date}</td>
+                      <td><span className="badge bg-light text-dark border">{r.warehouse}</span></td>
+                      <td>{r.before}</td>
+                      <td className="fw-bold" style={{ color: r.type === 'add' ? '#0ab39c' : '#f06548' }}>
+                        {r.type === 'add' ? '+' : '-'}{r.adjust}
+                      </td>
+                      <td className="fw-bold">{r.after}</td>
+                      <td style={{ maxWidth:140, whiteSpace:'normal', fontSize:12 }}>{r.reason}</td>
+                      <td>{r.staff}</td>
+                      <td><span className={`badge ${sc.cls}`}>{sc.label}</span></td>
+                      <td>
+                        <div className="d-flex gap-1">
+                          <button className="btn btn-sm btn-soft-primary p-1 px-2" onClick={() => openEdit(r)}><i className="ri-pencil-line"></i></button>
+                          <button className="btn btn-sm btn-soft-danger p-1 px-2" onClick={() => openDelete(r)}><i className="ri-delete-bin-line"></i></button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 text-muted" style={{ fontSize:13 }}>Showing {filtered.length} of {records.length} adjustments</div>
         </div>
       </div>
 
-      {/* Form Modal */}
-      {showForm && (
-        <Modal title="New Stock Adjustment" onClose={close}>
-          <form onSubmit={saveForm}>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
-              <div>
-                <label style={LBL}>Product <span style={{ color:'#dc2626' }}>*</span></label>
-                <select style={inp} required value={form.product_id} onChange={e => setForm(f=>({...f,product_id:e.target.value}))}>
-                  <option value="">— Select Product —</option>
-                  {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+      {activeModal === 'form' && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
+            <div className="modal-dialog modal-dialog-centered modal-lg">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h6 className="modal-title">{editItem ? 'Edit Adjustment' : 'New Stock Adjustment'}</h6>
+                  <button className="btn-close" onClick={closeModal}></button>
+                </div>
+                <div className="modal-body">
+                  <form onSubmit={saveForm}>
+                    <div className="row g-3">
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Reference No</label>
+                        <input className="form-control bg-light" readOnly value={form.ref} />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Date <span className="text-danger">*</span></label>
+                        <input type="date" className="form-control" required value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))} />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Adjustment Type</label>
+                        <select className="form-select" value={form.type} onChange={e => setForm(f=>({...f,type:e.target.value}))}>
+                          <option value="add">Addition (+)</option>
+                          <option value="subtract">Deduction (-)</option>
+                        </select>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-medium">Product <span className="text-danger">*</span></label>
+                        <select className="form-select" required value={form.product} onChange={e => setForm(f=>({...f,product:e.target.value}))}>
+                          {PRODUCTS.map(p => <option key={p}>{p}</option>)}
+                        </select>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-medium">Warehouse</label>
+                        <select className="form-select" value={form.warehouse} onChange={e => setForm(f=>({...f,warehouse:e.target.value}))}>
+                          {WAREHOUSES.map(w => <option key={w}>{w}</option>)}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Current Qty (Before)</label>
+                        <input type="number" className="form-control" min="0" value={form.before} onChange={e => setForm(f=>({...f,before:Number(e.target.value)}))} />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Adjust Qty</label>
+                        <input type="number" className="form-control" min="0" value={form.adjust} onChange={e => setForm(f=>({...f,adjust:Number(e.target.value)}))} />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Qty After Adjustment</label>
+                        <input className="form-control bg-light fw-bold" readOnly
+                          value={computedAfter < 0 ? '⚠ Negative!' : computedAfter}
+                          style={{ color: computedAfter < 0 ? '#f06548' : '#0ab39c' }} />
+                      </div>
+                      <div className="col-md-8">
+                        <label className="form-label fw-medium">Reason <span className="text-danger">*</span></label>
+                        <select className="form-select" required value={form.reason} onChange={e => setForm(f=>({...f,reason:e.target.value}))}>
+                          {REASONS.map(r => <option key={r}>{r}</option>)}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Status</label>
+                        <select className="form-select" value={form.status} onChange={e => setForm(f=>({...f,status:e.target.value}))}>
+                          <option value="pending">Pending</option>
+                          <option value="approved">Approved</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="d-flex gap-2 mt-4">
+                      <button type="button" className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
+                      <button type="submit" className="btn btn-primary w-100" disabled={computedAfter < 0}>
+                        {editItem ? 'Save Changes' : 'Submit Adjustment'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
-              <div>
-                <label style={LBL}>Warehouse</label>
-                <select style={inp} value={form.warehouse_id} onChange={e => setForm(f=>({...f,warehouse_id:e.target.value}))}>
-                  <option value="">— Select Warehouse —</option>
-                  {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                </select>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
+        </>
+      )}
+
+      {activeModal === 'delete' && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
+            <div className="modal-dialog modal-dialog-centered modal-sm">
+              <div className="modal-content p-4 text-center">
+                <div className="d-flex justify-content-center mb-3">
+                  <div className="rounded-circle bg-danger-subtle d-flex align-items-center justify-content-center" style={{ width:56, height:56 }}>
+                    <i className="ri-delete-bin-line text-danger fs-22"></i>
+                  </div>
+                </div>
+                <h6 className="mb-1">Delete Adjustment?</h6>
+                <p className="text-muted mb-4" style={{ fontSize:13 }}>{editItem?.ref} — {editItem?.product}</p>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-danger w-100" onClick={confirmDelete}>Delete</button>
+                </div>
               </div>
             </div>
-            <div style={{ marginBottom:16 }}>
-              <label style={LBL}>Adjustment Type</label>
-              <div style={{ display:'flex', gap:10 }}>
-                {[
-                  { val:'add',      label:'+ Addition (increase stock)',  color:'#0ab39c' },
-                  { val:'subtract', label:'- Deduction (decrease stock)', color:'#f06548' },
-                ].map(opt => (
-                  <label key={opt.val} style={{ flex:1, display:'flex', alignItems:'center', gap:8, cursor:'pointer', background: adjType === opt.val ? `${opt.color}12` : '#f9fafb', border:`1.5px solid ${adjType === opt.val ? opt.color : 'var(--border)'}`, borderRadius:8, padding:'10px 14px', fontSize:13 }}>
-                    <input type="radio" name="adjType" value={opt.val} checked={adjType === opt.val} onChange={() => setAdjType(opt.val)} style={{ accentColor: opt.color }}/>
-                    <span style={{ fontWeight:600, color: adjType === opt.val ? opt.color : 'var(--text-secondary)' }}>{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
-              <div>
-                <label style={LBL}>Quantity <span style={{ color:'#dc2626' }}>*</span></label>
-                <input type="number" style={inp} min="1" required value={form.quantity} onChange={e => setForm(f=>({...f,quantity:e.target.value}))}/>
-              </div>
-              <div>
-                <label style={LBL}>Unit Cost (₦) <span style={{ fontSize:10, fontWeight:400, color:'var(--text-light)' }}>optional</span></label>
-                <input type="number" style={inp} min="0" value={form.unit_cost} onChange={e => setForm(f=>({...f,unit_cost:e.target.value}))}/>
-              </div>
-            </div>
-            <div style={{ marginBottom:16 }}>
-              <label style={LBL}>Reason <span style={{ color:'#dc2626' }}>*</span></label>
-              <select style={inp} required value={reason} onChange={e => setReason(e.target.value)}>
-                {REASONS.map(r => <option key={r}>{r}</option>)}
-              </select>
-            </div>
-            <div style={{ marginBottom:24 }}>
-              <label style={LBL}>Additional Notes</label>
-              <textarea style={{ ...inp, resize:'vertical', minHeight:70 }} value={form.notes} onChange={e => setForm(f=>({...f,notes:e.target.value}))} placeholder="Optional notes…"/>
-            </div>
-            <div style={{ display:'flex', gap:10 }}>
-              <button type="button" onClick={close} style={{ ...btnL, flex:1, justifyContent:'center' }}>Cancel</button>
-              <button type="submit" disabled={saving} style={{ ...btnP, flex:1, justifyContent:'center', opacity:saving?0.7:1 }}>
-                {saving ? 'Submitting…' : 'Submit Adjustment'}
-              </button>
-            </div>
-          </form>
-        </Modal>
+          </div>
+          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
+        </>
       )}
     </div>
   )

@@ -1,9 +1,9 @@
-import { Navigate, Outlet } from 'react-router-dom'
-import { isStaffRole } from '../../lib/roles'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 export default function ProtectedRoute({ allowedRoles }) {
-  const { user, loading } = useAuth()
+  const { user, loading, canAccess } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -18,11 +18,11 @@ export default function ProtectedRoute({ allowedRoles }) {
     )
   }
 
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
 
-  if (!isStaffRole(user.role)) return <Navigate to="/login" replace />
-
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && !canAccess(allowedRoles)) {
     return <Navigate to="/unauthorized" replace />
   }
 

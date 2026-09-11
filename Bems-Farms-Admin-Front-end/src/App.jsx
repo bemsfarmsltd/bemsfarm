@@ -3,15 +3,13 @@ import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import Layout from './components/layout/Layout'
 import {
-  FINANCE_ROLES, DELIVERY_ROLES,
+  ALL_ROLES, ADMIN_ONLY, FINANCE_ROLES, DELIVERY_ROLES,
   POS_ROLES, ORDER_ROLES, CUSTOMER_ROLES, PRODUCT_ROLES,
-  INVENTORY_ROLES,
-  REPORT_ROLES, AI_ROLES, STAFF_ROLES, SETTINGS_ROLES,
-  PURCHASE_ROLES, SUPPLIER_ROLES, MULTISTORE_ROLES, ADMIN_ONLY, SUPERADMIN_ONLY,
+  REPORT_ROLES, AI_ROLES, STAFF_ROLES, SETTINGS_ROLES, MULTISTORE_ROLES,
 } from './lib/roles'
 
-// Public
-import Login        from './pages/auth/Login'
+// Auth & Errors
+import Login from './pages/auth/Login'
 import Unauthorized from './pages/errors/Unauthorized'
 
 // Dashboard
@@ -25,14 +23,17 @@ import ProductsList    from './pages/products/ProductsList'
 import AddProduct      from './pages/products/AddProduct'
 import Categories      from './pages/products/Categories'
 import SubCategories   from './pages/products/SubCategories'
+import Units           from './pages/products/Units'
+import Brands          from './pages/products/Brands'
 import Variants        from './pages/products/Variants'
+import Reviews         from './pages/products/Reviews'
 import Barcode         from './pages/products/Barcode'
 import BulkExport      from './pages/products/BulkExport'
-import BulkImport      from './pages/products/BulkImport'
-import Warranty        from './pages/products/Warranty'
 
 // Inventory
 import StockList       from './pages/inventory/StockList'
+import StockIn         from './pages/inventory/StockIn'
+import StockOut        from './pages/inventory/StockOut'
 import StockAdjustment from './pages/inventory/StockAdjustment'
 import StockTransfer   from './pages/inventory/StockTransfer'
 import BatchManagement from './pages/inventory/BatchManagement'
@@ -44,7 +45,7 @@ import LostItems       from './pages/inventory/LostItems'
 // Orders
 import OrdersList  from './pages/orders/OrdersList'
 import OrderDetail from './pages/orders/OrderDetail'
-import Receipts    from './pages/orders/Receipts'
+import Invoices    from './pages/orders/Invoices'
 import Refunds     from './pages/orders/Refunds'
 
 // Deliveries
@@ -58,22 +59,6 @@ import CustomersList  from './pages/customers/CustomersList'
 import CustomerDetail from './pages/customers/CustomerDetail'
 import LoyaltyPoints  from './pages/customers/LoyaltyPoints'
 import ActivityLog    from './pages/customers/ActivityLog'
-import CustomerReportPage from './pages/customers/CustomerReport'
-
-// Purchase
-import PurchaseList     from './pages/purchase/PurchaseList'
-import AddPurchase      from './pages/purchase/AddPurchase'
-import PurchasePayments from './pages/purchase/PurchasePayments'
-import PurchaseReturns  from './pages/purchase/PurchaseReturns'
-
-// Suppliers
-import SuppliersList    from './pages/suppliers/SuppliersList'
-import AddSupplier      from './pages/suppliers/AddSupplier'
-import SupplierBalance  from './pages/suppliers/SupplierBalance'
-import SupplierPayments from './pages/suppliers/SupplierPayments'
-
-// Stores
-import StoreList        from './pages/stores/StoreList'
 
 // Staff
 import StaffList        from './pages/staff/StaffList'
@@ -92,14 +77,15 @@ import Expenses          from './pages/accounts/Expenses'
 import MoneyTransfer     from './pages/accounts/MoneyTransfer'
 import Transactions      from './pages/accounts/Transactions'
 import DriverCommissions from './pages/accounts/DriverCommissions'
-import PaymentReconciliation from './pages/accounts/PaymentReconciliation'
 
 // Chef Bems AI
 import Conversations    from './pages/chef-bems/Conversations'
 import DietaryRules     from './pages/chef-bems/DietaryRules'
 import MealAssociations from './pages/chef-bems/MealAssociations'
-import Substitution     from './pages/chef-bems/Substitution'
-import Recommendation   from './pages/chef-bems/Recommendation'
+
+// Multi-store
+import StoreList from './pages/multistore/StoreList'
+import AddStore  from './pages/multistore/AddStore'
 
 // Reports
 import SalesReport     from './pages/reports/SalesReport'
@@ -125,13 +111,14 @@ function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* ── Public ── */}
-        <Route path="/"            element={<Navigate to="/login" replace />} />
-        <Route path="/login"       element={<Login />} />
+        {/* ── Public Auth Routes ── */}
+        <Route path="/login" element={<Login />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* ── All authenticated users ── */}
         <Route element={<ProtectedRoute />}>
+          {/* Root redirect to dashboard */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
           {/* POS — full-screen, POS roles only */}
           <Route element={<ProtectedRoute allowedRoles={POS_ROLES} />}>
@@ -139,28 +126,25 @@ function App() {
           </Route>
 
           <Route element={<Layout />}>
-
             {/* Dashboard — everyone */}
             <Route path="/dashboard" element={<Dashboard />} />
 
-            {/* ── Products ── superadmin, admin, manager, kitchen_staff */}
+            {/* ── Products & Inventory ── */}
             <Route element={<ProtectedRoute allowedRoles={PRODUCT_ROLES} />}>
               <Route path="/products"                element={<ProductsList />} />
               <Route path="/products/add"            element={<AddProduct />} />
-              <Route path="/products/:id/edit"       element={<AddProduct />} />
               <Route path="/products/categories"     element={<Categories />} />
               <Route path="/products/sub-categories" element={<SubCategories />} />
+              <Route path="/products/units"          element={<Units />} />
+              <Route path="/products/brands"         element={<Brands />} />
               <Route path="/products/variants"       element={<Variants />} />
+              <Route path="/products/reviews"        element={<Reviews />} />
               <Route path="/products/barcode"        element={<Barcode />} />
               <Route path="/products/export"         element={<BulkExport />} />
-              <Route path="/products/warranty"       element={<Warranty />} />
-              <Route path="/products/import"         element={<BulkImport />} />
 
-            </Route>
-
-            {/* ── Inventory ── superadmin, admin, manager, storekeeper, kitchen_staff */}
-            <Route element={<ProtectedRoute allowedRoles={INVENTORY_ROLES} />}>
               <Route path="/inventory/stock"      element={<StockList />} />
+              <Route path="/inventory/stock-in"   element={<StockIn />} />
+              <Route path="/inventory/stock-out"  element={<StockOut />} />
               <Route path="/inventory/adjustment" element={<StockAdjustment />} />
               <Route path="/inventory/transfer"   element={<StockTransfer />} />
               <Route path="/inventory/batches"    element={<BatchManagement />} />
@@ -170,21 +154,15 @@ function App() {
               <Route path="/inventory/lost-items" element={<LostItems />} />
             </Route>
 
-            {/* ── Orders ── all roles */}
+            {/* ── Orders ── */}
             <Route element={<ProtectedRoute allowedRoles={ORDER_ROLES} />}>
               <Route path="/orders"          element={<OrdersList />} />
-              <Route path="/orders/receipts" element={<Receipts />} />
+              <Route path="/orders/invoices" element={<Invoices />} />
+              <Route path="/orders/refunds"  element={<Refunds />} />
               <Route path="/orders/:id"      element={<OrderDetail />} />
             </Route>
 
-            {/* ── Returns & Refunds ── superadmin, manager only — matches
-                Sidebar's link visibility and the backend's actual requireRole
-                on /admin/orders/returns*, tighter than the rest of Orders */}
-            <Route element={<ProtectedRoute allowedRoles={ADMIN_ONLY} />}>
-              <Route path="/orders/refunds" element={<Refunds />} />
-            </Route>
-
-            {/* ── Deliveries ── superadmin, manager, delivery_manager */}
+            {/* ── Deliveries ── */}
             <Route element={<ProtectedRoute allowedRoles={DELIVERY_ROLES} />}>
               <Route path="/deliveries/active"  element={<ActiveDeliveries />} />
               <Route path="/deliveries/map"     element={<DeliveryMap />} />
@@ -192,43 +170,15 @@ function App() {
               <Route path="/deliveries/drivers" element={<DriversManagement />} />
             </Route>
 
-            {/* ── Purchases ── superadmin, manager */}
-            <Route element={<ProtectedRoute allowedRoles={PURCHASE_ROLES} />}>
-              <Route path="/purchase"          element={<PurchaseList />} />
-              <Route path="/purchase/add"      element={<AddPurchase />} />
-              <Route path="/purchase/payments" element={<PurchasePayments />} />
-              <Route path="/purchase/returns"  element={<PurchaseReturns />} />
-            </Route>
-
-            {/* ── Suppliers ── superadmin, manager */}
-            <Route element={<ProtectedRoute allowedRoles={SUPPLIER_ROLES} />}>
-              <Route path="/suppliers"          element={<SuppliersList />} />
-              <Route path="/suppliers/add"      element={<AddSupplier />} />
-              <Route path="/suppliers/balance"  element={<SupplierBalance />} />
-              <Route path="/suppliers/payments" element={<SupplierPayments />} />
-            </Route>
-
-            {/* ── Stores ── superadmin, manager */}
-            <Route element={<ProtectedRoute allowedRoles={MULTISTORE_ROLES} />}>
-              <Route path="/stores" element={<StoreList />} />
-            </Route>
-
-            {/* ── Customers ── superadmin, manager, cashier */}
+            {/* ── Customers ── */}
             <Route element={<ProtectedRoute allowedRoles={CUSTOMER_ROLES} />}>
               <Route path="/customers"          element={<CustomersList />} />
+              <Route path="/customers/loyalty"  element={<LoyaltyPoints />} />
+              <Route path="/customers/activity" element={<ActivityLog />} />
               <Route path="/customers/:id"      element={<CustomerDetail />} />
             </Route>
 
-            {/* ── Customer sub-reports ── superadmin, manager only — matches
-                Sidebar's link visibility and the backend's actual requireRole
-                on these endpoints, tighter than the rest of Customers */}
-            <Route element={<ProtectedRoute allowedRoles={ADMIN_ONLY} />}>
-              <Route path="/customers/loyalty"  element={<LoyaltyPoints />} />
-              <Route path="/customers/activity" element={<ActivityLog />} />
-              <Route path="/customers/report"   element={<CustomerReportPage />} />
-            </Route>
-
-            {/* ── Staff ── superadmin, manager */}
+            {/* ── Staff ── */}
             <Route element={<ProtectedRoute allowedRoles={STAFF_ROLES} />}>
               <Route path="/staff"            element={<StaffList />} />
               <Route path="/staff/add"        element={<AddStaff />} />
@@ -239,7 +189,7 @@ function App() {
               <Route path="/staff/payroll"    element={<Payroll />} />
             </Route>
 
-            {/* ── Accounts / Finance ── superadmin, manager, accountant */}
+            {/* ── Accounts / Finance ── */}
             <Route element={<ProtectedRoute allowedRoles={FINANCE_ROLES} />}>
               <Route path="/accounts/overview"     element={<FinancialOverview />} />
               <Route path="/accounts/bank"         element={<BankAccounts />} />
@@ -248,19 +198,22 @@ function App() {
               <Route path="/accounts/transfer"     element={<MoneyTransfer />} />
               <Route path="/accounts/transactions" element={<Transactions />} />
               <Route path="/accounts/commissions"  element={<DriverCommissions />} />
-              <Route path="/accounts/reconciliation" element={<PaymentReconciliation />} />
             </Route>
 
-            {/* ── Chef Bems AI ── superadmin, manager, kitchen_staff */}
+            {/* ── Chef Bems AI ── */}
             <Route element={<ProtectedRoute allowedRoles={AI_ROLES} />}>
               <Route path="/chef-bems/conversations"     element={<Conversations />} />
               <Route path="/chef-bems/dietary-rules"     element={<DietaryRules />} />
               <Route path="/chef-bems/meal-associations" element={<MealAssociations />} />
-              <Route path="/chef-bems/substitutions"     element={<Substitution />} />
-              <Route path="/chef-bems/recommendations"   element={<Recommendation />} />
             </Route>
 
-            {/* ── Reports ── superadmin, manager, accountant */}
+            {/* ── Multi-store ── */}
+            <Route element={<ProtectedRoute allowedRoles={MULTISTORE_ROLES} />}>
+              <Route path="/stores"     element={<StoreList />} />
+              <Route path="/stores/add" element={<AddStore />} />
+            </Route>
+
+            {/* ── Reports ── */}
             <Route element={<ProtectedRoute allowedRoles={REPORT_ROLES} />}>
               <Route path="/reports/sales"      element={<SalesReport />} />
               <Route path="/reports/inventory"  element={<InventoryReport />} />
@@ -271,7 +224,7 @@ function App() {
               <Route path="/reports/finance"    element={<FinanceReport />} />
             </Route>
 
-            {/* ── Settings ── superadmin, manager */}
+            {/* ── Settings ── */}
             <Route element={<ProtectedRoute allowedRoles={SETTINGS_ROLES} />}>
               <Route path="/settings/general"       element={<GeneralSettings />} />
               <Route path="/settings/notifications" element={<NotificationSettings />} />
@@ -281,21 +234,13 @@ function App() {
               <Route path="/settings/tax"           element={<TaxSettings />} />
               <Route path="/settings/currencies"    element={<CurrencySettings />} />
               <Route path="/settings/invoices"      element={<InvoiceSettings />} />
+              <Route path="/settings/manager"       element={<ManagerSettings />} />
             </Route>
-
-            {/* ── Manager Settings ── superadmin only — matches Sidebar's
-                link visibility and the backend's requireRole("superadmin")
-                on every write to /admin/settings/manager (creating/editing
-                other admin-level accounts) */}
-            <Route element={<ProtectedRoute allowedRoles={SUPERADMIN_ONLY} />}>
-              <Route path="/settings/manager" element={<ManagerSettings />} />
-            </Route>
-
           </Route>
         </Route>
 
         {/* 404 fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AuthProvider>
   )

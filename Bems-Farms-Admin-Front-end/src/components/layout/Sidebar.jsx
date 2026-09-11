@@ -1,162 +1,32 @@
-import { useState, useEffect, useRef } from 'react'
-import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { ROLE_META } from '../../lib/roles'
 
-// ── Brand tokens ──────────────────────────────────────────────────────────────
-const C = {
-  bg:         '#1B4332',
-  hover:      'rgba(255,255,255,0.07)',
-  activeBg:   'rgba(245,124,0,0.18)',
-  activeText: '#F57C00',
-  text:       'rgba(255,255,255,0.82)',
-  muted:      'rgba(255,255,255,0.38)',
-  iconMuted:  'rgba(255,255,255,0.5)',
-  border:     'rgba(255,255,255,0.08)',
-  label:      'rgba(255,255,255,0.32)',
-}
-
-// ── Section label ─────────────────────────────────────────────────────────────
-function SectionLabel({ children }) {
-  return (
-    <li style={{
-      listStyle: 'none',
-      padding: '12px 14px 3px',
-      fontSize: 10,
-      fontWeight: 700,
-      letterSpacing: '0.08em',
-      textTransform: 'uppercase',
-      color: C.label,
-    }}>
-      {children}
-    </li>
-  )
-}
-
-// ── Top-level single nav item ─────────────────────────────────────────────────
-function NavItem({ to, icon, children }) {
-  return (
-    <li style={{ listStyle: 'none' }}>
-      <NavLink
-        to={to}
-        style={({ isActive }) => ({
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '7px 12px',
-          borderRadius: 8,
-          color: isActive ? C.activeText : C.text,
-          background: isActive ? C.activeBg : 'transparent',
-          fontWeight: isActive ? 600 : 500,
-          fontSize: 13,
-          textDecoration: 'none',
-          transition: 'background 0.13s, color 0.13s',
-        })}
-      >
-        {({ isActive }) => (
-          <>
-            <i className={icon} style={{ fontSize: 16, width: 18, flexShrink: 0, color: isActive ? C.activeText : C.iconMuted }} />
-            <span>{children}</span>
-          </>
-        )}
-      </NavLink>
-    </li>
-  )
-}
-
-// ── Sub-link inside a collapse section ───────────────────────────────────────
 function SideLink({ to, children }) {
   return (
     <NavLink
       to={to}
-      end
-      style={({ isActive }) => ({
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '5px 12px 5px 38px',
-        borderRadius: 6,
-        fontSize: 12.5,
-        color: isActive ? C.activeText : C.text,
-        background: isActive ? C.activeBg : 'transparent',
-        fontWeight: isActive ? 600 : 400,
-        textDecoration: 'none',
-        transition: 'background 0.13s, color 0.13s',
-      })}
+      className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
     >
       {children}
     </NavLink>
   )
 }
 
-// ── Collapsible section ───────────────────────────────────────────────────────
-function CollapseMenu({ icon, label, badge, children, paths = [] }) {
-  const location = useLocation()
-  const isChildActive = paths.some(p => location.pathname.startsWith(p))
-  const [open, setOpen] = useState(isChildActive)
-
-  useEffect(() => {
-    if (isChildActive) setOpen(true)
-  }, [location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
-
+function CollapseMenu({ id, icon, label, badge, children }) {
   return (
-    <li style={{ listStyle: 'none' }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          width: '100%',
-          padding: '7px 12px',
-          borderRadius: 8,
-          background: open ? C.hover : 'transparent',
-          color: isChildActive ? C.activeText : C.text,
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: 13,
-          fontWeight: isChildActive ? 600 : 500,
-          transition: 'background 0.13s, color 0.13s',
-          textAlign: 'left',
-          fontFamily: 'inherit',
-        }}
-      >
-        <i
-          className={icon}
-          style={{ fontSize: 16, width: 18, flexShrink: 0, color: isChildActive ? C.activeText : C.iconMuted }}
-        />
-        <span style={{ flex: 1 }}>{label}</span>
-        {badge && (
-          <span style={{
-            background: '#F57C00',
-            color: '#fff',
-            fontSize: 9,
-            fontWeight: 700,
-            padding: '1px 6px',
-            borderRadius: 50,
-            letterSpacing: '0.03em',
-          }}>
-            {badge}
-          </span>
-        )}
-        <i
-          className="ri-arrow-right-s-line"
-          style={{
-            fontSize: 22,
-            color: C.muted,
-            transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
-            transition: 'transform 0.2s ease',
-            flexShrink: 0,
-          }}
-        />
-      </button>
-
-      <div style={{
-        overflow: 'hidden',
-        maxHeight: open ? 800 : 0,
-        transition: 'max-height 0.25s ease',
-      }}>
-        <ul style={{ listStyle: 'none', margin: 0, padding: '2px 0 4px' }}>
+    <li className="nav-item">
+      <a className="nav-link collapsed" href={`#${id}`}
+        data-bs-toggle="collapse" role="button"
+        aria-expanded="false" aria-controls={id}>
+        <i className={`${icon} menu-icon`}></i>
+        <span>{label}</span>
+        {badge && <span className="badge bg-success-subtle text-success ms-auto" style={{ fontSize: 9 }}>{badge}</span>}
+        <i className="ri-arrow-right-s-line ms-auto menu-arrow"></i>
+      </a>
+      <div className="collapse" id={id}>
+        <ul className="sub-navbar-nav">
           {children}
         </ul>
       </div>
@@ -164,186 +34,70 @@ function CollapseMenu({ icon, label, badge, children, paths = [] }) {
   )
 }
 
-// ── Profile footer dropdown ───────────────────────────────────────────────────
-function ProfileFooter({ user, roleMeta, initials, showSettings }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef(null)
-  const { logout } = useAuth()
-  const navigate = useNavigate()
-
-  const handleSignOut = () => {
-    setOpen(false)
-    logout()
-    navigate('/login', { replace: true })
-  }
-
-  useEffect(() => {
-    const handler = e => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          width: '100%',
-          background: open ? C.hover : 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '6px 8px',
-          borderRadius: 8,
-          transition: 'background 0.13s',
-          textAlign: 'left',
-          fontFamily: 'inherit',
-        }}
-      >
-        <div style={{
-          width: 34,
-          height: 34,
-          borderRadius: 8,
-          flexShrink: 0,
-          background: roleMeta?.color ?? '#F57C00',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 13,
-          fontWeight: 700,
-          color: '#fff',
-        }}>
-          {initials}
-        </div>
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <div style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: '#fff',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}>
-            {user?.first_name} {user?.last_name}
-          </div>
-          <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>
-            {roleMeta?.label ?? user?.role}
-          </div>
-        </div>
-        <i
-          className="ri-arrow-up-s-line"
-          style={{
-            color: C.muted,
-            fontSize: 22,
-            transform: open ? 'rotate(0deg)' : 'rotate(180deg)',
-            transition: 'transform 0.2s ease',
-          }}
-        />
-      </button>
-
-      {open && (
-        <div style={{
-          position: 'absolute',
-          bottom: 'calc(100% + 8px)',
-          left: 0,
-          right: 0,
-          background: 'var(--bg-card)',
-          borderRadius: 10,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-          overflow: 'hidden',
-          zIndex: 200,
-          border: '1px solid var(--border)',
-        }}>
-          <div style={{ padding: '10px 14px 8px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Signed in as</div>
-            {roleMeta && (
-              <span style={{
-                background: roleMeta.bg,
-                color: roleMeta.color,
-                fontSize: 11,
-                fontWeight: 600,
-                padding: '2px 8px',
-                borderRadius: 50,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-              }}>
-                <i className={roleMeta.icon} style={{ fontSize: 11 }} />{roleMeta.label}
-              </span>
-            )}
-          </div>
-          <div style={{ padding: '4px 0' }}>
-            <MenuLink to="/settings/general" icon="ri-user-line" onClick={() => setOpen(false)}>My Profile</MenuLink>
-            {showSettings && (
-              <MenuLink to="/settings/general" icon="ri-settings-3-line" onClick={() => setOpen(false)}>Settings</MenuLink>
-            )}
-            <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-            <button
-              onClick={handleSignOut}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                width: '100%',
-                padding: '7px 14px',
-                fontSize: 13,
-                color: '#ef4444',
-                background: 'none',
-                border: 'none',
-                fontWeight: 500,
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <i className="ri-logout-box-r-line" style={{ fontSize: 20, color: '#ef4444' }} />
-              Sign Out
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function MenuLink({ to, icon, children, danger, onClick }) {
-  return (
-    <Link
-      to={to}
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '7px 14px',
-        fontSize: 13,
-        color: danger ? '#ef4444' : 'var(--text-primary)',
-        textDecoration: 'none',
-        fontWeight: 500,
-      }}
-      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
-      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-    >
-      <i className={icon} style={{ fontSize: 15, color: danger ? '#ef4444' : 'var(--text-secondary)' }} />
-      {children}
-    </Link>
-  )
-}
-
-// ── Main Sidebar ──────────────────────────────────────────────────────────────
-export default function Sidebar({ mobileOpen = false }) {
-  const { user, hasRole } = useAuth()
-  const initials = user
-    ? (`${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}`).toUpperCase() || 'AS'
-    : 'AS'
+export default function Sidebar() {
+  const { user, hasRole, logout } = useAuth()
+  const initials = user ? `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}` : 'AS'
   const roleMeta = user ? ROLE_META[user.role] : null
 
+  /* Inject/update sidebar styles on every mount */
+  useEffect(() => {
+    const id = 'sidebar-compact-styles'
+    let style = document.getElementById(id)
+    if (!style) {
+      style = document.createElement('style')
+      style.id = id
+      document.head.appendChild(style)
+    }
+    style.textContent = `
+      #main-sidebar .sidebar-wrapper {
+        height: 100% !important;
+        overflow: hidden !important;
+        display: block !important;
+      }
+      #main-sidebar .navbar-menu {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 70px !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        height: auto !important;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.12) transparent;
+      }
+      #main-sidebar .navbar-menu::-webkit-scrollbar { width: 3px; }
+      #main-sidebar .navbar-menu::-webkit-scrollbar-track { background: transparent; }
+      #main-sidebar .navbar-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
+      #main-sidebar .sidebar-profile-footer {
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 70px !important;
+        z-index: 10 !important;
+      }
+      #main-sidebar .navbar-nav-menu .nav-link {
+        padding-top: 0.38rem;
+        padding-bottom: 0.38rem;
+      }
+      #main-sidebar .sub-navbar-nav .nav-link {
+        padding-top: 0.28rem;
+        padding-bottom: 0.28rem;
+        font-size: 0.8125rem;
+      }
+      #main-sidebar .menu-label {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        margin-top: 0.6rem !important;
+        margin-bottom: 0.1rem !important;
+        font-size: 0.68rem;
+        letter-spacing: 0.06em;
+      }
+    `
+  }, [])
+
+  // Role helpers
   const is = (...roles) => hasRole(...roles)
 
   const showProducts  = is('superadmin', 'manager', 'kitchen_staff')
@@ -352,244 +106,276 @@ export default function Sidebar({ mobileOpen = false }) {
   const showDelivery  = is('superadmin', 'manager', 'delivery_manager')
   const showCustomers = is('superadmin', 'manager', 'cashier')
   const showStaff     = is('superadmin', 'manager')
-  const showPurchase  = is('superadmin', 'manager')
-  const showSuppliers = is('superadmin', 'manager')
-  const showStores    = is('superadmin', 'manager')
   const showFinance   = is('superadmin', 'manager', 'accountant')
   const showReports   = is('superadmin', 'manager', 'accountant')
   const showChefAI    = is('superadmin', 'manager', 'kitchen_staff')
+  const showStores    = is('superadmin')
   const showSettings  = is('superadmin', 'manager')
   const showPOS       = is('superadmin', 'manager', 'cashier')
 
+  const showProductsSection  = showProducts || showInventory
+  const showSalesLabel       = showOrders
+  const showOperationsLabel  = showDelivery || showCustomers || showStaff
+  const showFinanceLabel     = showFinance || showReports
+  const showToolsLabel       = showChefAI || showStores || showSettings
+
   return (
-    <aside
-      className={`bf-admin-sidebar${mobileOpen ? ' mobile-open' : ''}`}
-      style={{
-        width: 258,
-        minWidth: 258,
-        height: '100vh',
-        background: C.bg,
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'fixed',
-        left: 0,
-        top: 0,
-        zIndex: 100,
-        fontFamily: 'var(--body-font)',
-        transition: 'transform 0.25s ease',
-      }}>
+    <div id="main-sidebar" className="main-sidebar">
+      <div className="sidebar-wrapper">
 
-      {/* ── Logo ── */}
-      <div style={{
-        padding: '16px 20px 14px',
-        borderBottom: `1px solid ${C.border}`,
-        flexShrink: 0,
-      }}>
-        <Link to="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', borderRadius: '8px', padding: '6px 12px' }}>
-          <img src="/admin/logo.png" alt="Bems Farms Logo" style={{ maxHeight: '32px', objectFit: 'contain' }} />
-        </Link>
-      </div>
+        {/* ── Scrollable nav menu ── */}
+        <div className="navbar-menu px-3" id="navbar-menu-list">
+          <ul className="list-unstyled navbar-nav-menu mb-0" style={{ paddingTop: '0.5rem' }}>
 
-      {/* ── Scrollable nav ── */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        padding: '6px 10px',
-        scrollbarWidth: 'thin',
-        scrollbarColor: 'rgba(255,255,255,0.12) transparent',
-      }}>
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {/* ── MAIN ── */}
+            <li className="menu-label px-2"><span>Main</span></li>
 
-          {/* MAIN */}
-          <SectionLabel>Main</SectionLabel>
-          <NavItem to="/dashboard" icon="ri-dashboard-2-line">Dashboard</NavItem>
-          {showPOS && <NavItem to="/pos" icon="ri-store-2-line">Point of Sale</NavItem>}
+            <li className="nav-item">
+              <SideLink to="/dashboard">
+                <i className="ri-dashboard-2-line menu-icon"></i>
+                <span>Dashboard</span>
+              </SideLink>
+            </li>
 
-          {/* PRODUCTS & STOCK */}
-          {(showProducts || showInventory) && <SectionLabel>Products &amp; Stock</SectionLabel>}
-
-          {showProducts && (
-            <CollapseMenu icon="ri-price-tag-3-line" label="Products" paths={['/products']}>
-              <li><SideLink to="/products">All Products</SideLink></li>
-              {is('superadmin', 'manager') && <li><SideLink to="/products/add">Add Product</SideLink></li>}
-              <li><SideLink to="/products/categories">Categories</SideLink></li>
-              <li><SideLink to="/products/sub-categories">Sub-Categories</SideLink></li>
-
-              {is('superadmin', 'manager') && <li><SideLink to="/products/variants">Variants</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/products/barcode">Barcode</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/products/export">Bulk Export</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/products/import">Bulk Import</SideLink></li>}
-              <li><SideLink to="/products/warranty">Warranty &amp; Quality</SideLink></li>
-            </CollapseMenu>
-          )}
-
-          {showInventory && (
-            <CollapseMenu icon="ri-archive-stack-line" label="Inventory" paths={['/inventory']}>
-              <li><SideLink to="/inventory/stock">Stock List</SideLink></li>
-              {is('superadmin', 'manager') && <li><SideLink to="/inventory/adjustment">Adjustments</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/inventory/transfer">Stock Transfer</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/inventory/batches">Batch Management</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/inventory/warehouses">Warehouses</SideLink></li>}
-              <li><SideLink to="/inventory/alerts">Low Stock Alerts</SideLink></li>
-              {is('superadmin', 'manager') && <li><SideLink to="/inventory/valuation">Valuation</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/inventory/lost-items">Lost &amp; Damaged</SideLink></li>}
-            </CollapseMenu>
-          )}
-
-          {/* PROCUREMENT */}
-          {(showPurchase || showSuppliers) && <SectionLabel>Procurement</SectionLabel>}
-
-          {showPurchase && (
-            <CollapseMenu icon="ri-shopping-basket-2-line" label="Purchases" paths={['/purchase']}>
-              <li><SideLink to="/purchase">All Purchase Orders</SideLink></li>
-              <li><SideLink to="/purchase/add">New Purchase Order</SideLink></li>
-              <li><SideLink to="/purchase/payments">Payments</SideLink></li>
-              <li><SideLink to="/purchase/returns">Returns</SideLink></li>
-            </CollapseMenu>
-          )}
-
-          {showSuppliers && (
-            <CollapseMenu icon="ri-truck-line" label="Suppliers" paths={['/suppliers']}>
-              <li><SideLink to="/suppliers">All Suppliers</SideLink></li>
-              <li><SideLink to="/suppliers/add">Add Supplier</SideLink></li>
-              <li><SideLink to="/suppliers/balance">Supplier Balances</SideLink></li>
-              <li><SideLink to="/suppliers/payments">Payments</SideLink></li>
-            </CollapseMenu>
-          )}
-
-          {/* SALES */}
-          {showOrders && <SectionLabel>Sales</SectionLabel>}
-
-          {showOrders && (
-            <CollapseMenu icon="ri-shopping-cart-2-line" label="Orders" paths={['/orders']}>
-              <li><SideLink to="/orders">All Orders</SideLink></li>
-              {is('superadmin', 'manager', 'accountant', 'cashier') && (
-                <li><SideLink to="/orders/receipts">Receipts</SideLink></li>
-              )}
-              {is('superadmin', 'manager') && (
-                <li><SideLink to="/orders/refunds">Returns &amp; Refunds</SideLink></li>
-              )}
-            </CollapseMenu>
-          )}
-
-          {/* OPERATIONS */}
-          {(showDelivery || showCustomers || showStaff || showStores) && <SectionLabel>Operations</SectionLabel>}
-
-          {showStores && <NavItem to="/stores" icon="ri-store-3-line">Stores</NavItem>}
-
-          {showDelivery && (
-            <CollapseMenu icon="ri-bike-line" label="Deliveries" paths={['/deliveries']}>
-              <li><SideLink to="/deliveries/active">Active Deliveries</SideLink></li>
-              <li>
-                <SideLink to="/deliveries/map">
-                  Live Map&nbsp;
-                  <span style={{
-                    background: '#22c55e', color: '#fff',
-                    fontSize: 9, fontWeight: 700,
-                    padding: '1px 5px', borderRadius: 50,
-                  }}>Live</span>
+            {showPOS && (
+              <li className="nav-item">
+                <SideLink to="/pos">
+                  <i className="ri-store-2-line menu-icon"></i>
+                  <span>Point of Sale</span>
                 </SideLink>
               </li>
-              <li><SideLink to="/deliveries/drivers">Drivers</SideLink></li>
-              <li><SideLink to="/deliveries/zones">Delivery Zones</SideLink></li>
-            </CollapseMenu>
-          )}
+            )}
 
-          {showCustomers && (
-            <CollapseMenu icon="ri-user-3-line" label="Customers" paths={['/customers']}>
-              <li><SideLink to="/customers">All Customers</SideLink></li>
-              {is('superadmin', 'manager') && <li><SideLink to="/customers/loyalty">Loyalty Points</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/customers/activity">Activity Log</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/customers/report">Customer Report</SideLink></li>}
-            </CollapseMenu>
-          )}
+            {/* ── PRODUCTS & STOCK ── */}
+            {showProductsSection && (
+              <li className="menu-label px-2"><span>Products &amp; Stock</span></li>
+            )}
 
-          {showStaff && (
-            <CollapseMenu icon="ri-team-line" label="Staff" paths={['/staff']}>
-              <li><SideLink to="/staff">All Staff</SideLink></li>
-              <li><SideLink to="/staff/add">Add Staff</SideLink></li>
-              <li><SideLink to="/staff/roles">Roles &amp; Permissions</SideLink></li>
-              <li><SideLink to="/staff/attendance">Attendance</SideLink></li>
-              <li><SideLink to="/staff/schedule">Schedule</SideLink></li>
-              <li><SideLink to="/staff/holidays">Holidays</SideLink></li>
-              <li><SideLink to="/staff/payroll">Payroll</SideLink></li>
-            </CollapseMenu>
-          )}
+            {showProducts && (
+              <CollapseMenu id="productsMenu" icon="ri-price-tag-3-line" label="Products">
+                <li><SideLink to="/products">All Products</SideLink></li>
+                {is('superadmin', 'manager') && <li><SideLink to="/products/add">Add Product</SideLink></li>}
+                <li><SideLink to="/products/categories">Categories</SideLink></li>
+                <li><SideLink to="/products/sub-categories">Sub-Categories</SideLink></li>
+                <li><SideLink to="/products/units">Units of Measure</SideLink></li>
+                {is('superadmin', 'manager') && <li><SideLink to="/products/brands">Brands</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/products/variants">Variants</SideLink></li>}
+                <li><SideLink to="/products/reviews">Reviews</SideLink></li>
+                {is('superadmin', 'manager') && <li><SideLink to="/products/barcode">Barcode</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/products/export">Bulk Export</SideLink></li>}
+              </CollapseMenu>
+            )}
 
-          {/* FINANCE */}
-          {(showFinance || showReports) && <SectionLabel>Finance</SectionLabel>}
+            {showInventory && (
+              <CollapseMenu id="inventoryMenu" icon="ri-archive-stack-line" label="Inventory">
+                <li><SideLink to="/inventory/stock">Stock List</SideLink></li>
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/stock-in">Stock In</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/stock-out">Stock Out</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/adjustment">Adjustments</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/transfer">Stock Transfer</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/batches">Batch Management</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/warehouses">Warehouses</SideLink></li>}
+                <li><SideLink to="/inventory/alerts">Low Stock Alerts</SideLink></li>
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/valuation">Valuation</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/lost-items">Lost &amp; Damaged</SideLink></li>}
+              </CollapseMenu>
+            )}
 
-          {showFinance && (
-            <CollapseMenu icon="ri-bank-card-line" label="Accounts" paths={['/accounts']}>
-              <li><SideLink to="/accounts/overview">Finance Overview</SideLink></li>
-              <li><SideLink to="/accounts/transactions">All Transactions</SideLink></li>
-              <li><SideLink to="/accounts/income">Income</SideLink></li>
-              <li><SideLink to="/accounts/expenses">Expenses</SideLink></li>
-              {is('superadmin', 'manager') && <li><SideLink to="/accounts/commissions">Driver Commissions</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/accounts/bank">Bank Accounts</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/accounts/transfer">Money Transfer</SideLink></li>}
-              <li><SideLink to="/accounts/reconciliation">Payment Reconciliation</SideLink></li>
-            </CollapseMenu>
-          )}
+            {/* ── SALES ── */}
+            {showSalesLabel && (
+              <li className="menu-label px-2"><span>Sales</span></li>
+            )}
 
-          {showReports && (
-            <CollapseMenu icon="ri-bar-chart-grouped-line" label="Reports" paths={['/reports']}>
-              <li><SideLink to="/reports/sales">Sales Report</SideLink></li>
-              {is('superadmin', 'manager') && <li><SideLink to="/reports/inventory">Inventory Report</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/reports/customers">Customer Report</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/reports/purchases">Purchase Report</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/reports/suppliers">Supplier Report</SideLink></li>}
-              <li><SideLink to="/reports/expenses">Expense Report</SideLink></li>
-              <li><SideLink to="/reports/finance">Finance Report</SideLink></li>
-            </CollapseMenu>
-          )}
+            {showOrders && (
+              <CollapseMenu id="ordersMenu" icon="ri-shopping-cart-2-line" label="Orders">
+                <li><SideLink to="/orders">All Orders</SideLink></li>
+                {is('superadmin', 'manager', 'accountant', 'cashier') && (
+                  <li><SideLink to="/orders/invoices">Invoices</SideLink></li>
+                )}
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/orders/refunds">Returns &amp; Refunds</SideLink></li>
+                )}
+              </CollapseMenu>
+            )}
 
-          {/* TOOLS & CONFIG */}
-          {(showChefAI || showSettings) && <SectionLabel>Tools &amp; Config</SectionLabel>}
+            {/* ── OPERATIONS ── */}
+            {showOperationsLabel && (
+              <li className="menu-label px-2"><span>Operations</span></li>
+            )}
 
-          {showChefAI && (
-            <CollapseMenu icon="ri-robot-line" label="Chef Bems AI" badge="AI" paths={['/chef-bems']}>
-              <li><SideLink to="/chef-bems/conversations">Conversations</SideLink></li>
-              {is('superadmin', 'manager') && <li><SideLink to="/chef-bems/dietary-rules">Dietary Rules</SideLink></li>}
-              <li><SideLink to="/chef-bems/meal-associations">Meal Associations</SideLink></li>
-              {is('superadmin', 'manager') && <li><SideLink to="/chef-bems/substitutions">Substitutions</SideLink></li>}
-              {is('superadmin', 'manager') && <li><SideLink to="/chef-bems/recommendations">Recommendations</SideLink></li>}
-            </CollapseMenu>
-          )}
+            {showDelivery && (
+              <CollapseMenu id="deliveriesMenu" icon="ri-bike-line" label="Deliveries">
+                <li><SideLink to="/deliveries/active">Active Deliveries</SideLink></li>
+                <li><SideLink to="/deliveries/map">
+                  Live Map
+                  <span className="badge rounded-pill bg-success ms-2" style={{ fontSize: 9 }}>Live</span>
+                </SideLink></li>
+                <li><SideLink to="/deliveries/drivers">Drivers</SideLink></li>
+                <li><SideLink to="/deliveries/zones">Delivery Zones</SideLink></li>
+              </CollapseMenu>
+            )}
 
-          {showSettings && (
-            <CollapseMenu icon="ri-settings-3-line" label="Settings" paths={['/settings']}>
-              <li><SideLink to="/settings/general">General</SideLink></li>
-              {is('superadmin') && <li><SideLink to="/settings/pos">POS Settings</SideLink></li>}
-              {is('superadmin') && <li><SideLink to="/settings/payment">Payment Methods</SideLink></li>}
-              {is('superadmin') && <li><SideLink to="/settings/coupons">Coupons &amp; Discounts</SideLink></li>}
-              {is('superadmin') && <li><SideLink to="/settings/tax">Tax Settings</SideLink></li>}
-              {is('superadmin') && <li><SideLink to="/settings/currencies">Currencies</SideLink></li>}
-              {is('superadmin') && <li><SideLink to="/settings/invoices">Invoice Templates</SideLink></li>}
-              <li><SideLink to="/settings/notifications">Notifications</SideLink></li>
-              {is('superadmin') && <li><SideLink to="/settings/manager">Manager Settings</SideLink></li>}
-            </CollapseMenu>
-          )}
+            {showCustomers && (
+              <CollapseMenu id="customersMenu" icon="ri-user-3-line" label="Customers">
+                <li><SideLink to="/customers">All Customers</SideLink></li>
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/customers/loyalty">Loyalty Points</SideLink></li>
+                )}
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/customers/activity">Activity Log</SideLink></li>
+                )}
+              </CollapseMenu>
+            )}
 
-          <li style={{ height: 10 }} />
-        </ul>
+            {showStaff && (
+              <CollapseMenu id="staffMenu" icon="ri-team-line" label="Staff">
+                <li><SideLink to="/staff">All Staff</SideLink></li>
+                <li><SideLink to="/staff/add">Add Staff</SideLink></li>
+                <li><SideLink to="/staff/roles">Roles &amp; Permissions</SideLink></li>
+                <li><SideLink to="/staff/attendance">Attendance</SideLink></li>
+                <li><SideLink to="/staff/schedule">Schedule</SideLink></li>
+                <li><SideLink to="/staff/holidays">Holidays</SideLink></li>
+                <li><SideLink to="/staff/payroll">Payroll</SideLink></li>
+              </CollapseMenu>
+            )}
+
+            {/* ── FINANCE ── */}
+            {showFinanceLabel && (
+              <li className="menu-label px-2"><span>Finance</span></li>
+            )}
+
+            {showFinance && (
+              <CollapseMenu id="accountsMenu" icon="ri-bank-card-line" label="Accounts">
+                <li><SideLink to="/accounts/overview">Finance Overview</SideLink></li>
+                <li><SideLink to="/accounts/transactions">All Transactions</SideLink></li>
+                <li><SideLink to="/accounts/income">Income</SideLink></li>
+                <li><SideLink to="/accounts/expenses">Expenses</SideLink></li>
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/accounts/commissions">Driver Commissions</SideLink></li>
+                )}
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/accounts/bank">Bank Accounts</SideLink></li>
+                )}
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/accounts/transfer">Money Transfer</SideLink></li>
+                )}
+              </CollapseMenu>
+            )}
+
+            {showReports && (
+              <CollapseMenu id="reportsMenu" icon="ri-bar-chart-grouped-line" label="Reports">
+                <li><SideLink to="/reports/sales">Sales Report</SideLink></li>
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/reports/inventory">Inventory Report</SideLink></li>
+                )}
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/reports/customers">Customer Report</SideLink></li>
+                )}
+                <li><SideLink to="/reports/expenses">Expense Report</SideLink></li>
+                <li><SideLink to="/reports/finance">Finance Report</SideLink></li>
+              </CollapseMenu>
+            )}
+
+            {/* ── TOOLS & CONFIG ── */}
+            {showToolsLabel && (
+              <li className="menu-label px-2"><span>Tools &amp; Config</span></li>
+            )}
+
+            {showChefAI && (
+              <CollapseMenu id="chefBemsMenu" icon="ri-robot-line" label="Chef Bems AI" badge="AI">
+                <li><SideLink to="/chef-bems/conversations">Conversations</SideLink></li>
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/chef-bems/dietary-rules">Dietary Rules</SideLink></li>
+                )}
+                <li><SideLink to="/chef-bems/meal-associations">Meal Associations</SideLink></li>
+              </CollapseMenu>
+            )}
+
+            {showStores && (
+              <CollapseMenu id="storesMenu" icon="ri-store-3-line" label="Multi-Store">
+                <li><SideLink to="/stores">All Stores</SideLink></li>
+                <li><SideLink to="/stores/add">Add Store</SideLink></li>
+              </CollapseMenu>
+            )}
+
+            {showSettings && (
+              <CollapseMenu id="settingsMenu" icon="ri-settings-3-line" label="Settings">
+                <li><SideLink to="/settings/general">General</SideLink></li>
+                {is('superadmin') && <li><SideLink to="/settings/pos">POS Settings</SideLink></li>}
+                {is('superadmin') && <li><SideLink to="/settings/payment">Payment Methods</SideLink></li>}
+                {is('superadmin') && <li><SideLink to="/settings/coupons">Coupons &amp; Discounts</SideLink></li>}
+                {is('superadmin') && <li><SideLink to="/settings/tax">Tax Settings</SideLink></li>}
+                {is('superadmin') && <li><SideLink to="/settings/currencies">Currencies</SideLink></li>}
+                {is('superadmin') && <li><SideLink to="/settings/invoices">Invoice Templates</SideLink></li>}
+                <li><SideLink to="/settings/notifications">Notifications</SideLink></li>
+                {is('superadmin') && <li><SideLink to="/settings/manager">Manager Settings</SideLink></li>}
+              </CollapseMenu>
+            )}
+
+            <li className="mb-2"></li>
+          </ul>
+        </div>
+
+        {/* ── Profile pinned to bottom ── */}
+        <div className="sidebar-profile-footer" style={{
+          padding: '10px 16px',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+        }}>
+          <div className="dropdown dropup w-100">
+            <button
+              className="btn p-0 w-100 text-start d-flex align-items-center gap-2"
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              <div
+                className="d-flex align-items-center justify-content-center rounded fw-bold text-white flex-shrink-0"
+                style={{ width: 32, height: 32, fontSize: 12, background: roleMeta?.color ?? '#10b981' }}
+              >
+                {initials}
+              </div>
+              <div className="flex-grow-1 overflow-hidden">
+                <div className="fw-medium text-truncate" style={{ fontSize: 13, color: '#fff' }}>
+                  {user?.first_name} {user?.last_name}
+                </div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
+                  {roleMeta?.label ?? user?.role}
+                </div>
+              </div>
+              <i className="ri-arrow-up-s-line" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 16 }}></i>
+            </button>
+            <div className="dropdown-menu mb-1">
+              <div className="px-3 py-2 border-bottom mb-1">
+                <div style={{ fontSize: 11, color: '#94a3b8' }}>Signed in as</div>
+                <div className="d-flex align-items-center gap-2 mt-1">
+                  <span className="badge rounded-pill" style={{ background: roleMeta?.bg, color: roleMeta?.color, fontSize: 11 }}>
+                    <i className={`${roleMeta?.icon} me-1`}></i>{roleMeta?.label}
+                  </span>
+                </div>
+              </div>
+              <Link className="dropdown-item" to="/settings/general">
+                <i className="ri-user-line me-2"></i>My Profile
+              </Link>
+              {showSettings && (
+                <Link className="dropdown-item" to="/settings/general">
+                  <i className="ri-settings-3-line me-2"></i>Settings
+                </Link>
+              )}
+              <div className="dropdown-divider"></div>
+              <button
+                type="button"
+                className="dropdown-item text-danger border-0 bg-transparent w-100 text-start"
+                onClick={logout}
+              >
+                <i className="ri-logout-box-r-line me-2"></i>Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
-
-      {/* ── Profile footer ── */}
-      <div style={{
-        padding: '10px 12px',
-        borderTop: `1px solid ${C.border}`,
-        flexShrink: 0,
-      }}>
-        <ProfileFooter
-          user={user}
-          roleMeta={roleMeta}
-          initials={initials}
-          showSettings={showSettings}
-        />
-      </div>
-
-    </aside>
+    </div>
   )
 }

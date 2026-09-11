@@ -1,145 +1,388 @@
-import { useState, useCallback } from 'react'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-const S = '#6b7280', B = 'var(--border)'
-const TH = { padding:'10px 16px',fontSize:11,fontWeight:700,color:S,textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',background:'var(--bg-subtle)',whiteSpace:'nowrap' }
-const TD = { padding:'11px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
-const inp = { padding:'8px 12px',border:`1.5px solid ${B}`,borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',color:'var(--text-primary)' }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 20px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-
-function ngn(v) { return `₦${Number(v||0).toLocaleString()}` }
-
-const today = new Date().toISOString().slice(0,10)
-const monthStart = today.slice(0,7)+'-01'
+import { Link } from 'react-router-dom'
 
 export default function ExpenseReport() {
-  const [filters, setFilters] = useState({ from:monthStart, to:today, category:'' })
-  const [data, setData]       = useState(null)
-  const [loading, setLoading] = useState(false)
-
-  const generate = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = { from:filters.from, to:filters.to }
-      if (filters.category) params.category = filters.category
-      const r = await api.get('/admin/reports/expenses', { params })
-      setData(r.data)
-    } catch {
-      toast.error('Failed to generate expense report')
-    } finally {
-      setLoading(false)
-    }
-  }, [filters])
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Expense Report</div>
-        <div style={{ fontSize:12,color:S,marginTop:2 }}>Track business expenses by category and date range.</div>
-      </div>
-
-      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:'16px 20px',marginBottom:20,display:'flex',flexWrap:'wrap',gap:12,alignItems:'flex-end' }}>
-        <div>
-          <div style={{ fontSize:11,fontWeight:700,color:S,marginBottom:4 }}>FROM DATE</div>
-          <input type="date" style={inp} value={filters.from} onChange={e=>setFilters(f=>({...f,from:e.target.value}))}/>
-        </div>
-        <div>
-          <div style={{ fontSize:11,fontWeight:700,color:S,marginBottom:4 }}>TO DATE</div>
-          <input type="date" style={inp} value={filters.to} onChange={e=>setFilters(f=>({...f,to:e.target.value}))}/>
-        </div>
-        <div>
-          <div style={{ fontSize:11,fontWeight:700,color:S,marginBottom:4 }}>CATEGORY <span style={{ fontWeight:400 }}>(optional)</span></div>
-          <input style={inp} value={filters.category} onChange={e=>setFilters(f=>({...f,category:e.target.value}))} placeholder="e.g. Logistics"/>
-        </div>
-        <button style={btnP} onClick={generate} disabled={loading}>
-          <i className="ri-bill-line"/>{loading?'Generating…':'Generate Report'}
-        </button>
-      </div>
-
-      {!data && !loading && (
-        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
-          <i className="ri-bill-line" style={{ fontSize:54,display:'block',marginBottom:10 }}/>
-          <div style={{ fontSize:14,fontWeight:600 }}>Select date range and click Generate Report</div>
-        </div>
-      )}
-
-      {loading && (
-        <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:60,textAlign:'center',color:S }}>
-          <i className="ri-loader-4-line" style={{ fontSize:43,display:'block',marginBottom:8 }}/>Loading…
-        </div>
-      )}
-
-      {data && !loading && (
-        <>
-          {/* Summary */}
-          <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14,marginBottom:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,padding:20,display:'flex',alignItems:'center',gap:14 }}>
-              <div style={{ width:44,height:44,borderRadius:12,background:'#fee2e2',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-                <i className="ri-money-dollar-circle-line" style={{ fontSize:30,color:'#991b1b' }}/>
-              </div>
-              <div>
-                <div style={{ fontSize:11,color:S,fontWeight:600,marginBottom:2 }}>Total Expenses</div>
-                <div style={{ fontSize:22,fontWeight:800,color:'#991b1b' }}>{ngn(data.kpis?.total_paid)}</div>
-              </div>
-            </div>
+    <div className="container-fluid">
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
+              <h6 className="flex-grow-1 mb-0">Expenses</h6>
+              <ul className="breadcrumb flex-shrink-0 mb-0">
+                  <li className="breadcrumb-item"><a href="#">Reports</a></li>
+                  <li className="breadcrumb-item active">Expenses</li>
+              </ul>
           </div>
-
-          {/* By Category */}
-          {data.by_category?.length > 0 && (
-            <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',marginBottom:20 }}>
-              <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Expenses by Category</div>
-              <table style={{ width:'100%',borderCollapse:'collapse' }}>
-                <thead><tr>{['Category','Amount','% of Total'].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
-                <tbody>
-                  {data.by_category.map((r,i)=>{
-                    const pct = data.kpis?.total_paid > 0 ? ((r.paid/data.kpis.total_paid)*100).toFixed(1) : 0
-                    return (
-                      <tr key={i}>
-                        <td style={{ ...TD,fontWeight:600 }}>{r.category}</td>
-                        <td style={{ ...TD,fontWeight:600,color:'#991b1b' }}>{ngn(r.paid)}</td>
-                        <td style={TD}>
-                          <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                            <div style={{ flex:1,height:6,borderRadius:3,background:'var(--bg-muted)',overflow:'hidden' }}>
-                              <div style={{ height:'100%',width:`${pct}%`,background:'#f06548',borderRadius:3 }}/>
-                            </div>
-                            <span style={{ fontSize:12,color:S,minWidth:36 }}>{pct}%</span>
+          <div className="row">
+              <div className="col-xl-7 col-xxl-8">
+                  <div className="card">
+                      <div className="card-body">
+                          <div className="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-6">
+                              <div className="d-flex align-items-center gap-2">
+                                  <div className="avatar size-8 bg-primary-subtle text-primary rounded">
+                                      <i data-lucide="wallet" className="size-4"></i>
+                                  </div>
+                                  <h6 className="mb-0">Expenses Overview</h6>
+                              </div>
+                              <span className="text-muted">Last updated: Jan, 2025</span>
                           </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Expense list */}
-          {data.pending_list?.length > 0 && (
-            <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden' }}>
-              <div style={{ padding:'14px 20px',borderBottom:`1px solid ${B}`,fontFamily:'var(--heading-font)',fontWeight:700,fontSize:13 }}>Pending Expenses</div>
-              <div style={{ overflowX:'auto' }}>
-                <table style={{ width:'100%',borderCollapse:'collapse' }}>
-                  <thead>
-                    <tr>
-                      {Object.keys(data.pending_list[0]||{}).map(k=><th key={k} style={TH}>{k.replace(/_/g,' ')}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.pending_list.map((e,i)=>(
-                      <tr key={i}>
-                        {Object.values(e).map((v,j)=>(
-                          <td key={j} style={TD}>{typeof v === 'number' && j > 0 ? ngn(v) : String(v||'—')}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <div className="row g-5">
+                              <div className="col-md-6 col-lg-3 col-xl-6 col-xxl-3 border-end-md">
+                                  <div className="">
+                                      <p className="text-muted mb-3">Total Expenses</p>
+                                      <h5 className="mb-0">$92,780<small className="text-muted fs-15 fw-normal ms-2">$110 avg / expense</small></h5>
+                                  </div>
+                              </div>
+                              <div className="col-md-6 col-lg-3 col-xl-6 col-xxl-3 d-flex border-end-lg border-end-xl-0 border-end-xxl">
+                                  <div className="px-md-10">
+                                      <p className="text-muted mb-3">Paid Expenses</p>
+                                      <h5 className="mb-0">$86,460<small className="text-muted fs-15 fw-normal ms-2">Completed</small></h5>
+                                  </div>
+                              </div>
+                              <div className="col-md-6 col-lg-3 col-xl-6 col-xxl-3 d-flex border-end-md">
+                                  <div className="px-lg-10 px-xl-0 px-xxl-10">
+                                      <p className="text-muted mb-3">Paid Expenses</p>
+                                      <h5 className="mb-0">$86,460<small className="text-muted fs-15 fw-normal ms-2">Completed</small></h5>
+                                  </div>
+                              </div>
+                              <div className="col-md-6 col-lg-3 col-xl-6 col-xxl-3 d-flex">
+                                  <div className="px-md-10">
+                                      <p className="text-muted mb-3">Overdue Expenses</p>
+                                      <h5 className="mb-0">$2,140<small className="text-muted fs-15 fw-normal ms-2">Past due</small></h5>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  <div className="card">
+                      <div className="card-header d-flex flex-wrap justify-content-between align-items-center">
+                          <h5 className="card-title mb-0">Income vs Expense</h5>
+                          <div className="dropdown">
+                              <a href="#" className="link link-custom-primary badge d-flex align-items-center fs-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                  Monthly
+                              </a>
+                              <div className="dropdown-menu dropdown-menu-end">
+                                  <a className="dropdown-item" href="#">Weekly</a>
+                                  <a className="dropdown-item" href="#">Monthly</a>
+                                  <a className="dropdown-item" href="#">Yearly</a>
+                              </div>
+                          </div>
+                      </div>
+                      <div className="card-body">
+                          <div id="revenueChart"></div>
+                      </div>
+                  </div>
+                  <div className="card">
+                      <div className="card-header d-flex justify-content-between align-items-center">
+                          <h5 className="card-title mb-0">Summary</h5>
+                          <a href="apps-accounts-expenses.html" className="link link-custom-primary">View All <i className="ri-arrow-right-line"></i></a>
+                      </div>
+                      <div className="card-body pt-0">
+                          <div className="table-card table-responsive">
+                              <table className="table text-nowrap align-middle mb-0">
+                                  <thead>
+                                      <tr className="bg-light border-bottom">
+                                          <th>
+                                              <div className="form-check check-primary">
+                                                  <input className="form-check-input" type="checkbox" id="checkAllExpenses" />
+                                              </div>
+                                          </th>
+                                          <th className="fw-medium text-muted">Payee</th>
+                                          <th className="fw-medium text-muted">Category</th>
+                                          <th className="fw-medium text-muted">Payment Method</th>
+                                          <th className="fw-medium text-muted">Date</th>
+                                          <th className="fw-medium text-muted">Status</th>
+                                          <th className="fw-medium text-muted">Action</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody>
+                                      <tr>
+                                          <td>
+                                              <div className="form-check check-primary">
+                                                  <input className="form-check-input" type="checkbox" />
+                                              </div>
+                                          </td>
+                                          <td>Office Rent</td>
+                                          <td>Rent</td>
+                                          <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Bank</span></td>
+                                          <td>24 Dec, 2025</td>
+                                          <td><span className="badge bg-success-subtle text-success border border-success-subtle">Paid</span></td>
+                                          <td>
+                                              <div className="d-flex gap-2">
+                                                  <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                                  <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
+                                                  <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                              </div>
+                                          </td>
+                                      </tr>
+                                      <tr>
+                                          <td>
+                                              <div className="form-check check-primary">
+                                                  <input className="form-check-input" type="checkbox" />
+                                              </div>
+                                          </td>
+                                          <td>Electricity Board</td>
+                                          <td>Utilities</td>
+                                          <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Online</span></td>
+                                          <td>23 Dec, 2025</td>
+                                          <td><span className="badge bg-success-subtle text-success border border-success-subtle">Paid</span></td>
+                                          <td>
+                                              <div className="d-flex gap-2">
+                                                  <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                                  <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
+                                                  <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                              </div>
+                                          </td>
+                                      </tr>
+                                      <tr>
+                                          <td>
+                                              <div className="form-check check-primary">
+                                                  <input className="form-check-input" type="checkbox" />
+                                              </div>
+                                          </td>
+                                          <td>Staff Salary</td>
+                                          <td>Salary</td>
+                                          <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Bank</span></td>
+                                          <td>22 Dec, 2025</td>
+                                          <td><span className="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span></td>
+                                          <td>
+                                              <div className="d-flex gap-2">
+                                                  <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                                  <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
+                                                  <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                              </div>
+                                          </td>
+                                      </tr>
+                                      <tr>
+                                          <td>
+                                              <div className="form-check check-primary">
+                                                  <input className="form-check-input" type="checkbox" />
+                                              </div>
+                                          </td>
+                                          <td>Courier Service</td>
+                                          <td>Transportation</td>
+                                          <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Cash</span></td>
+                                          <td>21 Dec, 2025</td>
+                                          <td><span className="badge bg-success-subtle text-success border border-success-subtle">Paid</span></td>
+                                          <td>
+                                              <div className="d-flex gap-2">
+                                                  <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                                  <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
+                                                  <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                              </div>
+                                          </td>
+                                      </tr>
+                                      <tr>
+                                          <td>
+                                              <div className="form-check check-primary">
+                                                  <input className="form-check-input" type="checkbox" />
+                                              </div>
+                                          </td>
+                                          <td>Internet Provider</td>
+                                          <td>Utilities</td>
+                                          <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Online</span></td>
+                                          <td>20 Dec, 2025</td>
+                                          <td><span className="badge bg-success-subtle text-success border border-success-subtle">Paid</span></td>
+                                          <td>
+                                              <div className="d-flex gap-2">
+                                                  <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
+                                                  <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
+                                                  <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
+                                              </div>
+                                          </td>
+                                      </tr>
+                                  </tbody>
+                              </table>
+                          </div>
+                          <div className="row align-items-center g-3 mt-3">
+                              <div className="col-md-6">
+                                  <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b> of <b className="ms-1">19</b> Results</p>
+                              </div>
+                              <div className="col-md-6">
+                                  <nav aria-label="Page navigation example">
+                                      <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
+                                          <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
+                                          <li className="page-item active"><a className="page-link" href="#">1</a></li>
+                                          <li className="page-item"><a className="page-link" href="#">2</a></li>
+                                          <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
+                                      </ul>
+                                  </nav>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
               </div>
-            </div>
-          )}
-        </>
-      )}
+              <div className="col-xl-5 col-xxl-4">
+                  <div className="card">
+                      <div className="card-header d-flex flex-wrap justify-content-between align-items-center">
+                          <h5 className="card-title mb-0">Week Progress</h5>
+                          <div className="dropdown">
+                              <a href="#" className="link link-custom-primary badge d-flex align-items-center fs-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                  Recent
+                              </a>
+                              <div className="dropdown-menu dropdown-menu-end">
+                                  <a className="dropdown-item" href="#">Recent</a>
+                                  <a className="dropdown-item" href="#">Weekly</a>
+                                  <a className="dropdown-item" href="#">Monthly</a>
+                                  <a className="dropdown-item" href="#">Yearly</a>
+                              </div>
+                          </div>
+                      </div>
+                      <div className="card-body">
+                          <div id="weekProgress" dir="ltr"></div>
+                      </div>
+                  </div>
+                  <div className="card">
+                      <div className="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                          <h5 className="card-title mb-0">Expense Breakdown</h5>
+                          <p className="text-muted">Compare to last month</p>
+                      </div>
+                      <div className="card-body p-0">
+                          <div className="row g-0">
+                              <div className="col-md-6 border-bottom border-end-md">
+                                  <div className="p-5 d-flex justify-content-between align-items-center">
+                                      <div className="d-flex align-items-center gap-3">
+                                          <div className="avatar size-10 bg-light text-muted rounded">
+                                              <i data-lucide="wallet" className="size-5"></i>
+                                          </div>
+                                          <div>
+                                              <p className="text-muted">Office Rent</p>
+                                              <h6 className="mb-0">$2,500</h6>
+                                          </div>
+                                      </div>
+                                      <p className="text-muted">15% <i data-lucide="arrow-up" className="text-success size-4"></i></p>
+                                  </div>
+                              </div>
+                              <div className="col-md-6 border-bottom">
+                                  <div className="p-5 d-flex justify-content-between align-items-center">
+                                      <div className="d-flex align-items-center gap-3">
+                                          <div className="avatar size-10 bg-light text-muted rounded">
+                                              <i data-lucide="users" className="size-5"></i>
+                                          </div>
+                                          <div>
+                                              <p className="text-muted mb-1">Staff Salary</p>
+                                              <h6 className="mb-0">$4,800</h6>
+                                          </div>
+                                      </div>
+                                      <p className="text-muted">8% <i data-lucide="arrow-up" className="text-success size-4"></i></p>
+                                  </div>
+                              </div>
+                              <div className="col-md-6 border-bottom border-end-md">
+                                  <div className="p-5 d-flex justify-content-between align-items-center">
+                                      <div className="d-flex align-items-center gap-3">
+                                          <div className="avatar size-10 bg-light text-muted rounded">
+                                              <i data-lucide="zap" className="size-5"></i>
+                                          </div>
+                                          <div>
+                                              <p className="text-muted mb-1">Utilities</p>
+                                              <h6 className="mb-0">$440</h6>
+                                          </div>
+                                      </div>
+                                      <p className="text-muted">4% <i data-lucide="arrow-down" className="text-danger size-4"></i></p>
+                                  </div>
+                              </div>
+                              <div className="col-md-6 border-bottom">
+                                  <div className="p-5 d-flex justify-content-between align-items-center">
+                                      <div className="d-flex align-items-center gap-3">
+                                          <div className="avatar size-10 bg-light text-muted rounded">
+                                              <i data-lucide="truck" className="size-5"></i>
+                                          </div>
+                                          <div>
+                                              <p className="text-muted mb-1">Transportation</p>
+                                              <h6 className="mb-0">$440</h6>
+                                          </div>
+                                      </div>
+                                      <p className="text-muted">2% <i data-lucide="arrow-up" className="text-success size-4"></i></p>
+                                  </div>
+                              </div>
+                              <div className="col-md-6 border-bottom border-end-md">
+                                  <div className="p-5 d-flex justify-content-between align-items-center">
+                                      <div className="d-flex align-items-center gap-3">
+                                          <div className="avatar size-10 bg-light text-muted rounded">
+                                              <i data-lucide="package" className="size-5"></i>
+                                          </div>
+                                          <div>
+                                              <p className="text-muted mb-1">Office Supplies</p>
+                                              <h6 className="mb-0">$450</h6>
+                                          </div>
+                                      </div>
+                                      <p className="text-muted">6% <i data-lucide="arrow-down" className="text-danger size-4"></i></p>
+                                  </div>
+                              </div>
+                              <div className="col-md-6 border-bottom">
+                                  <div className="p-5 d-flex justify-content-between align-items-center">
+                                      <div className="d-flex align-items-center gap-3">
+                                          <div className="avatar size-10 bg-light text-muted rounded">
+                                              <i data-lucide="settings" className="size-5"></i>
+                                          </div>
+                                          <div>
+                                              <p className="text-muted mb-1">Maintenance</p>
+                                              <h6 className="mb-0">$90</h6>
+                                          </div>
+                                      </div>
+                                      <p className="text-muted">1% <i data-lucide="arrow-down" className="text-danger size-4"></i></p>
+                                  </div>
+                              </div>
+                              <div className="col-md-6 border-bottom border-end-md">
+                                  <div className="p-5 d-flex justify-content-between align-items-center">
+                                      <div className="d-flex align-items-center gap-3">
+                                          <div className="avatar size-10 bg-light text-muted rounded">
+                                              <i data-lucide="fuel" className="size-5"></i>
+                                          </div>
+                                          <div>
+                                              <p className="text-muted mb-1">Fuel Expense</p>
+                                              <h6 className="mb-0">$260</h6>
+                                          </div>
+                                      </div>
+                                      <p className="text-muted">3% <i data-lucide="arrow-up" className="text-success size-4"></i></p>
+                                  </div>
+                              </div>
+                              <div className="col-md-6 border-bottom">
+                                  <div className="p-5 d-flex justify-content-between align-items-center">
+                                      <div className="d-flex align-items-center gap-3">
+                                          <div className="avatar size-10 bg-light text-muted rounded">
+                                              <i data-lucide="send" className="size-5"></i>
+                                          </div>
+                                          <div>
+                                              <p className="text-muted mb-1">Courier Service</p>
+                                              <h6 className="mb-0">$180</h6>
+                                          </div>
+                                      </div>
+                                      <p className="text-muted">2% <i data-lucide="arrow-down" className="text-danger size-4"></i></p>
+                                  </div>
+                              </div>
+                              <div className="col-md-6 border-end-md">
+                                  <div className="p-5 d-flex justify-content-between align-items-center">
+                                      <div className="d-flex align-items-center gap-3">
+                                          <div className="avatar size-10 bg-light text-muted rounded">
+                                              <i data-lucide="shopping-cart" className="size-5"></i>
+                                          </div>
+                                          <div>
+                                              <p className="text-muted mb-1">Online Orders</p>
+                                              <h6 className="mb-0">$320</h6>
+                                          </div>
+                                      </div>
+                                      <p className="text-muted">5% <i data-lucide="arrow-up" className="text-success size-4"></i></p>
+                                  </div>
+                              </div>
+                              <div className="col-md-6">
+                                  <div className="p-5 d-flex justify-content-between align-items-center">
+                                      <div className="d-flex justify-content-between align-items-center">
+                                          <div className="d-flex align-items-center gap-3">
+                                              <div className="avatar size-10 bg-light text-muted rounded">
+                                                  <i data-lucide="credit-card" className="size-5"></i>
+                                              </div>
+                                              <div>
+                                                  <p className="text-muted mb-1">Payments</p>
+                                                  <h6 className="mb-0">$500</h6>
+                                              </div>
+                                          </div>
+                                      </div>
+                                      <p className="text-muted">3% <i data-lucide="arrow-up" className="text-success size-4"></i></p>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
     </div>
   )
 }

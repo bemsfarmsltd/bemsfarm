@@ -1,321 +1,345 @@
 import { useState, useMemo, useEffect } from 'react'
 import ImportModal from '../../components/ImportModal'
 
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
+const CATEGORIES = [
+  { id:1, name:'Meals' }, { id:2, name:'Seafood' }, { id:3, name:'Meat' },
+  { id:4, name:'Grains & Carbs' }, { id:5, name:'Vegetables' },
+  { id:6, name:'Dairy & Eggs' }, { id:7, name:'Beverages' }, { id:8, name:'Fresh Farm' },
+]
 
-function genSubCode(name, categoryName, existingCodes=[]) {
-  const catSlug = (categoryName || '').replace(/[^A-Za-z]/g,'').toUpperCase().slice(0,3).padEnd(3,'X')
+function genSubCode(name, categoryName, existingCodes = []) {
+  const catSlug = categoryName.replace(/[^A-Za-z]/g,'').toUpperCase().slice(0,3).padEnd(3,'X')
   const nameSlug = name.trim().toUpperCase().replace(/[^A-Z]/g,'').slice(0,3).padEnd(3,'X')
-  let n=1, code
-  do { code=`${catSlug}-${nameSlug}-${String(n).padStart(3,'0')}`; n++ }
+  let n = 1, code
+  do { code = `${catSlug}-${nameSlug}-${String(n).padStart(3,'0')}`; n++ }
   while (existingCodes.includes(code))
   return code
 }
 
 const IMPORT_FIELDS = [
-  { key:'name',   label:'Name',            required:true  },
-  { key:'parent', label:'Parent Category', required:true  },
-  { key:'status', label:'Status',          required:false },
+  { key:'name',     label:'Name',            required:true  },
+  { key:'parent',   label:'Parent Category', required:true  },
+  { key:'status',   label:'Status',          required:false },
 ]
 
-const BLANK = { name:'', category_id:'', code:'', status:'active', showPOS:true }
+const MOCK = [
+  { id:1,  name:'Grilled Fish',       parent:'Meals',         code:'MEA-GRI-001', status:'active',   created:'2026-01-15', showPOS:true  },
+  { id:2,  name:'Rice Dishes',        parent:'Meals',         code:'MEA-RIC-001', status:'active',   created:'2026-01-15', showPOS:true  },
+  { id:3,  name:'Fresh Catfish',      parent:'Seafood',       code:'SEA-CAT-001', status:'active',   created:'2026-01-16', showPOS:true  },
+  { id:4,  name:'Smoked Fish',        parent:'Seafood',       code:'SEA-SMO-001', status:'active',   created:'2026-01-16', showPOS:false },
+  { id:5,  name:'Chicken',            parent:'Meat',          code:'MEA-CHI-001', status:'active',   created:'2026-01-17', showPOS:true  },
+  { id:6,  name:'Beef',               parent:'Meat',          code:'MEA-BEE-001', status:'active',   created:'2026-01-17', showPOS:true  },
+  { id:7,  name:'Long Grain Rice',    parent:'Grains & Carbs',code:'GRA-LON-001', status:'active',   created:'2026-01-18', showPOS:true  },
+  { id:8,  name:'Cassava Products',   parent:'Grains & Carbs',code:'GRA-CAS-001', status:'active',   created:'2026-01-18', showPOS:false },
+  { id:9,  name:'Leafy Greens',       parent:'Vegetables',    code:'VEG-LEA-001', status:'active',   created:'2026-01-20', showPOS:true  },
+  { id:10, name:'Root Vegetables',    parent:'Vegetables',    code:'VEG-ROO-001', status:'inactive', created:'2026-01-20', showPOS:false },
+  { id:11, name:'Fresh Milk',         parent:'Dairy & Eggs',  code:'DAI-FRE-001', status:'active',   created:'2026-01-22', showPOS:true  },
+  { id:12, name:'Farm Eggs',          parent:'Dairy & Eggs',  code:'DAI-FAR-001', status:'active',   created:'2026-01-22', showPOS:true  },
+]
 
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const btnD = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#f06548',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const TH   = { padding:'10px 16px',fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:'left',whiteSpace:'nowrap',background:'var(--bg-subtle)' }
-const TD   = { padding:'12px 16px',verticalAlign:'middle',borderBottom:'1px solid var(--border)',fontSize:13,color:'var(--text-primary)' }
+const BLANK = { name:'', parent:'', code:'', status:'active', showPOS:true }
 
 export default function SubCategories() {
-  const [items, setItems]               = useState([])
-  const [categories, setCategories]     = useState([])
-  const [search, setSearch]             = useState('')
+  const [items, setItems]           = useState(MOCK)
+  const [search, setSearch]         = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
-  const [filterCat, setFilterCat]       = useState('all')
-  const [activeModal, setActiveModal]   = useState(null)
-  const [editItem, setEditItem]         = useState(null)
-  const [form, setForm]                 = useState(BLANK)
+  const [filterCat, setFilterCat]   = useState('all')
+  const [activeModal, setActiveModal] = useState(null)
+  const [editItem, setEditItem]     = useState(null)
+  const [form, setForm]             = useState(BLANK)
 
-  const fetchData = async () => {
-    try {
-      const [subRes, catRes] = await Promise.all([
-        api.get('/admin/config/subcategories'),
-        api.get('/admin/config/categories')
-      ])
-      setItems(subRes.data.subcategories)
-      setCategories(catRes.data.categories)
-    } catch (err) {
-      toast.error('Failed to load data')
-    }
-  }
-
+  // Auto-generate code when name or parent changes (add mode)
   useEffect(() => {
-    fetchData()
-  }, [])
-
-  useEffect(() => {
-    if (!editItem && form.name.trim() && form.category_id) {
-      const cat = categories.find(c => c.id === parseInt(form.category_id))
-      setForm(f => ({ ...f, code: genSubCode(f.name, cat?.name || '', items.map(i=>i.code)) }))
+    if (!editItem && form.name.trim() && form.parent) {
+      setForm(f => ({ ...f, code: genSubCode(f.name, f.parent, items.map(i => i.code)) }))
     }
-  }, [form.name, form.category_id]) // eslint-disable-line
+  }, [form.name, form.parent])  // eslint-disable-line
 
   const filtered = useMemo(() => items.filter(r => {
     const m = r.name.toLowerCase().includes(search.toLowerCase()) ||
               r.code.toLowerCase().includes(search.toLowerCase()) ||
-              (r.category_name || '').toLowerCase().includes(search.toLowerCase())
-    return m && (filterStatus==='all'||r.status===filterStatus) && (filterCat==='all'||String(r.category_id)===String(filterCat))
+              r.parent.toLowerCase().includes(search.toLowerCase())
+    return m &&
+      (filterStatus === 'all' || r.status === filterStatus) &&
+      (filterCat === 'all' || r.parent === filterCat)
   }), [items, search, filterStatus, filterCat])
 
   const stats = useMemo(() => ({
     total:    items.length,
-    active:   items.filter(i=>i.status==='active').length,
-    inactive: items.filter(i=>i.status==='inactive').length,
-    onPOS:    items.filter(i=>i.showPOS).length,
+    active:   items.filter(i => i.status === 'active').length,
+    inactive: items.filter(i => i.status === 'inactive').length,
+    onPOS:    items.filter(i => i.showPOS).length,
   }), [items])
 
-  function openAdd() { setEditItem(null); setForm({ ...BLANK }); setActiveModal('form') }
+  // ── Modal helpers ────────────────────────────────────────────────────────
+  function openAdd() {
+    setEditItem(null)
+    setForm({ ...BLANK })
+    setActiveModal('form')
+  }
   function openEdit(r) { setEditItem(r); setForm({ ...r }); setActiveModal('form') }
   function openDelete(r) { setEditItem(r); setActiveModal('delete') }
   function closeModal() { setActiveModal(null); setEditItem(null) }
 
-  async function saveForm(e) {
+  function saveForm(e) {
     e.preventDefault()
-    const cat = categories.find(c => c.id === parseInt(form.category_id))
-    const payload = { ...form, code: form.code || genSubCode(form.name, cat?.name || '', items.map(i=>i.code)) }
-
-    try {
-      if (editItem) {
-        const res = await api.put(`/admin/config/subcategories/${editItem.id}`, payload)
-        setItems(p => p.map(r => r.id === editItem.id ? { ...res.data, category_name: cat?.name } : r))
-        toast.success('Sub-Category updated')
-      } else {
-        const res = await api.post('/admin/config/subcategories', payload)
-        setItems(p => [{ ...res.data, category_name: cat?.name }, ...p])
-        toast.success('Sub-Category created')
-      }
-      closeModal()
-    } catch (err) {
-      toast.error('Failed to save subcategory')
+    if (editItem) {
+      setItems(prev => prev.map(r => r.id === editItem.id ? { ...r, ...form } : r))
+    } else {
+      const code = form.code || genSubCode(form.name, form.parent, items.map(i => i.code))
+      setItems(prev => [...prev, {
+        id: Math.max(...prev.map(r=>r.id))+1, ...form, code,
+        created: new Date().toISOString().slice(0,10)
+      }])
     }
-  }
-
-  async function confirmDelete() { 
-    try {
-      await api.delete(`/admin/config/subcategories/${editItem.id}`)
-      setItems(p => p.filter(r => r.id !== editItem.id))
-      toast.success('Sub-Category deleted')
-      closeModal()
-    } catch (err) {
-      toast.error('Failed to delete')
-    }
-  }
-
-  async function handleImport(rows) {
-    const existingCodes = items.map(i=>i.code)
-    const created = []
-    const skipped = []
-    for (const [idx, row] of rows.entries()) {
-      const name = row.name?.trim()||`Imported ${idx+1}`
-      const parentName = row.parent?.trim()||categories[0]?.name||''
-      const cat = categories.find(c => c.name.toLowerCase()===parentName.toLowerCase())
-      if (!cat) { skipped.push(name); continue }
-      const code = genSubCode(name,cat.name,existingCodes); existingCodes.push(code)
-      try {
-        const res = await api.post('/admin/config/subcategories', {
-          name, category_id: cat.id, code,
-          status: row.status?.toLowerCase()==='inactive'?'inactive':'active',
-          showPOS: true,
-        })
-        created.push({ ...res.data, category_name: cat.name })
-      } catch { skipped.push(name) }
-    }
-    if (created.length) setItems(p=>[...created,...p])
-    if (created.length) toast.success(`Imported ${created.length} sub-categor${created.length===1?'y':'ies'}`)
-    if (skipped.length) toast.error(`Skipped (no matching parent category): ${skipped.join(', ')}`)
     closeModal()
   }
 
-  const B = 'var(--border)', S = '#6b7280'
+  function confirmDelete() {
+    setItems(prev => prev.filter(r => r.id !== editItem.id))
+    closeModal()
+  }
 
-  const STAT_CARDS = [
-    { label:'Total Sub-Categories', value:stats.total,    icon:'ri-price-tag-2-line',     color:'#405189', filter:'all'      },
-    { label:'Active',               value:stats.active,   icon:'ri-checkbox-circle-line', color:'#0ab39c', filter:'active'   },
-    { label:'Inactive',             value:stats.inactive, icon:'ri-close-circle-line',    color:'#f7b84b', filter:'inactive' },
-    { label:'Shown on POS',         value:stats.onPOS,    icon:'ri-store-2-line',         color:'#299cdb', filter:'all'      },
-  ]
+  function handleImport(rows) {
+    const existingCodes = items.map(i => i.code)
+    const today = new Date().toISOString().slice(0,10)
+    const newItems = rows.map((row, idx) => {
+      const name   = row.name?.trim() || `Imported ${idx + 1}`
+      const parent = row.parent?.trim() || CATEGORIES[0].name
+      const code   = genSubCode(name, parent, [...existingCodes])
+      existingCodes.push(code)
+      return {
+        id: Math.max(...items.map(i=>i.id), 0) + idx + 1,
+        name, parent, code, showPOS: true,
+        status: row.status?.toLowerCase() === 'inactive' ? 'inactive' : 'active',
+        created: today,
+      }
+    })
+    setItems(prev => [...prev, ...newItems])
+    closeModal()
+  }
 
+  // ═══════════════════════════════════════════════════════════════════════════
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12 }}>
-        <div>
-          <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Sub-Categories</div>
-          <div style={{ fontSize:12,color:S,marginTop:2 }}>Products → Sub-Categories</div>
-        </div>
+    <div className="container-fluid">
+      <div className="gap-2 page-heading mb-3">
+        <h6 className="flex-grow-1 mb-0">Sub-Categories</h6>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><a href="#">Products</a></li>
+          <li className="breadcrumb-item active">Sub-Categories</li>
+        </ul>
       </div>
 
       {/* Stat cards */}
-      <div className="grid-stats-auto" style={{ display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:24 }}>
-        {STAT_CARDS.map(c=>(
-          <div key={c.label} onClick={()=>setFilterStatus(c.filter)}
-            style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,borderLeft:`4px solid ${c.color}`,padding:16,cursor:'pointer',boxShadow:'0 1px 4px rgba(0,0,0,.06)',display:'flex',alignItems:'center',gap:14 }}>
-            <div style={{ width:44,height:44,borderRadius:'50%',background:`${c.color}1a`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-              <i className={c.icon} style={{ fontSize:22,color:c.color }}/>
-            </div>
-            <div>
-              <div style={{ fontWeight:800,fontSize:22,color:c.color,fontFamily:'var(--heading-font)' }}>{c.value}</div>
-              <div style={{ fontSize:12,color:S }}>{c.label}</div>
+      <div className="row g-3 mb-4">
+        {[
+          { label:'Total Sub-Categories', value:stats.total,    icon:'ri-price-tag-2-line',     color:'#405189', filter:'all'      },
+          { label:'Active',               value:stats.active,   icon:'ri-checkbox-circle-line', color:'#0ab39c', filter:'active'   },
+          { label:'Inactive',             value:stats.inactive, icon:'ri-close-circle-line',    color:'#f7b84b', filter:'inactive' },
+          { label:'Shown on POS',         value:stats.onPOS,    icon:'ri-store-2-line',         color:'#299cdb', filter:'all'      },
+        ].map(c => (
+          <div className="col-6 col-xl-3" key={c.label}>
+            <div className="card mb-0 cursor-pointer" style={{ borderLeft:`3px solid ${c.color}` }}
+              onClick={() => setFilterStatus(c.filter)}>
+              <div className="card-body d-flex align-items-center gap-3 py-3">
+                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width:44, height:44, background:`${c.color}1a` }}>
+                  <i className={`${c.icon} fs-20`} style={{ color:c.color }}></i>
+                </div>
+                <div>
+                  <div className="fw-bold fs-18" style={{ color:c.color }}>{c.value}</div>
+                  <div className="text-muted" style={{ fontSize:12 }}>{c.label}</div>
+                </div>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Table card */}
-      <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)' }}>
-        <div style={{ padding:'16px 20px',borderBottom:`1px solid ${B}`,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap' }}>
-          <div style={{ position:'relative',flex:'1 1 220px' }}>
-            <i className="ri-search-line" style={{ position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',color:S,fontSize:20,pointerEvents:'none' }}/>
-            <input type="text" placeholder="Search sub-categories…" value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp,paddingLeft:34 }}/>
+      {/* Table */}
+      <div className="card">
+        <div className="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+          <div className="position-relative">
+            <input className="form-control ps-9" placeholder="Search sub-categories…" value={search}
+              onChange={e => setSearch(e.target.value)} style={{ minWidth:220 }} />
+            <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
           </div>
-          <select style={{ ...inp,width:'auto' }} value={filterCat} onChange={e=>setFilterCat(e.target.value)}>
-            <option value="all">All Categories</option>
-            {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <select style={{ ...inp,width:'auto' }} value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          <button style={btnL} onClick={()=>setActiveModal('import')}><i className="ri-upload-cloud-2-line"/>Import</button>
-          <button style={btnP} onClick={openAdd}><i className="ri-add-line"/>Add Sub-Category</button>
+          <div className="d-flex gap-2 ms-auto flex-wrap">
+            <select className="form-select" style={{ width:'auto' }} value={filterCat}
+              onChange={e => setFilterCat(e.target.value)}>
+              <option value="all">All Categories</option>
+              {CATEGORIES.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+            <select className="form-select" style={{ width:'auto' }} value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}>
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <button className="btn btn-outline-secondary d-flex align-items-center gap-1"
+              onClick={() => setActiveModal('import')}>
+              <i className="ri-upload-cloud-2-line"></i> Import
+            </button>
+            <button className="btn btn-primary d-flex align-items-center gap-1" onClick={openAdd}>
+              <i className="ri-add-line"></i> Add Sub-Category
+            </button>
+          </div>
         </div>
-
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%',borderCollapse:'collapse' }}>
-            <thead>
-              <tr>{['Sub-Category','Parent Category','Code','POS','Status','Created','Action'].map(h=><th key={h} style={TH}>{h}</th>)}</tr>
-            </thead>
-            <tbody>
-              {filtered.length===0&&(
-                <tr><td colSpan={7} style={{ ...TD,textAlign:'center',padding:'60px 0',color:S }}>
-                  <i className="ri-price-tag-2-line" style={{ fontSize:49,display:'block',marginBottom:8 }}/>No sub-categories found
-                </td></tr>
-              )}
-              {filtered.map(r=>(
-                <tr key={r.id}>
-                  <td style={{ ...TD,fontWeight:600 }}>{r.name}</td>
-                  <td style={TD}><span style={{ background:'var(--bg-muted)',color:'var(--text-secondary)',borderRadius:20,padding:'2px 10px',fontSize:11,fontWeight:500 }}>{r.category_name || '—'}</span></td>
-                  <td style={TD}><code style={{ fontSize:11,background:'var(--bg-muted)',padding:'2px 6px',borderRadius:4,color:'var(--text-secondary)' }}>{r.code}</code></td>
-                  <td style={TD}>
-                    {r.showPOS
-                      ? <span style={{ background:'#dcfce7',color:'#166534',borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}><i className="ri-checkbox-circle-line"/> Yes</span>
-                      : <span style={{ background:'var(--bg-muted)',color:S,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}>No</span>
-                    }
-                  </td>
-                  <td style={TD}>
-                    <span style={{ background:r.status==='active'?'#dcfce7':'var(--border)',color:r.status==='active'?'#166534':S,borderRadius:50,padding:'3px 10px',fontSize:11,fontWeight:600 }}>
-                      {r.status==='active'?'Active':'Inactive'}
-                    </span>
-                  </td>
-                  <td style={{ ...TD,color:S,fontSize:12 }}>{r.created}</td>
-                  <td style={TD}>
-                    <div style={{ display:'flex',gap:4 }}>
-                      <button onClick={()=>openEdit(r)} aria-label={`Edit ${r.name}`} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#f0f4ff',color:'#405189',cursor:'pointer' }}><i className="ri-pencil-line"/></button>
-                      <button onClick={()=>openDelete(r)} aria-label={`Delete ${r.name}`} style={{ display:'flex',alignItems:'center',justifyContent:'center',width:30,height:30,borderRadius:6,border:`1px solid ${B}`,background:'#fff0f0',color:'#f06548',cursor:'pointer' }}><i className="ri-delete-bin-line"/></button>
-                    </div>
-                  </td>
+        <div className="card-body pt-0">
+          <div className="table-responsive">
+            <table className="table align-middle text-nowrap mb-0">
+              <thead>
+                <tr className="bg-light border-bottom">
+                  <th className="fw-medium text-muted">Sub-Category</th>
+                  <th className="fw-medium text-muted">Parent Category</th>
+                  <th className="fw-medium text-muted">Code</th>
+                  <th className="fw-medium text-muted">POS</th>
+                  <th className="fw-medium text-muted">Status</th>
+                  <th className="fw-medium text-muted">Created</th>
+                  <th className="fw-medium text-muted">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div style={{ padding:'10px 20px',borderTop:`1px solid ${B}`,fontSize:12,color:S }}>
-          Showing {filtered.length} of {items.length} sub-categories
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr><td colSpan={7} className="text-center py-5 text-muted">
+                    <i className="ri-price-tag-2-line fs-2 d-block mb-2"></i>No sub-categories found
+                  </td></tr>
+                )}
+                {filtered.map(r => (
+                  <tr key={r.id}>
+                    <td className="fw-medium">{r.name}</td>
+                    <td>
+                      <span className="badge bg-light text-dark border">{r.parent}</span>
+                    </td>
+                    <td><code style={{ fontSize:12 }}>{r.code}</code></td>
+                    <td>
+                      {r.showPOS
+                        ? <span className="badge bg-success-subtle text-success"><i className="ri-checkbox-circle-line me-1"></i>Yes</span>
+                        : <span className="badge bg-light text-muted">No</span>}
+                    </td>
+                    <td>
+                      <span className={`badge ${r.status === 'active' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}`}>
+                        {r.status === 'active' ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="text-muted">{r.created}</td>
+                    <td>
+                      <div className="d-flex gap-1">
+                        <button className="btn btn-sm btn-soft-primary px-2" onClick={() => openEdit(r)}>
+                          <i className="ri-pencil-line"></i>
+                        </button>
+                        <button className="btn btn-sm btn-soft-danger px-2" onClick={() => openDelete(r)}>
+                          <i className="ri-delete-bin-line"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 text-muted" style={{ fontSize:13 }}>
+            Showing {filtered.length} of {items.length} sub-categories
+          </div>
         </div>
       </div>
 
-      {/* ADD/EDIT MODAL */}
-      {activeModal==='form'&&(
+      {/* ── ADD / EDIT MODAL ─────────────────────────────────── */}
+      {activeModal === 'form' && (
         <>
-          <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:480,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#1B4332',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-price-tag-2-line" style={{ fontSize:24 }}/>
+          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h6 className="modal-title">{editItem ? 'Edit Sub-Category' : 'Add New Sub-Category'}</h6>
+                  <button className="btn-close" onClick={closeModal}></button>
                 </div>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>{editItem?'Edit Sub-Category':'Add New Sub-Category'}</span>
-                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
+                <div className="modal-body">
+                  <form onSubmit={saveForm}>
+                    <div className="mb-3">
+                      <label className="form-label fw-medium">Sub-Category Name <span className="text-danger">*</span></label>
+                      <input className="form-control" required value={form.name}
+                        onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                        placeholder="e.g., Leafy Greens" />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label fw-medium">Parent Category <span className="text-danger">*</span></label>
+                      <select className="form-select" required value={form.parent}
+                        onChange={e => setForm(f => ({ ...f, parent: e.target.value }))}>
+                        <option value="">— Select Category —</option>
+                        {CATEGORIES.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label fw-medium">
+                        Code <span className="text-muted fw-normal">(auto-generated)</span>
+                      </label>
+                      <input className="form-control bg-light" readOnly value={form.code}
+                        placeholder="Select category and enter name" />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label fw-medium">Status</label>
+                      <select className="form-select" value={form.status}
+                        onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                    <div className="mb-3 d-flex align-items-center gap-3">
+                      <label className="form-label mb-0 fw-medium">Show on POS</label>
+                      <div className="form-check form-switch">
+                        <input className="form-check-input" type="checkbox" checked={form.showPOS}
+                          onChange={e => setForm(f => ({ ...f, showPOS: e.target.checked }))} />
+                      </div>
+                    </div>
+                    <div className="d-flex gap-2 mt-4">
+                      <button type="button" className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
+                      <button type="submit" className="btn btn-primary w-100">
+                        {editItem ? 'Save Changes' : 'Add Sub-Category'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
-              <form onSubmit={saveForm} style={{ padding:24 }}>
-                <div style={{ marginBottom:14 }}>
-                  <label style={LBL}>Sub-Category Name <span style={{ color:'#f06548' }}>*</span></label>
-                  <input style={inp} required value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g., Leafy Greens"/>
-                </div>
-                <div style={{ marginBottom:14 }}>
-                  <label style={LBL}>Parent Category <span style={{ color:'#f06548' }}>*</span></label>
-                  <select style={inp} required value={form.category_id} onChange={e=>setForm(f=>({...f,category_id:e.target.value}))}>
-                    <option value="">— Select Category —</option>
-                    {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div style={{ marginBottom:14 }}>
-                  <label style={LBL}>Code <span style={{ fontSize:11,fontWeight:400,color:S }}>(auto-generated)</span></label>
-                  <input style={{ ...inp,background:'var(--bg-subtle)',color:S }} readOnly value={form.code} placeholder="Select category and enter name"/>
-                </div>
-                <div style={{ marginBottom:14 }}>
-                  <label style={LBL}>Status</label>
-                  <select style={inp} value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </div>
-                <div style={{ marginBottom:24, display:'flex',alignItems:'center',gap:10 }}>
-                  <label style={{ ...LBL,marginBottom:0 }}>Show on POS</label>
-                  <div onClick={()=>setForm(f=>({...f,showPOS:!f.showPOS}))}
-                    style={{ width:40,height:22,borderRadius:20,background:form.showPOS?'#1B4332':'var(--border-strong)',position:'relative',transition:'background .2s',cursor:'pointer',flexShrink:0 }}>
-                    <div style={{ position:'absolute',top:2,left:form.showPOS?20:2,width:18,height:18,borderRadius:'50%',background:'var(--bg-card)',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)' }}/>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
+        </>
+      )}
+
+      {/* ── DELETE MODAL ─────────────────────────────────────── */}
+      {activeModal === 'delete' && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
+            <div className="modal-dialog modal-dialog-centered modal-sm">
+              <div className="modal-content p-4 text-center">
+                <div className="d-flex justify-content-center mb-3">
+                  <div className="rounded-circle bg-danger-subtle d-flex align-items-center justify-content-center" style={{ width:56, height:56 }}>
+                    <i className="ri-delete-bin-line text-danger fs-22"></i>
                   </div>
                 </div>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button type="button" style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
-                  <button type="submit" style={{ ...btnP,flex:1,justifyContent:'center' }}>{editItem?'Save Changes':'Add Sub-Category'}</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* DELETE MODAL */}
-      {activeModal==='delete'&&(
-        <>
-          <div onClick={closeModal} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:800 }}/>
-          <div style={{ position:'fixed',inset:0,zIndex:810,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}>
-            <div style={{ background:'var(--bg-card)',borderRadius:14,width:'100%',maxWidth:360,boxShadow:'0 24px 48px rgba(0,0,0,.3)',overflow:'hidden' }}>
-              <div style={{ background:'#7f1d1d',color:'#fff',padding:'14px 20px',display:'flex',alignItems:'center',gap:10 }}>
-                <div style={{ width:36,height:36,borderRadius:9,background:'rgba(255,255,255,.2)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                  <i className="ri-delete-bin-line" style={{ fontSize:24 }}/>
-                </div>
-                <span style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,flex:1 }}>Delete Sub-Category?</span>
-                <button onClick={closeModal} aria-label="Close" style={{ background:'none',border:'none',color:'rgba(255,255,255,.8)',cursor:'pointer',fontSize:20 }}><i className="ri-close-line"/></button>
-              </div>
-              <div style={{ padding:24,textAlign:'center' }}>
-                <p style={{ color:S,fontSize:14,marginBottom:24 }}><strong style={{ color:'var(--text-primary)' }}>{editItem?.name}</strong></p>
-                <div style={{ display:'flex',gap:10 }}>
-                  <button style={{ ...btnL,flex:1,justifyContent:'center' }} onClick={closeModal}>Cancel</button>
-                  <button style={{ ...btnD,flex:1,justifyContent:'center' }} onClick={confirmDelete}>Delete</button>
+                <h6 className="mb-1">Delete Sub-Category?</h6>
+                <p className="text-muted mb-4" style={{ fontSize:13 }}>{editItem?.name}</p>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-danger w-100" onClick={confirmDelete}>Delete</button>
                 </div>
               </div>
             </div>
           </div>
+          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
         </>
       )}
 
-      {activeModal==='import'&&<ImportModal entityName="Sub-Categories" fields={IMPORT_FIELDS} onImport={handleImport} onClose={closeModal}/>}
+      {/* ── IMPORT MODAL ─────────────────────────────────────── */}
+      {activeModal === 'import' && (
+        <ImportModal
+          entityName="Sub-Categories"
+          fields={IMPORT_FIELDS}
+          onImport={handleImport}
+          onClose={closeModal}
+        />
+      )}
     </div>
   )
 }

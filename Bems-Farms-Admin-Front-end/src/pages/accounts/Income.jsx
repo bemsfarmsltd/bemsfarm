@@ -1,37 +1,43 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-import PageHeader from '../../components/ui/PageHeader'
+import { useState } from 'react'
 
-const fmt  = n => `₦${Number(n||0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const fmtD = s => s ? new Date(s).toLocaleDateString('en-NG', { day:'2-digit', month:'short', year:'numeric' }) : '—'
+const fmt  = n => `₦${Number(n).toLocaleString()}`
+const fmtD = s => new Date(s).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
 
 const CATEGORIES  = ['Sales', 'Wallet Top-up', 'Delivery Fee', 'Corporate Supply', 'POS Sale', 'Refund Recovery', 'Other']
-const PAY_METHODS = ['Monnify', 'Bank Transfer', 'Cash', 'POS Terminal', 'Wallet', 'USSD']
+const PAY_METHODS = ['Paystack', 'Bank Transfer', 'Cash', 'POS Terminal', 'Wallet', 'USSD']
+const INCOME_TYPES = ['Online Order', 'Walk-in Sale', 'Corporate', 'Wallet Credit', 'Delivery', 'Manual Entry']
+
+const INITIAL_INCOME = [
+  { id:'INC-0041', date:'2026-06-27', ref:'ORD-2026-0141', customer:'Adaeze Nwosu',      category:'Sales',           method:'Paystack',      status:'paid',    amount:18_400, type:'Online Order',   note:'' },
+  { id:'INC-0040', date:'2026-06-27', ref:'ORD-2026-0140', customer:'Kemi Balogun',       category:'Sales',           method:'Paystack',      status:'paid',    amount:16_100, type:'Online Order',   note:'' },
+  { id:'INC-0039', date:'2026-06-26', ref:'WLT-0234',       customer:'Seun Adesanya',      category:'Wallet Top-up',   method:'Paystack',      status:'paid',    amount:20_000, type:'Wallet Credit',  note:'Wallet top-up via app' },
+  { id:'INC-0038', date:'2026-06-26', ref:'ORD-2026-0138', customer:'Tobi Adekunle',       category:'Sales',           method:'POS Terminal',  status:'paid',    amount:12_400, type:'Walk-in Sale',   note:'' },
+  { id:'INC-0037', date:'2026-06-25', ref:'DEL-0882',       customer:'Akin Okafor',        category:'Delivery Fee',    method:'Paystack',      status:'paid',    amount:3_500,  type:'Delivery',       note:'Express delivery — Lekki' },
+  { id:'INC-0036', date:'2026-06-25', ref:'CORP-0019',      customer:'EatWell Catering Ltd',category:'Corporate Supply',method:'Bank Transfer',  status:'paid',    amount:185_000,type:'Corporate',      note:'June standing order — vegetables & fruits' },
+  { id:'INC-0035', date:'2026-06-24', ref:'ORD-2026-0135', customer:'Ngozi Okonkwo',       category:'Sales',           method:'Paystack',      status:'pending', amount:9_200,  type:'Online Order',   note:'' },
+  { id:'INC-0034', date:'2026-06-24', ref:'WLT-0228',       customer:'Bola Akinwale',      category:'Wallet Top-up',   method:'Paystack',      status:'paid',    amount:10_000, type:'Wallet Credit',  note:'' },
+  { id:'INC-0033', date:'2026-06-23', ref:'ORD-2026-0133', customer:'Chukwuemeka Eze',     category:'Sales',           method:'Paystack',      status:'paid',    amount:22_700, type:'Online Order',   note:'' },
+  { id:'INC-0032', date:'2026-06-23', ref:'DEL-0877',       customer:'Fatima Al-Hassan',   category:'Delivery Fee',    method:'Paystack',      status:'paid',    amount:2_800,  type:'Delivery',       note:'' },
+  { id:'INC-0031', date:'2026-06-22', ref:'ORD-2026-0131', customer:'Taiwo Adeleke',       category:'Sales',           method:'Cash',          status:'paid',    amount:7_500,  type:'Walk-in Sale',   note:'' },
+  { id:'INC-0030', date:'2026-06-22', ref:'CORP-0018',      customer:'Mama Cass Restaurants',category:'Corporate Supply',method:'Bank Transfer', status:'pending',amount:240_000,type:'Corporate',      note:'Weekly supply — tomatoes, pepper, leafy veg' },
+  { id:'INC-0029', date:'2026-06-21', ref:'ORD-2026-0129', customer:'Yemi Osinbajo Jr',    category:'Sales',           method:'Paystack',      status:'paid',    amount:15_600, type:'Online Order',   note:'' },
+  { id:'INC-0028', date:'2026-06-20', ref:'RFC-0045',       customer:'Emeka Okafor',       category:'Refund Recovery', method:'Bank Transfer',  status:'paid',    amount:8_400,  type:'Manual Entry',   note:'Supplier refund — spoilt tomatoes batch' },
+]
 
 const BLANK_FORM = {
   date: new Date().toISOString().split('T')[0],
-  reference: '', source: '', category: 'Sales', payment_method: 'Monnify',
-  status: 'completed', amount: '', description: '', notes: '', bank_account_id: '', currency: 'NGN',
+  ref: '', customer: '', category: 'Sales', method: 'Paystack',
+  status: 'paid', amount: '', type: 'Online Order', note: '',
 }
 
 const STATUS_CFG = {
-  completed: { label:'Paid',    bg:'var(--bg-green-faint)', color:'#22c55e' },
-  pending: { label:'Pending', bg:'var(--bg-yellow-faint)', color:'#f59e0b' },
-  failed:  { label:'Failed',  bg:'var(--bg-red-faint)', color:'#ef4444' },
-}
-
-const CAT_COLORS = {
-  'Sales':'#3b82f6','Wallet Top-up':'#8b5cf6','Delivery Fee':'#f59e0b',
-  'Corporate Supply':'#22c55e','POS Sale':'#0ea5e9','Refund Recovery':'#ec4899','Other':'#94a3b8',
+  paid:    { label:'Paid',    cls:'bg-success-subtle text-success border-success-subtle' },
+  pending: { label:'Pending', cls:'bg-warning-subtle text-warning border-warning-subtle' },
+  failed:  { label:'Failed',  cls:'bg-danger-subtle text-danger border-danger-subtle' },
 }
 
 export default function Income() {
-  const [records, setRecords]   = useState([])
-  const [loading, setLoading]   = useState(false)
-  const [saving, setSaving]     = useState(false)
-  const [meta, setMeta]         = useState({ total: 0, page: 1, pages: 1 })
-  const [page, setPage]         = useState(1)
+  const [records, setRecords]   = useState(INITIAL_INCOME)
   const [search, setSearch]     = useState('')
   const [filterCat, setFiltCat] = useState('all')
   const [filterSt,  setFiltSt]  = useState('all')
@@ -39,347 +45,259 @@ export default function Income() {
   const [selected, setSelected] = useState(null)
   const [form, setForm]         = useState(BLANK_FORM)
 
-  const fetchRecords = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await api.get('/admin/accounts/income', {
-        params: {
-          page,
-          limit: 20,
-          search: search || undefined,
-          category: filterCat === 'all' ? undefined : filterCat,
-          status: filterSt === 'all' ? undefined : filterSt,
-        },
-      })
-      setRecords(res.data.income || [])
-      setMeta({ total: res.data.total, page: res.data.page, pages: res.data.pages })
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load income records')
-    } finally {
-      setLoading(false)
-    }
-  }, [page, search, filterCat, filterSt])
-
-  useEffect(() => { fetchRecords() }, [fetchRecords])
-  useEffect(() => { setPage(1) }, [search, filterCat, filterSt])
-
   const closeModal = () => { setModal(null); setSelected(null); setForm(BLANK_FORM) }
 
   const openView   = r => { setSelected(r); setModal('view') }
-  const openEdit   = r => {
-    setSelected(r)
-    setForm({
-      date: r.date?.split('T')[0] || r.date || '',
-      reference: r.reference || '',
-      source: r.source || '',
-      category: r.category || 'Sales',
-      payment_method: r.payment_method || 'Monnify',
-      status: r.status || 'completed',
-      amount: r.amount || '',
-      description: r.description || '',
-      notes: r.notes || '',
-      bank_account_id: r.bank_account_id || '',
-      currency: r.currency || 'NGN',
-    })
-    setModal('edit')
-  }
+  const openEdit   = r => { setSelected(r); setForm({ ...r }); setModal('edit') }
   const openDelete = r => { setSelected(r); setModal('delete') }
-  const openAdd    = () => { setForm({ ...BLANK_FORM }); setModal('add') }
+  const openAdd    = () => { setForm({ ...BLANK_FORM, ref: `INC-${String(records.length + 42).padStart(4,'0')}` }); setModal('add') }
 
-  const saveRecord = async () => {
-    if (!form.source || !form.amount) return
-    setSaving(true)
-    try {
-      if (activeModal === 'add') {
-        await api.post('/admin/accounts/income', form)
-        toast.success('Income record created successfully')
-      } else {
-        await api.patch(`/admin/accounts/income/${selected.id}`, form)
-        toast.success('Income record updated successfully')
-      }
-      fetchRecords()
-      closeModal()
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save record')
-    } finally {
-      setSaving(false)
+  const saveRecord = () => {
+    if (!form.customer || !form.amount) return
+    if (activeModal === 'add') {
+      const newR = { ...form, id: `INC-${String(records.length + 42).padStart(4,'0')}`, amount: Number(form.amount) }
+      setRecords(prev => [newR, ...prev])
+    } else {
+      setRecords(prev => prev.map(r => r.id === selected.id ? { ...r, ...form, amount: Number(form.amount) } : r))
     }
+    closeModal()
   }
 
-  const deleteRecord = async () => {
-    if (!selected) return
-    setSaving(true)
-    try {
-      await api.delete(`/admin/accounts/income/${selected.id}`)
-      toast.success('Income record deleted successfully')
-      fetchRecords()
-      closeModal()
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete record')
-    } finally {
-      setSaving(false)
-    }
+  const deleteRecord = () => {
+    setRecords(prev => prev.filter(r => r.id !== selected.id))
+    closeModal()
   }
 
-  // Categories breakdown stats based on loaded page records
-  const breakdown = records.reduce((acc, r) => {
-    if (r.status === 'completed') {
-      acc[r.category] = (acc[r.category] || 0) + Number(r.amount || 0)
-    }
+  const filtered = records.filter(r => {
+    const q = search.toLowerCase()
+    const ms = !q || r.customer.toLowerCase().includes(q) || r.ref.toLowerCase().includes(q) || r.id.toLowerCase().includes(q)
+    const mc = filterCat === 'all' || r.category === filterCat
+    const mst = filterSt === 'all' || r.status === filterSt
+    return ms && mc && mst
+  })
+
+  // Stats
+  const totalIncome = records.filter(r => r.status === 'paid').reduce((s, r) => s + r.amount, 0)
+  const pending     = records.filter(r => r.status === 'pending').reduce((s, r) => s + r.amount, 0)
+  const todayStr    = new Date().toISOString().split('T')[0]
+  const todayInc    = records.filter(r => r.date === todayStr && r.status === 'paid').reduce((s, r) => s + r.amount, 0)
+  const totalRecords= records.length
+  const avgPerTxn   = totalRecords ? Math.round(totalIncome / records.filter(r=>r.status==='paid').length) : 0
+
+  // Category breakdown
+  const catTotals = CATEGORIES.reduce((acc, cat) => {
+    acc[cat] = records.filter(r => r.category === cat && r.status === 'paid').reduce((s, r) => s + r.amount, 0)
     return acc
   }, {})
 
-  const cardStyle = {
-    background: 'var(--bg-card)',
-    border: '1px solid var(--border)',
-    borderRadius: '12px',
-    boxShadow: 'var(--shadow-card)',
-    overflow: 'hidden',
-  }
-
-  const inpStyle = {
-    padding: '8px 12px',
-    borderRadius: '8px',
-    border: '1px solid var(--border)',
-    background: 'var(--bg-input)',
-    color: 'var(--text-primary)',
-    fontSize: '13px',
-    outline: 'none',
-  }
-
-  const btnP = {
-    background: '#1B4332',
-    color: '#ffffff',
-    border: 'none',
-    padding: '8px 16px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontFamily: 'var(--heading-font)',
-    fontWeight: 700,
-    fontSize: '13px',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    boxShadow: '0 4px 12px rgba(27,67,50,0.15)',
-  }
-
-  const thStyle = {
-    padding: '10px 16px',
-    fontSize: '11px',
-    fontWeight: '700',
-    color: 'var(--text-muted)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    borderBottom: '1px solid var(--border)',
-  }
-
-  const tdStyle = {
-    padding: '12px 16px',
-    fontSize: '13px',
-    color: 'var(--text-secondary)',
-    borderBottom: '1px solid var(--border)',
+  const CAT_COLORS = {
+    'Sales':'#3b82f6','Wallet Top-up':'#8b5cf6','Delivery Fee':'#f59e0b',
+    'Corporate Supply':'#22c55e','POS Sale':'#0ea5e9','Refund Recovery':'#ec4899','Other':'#94a3b8',
   }
 
   return (
-    <div style={{ fontFamily: 'var(--body-font)' }}>
-      <PageHeader title="Income & Sales Ledger" breadcrumbs={['Accounts', 'Income']} />
+    <div className="container-fluid">
+      <div className="page-heading d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <h6 className="mb-0">Income</h6>
+        <ul className="breadcrumb mb-0">
+          <li className="breadcrumb-item text-muted">Accounts</li>
+          <li className="breadcrumb-item active">Income</li>
+        </ul>
+      </div>
 
-      {/* Categories summary strip */}
-      <div style={{ ...cardStyle, padding: '16px 20px', marginBottom: '24px' }}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--heading-font)', marginBottom: '12px' }}>
-          Category Inflow Breakdown (This Page)
-        </div>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          {Object.keys(breakdown).length === 0 ? (
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No categorized paid income on this page yet.</span>
-          ) : (
-            Object.entries(breakdown).map(([cat, val]) => (
-              <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px 12px', background: 'var(--bg-hover)' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: CAT_COLORS[cat] || '#94a3b8' }} />
-                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500 }}>{cat}:</span>
-                <span style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: 700 }}>{fmt(val)}</span>
+      {/* Stats */}
+      <div className="row g-3 mb-4">
+        {[
+          { label:'Total Income (Paid)', val:fmt(totalIncome), icon:'ri-arrow-up-circle-line',  color:'#22c55e', bg:'#f0fdf4' },
+          { label:"Today's Income",      val:fmt(todayInc),    icon:'ri-calendar-check-line',    color:'#3b82f6', bg:'#eff6ff' },
+          { label:'Pending Income',      val:fmt(pending),     icon:'ri-time-line',               color:'#f59e0b', bg:'#fffbeb' },
+          { label:'Total Records',       val:totalRecords,     icon:'ri-file-list-3-line',        color:'#8b5cf6', bg:'#f5f3ff' },
+          { label:'Avg per Transaction', val:fmt(avgPerTxn),  icon:'ri-bar-chart-line',          color:'#0ea5e9', bg:'#f0f9ff' },
+        ].map((s, i) => (
+          <div key={i} className="col-6 col-md-4 col-xl">
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-body p-3">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                    style={{ width:44, height:44, background:s.bg }}>
+                    <i className={`${s.icon} fs-20`} style={{ color:s.color }}/>
+                  </div>
+                  <div>
+                    <div className="text-muted" style={{ fontSize:11 }}>{s.label}</div>
+                    <div className="fw-bold fs-15">{s.val}</div>
+                  </div>
+                </div>
               </div>
-            ))
-          )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Category breakdown */}
+      <div className="card border-0 shadow-sm mb-4">
+        <div className="card-body p-3">
+          <div className="fw-medium mb-3" style={{ fontSize:13 }}>Income by Category</div>
+          <div className="d-flex flex-wrap gap-3">
+            {Object.entries(catTotals).filter(([,v]) => v > 0).map(([cat, val]) => (
+              <div key={cat} className="d-flex align-items-center gap-2 border rounded px-3 py-2">
+                <div style={{ width:10, height:10, borderRadius:'50%', background: CAT_COLORS[cat] || '#94a3b8' }}/>
+                <span style={{ fontSize:12 }} className="text-muted">{cat}:</span>
+                <span className="fw-medium" style={{ fontSize:12 }}>{fmt(val)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Table Card */}
-      <div style={cardStyle}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            <div style={{ position: 'relative' }}>
-              <input style={{ ...inpStyle, width: '220px', paddingLeft: '32px' }} placeholder="Search source, ref, ID…" value={search} onChange={e => setSearch(e.target.value)} />
-              <i className="ri-search-line" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '19', color: 'var(--text-muted)' }} />
+      {/* Table */}
+      <div className="card border-0 shadow-sm">
+        <div className="card-header bg-white border-bottom">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              <div className="position-relative">
+                <input className="form-control ps-9" style={{ width:220 }}
+                  placeholder="Search customer, ref, ID…"
+                  value={search} onChange={e => setSearch(e.target.value)}/>
+                <i className="ri-search-line position-absolute top-50 translate-middle-y ms-3" style={{ fontSize:14, color:'#94a3b8' }}/>
+              </div>
+              <select className="form-select" style={{ width:150 }} value={filterCat} onChange={e => setFiltCat(e.target.value)}>
+                <option value="all">All Categories</option>
+                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+              <select className="form-select" style={{ width:130 }} value={filterSt} onChange={e => setFiltSt(e.target.value)}>
+                <option value="all">All Status</option>
+                <option value="paid">Paid</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+              </select>
             </div>
-            <select style={{ ...inpStyle, width: '150px' }} value={filterCat} onChange={e => setFiltCat(e.target.value)}>
-              <option value="all">All Categories</option>
-              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-            <select style={{ ...inpStyle, width: '130px' }} value={filterSt} onChange={e => setFiltSt(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="completed">Paid</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed</option>
-            </select>
+            <button className="btn btn-primary" onClick={openAdd}>
+              <i className="ri-add-line me-1"/>Add Income
+            </button>
           </div>
-          <button style={btnP} onClick={openAdd}>
-            <i className="ri-add-line" />Add Income
-          </button>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-hover)' }}>
-                <th style={thStyle}>Date / Ref</th>
-                <th style={thStyle}>Source</th>
-                <th style={thStyle}>Category</th>
-                <th style={thStyle}>Method</th>
-                <th style={thStyle}>Description</th>
-                <th style={thStyle}>Status</th>
-                <th style={{ ...thStyle, textAlign: 'right' }}>Amount</th>
-                <th style={thStyle}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', padding: '40px 0' }}>
-                  <div className="spinner-border spinner-border-sm text-primary me-2" />Loading...
-                </td></tr>
-              ) : records.length === 0 ? (
-                <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', padding: '40px 0', color: 'var(--text-light)' }}>No income records found.</td></tr>
-              ) : records.map(r => (
-                <tr key={r.id} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <td style={tdStyle}>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{fmtD(r.date)}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{r.reference || r.id}</div>
-                  </td>
-                  <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--text-primary)' }}>{r.source}</td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: CAT_COLORS[r.category] || '#94a3b8' }} />
-                      <span>{r.category}</span>
-                    </div>
-                  </td>
-                  <td style={tdStyle}>
-                    <span style={{ border: '1px solid var(--border)', background: 'var(--bg-hover)', color: 'var(--text-primary)', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600 }}>
-                      {r.payment_method}
-                    </span>
-                  </td>
-                  <td style={{ ...tdStyle, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {r.description || '—'}
-                  </td>
-                  <td style={tdStyle}>
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      fontSize: '11px',
-                      fontWeight: '700',
-                      padding: '3px 8px',
-                      borderRadius: '6px',
-                      background: STATUS_CFG[r.status]?.bg || 'var(--bg-muted)',
-                      color: STATUS_CFG[r.status]?.color || 'var(--text-secondary)',
-                      border: '1px solid var(--border)',
-                    }}>
-                      {STATUS_CFG[r.status]?.label || r.status}
-                    </span>
-                  </td>
-                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: '#22c55e', fontSize: '14px' }}>
-                    +{fmt(r.amount)}
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: '#3b82f6', cursor: 'pointer' }} onClick={() => openView(r)} title="View"><i className="ri-eye-line" /></button>
-                      <button style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-secondary)', cursor: 'pointer' }} onClick={() => openEdit(r)} title="Edit"><i className="ri-edit-line" /></button>
-                      <button style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: '#ef4444', cursor: 'pointer' }} onClick={() => openDelete(r)} title="Delete"><i className="ri-delete-bin-line" /></button>
-                    </div>
-                  </td>
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table align-middle mb-0" style={{ minWidth:900 }}>
+              <thead className="bg-light">
+                <tr>
+                  <th className="fw-medium text-muted ps-4" style={{ fontSize:12 }}>Date / Ref</th>
+                  <th className="fw-medium text-muted" style={{ fontSize:12 }}>Customer</th>
+                  <th className="fw-medium text-muted" style={{ fontSize:12 }}>Category</th>
+                  <th className="fw-medium text-muted" style={{ fontSize:12 }}>Method</th>
+                  <th className="fw-medium text-muted" style={{ fontSize:12 }}>Type</th>
+                  <th className="fw-medium text-muted" style={{ fontSize:12 }}>Status</th>
+                  <th className="fw-medium text-muted text-end pe-4" style={{ fontSize:12 }}>Amount</th>
+                  <th className="fw-medium text-muted" style={{ fontSize:12 }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-            {!loading && records.length > 0 && (
-              <tfoot style={{ background: 'var(--bg-hover)' }}>
-                <tr style={{ fontWeight: 700 }}>
-                  <td colSpan={6} style={{ ...tdStyle, color: 'var(--text-muted)' }}>
-                    Showing {records.length} of {meta.total} records
-                  </td>
-                  <td style={{ ...tdStyle, textAlign: 'right', color: '#22c55e', fontSize: '14px' }}>
-                    +{fmt(records.filter(r=>r.status==='completed').reduce((s,r)=>s+Number(r.amount||0),0))}
-                  </td>
-                  <td style={tdStyle} />
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {meta.pages > 1 && (
-          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Page {meta.page} of {meta.pages}</span>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '12px', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.5 : 1 }} disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Prev</button>
-              <button style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '12px', cursor: page >= meta.pages ? 'not-allowed' : 'pointer', opacity: page >= meta.pages ? 0.5 : 1 }} disabled={page >= meta.pages} onClick={() => setPage(p => p + 1)}>Next</button>
-            </div>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr><td colSpan={8} className="text-center text-muted py-5">No income records found.</td></tr>
+                )}
+                {filtered.map(r => (
+                  <tr key={r.id} className="border-bottom">
+                    <td className="ps-4">
+                      <div className="fw-medium" style={{ fontSize:12 }}>{fmtD(r.date)}</div>
+                      <div className="text-muted" style={{ fontSize:11 }}>{r.ref || r.id}</div>
+                    </td>
+                    <td style={{ fontSize:13 }}>{r.customer}</td>
+                    <td>
+                      <div className="d-flex align-items-center gap-1">
+                        <div style={{ width:7, height:7, borderRadius:'50%', background: CAT_COLORS[r.category] || '#94a3b8' }}/>
+                        <span style={{ fontSize:12 }}>{r.category}</span>
+                      </div>
+                    </td>
+                    <td><span className="badge bg-light text-dark border" style={{ fontSize:11 }}>{r.method}</span></td>
+                    <td><span className="text-muted" style={{ fontSize:12 }}>{r.type}</span></td>
+                    <td>
+                      <span className={`badge border ${STATUS_CFG[r.status]?.cls}`} style={{ fontSize:11 }}>
+                        {STATUS_CFG[r.status]?.label || r.status}
+                      </span>
+                    </td>
+                    <td className="text-end pe-4">
+                      <span className="fw-bold text-success" style={{ fontSize:14 }}>+{fmt(r.amount)}</span>
+                    </td>
+                    <td>
+                      <div className="d-flex gap-1">
+                        <button className="btn btn-sm btn-outline-primary" style={{ padding:'3px 8px' }}
+                          onClick={() => openView(r)} title="View"><i className="ri-eye-line" style={{ fontSize:12 }}/></button>
+                        <button className="btn btn-sm btn-outline-secondary" style={{ padding:'3px 8px' }}
+                          onClick={() => openEdit(r)} title="Edit"><i className="ri-edit-line" style={{ fontSize:12 }}/></button>
+                        <button className="btn btn-sm btn-outline-danger" style={{ padding:'3px 8px' }}
+                          onClick={() => openDelete(r)} title="Delete"><i className="ri-delete-bin-line" style={{ fontSize:12 }}/></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              {filtered.length > 0 && (
+                <tfoot className="bg-light">
+                  <tr>
+                    <td colSpan={6} className="ps-4 fw-medium text-muted" style={{ fontSize:12 }}>
+                      Showing {filtered.length} of {records.length} records
+                    </td>
+                    <td className="text-end pe-4 fw-bold" style={{ color:'#22c55e' }}>
+                      +{fmt(filtered.filter(r=>r.status==='paid').reduce((s,r)=>s+r.amount,0))}
+                    </td>
+                    <td/>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
           </div>
-        )}
+        </div>
       </div>
 
       {/* ── MODALS ─────────────────────────────────────────── */}
       {activeModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050,
+          display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
           onClick={e => { if (e.target === e.currentTarget) closeModal() }}>
 
           {/* VIEW */}
           {activeModal === 'view' && selected && (
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '460px', boxShadow: 'var(--shadow-modal)', overflow: 'hidden' }}>
-              <div style={{ background: '#1B4332', padding: '18px 24px', color: '#fff', display: 'flex', alignItems: 'center', justifycontent: 'space-between', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}><i className="ri-arrow-up-circle-line me-2" />Income Record</div>
-                  <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>{selected.id} · {fmtD(selected.date)}</div>
+            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:460 }}>
+              <div style={{ background:'#166534', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
+                <div className="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div className="fw-bold fs-15"><i className="ri-arrow-up-circle-line me-2"/>Income Record</div>
+                    <div style={{ fontSize:12, opacity:0.7, marginTop:4 }}>{selected.id} · {fmtD(selected.date)}</div>
+                  </div>
+                  <button className="btn btn-sm btn-outline-light" onClick={closeModal}><i className="ri-close-line"/></button>
                 </div>
-                <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
-              <div style={{ padding: '24px' }}>
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ fontWeight: 800, color: '#22c55e', fontSize: '28px', fontFamily: 'var(--heading-font)' }}>+{fmt(selected.amount)}</div>
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    fontSize: '11px',
-                    fontWeight: '700',
-                    padding: '3px 8px',
-                    borderRadius: '6px',
-                    background: STATUS_CFG[selected.status]?.bg || 'var(--bg-muted)',
-                    color: STATUS_CFG[selected.status]?.color || 'var(--text-secondary)',
-                    border: '1px solid var(--border)',
-                    marginTop: '6px',
-                  }}>
+              <div className="p-4">
+                <div className="text-center mb-4">
+                  <div className="fw-bold text-success" style={{ fontSize:28 }}>+{fmt(selected.amount)}</div>
+                  <span className={`badge border ${STATUS_CFG[selected.status]?.cls} mt-1`} style={{ fontSize:12 }}>
                     {STATUS_CFG[selected.status]?.label}
                   </span>
                 </div>
                 {[
-                  ['Reference', selected.reference || selected.id],
-                  ['Source', selected.source],
+                  ['Reference', selected.ref || selected.id],
+                  ['Customer', selected.customer],
                   ['Category', selected.category],
-                  ['Payment Method', selected.payment_method],
-                  ['Description', selected.description || '—'],
+                  ['Payment Method', selected.method],
+                  ['Income Type', selected.type],
                   ['Date', fmtD(selected.date)],
                 ].map(([lbl, val]) => (
-                  <div key={lbl} style={{ display: 'flex', justifyContent: 'space-between', py: '8px', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>{lbl}</span>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>{val}</span>
+                  <div key={lbl} className="d-flex justify-content-between py-2 border-bottom">
+                    <span className="text-muted" style={{ fontSize:12 }}>{lbl}</span>
+                    <span className="fw-medium" style={{ fontSize:12 }}>{val}</span>
                   </div>
                 ))}
-                {selected.notes && (
-                  <div style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)', marginTop: '16px' }}>
-                    <i className="ri-sticky-note-line me-1" />{selected.notes}
+                {selected.note && (
+                  <div className="alert alert-light border mt-3 mb-0" style={{ fontSize:12 }}>
+                    <i className="ri-sticky-note-line me-1"/>{selected.note}
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
-                  <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-muted)', color: 'var(--text-primary)', fontWeight: 700, cursor: 'pointer' }} onClick={closeModal}>Close</button>
-                  <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#1B4332', color: '#fff', fontWeight: 700, cursor: 'pointer' }} onClick={() => { closeModal(); openEdit(selected) }}>Edit</button>
+                <div className="d-flex gap-2 mt-4">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Close</button>
+                  <button className="btn btn-primary flex-fill" onClick={() => { closeModal(); openEdit(selected) }}>
+                    <i className="ri-edit-line me-1"/>Edit
+                  </button>
                 </div>
               </div>
             </div>
@@ -387,83 +305,79 @@ export default function Income() {
 
           {/* ADD / EDIT */}
           {(activeModal === 'add' || activeModal === 'edit') && (
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-modal)' }}>
-              <div style={{ background: '#1B4332', padding: '18px 24px', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}>
-                  <i className={`${activeModal === 'add' ? 'ri-add-circle-line' : 'ri-edit-line'} me-2`} />
-                  {activeModal === 'add' ? 'Add Income Record' : 'Edit Income Record'}
+            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:500, maxHeight:'90vh', overflowY:'auto' }}>
+              <div style={{ background:'#1e293b', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
+                <div className="d-flex align-items-center justify-content-between">
+                  <div className="fw-bold fs-15">
+                    <i className={`${activeModal === 'add' ? 'ri-add-circle-line' : 'ri-edit-line'} me-2`}/>
+                    {activeModal === 'add' ? 'Add Income Record' : 'Edit Income Record'}
+                  </div>
+                  <button className="btn btn-sm btn-outline-light" onClick={closeModal}><i className="ri-close-line"/></button>
                 </div>
-                <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
-              <div style={{ padding: '24px' }}>
-                <div className="grid-form-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Date *</label>
-                    <input type="date" style={inpStyle} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+              <div className="p-4">
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="form-label small fw-medium">Date <span className="text-danger">*</span></label>
+                    <input type="date" className="form-control" value={form.date}
+                      onChange={e => setForm(f => ({ ...f, date: e.target.value }))}/>
                   </div>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Reference / Order ID</label>
-                    <input style={inpStyle} placeholder="e.g. ORD-2026-0141" value={form.reference} onChange={e => setForm(f => ({ ...f, reference: e.target.value }))} />
+                  <div className="col-md-6">
+                    <label className="form-label small fw-medium">Reference / Order ID</label>
+                    <input className="form-control" placeholder="e.g. ORD-2026-0141"
+                      value={form.ref} onChange={e => setForm(f => ({ ...f, ref: e.target.value }))}/>
                   </div>
-                </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Source *</label>
-                  <input style={inpStyle} placeholder="Customer name or income source" value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))} />
-                </div>
-
-                <div className="grid-form-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Category</label>
-                    <select style={inpStyle} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                  <div className="col-12">
+                    <label className="form-label small fw-medium">Customer / Source <span className="text-danger">*</span></label>
+                    <input className="form-control" placeholder="Customer name or income source"
+                      value={form.customer} onChange={e => setForm(f => ({ ...f, customer: e.target.value }))}/>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label small fw-medium">Category</label>
+                    <select className="form-select" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                       {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                     </select>
                   </div>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Payment Method</label>
-                    <select style={inpStyle} value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))}>
+                  <div className="col-md-6">
+                    <label className="form-label small fw-medium">Payment Method</label>
+                    <select className="form-select" value={form.method} onChange={e => setForm(f => ({ ...f, method: e.target.value }))}>
                       {PAY_METHODS.map(m => <option key={m}>{m}</option>)}
                     </select>
                   </div>
-                </div>
-
-                <div className="grid-form-cols" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Status</label>
-                    <select style={inpStyle} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                      <option value="completed">Paid</option>
+                  <div className="col-md-6">
+                    <label className="form-label small fw-medium">Income Type</label>
+                    <select className="form-select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+                      {INCOME_TYPES.map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label small fw-medium">Status</label>
+                    <select className="form-select" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                      <option value="paid">Paid</option>
                       <option value="pending">Pending</option>
                       <option value="failed">Failed</option>
                     </select>
                   </div>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Currency</label>
-                    <select style={inpStyle} value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
-                      <option value="NGN">NGN (₦)</option>
-                      <option value="USD">USD ($)</option>
-                    </select>
+                  <div className="col-12">
+                    <label className="form-label small fw-medium">Amount (₦) <span className="text-danger">*</span></label>
+                    <div className="input-group">
+                      <span className="input-group-text">₦</span>
+                      <input className="form-control" type="number" placeholder="0.00"
+                        value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}/>
+                    </div>
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label small fw-medium">Notes</label>
+                    <textarea className="form-control" rows={2} placeholder="Optional note…"
+                      value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}/>
                   </div>
                 </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Amount (₦) *</label>
-                  <input style={inpStyle} type="number" placeholder="0.00" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-                </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Description</label>
-                  <input style={inpStyle} placeholder="Brief description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-                </div>
-
-                <div style={{ marginBottom: '24px' }}>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Notes</label>
-                  <textarea style={{ ...inpStyle, resize: 'vertical', minHeight: '60px' }} rows={2} placeholder="Optional note…" value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-muted)', color: 'var(--text-primary)', fontWeight: 700, cursor: 'pointer' }} onClick={closeModal}>Cancel</button>
-                  <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#1B4332', color: '#fff', fontWeight: 700, cursor: 'pointer', opacity: (saving || !form.source || !form.amount) ? 0.7 : 1 }} onClick={saveRecord} disabled={saving || !form.source || !form.amount}>
-                    {saving ? 'Saving...' : 'Save Record'}
+                <div className="d-flex gap-2 mt-4">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-success flex-fill" onClick={saveRecord}
+                    disabled={!form.customer || !form.amount}>
+                    <i className="ri-save-line me-1"/>
+                    {activeModal === 'add' ? 'Add Income' : 'Save Changes'}
                   </button>
                 </div>
               </div>
@@ -472,24 +386,27 @@ export default function Income() {
 
           {/* DELETE */}
           {activeModal === 'delete' && selected && (
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', width: '100%', maxWidth: '400px', overflow: 'hidden', boxShadow: 'var(--shadow-modal)' }}>
-              <div style={{ background: '#7f1d1d', padding: '18px 24px', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontWeight: 700, fontSize: '15px', fontFamily: 'var(--heading-font)' }}><i className="ri-delete-bin-line me-2" />Delete Record</div>
-                <button style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }} aria-label="Close" onClick={closeModal}><i className="ri-close-line" /></button>
-              </div>
-              <div style={{ padding: '24px', textAlign: 'center' }}>
-                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--bg-red-faint)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                  <i className="ri-arrow-up-circle-line fs-24 text-danger" style={{ color: '#ef4444', fontSize: '32' }} />
+            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:400 }}>
+              <div style={{ background:'#7f1d1d', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
+                <div className="d-flex align-items-center justify-content-between">
+                  <div className="fw-bold fs-15"><i className="ri-delete-bin-line me-2"/>Delete Record</div>
+                  <button className="btn btn-sm btn-outline-light" onClick={closeModal}><i className="ri-close-line"/></button>
                 </div>
-                <h5 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>Delete this income record?</h5>
-                <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '24px' }}>
-                  <strong>{selected.id}</strong> — {selected.source} — <strong>{fmt(selected.amount)}</strong><br />
+              </div>
+              <div className="p-4 text-center">
+                <div className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                  style={{ width:56, height:56, background:'#fee2e2' }}>
+                  <i className="ri-arrow-up-circle-line fs-24 text-danger"/>
+                </div>
+                <h5>Delete this income record?</h5>
+                <p className="text-muted small mb-4">
+                  <strong>{selected.id}</strong> — {selected.customer} — <strong>{fmt(selected.amount)}</strong><br/>
                   This action cannot be undone.
                 </p>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-muted)', color: 'var(--text-primary)', fontWeight: 700, cursor: 'pointer' }} onClick={closeModal}>Cancel</button>
-                  <button style={{ flex: 1, padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#ef4444', color: '#fff', fontWeight: 700, cursor: 'pointer' }} onClick={deleteRecord} disabled={saving}>
-                    {saving ? 'Deleting...' : 'Delete'}
+                <div className="d-flex gap-2">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-danger flex-fill" onClick={deleteRecord}>
+                    <i className="ri-delete-bin-line me-1"/>Delete
                   </button>
                 </div>
               </div>

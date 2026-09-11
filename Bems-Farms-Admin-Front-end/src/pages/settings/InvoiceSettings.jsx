@@ -1,144 +1,150 @@
-import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-
-const NAV = [
-  { label:'General',      to:'/settings/general'        },
-  { label:'Tax',          to:'/settings/tax'            },
-  { label:'Coupons',      to:'/settings/coupons'        },
-  { label:'POS',          to:'/settings/pos'            },
-  { label:'Payment',      to:'/settings/payment'        },
-  { label:'Currencies',   to:'/settings/currencies'     },
-  { label:'Receipts',     to:'/settings/invoices'       },
-  { label:'Manager',      to:'/settings/manager'        },
-  { label:'Notifications',to:'/settings/notifications'  },
-]
-
-const inp  = { display:'block',width:'100%',padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:8,fontFamily:'var(--body-font)',fontSize:13,outline:'none',background:'var(--bg-card)',boxSizing:'border-box',color:'var(--text-primary)' }
-const LBL  = { display:'block',fontSize:12,fontWeight:700,color:'var(--text-secondary)',marginBottom:5 }
-const btnP = { display:'inline-flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:'#1B4332',color:'#fff',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:700,fontSize:13 }
-const btnL = { display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:9,border:'1.5px solid var(--border)',background:'var(--bg-card)',color:'var(--text-secondary)',cursor:'pointer',fontFamily:'var(--body-font)',fontWeight:600,fontSize:13 }
-const B = 'var(--border)', S = '#6b7280'
-
-function Card({ title, subtitle, children }) {
-  return (
-    <div style={{ background:'var(--bg-card)',borderRadius:12,border:`1px solid ${B}`,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)',marginBottom:20 }}>
-      <div style={{ padding:'16px 24px',borderBottom:`1px solid ${B}` }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:700,fontSize:14,color:'var(--text-primary)',marginBottom:2 }}>{title}</div>
-        {subtitle&&<div style={{ fontSize:12,color:S }}>{subtitle}</div>}
-      </div>
-      <div style={{ padding:24 }}>{children}</div>
-    </div>
-  )
-}
-
-function Row({ label, desc, children }) {
-  return (
-    <div className="grid-form-cols" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,paddingBottom:18,marginBottom:18,borderBottom:`1px solid var(--border)`,alignItems:'start' }}>
-      <div>
-        <div style={{ fontWeight:600,fontSize:13,color:'var(--text-primary)',marginBottom:2 }}>{label}</div>
-        {desc&&<div style={{ fontSize:12,color:S }}>{desc}</div>}
-      </div>
-      <div>{children}</div>
-    </div>
-  )
-}
-
-function SettingsNav() {
-  const { pathname } = useLocation()
-  return (
-    <div style={{ display:'flex',gap:0,borderBottom:`2px solid ${B}`,marginBottom:24,overflowX:'auto' }}>
-      {NAV.map(n=>(
-        <Link key={n.to} to={n.to} style={{ padding:'10px 16px',border:'none',borderBottom:pathname===n.to?'2px solid #1B4332':'2px solid transparent',background:'transparent',fontFamily:'var(--body-font)',fontWeight:pathname===n.to?700:500,fontSize:13,color:pathname===n.to?'#1B4332':S,cursor:'pointer',textDecoration:'none',whiteSpace:'nowrap',marginBottom:-2 }}>
-          {n.label}
-        </Link>
-      ))}
-    </div>
-  )
-}
-
-const BLANK = { invoice_prefix:'BEMS-INV', invoice_next_number:1001, invoice_footer:'Thank you for your business!', invoice_notes:'', due_days:7 }
+import { Link } from 'react-router-dom'
 
 export default function InvoiceSettings() {
-  const [form, setForm]     = useState(BLANK)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving]   = useState(false)
-
-  useEffect(() => {
-    api.get('/admin/settings/invoices')
-      .then(r => setForm({ ...BLANK, ...r.data.settings }))
-      .catch(() => toast.error('Failed to load invoice settings'))
-      .finally(() => setLoading(false))
-  }, [])
-
-  function set(key, val) { setForm(f => ({ ...f, [key]: val })) }
-
-  async function handleSave(e) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      await api.post('/admin/settings/invoices', form)
-      toast.success('Invoice settings saved')
-    } catch {
-      toast.error('Failed to save invoice settings')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <div style={{ marginBottom:20 }}>
-        <div style={{ fontFamily:'var(--heading-font)',fontWeight:800,fontSize:20,color:'var(--text-primary)' }}>Settings</div>
-        <div style={{ fontSize:12,color:S,marginTop:2 }}>Manage store preferences and system configurations.</div>
-      </div>
-      <SettingsNav/>
-
-      {loading ? (
-        <div style={{ textAlign:'center',padding:60,color:S }}><i className="ri-loader-4-line" style={{ fontSize:38 }}/><div style={{ marginTop:8 }}>Loading…</div></div>
-      ) : (
-        <form onSubmit={handleSave}>
-          <Card title="Receipts Numbering" subtitle="Define the prefix and auto-increment pattern for receipt numbers.">
-            <Row label="Receipt Prefix" desc="Prepended to every receipt number (e.g. BEMS-INV-1001).">
-              <input style={inp} value={form.invoice_prefix} onChange={e=>set('invoice_prefix',e.target.value)} placeholder="BEMS-INV"/>
-            </Row>
-            <Row label="Next Receipt Number" desc="The next number in the auto-increment sequence.">
-              <input type="number" style={inp} min={1} value={form.invoice_next_number} onChange={e=>set('invoice_next_number',parseInt(e.target.value)||1)}/>
-            </Row>
-            <div style={{ padding:'10px 14px',background:'#f0f4ff',borderRadius:8,fontSize:12,color:'#405189' }}>
-              <i className="ri-information-line"/> Preview: <strong>{form.invoice_prefix}-{String(form.invoice_next_number).padStart(4,'0')}</strong>
-            </div>
-          </Card>
-
-          <Card title="Receipts Format" subtitle="Control how receipts look and what they display.">
-            <Row label="Payment Due Days" desc="Number of days after receipt date before payment is due.">
-              <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                <input type="number" style={{ ...inp,width:100 }} min={0} value={form.due_days} onChange={e=>set('due_days',parseInt(e.target.value)||0)}/>
-                <span style={{ fontSize:13,color:S,fontWeight:600 }}>days</span>
-              </div>
-            </Row>
-          </Card>
-
-          <Card title="Receipts Content" subtitle="Footer and notes printed on every receipt.">
-            <div style={{ marginBottom:18 }}>
-              <label style={LBL}>Receipt Footer</label>
-              <textarea style={{ ...inp,resize:'vertical' }} rows={3} value={form.invoice_footer} onChange={e=>set('invoice_footer',e.target.value)} placeholder="Thank you for your business!"/>
-            </div>
-            <div>
-              <label style={LBL}>Receipt Notes / Terms</label>
-              <textarea style={{ ...inp,resize:'vertical' }} rows={3} value={form.invoice_notes} onChange={e=>set('invoice_notes',e.target.value)} placeholder="Payment due within 7 days of receipt date."/>
-            </div>
-          </Card>
-
-          <div style={{ display:'flex',justifyContent:'flex-end',gap:10 }}>
-            <button type="button" style={btnL}>Cancel</button>
-            <button type="submit" style={btnP} disabled={saving}>
-              <i className="ri-save-line"/>{saving?'Saving…':'Save Changes'}
-            </button>
+    <div className="container-fluid">
+      <div className="mb-5">
+              <h4 className="fs-xl">Settings</h4>
+              <p className="text-muted">Manage overall store preferences and system configurations.</p>
           </div>
-        </form>
-      )}
+          <ul className="nav nav-underline mb-5 border-bottom nav-primary" id="settings-tab" role="tablist">
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-tax.html" className="nav-link py-6px" aria-current="page">Tax</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-coupons.html" className="nav-link py-6px" aria-current="page">Coupons</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-general.html" className="nav-link py-6px" aria-current="page">General</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-pos.html" className="nav-link py-6px" aria-current="page">POS</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-payment-gateway.html" className="nav-link py-6px" aria-current="page">Payment Gateway</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-currencies.html" className="nav-link py-6px" aria-current="page">Currencies</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-invoices.html" className="nav-link py-6px active" aria-current="page">Invoices</a>
+              </li>
+              <li className="nav-item" role="presentation">
+                  <a href="apps-setting-manager.html" className="nav-link py-6px" aria-current="page">Manager</a>
+              </li>
+          </ul>
+
+          <div className="card">
+              <div className="card-body">
+                  <div className="mb-5">
+                      <h6 className="mb-1">Invoice Settings</h6>
+                      <p className="text-muted mb-5">Set default invoice details and payment information used across POS and invoices.</p>
+                      <div className="d-flex flex-column gap-6">
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="invoicePrefix" className="form-label fs-15 mb-0">Invoice Number Prefix</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <input id="invoicePrefix" type="text" className="form-control w-56" placeholder="INV-0000" />
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label className="form-label fs-15 mb-0">Auto Increment Invoice Number</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <div className="d-flex gap-8">
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" id="defaultCheck1" defaultChecked />
+                                          <label className="form-check-label" htmlFor="defaultCheck1">Enabled</label>
+                                      </div>
+                                      <div className="form-check check-primary">
+                                          <input className="form-check-input" type="checkbox" id="defaultCheck2" />
+                                          <label className="form-check-label" htmlFor="defaultCheck2">Disabled</label>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="invoiceLogo" className="form-label fs-15 mb-0">Invoice Logo</label>
+                              </div>
+                              <div className="col-md-6 col-lg-4 col-xxl-3">
+                                  <label htmlFor="invoiceLogo" className="avatar flex-column border rounded p-5 bg-light bg-opacity-75 h-32">
+                                      <i data-lucide="upload-cloud" className="text-muted fs-2"></i>
+                                      <p className="mt-2 text-muted mb-0">Drag & Drop Image here or click to upload</p>
+                                  </label>
+                                  <input type="file" id="invoiceLogo" className="d-none" />
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="invoiceDueDays" className="form-label fs-15 mb-0">Invoice Due (Days)</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <input id="invoiceDueDays" type="number" className="form-control w-28" placeholder="10" />
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="invoiceCurrency" className="form-label fs-15 mb-0">Default Currency</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <div id="invoiceCurrency" className="w-56"></div>
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="invoiceFormat" className="form-label fs-15 mb-0">Invoice Format</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <div id="invoiceFormat" className="w-56"></div>
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label className="form-label fs-15 mb-0">Show Discount on Invoice</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <div className="form-switch switch-light-primary">
+                                      <input type="checkbox" id="switch-light-1" /><label className="label" htmlFor="switch-light-1"></label>
+                                  </div>
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label className="form-label fs-15 mb-0">Send Invoice via Email</label>
+                              </div>
+                              <div className="col-md-5 col-lg-4 col-xxl-3">
+                                  <div className="form-switch switch-light-primary">
+                                      <input type="checkbox" id="switch-light-2" defaultChecked /><label className="label" htmlFor="switch-light-2"></label>
+                                  </div>
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="invoicePaymentTerms" className="form-label fs-15 mb-0">Payment Terms</label>
+                              </div>
+                              <div className="col-md-6 col-xxl-5">
+                                  <textarea id="invoicePaymentTerms" className="form-control" rows="4" placeholder="Optional notes about payment terms..."></textarea>
+                              </div>
+                          </div>
+                          <div className="row align-items-center gap-2">
+                              <div className="col-md-5 col-lg-4">
+                                  <label htmlFor="invoiceBankInfo" className="form-label fs-15 mb-0">Payment Information</label>
+                              </div>
+                              <div className="col-md-6 col-xxl-5">
+                                  <textarea id="invoiceBankInfo" className="form-control" rows="4" placeholder="Optional notes about payment information..."></textarea>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  <div className="text-end">
+                      <button className="btn btn-outline-light border me-1">Cancel</button>
+                      <button className="btn btn-primary">Save</button>
+                  </div>
+              </div>
+          </div>
     </div>
   )
 }

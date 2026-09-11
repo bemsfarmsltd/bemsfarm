@@ -1,178 +1,221 @@
-import { useState, useEffect, useCallback } from 'react'
-import PageHeader from '../../components/ui/PageHeader'
-import api from '../../lib/api'
-import toast from 'react-hot-toast'
-import { useAuth } from '../../context/AuthContext'
+import { useState } from 'react'
 
 const AVATAR_COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#ec4899','#8b5cf6','#14b8a6','#f97316','#06b6d4']
-const ini = n => (n || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+const ini = n => n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+const fmtTime = s => s
+
+const CONVOS = [
+  {
+    id: 'CHB-001', customer: 'Amara Obi', phone: '0801 234 5678', zone: 'Lekki Phase 1',
+    status: 'resolved', aiStatus: 'success', time: '10:24 AM', date: 'Today',
+    tags: ['lactose-intolerant'], responseTime: '1.2s',
+    messages: [
+      { role: 'customer', text: 'I am lactose intolerant. What dishes can I safely order from Bems Farms?', time: '10:22 AM' },
+      { role: 'ai', text: 'Based on your dietary profile, here are great options for you:\n\n• Jollof Rice with Grilled Chicken (no butter sauce)\n• Vegetable Stir-fry (cooked in olive oil)\n• Egusi Soup with Pounded Yam (dairy-free)\n• Grilled Tilapia with Garden Salad\n\nAll of these are completely dairy-free. I\'ve flagged your account so our kitchen always prepares your orders without any dairy products. 🌿', time: '10:24 AM' },
+    ]
+  },
+  {
+    id: 'CHB-002', customer: 'Tunde Adeyemi', phone: '0802 345 6789', zone: 'Ikeja GRA',
+    status: 'resolved', aiStatus: 'success', time: '9:48 AM', date: 'Today',
+    tags: ['diabetic', 'low-carb'], responseTime: '0.9s',
+    messages: [
+      { role: 'customer', text: 'Do you have low-carb options? I have Type 2 diabetes and need to watch my sugar and carb intake.', time: '9:45 AM' },
+      { role: 'ai', text: 'Absolutely! Here are our best diabetic-friendly, low-carb options:\n\n🥗 Low Glycemic Picks:\n• Grilled Tilapia with Garden Salad\n• Vegetable Pepper Soup\n• Ofada Rice (small portion) — it has a lower GI than regular rice\n• Moi Moi (steamed, no excess oil)\n\n⚠️ Please avoid: Fried Plantain, White Jollof Rice (large portions), and sweetened drinks.\n\nI can also set up a weekly meal plan tailored to your glycemic needs. Would you like that?', time: '9:48 AM' },
+    ]
+  },
+  {
+    id: 'CHB-003', customer: 'Kemi Balogun', phone: '0803 456 7890', zone: 'Surulere',
+    status: 'pending', aiStatus: 'failed', time: '11:02 AM', date: 'Today',
+    tags: ['vegetarian'], responseTime: null,
+    messages: [
+      { role: 'customer', text: 'I want a vegetarian meal plan for the entire week. I don\'t eat any meat or fish. Can you help?', time: '11:02 AM' },
+      { role: 'system', text: 'n8n workflow did not return a response. No dietary rule matched "weekly meal plan" intent.', time: '11:02 AM' },
+    ]
+  },
+  {
+    id: 'CHB-004', customer: 'Chidi Okonkwo', phone: '0804 567 8901', zone: 'Victoria Island',
+    status: 'escalated', aiStatus: 'escalated', time: '8:30 AM', date: 'Today',
+    tags: ['nut-allergy', 'complaint'], responseTime: '1.5s',
+    messages: [
+      { role: 'customer', text: 'I have a severe peanut allergy. I ordered the Groundnut Soup yesterday and the packaging said no nuts but I had a reaction. This is very serious.', time: '8:28 AM' },
+      { role: 'ai', text: 'I\'m very sorry to hear this happened. Your safety is our highest priority. I\'ve immediately flagged your account as a severe nut allergy case and escalated this to our kitchen manager and quality control team. A member of our team will contact you within the next 30 minutes.\n\nFor future orders, your account is now marked with a RED allergy alert that is visible to all kitchen staff before preparation begins.', time: '8:30 AM' },
+      { role: 'customer', text: 'Okay, I hope someone calls soon. I am not happy at all.', time: '8:45 AM' },
+      { role: 'system', text: 'AI flagged for human escalation. Reason: Safety complaint — allergen cross-contamination.', time: '8:30 AM' },
+    ]
+  },
+  {
+    id: 'CHB-005', customer: 'Ngozi Eze', phone: '0805 678 9012', zone: 'Gbagada',
+    status: 'resolved', aiStatus: 'success', time: '7:55 AM', date: 'Today',
+    tags: ['halal'], responseTime: '0.7s',
+    messages: [
+      { role: 'customer', text: 'Are all your meat products halal certified?', time: '7:52 AM' },
+      { role: 'ai', text: 'Yes! All our meat products at Bems Farms are sourced from halal-certified suppliers. Our Chicken, Beef, and Goat Meat are all halal slaughtered and certified.\n\n✅ Halal Certified Items:\n• All chicken dishes\n• Beef stew and pepper soup\n• Goat meat pepper soup\n• Suya (beef)\n\nYou can filter by "Halal" on the app to see the full list. Is there anything specific you\'d like to order today?', time: '7:55 AM' },
+    ]
+  },
+  {
+    id: 'CHB-006', customer: 'Emeka Okafor', phone: '0806 789 0123', zone: 'Lekki Phase 2',
+    status: 'resolved', aiStatus: 'success', time: '2:14 PM', date: 'Yesterday',
+    tags: ['vegan'], responseTime: '1.1s',
+    messages: [
+      { role: 'customer', text: 'I just went fully vegan last month. Can Chef Bems help me find suitable options? No meat, no dairy, no eggs.', time: '2:10 PM' },
+      { role: 'ai', text: 'Welcome to the plant-based life! 🌱 Bems Farms has great vegan-friendly options:\n\n🌿 Vegan Menu Picks:\n• Vegetable Jollof Rice (cooked without butter or stock cubes with animal fat)\n• Mixed Vegetable Stir-fry\n• Beans Porridge (Ewa Agoyin) — request no palm oil if preferred\n• Okra Soup with vegetables only\n• Fresh Fruit Salad\n\nI\'ve updated your profile to "Vegan" — your order page will now show a filtered vegan menu automatically. Enjoy! 🥬', time: '2:14 PM' },
+    ]
+  },
+  {
+    id: 'CHB-007', customer: 'Bisi Adeyinka', phone: '0807 890 1234', zone: 'Ajah',
+    status: 'pending', aiStatus: 'low-confidence', time: '1:30 PM', date: 'Yesterday',
+    tags: ['gluten-free'], responseTime: '2.1s',
+    messages: [
+      { role: 'customer', text: 'My doctor says I have celiac disease and I need to avoid all gluten. Does Bems Farms have gluten-free meals?', time: '1:30 PM' },
+      { role: 'ai', text: 'We have some options that may be suitable, however I\'m not fully certain about cross-contamination in our kitchen. I recommend speaking with our team directly for celiac-grade assurance.', time: '1:32 PM' },
+      { role: 'system', text: 'Low confidence response (61%). Consider reviewing — celiac is a medical-grade requirement.', time: '1:32 PM' },
+    ]
+  },
+  {
+    id: 'CHB-008', customer: 'Funke Adesola', phone: '0808 901 2345', zone: 'Ikorodu',
+    status: 'resolved', aiStatus: 'success', time: '11:45 AM', date: 'Yesterday',
+    tags: ['pregnancy'], responseTime: '1.3s',
+    messages: [
+      { role: 'customer', text: 'I am 6 months pregnant. What foods should I avoid from your menu and what\'s best for me and my baby?', time: '11:40 AM' },
+      { role: 'ai', text: 'Congratulations! 🎉 Here\'s your safe and nourishing guide from Chef Bems:\n\n✅ Best choices during pregnancy:\n• Egusi Soup with Pounded Yam (iron & folate rich)\n• Grilled Tilapia (omega-3, fully cooked)\n• Vegetable Stir-fry (vitamins & minerals)\n• Moi Moi (protein-rich, easy to digest)\n\n⚠️ Avoid:\n• Suya (risk of undercooked meat)\n• Raw Salads (bacteria risk)\n• Excess salt in soups\n\nI\'ve added a "Pregnancy-Safe" filter to your account. Stay healthy! 💚', time: '11:45 AM' },
+    ]
+  },
+  {
+    id: 'CHB-009', customer: 'Seun Oladele', phone: '0809 012 3456', zone: 'Maryland',
+    status: 'resolved', aiStatus: 'success', time: '9:00 AM', date: '26 Jun 2026',
+    tags: ['high-protein'], responseTime: '0.8s',
+    messages: [
+      { role: 'customer', text: 'I am a bodybuilder and need high protein meals. What do you recommend for post-workout?', time: '8:57 AM' },
+      { role: 'ai', text: 'Let\'s fuel those gains! 💪 Here are our highest protein options:\n\n🥩 Top Protein Picks:\n• Grilled Chicken Breast (35g protein)\n• Grilled Tilapia (28g protein)\n• Moi Moi with Eggs (22g protein)\n• Beans Porridge (18g plant protein)\n• Beef Pepper Soup (30g protein)\n\nPost-workout tip: Pair grilled chicken with brown rice or Ofada rice for optimal recovery. I can also set up a high-protein weekly meal plan — want me to?', time: '9:00 AM' },
+    ]
+  },
+  {
+    id: 'CHB-010', customer: 'Adaeze Nwosu', phone: '0810 123 4567', zone: 'Festac',
+    status: 'pending', aiStatus: 'failed', time: '3:22 PM', date: '26 Jun 2026',
+    tags: ['hypertension'], responseTime: null,
+    messages: [
+      { role: 'customer', text: 'I have high blood pressure. My nutritionist said I need to cut down on salt and processed foods. What can I eat from your menu safely?', time: '3:22 PM' },
+      { role: 'system', text: 'n8n workflow timed out. No dietary rule for "hypertension" or "low sodium" found. Rule may need to be added.', time: '3:22 PM' },
+    ]
+  },
+  {
+    id: 'CHB-011', customer: 'Yusuf Ibrahim', phone: '0811 234 5678', zone: 'Yaba',
+    status: 'resolved', aiStatus: 'success', time: '10:00 AM', date: '25 Jun 2026',
+    tags: ['halal', 'diabetic'], responseTime: '1.4s',
+    messages: [
+      { role: 'customer', text: 'I need halal food that is also suitable for a diabetic diet. Any suggestions?', time: '9:58 AM' },
+      { role: 'ai', text: 'We can handle both! Here are halal AND diabetic-friendly options:\n\n✅ Perfect Picks:\n• Grilled Chicken (halal certified, no sauce)\n• Vegetable Pepper Soup (halal, low GI)\n• Ofada Rice with Stew (small portion, halal)\n• Moi Moi (halal, low glycemic)\n• Catfish Pepper Soup (halal, high protein, low carb)\n\nYour profile has been updated with both filters. All orders will automatically exclude both high-carb items and non-halal products.', time: '10:00 AM' },
+    ]
+  },
+  {
+    id: 'CHB-012', customer: 'Chiamaka Obiora', phone: '0812 345 6789', zone: 'Oniru',
+    status: 'resolved', aiStatus: 'success', time: '5:10 PM', date: '24 Jun 2026',
+    tags: ['child', 'allergy'], responseTime: '1.0s',
+    messages: [
+      { role: 'customer', text: 'I am ordering for my 4-year-old son. He has an egg allergy and I want to make sure what I order is safe.', time: '5:07 PM' },
+      { role: 'ai', text: 'Of course! Here are safe options for your little one:\n\n👶 Kid-safe, Egg-free Options:\n• Jollof Rice with Grilled Chicken\n• Vegetable Soup with Semo\n• Beans Porridge (smooth, easy to eat)\n• Fruit Salad (no cream)\n• Mashed Yam with Stew (egg-free)\n\nI\'ve flagged "egg allergy" on your account. Our kitchen will ensure no egg-containing products are used in your child\'s preparation. Thank you for letting us know! 💛', time: '5:10 PM' },
+    ]
+  },
+]
 
 const STATUS_CFG = {
-  resolved:  { bg:'#dcfce7', color:'#15803d', label:'Resolved',   icon:'ri-checkbox-circle-line' },
-  pending:   { bg:'#fef3c7', color:'#b45309', label:'Pending',    icon:'ri-time-line' },
-  escalated: { bg:'#fee2e2', color:'#dc2626', label:'Escalated',  icon:'ri-alarm-warning-line' },
+  resolved:       { bg: '#dcfce7', color: '#15803d', label: 'Resolved',        icon: 'ri-checkbox-circle-line' },
+  pending:        { bg: '#fef3c7', color: '#b45309', label: 'Pending',          icon: 'ri-time-line' },
+  escalated:      { bg: '#fee2e2', color: '#dc2626', label: 'Escalated',        icon: 'ri-alarm-warning-line' },
 }
+
 const AI_STATUS_CFG = {
-  success:          { bg:'#dcfce7', color:'#15803d', label:'AI Responded',    icon:'ri-robot-line' },
-  failed:           { bg:'#fee2e2', color:'#dc2626', label:'AI Failed',       icon:'ri-close-circle-line' },
-  escalated:        { bg:'#fef3c7', color:'#b45309', label:'AI Escalated',    icon:'ri-alarm-warning-line' },
-  'low-confidence': { bg:'#fce7f3', color:'#9d174d', label:'Low Confidence',  icon:'ri-error-warning-line' },
+  success:        { bg: '#dcfce7', color: '#15803d', label: 'AI Responded',     icon: 'ri-robot-line' },
+  failed:         { bg: '#fee2e2', color: '#dc2626', label: 'AI Failed',         icon: 'ri-close-circle-line' },
+  escalated:      { bg: '#fef3c7', color: '#b45309', label: 'AI Escalated',     icon: 'ri-alarm-warning-line' },
+  'low-confidence': { bg: '#fce7f3', color: '#9d174d', label: 'Low Confidence', icon: 'ri-error-warning-line' },
 }
+
 const TAG_COLORS = {
-  'lactose-intolerant':['#ede9fe','#5b21b6'],'diabetic':['#fce7f3','#9d174d'],'low-carb':['#ecfdf5','#065f46'],
-  'vegetarian':['#d1fae5','#065f46'],'nut-allergy':['#fee2e2','#991b1b'],'halal':['#dbeafe','#1e40af'],
-  'vegan':['#dcfce7','#14532d'],'gluten-free':['#fef9c3','#713f12'],'pregnancy':['#fce7f3','#9d174d'],
-  'high-protein':['#ede9fe','#4c1d95'],'hypertension':['#fee2e2','#991b1b'],'allergy':['#fee2e2','#991b1b'],
-  'child':['#dbeafe','#1e40af'],'complaint':['#fee2e2','#991b1b'],
-}
-
-const pill = (bg, color, text, icon) => (
-  <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:50, background:bg, color, whiteSpace:'nowrap' }}>
-    {icon && <i className={icon} />}{text}
-  </span>
-)
-
-const btnStyle = (bg, color, border) => ({
-  display:'inline-flex', alignItems:'center', gap:5, padding:'6px 12px',
-  borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer',
-  background: bg, color, border: border ?? 'none',
-  fontFamily:'var(--body-font)',
-})
-
-function Spinner({ size = 32 }) {
-  return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:40 }}>
-      <div style={{ width:size, height:size, border:'3px solid var(--border)', borderTopColor:'#1B4332', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  )
-}
-
-// Parse messages from ai_conversations row
-// The DB stores user_message / ai_response as top-level columns, and optionally a messages JSON column
-function parseMessages(row) {
-  if (row.messages && Array.isArray(row.messages)) return row.messages
-  if (row.messages && typeof row.messages === 'string') {
-    try { return JSON.parse(row.messages) } catch {}
-  }
-  const msgs = []
-  if (row.user_message) msgs.push({ role:'customer', text: row.user_message, time: row.created_at ? new Date(row.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '' })
-  if (row.ai_response)  msgs.push({ role:'ai',       text: row.ai_response,  time: row.updated_at ? new Date(row.updated_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '' })
-  return msgs
+  'lactose-intolerant': ['#ede9fe','#5b21b6'], 'diabetic': ['#fce7f3','#9d174d'],
+  'low-carb': ['#ecfdf5','#065f46'], 'vegetarian': ['#d1fae5','#065f46'],
+  'nut-allergy': ['#fee2e2','#991b1b'], 'halal': ['#dbeafe','#1e40af'],
+  'vegan': ['#dcfce7','#14532d'], 'gluten-free': ['#fef9c3','#713f12'],
+  'pregnancy': ['#fce7f3','#9d174d'], 'high-protein': ['#ede9fe','#4c1d95'],
+  'hypertension': ['#fee2e2','#991b1b'], 'allergy': ['#fee2e2','#991b1b'],
+  'child': ['#dbeafe','#1e40af'], 'complaint': ['#fee2e2','#991b1b'],
 }
 
 export default function Conversations() {
-  const { user } = useAuth()
-  const [convos, setConvos]         = useState([])
-  const [total, setTotal]           = useState(0)
-  const [pages, setPages]           = useState(1)
-  const [page, setPage]             = useState(1)
-  const [loading, setLoading]       = useState(true)
-  const [selected, setSelected]     = useState(null)
-  const [search, setSearch]         = useState('')
-  const [statusFilter, setStatus]   = useState('all')
-  const [actionLoading, setAction]  = useState(false)
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
-
-  const fetchConvos = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = { page, limit: 20 }
-      if (search) params.search = search
-      if (statusFilter !== 'all') params.status = statusFilter
-      const { data } = await api.get('/admin/chef-bems/conversations', { params })
-      setConvos(data.conversations || [])
-      setTotal(data.total || 0)
-      setPages(data.pages || 1)
-      if (data.conversations?.length && !selected) setSelected(data.conversations[0])
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to load conversations')
-    } finally {
-      setLoading(false)
-    }
-  }, [page, search, statusFilter])
-
-  useEffect(() => { fetchConvos() }, [fetchConvos])
-
-  // Debounce search
-  const [searchInput, setSearchInput] = useState('')
-  useEffect(() => {
-    const t = setTimeout(() => { setSearch(searchInput); setPage(1) }, 400)
-    return () => clearTimeout(t)
-  }, [searchInput])
-
-  const changeStatus = async (id, status) => {
-    setAction(true)
-    try {
-      const { data } = await api.patch(`/admin/chef-bems/conversations/${id}/status`, { status })
-      setConvos(prev => prev.map(c => c.id === id ? { ...c, ...data.conversation } : c))
-      if (selected?.id === id) setSelected(prev => ({ ...prev, ...data.conversation }))
-      toast.success(`Conversation marked as ${status}`)
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update status')
-    } finally {
-      setAction(false)
-    }
-  }
-
-  const deleteConvo = async (id) => {
-    setConfirmDeleteId(null)
-    setAction(true)
-    try {
-      await api.delete(`/admin/chef-bems/conversations/${id}`)
-      setConvos(prev => prev.filter(c => c.id !== id))
-      if (selected?.id === id) setSelected(convos.find(c => c.id !== id) || null)
-      toast.success('Conversation deleted')
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete')
-    } finally {
-      setAction(false)
-    }
-  }
+  const [selected, setSelected]   = useState(CONVOS[0])
+  const [search, setSearch]       = useState('')
+  const [statusFilter, setStatus] = useState('all')
+  const [convos, setConvos]       = useState(CONVOS)
 
   const kpi = {
-    total,
-    aiSuccess: convos.filter(c => c.ai_status === 'success').length,
-    failed:    convos.filter(c => c.ai_status === 'failed').length,
-    lowConf:   convos.filter(c => c.ai_status === 'low-confidence').length,
-    escalated: convos.filter(c => c.status === 'escalated').length,
+    total:        convos.length,
+    today:        convos.filter(c => c.date === 'Today').length,
+    aiSuccess:    convos.filter(c => c.aiStatus === 'success').length,
+    failed:       convos.filter(c => c.aiStatus === 'failed').length,
+    lowConf:      convos.filter(c => c.aiStatus === 'low-confidence').length,
+    escalated:    convos.filter(c => c.status === 'escalated').length,
   }
-  const aiRate = convos.length > 0 ? Math.round((kpi.aiSuccess / convos.length) * 100) : 0
+  const aiRate = Math.round((kpi.aiSuccess / kpi.total) * 100)
 
-  const KPIS = [
-    { label:'Total Conversations', value:total,         icon:'ri-chat-3-line',          bg:'#e0f2fe', color:'#0369a1' },
-    { label:'This Page',           value:convos.length, icon:'ri-calendar-check-line',  bg:'#f0f9ff', color:'#0284c7' },
-    { label:'AI Success Rate',     value:`${aiRate}%`,  icon:'ri-robot-line',           bg:'#dcfce7', color:'#15803d' },
-    { label:'AI Failed',           value:kpi.failed,    icon:'ri-close-circle-line',    bg:'#fee2e2', color:'#dc2626' },
-    { label:'Low Confidence',      value:kpi.lowConf,   icon:'ri-error-warning-line',   bg:'#fce7f3', color:'#9d174d' },
-    { label:'Escalated',           value:kpi.escalated, icon:'ri-alarm-warning-line',   bg:'#fef3c7', color:'#b45309' },
-  ]
+  const filtered = convos.filter(c => {
+    const q = search.toLowerCase()
+    const matchSearch = c.customer.toLowerCase().includes(q) || c.id.toLowerCase().includes(q) ||
+      c.messages.some(m => m.text.toLowerCase().includes(q))
+    const matchStatus = statusFilter === 'all' || c.status === statusFilter ||
+      (statusFilter === 'failed' && (c.aiStatus === 'failed' || c.aiStatus === 'low-confidence'))
+    return matchSearch && matchStatus
+  })
 
-  const selConvo = selected ? convos.find(c => c.id === selected.id) || selected : null
+  const resolveConvo = id => {
+    setConvos(prev => prev.map(c => c.id === id ? { ...c, status: 'resolved' } : c))
+    if (selected?.id === id) setSelected(prev => ({ ...prev, status: 'resolved' }))
+  }
+  const dismissEscalation = id => {
+    setConvos(prev => prev.map(c => c.id === id ? { ...c, status: 'resolved', aiStatus: 'success' } : c))
+    if (selected?.id === id) setSelected(prev => ({ ...prev, status: 'resolved', aiStatus: 'success' }))
+  }
+
+  const selConvo = selected ? convos.find(c => c.id === selected.id) : null
 
   return (
-    <div style={{ fontFamily:'var(--body-font)' }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <PageHeader
-        title="Chef Bems AI — Conversations"
-        subtitle="Monitor AI-powered dietary conversations. Responses are automated via n8n."
-        actions={
-          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 12px', borderRadius:8, background:'#dcfce7', border:'1px solid #bbf7d0' }}>
-            <span style={{ width:8, height:8, borderRadius:'50%', background:'#16a34a', display:'inline-block', boxShadow:'0 0 0 2px #bbf7d0' }} />
-            <span style={{ fontSize:12, color:'#15803d', fontWeight:600 }}>n8n Workflow Active</span>
+    <div className="container-fluid">
+      {/* Header */}
+      <div className="d-flex align-items-center justify-content-between mb-4">
+        <div>
+          <h4 className="fs-xl mb-1">
+            <i className="ri-robot-line me-2 text-success"></i>Chef Bems AI — Conversations
+          </h4>
+          <p className="text-muted mb-0">Monitor AI-powered dietary conversations. Responses are automated via n8n.</p>
+        </div>
+        {/* n8n status pill */}
+        <div className="d-flex align-items-center gap-2">
+          <div className="rounded px-3 py-2 d-flex align-items-center gap-2" style={{ background: '#dcfce7', border: '1px solid #bbf7d0' }}>
+            <span style={{ width: 8, height: 8, background: '#16a34a', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 0 2px #bbf7d0' }}></span>
+            <span style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>n8n Workflow Active</span>
           </div>
-        }
-      />
+        </div>
+      </div>
 
       {/* KPI Strip */}
-      <div className="grid-stats-auto" style={{ display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:12, marginBottom:20 }}>
-        {KPIS.map(k => (
-          <div key={k.label} style={{ background:k.bg, borderRadius:12, padding:'12px 14px', border:`1px solid ${k.bg}` }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <i className={k.icon} style={{ fontSize:22, color:k.color }} />
-              <div>
-                <div style={{ fontWeight:800, fontSize:18, color:k.color, fontFamily:'var(--heading-font)', lineHeight:1 }}>{k.value}</div>
-                <div style={{ fontSize:10, color:k.color, opacity:0.85, marginTop:2 }}>{k.label}</div>
+      <div className="row g-3 mb-4">
+        {[
+          { label: 'Total Conversations', value: kpi.total,    icon: 'ri-chat-3-line',           bg: '#e0f2fe', color: '#0369a1' },
+          { label: 'Today',               value: kpi.today,    icon: 'ri-calendar-check-line',   bg: '#f0f9ff', color: '#0284c7' },
+          { label: 'AI Success Rate',     value: `${aiRate}%`, icon: 'ri-robot-line',            bg: '#dcfce7', color: '#15803d' },
+          { label: 'AI Failed',           value: kpi.failed,   icon: 'ri-close-circle-line',     bg: '#fee2e2', color: '#dc2626' },
+          { label: 'Low Confidence',      value: kpi.lowConf,  icon: 'ri-error-warning-line',    bg: '#fce7f3', color: '#9d174d' },
+          { label: 'Escalated',           value: kpi.escalated, icon: 'ri-alarm-warning-line',   bg: '#fef3c7', color: '#b45309' },
+        ].map(k => (
+          <div className="col" key={k.label}>
+            <div className="card mb-0 border-0" style={{ background: k.bg }}>
+              <div className="card-body py-3 px-3">
+                <div className="d-flex align-items-center gap-2">
+                  <i className={`${k.icon} fs-4`} style={{ color: k.color }}></i>
+                  <div>
+                    <div className="fw-bold fs-5 lh-1" style={{ color: k.color }}>{k.value}</div>
+                    <div style={{ fontSize: 11, color: k.color, opacity: 0.85 }}>{k.label}</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -181,262 +224,214 @@ export default function Conversations() {
 
       {/* Attention banners */}
       {kpi.failed > 0 && (
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, marginBottom:12, background:'#fee2e2', border:'1px solid #fca5a5', color:'#991b1b', fontSize:13 }}>
-          <i className="ri-close-circle-line" style={{ fontSize:24, flexShrink:0 }} />
-          <span><strong>{kpi.failed} conversation{kpi.failed>1?'s':''}</strong> where the AI failed to respond — a dietary rule may be missing.</span>
+        <div className="alert d-flex align-items-center gap-2 mb-3 py-2" style={{ background:'#fee2e2', border:'1px solid #fca5a5', color:'#991b1b', fontSize:13 }}>
+          <i className="ri-close-circle-line fs-5"></i>
+          <span><strong>{kpi.failed} conversation{kpi.failed>1?'s':''}</strong> where the AI failed to respond — a dietary rule may be missing. Check the flagged threads.</span>
         </div>
       )}
       {kpi.lowConf > 0 && (
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, marginBottom:12, background:'#fce7f3', border:'1px solid #f9a8d4', color:'#9d174d', fontSize:13 }}>
-          <i className="ri-error-warning-line" style={{ fontSize:24, flexShrink:0 }} />
-          <span><strong>{kpi.lowConf} conversation{kpi.lowConf>1?'s':''}</strong> received a low-confidence AI reply. Consider adding a matching dietary rule.</span>
+        <div className="alert d-flex align-items-center gap-2 mb-3 py-2" style={{ background:'#fce7f3', border:'1px solid #f9a8d4', color:'#9d174d', fontSize:13 }}>
+          <i className="ri-error-warning-line fs-5"></i>
+          <span><strong>{kpi.lowConf} conversation{kpi.lowConf>1?'s':''}</strong> received a low-confidence AI reply. Review and consider adding a matching dietary rule.</span>
         </div>
       )}
 
-      {/* Chat shell */}
-      <div className="grid-sidebar-split" style={{ display:'grid', gridTemplateColumns:'300px 1fr', background:'var(--bg-card)', borderRadius:12, border:'1px solid var(--border)', boxShadow:'0 1px 4px rgba(0,0,0,0.05)', minHeight:580, overflow:'hidden' }}>
+      {/* Chat Shell */}
+      <div className="card mb-0" style={{ minHeight: 580 }}>
+        <div className="card-body p-0 d-flex" style={{ minHeight: 580 }}>
 
-        {/* Left panel */}
-        <div style={{ display:'flex', flexDirection:'column', borderRight:'1px solid var(--border)' }}>
-          <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border)' }}>
-            <div style={{ position:'relative', marginBottom:8 }}>
-              <i className="ri-search-line" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'var(--text-light)', fontSize:19 }} />
-              <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search customer, session, message..."
-                style={{ width:'100%', padding:'7px 10px 7px 30px', borderRadius:8, border:'1px solid var(--border)', fontSize:12, fontFamily:'var(--body-font)', outline:'none', boxSizing:'border-box' }} />
+          {/* ── Left panel ── */}
+          <div className="d-flex flex-column border-end" style={{ width: 320, flexShrink: 0 }}>
+            <div className="p-3 border-bottom">
+              <input type="text" className="form-control form-control-sm mb-2"
+                placeholder="Search customer, ID, or message..."
+                value={search} onChange={e => setSearch(e.target.value)} />
+              <div className="d-flex gap-1 flex-wrap">
+                {[
+                  { key: 'all',       label: `All (${kpi.total})` },
+                  { key: 'pending',   label: `Pending` },
+                  { key: 'resolved',  label: `Resolved` },
+                  { key: 'escalated', label: `Escalated` },
+                  { key: 'failed',    label: `AI Issues` },
+                ].map(f => (
+                  <button key={f.key} onClick={() => setStatus(f.key)}
+                    className="btn btn-sm"
+                    style={{ fontSize: 10, padding: '2px 8px', background: statusFilter === f.key ? '#0ea5e9' : '#f1f5f9', color: statusFilter === f.key ? '#fff' : '#475569', border: 'none' }}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-              {[{key:'all',label:`All (${total})`},{key:'pending',label:'Pending'},{key:'resolved',label:'Resolved'},{key:'escalated',label:'Escalated'}].map(f => (
-                <button key={f.key} onClick={() => { setStatus(f.key); setPage(1) }} style={{ fontSize:10, padding:'3px 8px', borderRadius:6, border:'none', cursor:'pointer', fontFamily:'var(--body-font)', background: statusFilter===f.key ? '#1B4332' : '#f1f5f9', color: statusFilter===f.key ? '#fff' : '#475569' }}>
-                  {f.label}
-                </button>
-              ))}
+
+            <div className="overflow-auto flex-grow-1">
+              {filtered.map((c, i) => {
+                const sCfg = STATUS_CFG[c.status]
+                const aiCfg = AI_STATUS_CFG[c.aiStatus]
+                const isActive = selConvo?.id === c.id
+                const lastMsg = c.messages[c.messages.length - 1]
+                return (
+                  <button key={c.id} onClick={() => setSelected(c)}
+                    className="w-100 text-start border-0 border-bottom p-3"
+                    style={{ background: isActive ? '#f0f9ff' : 'transparent', borderLeft: `3px solid ${isActive ? '#0ea5e9' : 'transparent'}`, display: 'block' }}>
+                    <div className="d-flex align-items-start gap-2">
+                      <div className="d-flex align-items-center justify-content-center rounded-circle text-white fw-bold flex-shrink-0"
+                        style={{ width: 34, height: 34, background: AVATAR_COLORS[i % AVATAR_COLORS.length], fontSize: 11 }}>
+                        {ini(c.customer)}
+                      </div>
+                      <div className="flex-grow-1 overflow-hidden">
+                        <div className="d-flex justify-content-between align-items-center mb-1">
+                          <span className="fw-semibold" style={{ fontSize: 12 }}>{c.customer}</span>
+                          <span style={{ fontSize: 10, color: '#94a3b8' }}>{c.date === 'Today' ? c.time : c.date}</span>
+                        </div>
+                        <p className="text-truncate mb-1" style={{ fontSize: 11, color: '#64748b' }}>
+                          {lastMsg.role === 'system'
+                            ? <span className="text-danger"><i className="ri-error-warning-line me-1"></i>{lastMsg.text.slice(0, 50)}…</span>
+                            : lastMsg.text.slice(0, 55) + (lastMsg.text.length > 55 ? '…' : '')
+                          }
+                        </p>
+                        <div className="d-flex gap-1">
+                          <span className="badge rounded-pill" style={{ background: aiCfg.bg, color: aiCfg.color, fontSize: 9 }}>
+                            <i className={`${aiCfg.icon} me-1`}></i>{aiCfg.label}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
-          <div style={{ overflowY:'auto', flex:1 }}>
-            {loading ? (
-              <Spinner size={24} />
-            ) : convos.length === 0 ? (
-              <div style={{ textAlign:'center', padding:'32px 16px', color:'var(--text-light)' }}>
-                <i className="ri-chat-3-line" style={{ fontSize:43, display:'block', marginBottom:6 }} />
-                <div style={{ fontSize:12 }}>No conversations found</div>
-              </div>
-            ) : convos.map((c, i) => {
-              const aiStatusKey = c.ai_status || 'success'
-              const aiCfg = AI_STATUS_CFG[aiStatusKey] || AI_STATUS_CFG.success
-              const isActive = selConvo?.id === c.id
-              const msgs = parseMessages(c)
-              const lastMsg = msgs[msgs.length - 1]
-              const displayName = c.customer_name || c.session_id || 'Unknown'
-              const displayTime = c.created_at ? new Date(c.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : ''
-              return (
-                <button key={c.id} onClick={() => setSelected(c)} style={{ width:'100%', textAlign:'left', border:'none', borderBottom:'1px solid #f9fafb', padding:'12px 14px', cursor:'pointer', background: isActive ? 'rgba(27,67,50,0.07)' : 'transparent', borderLeft:`3px solid ${isActive ? '#1B4332' : 'transparent'}`, display:'block', fontFamily:'var(--body-font)' }}>
-                  <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
-                    <div style={{ width:34, height:34, borderRadius:'50%', background:AVATAR_COLORS[i%AVATAR_COLORS.length], color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:11, flexShrink:0 }}>
-                      {ini(displayName)}
+          {/* ── Right panel ── */}
+          {selConvo ? (() => {
+            const sCfg  = STATUS_CFG[selConvo.status]
+            const aiCfg = AI_STATUS_CFG[selConvo.aiStatus]
+            const idx   = convos.findIndex(c => c.id === selConvo.id)
+            return (
+              <div className="d-flex flex-column flex-grow-1">
+                {/* Header */}
+                <div className="p-3 border-bottom d-flex align-items-center gap-3" style={{ background: '#f8fafc' }}>
+                  <div className="d-flex align-items-center justify-content-center rounded-circle text-white fw-bold flex-shrink-0"
+                    style={{ width: 40, height: 40, background: AVATAR_COLORS[idx % AVATAR_COLORS.length], fontSize: 13 }}>
+                    {ini(selConvo.customer)}
+                  </div>
+                  <div className="flex-grow-1">
+                    <div className="fw-semibold" style={{ fontSize: 14 }}>{selConvo.customer}
+                      <span className="text-muted ms-2" style={{ fontSize: 11, fontWeight: 400 }}>{selConvo.id}</span>
                     </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:2 }}>
-                        <span style={{ fontWeight:600, fontSize:12, color:'var(--text-primary)' }}>{displayName}</span>
-                        <span style={{ fontSize:10, color:'var(--text-light)' }}>{displayTime}</span>
-                      </div>
-                      <p style={{ fontSize:11, color:'#64748b', margin:'0 0 4px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                        {lastMsg ? (
-                          lastMsg.role === 'system'
-                            ? <span style={{ color:'#dc2626' }}><i className="ri-error-warning-line" style={{ marginRight:4 }} />{lastMsg.text?.slice(0,50)}…</span>
-                            : (lastMsg.text || c.user_message || '')?.slice(0,55)
-                        ) : (c.user_message || '—')?.slice(0,55)}
-                      </p>
-                      {pill(aiCfg.bg, aiCfg.color, aiCfg.label, aiCfg.icon)}
+                    <div style={{ fontSize: 11, color: '#64748b' }}>
+                      <i className="ri-phone-line me-1"></i>{selConvo.phone}
+                      <span className="mx-2">·</span>
+                      <i className="ri-map-pin-line me-1"></i>{selConvo.zone}
+                      {selConvo.responseTime && (
+                        <><span className="mx-2">·</span><i className="ri-timer-line me-1"></i>AI responded in {selConvo.responseTime}</>
+                      )}
                     </div>
                   </div>
-                </button>
-              )
-            })}
-
-            {/* Pagination */}
-            {pages > 1 && (
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'12px 8px', borderTop:'1px solid var(--border)' }}>
-                <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1} style={{ ...btnStyle('#f1f5f9','#374151'), padding:'4px 8px', opacity:page===1?0.4:1 }}>
-                  <i className="ri-arrow-left-s-line" />
-                </button>
-                <span style={{ fontSize:11, color:'var(--text-muted)' }}>{page}/{pages}</span>
-                <button onClick={() => setPage(p => Math.min(pages,p+1))} disabled={page===pages} style={{ ...btnStyle('#f1f5f9','#374151'), padding:'4px 8px', opacity:page===pages?0.4:1 }}>
-                  <i className="ri-arrow-right-s-line" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right panel */}
-        {selConvo ? (() => {
-          const statusKey = selConvo.status || 'pending'
-          const aiStatusKey = selConvo.ai_status || 'success'
-          const sCfg  = STATUS_CFG[statusKey] || STATUS_CFG.pending
-          const aiCfg = AI_STATUS_CFG[aiStatusKey] || AI_STATUS_CFG.success
-          const idx   = convos.findIndex(c => c.id === selConvo.id)
-          const msgs  = parseMessages(selConvo)
-          const displayName = selConvo.customer_name || selConvo.session_id || 'Unknown'
-          // Parse tags
-          let tags = []
-          if (selConvo.dietary_tags) {
-            try { tags = typeof selConvo.dietary_tags === 'string' ? JSON.parse(selConvo.dietary_tags) : selConvo.dietary_tags } catch { tags = [selConvo.dietary_tags] }
-          }
-          return (
-            <div style={{ display:'flex', flexDirection:'column' }}>
-              {/* Header */}
-              <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', background:'var(--bg-subtle)', display:'flex', alignItems:'center', gap:12 }}>
-                <div style={{ width:40, height:40, borderRadius:'50%', background:AVATAR_COLORS[(idx >= 0 ? idx : 0)%AVATAR_COLORS.length], color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:13, flexShrink:0 }}>
-                  {ini(displayName)}
-                </div>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:700, fontSize:14, color:'var(--text-primary)' }}>
-                    {displayName}
-                    <span style={{ fontWeight:400, fontSize:11, color:'#94a3b8', marginLeft:8 }}>#{selConvo.id}</span>
-                  </div>
-                  <div style={{ fontSize:11, color:'#64748b', display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-                    {selConvo.phone && <><span><i className="ri-phone-line" style={{ marginRight:3 }} />{selConvo.phone}</span><span>·</span></>}
-                    {selConvo.session_id && <span><i className="ri-fingerprint-line" style={{ marginRight:3 }} />{selConvo.session_id?.slice(0,16)}…</span>}
-                    {selConvo.response_time_ms && <><span>·</span><span><i className="ri-timer-line" style={{ marginRight:3 }} />AI in {(selConvo.response_time_ms/1000).toFixed(1)}s</span></>}
+                  <div className="d-flex gap-2 flex-wrap justify-content-end">
+                    {selConvo.tags.map(t => {
+                      const [bg,col] = TAG_COLORS[t] || ['#f1f5f9','#475569']
+                      return <span key={t} className="badge rounded-pill" style={{ background:bg, color:col, fontSize:10 }}>{t}</span>
+                    })}
+                    <span className="badge rounded-pill" style={{ background: sCfg.bg, color: sCfg.color, fontSize:11 }}>
+                      <i className={`${sCfg.icon} me-1`}></i>{sCfg.label}
+                    </span>
+                    <span className="badge rounded-pill" style={{ background: aiCfg.bg, color: aiCfg.color, fontSize:11 }}>
+                      <i className={`${aiCfg.icon} me-1`}></i>{aiCfg.label}
+                    </span>
                   </div>
                 </div>
-                <div style={{ display:'flex', gap:6, flexWrap:'wrap', justifyContent:'flex-end' }}>
-                  {tags.map(t => {
-                    const [bg,col] = TAG_COLORS[t] || ['#f1f5f9','#475569']
-                    return <span key={t} style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:50, background:bg, color:col }}>{t}</span>
-                  })}
-                  {pill(sCfg.bg, sCfg.color, sCfg.label, sCfg.icon)}
-                  {pill(aiCfg.bg, aiCfg.color, aiCfg.label, aiCfg.icon)}
-                </div>
-              </div>
 
-              {/* Messages */}
-              <div style={{ flex:1, overflowY:'auto', padding:20, display:'flex', flexDirection:'column', gap:14, background:'var(--bg-subtle)' }}>
-                {msgs.length === 0 ? (
-                  <div style={{ textAlign:'center', color:'var(--text-light)', padding:'24px 0' }}>
-                    {selConvo.user_message ? (
-                      <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:12, padding:'10px 14px', fontSize:13, color:'var(--text-primary)', textAlign:'left', maxWidth:'68%' }}>
-                        {selConvo.user_message}
-                      </div>
-                    ) : (
-                      <>
-                        <i className="ri-chat-3-line" style={{ fontSize:38, display:'block', marginBottom:6 }} />
-                        <div style={{ fontSize:12 }}>No message thread available</div>
-                      </>
-                    )}
-                  </div>
-                ) : msgs.map((m, mi) => {
-                  if (m.role === 'system') return (
-                    <div key={mi} style={{ display:'flex', justifyContent:'center' }}>
-                      <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:8, padding:'8px 14px', fontSize:11, color:'#92400e', maxWidth:'80%', display:'flex', alignItems:'flex-start', gap:8 }}>
-                        <i className="ri-settings-3-line" style={{ flexShrink:0, marginTop:2 }} />
-                        <span><strong>System:</strong> {m.text}</span>
-                      </div>
-                    </div>
-                  )
-                  const isAI = m.role === 'ai'
-                  return (
-                    <div key={mi} style={{ display:'flex', gap:10, flexDirection: isAI ? 'row-reverse' : 'row' }}>
-                      {isAI
-                        ? <div style={{ width:30, height:30, borderRadius:'50%', background:'#10b981', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, flexShrink:0, alignSelf:'flex-end' }}><i className="ri-robot-line" /></div>
-                        : <div style={{ width:30, height:30, borderRadius:'50%', background:AVATAR_COLORS[(idx >= 0 ? idx : 0)%AVATAR_COLORS.length], color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, fontSize:10, flexShrink:0, alignSelf:'flex-end' }}>{ini(displayName)}</div>
-                      }
-                      <div style={{ maxWidth:'68%', background: isAI ? '#d1fae5' : '#fff', border:`1px solid ${isAI ? '#6ee7b7' : '#e2e8f0'}`, borderRadius: isAI ? '12px 12px 2px 12px' : '12px 12px 12px 2px', padding:'10px 14px', fontSize:13, color:'#1e293b', whiteSpace:'pre-line' }}>
-                        {isAI && (
-                          <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:4 }}>
-                            <i className="ri-robot-line" style={{ color:'#10b981', fontSize:14 }} />
-                            <span style={{ fontSize:10, color:'#10b981', fontWeight:600 }}>Chef Bems AI · via n8n</span>
+                {/* Messages (read-only) */}
+                <div className="flex-grow-1 overflow-auto p-4 d-flex flex-column gap-3" style={{ background: '#f8fafc' }}>
+                  {selConvo.messages.map((m, mi) => {
+                    if (m.role === 'system') {
+                      return (
+                        <div key={mi} className="d-flex justify-content-center">
+                          <div className="rounded px-3 py-2 d-flex align-items-center gap-2"
+                            style={{ background: '#fff7ed', border: '1px solid #fed7aa', fontSize: 11, color: '#92400e', maxWidth: '80%' }}>
+                            <i className="ri-settings-3-line flex-shrink-0"></i>
+                            <span><strong>System:</strong> {m.text}</span>
+                          </div>
+                        </div>
+                      )
+                    }
+                    const isAI = m.role === 'ai'
+                    return (
+                      <div key={mi} className={`d-flex gap-2 ${isAI ? 'flex-row-reverse' : ''}`}>
+                        {isAI ? (
+                          <div className="d-flex align-items-center justify-content-center rounded-circle text-white flex-shrink-0"
+                            style={{ width: 30, height: 30, background: '#10b981', fontSize: 13, alignSelf: 'flex-end' }}>
+                            <i className="ri-robot-line"></i>
+                          </div>
+                        ) : (
+                          <div className="d-flex align-items-center justify-content-center rounded-circle text-white fw-bold flex-shrink-0"
+                            style={{ width: 30, height: 30, background: AVATAR_COLORS[idx % AVATAR_COLORS.length], fontSize: 10, alignSelf: 'flex-end' }}>
+                            {ini(selConvo.customer)}
                           </div>
                         )}
-                        {m.text}
-                        {m.time && <div style={{ fontSize:10, color:'#94a3b8', marginTop:4, textAlign:'right' }}>{m.time}</div>}
+                        <div style={{
+                          maxWidth: '68%',
+                          background: isAI ? '#d1fae5' : '#fff',
+                          border: `1px solid ${isAI ? '#6ee7b7' : '#e2e8f0'}`,
+                          borderRadius: isAI ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+                          padding: '10px 14px', fontSize: 13, color: '#1e293b', whiteSpace: 'pre-line',
+                        }}>
+                          {isAI && (
+                            <div className="d-flex align-items-center gap-1 mb-1">
+                              <i className="ri-robot-line" style={{ color: '#10b981', fontSize: 10 }}></i>
+                              <span style={{ fontSize: 10, color: '#10b981', fontWeight: 600 }}>Chef Bems AI · via n8n</span>
+                            </div>
+                          )}
+                          {m.text}
+                          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4, textAlign: 'right' }}>{fmtTime(m.time)}</div>
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
 
-                {/* Show standalone user_message + ai_response if no messages array */}
-                {msgs.length === 0 && selConvo.ai_response && (
-                  <div style={{ display:'flex', gap:10, flexDirection:'row-reverse' }}>
-                    <div style={{ width:30, height:30, borderRadius:'50%', background:'#10b981', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, flexShrink:0, alignSelf:'flex-end' }}><i className="ri-robot-line" /></div>
-                    <div style={{ maxWidth:'68%', background:'#d1fae5', border:'1px solid #6ee7b7', borderRadius:'12px 12px 2px 12px', padding:'10px 14px', fontSize:13, color:'#1e293b', whiteSpace:'pre-line' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:4 }}>
-                        <i className="ri-robot-line" style={{ color:'#10b981', fontSize:14 }} />
-                        <span style={{ fontSize:10, color:'#10b981', fontWeight:600 }}>Chef Bems AI · via n8n</span>
-                      </div>
-                      {selConvo.ai_response}
-                    </div>
+                {/* Admin Action Bar (read-only — no reply box) */}
+                <div className="p-3 border-top d-flex align-items-center justify-content-between" style={{ background: '#fff' }}>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>
+                    <i className="ri-information-line me-1"></i>
+                    Replies are handled automatically by Chef Bems AI via n8n.
                   </div>
-                )}
-              </div>
-
-              {/* Action bar */}
-              <div style={{ padding:'12px 16px', borderTop:'1px solid var(--border)', background:'var(--bg-card)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
-                <span style={{ fontSize:12, color:'#64748b' }}>
-                  <i className="ri-information-line" style={{ marginRight:4 }} />
-                  Replies are handled automatically by Chef Bems AI via n8n.
-                </span>
-                <div style={{ display:'flex', gap:8 }}>
-                  {selConvo.status === 'escalated' && (
-                    <button onClick={() => changeStatus(selConvo.id, 'resolved')} disabled={actionLoading} style={btnStyle('#fff','#b45309','1.5px solid #b45309')}>
-                      <i className="ri-check-line" />Dismiss Escalation
-                    </button>
-                  )}
-                  {selConvo.status !== 'resolved' && (
-                    <button onClick={() => changeStatus(selConvo.id, 'resolved')} disabled={actionLoading} style={btnStyle('#1B4332','#fff')}>
-                      <i className="ri-checkbox-circle-line" />Mark Resolved
-                    </button>
-                  )}
-                  {selConvo.status !== 'escalated' && selConvo.status !== 'resolved' && (
-                    <button onClick={() => changeStatus(selConvo.id, 'escalated')} disabled={actionLoading} style={btnStyle('#fff7ed','#b45309','1.5px solid #fed7aa')}>
-                      <i className="ri-alarm-warning-line" />Escalate
-                    </button>
-                  )}
-                  {selConvo.status === 'resolved' && (
-                    <button onClick={() => changeStatus(selConvo.id, 'pending')} disabled={actionLoading} style={btnStyle('#f1f5f9','#374151','1.5px solid var(--border)')}>
-                      <i className="ri-refresh-line" />Reopen
-                    </button>
-                  )}
-                  {user?.role === 'superadmin' && (
-                    <button onClick={() => setConfirmDeleteId(selConvo.id)} disabled={actionLoading} style={btnStyle('transparent','#dc2626','1.5px solid #fca5a5')}>
-                      <i className="ri-delete-bin-line" />Delete
-                    </button>
-                  )}
+                  <div className="d-flex gap-2">
+                    {selConvo.status === 'escalated' && (
+                      <button className="btn btn-sm btn-outline-warning" onClick={() => dismissEscalation(selConvo.id)}>
+                        <i className="ri-check-line me-1"></i>Dismiss Escalation
+                      </button>
+                    )}
+                    {(selConvo.aiStatus === 'failed' || selConvo.aiStatus === 'low-confidence') && (
+                      <button className="btn btn-sm btn-outline-secondary">
+                        <i className="ri-settings-3-line me-1"></i>Fix Dietary Rule
+                      </button>
+                    )}
+                    {selConvo.status !== 'resolved' && (
+                      <button className="btn btn-sm btn-success" onClick={() => resolveConvo(selConvo.id)}>
+                        <i className="ri-checkbox-circle-line me-1"></i>Mark Resolved
+                      </button>
+                    )}
+                    {selConvo.status === 'resolved' && (
+                      <span style={{ fontSize: 12, color: '#15803d' }}>
+                        <i className="ri-checkbox-circle-fill me-1"></i>Resolved
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
+            )
+          })() : (
+            <div className="flex-grow-1 d-flex align-items-center justify-content-center text-muted">
+              <div className="text-center">
+                <i className="ri-chat-3-line fs-1 d-block mb-2"></i>
+                Select a conversation to view
+              </div>
             </div>
-          )
-        })() : (
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', flex:1, color:'var(--text-light)' }}>
-            <div style={{ textAlign:'center' }}>
-              <i className="ri-chat-3-line" style={{ fontSize:54, display:'block', marginBottom:8 }} />
-              <div style={{ fontSize:13 }}>{loading ? 'Loading conversations…' : 'Select a conversation to view'}</div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {confirmDeleteId && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
-          onClick={e => e.target===e.currentTarget && setConfirmDeleteId(null)}>
-          <div style={{ background:'var(--bg-card)', borderRadius:12, width:'100%', maxWidth:400, padding:28, textAlign:'center' }}>
-            <div style={{ width:56, height:56, borderRadius:'50%', background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
-              <i className="ri-delete-bin-line" style={{ fontSize:32, color:'#dc2626' }} />
-            </div>
-            <div style={{ fontWeight:700, fontSize:17, marginBottom:6, color:'var(--text-primary)' }}>Delete Conversation?</div>
-            <div style={{ fontSize:13, color:'var(--text-muted)', marginBottom:24 }}>
-              This conversation will be permanently deleted. This cannot be undone.
-            </div>
-            <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => setConfirmDeleteId(null)} style={{ flex:1, padding:'10px', borderRadius:8, border:'1.5px solid var(--border)', background:'var(--bg-card)', color:'var(--text-primary)', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:600, fontSize:13 }}>Cancel</button>
-              <button onClick={() => deleteConvo(confirmDeleteId)} disabled={actionLoading} style={{ flex:1, padding:'10px', borderRadius:8, border:'none', background:'#dc2626', color:'#fff', cursor:'pointer', fontFamily:'var(--body-font)', fontWeight:700, fontSize:13 }}>
-                {actionLoading ? 'Deleting…' : 'Delete'}
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

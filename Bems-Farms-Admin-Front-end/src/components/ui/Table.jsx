@@ -1,7 +1,10 @@
-export function Table({ children }) {
+/**
+ * Table — GotPOS Bootstrap table wrappers
+ */
+export function Table({ children, className = '' }) {
   return (
-    <div style={{ overflowX: 'auto', width: '100%' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'var(--body-font)' }}>
+    <div className="table-responsive">
+      <table className={`table table-hover table-nowrap mb-0 ${className}`}>
         {children}
       </table>
     </div>
@@ -9,26 +12,12 @@ export function Table({ children }) {
 }
 
 export function Thead({ children }) {
-  return (
-    <thead style={{ background: 'var(--bg-hover)', borderBottom: '1px solid var(--border)' }}>
-      <tr>{children}</tr>
-    </thead>
-  )
+  return <thead className="table-light">{children}</thead>
 }
 
-export function Th({ children, style }) {
+export function Th({ children, className = '' }) {
   return (
-    <th style={{
-      padding: '10px 16px',
-      fontSize: 11,
-      fontWeight: 700,
-      color: 'var(--text-muted)',
-      textTransform: 'uppercase',
-      letterSpacing: '0.06em',
-      whiteSpace: 'nowrap',
-      textAlign: 'left',
-      ...style,
-    }}>
+    <th className={`fw-semibold text-muted fs-xs text-uppercase ${className}`} style={{ letterSpacing: 0.5 }}>
       {children}
     </th>
   )
@@ -38,28 +27,10 @@ export function Tbody({ children }) {
   return <tbody>{children}</tbody>
 }
 
-export function Tr({ children, onClick, style }) {
-  return (
-    <tr
-      onClick={onClick}
-      style={{
-        borderBottom: '1px solid var(--border-subtle)',
-        transition: 'background 0.1s',
-        cursor: onClick ? 'pointer' : undefined,
-        ...style,
-      }}
-      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-    >
-      {children}
-    </tr>
-  )
+export function Tr({ children, className = '' }) {
+  return <tr className={className}>{children}</tr>
 }
 
-export function Td({ children, colSpan, style }) {
-  return (
-    <td style={{ padding: '12px 16px', verticalAlign: 'middle', color: 'var(--text-primary)', ...style }} colSpan={colSpan}>
-      {children}
-    </td>
-  )
+export function Td({ children, className = '' }) {
+  return <td className={`align-middle ${className}`}>{children}</td>
 }

@@ -4,13 +4,12 @@
 // ─────────────────────────────────────────────────────────────────
 
 export const ROLES = {
-  SUPERADMIN:       'superadmin',
   ADMIN:            'admin',
+  SUPERADMIN:       'superadmin',
   MANAGER:          'manager',
   ACCOUNTANT:       'accountant',
   DELIVERY_MANAGER: 'delivery_manager',
   CASHIER:          'cashier',
-  STOREKEEPER:      'storekeeper',
   KITCHEN_STAFF:    'kitchen_staff',
 }
 
@@ -20,82 +19,75 @@ export const ROLES = {
 /** Every role */
 export const ALL_ROLES = Object.values(ROLES)
 
-export const isStaffRole = (role) => ALL_ROLES.includes(role)
-
-export const STAFF_HOME = Object.freeze({
-  superadmin: '/dashboard',
-  admin: '/dashboard',
-  manager: '/dashboard',
-  accountant: '/accounts/overview',
-  delivery_manager: '/deliveries/active',
-  cashier: '/pos',
-  storekeeper: '/inventory/stock',
-  kitchen_staff: '/orders',
-})
-
-/** Superadmin + Manager only */
-export const ADMIN_ONLY = ['superadmin', 'admin', 'manager']
-
-/** Superadmin only */
-export const SUPERADMIN_ONLY = ['superadmin']
+/** Superadmin + Admin + Manager only */
+export const ADMIN_ONLY = ['admin', 'superadmin', 'manager']
 
 /** Can manage finances */
-export const FINANCE_ROLES = ['superadmin', 'admin', 'manager', 'accountant']
+export const FINANCE_ROLES = ['admin', 'superadmin', 'manager', 'accountant']
 
 /** Can manage deliveries */
-export const DELIVERY_ROLES = ['superadmin', 'admin', 'manager', 'delivery_manager']
+export const DELIVERY_ROLES = ['admin', 'superadmin', 'manager', 'delivery_manager']
 
 /** Can access POS */
-export const POS_ROLES = ['superadmin', 'admin', 'manager', 'cashier']
+export const POS_ROLES = ['admin', 'superadmin', 'manager', 'cashier']
 
 /** Can see orders */
-export const ORDER_ROLES = ['superadmin', 'admin', 'manager', 'accountant', 'delivery_manager', 'cashier', 'kitchen_staff']
+export const ORDER_ROLES = ['admin', 'superadmin', 'manager', 'accountant', 'delivery_manager', 'cashier', 'kitchen_staff']
 
 /** Can manage customers */
-export const CUSTOMER_ROLES = ['superadmin', 'admin', 'manager', 'cashier']
+export const CUSTOMER_ROLES = ['admin', 'superadmin', 'manager', 'cashier']
 
 /** Can manage products & inventory */
-export const PRODUCT_ROLES = ['superadmin', 'admin', 'manager', 'kitchen_staff']
-
-/** Can manage inventory */
-export const INVENTORY_ROLES = ['superadmin', 'admin', 'manager', 'storekeeper', 'kitchen_staff']
+export const PRODUCT_ROLES = ['admin', 'superadmin', 'manager', 'kitchen_staff']
 
 /** Can see reports */
-export const REPORT_ROLES = ['superadmin', 'admin', 'manager', 'accountant']
+export const REPORT_ROLES = ['admin', 'superadmin', 'manager', 'accountant']
 
 /** Can access Chef Bems AI */
-export const AI_ROLES = ['superadmin', 'admin', 'manager', 'kitchen_staff']
+export const AI_ROLES = ['admin', 'superadmin', 'manager', 'kitchen_staff']
 
 /** Can manage staff */
-export const STAFF_ROLES = ['superadmin', 'manager']
+export const STAFF_ROLES = ['admin', 'superadmin', 'manager']
 
 /** Can access settings */
-export const SETTINGS_ROLES = ['superadmin', 'manager']
+export const SETTINGS_ROLES = ['admin', 'superadmin', 'manager']
 
-/** Multi-store — matches stores_admin.js (superadmin + manager can view/create/edit; delete & manager-assign are superadmin-only at the route level) */
-export const MULTISTORE_ROLES = ['superadmin', 'admin', 'manager']
+/** Multi-store — superadmin / admin only */
+export const MULTISTORE_ROLES = ['admin', 'superadmin']
 
-/** Can manage purchase orders — matches purchases_admin.js */
-export const PURCHASE_ROLES = ['superadmin', 'admin', 'manager']
+export const isStaffRole = (role) => {
+  return role ? ALL_ROLES.includes(role) : false
+}
 
-/** Can manage suppliers — matches suppliers_admin.js */
-export const SUPPLIER_ROLES = ['superadmin', 'admin', 'manager']
+export const STAFF_HOME = {
+  admin: '/dashboard',
+  superadmin: '/dashboard',
+  manager: '/dashboard',
+  cashier: '/pos',
+  kitchen_staff: '/inventory/stock',
+  delivery_manager: '/deliveries/active',
+  accountant: '/accounts/overview',
+}
 
 // ── UI Labels & Colors ─────────────────────────────────────────────
 export const ROLE_META = {
+  admin: {
+    label:       'Administrator',
+    description: 'Full system access',
+    color:       '#dc2626',
+    bg:          '#fee2e2',
+    icon:        'ri-shield-star-line',
+    email:       'admin@bemsfarms.com',
+    password:    'admin123',
+  },
   superadmin: {
     label:       'Super Admin',
     description: 'Full system access',
     color:       '#dc2626',
     bg:          '#fee2e2',
     icon:        'ri-shield-star-line',
-  },
-  admin: {
-    label:       'Admin',
-    description: 'Administrative operations access',
-    color:       '#be123c',
-    bg:          '#ffe4e6',
-    icon:        'ri-shield-user-line',
+    email:       'superadmin@bemsfarms.com',
+    password:    'super123',
   },
   manager: {
     label:       'Manager',
@@ -103,13 +95,8 @@ export const ROLE_META = {
     color:       '#7c3aed',
     bg:          '#ede9fe',
     icon:        'ri-user-star-line',
-  },
-  storekeeper: {
-    label:       'Storekeeper',
-    description: 'Inventory and purchasing operations',
-    color:       '#166534',
-    bg:          '#dcfce7',
-    icon:        'ri-archive-stack-line',
+    email:       'manager@bemsfarms.com',
+    password:    'manager123',
   },
   accountant: {
     label:       'Accountant',
@@ -117,6 +104,8 @@ export const ROLE_META = {
     color:       '#0369a1',
     bg:          '#e0f2fe',
     icon:        'ri-bank-card-line',
+    email:       'accountant@bemsfarms.com',
+    password:    'account123',
   },
   delivery_manager: {
     label:       'Delivery Manager',
@@ -124,6 +113,8 @@ export const ROLE_META = {
     color:       '#b45309',
     bg:          '#fef3c7',
     icon:        'ri-bike-line',
+    email:       'delivery@bemsfarms.com',
+    password:    'delivery123',
   },
   cashier: {
     label:       'Cashier',
@@ -131,6 +122,8 @@ export const ROLE_META = {
     color:       '#15803d',
     bg:          '#dcfce7',
     icon:        'ri-store-2-line',
+    email:       'cashier@bemsfarms.com',
+    password:    'cashier123',
   },
   kitchen_staff: {
     label:       'Kitchen Staff',
@@ -138,5 +131,7 @@ export const ROLE_META = {
     color:       '#9d174d',
     bg:          '#fce7f3',
     icon:        'ri-restaurant-line',
+    email:       'kitchen@bemsfarms.com',
+    password:    'kitchen123',
   },
 }
