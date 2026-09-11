@@ -641,9 +641,8 @@ function getProductIcon(name = '', cat = '') {
       {/* ═══ TOPBAR ═══════════════════════════════════════════════════════ */}
       <header className="border-bottom" style={{ height:58, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', zIndex:200, background:'var(--bs-body-bg)' }}>
         {/* Logo — left */}
-        <div style={{ flex:1, display:'flex', alignItems:'center', gap:10 }}>
-          <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height:36, objectFit:'contain' }} onError={e => { e.target.style.display='none'; }} />
-          <span style={{ fontWeight:800, fontSize:15, color:'#0ab39c', lineHeight:1.2 }}>Bems Farms<br/><span style={{ fontSize:9, fontWeight:600, color:'var(--bs-secondary-color)', letterSpacing:1 }}>POINT OF SALE</span></span>
+        <div style={{ flex:1, display:'flex', alignItems:'center' }}>
+          <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height:38, objectFit:'contain' }} />
         </div>
         {/* Unified search + scanner — truly centred */}
         <div style={{ position:'relative', width:'100%', maxWidth:520 }}>
