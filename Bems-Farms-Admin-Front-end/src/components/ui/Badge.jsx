@@ -1,14 +1,14 @@
 /**
- * Badge — GotPOS Bootstrap badge
+ * Badge — Luxury Brand Status Indicators
  */
-const COLOR_MAP = {
-  green:   'bg-success-subtle text-success',
-  blue:    'bg-primary-subtle text-primary',
-  amber:   'bg-warning-subtle text-warning',
-  red:     'bg-danger-subtle text-danger',
-  purple:  'bg-info-subtle text-info',
-  slate:   'bg-secondary-subtle text-secondary',
-  gray:    'bg-secondary-subtle text-secondary',
+const TINT_MAP = {
+  green:  { bg: '#dcfce7', text: '#15803d', border: '#86efac' },
+  blue:   { bg: '#e0f2fe', text: '#0369a1', border: '#bae6fd' },
+  amber:  { bg: '#fef3c7', text: '#b45309', border: '#fde68a' },
+  red:    { bg: '#ffe4e6', text: '#be123c', border: '#fecdd3' },
+  purple: { bg: '#f3e8ff', text: '#7e22ce', border: '#e9d5ff' },
+  slate:  { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' },
+  gray:   { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' },
 }
 
 export function statusColor(status) {
@@ -30,9 +30,20 @@ export function statusColor(status) {
 }
 
 export default function Badge({ label, color = 'slate' }) {
-  const cls = COLOR_MAP[color] ?? COLOR_MAP.slate
+  const tint = TINT_MAP[color] ?? TINT_MAP.slate
   return (
-    <span className={`badge fw-normal ${cls}`} style={{ fontSize: 11 }}>
+    <span
+      className="badge"
+      style={{
+        backgroundColor: tint.bg,
+        color: tint.text,
+        border: `1px solid ${tint.border}`,
+        fontSize: '0.6875rem',
+        fontWeight: 800,
+        textTransform: 'uppercase',
+        letterSpacing: '0.04em'
+      }}
+    >
       {label}
     </span>
   )

@@ -1128,35 +1128,46 @@ export default function Dashboard() {
   return (
     <div className="container-fluid">
       <PageHeader
-        title={`Good ${getGreeting()}, ${user?.first_name ?? 'Admin'} 👋`}
+        title={`Good ${getGreeting()}, ${user?.first_name ?? 'Bems'} 👋`}
         subtitle={today}
         actions={
-          <Link to="/orders" className="btn btn-primary btn-sm">
-            <i className="ri-add-line me-1"></i>New Order
+          <Link to="/orders" className="btn btn-primary-bf topbar-action-pill text-decoration-none">
+            <i className="ri-add-line"></i>New Order
           </Link>
         }
       />
 
       {/* ── Tab navigation ── */}
-      <div className="card mb-4">
-        <div className="card-body py-0 px-0">
-          <ul className="nav nav-tabs border-0 flex-nowrap overflow-auto" style={{ whiteSpace: 'nowrap' }}>
+      <div className="card mb-4" style={{ borderRadius: '1rem', border: '1px solid #EFECE6' }}>
+        <div className="card-body p-2">
+          <div className="d-flex align-items-center gap-1 flex-nowrap overflow-auto py-1" style={{ whiteSpace: 'nowrap' }}>
             {TABS.map((tab) => (
-              <li className="nav-item" key={tab.key}>
-                <button
-                  className={`nav-link d-flex align-items-center gap-2 border-0 rounded-0 px-4 py-3 ${activeTab === tab.key ? 'active fw-semibold' : ''}`}
-                  onClick={() => setActiveTab(tab.key)}
-                  style={{ background: 'none', cursor: 'pointer' }}
-                >
-                  <i className={`${tab.icon} fs-6`}></i>
-                  <span style={{ fontSize: 13 }}>{tab.label}</span>
-                  {tab.badge && (
-                    <span className="badge bg-success-subtle text-success ms-1" style={{ fontSize: 9 }}>{tab.badge}</span>
-                  )}
-                </button>
-              </li>
+              <button
+                key={tab.key}
+                className={`btn d-flex align-items-center gap-2 border-0 px-3 py-2 ${activeTab === tab.key ? 'btn-primary-bf fw-bold' : 'text-muted fw-semibold bg-transparent'}`}
+                style={{
+                  borderRadius: '9999px',
+                  fontSize: '0.8125rem',
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                <i className={`${tab.icon} fs-6`}></i>
+                <span>{tab.label}</span>
+                {tab.badge && (
+                  <span className="badge" style={{
+                    backgroundColor: activeTab === tab.key ? '#FEF3C7' : 'rgba(245, 158, 11, 0.15)',
+                    color: activeTab === tab.key ? '#B45309' : '#D97706',
+                    fontSize: 9,
+                    fontWeight: 800
+                  }}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
             ))}
-          </ul>
+          </div>
         </div>
       </div>
 
