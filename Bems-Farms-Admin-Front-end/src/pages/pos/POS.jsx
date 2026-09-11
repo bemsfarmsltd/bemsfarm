@@ -204,6 +204,19 @@ function getProductIcon(name = '', cat = '') {
 export default function POS() {
   const { user } = useAuth()
 
+  // ── Theme State (Light vs Dark Mode Switcher) ──────────────────────────────
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('bems_pos_theme') || 'light'
+  })
+
+  function toggleTheme() {
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark'
+      localStorage.setItem('bems_pos_theme', next)
+      return next
+    })
+  }
+
   // ── Live Backend State ─────────────────────────────────────────────────────
   const [productsList, setProductsList] = useState([])
   const [customersList, setCustomersList] = useState(MOCK_CUSTOMERS)
@@ -797,7 +810,7 @@ export default function POS() {
 
   // ── UI Render ──────────────────────────────────────────────────────────────
   return (
-    <div className="pos-master-container">
+    <div className={`pos-master-container theme-${theme}`}>
 
       {/* ═══ TOPBAR / HEADER ═════════════════════════════════════════════ */}
       <header className="pos-topbar">
@@ -806,7 +819,7 @@ export default function POS() {
           <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" className="pos-logo-img" />
           <div className="pos-status-pill">
             <span className="pos-status-dot"></span>
-            <span className="pos-status-text">FLAGSHIP TERMINAL</span>
+            <span className="pos-status-text">TERMINAL LIVE</span>
           </div>
         </div>
 
@@ -838,8 +851,26 @@ export default function POS() {
           )}
         </div>
 
-        {/* Right HUD: Held, Time, Exit, Cashier */}
+        {/* Right HUD: Theme Switcher, Held, Time, Exit, Cashier */}
         <div className="pos-header-actions">
+          {/* Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className="pos-theme-toggle-btn"
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}>
+            {theme === 'dark' ? (
+              <>
+                <i className="ri-sun-fill" style={{ color: '#f59e0b' }}></i>
+                <span>Light Mode</span>
+              </>
+            ) : (
+              <>
+                <i className="ri-moon-fill" style={{ color: '#3b82f6' }}></i>
+                <span>Dark Mode</span>
+              </>
+            )}
+          </button>
+
           {heldOrders.length > 0 && (
             <button onClick={() => recallOrder(0)} className="pos-held-btn">
               <i className="ri-pause-circle-fill"></i>
@@ -966,12 +997,12 @@ export default function POS() {
             {loadingPOS ? (
               <div className="pos-empty-state">
                 <div className="spinner-border text-emerald mb-3" role="status" style={{ width: 42, height: 42, color: '#10b981' }}></div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#e2e8f0' }}>Syncing PostgreSQL Live Catalog...</div>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>Syncing PostgreSQL Live Catalog...</div>
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="pos-empty-state">
                 <div style={{ fontSize: 52, marginBottom: 12 }}>🔍</div>
-                <div style={{ fontSize: 17, fontWeight: 800, color: '#fff' }}>No matching items found</div>
+                <div style={{ fontSize: 17, fontWeight: 800 }}>No matching items found</div>
                 <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>Try searching for rice, oil, soap, or custard</div>
                 <button
                   className="btn btn-emerald mt-3"
@@ -1151,7 +1182,7 @@ export default function POS() {
             {cart.length === 0 ? (
               <div className="pos-cart-empty">
                 <div style={{ fontSize: 46, marginBottom: 12 }}>🛒</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>Cart is Ready</div>
+                <div style={{ fontSize: 16, fontWeight: 800 }} className="pos-cart-empty-title">Cart is Ready</div>
                 <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Scan or select grocery items to tender</div>
                 <div className="pos-scanner-tip">
                   ⚡ Physical USB scanners auto-register in real-time
@@ -1346,7 +1377,7 @@ export default function POS() {
                 </div>
 
                 <div className="modal-body p-0">
-                  <div className="p-3 border-bottom border-secondary-subtle" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                  <div className="p-3 border-bottom border-secondary-subtle pos-modal-subbar">
                     <div className="input-group input-group-lg">
                       <span className="input-group-text bg-emerald text-white border-0">
                         <i className="ri-barcode-line fs-20"></i>
@@ -1354,7 +1385,7 @@ export default function POS() {
                       <input
                         ref={scanModalInputRef}
                         type="text"
-                        className="form-control"
+                        className="form-control pos-input-theme"
                         placeholder="Scan barcode or SKU + Enter..."
                         value={scanCode}
                         autoFocus
@@ -1374,7 +1405,7 @@ export default function POS() {
                     {scanCart.length === 0 ? (
                       <div className="pos-empty-state">
                         <div style={{ fontSize: 54, marginBottom: 10 }}>📦</div>
-                        <div style={{ fontWeight: 800, fontSize: 16, color: '#fff' }}>No items in scanner basket</div>
+                        <div style={{ fontWeight: 800, fontSize: 16 }}>No items in scanner basket</div>
                         <div style={{ fontSize: 12, color: '#94a3b8' }}>Point barcode scanner at physical products</div>
                       </div>
                     ) : (
@@ -1382,12 +1413,12 @@ export default function POS() {
                         <div key={item.id} className="pos-scan-item-row">
                           <span className="fs-24">{item.icon}</span>
                           <div style={{ flex: 1 }}>
-                            <div className="fw-bold text-white fs-14">{item.name}</div>
+                            <div className="fw-bold fs-14 pos-item-name-themed">{item.name}</div>
                             <div className="text-muted fs-11">{item.sku} · {fmt(item.price)} / {item.unit}</div>
                           </div>
                           <div className="d-flex align-items-center gap-2">
                             <button className="btn btn-sm btn-outline-secondary" onClick={() => scannerUpdateQty(item.id, item.qty - 1)}>−</button>
-                            <span className="fw-bold px-2 text-white">{item.qty}</span>
+                            <span className="fw-bold px-2 pos-item-name-themed">{item.qty}</span>
                             <button className="btn btn-sm btn-outline-secondary" onClick={() => scannerUpdateQty(item.id, item.qty + 1)}>+</button>
                           </div>
                           <div className="fw-bold text-emerald fs-15 text-end" style={{ minWidth: 90 }}>
@@ -1402,7 +1433,7 @@ export default function POS() {
                   </div>
 
                   {scanCart.length > 0 && (
-                    <div className="p-4 border-top border-secondary-subtle" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                    <div className="p-4 border-top border-secondary-subtle pos-modal-footer-box">
                       <div className="d-flex justify-content-between mb-2 fs-13 text-muted">
                         <span>Subtotal ({scanCart.reduce((s, i) => s + i.qty, 0)} items)</span>
                         <span>{fmt(scSub)}</span>
@@ -1412,7 +1443,7 @@ export default function POS() {
                         <span>{fmt(scVat)}</span>
                       </div>
                       <div className="d-flex justify-content-between mb-4">
-                        <span className="fw-bold fs-18 text-white">Total Payable</span>
+                        <span className="fw-bold fs-18 pos-item-name-themed">Total Payable</span>
                         <span className="fw-bolder fs-24 text-emerald">{fmt(scTotal)}</span>
                       </div>
                       <div className="d-flex gap-3">
@@ -1450,7 +1481,7 @@ export default function POS() {
                 <button className="btn-close btn-close-white ms-auto" onClick={closeModal}></button>
               </div>
 
-              <div className="d-flex border-bottom border-secondary-subtle" style={{ background: 'rgba(255,255,255,0.02)' }}>
+              <div className="d-flex border-bottom border-secondary-subtle" style={{ background: 'rgba(0,0,0,0.02)' }}>
                 {[
                   { key: 'all',        label: 'All Orders',  count: onlineOrders.length },
                   { key: 'new',        label: '🔴 New',       count: onlineOrders.filter(o => o.status === 'new').length },
@@ -1486,13 +1517,13 @@ export default function POS() {
                           </div>
                           <div style={{ flex: 1 }}>
                             <div className="d-flex align-items-center gap-2">
-                              <span className="fw-bold text-white fs-14">{order.id}</span>
+                              <span className="fw-bold fs-14 pos-item-name-themed">{order.id}</span>
                               <span className="pos-badge-status" style={{ color: st.color, background: st.bg, border: `1px solid ${st.border}` }}>
                                 {st.label}
                               </span>
                               <span className="text-muted fs-11">{ch.label}</span>
                             </div>
-                            <div className="fs-13 text-white mt-1">
+                            <div className="fs-13 mt-1 pos-item-name-themed">
                               <strong>{order.customer}</strong> · <span className="text-muted">{order.phone}</span>
                             </div>
                             <div className="text-muted fs-11 mt-1">
@@ -1527,7 +1558,7 @@ export default function POS() {
                               if (!p) return null
                               return (
                                 <div key={productId} className="d-flex justify-content-between fs-12 py-1">
-                                  <span className="text-white">{p.icon} {p.name} × {qty}</span>
+                                  <span className="pos-item-name-themed">{p.icon} {p.name} × {qty}</span>
                                   <strong className="text-emerald">{fmt(p.price * qty)}</strong>
                                 </div>
                               )
@@ -1568,10 +1599,10 @@ export default function POS() {
                 <div className="mb-3">
                   <label className="form-label text-muted small fw-bold">AMOUNT TENDERED (₦)</label>
                   <div className="input-group input-group-lg">
-                    <span className="input-group-text bg-dark text-emerald border-secondary fw-bold fs-20">₦</span>
+                    <span className="input-group-text bg-emerald text-white border-0 fw-bold fs-20">₦</span>
                     <input
                       type="number"
-                      className="form-control bg-dark text-white border-secondary fw-bold fs-22"
+                      className="form-control pos-input-theme fw-bold fs-22"
                       placeholder="0.00"
                       value={cashReceived}
                       onChange={e => setCashReceived(e.target.value)}
@@ -1650,7 +1681,7 @@ export default function POS() {
 
                 <div className="pos-terminal-instruction mb-4">
                   <i className="ri-bank-card-2-line fs-32 text-sapphire"></i>
-                  <div className="text-white fs-12 lh-base">
+                  <div className="fs-12 lh-base pos-item-name-themed">
                     Charge <strong className="text-emerald">{fmt(total)}</strong> on the physical POS machine.<br/>
                     Once payment approves, click <strong>Confirm Payment</strong> below.
                   </div>
@@ -1699,7 +1730,7 @@ export default function POS() {
                 </div>
 
                 <div className="pos-bank-box mb-3">
-                  <div className="fw-bold text-white mb-1">Transfer to: Bems Farms Ltd</div>
+                  <div className="fw-bold mb-1 pos-item-name-themed">Transfer to: Bems Farms Ltd</div>
                   <div className="text-emerald fs-14">GTBank · <strong>0123456789</strong></div>
                   <div className="text-muted fs-11 mt-1">Ref ID: <strong>{orderId}</strong></div>
                 </div>
@@ -1708,7 +1739,7 @@ export default function POS() {
                   <label className="form-label text-muted small fw-bold">CUSTOMER BANK NAME</label>
                   <input
                     type="text"
-                    className="form-control bg-dark text-white border-secondary"
+                    className="form-control pos-input-theme"
                     placeholder="e.g. GTBank, Access, Zenith, Kuda"
                     value={bankName}
                     onChange={e => setBankName(e.target.value)}
@@ -1718,7 +1749,7 @@ export default function POS() {
                   <label className="form-label text-muted small fw-bold">SESSION ID / TRANSACTION REF</label>
                   <input
                     type="text"
-                    className="form-control bg-dark text-white border-secondary"
+                    className="form-control pos-input-theme"
                     placeholder="Enter bank reference number"
                     value={txnRef}
                     onChange={e => setTxnRef(e.target.value)}
@@ -1784,10 +1815,10 @@ export default function POS() {
 
                 <div className="d-flex flex-column gap-2 mb-3">
                   {splitRows.map((row, i) => (
-                    <div key={i} className="p-2 rounded border border-secondary" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                    <div key={i} className="p-2 rounded border border-secondary-subtle pos-split-row">
                       <div className="row g-2 align-items-center">
                         <div className="col-5">
-                          <select className="form-select form-select-sm bg-dark text-white border-secondary" value={row.method} onChange={e => updateSplit(i, 'method', e.target.value)}>
+                          <select className="form-select form-select-sm pos-input-theme" value={row.method} onChange={e => updateSplit(i, 'method', e.target.value)}>
                             {['Cash', 'Card / POS', 'Bank Transfer', 'QR / USSD', 'Wallet'].map(m => (
                               <option key={m}>{m}</option>
                             ))}
@@ -1796,7 +1827,7 @@ export default function POS() {
                         <div className="col-5">
                           <input
                             type="number"
-                            className="form-control form-control-sm bg-dark text-white border-secondary"
+                            className="form-control form-control-sm pos-input-theme"
                             placeholder="Amount (₦)"
                             value={row.amount}
                             onChange={e => updateSplit(i, 'amount', e.target.value)}
@@ -1818,7 +1849,7 @@ export default function POS() {
                   <button type="button" className="btn btn-sm btn-outline-secondary" onClick={addSplitRow}>
                     <i className="ri-add-line me-1"></i> Add Method
                   </button>
-                  <span className="text-white">
+                  <span className="pos-item-name-themed">
                     Allocated: <strong className="text-emerald">{fmt(splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0))}</strong> / {fmt(total)}
                   </span>
                 </div>
@@ -1845,7 +1876,7 @@ export default function POS() {
                 <button className="btn-close btn-close-white" onClick={closeModal}></button>
               </div>
               <div className="modal-body p-4">
-                <div className="p-3 rounded mb-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                <div className="p-3 rounded mb-3 pos-split-row">
                   <div className="d-flex justify-content-between align-items-center">
                     <span className="text-muted">Held Bill Amount</span>
                     <strong className="fs-18 text-emerald">{fmt(total)}</strong>
@@ -1855,7 +1886,7 @@ export default function POS() {
                   <label className="form-label text-muted small fw-bold">HOLD REFERENCE</label>
                   <input
                     type="text"
-                    className="form-control bg-dark text-white border-secondary"
+                    className="form-control pos-input-theme"
                     placeholder="e.g. Table 4 / Mrs Okonkwo"
                     value={holdRef}
                     onChange={e => setHoldRef(e.target.value)}
@@ -1865,7 +1896,7 @@ export default function POS() {
                 <div className="mb-4">
                   <label className="form-label text-muted small fw-bold">HOLD NOTE</label>
                   <textarea
-                    className="form-control bg-dark text-white border-secondary"
+                    className="form-control pos-input-theme"
                     rows="2"
                     placeholder="Optional remarks..."
                     value={holdNote}
@@ -1897,7 +1928,7 @@ export default function POS() {
                 <button className="btn-close btn-close-white ms-auto" onClick={closeModal}></button>
               </div>
               <div className="modal-body p-4">
-                <div className="p-3 rounded mb-3 border border-secondary" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                <div className="p-3 rounded mb-3 border border-secondary-subtle pos-split-row">
                   <div className="d-flex justify-content-between mb-2">
                     <div>
                       <div className="fs-18 fw-bolder text-emerald">🌾 BEMS FARMS LTD</div>
@@ -1908,13 +1939,13 @@ export default function POS() {
                       <div><strong>Bill ID:</strong> {orderId}</div>
                     </div>
                   </div>
-                  <div className="fs-12 text-white mt-2">
+                  <div className="fs-12 mt-2 pos-item-name-themed">
                     <strong>Customer:</strong> {customer?.name || 'Walk-in Customer'} {customer?.phone && `(${customer.phone})`}
                   </div>
                 </div>
 
                 <div className="table-responsive mb-3">
-                  <table className="table table-sm table-dark align-middle">
+                  <table className="table table-sm align-middle pos-invoice-table">
                     <thead>
                       <tr className="text-muted fs-11">
                         <th>ITEM</th>
@@ -1929,7 +1960,7 @@ export default function POS() {
                           <td>{i.icon} {i.name}</td>
                           <td className="text-center">{i.qty}</td>
                           <td className="text-end">{fmt(i.price)}</td>
-                          <td className="text-end fw-bold text-white">{fmt(i.price * i.qty)}</td>
+                          <td className="text-end fw-bold">{fmt(i.price * i.qty)}</td>
                         </tr>
                       ))}
                       {discountPct > 0 && (
@@ -1943,7 +1974,7 @@ export default function POS() {
                         <td className="text-end">{fmt(vat)}</td>
                       </tr>
                       <tr className="border-top fs-15 fw-bold">
-                        <td colSpan="3" className="text-end text-white">Total Payable</td>
+                        <td colSpan="3" className="text-end">Total Payable</td>
                         <td className="text-end text-emerald fw-bolder">{fmt(total)}</td>
                       </tr>
                     </tbody>
@@ -1974,7 +2005,7 @@ export default function POS() {
                 <button className="btn-close" onClick={closeModal}></button>
               </div>
               <div className="modal-body p-4">
-                <div className="p-3 rounded mb-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                <div className="p-3 rounded mb-3 pos-split-row">
                   <div className="d-flex justify-content-between align-items-center">
                     <span className="text-muted">Credit Amount</span>
                     <strong className="fs-18 text-amber">{fmt(total)}</strong>
@@ -1984,7 +2015,7 @@ export default function POS() {
                   <label className="form-label text-muted small fw-bold">CUSTOMER NAME / PHONE</label>
                   <input
                     type="text"
-                    className="form-control bg-dark text-white border-secondary"
+                    className="form-control pos-input-theme"
                     placeholder="Enter customer name"
                     value={payLaterCust || customer?.name || ''}
                     onChange={e => setPayLaterCust(e.target.value)}
@@ -1994,7 +2025,7 @@ export default function POS() {
                   <label className="form-label text-muted small fw-bold">DUE DATE</label>
                   <input
                     type="date"
-                    className="form-control bg-dark text-white border-secondary"
+                    className="form-control pos-input-theme"
                     value={payLaterDate}
                     onChange={e => setPayLaterDate(e.target.value)}
                   />
@@ -2029,7 +2060,7 @@ export default function POS() {
               </div>
               <div className="modal-body p-4" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
                 <div className="table-responsive">
-                  <table className="table table-dark table-hover align-middle mb-0 fs-12">
+                  <table className="table align-middle mb-0 fs-12 pos-invoice-table">
                     <thead>
                       <tr className="text-muted border-bottom">
                         <th>INVOICE</th>
@@ -2043,9 +2074,9 @@ export default function POS() {
                       {historyList.map(h => (
                         <tr key={h.inv}>
                           <td className="fw-bold text-sapphire">{h.inv}</td>
-                          <td className="text-white">{h.cust}</td>
+                          <td className="pos-item-name-themed">{h.cust}</td>
                           <td>
-                            <span className="badge bg-secondary-subtle text-white border border-secondary">
+                            <span className="badge bg-secondary-subtle border">
                               {h.method}
                             </span>
                           </td>
@@ -2079,7 +2110,7 @@ export default function POS() {
             <div className="pos-success-details">
               <div className="d-flex justify-content-between mb-2">
                 <span className="text-muted">Customer</span>
-                <strong className="text-white">{successData.customer?.name || 'Walk-in Customer'}</strong>
+                <strong className="pos-item-name-themed">{successData.customer?.name || 'Walk-in Customer'}</strong>
               </div>
               <div className="d-flex justify-content-between mb-2">
                 <span className="text-muted">Payment Tender</span>
@@ -2087,7 +2118,7 @@ export default function POS() {
               </div>
               <div className="d-flex justify-content-between mb-2">
                 <span className="text-muted">Total Charged</span>
-                <strong className="text-white fs-15">{fmt(successData.total)}</strong>
+                <strong className="fs-15 pos-item-name-themed">{fmt(successData.total)}</strong>
               </div>
               {successData.method === 'Cash' && successData.change > 0 && (
                 <div className="d-flex justify-content-between pt-2 border-top border-secondary">
@@ -2144,7 +2175,7 @@ export default function POS() {
                 <div className="pos-success-ring" style={{ background: '#f43f5e' }}>
                   ✓
                 </div>
-                <h6 className="fw-bold text-white mb-1 fs-17">Return Processed</h6>
+                <h6 className="fw-bold mb-1 fs-17 pos-item-name-themed">Return Processed</h6>
                 <div className="text-muted fs-12 mb-3">Ref: {returnSuccess.ref}</div>
                 <div className="pos-success-details mb-3">
                   <div className="d-flex justify-content-between mb-1">
@@ -2153,7 +2184,7 @@ export default function POS() {
                   </div>
                   <div className="d-flex justify-content-between mb-1">
                     <span className="text-muted">Method</span>
-                    <span className="text-white">{returnSuccess.method}</span>
+                    <span className="pos-item-name-themed">{returnSuccess.method}</span>
                   </div>
                   <div className="d-flex justify-content-between">
                     <span className="text-muted">Goods Condition</span>
@@ -2187,7 +2218,7 @@ export default function POS() {
                       <div className="col-12">
                         <label className="form-label text-muted small fw-bold">SELECT PRODUCT</label>
                         <select
-                          className="form-select bg-dark text-white border-secondary"
+                          className="form-select pos-input-theme"
                           value={returnForm.product?.id || ''}
                           onChange={e => {
                             const p = productsList.find(x => x.id === Number(e.target.value))
@@ -2203,7 +2234,7 @@ export default function POS() {
                       <div className="col-md-6">
                         <label className="form-label text-muted small fw-bold">CUSTOMER NAME</label>
                         <input
-                          className="form-control bg-dark text-white border-secondary"
+                          className="form-control pos-input-theme"
                           placeholder="Walk-in / Customer"
                           value={returnForm.customer}
                           onChange={e => setReturnForm(f => ({ ...f, customer: e.target.value }))}
@@ -2212,7 +2243,7 @@ export default function POS() {
                       <div className="col-md-6">
                         <label className="form-label text-muted small fw-bold">PHONE NUMBER</label>
                         <input
-                          className="form-control bg-dark text-white border-secondary"
+                          className="form-control pos-input-theme"
                           placeholder="0800 000 0000"
                           value={returnForm.phone}
                           onChange={e => setReturnForm(f => ({ ...f, phone: e.target.value }))}
@@ -2222,7 +2253,7 @@ export default function POS() {
                         <label className="form-label text-muted small fw-bold">QUANTITY</label>
                         <input
                           type="number"
-                          className="form-control bg-dark text-white border-secondary"
+                          className="form-control pos-input-theme"
                           min="1"
                           value={returnForm.qty}
                           onChange={e => setReturnForm(f => ({ ...f, qty: Number(e.target.value) }))}
@@ -2232,7 +2263,7 @@ export default function POS() {
                         <label className="form-label text-muted small fw-bold">UNIT PRICE (₦)</label>
                         <input
                           type="number"
-                          className="form-control bg-dark text-white border-secondary"
+                          className="form-control pos-input-theme"
                           min="0"
                           value={returnForm.unitPrice}
                           onChange={e => setReturnForm(f => ({ ...f, unitPrice: Number(e.target.value) }))}
@@ -2241,7 +2272,7 @@ export default function POS() {
                       <div className="col-md-4">
                         <label className="form-label text-muted small fw-bold">REFUND VALUE</label>
                         <input
-                          className="form-control bg-dark text-danger border-secondary fw-bolder"
+                          className="form-control pos-input-theme text-danger fw-bolder"
                           readOnly
                           value={fmt(retTotal)}
                         />
@@ -2249,7 +2280,7 @@ export default function POS() {
                       <div className="col-12">
                         <label className="form-label text-muted small fw-bold">RETURN REASON</label>
                         <select
-                          className="form-select bg-dark text-white border-secondary"
+                          className="form-select pos-input-theme"
                           value={returnForm.reason}
                           onChange={e => setReturnForm(f => ({ ...f, reason: e.target.value }))}>
                           {POS_RETURN_REASONS.map(r => (
@@ -2269,10 +2300,10 @@ export default function POS() {
                     </div>
                   ) : (
                     <div>
-                      <div className="p-3 rounded mb-3 border border-secondary" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                      <div className="p-3 rounded mb-3 border border-secondary-subtle pos-split-row">
                         <div className="d-flex justify-content-between mb-1">
                           <span className="text-muted">Item</span>
-                          <strong className="text-white">{returnForm.product?.name} × {returnForm.qty}</strong>
+                          <strong className="pos-item-name-themed">{returnForm.product?.name} × {returnForm.qty}</strong>
                         </div>
                         <div className="d-flex justify-content-between">
                           <span className="text-muted">Total Refund</span>
@@ -2339,15 +2370,49 @@ export default function POS() {
         </div>
       )}
 
-      {/* ═══ LUXURY OBSIDIAN DESIGN SYSTEM STYLES ═════════════════════════ */}
+      {/* ═══ DUAL LIGHT / DARK THEME DESIGN SYSTEM ═══════════════════════ */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
-        :root {
+        /* ── Dark Theme Tokens ── */
+        .theme-dark {
           --pos-bg: #0b0f19;
+          --pos-topbar-bg: rgba(11, 15, 25, 0.85);
           --pos-surface: #111827;
           --pos-card: rgba(22, 30, 49, 0.75);
+          --pos-card-hover: rgba(26, 36, 60, 0.95);
           --pos-border: rgba(255, 255, 255, 0.08);
+          --pos-text-primary: #ffffff;
+          --pos-text-secondary: #94a3b8;
+          --pos-hud-bg: rgba(0, 0, 0, 0.35);
+          --pos-deck-bg: rgba(17, 24, 39, 0.5);
+          --pos-sidebar-bg: rgba(17, 24, 39, 0.75);
+          --pos-modal-bg: #111827;
+          --pos-input-bg: rgba(0, 0, 0, 0.3);
+          --pos-input-border: rgba(255, 255, 255, 0.15);
+          --pos-input-text: #ffffff;
+        }
+
+        /* ── Light Theme Tokens ── */
+        .theme-light {
+          --pos-bg: #f8fafc;
+          --pos-topbar-bg: rgba(255, 255, 255, 0.95);
+          --pos-surface: #ffffff;
+          --pos-card: #ffffff;
+          --pos-card-hover: #ffffff;
+          --pos-border: rgba(0, 0, 0, 0.08);
+          --pos-text-primary: #0f172a;
+          --pos-text-secondary: #64748b;
+          --pos-hud-bg: #f1f5f9;
+          --pos-deck-bg: #ffffff;
+          --pos-sidebar-bg: #ffffff;
+          --pos-modal-bg: #ffffff;
+          --pos-input-bg: #f8fafc;
+          --pos-input-border: #cbd5e1;
+          --pos-input-text: #0f172a;
+        }
+
+        :root {
           --pos-emerald: #10b981;
           --pos-sapphire: #3b82f6;
           --pos-amber: #f59e0b;
@@ -2357,10 +2422,9 @@ export default function POS() {
         }
 
         body.sidebar-hidden {
-          background: var(--pos-bg) !important;
-          font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
           margin: 0;
           overflow: hidden;
+          font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
         }
         body.sidebar-hidden .page-wrapper { display: none !important; }
         body.sidebar-hidden #main-sidebar { display: none !important; }
@@ -2371,11 +2435,10 @@ export default function POS() {
           display: flex;
           flex-direction: column;
           overflow: hidden;
-          background: radial-gradient(ellipse at 30% 0%, rgba(16, 185, 129, 0.08), transparent 60%),
-                      radial-gradient(ellipse at 85% 10%, rgba(59, 130, 246, 0.06), transparent 50%),
-                      var(--pos-bg);
-          color: #e2e8f0;
+          background: var(--pos-bg);
+          color: var(--pos-text-primary);
           font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+          transition: background 0.25s ease, color 0.25s ease;
         }
 
         /* ── Header ── */
@@ -2384,11 +2447,12 @@ export default function POS() {
           display: flex;
           align-items: center;
           padding: 0 18px;
-          background: rgba(11, 15, 25, 0.85);
+          background: var(--pos-topbar-bg);
           backdrop-filter: blur(20px);
           border-bottom: 1px solid var(--pos-border);
           gap: 16px;
           z-index: 100;
+          transition: background 0.25s ease;
         }
         .pos-brand-group {
           display: flex;
@@ -2398,7 +2462,7 @@ export default function POS() {
         .pos-logo-img {
           height: 36px;
           object-fit: contain;
-          filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+          filter: drop-shadow(0 2px 8px rgba(0,0,0,0.15));
         }
         .pos-status-pill {
           display: flex;
@@ -2443,10 +2507,10 @@ export default function POS() {
           height: 40px;
           padding-left: 42px;
           padding-right: 100px;
-          background: rgba(22, 30, 49, 0.8);
+          background: var(--pos-input-bg);
           border: 1.5px solid rgba(16, 185, 129, 0.4);
           border-radius: 10px;
-          color: #fff;
+          color: var(--pos-text-primary);
           font-size: 13px;
           font-weight: 600;
           outline: none;
@@ -2455,8 +2519,7 @@ export default function POS() {
         }
         .pos-omnibar-input:focus {
           border-color: var(--pos-emerald);
-          box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25), 0 8px 24px rgba(0,0,0,0.3);
-          background: rgba(22, 30, 49, 0.95);
+          box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25), 0 8px 24px rgba(0,0,0,0.15);
         }
         .pos-clear-btn {
           position: absolute;
@@ -2465,7 +2528,7 @@ export default function POS() {
           transform: translateY(-50%);
           background: none;
           border: none;
-          color: #94a3b8;
+          color: var(--pos-text-secondary);
           font-size: 16px;
           cursor: pointer;
         }
@@ -2490,7 +2553,26 @@ export default function POS() {
         .pos-header-actions {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
+        }
+        .pos-theme-toggle-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border-radius: 8px;
+          border: 1px solid var(--pos-border);
+          background: var(--pos-card);
+          color: var(--pos-text-primary);
+          font-size: 11px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        .pos-theme-toggle-btn:hover {
+          border-color: var(--pos-emerald);
+          transform: translateY(-1px);
         }
         .pos-held-btn {
           background: linear-gradient(135deg, #f59e0b, #d97706);
@@ -2513,12 +2595,12 @@ export default function POS() {
         .pos-time {
           font-size: 13px;
           font-weight: 800;
-          color: #fff;
+          color: var(--pos-text-primary);
           letter-spacing: 0.5px;
         }
         .pos-date {
           font-size: 10px;
-          color: #94a3b8;
+          color: var(--pos-text-secondary);
         }
         .pos-exit-btn {
           display: flex;
@@ -2527,16 +2609,16 @@ export default function POS() {
           padding: 6px 12px;
           border-radius: 8px;
           border: 1px solid var(--pos-border);
-          background: rgba(255, 255, 255, 0.04);
-          color: #cbd5e1;
+          background: var(--pos-card);
+          color: var(--pos-text-secondary);
           font-size: 12px;
           font-weight: 600;
           text-decoration: none;
           transition: all 0.2s ease;
         }
         .pos-exit-btn:hover {
-          background: rgba(255, 255, 255, 0.08);
-          color: #fff;
+          color: var(--pos-text-primary);
+          border-color: rgba(0,0,0,0.2);
         }
         .pos-cashier-avatar {
           width: 36px;
@@ -2572,7 +2654,7 @@ export default function POS() {
           padding: 10px 16px;
           display: flex;
           gap: 12px;
-          background: rgba(17, 24, 39, 0.4);
+          background: rgba(0, 0, 0, 0.02);
           border-bottom: 1px solid var(--pos-border);
         }
         .pos-action-card {
@@ -2588,12 +2670,11 @@ export default function POS() {
           cursor: pointer;
           text-align: left;
           transition: all 0.2s ease;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
         .pos-action-card:hover {
           transform: translateY(-2px);
-          border-color: rgba(255,255,255,0.2);
-          box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.08);
         }
         .pos-action-icon {
           width: 36px;
@@ -2611,8 +2692,8 @@ export default function POS() {
         .pos-icon-rose { background: linear-gradient(135deg, #f43f5e, #be123c); box-shadow: 0 4px 12px rgba(244, 63, 94, 0.35); }
 
         .pos-action-meta { flex: 1; min-width: 0; }
-        .pos-action-title { font-size: 12px; font-weight: 800; color: #fff; line-height: 1.2; }
-        .pos-action-sub { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+        .pos-action-title { font-size: 12px; font-weight: 800; color: var(--pos-text-primary); line-height: 1.2; }
+        .pos-action-sub { font-size: 10px; color: var(--pos-text-secondary); margin-top: 2px; }
         .pos-action-tag {
           font-size: 10px;
           font-weight: 800;
@@ -2646,7 +2727,7 @@ export default function POS() {
           gap: 8px;
           overflow-x: auto;
           scrollbar-width: none;
-          background: rgba(11, 15, 25, 0.6);
+          background: var(--pos-topbar-bg);
           border-bottom: 1px solid var(--pos-border);
         }
         .pos-category-pill {
@@ -2655,9 +2736,9 @@ export default function POS() {
           gap: 6px;
           padding: 6px 14px;
           border-radius: 24px;
-          background: rgba(255, 255, 255, 0.04);
+          background: var(--pos-card);
           border: 1px solid var(--pos-border);
-          color: #cbd5e1;
+          color: var(--pos-text-secondary);
           font-size: 12px;
           font-weight: 600;
           cursor: pointer;
@@ -2666,8 +2747,8 @@ export default function POS() {
           transition: all 0.2s ease;
         }
         .pos-category-pill:hover {
-          background: rgba(255, 255, 255, 0.08);
-          color: #fff;
+          color: var(--pos-text-primary);
+          border-color: rgba(0,0,0,0.15);
         }
         .pos-category-pill.active {
           background: var(--pos-emerald);
@@ -2681,7 +2762,7 @@ export default function POS() {
           font-weight: 800;
           padding: 1px 6px;
           border-radius: 10px;
-          background: rgba(0, 0, 0, 0.25);
+          background: rgba(0, 0, 0, 0.15);
         }
 
         /* ── Product Scroll & Grid ── */
@@ -2707,17 +2788,15 @@ export default function POS() {
           position: relative;
           backdrop-filter: blur(16px);
           transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-          box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+          box-shadow: 0 2px 10px rgba(0,0,0,0.04);
         }
         .pos-product-card:hover {
           transform: translateY(-3px);
-          border-color: rgba(255, 255, 255, 0.2);
-          box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+          box-shadow: 0 10px 24px rgba(0,0,0,0.1);
         }
         .pos-product-card.in-cart {
           border-color: var(--accent);
-          box-shadow: 0 0 0 2px var(--accent), 0 8px 24px rgba(0,0,0,0.3);
-          background: rgba(22, 30, 49, 0.9);
+          box-shadow: 0 0 0 2px var(--accent), 0 8px 24px rgba(0,0,0,0.1);
         }
         .pos-card-header {
           display: flex;
@@ -2749,7 +2828,7 @@ export default function POS() {
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
         .pos-img-container {
           height: 85px;
@@ -2757,7 +2836,7 @@ export default function POS() {
           align-items: center;
           justify-content: center;
           border-radius: 12px;
-          background: rgba(0, 0, 0, 0.25);
+          background: rgba(0, 0, 0, 0.04);
           margin-bottom: 10px;
           overflow: hidden;
         }
@@ -2779,7 +2858,7 @@ export default function POS() {
         .pos-card-name {
           font-size: 13px;
           font-weight: 700;
-          color: #fff;
+          color: var(--pos-text-primary);
           line-height: 1.3;
           margin-bottom: 3px;
           overflow: hidden;
@@ -2790,7 +2869,7 @@ export default function POS() {
         }
         .pos-card-sku {
           font-size: 10px;
-          color: #94a3b8;
+          color: var(--pos-text-secondary);
         }
         .pos-card-bottom {
           display: flex;
@@ -2809,7 +2888,7 @@ export default function POS() {
           display: flex;
           align-items: center;
           gap: 4px;
-          background: rgba(0, 0, 0, 0.4);
+          background: rgba(0, 0, 0, 0.06);
           padding: 2px 4px;
           border-radius: 8px;
         }
@@ -2818,8 +2897,8 @@ export default function POS() {
           height: 22px;
           border-radius: 6px;
           border: 1px solid var(--pos-border);
-          background: rgba(255, 255, 255, 0.08);
-          color: #fff;
+          background: var(--pos-card);
+          color: var(--pos-text-primary);
           font-size: 13px;
           font-weight: 700;
           cursor: pointer;
@@ -2830,11 +2909,12 @@ export default function POS() {
         .pos-stepper-btn.add {
           background: var(--accent);
           border-color: var(--accent);
+          color: #fff;
         }
         .pos-stepper-val {
           font-size: 12px;
           font-weight: 900;
-          color: #fff;
+          color: var(--pos-text-primary);
           min-width: 18px;
           text-align: center;
         }
@@ -2842,8 +2922,8 @@ export default function POS() {
           width: 26px;
           height: 26px;
           border-radius: 8px;
-          background: rgba(255, 255, 255, 0.08);
-          color: #cbd5e1;
+          background: rgba(0, 0, 0, 0.05);
+          color: var(--pos-text-secondary);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -2861,8 +2941,7 @@ export default function POS() {
           flex-shrink: 0;
           display: flex;
           flex-direction: column;
-          background: rgba(17, 24, 39, 0.7);
-          backdrop-filter: blur(24px);
+          background: var(--pos-sidebar-bg);
           border-left: 1px solid var(--pos-border);
         }
         .pos-held-strip {
@@ -2884,7 +2963,7 @@ export default function POS() {
           border-radius: 6px;
           border: 1px solid var(--pos-amber);
           background: transparent;
-          color: #fff;
+          color: var(--pos-text-primary);
           font-size: 11px;
           font-weight: 700;
           cursor: pointer;
@@ -2906,7 +2985,7 @@ export default function POS() {
         }
         .pos-order-count {
           font-size: 11px;
-          color: #94a3b8;
+          color: var(--pos-text-secondary);
           margin-top: 1px;
         }
         .pos-header-btns {
@@ -2920,8 +2999,8 @@ export default function POS() {
           padding: 6px 12px;
           border-radius: 8px;
           border: 1px solid var(--pos-border);
-          background: rgba(255, 255, 255, 0.05);
-          color: #cbd5e1;
+          background: var(--pos-card);
+          color: var(--pos-text-primary);
           font-size: 11px;
           font-weight: 700;
           cursor: pointer;
@@ -2946,16 +3025,16 @@ export default function POS() {
         .pos-cust-drawer {
           padding: 12px 16px;
           border-bottom: 1px solid var(--pos-border);
-          background: rgba(22, 30, 49, 0.95);
+          background: var(--pos-card);
         }
         .pos-cust-input {
           width: 100%;
           height: 36px;
           padding: 0 12px;
           border-radius: 8px;
-          background: rgba(0, 0, 0, 0.3);
+          background: var(--pos-input-bg);
           border: 1px solid var(--pos-border);
-          color: #fff;
+          color: var(--pos-text-primary);
           font-size: 12px;
           margin-bottom: 10px;
           outline: none;
@@ -2974,7 +3053,7 @@ export default function POS() {
           padding: 8px 12px;
           border-radius: 8px;
           border: 1px solid var(--pos-border);
-          background: rgba(255, 255, 255, 0.02);
+          background: rgba(0, 0, 0, 0.02);
           cursor: pointer;
           text-align: left;
         }
@@ -2982,10 +3061,10 @@ export default function POS() {
           border-color: var(--pos-emerald);
           background: rgba(16, 185, 129, 0.12);
         }
-        .pos-cust-name { font-size: 12px; font-weight: 800; color: #fff; }
-        .pos-cust-phone { font-size: 10px; color: #94a3b8; }
+        .pos-cust-name { font-size: 12px; font-weight: 800; color: var(--pos-text-primary); }
+        .pos-cust-phone { font-size: 10px; color: var(--pos-text-secondary); }
         .pos-tier-pill { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; }
-        .pos-points-text { font-size: 9px; color: #94a3b8; margin-top: 2px; }
+        .pos-points-text { font-size: 9px; color: var(--pos-text-secondary); margin-top: 2px; }
         .pos-remove-cust-btn {
           width: 100%;
           margin-top: 8px;
@@ -3019,8 +3098,8 @@ export default function POS() {
           font-weight: 900;
           font-size: 12px;
         }
-        .pos-active-name { font-size: 13px; font-weight: 800; color: #fff; }
-        .pos-active-sub { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+        .pos-active-name { font-size: 13px; font-weight: 800; color: var(--pos-text-primary); }
+        .pos-active-sub { font-size: 11px; color: var(--pos-text-secondary); margin-top: 1px; }
 
         /* ── Cart Rows ── */
         .pos-cart-items-scroll {
@@ -3060,17 +3139,17 @@ export default function POS() {
         .pos-row-name {
           font-size: 13px;
           font-weight: 800;
-          color: #fff;
+          color: var(--pos-text-primary);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
-        .pos-row-rate { font-size: 11px; color: #94a3b8; }
+        .pos-row-rate { font-size: 11px; color: var(--pos-text-secondary); }
         .pos-row-stepper {
           display: flex;
           align-items: center;
           gap: 3px;
-          background: rgba(0, 0, 0, 0.35);
+          background: rgba(0, 0, 0, 0.05);
           padding: 2px 4px;
           border-radius: 8px;
         }
@@ -3079,8 +3158,8 @@ export default function POS() {
           height: 22px;
           border-radius: 6px;
           border: 1px solid var(--pos-border);
-          background: rgba(255, 255, 255, 0.08);
-          color: #fff;
+          background: var(--pos-card);
+          color: var(--pos-text-primary);
           font-size: 13px;
           cursor: pointer;
           display: flex;
@@ -3092,7 +3171,7 @@ export default function POS() {
           height: 22px;
           border: none;
           background: transparent;
-          color: #fff;
+          color: var(--pos-text-primary);
           text-align: center;
           font-size: 12px;
           font-weight: 800;
@@ -3122,9 +3201,9 @@ export default function POS() {
           margin-top: 6px;
           padding: 0 8px;
           border-radius: 6px;
-          background: rgba(0, 0, 0, 0.2);
+          background: rgba(0, 0, 0, 0.03);
           border: 1px dashed var(--pos-border);
-          color: #94a3b8;
+          color: var(--pos-text-secondary);
           font-size: 10px;
           outline: none;
         }
@@ -3139,9 +3218,9 @@ export default function POS() {
           height: 32px;
           padding: 0 12px;
           border-radius: 8px;
-          background: rgba(0, 0, 0, 0.3);
+          background: var(--pos-input-bg);
           border: 1px solid var(--pos-border);
-          color: #fff;
+          color: var(--pos-text-primary);
           font-size: 11px;
           outline: none;
         }
@@ -3155,7 +3234,7 @@ export default function POS() {
         .pos-discount-label {
           font-size: 10px;
           font-weight: 800;
-          color: #94a3b8;
+          color: var(--pos-text-secondary);
           text-transform: uppercase;
         }
         .pos-discount-chip {
@@ -3164,8 +3243,8 @@ export default function POS() {
           padding: 3px 9px;
           border-radius: 6px;
           border: 1px solid var(--pos-border);
-          background: rgba(255, 255, 255, 0.04);
-          color: #cbd5e1;
+          background: var(--pos-card);
+          color: var(--pos-text-secondary);
           cursor: pointer;
           transition: all 0.15s ease;
         }
@@ -3180,13 +3259,13 @@ export default function POS() {
         .pos-hud-screen {
           padding: 12px 16px;
           border-top: 1px solid var(--pos-border);
-          background: rgba(0, 0, 0, 0.35);
+          background: var(--pos-hud-bg);
         }
         .pos-hud-row {
           display: flex;
           justify-content: space-between;
           font-size: 11px;
-          color: #94a3b8;
+          color: var(--pos-text-secondary);
           margin-bottom: 4px;
         }
         .pos-hud-row.discount { color: var(--pos-rose); font-weight: 700; }
@@ -3199,12 +3278,12 @@ export default function POS() {
           border-radius: 12px;
           background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(59, 130, 246, 0.08));
           border: 1.5px solid rgba(16, 185, 129, 0.35);
-          box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.06);
         }
         .pos-total-title {
           font-size: 13px;
           font-weight: 900;
-          color: #fff;
+          color: var(--pos-text-primary);
           letter-spacing: 0.5px;
           text-transform: uppercase;
         }
@@ -3225,7 +3304,7 @@ export default function POS() {
         .pos-payment-deck {
           padding: 12px 16px;
           border-top: 2px solid var(--pos-border);
-          background: rgba(17, 24, 39, 0.5);
+          background: var(--pos-deck-bg);
         }
         .pos-deck-header {
           display: flex;
@@ -3233,8 +3312,8 @@ export default function POS() {
           align-items: center;
           margin-bottom: 8px;
         }
-        .pos-deck-title { font-size: 10px; font-weight: 900; color: #94a3b8; letter-spacing: 0.5px; }
-        .pos-deck-hotkey { font-size: 9px; color: #64748b; }
+        .pos-deck-title { font-size: 10px; font-weight: 900; color: var(--pos-text-secondary); letter-spacing: 0.5px; }
+        .pos-deck-hotkey { font-size: 9px; color: var(--pos-text-secondary); }
         .pos-payment-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
@@ -3247,7 +3326,7 @@ export default function POS() {
           gap: 6px;
           padding: 10px 4px;
           border-radius: 10px;
-          border: 1.5px solid rgba(255, 255, 255, 0.08);
+          border: 1.5px solid rgba(0, 0, 0, 0.08);
           background: var(--btn-bg);
           cursor: pointer;
           transition: all 0.15s ease;
@@ -3255,7 +3334,7 @@ export default function POS() {
         .pos-pay-btn:not(:disabled):hover {
           border-color: var(--btn-color);
           transform: translateY(-2px);
-          box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+          box-shadow: 0 4px 14px rgba(0,0,0,0.1);
         }
         .pos-pay-btn:disabled {
           opacity: 0.35;
@@ -3265,7 +3344,7 @@ export default function POS() {
           width: 32px;
           height: 32px;
           border-radius: 8px;
-          background: rgba(0, 0, 0, 0.25);
+          background: rgba(0, 0, 0, 0.06);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -3275,14 +3354,14 @@ export default function POS() {
         .pos-pay-label {
           font-size: 11px;
           font-weight: 800;
-          color: #fff;
+          color: var(--pos-text-primary);
         }
 
         /* ── Bottom Utilities ── */
         .pos-utility-bar {
           display: flex;
           border-top: 1px solid var(--pos-border);
-          background: rgba(11, 15, 25, 0.85);
+          background: var(--pos-topbar-bg);
         }
         .pos-util-btn {
           flex: 1;
@@ -3308,14 +3387,14 @@ export default function POS() {
         .pos-util-label {
           font-size: 10px;
           font-weight: 700;
-          color: #94a3b8;
+          color: var(--pos-text-secondary);
         }
 
-        /* ── Modals ── */
+        /* ── Themed Modals ── */
         .pos-modal-backdrop {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.7);
+          background: rgba(0, 0, 0, 0.6);
           backdrop-filter: blur(8px);
           z-index: 800;
         }
@@ -3323,11 +3402,12 @@ export default function POS() {
           z-index: 810;
         }
         .pos-glass-modal {
-          background: #111827 !important;
-          border: 1px solid rgba(255, 255, 255, 0.12) !important;
+          background: var(--pos-modal-bg) !important;
+          border: 1px solid var(--pos-border) !important;
           border-radius: 20px !important;
           overflow: hidden;
-          box-shadow: 0 24px 60px rgba(0,0,0,0.6) !important;
+          box-shadow: 0 24px 60px rgba(0,0,0,0.35) !important;
+          color: var(--pos-text-primary);
         }
         .pos-modal-header {
           padding: 16px 20px;
@@ -3350,6 +3430,21 @@ export default function POS() {
         }
         .pos-modal-header-sub { font-size: 11px; color: rgba(255, 255, 255, 0.85); margin-top: 2px; }
 
+        .pos-input-theme {
+          background: var(--pos-input-bg) !important;
+          border: 1px solid var(--pos-input-border) !important;
+          color: var(--pos-input-text) !important;
+        }
+        .pos-item-name-themed {
+          color: var(--pos-text-primary) !important;
+        }
+        .pos-split-row {
+          background: var(--pos-hud-bg) !important;
+        }
+        .pos-invoice-table {
+          color: var(--pos-text-primary) !important;
+        }
+
         /* ── Cash Modal Specifics ── */
         .pos-cash-total-display {
           display: flex;
@@ -3360,7 +3455,7 @@ export default function POS() {
           background: rgba(16, 185, 129, 0.12);
           border: 1px solid rgba(16, 185, 129, 0.25);
         }
-        .pos-cash-total-lbl { font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; }
+        .pos-cash-total-lbl { font-size: 11px; font-weight: 800; color: var(--pos-text-secondary); text-transform: uppercase; }
         .pos-cash-total-val { font-size: 24px; font-weight: 900; color: var(--pos-emerald); }
         .pos-cash-tag {
           font-size: 12px;
@@ -3370,14 +3465,14 @@ export default function POS() {
           padding: 4px 10px;
           border-radius: 6px;
         }
-        .pos-quick-tender-lbl { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; }
+        .pos-quick-tender-lbl { font-size: 10px; font-weight: 800; color: var(--pos-text-secondary); text-transform: uppercase; margin-bottom: 8px; }
         .pos-quick-tender-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         .pos-quick-chip {
           padding: 10px 4px;
           border-radius: 10px;
           border: 1px solid var(--pos-border);
-          background: rgba(255, 255, 255, 0.05);
-          color: #fff;
+          background: var(--pos-card);
+          color: var(--pos-text-primary);
           font-size: 13px;
           font-weight: 800;
           cursor: pointer;
@@ -3386,6 +3481,7 @@ export default function POS() {
         .pos-quick-chip:hover {
           background: var(--pos-emerald);
           border-color: var(--pos-emerald);
+          color: #fff;
           transform: translateY(-2px);
         }
         .pos-change-alert {
@@ -3395,14 +3491,14 @@ export default function POS() {
           padding: 12px 16px;
           border-radius: 10px;
         }
-        .pos-change-alert.success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #fff; }
-        .pos-change-alert.danger { background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.3); color: #fff; }
+        .pos-change-alert.success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--pos-text-primary); }
+        .pos-change-alert.danger { background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.3); color: var(--pos-text-primary); }
 
         /* ── Success Screen ── */
         .pos-success-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(0, 0, 0, 0.75);
+          background: rgba(0, 0, 0, 0.7);
           backdrop-filter: blur(12px);
           z-index: 900;
           display: flex;
@@ -3411,14 +3507,15 @@ export default function POS() {
           padding: 20px;
         }
         .pos-success-card {
-          background: #111827;
-          border: 1px solid rgba(255, 255, 255, 0.15);
+          background: var(--pos-modal-bg);
+          border: 1px solid var(--pos-border);
           border-radius: 24px;
           width: 100%;
           maxWidth: 420px;
           padding: 32px 24px;
           text-align: center;
-          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+          color: var(--pos-text-primary);
         }
         .pos-success-ring {
           width: 72px;
@@ -3433,10 +3530,10 @@ export default function POS() {
           color: #fff;
           box-shadow: 0 8px 28px rgba(16, 185, 129, 0.4);
         }
-        .pos-success-title { font-size: 20px; font-weight: 900; color: #fff; margin-bottom: 4px; }
-        .pos-success-ref { font-size: 12px; color: #94a3b8; margin-bottom: 20px; }
+        .pos-success-title { font-size: 20px; font-weight: 900; color: var(--pos-text-primary); margin-bottom: 4px; }
+        .pos-success-ref { font-size: 12px; color: var(--pos-text-secondary); margin-bottom: 20px; }
         .pos-success-details {
-          background: rgba(255, 255, 255, 0.03);
+          background: var(--pos-hud-bg);
           border: 1px solid var(--pos-border);
           border-radius: 12px;
           padding: 16px;
@@ -3473,7 +3570,7 @@ export default function POS() {
           display: flex;
           align-items: center;
           gap: 10px;
-          box-shadow: 0 12px 36px rgba(0,0,0,0.5);
+          box-shadow: 0 12px 36px rgba(0,0,0,0.3);
           animation: toastSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .pos-toast.success { background: var(--pos-emerald); color: #fff; }
