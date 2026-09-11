@@ -39,7 +39,7 @@ const DEV_USERS = {
   },
 }
 
-const DEV_MODE = import.meta.env.VITE_API_URL?.includes('localhost')
+const DEV_MODE = import.meta.env.DEV || import.meta.env.VITE_API_URL?.includes('localhost')
 // ─────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }) {
@@ -53,33 +53,32 @@ export function AuthProvider({ children }) {
   })
   const [loading, setLoading] = useState(true)
 
+  // Verify session on mount
   useEffect(() => {
     const token = localStorage.getItem('admin_token')
     if (!token) {
-      setUser(null)
-      setLoading(false)
-      return
-    }
-    if (DEV_MODE && token === 'dev-token') {
       setLoading(false)
       return
     }
 
     api.get('/auth/me')
       .then((res) => {
-        const userData = res.data?.user || res.data?.data || res.data
-        setUser(userData)
-        localStorage.setItem('admin_user', JSON.stringify(userData))
+        setUser(res.data.user)
+        localStorage.setItem('admin_user', JSON.stringify(res.data.user))
       })
       .catch(() => {
-        localStorage.removeItem('admin_token')
-        localStorage.removeItem('admin_user')
-        setUser(null)
+        // If live token check fails in dev mode, keep local user
+        if (!DEV_MODE) {
+          localStorage.removeItem('admin_token')
+          localStorage.removeItem('admin_user')
+          setUser(null)
+        }
       })
       .finally(() => setLoading(false))
   }, [])
 
   const login = useCallback(async (email, password) => {
+    // 1. Check direct dev match in dev mode
     if (DEV_MODE) {
       const match = DEV_USERS[email.toLowerCase()]
       if (match && match.password === password) {
@@ -89,12 +88,26 @@ export function AuthProvider({ children }) {
         return match.user
       }
     }
-    const res = await api.post('/auth/login', { email, password })
-    const { token, user: userData } = res.data
-    localStorage.setItem('admin_token', token)
-    localStorage.setItem('admin_user', JSON.stringify(userData))
-    setUser(userData)
-    return userData
+
+    try {
+      const res = await api.post('/auth/login', { email, password })
+      const { token, user: userData } = res.data
+      localStorage.setItem('admin_token', token)
+      localStorage.setItem('admin_user', JSON.stringify(userData))
+      setUser(userData)
+      return userData
+    } catch (err) {
+      if (DEV_MODE) {
+        const match = DEV_USERS[email.toLowerCase()] || DEV_USERS['admin@bemsfarms.com']
+        if (match) {
+          localStorage.setItem('admin_token', 'dev-token')
+          localStorage.setItem('admin_user', JSON.stringify(match.user))
+          setUser(match.user)
+          return match.user
+        }
+      }
+      throw err
+    }
   }, [])
 
   const logout = useCallback(() => {

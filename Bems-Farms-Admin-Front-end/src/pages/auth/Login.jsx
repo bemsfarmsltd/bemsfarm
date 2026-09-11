@@ -25,16 +25,18 @@ export default function Login() {
     }
   }, [user, authLoading, navigate, location]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, customEmail, customPassword) => {
     e?.preventDefault();
     setError("");
-    if (!email.trim() || !password) {
+    const targetEmail = (customEmail || email).trim();
+    const targetPassword = customPassword || password;
+    if (!targetEmail || !targetPassword) {
       return setError("Please enter your staff email and password.");
     }
 
     setLoading(true);
     try {
-      await login(email.trim(), password);
+      await login(targetEmail, targetPassword);
       toast.success("Welcome back!");
     } catch (err) {
       const serverMessage = err.response?.data?.message || err.message;
@@ -258,6 +260,36 @@ export default function Login() {
                   </>
                 )}
               </button>
+
+              {/* Quick Dev Staff Login */}
+              {import.meta.env.DEV && (
+                <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px dashed #e2e8f0', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    ⚡ One-Click Staff Login (Local Dev)
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', justifyContent: 'center' }}>
+                    {[
+                      { label: '👑 Superadmin', email: 'superadmin@bemsfarms.com', pass: 'super123' },
+                      { label: '💼 Admin', email: 'admin@bemsfarms.com', pass: 'admin123' },
+                      { label: '🛒 Cashier (POS)', email: 'cashier@bemsfarms.com', pass: 'cashier123' },
+                      { label: '📊 Manager', email: 'manager@bemsfarms.com', pass: 'manager123' },
+                    ].map((s) => (
+                      <button
+                        key={s.email}
+                        type="button"
+                        onClick={() => {
+                          setEmail(s.email);
+                          setPassword(s.pass);
+                          handleSubmit(null, s.email, s.pass);
+                        }}
+                        style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#1e293b', cursor: 'pointer', fontWeight: 600 }}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </form>
 
             {/* Security Footer */}
