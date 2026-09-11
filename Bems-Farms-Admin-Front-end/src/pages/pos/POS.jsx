@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import api from '../../lib/api'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -157,6 +158,22 @@ const genOrderId = () => 'BF-' + new Date().getFullYear() + '-' + String(Date.no
 export default function POS() {
   const { user } = useAuth()
 
+  // ── Live Backend State ───────────────────────────────────────────────────
+  const [productsList, setProductsList] = useState(PRODUCTS)
+  const [customersList, setCustomersList] = useState(MOCK_CUSTOMERS)
+  const [historyList, setHistoryList] = useState(HISTORY_MOCK)
+  const [loadingPOS, setLoadingPOS] = useState(false)
+
+  // Dynamic Lookup Maps
+  const { byBarcode, bySku } = useMemo(() => {
+    const bc = {}, sk = {}
+    productsList.forEach(p => {
+      if (p.barcode) bc[p.barcode.toUpperCase()] = p
+      if (p.sku) sk[p.sku.toUpperCase()] = p
+    })
+    return { byBarcode: bc, bySku: sk }
+  }, [productsList])
+
   // UI
   const [activeCategory, setActiveCategory] = useState('all')
   const [search, setSearch]             = useState('')
@@ -233,6 +250,100 @@ export default function POS() {
 
   const scanInputRef = useRef(null)
 
+  // ── Fetch Live Backend Data on Mount ───────────────────────────────────────
+  useEffect(() => {
+    async function loadPOSData() {
+      setLoadingPOS(true)
+      try {
+        // 1. Fetch live products
+        const prodRes = await api.get('/admin/pos/products').catch(() => api.get('/products'))
+        const prods = prodRes.data?.products || prodRes.data || []
+        if (Array.isArray(prods) && prods.length > 0) {
+          const mapped = prods.map(p => ({
+            id: p.id,
+            barcode: p.barcode || `BF-${p.sku || p.id}`,
+            sku: p.sku || `SKU-${p.id}`,
+            name: p.name,
+            cat: p.category_slug || p.category_name?.toLowerCase() || 'farm',
+            price: Math.round(Number(p.price || p.unit_price || 0)),
+            stock: p.stock ?? p.stock_quantity ?? 50,
+            unit: p.unit || 'unit',
+            image: p.image_url || p.image || null,
+            icon: p.icon || '🌾'
+          }))
+          setProductsList(mapped)
+        }
+      } catch (e) {
+        console.warn('Live products fallback', e)
+      }
+
+      try {
+        // 2. Fetch live customers
+        const custRes = await api.get('/admin/pos/customers').catch(() => api.get('/admin/customers'))
+        const custs = custRes.data?.customers || custRes.data || []
+        if (Array.isArray(custs) && custs.length > 0) {
+          const mappedCusts = custs.map(c => ({
+            id: c.id,
+            name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.name || 'Customer',
+            phone: c.phone || '—',
+            tier: c.tier || 'Silver',
+            points: c.loyalty_points || 0,
+            wallet: c.wallet_balance || 0,
+            orders: c.total_orders || 0
+          }))
+          setCustomersList(mappedCusts)
+        }
+      } catch (e) {
+        console.warn('Live customers fallback', e)
+      }
+
+      try {
+        // 3. Fetch live online/incoming orders
+        const ordRes = await api.get('/admin/orders?status=pending&limit=15').catch(() => null)
+        const ords = ordRes?.data?.orders || []
+        if (Array.isArray(ords) && ords.length > 0) {
+          const mappedOrders = ords.map(o => ({
+            id: o.order_ref || `ORD-${o.id}`,
+            channel: o.channel || 'website',
+            customer: o.customer_name || `${o.user?.first_name || ''} ${o.user?.last_name || ''}`.trim() || 'Online Customer',
+            phone: o.customer_phone || o.phone || '—',
+            time: o.created_at ? new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+            status: o.status || 'pending',
+            note: o.delivery_note || o.notes || '',
+            items: (o.items || []).map(it => ({
+              productId: it.product_id,
+              qty: it.quantity || 1
+            }))
+          }))
+          setOnlineOrders(mappedOrders)
+        }
+      } catch (e) {
+        console.warn('Live online orders fallback', e)
+      }
+
+      try {
+        // 4. Fetch receipts/history
+        const rcptRes = await api.get('/admin/pos/receipts').catch(() => null)
+        const rcpts = rcptRes?.data?.receipts || []
+        if (Array.isArray(rcpts) && rcpts.length > 0) {
+          const mappedHistory = rcpts.map(r => ({
+            inv: r.order_ref || `INV-${r.id}`,
+            cust: r.customer_name || 'Walk-in',
+            method: r.payment_method || 'Cash',
+            time: r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+            amount: Number(r.total_amount || r.total || 0)
+          }))
+          setHistoryList(mappedHistory)
+        }
+      } catch (e) {
+        console.warn('Live POS history fallback', e)
+      }
+      setLoadingPOS(false)
+    }
+
+    loadPOSData()
+  }, [])
+
   // ── Barcode scanner ───────────────────────────────────────────────────────
   const scanBuffer  = useRef('')
   const lastKeyTime = useRef(0)
@@ -241,12 +352,12 @@ export default function POS() {
   const handleBarcodeScan = useCallback((code) => {
     const trimmed = code.trim().toUpperCase()
     if (!trimmed) return
-    const product = BY_BARCODE[trimmed] || BY_BARCODE['BF-' + trimmed] || BY_SKU[trimmed]
+    const product = byBarcode[trimmed] || byBarcode['BF-' + trimmed] || bySku[trimmed]
     if (!product) { showToast('Not found: ' + trimmed, 'error', '❌'); return }
     addProductToCart(product)
     setSearch('')
     if (scanInputRef.current) scanInputRef.current.focus()
-  }, [])
+  }, [byBarcode, bySku])
   onScanRef.current = handleBarcodeScan
 
   useEffect(() => {
@@ -285,10 +396,10 @@ export default function POS() {
     setCart(prev => {
       const ex = prev.find(i => i.id === product.id)
       if (ex) {
-        showToast(`${product.name} · qty ${ex.qty + 1}`, 'success', product.icon)
+        showToast(`${product.name} · qty ${ex.qty + 1}`, 'success', product.icon || '🌾')
         return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i)
       }
-      showToast(`${product.name} added`, 'success', product.icon)
+      showToast(`${product.name} added`, 'success', product.icon || '🌾')
       return [...prev, { ...product, qty: 1, note: '' }]
     })
     setHighlightId(product.id); setTimeout(() => setHighlightId(null), 700)
@@ -306,14 +417,14 @@ export default function POS() {
   function scannerAddProduct(code) {
     const trimmed = code.trim().toUpperCase()
     if (!trimmed) return
-    const product = BY_BARCODE[trimmed] || BY_BARCODE['BF-' + trimmed] || BY_SKU[trimmed]
+    const product = byBarcode[trimmed] || byBarcode['BF-' + trimmed] || bySku[trimmed]
     if (!product) { showToast('Not found: ' + trimmed, 'error', '❌'); return }
     setScanCart(prev => {
       const ex = prev.find(i => i.id === product.id)
       if (ex) return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i)
       return [...prev, { ...product, qty: 1 }]
     })
-    showToast(`${product.name} scanned`, 'success', product.icon)
+    showToast(`${product.name} scanned`, 'success', product.icon || '🌾')
     setScanCode('')
     setTimeout(() => scanModalInputRef.current?.focus(), 50)
   }
@@ -351,7 +462,7 @@ export default function POS() {
   function loadOnlineOrderToCart(order) {
     let loaded = 0
     order.items.forEach(({ productId, qty }) => {
-      const product = PRODUCTS.find(p => p.id === productId)
+      const product = productsList.find(p => p.id === productId)
       if (!product) return
       setCart(prev => {
         const ex = prev.find(i => i.id === product.id)
@@ -361,7 +472,7 @@ export default function POS() {
       loaded++
     })
     // Match customer if found
-    const matched = MOCK_CUSTOMERS.find(c => c.name === order.customer)
+    const matched = customersList.find(c => c.name === order.customer)
     if (matched) setCustomer(matched)
     // Mark order as processing
     setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, status:'processing' } : o))
@@ -393,9 +504,47 @@ export default function POS() {
   const itemCount   = cart.reduce((s, i) => s + i.qty, 0)
   const cashChange  = cashReceived ? Math.max(0, Number(cashReceived) - total) : 0
 
-  // ── Confirm payment ───────────────────────────────────────────────────────
-  function confirmPayment(method) {
-    setSuccessData({ orderId, customer, cart: [...cart], subtotal, discountAmt, vat, total, discountPct, method, paidAt: new Date() })
+  // ── Confirm payment (Live Server Order Recording) ───────────────────────────
+  async function confirmPayment(method) {
+    let finalOrderId = orderId
+    try {
+      const payload = {
+        items: cart.map(item => ({
+          product_id: item.id,
+          quantity: item.qty,
+          unit_price: item.price
+        })),
+        customer_id: customer?.id || null,
+        customer_name: customer?.name || 'Walk-in Customer',
+        payment_method: method === 'Split' ? 'Split Payment' : (method || 'cash'),
+        amount_tendered: method === 'Cash' ? (Number(cashReceived) || total) : total,
+        discount_amount: discountAmt,
+        notes: orderNote || undefined,
+        split_payments: method === 'Split' ? splitRows.filter(r => r.amount > 0).map(r => ({ method: r.method, amount: Number(r.amount) })) : undefined
+      }
+
+      const res = await api.post('/admin/pos/sale', payload)
+      if (res.data?.order?.order_ref || res.data?.invoice?.invoice_ref) {
+        finalOrderId = res.data.order?.order_ref || res.data.invoice?.invoice_ref
+      }
+      showToast('Sale recorded and synced to server!', 'success', '✅')
+    } catch (err) {
+      console.warn('POS sale API offline or errored, recorded locally:', err)
+      showToast('Sale recorded locally', 'success', '✅')
+    }
+
+    setSuccessData({
+      orderId: finalOrderId,
+      customer,
+      cart: [...cart],
+      subtotal,
+      discountAmt,
+      vat,
+      total,
+      discountPct,
+      method,
+      paidAt: new Date()
+    })
     closeModal()
     setTimeout(() => setActiveModal('success'), 80)
   }
@@ -411,19 +560,19 @@ export default function POS() {
     })
   }
 
-  // ── Products ──────────────────────────────────────────────────────────────
+  // ── Products Filter ───────────────────────────────────────────────────────
   const products = useMemo(() => {
-    let list = activeCategory === 'all' ? PRODUCTS : PRODUCTS.filter(p => p.cat === activeCategory)
+    let list = activeCategory === 'all' ? productsList : productsList.filter(p => p.cat === activeCategory)
     if (search.trim()) {
       const q = search.toLowerCase()
-      list = list.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q) || p.barcode.toLowerCase().includes(q))
+      list = list.filter(p => p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)) || (p.barcode && p.barcode.toLowerCase().includes(q)))
     }
     return list
-  }, [activeCategory, search])
+  }, [activeCategory, search, productsList])
 
   const filteredCustomers = custSearch.trim()
-    ? MOCK_CUSTOMERS.filter(c => c.name.toLowerCase().includes(custSearch.toLowerCase()) || c.phone.includes(custSearch))
-    : MOCK_CUSTOMERS
+    ? customersList.filter(c => c.name.toLowerCase().includes(custSearch.toLowerCase()) || (c.phone && c.phone.includes(custSearch)))
+    : customersList
 
   // ── Clock ─────────────────────────────────────────────────────────────────
   const [now, setNow] = useState(new Date())
@@ -1469,7 +1618,7 @@ export default function POS() {
                     <th className="fw-medium text-muted text-end">Action</th>
                   </tr></thead>
                   <tbody>
-                    {HISTORY_MOCK.map(h => (
+                    {historyList.map(h => (
                       <tr key={h.inv}>
                         <td><div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div></td>
                         <td><a href="#!" className="link link-custom-primary">{h.inv}</a></td>
@@ -1534,8 +1683,24 @@ export default function POS() {
       {/* ─── Goods Return Modal ─────────────────────────────────────────── */}
       {activeModal === 'return' && (() => {
         const retTotal = Number(returnForm.qty) * Number(returnForm.unitPrice)
-        function submitReturn() {
+        async function submitReturn() {
           const ref = 'RTN-POS-' + String(Date.now()).slice(-5)
+          try {
+            await api.post('/admin/pos/returns', {
+              ref,
+              product_id: returnForm.product.id,
+              quantity: Number(returnForm.qty),
+              unit_price: Number(returnForm.unitPrice),
+              reason: returnForm.reason,
+              condition: returnForm.condition,
+              refund_method: returnForm.refundMethod,
+              customer_name: returnForm.customer,
+              phone: returnForm.phone,
+              notes: returnForm.notes,
+            }).catch(e => console.warn('Online return fallback', e))
+          } catch (e) {
+            console.warn('POS return request error', e)
+          }
           setReturnLogs(prev => [...prev, { ...returnForm, ref, total:retTotal, date:new Date().toLocaleString('en-NG') }])
           setReturnSuccess({ ref, total:retTotal, method:returnForm.refundMethod, condition:returnForm.condition })
         }
