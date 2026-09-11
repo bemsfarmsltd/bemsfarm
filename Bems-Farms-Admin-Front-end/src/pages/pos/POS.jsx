@@ -3,166 +3,205 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../lib/api'
 
-// ── Data ─────────────────────────────────────────────────────────────────────
-const CATEGORIES = [
-  { id: 'all',        label: 'All Items',     emoji: '🛒' },
-  { id: 'meals',      label: 'Meals',         emoji: '🍲' },
-  { id: 'seafood',    label: 'Seafood',        emoji: '🐟' },
-  { id: 'meat',       label: 'Meat',           emoji: '🥩' },
-  { id: 'grains',     label: 'Grains & Carbs', emoji: '🌾' },
-  { id: 'vegetables', label: 'Vegetables',     emoji: '🥬' },
-  { id: 'dairy',      label: 'Dairy & Eggs',   emoji: '🥛' },
-  { id: 'beverages',  label: 'Beverages',      emoji: '🥤' },
-  { id: 'farm',       label: 'Fresh Farm',     emoji: '🌱' },
+// ── Categories & Default Mock Fallbacks ──────────────────────────────────────
+const CATEGORY_DEFINITIONS = [
+  { id: 'all',        label: 'All Products',        emoji: '🛒', key: 'all' },
+  { id: 'popular',    label: '⭐ Top Picks',          emoji: '⭐', key: 'popular' },
+  { id: 'oils',       label: 'Oils & Sauces',       emoji: '🫒', key: 'oils' },
+  { id: 'grains',     label: 'Grains & Flours',     emoji: '🌾', key: 'grains' },
+  { id: 'seasoning',  label: 'Seasonings & Spices', emoji: '🧂', key: 'seasoning' },
+  { id: 'household',  label: 'Household & Soaps',   emoji: '🧼', key: 'household' },
+  { id: 'canned',     label: 'Canned & Tomatoes',   emoji: '🥫', key: 'canned' },
+  { id: 'beverages',  label: 'Beverages & Drinks',  emoji: '🧃', key: 'beverages' },
+  { id: 'vegetables', label: 'Produce & Veggies',   emoji: '🥬', key: 'vegetables' },
+  { id: 'meat',       label: 'Meat & Seafood',      emoji: '🥩', key: 'meat' },
+  { id: 'meals',      label: 'Cooked Meals',        emoji: '🍲', key: 'meals' },
+  { id: 'dairy',      label: 'Dairy & Eggs',        emoji: '🥛', key: 'dairy' },
 ]
+
 const CAT_COLORS = {
-  meals:'#0ab39c', seafood:'#299cdb', meat:'#f06548',
-  grains:'#f7b84b', vegetables:'#4ade80', dairy:'#a78bfa',
-  beverages:'#38bdf8', farm:'#22c55e', all:'#405189',
+  all: '#0ab39c',
+  popular: '#f7b84b',
+  oils: '#d97706',
+  grains: '#f59e0b',
+  seasoning: '#ec4899',
+  household: '#06b6d4',
+  canned: '#ef4444',
+  beverages: '#3b82f6',
+  vegetables: '#10b981',
+  meat: '#f43f5e',
+  meals: '#8b5cf6',
+  dairy: '#6366f1',
 }
-const PRODUCTS = [
-  { id:1,  barcode:'BF-MEAL-001', sku:'MEAL-001', name:'Jollof Rice Box',         cat:'meals',      price:3500, icon:'🍚', stock:24, unit:'pack'   },
-  { id:2,  barcode:'BF-MEAL-002', sku:'MEAL-002', name:'Egusi Soup (Medium Pot)', cat:'meals',      price:2800, icon:'🫕', stock:18, unit:'pot'    },
-  { id:3,  barcode:'BF-MEAL-003', sku:'MEAL-003', name:'Fried Rice & Chicken',    cat:'meals',      price:4200, icon:'🍗', stock:15, unit:'pack'   },
-  { id:4,  barcode:'BF-MEAL-004', sku:'MEAL-004', name:'Pounded Yam + Egusi',     cat:'meals',      price:3800, icon:'🍽️', stock:12, unit:'plate'  },
-  { id:5,  barcode:'BF-MEAL-005', sku:'MEAL-005', name:'Pepper Soup (Goat)',      cat:'meals',      price:5000, icon:'🍜', stock:8,  unit:'bowl'   },
-  { id:6,  barcode:'BF-MEAL-006', sku:'MEAL-006', name:'Ofada Rice + Stew',       cat:'meals',      price:3200, icon:'🍛', stock:20, unit:'pack'   },
-  { id:7,  barcode:'BF-MEAL-007', sku:'MEAL-007', name:'Banga Soup',              cat:'meals',      price:3200, icon:'🥣', stock:10, unit:'pot'    },
-  { id:8,  barcode:'BF-MEAL-008', sku:'MEAL-008', name:'Afang Soup',              cat:'meals',      price:3500, icon:'🥗', stock:14, unit:'pot'    },
-  { id:9,  barcode:'BF-FSH-001',  sku:'FSH-001',  name:'Fresh Tilapia (1 kg)',    cat:'seafood',    price:3000, icon:'🐟', stock:30, unit:'kg'     },
-  { id:10, barcode:'BF-FSH-002',  sku:'FSH-002',  name:'Catfish (1 kg)',           cat:'seafood',    price:3500, icon:'🐠', stock:25, unit:'kg'     },
-  { id:11, barcode:'BF-FSH-003',  sku:'FSH-003',  name:'Smoked Mackerel',          cat:'seafood',    price:1800, icon:'🐡', stock:40, unit:'piece'  },
-  { id:12, barcode:'BF-FSH-004',  sku:'FSH-004',  name:'Dried Stockfish',          cat:'seafood',    price:2500, icon:'🦈', stock:35, unit:'piece'  },
-  { id:13, barcode:'BF-FSH-005',  sku:'FSH-005',  name:'Tiger Prawns (500 g)',     cat:'seafood',    price:4500, icon:'🦐', stock:20, unit:'pack'   },
-  { id:14, barcode:'BF-FSH-006',  sku:'FSH-006',  name:'Crayfish (200 g)',         cat:'seafood',    price:1500, icon:'🦞', stock:50, unit:'pack'   },
-  { id:15, barcode:'BF-MT-001',   sku:'MT-001',   name:'Goat Meat (1 kg)',         cat:'meat',       price:5500, icon:'🥩', stock:22, unit:'kg'     },
-  { id:16, barcode:'BF-MT-002',   sku:'MT-002',   name:'Chicken (1 kg)',            cat:'meat',       price:3800, icon:'🍗', stock:28, unit:'kg'     },
-  { id:17, barcode:'BF-MT-003',   sku:'MT-003',   name:'Beef (1 kg)',               cat:'meat',       price:5000, icon:'🥓', stock:18, unit:'kg'     },
-  { id:18, barcode:'BF-MT-004',   sku:'MT-004',   name:'Turkey (1 kg)',             cat:'meat',       price:4500, icon:'🦃', stock:12, unit:'kg'     },
-  { id:19, barcode:'BF-GRN-001',  sku:'GRN-001',  name:'Rice (5 kg bag)',           cat:'grains',     price:6500, icon:'🌾', stock:60, unit:'bag'    },
-  { id:20, barcode:'BF-GRN-002',  sku:'GRN-002',  name:'Beans (2 kg)',              cat:'grains',     price:2200, icon:'🫘', stock:45, unit:'bag'    },
-  { id:21, barcode:'BF-GRN-003',  sku:'GRN-003',  name:'Yam (1 tuber)',             cat:'grains',     price:1500, icon:'🍠', stock:35, unit:'tuber'  },
-  { id:22, barcode:'BF-GRN-004',  sku:'GRN-004',  name:'Plantain (bunch)',          cat:'grains',     price:1200, icon:'🍌', stock:40, unit:'bunch'  },
-  { id:23, barcode:'BF-GRN-005',  sku:'GRN-005',  name:'Semolina (1 kg)',           cat:'grains',     price:1200, icon:'🫙', stock:55, unit:'kg'     },
-  { id:24, barcode:'BF-VEG-001',  sku:'VEG-001',  name:'Tomatoes (1 kg)',           cat:'vegetables', price:800,  icon:'🍅', stock:3,  unit:'kg'     },
-  { id:25, barcode:'BF-VEG-002',  sku:'VEG-002',  name:'Spinach / Efo Tete',        cat:'vegetables', price:500,  icon:'🥬', stock:2,  unit:'bunch'  },
-  { id:26, barcode:'BF-VEG-003',  sku:'VEG-003',  name:'Ugu / Pumpkin Leaf',        cat:'vegetables', price:600,  icon:'🌿', stock:15, unit:'bunch'  },
-  { id:27, barcode:'BF-VEG-004',  sku:'VEG-004',  name:'Scotch Bonnet (500 g)',     cat:'vegetables', price:700,  icon:'🌶️', stock:20, unit:'pack'   },
-  { id:28, barcode:'BF-VEG-005',  sku:'VEG-005',  name:'Onions (1 kg)',             cat:'vegetables', price:600,  icon:'🧅', stock:30, unit:'kg'     },
-  { id:29, barcode:'BF-EGG-001',  sku:'EGG-001',  name:'Organic Eggs (crate/30)',   cat:'dairy',      price:6000, icon:'🥚', stock:6,  unit:'crate'  },
-  { id:30, barcode:'BF-DRY-001',  sku:'DRY-001',  name:'Fresh Whole Milk (1 L)',    cat:'dairy',      price:1500, icon:'🥛', stock:18, unit:'litre'  },
-  { id:31, barcode:'BF-DRY-002',  sku:'DRY-002',  name:'Greek Yogurt (500 g)',      cat:'dairy',      price:2500, icon:'🍦', stock:12, unit:'pack'   },
-  { id:32, barcode:'BF-DRY-003',  sku:'DRY-003',  name:'Butter (250 g)',            cat:'dairy',      price:2000, icon:'🧈', stock:20, unit:'pack'   },
-  { id:33, barcode:'BF-BEV-001',  sku:'BEV-001',  name:'Zobo Drink (1 L)',          cat:'beverages',  price:800,  icon:'🧃', stock:30, unit:'bottle' },
-  { id:34, barcode:'BF-BEV-002',  sku:'BEV-002',  name:'Kunu (500 ml)',             cat:'beverages',  price:600,  icon:'🥤', stock:25, unit:'bottle' },
-  { id:35, barcode:'BF-BEV-003',  sku:'BEV-003',  name:'Bottled Water (1.5 L)',     cat:'beverages',  price:400,  icon:'💧', stock:100,unit:'bottle' },
-  { id:36, barcode:'BF-BEV-004',  sku:'BEV-004',  name:'Tigernut Milk (500 ml)',    cat:'beverages',  price:1200, icon:'🍶', stock:15, unit:'bottle' },
-  { id:37, barcode:'BF-BEV-005',  sku:'BEV-005',  name:'Fresh Orange Juice (500ml)',cat:'beverages',  price:1200, icon:'🍊', stock:20, unit:'bottle' },
-  { id:38, barcode:'BF-FRM-001',  sku:'FRM-001',  name:'Ginger (250 g)',            cat:'farm',       price:400,  icon:'🫚', stock:40, unit:'pack'   },
-  { id:39, barcode:'BF-FRM-002',  sku:'FRM-002',  name:'Garlic (5 bulbs)',          cat:'farm',       price:600,  icon:'🧄', stock:35, unit:'pack'   },
-  { id:40, barcode:'BF-FRM-003',  sku:'FRM-003',  name:'Sweet Potatoes (1 kg)',     cat:'farm',       price:700,  icon:'🍠', stock:28, unit:'kg'     },
-  { id:41, barcode:'BF-FRM-004',  sku:'FRM-004',  name:'Cassava (1 kg)',            cat:'farm',       price:500,  icon:'🪴', stock:50, unit:'kg'     },
-  { id:42, barcode:'BF-FRM-005',  sku:'FRM-005',  name:'Fresh Herb Bundle',         cat:'farm',       price:600,  icon:'🌱', stock:20, unit:'bunch'  },
-]
-const BY_BARCODE = {}; const BY_SKU = {}
-PRODUCTS.forEach(p => { BY_BARCODE[p.barcode] = p; BY_SKU[p.sku] = p })
 
 const MOCK_CUSTOMERS = [
-  { id:1, name:'Amara Obi',      phone:'0810 000 1234', tier:'Platinum', points:2450, wallet:5000,  orders:24 },
-  { id:2, name:'Tunde Adeyemi',  phone:'0802 345 6789', tier:'Gold',     points:1200, wallet:1200,  orders:12 },
-  { id:3, name:'Mrs. Okonkwo',   phone:'0706 789 0123', tier:'Platinum', points:3800, wallet:8500,  orders:38 },
-  { id:4, name:'Kemi Balogun',   phone:'0817 234 5678', tier:'Silver',   points:620,  wallet:0,     orders:4  },
-  { id:5, name:'Seun Abiodun',   phone:'0803 456 7890', tier:'Gold',     points:1700, wallet:3000,  orders:17 },
+  { id: 1, name: 'Amara Obi',     phone: '0810 000 1234', tier: 'Platinum', points: 2450, wallet: 5000,  orders: 24 },
+  { id: 2, name: 'Tunde Adeyemi', phone: '0802 345 6789', tier: 'Gold',     points: 1200, wallet: 1200,  orders: 12 },
+  { id: 3, name: 'Mrs. Okonkwo',  phone: '0706 789 0123', tier: 'Platinum', points: 3800, wallet: 8500,  orders: 38 },
+  { id: 4, name: 'Kemi Balogun',  phone: '0817 234 5678', tier: 'Silver',   points: 620,  wallet: 0,     orders: 4  },
+  { id: 5, name: 'Seun Abiodun',  phone: '0803 456 7890', tier: 'Gold',     points: 1700, wallet: 3000,  orders: 17 },
 ]
+
 const HISTORY_MOCK = [
-  { inv:'BF-INV-1023', cust:'Walk-in',     method:'Cash',     time:'10:45 AM', amount:3500  },
-  { inv:'BF-INV-1024', cust:'Amara Obi',   method:'Transfer', time:'11:10 AM', amount:14200 },
-  { inv:'BF-INV-1025', cust:'Mrs. Okonkwo',method:'Card/POS', time:'12:05 PM', amount:8750  },
-  { inv:'BF-INV-1026', cust:'Walk-in',     method:'Cash',     time:'01:20 PM', amount:2400  },
-  { inv:'BF-INV-1027', cust:'Tunde Adeyemi',method:'QR/USSD', time:'02:05 PM', amount:6600  },
-  { inv:'BF-INV-1028', cust:'Kemi Balogun',method:'Card/POS', time:'02:40 PM', amount:5100  },
+  { inv: 'BF-INV-1023', cust: 'Walk-in',      method: 'Cash',       time: '10:45 AM', amount: 3500 },
+  { inv: 'BF-INV-1024', cust: 'Amara Obi',    method: 'Transfer',   time: '11:10 AM', amount: 14200 },
+  { inv: 'BF-INV-1025', cust: 'Mrs. Okonkwo', method: 'Card / POS', time: '12:05 PM', amount: 8750 },
+  { inv: 'BF-INV-1026', cust: 'Walk-in',      method: 'Cash',       time: '01:20 PM', amount: 2400 },
+  { inv: 'BF-INV-1027', cust: 'Tunde Adeyemi',method: 'QR / USSD',  time: '02:05 PM', amount: 6600 },
+  { inv: 'BF-INV-1028', cust: 'Kemi Balogun', method: 'Card / POS', time: '02:40 PM', amount: 5100 },
 ]
-// ── Online / Incoming Orders ─────────────────────────────────────────────────
+
 const ONLINE_ORDERS = [
   {
-    id:'ORD-WEB-4421', channel:'website', customer:'Amara Obi', phone:'0810 000 1234',
-    time:'09:14 AM', status:'new', note:'Please pack neatly, delivery by 12pm',
-    items:[
-      { productId:1,  qty:2 },   // Jollof Rice Box × 2
-      { productId:35, qty:4 },   // Bottled Water × 4
-      { productId:9,  qty:1 },   // Fresh Tilapia × 1
+    id: 'ORD-WEB-4421', channel: 'website', customer: 'Amara Obi', phone: '0810 000 1234',
+    time: '09:14 AM', status: 'new', note: 'Please pack neatly, delivery by 12pm',
+    items: [
+      { productId: 1,  qty: 2 },
+      { productId: 35, qty: 4 },
+      { productId: 9,  qty: 1 },
     ],
   },
   {
-    id:'ORD-WA-4422', channel:'whatsapp', customer:'Mrs. Okonkwo', phone:'0706 789 0123',
-    time:'10:02 AM', status:'new', note:'',
-    items:[
-      { productId:2, qty:1 },    // Egusi Soup × 1
-      { productId:4, qty:1 },    // Pounded Yam × 1
-      { productId:33,qty:2 },    // Zobo Drink × 2
+    id: 'ORD-WA-4422', channel: 'whatsapp', customer: 'Mrs. Okonkwo', phone: '0706 789 0123',
+    time: '10:02 AM', status: 'new', note: '',
+    items: [
+      { productId: 2, qty: 1 },
+      { productId: 4, qty: 1 },
+      { productId: 33,qty: 2 },
     ],
   },
   {
-    id:'ORD-IG-4423', channel:'instagram', customer:'Kemi Balogun', phone:'0817 234 5678',
-    time:'10:45 AM', status:'pending', note:'Call before dispatch',
-    items:[
-      { productId:16, qty:2 },   // Chicken 1kg × 2
-      { productId:19, qty:1 },   // Rice 5kg × 1
-      { productId:28, qty:1 },   // Onions 1kg × 1
+    id: 'ORD-IG-4423', channel: 'instagram', customer: 'Kemi Balogun', phone: '0817 234 5678',
+    time: '10:45 AM', status: 'pending', note: 'Call before dispatch',
+    items: [
+      { productId: 16, qty: 2 },
+      { productId: 19, qty: 1 },
+      { productId: 28, qty: 1 },
     ],
   },
   {
-    id:'ORD-WEB-4424', channel:'website', customer:'Tunde Adeyemi', phone:'0802 345 6789',
-    time:'11:30 AM', status:'pending', note:'',
-    items:[
-      { productId:13, qty:2 },   // Tiger Prawns × 2
-      { productId:15, qty:1 },   // Goat Meat × 1
-      { productId:37, qty:3 },   // Fresh OJ × 3
+    id: 'ORD-WEB-4424', channel: 'website', customer: 'Tunde Adeyemi', phone: '0802 345 6789',
+    time: '11:30 AM', status: 'pending', note: '',
+    items: [
+      { productId: 13, qty: 2 },
+      { productId: 15, qty: 1 },
+      { productId: 37, qty: 3 },
     ],
   },
   {
-    id:'ORD-WA-4425', channel:'whatsapp', customer:'Seun Abiodun', phone:'0803 456 7890',
-    time:'12:10 PM', status:'new', note:'Add extra pepper please',
-    items:[
-      { productId:3, qty:3 },    // Fried Rice & Chicken × 3
-      { productId:33,qty:6 },    // Zobo Drink × 6
-    ],
-  },
-  {
-    id:'ORD-PHN-4426', channel:'phone', customer:'Walk-in Pickup', phone:'—',
-    time:'12:55 PM', status:'processing', note:'Paid online, just for pickup',
-    items:[
-      { productId:5,  qty:1 },   // Pepper Soup × 1
-      { productId:22, qty:2 },   // Plantain × 2
-      { productId:35, qty:2 },   // Water × 2
+    id: 'ORD-WA-4425', channel: 'whatsapp', customer: 'Seun Abiodun', phone: '0803 456 7890',
+    time: '12:10 PM', status: 'new', note: 'Add extra pepper please',
+    items: [
+      { productId: 3, qty: 3 },
+      { productId: 33,qty: 6 },
     ],
   },
 ]
+
 const CHANNEL_META = {
-  website:   { label:'Website',   icon:'ri-global-line',     color:'#405189' },
-  whatsapp:  { label:'WhatsApp',  icon:'ri-whatsapp-line',   color:'#25d366' },
-  instagram: { label:'Instagram', icon:'ri-instagram-line',  color:'#e1306c' },
-  phone:     { label:'Phone',     icon:'ri-phone-line',      color:'#f7b84b' },
+  website:   { label: 'Website',   icon: 'ri-global-line',    color: '#405189' },
+  whatsapp:  { label: 'WhatsApp',  icon: 'ri-whatsapp-line',  color: '#25d366' },
+  instagram: { label: 'Instagram', icon: 'ri-instagram-line', color: '#e1306c' },
+  phone:     { label: 'Phone',     icon: 'ri-phone-line',     color: '#f7b84b' },
 }
 const STATUS_META = {
-  new:        { label:'New',        color:'#0ab39c', bg:'rgba(10,179,156,.12)' },
-  pending:    { label:'Pending',    color:'#f7b84b', bg:'rgba(247,184,75,.12)' },
-  processing: { label:'Processing', color:'#299cdb', bg:'rgba(41,156,219,.12)' },
+  new:        { label: 'New',        color: '#0ab39c', bg: 'rgba(10,179,156,.12)' },
+  pending:    { label: 'Pending',    color: '#f7b84b', bg: 'rgba(247,184,75,.12)' },
+  processing: { label: 'Processing', color: '#299cdb', bg: 'rgba(41,156,219,.12)' },
 }
 
-const TIER_COLOR = { Platinum:'#a78bfa', Gold:'#f7b84b', Silver:'#94a3b8', Bronze:'#f97316' }
-const fmt  = n => '₦' + Math.round(n).toLocaleString()
+const TIER_COLOR = { Platinum: '#a78bfa', Gold: '#f7b84b', Silver: '#94a3b8', Bronze: '#f97316' }
+const fmt = n => '₦' + Math.round(n || 0).toLocaleString()
 const genOrderId = () => 'BF-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-5)
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// Audio Beep Synthesizer for POS Scan & Actions
+function playBeep(type = 'scan') {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = new AudioCtx()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    if (type === 'scan') {
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(880, ctx.currentTime) // A5 note
+      gain.gain.setValueAtTime(0.12, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.08)
+    } else if (type === 'success') {
+      osc.type = 'triangle'
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime) // D5
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.08) // A5
+      gain.gain.setValueAtTime(0.15, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.22)
+    } else if (type === 'error') {
+      osc.type = 'sawtooth'
+      osc.frequency.setValueAtTime(220, ctx.currentTime)
+      gain.gain.setValueAtTime(0.2, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.15)
+    }
+  } catch {
+    // AudioContext silenced if blocked by browser autoplay
+  }
+}
+
+// ── Smart Category / Icon Classifier ────────────────────────────────────────
+function getProductCat(p) {
+  const catName = (p.category || p.category_name || p.cat || '').toLowerCase()
+  const name = (p.name || '').toLowerCase()
+
+  if (catName.includes('oil') || catName.includes('sauce') || name.includes('oil') || name.includes('kings') || name.includes('emperor') || name.includes('mayonnaise') || name.includes('bama') || name.includes('whippy') || name.includes('vinegar') || name.includes('ketchup') || name.includes('butter')) return 'oils'
+  if (catName.includes('grain') || catName.includes('flour') || catName.includes('carb') || name.includes('rice') || name.includes('bean') || name.includes('yam') || name.includes('poundo') || name.includes('plantain') || name.includes('semovita') || name.includes('wheat') || name.includes('flour') || name.includes('garri') || name.includes('cassava') || name.includes('potato') || name.includes('noodle') || name.includes('pasta') || name.includes('spaghetti') || name.includes('indomie') || name.includes('custard')) return 'grains'
+  if (catName.includes('season') || catName.includes('spice') || name.includes('maggi') || name.includes('knorr') || name.includes('royco') || name.includes('salt') || name.includes('curry') || name.includes('thyme') || name.includes('crayfish') || name.includes('ginger') || name.includes('garlic')) return 'seasoning'
+  if (catName.includes('soap') || catName.includes('clean') || catName.includes('detergent') || catName.includes('house') || name.includes('soap') || name.includes('mama') || name.includes('viva') || name.includes('so klin') || name.includes('detergent') || name.includes('hypo') || name.includes('ariel') || name.includes('bleach') || name.includes('tissue') || name.includes('sponge')) return 'household'
+  if (catName.includes('can') || catName.includes('paste') || name.includes('tomato') || name.includes('tin') || name.includes('sardine') || name.includes('geisha') || name.includes('corned') || name.includes('gino') || name.includes('sonia') || name.includes('derica')) return 'canned'
+  if (catName.includes('bev') || catName.includes('drink') || catName.includes('juice') || name.includes('milo') || name.includes('zobo') || name.includes('kunu') || name.includes('water') || name.includes('juice') || name.includes('tea') || name.includes('drink') || name.includes('chivita') || name.includes('coke') || name.includes('malt') || name.includes('milk') || name.includes('peak') || name.includes('dano') || name.includes('cowbell')) return 'beverages'
+  if (catName.includes('veg') || catName.includes('fruit') || catName.includes('fresh') || name.includes('onion') || name.includes('spinach') || name.includes('efo') || name.includes('ugu') || name.includes('pepper') || name.includes('rodo') || name.includes('tatashe') || name.includes('carrot') || name.includes('cucumber') || name.includes('cabbage')) return 'vegetables'
+  if (catName.includes('fish') || catName.includes('sea') || catName.includes('meat') || catName.includes('poultry') || name.includes('tilapia') || name.includes('catfish') || name.includes('mackerel') || name.includes('stockfish') || name.includes('goat') || name.includes('chicken') || name.includes('turkey') || name.includes('beef') || name.includes('prawn')) return 'meat'
+  if (catName.includes('meal') || catName.includes('soup') || catName.includes('food') || name.includes('soup') || name.includes('jollof') || name.includes('fried rice') || name.includes('egusi') || name.includes('ofada') || name.includes('afang') || name.includes('banga')) return 'meals'
+  if (catName.includes('dairy') || catName.includes('egg') || name.includes('egg') || name.includes('yogurt') || name.includes('cheese')) return 'dairy'
+  return 'grains'
+}
+
+function getProductIcon(name = '', cat = '') {
+  const n = name.toLowerCase()
+  if (n.includes('oil') || n.includes('kings') || n.includes('emperor') || n.includes('mayonnaise') || n.includes('bama') || n.includes('whippy')) return '🫒'
+  if (n.includes('rice') || n.includes('wheat') || n.includes('semovita') || n.includes('flour') || n.includes('garri')) return '🌾'
+  if (n.includes('bean') || n.includes('oloyin')) return '🫘'
+  if (n.includes('yam') || n.includes('poundo') || n.includes('cassava') || n.includes('potato')) return '🍠'
+  if (n.includes('plantain') || n.includes('banana')) return '🍌'
+  if (n.includes('soup') || n.includes('egusi') || n.includes('ofada') || n.includes('afang') || n.includes('banga')) return '🍲'
+  if (n.includes('chicken') || n.includes('turkey') || n.includes('fowl')) return '🍗'
+  if (n.includes('beef') || n.includes('meat') || n.includes('goat')) return '🥩'
+  if (n.includes('fish') || n.includes('tilapia') || n.includes('catfish') || n.includes('mackerel') || n.includes('crayfish') || n.includes('prawn') || n.includes('stockfish')) return '🐟'
+  if (n.includes('egg')) return '🥚'
+  if (n.includes('milk') || n.includes('peak') || n.includes('dano') || n.includes('cowbell') || n.includes('yogurt') || n.includes('custard')) return '🥛'
+  if (n.includes('tomato') || n.includes('tatashe') || n.includes('pepper') || n.includes('rodo') || n.includes('gino') || n.includes('derica')) return '🍅'
+  if (n.includes('onion')) return '🧅'
+  if (n.includes('spinach') || n.includes('efo') || n.includes('ugu') || n.includes('vegetable')) return '🥬'
+  if (n.includes('salt') || n.includes('maggi') || n.includes('knorr') || n.includes('spice') || n.includes('seasoning')) return '🧂'
+  if (n.includes('milo') || n.includes('beverage') || n.includes('juice') || n.includes('drink') || n.includes('zobo') || n.includes('water')) return '🧃'
+  if (n.includes('soap') || n.includes('mama') || n.includes('viva') || n.includes('so klin') || n.includes('detergent') || n.includes('hypo')) return '🧼'
+  return '🌾'
+}
+
+// ── Main POS Component ────────────────────────────────────────────────────────
 export default function POS() {
   const { user } = useAuth()
 
-  // ── Live Backend State ───────────────────────────────────────────────────
+  // ── Live Backend State ─────────────────────────────────────────────────────
   const [productsList, setProductsList] = useState([])
   const [customersList, setCustomersList] = useState(MOCK_CUSTOMERS)
   const [historyList, setHistoryList] = useState(HISTORY_MOCK)
-  const [loadingPOS, setLoadingPOS] = useState(false)
+  const [loadingPOS, setLoadingPOS] = useState(true)
 
   // Dynamic Lookup Maps
   const { byBarcode, bySku } = useMemo(() => {
@@ -174,138 +213,106 @@ export default function POS() {
     return { byBarcode: bc, bySku: sk }
   }, [productsList])
 
-  // UI
+  // UI State
   const [activeCategory, setActiveCategory] = useState('all')
-  const [search, setSearch]             = useState('')
-  const [toast, setToast]               = useState(null)
-  const [toastTimer, setToastTimer]     = useState(null)
+  const [search, setSearch]                 = useState('')
+  const [toast, setToast]                   = useState(null)
+  const [toastTimer, setToastTimer]         = useState(null)
 
   // Online orders
-  const [onlineOrders, setOnlineOrders] = useState(ONLINE_ORDERS)
-  const [onlineFilter, setOnlineFilter] = useState('all')   // 'all'|'new'|'pending'|'processing'
-  const [expandedOrder, setExpandedOrder] = useState(null)  // order id being previewed
+  const [onlineOrders, setOnlineOrders]     = useState(ONLINE_ORDERS)
+  const [onlineFilter, setOnlineFilter]     = useState('all')
+  const [expandedOrder, setExpandedOrder]   = useState(null)
 
   // Customer
-  const [customer, setCustomer]         = useState(null)
-  const [custSearch, setCustSearch]     = useState('')
-  const [showCustPanel, setShowCustPanel] = useState(false)
+  const [customer, setCustomer]             = useState(null)
+  const [custSearch, setCustSearch]         = useState('')
+  const [showCustPanel, setShowCustPanel]   = useState(false)
 
   // Cart
-  const [cart, setCart]                 = useState([])
-  const [discountPct, setDiscountPct]   = useState(0)
-  const [orderNote, setOrderNote]       = useState('')
-  const [highlightId, setHighlightId]   = useState(null)
+  const [cart, setCart]                     = useState([])
+  const [discountPct, setDiscountPct]       = useState(0)
+  const [orderNote, setOrderNote]           = useState('')
+  const [highlightId, setHighlightId]       = useState(null)
 
   // Held orders
-  const [heldOrders, setHeldOrders]     = useState([])
-  const [orderId, setOrderId]           = useState(genOrderId)
+  const [heldOrders, setHeldOrders]         = useState([])
+  const [orderId, setOrderId]               = useState(genOrderId)
 
-  // ── Modals (one at a time) ────────────────────────────────────────────────
-  // null | 'cash' | 'card' | 'qr' | 'transfer' | 'split'
-  // | 'hold' | 'invoice' | 'paylater' | 'history' | 'success' | 'scanner'
-  const [activeModal, setActiveModal]   = useState(null)
+  // Modals
+  const [activeModal, setActiveModal]       = useState(null)
   const closeModal = () => setActiveModal(null)
 
   // Scanner basket modal
-  const [scanCart, setScanCart]         = useState([])
-  const [scanCode, setScanCode]         = useState('')
-  const scanModalInputRef               = useRef(null)
+  const [scanCart, setScanCart]             = useState([])
+  const [scanCode, setScanCode]             = useState('')
+  const scanModalInputRef                   = useRef(null)
 
   // Cash modal
-  const [cashReceived, setCashReceived] = useState('')
+  const [cashReceived, setCashReceived]     = useState('')
   // Card modal
-  const [cardTab, setCardTab]           = useState('visa') // 'visa' | 'mastercard'
-  const [cardNum, setCardNum]           = useState('')
-  const [cardExpiry, setCardExpiry]     = useState('')
-  const [cardCvv, setCardCvv]           = useState('')
-  const [cardTxnId, setCardTxnId]       = useState('')
-  const [cardNote, setCardNote]         = useState('')
+  const [cardTab, setCardTab]               = useState('visa')
   // Transfer modal
-  const [bankName, setBankName]         = useState('')
-  const [txnRef, setTxnRef]             = useState('')
-  const [transferDate, setTransferDate] = useState('')
+  const [bankName, setBankName]             = useState('')
+  const [txnRef, setTxnRef]                 = useState('')
+  const [transferDate, setTransferDate]     = useState('')
   // Split modal
-  const [splitRows, setSplitRows]       = useState([
-    { method:'Cash',     amount:'' },
-    { method:'Transfer', amount:'' },
+  const [splitRows, setSplitRows]           = useState([
+    { method: 'Cash',          amount: '' },
+    { method: 'Bank Transfer', amount: '' },
   ])
   // Hold modal
-  const [holdRef, setHoldRef]           = useState('')
-  const [holdNote, setHoldNote]         = useState('')
+  const [holdRef, setHoldRef]               = useState('')
+  const [holdNote, setHoldNote]             = useState('')
   // Pay later modal
-  const [payLaterCust, setPayLaterCust] = useState('')
-  const [payLaterDate, setPayLaterDate] = useState('')
+  const [payLaterCust, setPayLaterCust]     = useState('')
+  const [payLaterDate, setPayLaterDate]     = useState('')
   // Success data
-  const [successData, setSuccessData]   = useState(null)
+  const [successData, setSuccessData]       = useState(null)
 
   // Goods Return modal
-  const POS_RETURN_REASONS = ['Damaged on delivery','Wrong item sent','Quality below standard','Spoiled / Already expired','Item missing from order','Incorrect quantity','Customer changed mind','Packaging damaged']
+  const POS_RETURN_REASONS = [
+    'Damaged on delivery',
+    'Wrong item sent',
+    'Quality below standard',
+    'Spoiled / Already expired',
+    'Item missing from order',
+    'Incorrect quantity',
+    'Customer changed mind',
+    'Packaging damaged'
+  ]
   const [returnForm, setReturnForm] = useState({
-    customer:'Walk-in', phone:'', product: null, qty:1, unitPrice:0,
-    reason:POS_RETURN_REASONS[0], notes:'', condition:'resalable', refundMethod:'Cash',
+    customer: 'Walk-in', phone: '', product: null, qty: 1, unitPrice: 0,
+    reason: POS_RETURN_REASONS[0], notes: '', condition: 'resalable', refundMethod: 'Cash',
   })
-  const [returnStep, setReturnStep]     = useState(1)  // 1=details 2=inspect+refund
-  const [returnLogs, setReturnLogs]     = useState([])
-  const [returnSuccess, setReturnSuccess] = useState(null)
+  const [returnStep, setReturnStep]         = useState(1)
+  const [returnLogs, setReturnLogs]         = useState([])
+  const [returnSuccess, setReturnSuccess]   = useState(null)
 
   const scanInputRef = useRef(null)
 
-function getProductCat(p) {
-  const catName = (p.category || p.category_name || p.cat || '').toLowerCase()
-  const name = (p.name || '').toLowerCase()
-  if (catName.includes('meal') || catName.includes('soup') || catName.includes('food') || name.includes('soup') || name.includes('jollof') || name.includes('fried rice')) return 'meals'
-  if (catName.includes('fish') || catName.includes('sea') || catName.includes('prawn') || name.includes('tilapia') || name.includes('catfish') || name.includes('crayfish') || name.includes('stockfish') || name.includes('mackerel')) return 'seafood'
-  if (catName.includes('meat') || catName.includes('poultry') || catName.includes('beef') || name.includes('goat') || name.includes('chicken') || name.includes('turkey') || name.includes('beef')) return 'meat'
-  if (catName.includes('grain') || catName.includes('cereal') || catName.includes('carb') || catName.includes('rice') || catName.includes('bean') || catName.includes('flour') || catName.includes('tuber') || name.includes('rice') || name.includes('bean') || name.includes('yam') || name.includes('poundo') || name.includes('plantain') || name.includes('semovita') || name.includes('wheat') || name.includes('flour') || name.includes('garri')) return 'grains'
-  if (catName.includes('veg') || catName.includes('fruit') || catName.includes('pepper') || name.includes('tomato') || name.includes('onion') || name.includes('spinach') || name.includes('efo') || name.includes('ugu') || name.includes('pepper') || name.includes('rodo') || name.includes('tatashe') || name.includes('carrot') || name.includes('cucumber')) return 'vegetables'
-  if (catName.includes('dairy') || catName.includes('egg') || name.includes('egg') || name.includes('milk') || name.includes('yogurt') || name.includes('butter') || name.includes('custard') || name.includes('cheese')) return 'dairy'
-  if (catName.includes('bev') || catName.includes('drink') || catName.includes('juice') || name.includes('milo') || name.includes('zobo') || name.includes('kunu') || name.includes('water') || name.includes('juice') || name.includes('tea') || name.includes('drink')) return 'beverages'
-  return 'farm'
-}
-
-function getProductIcon(name = '', cat = '') {
-  const n = name.toLowerCase()
-  if (n.includes('rice') || n.includes('wheat') || n.includes('semovita')) return '🌾'
-  if (n.includes('bean') || n.includes('oloyin')) return '🫘'
-  if (n.includes('yam') || n.includes('poundo') || n.includes('cassava')) return '🍠'
-  if (n.includes('plantain') || n.includes('banana')) return '🍌'
-  if (n.includes('soup') || n.includes('egusi') || n.includes('ofada') || n.includes('afang') || n.includes('banga')) return '🍲'
-  if (n.includes('chicken') || n.includes('turkey') || n.includes('fowl')) return '🍗'
-  if (n.includes('beef') || n.includes('meat') || n.includes('goat')) return '🥩'
-  if (n.includes('fish') || n.includes('tilapia') || n.includes('catfish') || n.includes('mackerel') || n.includes('crayfish') || n.includes('prawn') || n.includes('stockfish')) return '🐟'
-  if (n.includes('egg')) return '🥚'
-  if (n.includes('milk') || n.includes('yogurt') || n.includes('butter') || n.includes('custard')) return '🥛'
-  if (n.includes('oil') || n.includes('kings') || n.includes('emperor') || n.includes('bama') || n.includes('mayonnaise')) return '🫒'
-  if (n.includes('tomato') || n.includes('tatashe') || n.includes('pepper') || n.includes('rodo')) return '🍅'
-  if (n.includes('onion')) return '🧅'
-  if (n.includes('spinach') || n.includes('efo') || n.includes('ugu') || n.includes('vegetable')) return '🥬'
-  if (n.includes('salt')) return '🧂'
-  if (n.includes('milo') || n.includes('beverage') || n.includes('juice') || n.includes('drink') || n.includes('zobo') || n.includes('water')) return '🧃'
-  if (n.includes('soap') || n.includes('mama') || n.includes('viva') || n.includes('so klin') || n.includes('detergent')) return '🧼'
-  return '🌾'
-}
-
-  // ── Fetch Live Backend Data on Mount ───────────────────────────────────────
+  // ── Load Live Backend Data ─────────────────────────────────────────────────
   useEffect(() => {
+    let isMounted = true
     async function loadPOSData() {
       setLoadingPOS(true)
       try {
-        // 1. Fetch live products from database
         let prods = []
         try {
-          const res = await api.get('/products?limit=200')
+          const res = await api.get('/products?limit=250')
           prods = res.data?.products || res.data?.data || res.data || []
         } catch {
           try {
-            const raw = await fetch('/api/products?limit=200')
+            const raw = await fetch('/api/products?limit=250')
             const json = await raw.json()
             prods = json.products || json.data || []
           } catch {
-            const res = await api.get('/admin/pos/products?limit=200').catch(() => null)
+            const res = await api.get('/admin/pos/products?limit=250').catch(() => null)
             prods = res?.data?.products || res?.data || []
           }
         }
-        if (Array.isArray(prods) && prods.length > 0) {
+
+        if (Array.isArray(prods) && prods.length > 0 && isMounted) {
           const mapped = prods.map(p => {
             const rawPrice = Number(p.price || p.unit_price || 0)
             const sanitizedPrice = rawPrice >= 500000 ? Math.round(rawPrice / 1500) : Math.round(rawPrice)
@@ -316,24 +323,27 @@ function getProductIcon(name = '', cat = '') {
               name: p.name,
               cat: getProductCat(p),
               price: sanitizedPrice,
-              stock: p.stock != null ? Number(p.stock) : (p.stock_quantity != null ? Number(p.stock_quantity) : 0),
+              stock: p.stock != null ? Number(p.stock) : (p.stock_quantity != null ? Number(p.stock_quantity) : 25),
               unit: p.unit || 'unit',
               image: p.image_url || p.image || null,
               icon: p.icon || getProductIcon(p.name, p.category || p.cat)
             }
           })
           setProductsList(mapped)
-          setReturnForm(f => ({ ...f, product: f.product || mapped[0], unitPrice: f.unitPrice || mapped[0]?.price || 0 }))
+          setReturnForm(f => ({
+            ...f,
+            product: f.product || mapped[0],
+            unitPrice: f.unitPrice || mapped[0]?.price || 0
+          }))
         }
       } catch (e) {
         console.warn('Live products fallback', e)
       }
 
       try {
-        // 2. Fetch live customers
         const custRes = await api.get('/admin/pos/customers').catch(() => api.get('/admin/customers'))
-        const custs = custRes.data?.customers || custRes.data || []
-        if (Array.isArray(custs) && custs.length > 0) {
+        const custs = custRes?.data?.customers || custRes?.data || []
+        if (Array.isArray(custs) && custs.length > 0 && isMounted) {
           const mappedCusts = custs.map(c => ({
             id: c.id,
             name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.name || 'Customer',
@@ -350,10 +360,9 @@ function getProductIcon(name = '', cat = '') {
       }
 
       try {
-        // 3. Fetch live online/incoming orders
         const ordRes = await api.get('/admin/orders?status=pending&limit=15').catch(() => null)
         const ords = ordRes?.data?.orders || []
-        if (Array.isArray(ords) && ords.length > 0) {
+        if (Array.isArray(ords) && ords.length > 0 && isMounted) {
           const mappedOrders = ords.map(o => ({
             id: o.order_ref || `ORD-${o.id}`,
             channel: o.channel || 'website',
@@ -374,10 +383,9 @@ function getProductIcon(name = '', cat = '') {
       }
 
       try {
-        // 4. Fetch receipts/history
         const rcptRes = await api.get('/admin/pos/receipts').catch(() => null)
         const rcpts = rcptRes?.data?.receipts || []
-        if (Array.isArray(rcpts) && rcpts.length > 0) {
+        if (Array.isArray(rcpts) && rcpts.length > 0 && isMounted) {
           const mappedHistory = rcpts.map(r => ({
             inv: r.order_ref || `INV-${r.id}`,
             cust: r.customer_name || 'Walk-in',
@@ -388,15 +396,61 @@ function getProductIcon(name = '', cat = '') {
           setHistoryList(mappedHistory)
         }
       } catch (e) {
-        console.warn('Live POS history fallback', e)
+        console.warn('Live POS receipts fallback', e)
       }
-      setLoadingPOS(false)
+
+      if (isMounted) setLoadingPOS(false)
     }
 
     loadPOSData()
+    return () => { isMounted = false }
   }, [])
 
-  // ── Barcode scanner ───────────────────────────────────────────────────────
+  // ── Toast Helper ───────────────────────────────────────────────────────────
+  function showToast(msg, type = 'success', icon = '✅') {
+    if (toastTimer) clearTimeout(toastTimer)
+    setToast({ msg, type, icon })
+    setToastTimer(setTimeout(() => setToast(null), 2400))
+  }
+
+  // ── Cart & Product Methods ─────────────────────────────────────────────────
+  function addProductToCart(product) {
+    playBeep('scan')
+    setCart(prev => {
+      const ex = prev.find(i => i.id === product.id)
+      if (ex) {
+        showToast(`${product.name} (Qty ${ex.qty + 1})`, 'success', product.icon || '🌾')
+        return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i)
+      }
+      showToast(`${product.name} added`, 'success', product.icon || '🌾')
+      return [...prev, { ...product, qty: 1, note: '' }]
+    })
+    setHighlightId(product.id)
+    setTimeout(() => setHighlightId(null), 600)
+  }
+
+  function updateQty(id, qty) {
+    if (qty <= 0) {
+      setCart(prev => prev.filter(i => i.id !== id))
+      return
+    }
+    setCart(prev => prev.map(i => i.id === id ? { ...i, qty } : i))
+  }
+
+  function updateNote(id, note) {
+    setCart(prev => prev.map(i => i.id === id ? { ...i, note } : i))
+  }
+
+  function clearCart() {
+    setCart([])
+    setDiscountPct(0)
+    setOrderNote('')
+    setCustomer(null)
+    setOrderId(genOrderId())
+    setCashReceived('')
+  }
+
+  // ── Barcode Scanner Hardware Listener ──────────────────────────────────────
   const scanBuffer  = useRef('')
   const lastKeyTime = useRef(0)
   const onScanRef   = useRef(null)
@@ -405,72 +459,101 @@ function getProductIcon(name = '', cat = '') {
     const trimmed = code.trim().toUpperCase()
     if (!trimmed) return
     const product = byBarcode[trimmed] || byBarcode['BF-' + trimmed] || bySku[trimmed]
-    if (!product) { showToast('Not found: ' + trimmed, 'error', '❌'); return }
+    if (!product) {
+      playBeep('error')
+      showToast(`Item not found: ${trimmed}`, 'error', '❌')
+      return
+    }
     addProductToCart(product)
     setSearch('')
     if (scanInputRef.current) scanInputRef.current.focus()
   }, [byBarcode, bySku])
+
   onScanRef.current = handleBarcodeScan
 
   useEffect(() => {
     function onKeyDown(e) {
       const tag = document.activeElement?.tagName?.toLowerCase()
       const id  = document.activeElement?.id
-      if ((tag === 'input' || tag === 'textarea') && id !== 'scan-field') return
+      const isInput = (tag === 'input' || tag === 'textarea') && id !== 'scan-field'
+
+      // Global Keyboard Hotkeys
+      if (e.key === 'F1') {
+        e.preventDefault()
+        scanInputRef.current?.focus()
+        return
+      }
+      if (e.key === 'F2') {
+        e.preventDefault()
+        setShowCustPanel(p => !p)
+        return
+      }
+      if (e.key === 'F3') {
+        e.preventDefault()
+        setActiveModal('online')
+        return
+      }
+      if (e.key === 'F4') {
+        e.preventDefault()
+        if (cart.length > 0) setActiveModal('hold')
+        return
+      }
+      if (e.key === 'F8') {
+        e.preventDefault()
+        if (cart.length > 0) setActiveModal('cash')
+        return
+      }
+      if (e.key === 'F9') {
+        e.preventDefault()
+        if (cart.length > 0) setActiveModal('card')
+        return
+      }
+      if (e.key === 'Escape') {
+        if (activeModal) {
+          closeModal()
+        } else if (search) {
+          setSearch('')
+        }
+        return
+      }
+
+      if (isInput) return
+
       const now = Date.now()
       if (e.key === 'Enter') {
-        if (scanBuffer.current.length >= 3) onScanRef.current(scanBuffer.current)
-        scanBuffer.current = ''; return
+        if (scanBuffer.current.length >= 3) {
+          onScanRef.current(scanBuffer.current)
+        }
+        scanBuffer.current = ''
+        return
       }
       if (e.key.length === 1) {
         if (now - lastKeyTime.current > 300) scanBuffer.current = ''
-        scanBuffer.current += e.key; lastKeyTime.current = now
+        scanBuffer.current += e.key
+        lastKeyTime.current = now
       }
     }
+
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
+  }, [activeModal, search, cart.length])
 
   useEffect(() => {
     document.body.classList.add('sidebar-hidden')
     return () => document.body.classList.remove('sidebar-hidden')
   }, [])
 
-  // ── Toast ─────────────────────────────────────────────────────────────────
-  function showToast(msg, type = 'success', icon = '✅') {
-    if (toastTimer) clearTimeout(toastTimer)
-    setToast({ msg, type, icon })
-    setToastTimer(setTimeout(() => setToast(null), 2500))
-  }
-
-  // ── Cart helpers ──────────────────────────────────────────────────────────
-  function addProductToCart(product) {
-    setCart(prev => {
-      const ex = prev.find(i => i.id === product.id)
-      if (ex) {
-        showToast(`${product.name} · qty ${ex.qty + 1}`, 'success', product.icon || '🌾')
-        return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i)
-      }
-      showToast(`${product.name} added`, 'success', product.icon || '🌾')
-      return [...prev, { ...product, qty: 1, note: '' }]
-    })
-    setHighlightId(product.id); setTimeout(() => setHighlightId(null), 700)
-  }
-  function updateQty(id, qty) {
-    if (qty <= 0) { setCart(prev => prev.filter(i => i.id !== id)); return }
-    setCart(prev => prev.map(i => i.id === id ? { ...i, qty } : i))
-  }
-  function updateNote(id, note) { setCart(prev => prev.map(i => i.id === id ? { ...i, note } : i)) }
-  function clearCart() {
-    setCart([]); setDiscountPct(0); setOrderNote(''); setCustomer(null); setOrderId(genOrderId())
-  }
-
-  // ── Scanner basket helpers ────────────────────────────────────────────────
+  // ── Scanner basket helpers ─────────────────────────────────────────────────
   function scannerAddProduct(code) {
     const trimmed = code.trim().toUpperCase()
     if (!trimmed) return
     const product = byBarcode[trimmed] || byBarcode['BF-' + trimmed] || bySku[trimmed]
-    if (!product) { showToast('Not found: ' + trimmed, 'error', '❌'); return }
+    if (!product) {
+      playBeep('error')
+      showToast(`Item not found: ${trimmed}`, 'error', '❌')
+      return
+    }
+    playBeep('scan')
     setScanCart(prev => {
       const ex = prev.find(i => i.id === product.id)
       if (ex) return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i)
@@ -480,12 +563,16 @@ function getProductIcon(name = '', cat = '') {
     setScanCode('')
     setTimeout(() => scanModalInputRef.current?.focus(), 50)
   }
+
   function scannerUpdateQty(id, qty) {
-    if (qty <= 0) { setScanCart(prev => prev.filter(i => i.id !== id)); return }
+    if (qty <= 0) {
+      setScanCart(prev => prev.filter(i => i.id !== id))
+      return
+    }
     setScanCart(prev => prev.map(i => i.id === id ? { ...i, qty } : i))
   }
+
   function scannerAddToOrder() {
-    // Merge scanCart into main cart
     scanCart.forEach(item => {
       setCart(prev => {
         const ex = prev.find(i => i.id === item.id)
@@ -493,24 +580,18 @@ function getProductIcon(name = '', cat = '') {
         return [...prev, { ...item, note: '' }]
       })
     })
-    showToast(`${scanCart.length} item(s) added to order`, 'success', '🛒')
+    playBeep('success')
+    showToast(`${scanCart.length} item(s) merged into order`, 'success', '🛒')
     setScanCart([])
     closeModal()
   }
+
   function scannerQuickPay() {
-    // Merge scanCart into main cart, then open cash modal
-    scanCart.forEach(item => {
-      setCart(prev => {
-        const ex = prev.find(i => i.id === item.id)
-        if (ex) return prev.map(i => i.id === item.id ? { ...i, qty: i.qty + item.qty } : i)
-        return [...prev, { ...item, note: '' }]
-      })
-    })
-    setScanCart([])
-    setTimeout(() => setActiveModal('cash'), 50)
+    scannerAddToOrder()
+    setTimeout(() => setActiveModal('cash'), 60)
   }
 
-  // ── Online order → cart ───────────────────────────────────────────────────
+  // ── Online orders → cart ───────────────────────────────────────────────────
   function loadOnlineOrderToCart(order) {
     let loaded = 0
     order.items.forEach(({ productId, qty }) => {
@@ -523,31 +604,41 @@ function getProductIcon(name = '', cat = '') {
       })
       loaded++
     })
-    // Match customer if found
     const matched = customersList.find(c => c.name === order.customer)
     if (matched) setCustomer(matched)
-    // Mark order as processing
-    setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, status:'processing' } : o))
-    showToast(`${loaded} item(s) from ${order.id} loaded to cart`, 'success', '📥')
+    setOnlineOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'processing' } : o))
+    playBeep('success')
+    showToast(`${loaded} item(s) loaded from ${order.id}`, 'success', '📥')
     closeModal()
   }
 
-  // ── Hold ──────────────────────────────────────────────────────────────────
+  // ── Order Holding ──────────────────────────────────────────────────────────
   function doHold() {
     if (cart.length === 0) return
     setHeldOrders(prev => [...prev, { orderId, cart, customer, discountPct, orderNote, ref: holdRef, note: holdNote }])
-    showToast(`Order held · ref: ${holdRef || orderId}`, 'info', '⏸️')
-    setHoldRef(''); setHoldNote(''); closeModal(); clearCart()
-  }
-  function recallOrder(idx) {
-    const held = heldOrders[idx]
-    if (cart.length > 0) setHeldOrders(prev => [...prev, { orderId, cart, customer, discountPct, orderNote }])
-    setCart(held.cart); setCustomer(held.customer); setDiscountPct(held.discountPct)
-    setOrderNote(held.orderNote); setOrderId(held.orderId)
-    setHeldOrders(prev => prev.filter((_, i) => i !== idx))
+    showToast(`Order held · ${holdRef || orderId}`, 'info', '⏸️')
+    setHoldRef('')
+    setHoldNote('')
+    closeModal()
+    clearCart()
   }
 
-  // ── Totals ────────────────────────────────────────────────────────────────
+  function recallOrder(idx) {
+    const held = heldOrders[idx]
+    if (cart.length > 0) {
+      setHeldOrders(prev => [...prev, { orderId, cart, customer, discountPct, orderNote }])
+    }
+    setCart(held.cart)
+    setCustomer(held.customer)
+    setDiscountPct(held.discountPct)
+    setOrderNote(held.orderNote)
+    setOrderId(held.orderId)
+    setHeldOrders(prev => prev.filter((_, i) => i !== idx))
+    playBeep('success')
+    showToast(`Order ${held.orderId} recalled`, 'success', '▶️')
+  }
+
+  // ── Financial Totals ───────────────────────────────────────────────────────
   const subtotal    = cart.reduce((s, i) => s + i.price * i.qty, 0)
   const discountAmt = Math.round(subtotal * discountPct / 100)
   const taxable     = subtotal - discountAmt
@@ -556,7 +647,33 @@ function getProductIcon(name = '', cat = '') {
   const itemCount   = cart.reduce((s, i) => s + i.qty, 0)
   const cashChange  = cashReceived ? Math.max(0, Number(cashReceived) - total) : 0
 
-  // ── Confirm payment (Live Server Order Recording) ───────────────────────────
+  // ── Dynamic Quick Cash Presets ─────────────────────────────────────────────
+  const quickCashOptions = useMemo(() => {
+    if (total <= 0) return [500, 1000, 2000, 5000, 10000]
+    const opts = new Set()
+    opts.add(total) // Exact
+
+    // Next round 1000
+    const next1k = Math.ceil(total / 1000) * 1000
+    if (next1k > total) opts.add(next1k)
+
+    // Next round 5000
+    const next5k = Math.ceil(total / 5000) * 5000
+    if (next5k > total) opts.add(next5k)
+
+    // Next round 10000
+    const next10k = Math.ceil(total / 10000) * 10000
+    if (next10k > total) opts.add(next10k)
+
+    // Common large denominations
+    if (total < 10000) opts.add(10000)
+    if (total < 20000) opts.add(20000)
+    if (total < 50000) opts.add(50000)
+
+    return Array.from(opts).sort((a, b) => a - b).slice(0, 6)
+  }, [total])
+
+  // ── Live Server Sale Execution ─────────────────────────────────────────────
   async function confirmPayment(method) {
     let finalOrderId = orderId
     try {
@@ -568,20 +685,24 @@ function getProductIcon(name = '', cat = '') {
         })),
         customer_id: customer?.id || null,
         customer_name: customer?.name || 'Walk-in Customer',
-        payment_method: method === 'Split' ? 'Split Payment' : (method || 'cash'),
+        payment_method: method === 'Split' ? 'Split Payment' : (method || 'Cash'),
         amount_tendered: method === 'Cash' ? (Number(cashReceived) || total) : total,
         discount_amount: discountAmt,
         notes: orderNote || undefined,
-        split_payments: method === 'Split' ? splitRows.filter(r => r.amount > 0).map(r => ({ method: r.method, amount: Number(r.amount) })) : undefined
+        split_payments: method === 'Split'
+          ? splitRows.filter(r => r.amount > 0).map(r => ({ method: r.method, amount: Number(r.amount) }))
+          : undefined
       }
 
       const res = await api.post('/admin/pos/sale', payload)
       if (res.data?.order?.order_ref || res.data?.invoice?.invoice_ref) {
         finalOrderId = res.data.order?.order_ref || res.data.invoice?.invoice_ref
       }
-      showToast('Sale recorded and synced to server!', 'success', '✅')
+      playBeep('success')
+      showToast('Sale synced to server!', 'success', '✅')
     } catch (err) {
       console.warn('POS sale API offline or errored, recorded locally:', err)
+      playBeep('success')
       showToast('Sale recorded locally', 'success', '✅')
     }
 
@@ -595,14 +716,33 @@ function getProductIcon(name = '', cat = '') {
       total,
       discountPct,
       method,
+      amountTendered: method === 'Cash' ? (Number(cashReceived) || total) : total,
+      change: method === 'Cash' ? cashChange : 0,
       paidAt: new Date()
     })
+
+    // Prepend to live history
+    setHistoryList(prev => [
+      {
+        inv: finalOrderId,
+        cust: customer?.name || 'Walk-in',
+        method,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        amount: total
+      },
+      ...prev
+    ])
+
     closeModal()
     setTimeout(() => setActiveModal('success'), 80)
   }
-  function newOrder() { closeModal(); clearCart(); setCashReceived('') }
 
-  // ── Numpad (cash modal) ───────────────────────────────────────────────────
+  function newOrder() {
+    closeModal()
+    clearCart()
+  }
+
+  // ── Numpad (Cash Modal) ────────────────────────────────────────────────────
   function numpadPress(v) {
     setCashReceived(prev => {
       if (v === '⌫') return prev.slice(0, -1)
@@ -612,98 +752,304 @@ function getProductIcon(name = '', cat = '') {
     })
   }
 
-  // ── Products Filter ───────────────────────────────────────────────────────
-  const products = useMemo(() => {
-    let list = activeCategory === 'all' ? productsList : productsList.filter(p => p.cat === activeCategory)
+  // ── Dynamic Category Counts & Filtering ────────────────────────────────────
+  const categoryCounts = useMemo(() => {
+    const counts = { all: productsList.length, popular: Math.min(12, productsList.length) }
+    CATEGORY_DEFINITIONS.forEach(c => {
+      if (c.id !== 'all' && c.id !== 'popular') {
+        counts[c.id] = productsList.filter(p => p.cat === c.id).length
+      }
+    })
+    return counts
+  }, [productsList])
+
+  const filteredProducts = useMemo(() => {
+    let list = productsList
+    if (activeCategory === 'popular') {
+      list = productsList.slice(0, 12)
+    } else if (activeCategory !== 'all') {
+      list = productsList.filter(p => p.cat === activeCategory)
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase()
-      list = list.filter(p => p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)) || (p.barcode && p.barcode.toLowerCase().includes(q)))
+      list = list.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        (p.sku && p.sku.toLowerCase().includes(q)) ||
+        (p.barcode && p.barcode.toLowerCase().includes(q))
+      )
     }
     return list
   }, [activeCategory, search, productsList])
 
   const filteredCustomers = custSearch.trim()
-    ? customersList.filter(c => c.name.toLowerCase().includes(custSearch.toLowerCase()) || (c.phone && c.phone.includes(custSearch)))
+    ? customersList.filter(c =>
+        c.name.toLowerCase().includes(custSearch.toLowerCase()) ||
+        (c.phone && c.phone.includes(custSearch))
+      )
     : customersList
 
-  // ── Clock ─────────────────────────────────────────────────────────────────
+  // ── Clock ──────────────────────────────────────────────────────────────────
   const [now, setNow] = useState(new Date())
-  useEffect(() => { const t = setInterval(() => setNow(new Date()), 10000); return () => clearInterval(t) }, [])
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
 
-  // ── Split helpers ─────────────────────────────────────────────────────────
-  function addSplitRow() { setSplitRows(r => [...r, { method:'Cash', amount:'' }]) }
-  function updateSplit(i, field, val) { setSplitRows(r => r.map((row, ri) => ri === i ? { ...row, [field]: val } : row)) }
+  // ── Split Helpers ──────────────────────────────────────────────────────────
+  function addSplitRow() {
+    setSplitRows(r => [...r, { method: 'Cash', amount: '' }])
+  }
+  function updateSplit(i, field, val) {
+    setSplitRows(r => r.map((row, ri) => ri === i ? { ...row, [field]: val } : row))
+  }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── UI Render ──────────────────────────────────────────────────────────────
   return (
-    <div style={{ height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--bs-body-bg)', color:'var(--bs-body-color)' }}>
+    <div style={{
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      background: 'var(--bs-body-bg, #0f172a)',
+      color: 'var(--bs-body-color, #e2e8f0)',
+      fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+    }}>
 
-      {/* ═══ TOPBAR ═══════════════════════════════════════════════════════ */}
-      <header className="border-bottom" style={{ height:58, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', zIndex:200, background:'var(--bs-body-bg)' }}>
-        {/* Logo — left */}
-        <div style={{ flex:1, display:'flex', alignItems:'center' }}>
-          <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height:38, objectFit:'contain' }} />
+      {/* ═══ TOPBAR / HEADER ═════════════════════════════════════════════ */}
+      <header style={{
+        height: 54,
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 16px',
+        zIndex: 200,
+        background: 'var(--bs-body-bg, #0f172a)',
+        borderBottom: '1px solid var(--bs-border-color, rgba(255,255,255,0.08))',
+        gap: 16
+      }}>
+        {/* Brand Logo & Live Status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height: 34, objectFit: 'contain' }} />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '3px 8px',
+            borderRadius: 20,
+            background: 'rgba(10,179,156,0.12)',
+            border: '1px solid rgba(10,179,156,0.25)',
+            fontSize: 11,
+            fontWeight: 700,
+            color: '#0ab39c'
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#0ab39c', display: 'inline-block', boxShadow: '0 0 8px #0ab39c' }}></span>
+            <span>POS TERMINAL</span>
+          </div>
         </div>
-        {/* Unified search + scanner — truly centred */}
-        <div style={{ position:'relative', width:'100%', maxWidth:520 }}>
-          <i className="ri-search-line" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#0ab39c', fontSize:15, pointerEvents:'none' }}></i>
+
+        {/* Global Barcode & Search Field */}
+        <div style={{ flex: 1, maxWidth: 540, position: 'relative', margin: '0 auto' }}>
+          <i className="ri-search-line" style={{
+            position: 'absolute',
+            left: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            color: '#0ab39c',
+            fontSize: 16,
+            pointerEvents: 'none'
+          }}></i>
           <input
             id="scan-field"
             ref={scanInputRef}
             type="text"
-            placeholder="Search products  ·  or scan / type barcode + Enter"
+            placeholder="Scan barcode [F1] or search grocery items (e.g. Rice, Oil, Soap)..."
             autoComplete="off"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && search.trim()) handleBarcodeScan(search) }}
-            style={{ width:'100%', height:38, paddingLeft:38, paddingRight:96, border:'2px solid #0ab39c', borderRadius:8, fontSize:13, background:'var(--bs-body-bg)', color:'var(--bs-body-color)', outline:'none', boxShadow:'0 0 0 3px rgba(10,179,156,.1)' }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && search.trim()) {
+                handleBarcodeScan(search)
+              }
+            }}
+            style={{
+              width: '100%',
+              height: 38,
+              paddingLeft: 38,
+              paddingRight: search ? 36 : 105,
+              border: '1.5px solid #0ab39c',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 500,
+              background: 'var(--bs-body-secondary-bg, rgba(255,255,255,0.05))',
+              color: 'var(--bs-body-color, #fff)',
+              outline: 'none',
+              boxShadow: '0 0 0 3px rgba(10,179,156,0.15)'
+            }}
           />
-          {search
-            ? <button onClick={() => setSearch('')} style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'var(--bs-secondary-color)', fontSize:16 }}>✕</button>
-            : <span style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', fontSize:9, color:'#0ab39c', fontWeight:700, letterSpacing:.5, pointerEvents:'none' }}>SCANNER READY</span>
-          }
-        </div>
-        {/* Right controls */}
-        <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, justifyContent:'flex-end' }}>
-          <div style={{ fontSize:12, color:'var(--bs-secondary-color)', textAlign:'right' }}>
-            <div style={{ fontWeight:600 }}>{now.toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})}</div>
-            <div style={{ fontSize:10 }}>{now.toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'})}</div>
-          </div>
-          {heldOrders.length > 0 && (
-            <button className="btn btn-warning btn-sm px-2" style={{ fontSize:11 }}>⏸️ {heldOrders.length} Held</button>
+          {search ? (
+            <button
+              onClick={() => setSearch('')}
+              style={{
+                position: 'absolute',
+                right: 10,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--bs-secondary-color, #94a3b8)',
+                fontSize: 16
+              }}>✕</button>
+          ) : (
+            <div style={{
+              position: 'absolute',
+              right: 10,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 10,
+              fontWeight: 700,
+              color: '#0ab39c',
+              pointerEvents: 'none',
+              background: 'rgba(10,179,156,0.12)',
+              padding: '2px 6px',
+              borderRadius: 4
+            }}>
+              <i className="ri-barcode-line"></i>
+              <span>F1 SCAN</span>
+            </div>
           )}
-          <Link to="/dashboard" className="btn btn-sm btn-secondary" style={{ fontSize:12 }}><i className="ri-dashboard-2-line me-1"></i>Exit</Link>
-          <div style={{ width:32, height:32, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:12 }}>
-            {user ? (user.first_name?.[0]||'') + (user.last_name?.[0]||'') : 'AS'}
+        </div>
+
+        {/* Right Controls: Clock, Quick Status, Exit, Cashier */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Held Orders Badge */}
+          {heldOrders.length > 0 && (
+            <button
+              onClick={() => recallOrder(0)}
+              style={{
+                background: '#f7b84b',
+                color: '#000',
+                border: 'none',
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                cursor: 'pointer',
+                animation: 'pulse 2s infinite'
+              }}>
+              <i className="ri-pause-circle-fill"></i>
+              <span>{heldOrders.length} HELD</span>
+            </button>
+          )}
+
+          {/* Clock */}
+          <div style={{ fontSize: 12, textAlign: 'right', color: 'var(--bs-secondary-color, #94a3b8)', lineHeight: 1.2 }}>
+            <div style={{ fontWeight: 700, color: 'var(--bs-body-color, #fff)' }}>
+              {now.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </div>
+            <div style={{ fontSize: 10 }}>
+              {now.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </div>
+          </div>
+
+          <Link
+            to="/dashboard"
+            className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+            style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6 }}>
+            <i className="ri-dashboard-2-line"></i>
+            <span>Exit</span>
+          </Link>
+
+          {/* Cashier Avatar */}
+          <div
+            title={`Active Cashier: ${user ? `${user.first_name || ''} ${user.last_name || ''}` : 'Admin'}`}
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #0ab39c, #405189)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#fff',
+              fontWeight: 800,
+              fontSize: 12,
+              border: '2px solid rgba(255,255,255,0.15)'
+            }}>
+            {user ? (user.first_name?.[0] || 'B') + (user.last_name?.[0] || 'F') : 'BF'}
           </div>
         </div>
       </header>
 
-      {/* ═══ BODY ══════════════════════════════════════════════════════════ */}
-      <div style={{ flex:1, display:'flex', overflow:'hidden', background:'var(--bs-body-bg)' }}>
+      {/* ═══ WORKSPACE BODY ═══════════════════════════════════════════════ */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: 'var(--bs-body-bg)' }}>
 
-        {/* ── LEFT: Products ─────────────────────────────────────────────── */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', borderRight:'1px solid var(--bs-border-color)', background:'var(--bs-body-bg)' }}>
-          {/* ── Quick Action Cards: Scan Basket + Online Orders ─────────── */}
-          <div style={{ padding:'10px 16px', borderBottom:'1px solid var(--bs-border-color)', background:'var(--bs-body-secondary-bg)', flexShrink:0, display:'flex', gap:10 }}>
+        {/* ─── LEFT: CATALOG & ACTIONS ─────────────────────────────────── */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          borderRight: '1px solid var(--bs-border-color, rgba(255,255,255,0.08))'
+        }}>
 
+          {/* Action Strip: Scan Basket, Online Orders, Goods Return */}
+          <div style={{
+            padding: '8px 16px',
+            borderBottom: '1px solid var(--bs-border-color, rgba(255,255,255,0.08))',
+            background: 'var(--bs-body-secondary-bg, rgba(255,255,255,0.02))',
+            flexShrink: 0,
+            display: 'flex',
+            gap: 10
+          }}>
             {/* Scan Basket */}
             <button
               onClick={() => { setScanCart([]); setScanCode(''); setActiveModal('scanner') }}
-              style={{ flex:1, display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:14, border:'1px solid rgba(10,179,156,.25)', background:'var(--bs-body-bg)', cursor:'pointer', textAlign:'left', boxShadow:'0 2px 8px rgba(10,179,156,.12)', transition:'box-shadow .2s' }}
-              onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(10,179,156,.22)'}
-              onMouseLeave={e => e.currentTarget.style.boxShadow='0 2px 8px rgba(10,179,156,.12)'}>
-              <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#0ab39c,#2ec4b0)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 12px rgba(10,179,156,.35)' }}>
-                <i className="ri-barcode-line" style={{ fontSize:22, color:'#fff' }}></i>
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '8px 14px',
+                borderRadius: 10,
+                border: '1px solid rgba(10,179,156,0.3)',
+                background: 'var(--bs-body-bg, #0f172a)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s ease'
+              }}>
+              <div style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #0ab39c, #2ec4b0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                color: '#fff',
+                fontSize: 16
+              }}>
+                <i className="ri-barcode-line"></i>
               </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontWeight:700, fontSize:13, color:'var(--bs-body-color)', letterSpacing:.2 }}>Scan Basket</div>
-                <div style={{ fontSize:11, color:'var(--bs-secondary-color)', marginTop:2 }}>Scan barcodes to build order</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--bs-body-color, #fff)', lineHeight: 1.2 }}>
+                  Scan Basket
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--bs-secondary-color, #94a3b8)' }}>
+                  Batch barcode scanning
+                </div>
               </div>
-              {scanCart.length > 0
-                ? <span style={{ background:'#0ab39c', color:'#fff', borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:700, flexShrink:0 }}>{scanCart.length}</span>
-                : <i className="ri-arrow-right-s-line" style={{ fontSize:18, color:'#0ab39c', flexShrink:0 }}></i>
-              }
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#0ab39c', background: 'rgba(10,179,156,0.12)', padding: '2px 6px', borderRadius: 4 }}>
+                F1
+              </span>
             </button>
 
             {/* Online Orders */}
@@ -712,306 +1058,956 @@ function getProductIcon(name = '', cat = '') {
               return (
                 <button
                   onClick={() => setActiveModal('online')}
-                  style={{ flex:1, display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:14, border:'1px solid rgba(64,81,137,.25)', background:'var(--bs-body-bg)', cursor:'pointer', textAlign:'left', boxShadow:'0 2px 8px rgba(64,81,137,.12)', transition:'box-shadow .2s' }}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(64,81,137,.22)'}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow='0 2px 8px rgba(64,81,137,.12)'}>
-                  <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#405189,#5a6fc4)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 12px rgba(64,81,137,.35)' }}>
-                    <i className="ri-shopping-bag-3-line" style={{ fontSize:22, color:'#fff' }}></i>
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '8px 14px',
+                    borderRadius: 10,
+                    border: '1px solid rgba(64,81,137,0.3)',
+                    background: 'var(--bs-body-bg, #0f172a)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.15s ease'
+                  }}>
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: 'linear-gradient(135deg, #405189, #5a6fc4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    color: '#fff',
+                    fontSize: 16
+                  }}>
+                    <i className="ri-shopping-bag-3-line"></i>
                   </div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:700, fontSize:13, color:'var(--bs-body-color)', letterSpacing:.2 }}>Online Orders</div>
-                    <div style={{ fontSize:11, color:'var(--bs-secondary-color)', marginTop:2 }}>Import incoming orders to cart</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--bs-body-color, #fff)', lineHeight: 1.2 }}>
+                      Online Orders
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--bs-secondary-color, #94a3b8)' }}>
+                      Import Web & WhatsApp
+                    </div>
                   </div>
-                  {newCount > 0
-                    ? <span style={{ background:'#f06548', color:'#fff', borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:700, flexShrink:0 }}>{newCount} new</span>
-                    : <i className="ri-arrow-right-s-line" style={{ fontSize:18, color:'#405189', flexShrink:0 }}></i>
-                  }
+                  {newCount > 0 ? (
+                    <span style={{ background: '#f06548', color: '#fff', borderRadius: 12, padding: '2px 7px', fontSize: 10, fontWeight: 800 }}>
+                      {newCount} New
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#405189', background: 'rgba(64,81,137,0.12)', padding: '2px 6px', borderRadius: 4 }}>
+                      F3
+                    </span>
+                  )}
                 </button>
               )
             })()}
 
             {/* Goods Return */}
             <button
-              onClick={() => { setReturnForm(f=>({...f,product:PRODUCTS[0],unitPrice:PRODUCTS[0].price,qty:1,customer:'Walk-in',phone:'',notes:'',condition:'resalable',refundMethod:'Cash',reason:POS_RETURN_REASONS[0]})); setReturnStep(1); setReturnSuccess(null); setActiveModal('return') }}
-              style={{ flex:1, display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:14, border:'1px solid rgba(240,101,72,.25)', background:'var(--bs-body-bg)', cursor:'pointer', textAlign:'left', boxShadow:'0 2px 8px rgba(240,101,72,.12)', transition:'box-shadow .2s' }}
-              onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(240,101,72,.22)'}
-              onMouseLeave={e => e.currentTarget.style.boxShadow='0 2px 8px rgba(240,101,72,.12)'}>
-              <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#f06548,#e04b2f)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 12px rgba(240,101,72,.35)' }}>
-                <i className="ri-arrow-go-back-line" style={{ fontSize:22, color:'#fff' }}></i>
+              onClick={() => {
+                setReturnForm(f => ({
+                  ...f,
+                  product: productsList[0] || null,
+                  unitPrice: productsList[0]?.price || 0,
+                  qty: 1,
+                  customer: 'Walk-in',
+                  phone: '',
+                  notes: '',
+                  condition: 'resalable',
+                  refundMethod: 'Cash',
+                  reason: POS_RETURN_REASONS[0]
+                }))
+                setReturnStep(1)
+                setReturnSuccess(null)
+                setActiveModal('return')
+              }}
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '8px 14px',
+                borderRadius: 10,
+                border: '1px solid rgba(240,101,72,0.3)',
+                background: 'var(--bs-body-bg, #0f172a)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s ease'
+              }}>
+              <div style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #f06548, #e04b2f)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                color: '#fff',
+                fontSize: 16
+              }}>
+                <i className="ri-arrow-go-back-line"></i>
               </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontWeight:700, fontSize:13, color:'var(--bs-body-color)', letterSpacing:.2 }}>Goods Return</div>
-                <div style={{ fontSize:11, color:'var(--bs-secondary-color)', marginTop:2 }}>Process a customer return &amp; refund</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--bs-body-color, #fff)', lineHeight: 1.2 }}>
+                  Goods Return
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--bs-secondary-color, #94a3b8)' }}>
+                  Process customer refund
+                </div>
               </div>
-              {returnLogs.length > 0
-                ? <span style={{ background:'#f06548', color:'#fff', borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:700, flexShrink:0 }}>{returnLogs.length}</span>
-                : <i className="ri-arrow-right-s-line" style={{ fontSize:18, color:'#f06548', flexShrink:0 }}></i>
-              }
+              {returnLogs.length > 0 && (
+                <span style={{ background: '#f06548', color: '#fff', borderRadius: 12, padding: '2px 7px', fontSize: 10, fontWeight: 800 }}>
+                  {returnLogs.length}
+                </span>
+              )}
             </button>
           </div>
 
-          {/* Category pills */}
-          <div style={{ padding:'10px 16px', borderBottom:'1px solid var(--bs-border-color)', display:'flex', gap:6, overflowX:'auto', flexShrink:0, scrollbarWidth:'none', background:'var(--bs-body-bg)' }}>
-            {CATEGORIES.map(cat => {
-              const active = activeCategory === cat.id; const color = CAT_COLORS[cat.id]
+          {/* Category Filter Pills with Item Counters */}
+          <div style={{
+            padding: '8px 16px',
+            borderBottom: '1px solid var(--bs-border-color, rgba(255,255,255,0.08))',
+            display: 'flex',
+            gap: 6,
+            overflowX: 'auto',
+            flexShrink: 0,
+            scrollbarWidth: 'none',
+            background: 'var(--bs-body-bg, #0f172a)'
+          }}>
+            {CATEGORY_DEFINITIONS.map(cat => {
+              const active = activeCategory === cat.id
+              const color = CAT_COLORS[cat.id] || '#0ab39c'
+              const count = categoryCounts[cat.id] || 0
               return (
-                <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
-                  style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:20, border:`2px solid ${active ? color : 'var(--bs-border-color)'}`, background: active ? color : 'transparent', color: active ? '#fff' : 'var(--bs-body-color)', fontSize:12, fontWeight:600, whiteSpace:'nowrap', cursor:'pointer', flexShrink:0 }}>
-                  <span style={{ fontSize:15 }}>{cat.emoji}</span> {cat.label}
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '5px 12px',
+                    borderRadius: 20,
+                    border: active ? `1.5px solid ${color}` : '1px solid var(--bs-border-color, rgba(255,255,255,0.1))',
+                    background: active ? color : 'var(--bs-body-secondary-bg, rgba(255,255,255,0.04))',
+                    color: active ? '#fff' : 'var(--bs-body-color, #cbd5e1)',
+                    fontSize: 12,
+                    fontWeight: active ? 700 : 500,
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    boxShadow: active ? `0 2px 8px ${color}40` : 'none',
+                    transition: 'all 0.15s ease'
+                  }}>
+                  <span>{cat.emoji}</span>
+                  <span>{cat.label}</span>
+                  <span style={{
+                    fontSize: 10,
+                    padding: '1px 6px',
+                    borderRadius: 10,
+                    background: active ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)',
+                    color: active ? '#fff' : 'var(--bs-secondary-color, #94a3b8)',
+                    fontWeight: 700
+                  }}>
+                    {count}
+                  </span>
                 </button>
               )
             })}
           </div>
 
-          {/* Grid */}
-          <div style={{ flex:1, overflowY:'auto', padding:12, background:'var(--bs-body-secondary-bg)' }}>
-            {products.length === 0
-              ? <div style={{ textAlign:'center', padding:'60px 0', color:'var(--bs-secondary-color)' }}><div style={{ fontSize:52 }}>🔍</div><p style={{ marginTop:12 }}>No products found</p></div>
-              : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(145px,1fr))', gap:10 }}>
-                  {products.map(p => {
-                    const color = CAT_COLORS[p.cat] || '#405189'
-                    const low = p.stock > 0 && p.stock <= 5
-                    const inCart = cart.find(i => i.id === p.id)
-                    return (
-                      <button key={p.id} onClick={() => addProductToCart(p)}
-                        style={{ border: inCart ? `2px solid ${color}` : '1px solid var(--bs-border-color)', borderRadius:10, padding:12, background:'var(--bs-body-bg,#fff)', cursor: 'pointer', textAlign:'left', position:'relative', boxShadow: inCart ? `0 0 0 3px ${color}25` : '0 1px 3px rgba(0,0,0,.06)' }}>
-                        {inCart && <div style={{ position:'absolute', top:-7, right:-7, width:20, height:20, borderRadius:'50%', background:color, color:'#fff', fontSize:10, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center' }}>{inCart.qty}</div>}
-                        {low && <div style={{ position:'absolute', top:6, left:6, fontSize:8, fontWeight:700, color:'#f7b84b', textTransform:'uppercase' }}>Low</div>}
-                        <div style={{ height:64, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:8, background:color+'15', fontSize:32, marginBottom:8, overflow:'hidden', position:'relative' }}>
-                          {p.image ? (
-                            <img src={p.image} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'contain', borderRadius:6 }} onError={e => { e.target.style.display='none'; if (e.target.nextSibling) e.target.nextSibling.style.display='block'; }} />
-                          ) : null}
-                          <span style={{ display: p.image ? 'none' : 'block' }}>{p.icon || getProductIcon(p.name, p.cat)}</span>
+          {/* Product Grid */}
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: 14,
+            background: 'var(--bs-body-secondary-bg, rgba(255,255,255,0.02))'
+          }}>
+            {loadingPOS ? (
+              <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--bs-secondary-color, #94a3b8)' }}>
+                <div className="spinner-border text-primary mb-3" role="status" style={{ width: 36, height: 36 }}></div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>Loading live inventory catalog...</div>
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '70px 20px', color: 'var(--bs-secondary-color, #94a3b8)' }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--bs-body-color, #fff)' }}>No products found</div>
+                <div style={{ fontSize: 13, marginTop: 4 }}>Try clearing the search or switching category filter</div>
+                <button
+                  className="btn btn-sm btn-primary mt-3"
+                  onClick={() => { setSearch(''); setActiveCategory('all') }}>
+                  Reset Filters
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                gap: 12
+              }}>
+                {filteredProducts.map(p => {
+                  const color = CAT_COLORS[p.cat] || '#0ab39c'
+                  const inCart = cart.find(i => i.id === p.id)
+                  const isLowStock = p.stock > 0 && p.stock <= 5
+
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => addProductToCart(p)}
+                      style={{
+                        border: inCart ? `2px solid ${color}` : '1px solid var(--bs-border-color, rgba(255,255,255,0.08))',
+                        borderRadius: 12,
+                        padding: 10,
+                        background: 'var(--bs-body-bg, #0f172a)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        position: 'relative',
+                        boxShadow: inCart ? `0 0 0 3px ${color}30, 0 4px 12px rgba(0,0,0,0.15)` : '0 2px 6px rgba(0,0,0,0.06)',
+                        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'translateY(0)'
+                      }}>
+                      {/* Top Badges: In Cart Qty & Stock */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          background: isLowStock ? 'rgba(247,184,75,0.15)' : 'rgba(10,179,156,0.12)',
+                          color: isLowStock ? '#f7b84b' : '#0ab39c'
+                        }}>
+                          {isLowStock ? `LOW (${p.stock})` : (p.stock > 0 ? `${p.stock} in stock` : 'Available')}
+                        </span>
+
+                        {inCart && (
+                          <span style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            background: color,
+                            color: '#fff',
+                            fontSize: 11,
+                            fontWeight: 800,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                          }}>
+                            {inCart.qty}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Product Image or Icon */}
+                      <div style={{
+                        height: 80,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 8,
+                        background: color + '12',
+                        fontSize: 36,
+                        marginBottom: 8,
+                        overflow: 'hidden',
+                        position: 'relative'
+                      }}>
+                        {p.image ? (
+                          <img
+                            src={p.image}
+                            alt={p.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: 6 }}
+                            onError={e => {
+                              e.target.style.display = 'none'
+                              if (e.target.nextSibling) e.target.nextSibling.style.display = 'block'
+                            }}
+                          />
+                        ) : null}
+                        <span style={{ display: p.image ? 'none' : 'block' }}>
+                          {p.icon || getProductIcon(p.name, p.cat)}
+                        </span>
+                      </div>
+
+                      {/* Product Details */}
+                      <div>
+                        <div style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          lineHeight: 1.3,
+                          marginBottom: 3,
+                          overflow: 'hidden',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          minHeight: 31,
+                          color: 'var(--bs-body-color, #fff)'
+                        }}>
+                          {p.name}
                         </div>
-                        <div style={{ fontSize:11, fontWeight:600, lineHeight:1.3, marginBottom:4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{p.name}</div>
-                        <div style={{ fontSize:9, color:'var(--bs-secondary-color)', marginBottom:6 }}>{p.sku} · per {p.unit}</div>
-                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                          <span style={{ fontSize:13, fontWeight:800, color }}>{fmt(p.price)}</span>
-                          <span style={{ fontSize:9, color: low ? '#f7b84b' : 'var(--bs-secondary-color)' }}>{p.stock > 0 ? `${p.stock} left` : 'Available'}</span>
+                        <div style={{ fontSize: 10, color: 'var(--bs-secondary-color, #94a3b8)', marginBottom: 8 }}>
+                          {p.sku} · per {p.unit}
                         </div>
-                      </button>
-                    )
-                  })}
-                </div>
-            }
+                      </div>
+
+                      {/* Price & Quick Stepper */}
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        paddingTop: 6,
+                        borderTop: '1px solid var(--bs-border-color, rgba(255,255,255,0.06))'
+                      }}>
+                        <span style={{ fontSize: 14, fontWeight: 900, color: color }}>
+                          {fmt(p.price)}
+                        </span>
+
+                        {inCart ? (
+                          <div
+                            onClick={e => e.stopPropagation()}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <button
+                              onClick={() => updateQty(p.id, inCart.qty - 1)}
+                              style={{
+                                width: 22,
+                                height: 22,
+                                borderRadius: 4,
+                                border: '1px solid var(--bs-border-color, rgba(255,255,255,0.2))',
+                                background: 'transparent',
+                                color: 'var(--bs-body-color, #fff)',
+                                fontSize: 12,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer'
+                              }}>
+                              −
+                            </button>
+                            <span style={{ fontSize: 11, fontWeight: 800, minWidth: 16, textAlign: 'center' }}>
+                              {inCart.qty}
+                            </span>
+                            <button
+                              onClick={() => updateQty(p.id, inCart.qty + 1)}
+                              style={{
+                                width: 22,
+                                height: 22,
+                                borderRadius: 4,
+                                border: '1px solid var(--bs-border-color, rgba(255,255,255,0.2))',
+                                background: color,
+                                color: '#fff',
+                                fontSize: 12,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer'
+                              }}>
+                              +
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: 6,
+                            background: color + '20',
+                            color: color,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 14
+                          }}>
+                            +
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ── RIGHT: Order Panel ────────────────────────────────────────── */}
-        <div style={{ width:500, flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--bs-body-bg,#fff)' }}>
+        {/* ─── RIGHT: CHECKOUT TERMINAL SIDEBAR ─────────────────────────── */}
+        <div style={{
+          width: 460,
+          flexShrink: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          background: 'var(--bs-body-bg, #0f172a)'
+        }}>
 
-          {/* Held orders strip */}
+          {/* Held Orders Quick Access Bar */}
           {heldOrders.length > 0 && (
-            <div style={{ padding:'6px 12px', background:'#f7b84b20', borderBottom:'1px solid #f7b84b40', display:'flex', gap:6, overflowX:'auto' }}>
-              <span style={{ fontSize:10, color:'#f7b84b', fontWeight:700, alignSelf:'center', flexShrink:0 }}>HELD:</span>
-              {heldOrders.map((h,i) => (
-                <button key={i} onClick={() => recallOrder(i)}
-                  style={{ fontSize:10, padding:'2px 8px', borderRadius:10, border:'1px solid #f7b84b', background:'transparent', cursor:'pointer', color:'var(--bs-body-color)', whiteSpace:'nowrap' }}>
-                  #{i+1} · {fmt(h.cart.reduce((s,ci)=>s+ci.price*ci.qty,0))}
+            <div style={{
+              padding: '6px 14px',
+              background: 'rgba(247,184,75,0.15)',
+              borderBottom: '1px solid rgba(247,184,75,0.3)',
+              display: 'flex',
+              gap: 8,
+              overflowX: 'auto',
+              alignItems: 'center'
+            }}>
+              <span style={{ fontSize: 10, color: '#f7b84b', fontWeight: 800, flexShrink: 0 }}>
+                HELD ORDERS:
+              </span>
+              {heldOrders.map((h, i) => (
+                <button
+                  key={i}
+                  onClick={() => recallOrder(i)}
+                  style={{
+                    fontSize: 11,
+                    padding: '2px 8px',
+                    borderRadius: 6,
+                    border: '1px solid #f7b84b',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: 'var(--bs-body-color, #fff)',
+                    whiteSpace: 'nowrap',
+                    fontWeight: 600
+                  }}>
+                  #{i + 1} · {fmt(h.cart.reduce((s, ci) => s + ci.price * ci.qty, 0))}
                 </button>
               ))}
             </div>
           )}
 
-          {/* Order header */}
-          <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--bs-border-color)', display:'flex', alignItems:'center', justifyContent:'space-between', background:'#0ab39c0f' }}>
+          {/* Order Header & Customer Trigger */}
+          <div style={{
+            padding: '10px 14px',
+            borderBottom: '1px solid var(--bs-border-color, rgba(255,255,255,0.08))',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'rgba(10,179,156,0.08)'
+          }}>
             <div>
-              <div style={{ fontSize:11, fontWeight:700, color:'#0ab39c' }}>{orderId}</div>
-              <div style={{ fontSize:10, color:'var(--bs-secondary-color)' }}>{itemCount} item{itemCount!==1?'s':''} · {fmt(total)}</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#0ab39c' }}>
+                {orderId}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--bs-secondary-color, #94a3b8)' }}>
+                {itemCount} {itemCount === 1 ? 'item' : 'items'} · {fmt(total)}
+              </div>
             </div>
-            <div style={{ display:'flex', gap:6 }}>
-              <button onClick={() => setShowCustPanel(!showCustPanel)}
-                style={{ fontSize:11, padding:'4px 10px', border:'1px solid var(--bs-border-color)', borderRadius:6, background:'transparent', cursor:'pointer', color: customer?'#0ab39c':'inherit' }}>
-                {customer ? `👤 ${customer.name.split(' ')[0]}` : '👤 Customer'}
+
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                onClick={() => setShowCustPanel(!showCustPanel)}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: '5px 10px',
+                  border: customer ? '1px solid #0ab39c' : '1px solid var(--bs-border-color, rgba(255,255,255,0.15))',
+                  borderRadius: 6,
+                  background: customer ? 'rgba(10,179,156,0.15)' : 'transparent',
+                  cursor: 'pointer',
+                  color: customer ? '#0ab39c' : 'var(--bs-body-color, #fff)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}>
+                <i className="ri-user-3-line"></i>
+                <span>{customer ? customer.name.split(' ')[0] : 'Customer [F2]'}</span>
               </button>
-              {cart.length > 0 && <button onClick={clearCart} style={{ fontSize:10, padding:'4px 8px', border:'1px solid #f06548', borderRadius:6, background:'transparent', cursor:'pointer', color:'#f06548' }}>Clear</button>}
+
+              {cart.length > 0 && (
+                <button
+                  onClick={clearCart}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '5px 10px',
+                    border: '1px solid rgba(240,101,72,0.4)',
+                    borderRadius: 6,
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: '#f06548'
+                  }}>
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Customer panel */}
+          {/* Customer Selection Dropdown Panel */}
           {showCustPanel && (
-            <div style={{ padding:12, borderBottom:'1px solid var(--bs-border-color)', background:'var(--bs-body-secondary-bg)' }}>
-              <input type="text" placeholder="Search customer…" value={custSearch} onChange={e => setCustSearch(e.target.value)}
-                style={{ width:'100%', height:32, padding:'0 10px', border:'1px solid var(--bs-border-color)', borderRadius:6, fontSize:12, marginBottom:8, background:'var(--bs-body-bg)', color:'var(--bs-body-color)' }} />
-              <div style={{ display:'flex', flexDirection:'column', gap:4, maxHeight:140, overflowY:'auto' }}>
+            <div style={{
+              padding: 12,
+              borderBottom: '1px solid var(--bs-border-color, rgba(255,255,255,0.08))',
+              background: 'var(--bs-body-secondary-bg, rgba(255,255,255,0.04))'
+            }}>
+              <input
+                type="text"
+                placeholder="Search customer name or phone..."
+                value={custSearch}
+                onChange={e => setCustSearch(e.target.value)}
+                autoFocus
+                style={{
+                  width: '100%',
+                  height: 32,
+                  padding: '0 10px',
+                  border: '1px solid var(--bs-border-color, rgba(255,255,255,0.15))',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  marginBottom: 8,
+                  background: 'var(--bs-body-bg, #0f172a)',
+                  color: 'var(--bs-body-color, #fff)'
+                }}
+              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 150, overflowY: 'auto' }}>
                 {filteredCustomers.map(c => (
-                  <button key={c.id} onClick={() => { setCustomer(c); setShowCustPanel(false); setCustSearch('') }}
-                    style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 10px', border: customer?.id===c.id?'1.5px solid #0ab39c':'1px solid var(--bs-border-color)', borderRadius:8, background: customer?.id===c.id?'#0ab39c10':'var(--bs-body-bg)', cursor:'pointer', textAlign:'left' }}>
-                    <div><div style={{ fontSize:12, fontWeight:600 }}>{c.name}</div><div style={{ fontSize:10, color:'var(--bs-secondary-color)' }}>{c.phone}</div></div>
-                    <div style={{ textAlign:'right' }}>
-                      <div style={{ fontSize:10, fontWeight:700, color: TIER_COLOR[c.tier] }}>{c.tier}</div>
-                      <div style={{ fontSize:9, color:'var(--bs-secondary-color)' }}>{c.points.toLocaleString()} pts</div>
+                  <button
+                    key={c.id}
+                    onClick={() => { setCustomer(c); setShowCustPanel(false); setCustSearch('') }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '6px 10px',
+                      border: customer?.id === c.id ? '1.5px solid #0ab39c' : '1px solid var(--bs-border-color, rgba(255,255,255,0.08))',
+                      borderRadius: 6,
+                      background: customer?.id === c.id ? 'rgba(10,179,156,0.12)' : 'var(--bs-body-bg, #0f172a)',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      color: 'var(--bs-body-color, #fff)'
+                    }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700 }}>{c.name}</div>
+                      <div style={{ fontSize: 10, color: 'var(--bs-secondary-color, #94a3b8)' }}>{c.phone}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: TIER_COLOR[c.tier] || '#0ab39c' }}>{c.tier}</div>
+                      <div style={{ fontSize: 9, color: 'var(--bs-secondary-color, #94a3b8)' }}>{c.points.toLocaleString()} pts</div>
                     </div>
                   </button>
                 ))}
               </div>
-              {customer && <button onClick={() => { setCustomer(null); setShowCustPanel(false) }} style={{ width:'100%', marginTop:6, padding:'4px 0', fontSize:11, border:'1px solid #f06548', borderRadius:6, background:'transparent', cursor:'pointer', color:'#f06548' }}>Remove Customer</button>}
+              {customer && (
+                <button
+                  onClick={() => { setCustomer(null); setShowCustPanel(false) }}
+                  style={{
+                    width: '100%',
+                    marginTop: 6,
+                    padding: '4px 0',
+                    fontSize: 11,
+                    border: '1px solid #f06548',
+                    borderRadius: 6,
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: '#f06548'
+                  }}>
+                  Remove Customer (Walk-in)
+                </button>
+              )}
             </div>
           )}
 
-          {/* Customer bar */}
+          {/* Active Customer Strip */}
           {customer && !showCustPanel && (
-            <div style={{ padding:'8px 14px', background:'#0ab39c10', borderBottom:'1px solid #0ab39c30', display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ width:32, height:32, borderRadius:'50%', background: TIER_COLOR[customer.tier], display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:11, flexShrink:0 }}>
-                {customer.name.split(' ').map(n=>n[0]).join('')}
+            <div style={{
+              padding: '8px 14px',
+              background: 'rgba(10,179,156,0.08)',
+              borderBottom: '1px solid rgba(10,179,156,0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10
+            }}>
+              <div style={{
+                width: 30,
+                height: 30,
+                borderRadius: '50%',
+                background: TIER_COLOR[customer.tier] || '#0ab39c',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontWeight: 800,
+                fontSize: 11,
+                flexShrink: 0
+              }}>
+                {customer.name.split(' ').map(n => n[0]).join('')}
               </div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:12, fontWeight:700 }}>{customer.name}</div>
-                <div style={{ fontSize:10, color:'var(--bs-secondary-color)' }}>
-                  <span style={{ color: TIER_COLOR[customer.tier], fontWeight:600 }}>{customer.tier}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 700 }}>{customer.name}</div>
+                <div style={{ fontSize: 10, color: 'var(--bs-secondary-color, #94a3b8)' }}>
+                  <span style={{ color: TIER_COLOR[customer.tier] || '#0ab39c', fontWeight: 700 }}>{customer.tier}</span>
                   {' · '}{customer.points.toLocaleString()} pts
-                  {' · '}<span style={{ color:'#0ab39c' }}>Wallet {fmt(customer.wallet)}</span>
+                  {' · '}<span style={{ color: '#0ab39c', fontWeight: 600 }}>Wallet {fmt(customer.wallet)}</span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Cart items */}
-          <div style={{ flex:1, overflowY:'auto', padding:'4px 0' }}>
-            {cart.length === 0
-              ? <div style={{ textAlign:'center', padding:'50px 20px', color:'var(--bs-secondary-color)' }}>
-                  <div style={{ fontSize:44 }}>🛒</div>
-                  <p style={{ marginTop:10, fontSize:13 }}>Scan a barcode or tap a product<br/>to start the order</p>
-                  <div style={{ marginTop:16, padding:'8px 14px', background:'#0ab39c10', borderRadius:8, border:'1px dashed #0ab39c50', fontSize:11, color:'#0ab39c' }}>
-                    💡 Point scanner at a barcode and it<br/>will appear here automatically
-                  </div>
+          {/* Cart Item List */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
+            {cart.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--bs-secondary-color, #94a3b8)' }}>
+                <div style={{ fontSize: 44, marginBottom: 10 }}>🛒</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--bs-body-color, #fff)' }}>
+                  Cart is Empty
                 </div>
-              : cart.map(item => {
-                  const color = CAT_COLORS[item.cat] || '#405189'; const isHighlit = highlightId === item.id
-                  return (
-                    <div key={item.id} style={{ padding:'8px 14px', borderBottom:'1px solid var(--bs-border-color)', background: isHighlit ? color+'18' : 'transparent', transition:'background .4s' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <span style={{ fontSize:22, flexShrink:0 }}>{item.icon}</span>
-                        <div style={{ flex:1, overflow:'hidden' }}>
-                          <div style={{ fontSize:12, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.name}</div>
-                          <div style={{ fontSize:10, color:'var(--bs-secondary-color)' }}>{fmt(item.price)}/{item.unit}</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>
+                  Scan barcode [F1] or tap any item to add
+                </div>
+                <div style={{
+                  marginTop: 16,
+                  padding: '8px 14px',
+                  background: 'rgba(10,179,156,0.08)',
+                  borderRadius: 8,
+                  border: '1px dashed rgba(10,179,156,0.3)',
+                  fontSize: 11,
+                  color: '#0ab39c'
+                }}>
+                  💡 USB Scanner auto-detects barcodes directly
+                </div>
+              </div>
+            ) : (
+              cart.map(item => {
+                const color = CAT_COLORS[item.cat] || '#0ab39c'
+                const isHighlit = highlightId === item.id
+
+                return (
+                  <div
+                    key={item.id}
+                    style={{
+                      padding: '8px 14px',
+                      borderBottom: '1px solid var(--bs-border-color, rgba(255,255,255,0.06))',
+                      background: isHighlit ? `${color}20` : 'transparent',
+                      transition: 'background 0.3s ease'
+                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 20, flexShrink: 0 }}>{item.icon}</span>
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <div style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          color: 'var(--bs-body-color, #fff)'
+                        }}>
+                          {item.name}
                         </div>
-                        <div style={{ display:'flex', alignItems:'center', gap:4, flexShrink:0 }}>
-                          <button onClick={() => updateQty(item.id, item.qty-1)} style={{ width:22, height:22, borderRadius:'50%', border:'1px solid var(--bs-border-color)', background:'transparent', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--bs-body-color)' }}>−</button>
-                          <input type="number" min="1" value={item.qty} onChange={e => updateQty(item.id, parseInt(e.target.value)||1)}
-                            style={{ width:36, height:24, textAlign:'center', border:'1px solid var(--bs-border-color)', borderRadius:4, fontSize:12, fontWeight:700, background:'var(--bs-body-bg)', color:'var(--bs-body-color)' }} />
-                          <button onClick={() => updateQty(item.id, item.qty+1)} style={{ width:22, height:22, borderRadius:'50%', border:'1px solid var(--bs-border-color)', background:'transparent', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--bs-body-color)' }}>+</button>
-                        </div>
-                        <div style={{ minWidth:60, textAlign:'right', flexShrink:0 }}>
-                          <div style={{ fontSize:12, fontWeight:700, color }}>{fmt(item.price*item.qty)}</div>
-                          <button onClick={() => updateQty(item.id,0)} style={{ fontSize:10, color:'#f06548', background:'none', border:'none', cursor:'pointer', padding:0 }}><i className="ri-delete-bin-line"></i> remove</button>
+                        <div style={{ fontSize: 10, color: 'var(--bs-secondary-color, #94a3b8)' }}>
+                          {fmt(item.price)} per {item.unit}
                         </div>
                       </div>
-                      <input type="text" placeholder="+ Item note…" value={item.note} onChange={e => updateNote(item.id, e.target.value)}
-                        style={{ width:'100%', height:26, marginTop:4, padding:'0 8px', fontSize:10, border:'1px dashed var(--bs-border-color)', borderRadius:4, background:'transparent', color:'var(--bs-secondary-color)' }} />
+
+                      {/* Quantity Stepper */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                        <button
+                          onClick={() => updateQty(item.id, item.qty - 1)}
+                          style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            border: '1px solid var(--bs-border-color, rgba(255,255,255,0.15))',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--bs-body-color, #fff)'
+                          }}>
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.qty}
+                          onChange={e => updateQty(item.id, parseInt(e.target.value) || 1)}
+                          style={{
+                            width: 36,
+                            height: 24,
+                            textAlign: 'center',
+                            border: '1px solid var(--bs-border-color, rgba(255,255,255,0.15))',
+                            borderRadius: 4,
+                            fontSize: 12,
+                            fontWeight: 800,
+                            background: 'var(--bs-body-bg, #0f172a)',
+                            color: 'var(--bs-body-color, #fff)'
+                          }}
+                        />
+                        <button
+                          onClick={() => updateQty(item.id, item.qty + 1)}
+                          style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            border: '1px solid var(--bs-border-color, rgba(255,255,255,0.15))',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--bs-body-color, #fff)'
+                          }}>
+                          +
+                        </button>
+                      </div>
+
+                      {/* Price & Delete */}
+                      <div style={{ minWidth: 65, textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: color }}>
+                          {fmt(item.price * item.qty)}
+                        </div>
+                        <button
+                          onClick={() => updateQty(item.id, 0)}
+                          style={{ fontSize: 10, color: '#f06548', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                          <i className="ri-delete-bin-line"></i> remove
+                        </button>
+                      </div>
                     </div>
-                  )
-                })
-            }
+
+                    {/* Item Specific Note */}
+                    <input
+                      type="text"
+                      placeholder="+ Add item note / instruction..."
+                      value={item.note || ''}
+                      onChange={e => updateNote(item.id, e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: 24,
+                        marginTop: 4,
+                        padding: '0 8px',
+                        fontSize: 10,
+                        border: '1px dashed var(--bs-border-color, rgba(255,255,255,0.15))',
+                        borderRadius: 4,
+                        background: 'transparent',
+                        color: 'var(--bs-secondary-color, #94a3b8)'
+                      }}
+                    />
+                  </div>
+                )
+              })
+            )}
           </div>
 
-          {/* Order note */}
+          {/* Order Note */}
           {cart.length > 0 && (
-            <div style={{ padding:'6px 14px', borderTop:'1px solid var(--bs-border-color)' }}>
-              <input type="text" placeholder="📝 Order note…" value={orderNote} onChange={e => setOrderNote(e.target.value)}
-                style={{ width:'100%', height:30, padding:'0 10px', fontSize:11, border:'1px solid var(--bs-border-color)', borderRadius:6, background:'var(--bs-body-bg)', color:'var(--bs-body-color)' }} />
+            <div style={{ padding: '6px 14px', borderTop: '1px solid var(--bs-border-color, rgba(255,255,255,0.06))' }}>
+              <input
+                type="text"
+                placeholder="📝 Order note / dispatch instructions..."
+                value={orderNote}
+                onChange={e => setOrderNote(e.target.value)}
+                style={{
+                  width: '100%',
+                  height: 28,
+                  padding: '0 10px',
+                  fontSize: 11,
+                  border: '1px solid var(--bs-border-color, rgba(255,255,255,0.15))',
+                  borderRadius: 6,
+                  background: 'var(--bs-body-bg, #0f172a)',
+                  color: 'var(--bs-body-color, #fff)'
+                }}
+              />
             </div>
           )}
 
-          {/* Discount */}
-          <div style={{ padding:'6px 14px', borderTop:'1px solid var(--bs-border-color)', display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:10, fontWeight:700, color:'var(--bs-secondary-color)', textTransform:'uppercase', letterSpacing:.5 }}>Discount</span>
-            {[0,5,10,15,20].map(d => (
-              <button key={d} onClick={() => setDiscountPct(d)}
-                style={{ fontSize:10, padding:'2px 8px', borderRadius:10, border: discountPct===d?'none':'1px solid var(--bs-border-color)', background: discountPct===d?'#0ab39c':'transparent', color: discountPct===d?'#fff':'var(--bs-body-color)', cursor:'pointer', fontWeight: discountPct===d?700:400 }}>
-                {d===0?'None':d+'%'}
+          {/* Discount Preset Chips */}
+          <div style={{
+            padding: '6px 14px',
+            borderTop: '1px solid var(--bs-border-color, rgba(255,255,255,0.06))',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--bs-secondary-color, #94a3b8)', textTransform: 'uppercase' }}>
+              Discount:
+            </span>
+            {[0, 5, 10, 15, 20].map(d => (
+              <button
+                key={d}
+                onClick={() => setDiscountPct(d)}
+                style={{
+                  fontSize: 10,
+                  padding: '2px 8px',
+                  borderRadius: 6,
+                  border: discountPct === d ? 'none' : '1px solid var(--bs-border-color, rgba(255,255,255,0.15))',
+                  background: discountPct === d ? '#0ab39c' : 'transparent',
+                  color: discountPct === d ? '#fff' : 'var(--bs-body-color, #fff)',
+                  cursor: 'pointer',
+                  fontWeight: discountPct === d ? 800 : 500
+                }}>
+                {d === 0 ? 'None' : `${d}%`}
               </button>
             ))}
           </div>
 
-          {/* Totals */}
-          <div style={{ padding:'8px 14px', borderTop:'1px solid var(--bs-border-color)', background:'var(--bs-body-secondary-bg)' }}>
-            {[
-              { label:'Subtotal',                    value:fmt(subtotal),         show:true              },
-              { label:`Discount (${discountPct}%)`,  value:'− '+fmt(discountAmt), show:discountPct>0, color:'#f06548' },
-              { label:'VAT (7.5%)',                  value:fmt(vat),              show:true, color:'var(--bs-secondary-color)' },
-            ].filter(r=>r.show).map(r=>(
-              <div key={r.label} style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                <span style={{ fontSize:11, color:'var(--bs-secondary-color)' }}>{r.label}</span>
-                <span style={{ fontSize:11, fontWeight:600, color:r.color||'inherit' }}>{r.value}</span>
+          {/* Financial Breakdown & Total Payable */}
+          <div style={{
+            padding: '10px 14px',
+            borderTop: '1px solid var(--bs-border-color, rgba(255,255,255,0.08))',
+            background: 'var(--bs-body-secondary-bg, rgba(255,255,255,0.03))'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, fontSize: 11 }}>
+              <span style={{ color: 'var(--bs-secondary-color, #94a3b8)' }}>Subtotal ({itemCount} items)</span>
+              <span style={{ fontWeight: 600 }}>{fmt(subtotal)}</span>
+            </div>
+
+            {discountPct > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, fontSize: 11 }}>
+                <span style={{ color: '#f06548' }}>Discount ({discountPct}%)</span>
+                <span style={{ fontWeight: 700, color: '#f06548' }}>− {fmt(discountAmt)}</span>
               </div>
-            ))}
-            <div style={{ display:'flex', justifyContent:'space-between', paddingTop:6, borderTop:'2px solid var(--bs-border-color)', marginTop:4 }}>
-              <span style={{ fontSize:14, fontWeight:800 }}>Total Payable</span>
-              <span style={{ fontSize:17, fontWeight:900, color:'#0ab39c' }}>{fmt(total)}</span>
-            </div>
-          </div>
+            )}
 
-          {/* ── PAYMENT METHODS ─────────────────────────────────────────── */}
-          <div style={{ padding:'12px 14px', borderTop:'2px solid var(--bs-border-color)', background:'var(--bs-body-secondary-bg)' }}>
-            <div style={{ fontSize:10, fontWeight:700, color:'var(--bs-secondary-color)', textTransform:'uppercase', letterSpacing:.8, marginBottom:10 }}>
-              Select Payment Method
-            </div>
-            {/* 3-column grid */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:8 }}>
-              {[
-                { id:'cash',     label:'Cash',          sub:'Notes & coins',    icon:'ri-money-dollar-circle-line', color:'#0ab39c', bg:'rgba(10,179,156,.1)'  },
-                { id:'card',     label:'Card / POS',    sub:'External terminal',icon:'ri-bank-card-line',           color:'#405189', bg:'rgba(64,81,137,.1)'   },
-                { id:'qr',       label:'QR / USSD',     sub:'Scan or dial code',icon:'ri-qr-code-line',            color:'#299cdb', bg:'rgba(41,156,219,.1)'  },
-                { id:'transfer', label:'Bank Transfer', sub:'Direct to account',icon:'ri-bank-line',               color:'#f7b84b', bg:'rgba(247,184,75,.1)'  },
-                { id:'split',    label:'Split',         sub:'Multiple methods', icon:'ri-layout-column-line',      color:'#a78bfa', bg:'rgba(167,139,250,.1)' },
-              ].map(m => (
-                <button key={m.id}
-                  disabled={cart.length === 0}
-                  onClick={() => { if (cart.length > 0) setActiveModal(m.id) }}
-                  style={{
-                    display:'flex', flexDirection:'column', alignItems:'center', gap:6,
-                    padding:'12px 8px', borderRadius:12,
-                    border: `1.5px solid ${cart.length===0 ? 'var(--bs-border-color)' : m.color+'50'}`,
-                    background: cart.length===0 ? 'var(--bs-body-bg)' : m.bg,
-                    cursor: cart.length===0 ? 'not-allowed' : 'pointer',
-                    opacity: cart.length===0 ? .45 : 1,
-                    transition:'all .15s',
-                  }}>
-                  <div style={{ width:38, height:38, borderRadius:10, background: m.color+'20', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <i className={m.icon} style={{ fontSize:20, color:m.color }}></i>
-                  </div>
-                  <div style={{ textAlign:'center' }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:'var(--bs-body-color)', lineHeight:1.2 }}>{m.label}</div>
-                    <div style={{ fontSize:9, color:'var(--bs-secondary-color)', marginTop:2 }}>{m.sub}</div>
-                  </div>
-                </button>
-              ))}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+              <span style={{ color: 'var(--bs-secondary-color, #94a3b8)' }}>VAT (7.5% Standard)</span>
+              <span style={{ fontWeight: 600 }}>{fmt(vat)}</span>
             </div>
 
-            {/* External POS notice */}
-            <div style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, background:'rgba(64,81,137,.08)', border:'1px dashed rgba(64,81,137,.3)' }}>
-              <i className="ri-information-line" style={{ color:'#405189', fontSize:14, flexShrink:0 }}></i>
-              <span style={{ fontSize:10, color:'var(--bs-secondary-color)', lineHeight:1.4 }}>
-                Card payments use an <strong style={{ color:'#405189' }}>external POS terminal</strong>. Process on the device, then confirm here to record.
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingTop: 8,
+              borderTop: '2px solid var(--bs-border-color, rgba(255,255,255,0.1))',
+              marginTop: 4
+            }}>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Total Payable
+                </span>
+                <div style={{ fontSize: 9, color: 'var(--bs-secondary-color, #94a3b8)' }}>VAT Inclusive</div>
+              </div>
+              <span style={{ fontSize: 20, fontWeight: 900, color: '#0ab39c' }}>
+                {fmt(total)}
               </span>
             </div>
           </div>
 
-          {/* ── QUICK ACTIONS BAR ───────────────────────────────────────────── */}
-          <div style={{ display:'flex', borderTop:'1px solid var(--bs-border-color)', background:'var(--bs-body-bg)' }}>
+          {/* Payment Method Selector (1-Tap Tender) */}
+          <div style={{
+            padding: '10px 14px',
+            borderTop: '2px solid var(--bs-border-color, rgba(255,255,255,0.08))',
+            background: 'var(--bs-body-secondary-bg, rgba(255,255,255,0.03))'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--bs-secondary-color, #94a3b8)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Tender Payment
+              </span>
+              <span style={{ fontSize: 9, color: 'var(--bs-secondary-color, #94a3b8)' }}>
+                Hotkeys [F8] Cash · [F9] Card
+              </span>
+            </div>
+
+            {/* Payment Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 8 }}>
+              {[
+                { id: 'cash',     label: 'Cash [F8]',       icon: 'ri-money-dollar-circle-line', color: '#0ab39c', bg: 'rgba(10,179,156,0.12)' },
+                { id: 'card',     label: 'Card / POS [F9]', icon: 'ri-bank-card-line',           color: '#405189', bg: 'rgba(64,81,137,0.12)'  },
+                { id: 'transfer', label: 'Bank Transfer',   icon: 'ri-bank-line',                color: '#f7b84b', bg: 'rgba(247,184,75,0.12)' },
+                { id: 'qr',       label: 'QR / USSD',       icon: 'ri-qr-code-line',             color: '#299cdb', bg: 'rgba(41,156,219,0.12)' },
+                { id: 'split',    label: 'Split Tender',    icon: 'ri-layout-column-line',       color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
+              ].map(m => (
+                <button
+                  key={m.id}
+                  disabled={cart.length === 0}
+                  onClick={() => {
+                    if (cart.length > 0) {
+                      if (m.id === 'cash') setCashReceived(String(total))
+                      setActiveModal(m.id)
+                    }
+                  }}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '8px 4px',
+                    borderRadius: 8,
+                    border: `1.5px solid ${cart.length === 0 ? 'var(--bs-border-color, rgba(255,255,255,0.08))' : m.color + '50'}`,
+                    background: cart.length === 0 ? 'var(--bs-body-bg, #0f172a)' : m.bg,
+                    cursor: cart.length === 0 ? 'not-allowed' : 'pointer',
+                    opacity: cart.length === 0 ? 0.4 : 1,
+                    transition: 'all 0.15s ease'
+                  }}>
+                  <div style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    background: m.color + '25',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <i className={m.icon} style={{ fontSize: 16, color: m.color }}></i>
+                  </div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--bs-body-color, #fff)', textAlign: 'center', lineHeight: 1.1 }}>
+                    {m.label}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom Utility Bar: Hold, Invoice, Pay Later, History */}
+          <div style={{
+            display: 'flex',
+            borderTop: '1px solid var(--bs-border-color, rgba(255,255,255,0.08))',
+            background: 'var(--bs-body-bg, #0f172a)'
+          }}>
             {[
-              { label:'Hold',      icon:'ri-pause-circle-line',   color:'#0ab39c', modal:'hold'     },
-              { label:'Invoice',   icon:'ri-file-text-line',      color:'#f06548', modal:'invoice'  },
-              { label:'Pay Later', icon:'ri-time-line',           color:'#f7b84b', modal:'paylater' },
-              { label:'History',   icon:'ri-folder-history-line', color:'#299cdb', modal:'history'  },
+              { label: 'Hold [F4]', icon: 'ri-pause-circle-line',   color: '#0ab39c', modal: 'hold' },
+              { label: 'Invoice',   icon: 'ri-file-text-line',      color: '#f06548', modal: 'invoice' },
+              { label: 'Pay Later', icon: 'ri-time-line',           color: '#f7b84b', modal: 'paylater' },
+              { label: 'History',   icon: 'ri-folder-history-line', color: '#299cdb', modal: 'history' },
             ].map(b => (
-              <button key={b.label} onClick={() => setActiveModal(b.modal)}
-                style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'10px 4px', background:'transparent', border:'none', cursor:'pointer' }}>
-                <span style={{ width:32, height:32, borderRadius:'50%', background:b.color+'15', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <i className={b.icon} style={{ fontSize:15, color:b.color }}></i>
+              <button
+                key={b.label}
+                disabled={b.modal === 'hold' && cart.length === 0}
+                onClick={() => setActiveModal(b.modal)}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 3,
+                  padding: '8px 2px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: (b.modal === 'hold' && cart.length === 0) ? 'not-allowed' : 'pointer',
+                  opacity: (b.modal === 'hold' && cart.length === 0) ? 0.4 : 1
+                }}>
+                <span style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  background: b.color + '15',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <i className={b.icon} style={{ fontSize: 14, color: b.color }}></i>
                 </span>
-                <span style={{ fontSize:10, fontWeight:600, color:'var(--bs-secondary-color)' }}>{b.label}</span>
+                <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--bs-secondary-color, #94a3b8)' }}>
+                  {b.label}
+                </span>
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ═══ MODALS ════════════════════════════════════════════════════════ */}
-      {/* Shared backdrop */}
+      {/* ═══ MODALS & WORKFLOWS ═══════════════════════════════════════════ */}
       {activeModal && activeModal !== 'success' && (
-        <div className="modal-backdrop show" style={{ zIndex:800 }} onClick={closeModal} />
+        <div className="modal-backdrop show" style={{ zIndex: 800 }} onClick={closeModal} />
       )}
 
       {/* ─── Scanner Basket Modal ───────────────────────────────────────── */}
@@ -1019,125 +2015,151 @@ function getProductIcon(name = '', cat = '') {
         const scSub   = scanCart.reduce((s, i) => s + i.price * i.qty, 0)
         const scVat   = Math.round(scSub * 0.075)
         const scTotal = scSub + scVat
+
         return (
-          <div className="modal show d-block" style={{ zIndex:810 }} tabIndex="-1">
-            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth:780 }}>
-            <div className="modal-content" style={{ borderRadius:16, overflow:'hidden' }}>
-              {/* Header */}
-              <div className="modal-header py-3 px-4" style={{ background:'linear-gradient(135deg,#0ab39c,#405189)' }}>
-                <div className="d-flex align-items-center gap-3">
-                  <div style={{ width:48, height:48, borderRadius:12, background:'rgba(255,255,255,.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26 }}>🛒</div>
-                  <div>
-                    <h5 className="modal-title mb-0" style={{ color:'#fff', fontSize:18, fontWeight:700 }}>Scan Basket</h5>
-                    <div style={{ fontSize:12, color:'rgba(255,255,255,.8)', marginTop:2 }}>Scan or type a barcode / SKU then press Enter to add items</div>
-                  </div>
-                </div>
-                <button className="btn-close btn-close-white ms-auto" onClick={() => { setScanCart([]); closeModal() }}></button>
-              </div>
-
-              <div className="modal-body p-0" style={{ display:'flex', flexDirection:'column' }}>
-                {/* Scan input row */}
-                <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--bs-border-color)', background:'var(--bs-body-secondary-bg)' }}>
-                  <div className="input-group input-group-lg">
-                    <span className="input-group-text" style={{ background:'#0ab39c', border:'none', color:'#fff', fontSize:20, paddingInline:16 }}>
-                      <i className="ri-barcode-line"></i>
-                    </span>
-                    <input
-                      ref={scanModalInputRef}
-                      type="text"
-                      className="form-control"
-                      placeholder="Scan barcode or type SKU + Enter…"
-                      value={scanCode}
-                      autoFocus
-                      autoComplete="off"
-                      onChange={e => setScanCode(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { scannerAddProduct(scanCode) } }}
-                      style={{ fontSize:15, fontWeight:500 }}
-                    />
-                    <button
-                      className="btn btn-primary px-4"
-                      onClick={() => scannerAddProduct(scanCode)}
-                      style={{ fontSize:14, fontWeight:600 }}>
-                      <i className="ri-add-line me-1"></i>Add
-                    </button>
-                  </div>
-                </div>
-
-                {/* Cart items */}
-                <div style={{ minHeight:280, maxHeight:'45vh', overflowY:'auto' }}>
-                  {scanCart.length === 0 ? (
-                    <div style={{ textAlign:'center', padding:'70px 20px', color:'var(--bs-secondary-color)' }}>
-                      <div style={{ fontSize:68 }}>📦</div>
-                      <div style={{ marginTop:14, fontWeight:700, fontSize:17 }}>No items scanned yet</div>
-                      <div style={{ fontSize:13, marginTop:6 }}>Scan a barcode or type a SKU above to start building the basket</div>
+          <div className="modal show d-block" style={{ zIndex: 810 }} tabIndex="-1">
+            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 760 }}>
+              <div className="modal-content" style={{ borderRadius: 16, overflow: 'hidden' }}>
+                <div className="modal-header py-3 px-4" style={{ background: 'linear-gradient(135deg, #0ab39c, #405189)' }}>
+                  <div className="d-flex align-items-center gap-3">
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
+                      🛒
                     </div>
-                  ) : scanCart.map((item, idx) => {
-                    const color = CAT_COLORS[item.cat] || '#0ab39c'
-                    return (
-                      <div key={item.id} style={{ display:'flex', alignItems:'center', gap:16, padding:'14px 20px', borderBottom:'1px solid var(--bs-border-color)', animation: idx === scanCart.length - 1 ? 'fadeIn .25s ease' : undefined }}>
-                        {/* Icon */}
-                        <div style={{ width:52, height:52, borderRadius:12, background:color+'18', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, flexShrink:0 }}>
-                          {item.icon}
-                        </div>
-                        {/* Details */}
-                        <div style={{ flex:1, overflow:'hidden' }}>
-                          <div style={{ fontWeight:600, fontSize:15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{item.name}</div>
-                          <div style={{ fontSize:12, color:'var(--bs-secondary-color)', marginTop:2 }}>{item.sku} &nbsp;·&nbsp; {fmt(item.price)} per {item.unit}</div>
-                        </div>
-                        {/* Qty stepper */}
-                        <div className="d-flex align-items-center gap-2" style={{ flexShrink:0 }}>
-                          <button className="btn btn-outline-secondary" style={{ width:36, height:36, padding:0, fontSize:18, lineHeight:1 }}
-                            onClick={() => scannerUpdateQty(item.id, item.qty - 1)}>−</button>
-                          <span style={{ minWidth:32, textAlign:'center', fontWeight:800, fontSize:17 }}>{item.qty}</span>
-                          <button className="btn btn-outline-secondary" style={{ width:36, height:36, padding:0, fontSize:18, lineHeight:1 }}
-                            onClick={() => scannerUpdateQty(item.id, item.qty + 1)}>+</button>
-                        </div>
-                        {/* Line total */}
-                        <div style={{ minWidth:100, textAlign:'right', fontWeight:800, fontSize:16, flexShrink:0, color:'var(--bs-body-color)' }}>
-                          {fmt(item.price * item.qty)}
-                        </div>
-                        {/* Remove */}
-                        <button className="btn btn-link text-danger p-0" style={{ flexShrink:0 }}
-                          onClick={() => scannerUpdateQty(item.id, 0)}>
-                          <i className="ri-delete-bin-6-line" style={{ fontSize:20 }}></i>
+                    <div>
+                      <h5 className="modal-title mb-0" style={{ color: '#fff', fontSize: 17, fontWeight: 800 }}>
+                        Scan Basket Terminal
+                      </h5>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
+                        High-speed barcode scanner mode · Type or scan + Enter
+                      </div>
+                    </div>
+                  </div>
+                  <button className="btn-close btn-close-white ms-auto" onClick={() => { setScanCart([]); closeModal() }}></button>
+                </div>
+
+                <div className="modal-body p-0">
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--bs-border-color)', background: 'var(--bs-body-secondary-bg)' }}>
+                    <div className="input-group input-group-lg">
+                      <span className="input-group-text" style={{ background: '#0ab39c', border: 'none', color: '#fff', fontSize: 18, paddingInline: 14 }}>
+                        <i className="ri-barcode-line"></i>
+                      </span>
+                      <input
+                        ref={scanModalInputRef}
+                        type="text"
+                        className="form-control"
+                        placeholder="Scan barcode or type SKU + Enter..."
+                        value={scanCode}
+                        autoFocus
+                        autoComplete="off"
+                        onChange={e => setScanCode(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') scannerAddProduct(scanCode)
+                        }}
+                        style={{ fontSize: 14, fontWeight: 600 }}
+                      />
+                      <button
+                        className="btn btn-primary px-4"
+                        onClick={() => scannerAddProduct(scanCode)}
+                        style={{ fontSize: 13, fontWeight: 700 }}>
+                        <i className="ri-add-line me-1"></i> Add
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ minHeight: 260, maxHeight: '42vh', overflowY: 'auto' }}>
+                    {scanCart.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--bs-secondary-color)' }}>
+                        <div style={{ fontSize: 54, marginBottom: 10 }}>📦</div>
+                        <div style={{ fontWeight: 700, fontSize: 16 }}>No items scanned yet</div>
+                        <div style={{ fontSize: 12, marginTop: 4 }}>Point barcode scanner at products to populate basket</div>
+                      </div>
+                    ) : (
+                      scanCart.map((item) => {
+                        const color = CAT_COLORS[item.cat] || '#0ab39c'
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 14,
+                              padding: '12px 20px',
+                              borderBottom: '1px solid var(--bs-border-color)'
+                            }}>
+                            <div style={{ width: 44, height: 44, borderRadius: 10, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
+                              {item.icon}
+                            </div>
+                            <div style={{ flex: 1, overflow: 'hidden' }}>
+                              <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {item.name}
+                              </div>
+                              <div style={{ fontSize: 11, color: 'var(--bs-secondary-color)' }}>
+                                {item.sku} · {fmt(item.price)} per {item.unit}
+                              </div>
+                            </div>
+                            <div className="d-flex align-items-center gap-2" style={{ flexShrink: 0 }}>
+                              <button
+                                className="btn btn-outline-secondary"
+                                style={{ width: 32, height: 32, padding: 0, fontSize: 16, lineHeight: 1 }}
+                                onClick={() => scannerUpdateQty(item.id, item.qty - 1)}>
+                                −
+                              </button>
+                              <span style={{ minWidth: 28, textAlign: 'center', fontWeight: 800, fontSize: 15 }}>
+                                {item.qty}
+                              </span>
+                              <button
+                                className="btn btn-outline-secondary"
+                                style={{ width: 32, height: 32, padding: 0, fontSize: 16, lineHeight: 1 }}
+                                onClick={() => scannerUpdateQty(item.id, item.qty + 1)}>
+                                +
+                              </button>
+                            </div>
+                            <div style={{ minWidth: 90, textAlign: 'right', fontWeight: 800, fontSize: 15, flexShrink: 0 }}>
+                              {fmt(item.price * item.qty)}
+                            </div>
+                            <button
+                              className="btn btn-link text-danger p-0"
+                              onClick={() => scannerUpdateQty(item.id, 0)}>
+                              <i className="ri-delete-bin-6-line" style={{ fontSize: 18 }}></i>
+                            </button>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+
+                  {scanCart.length > 0 && (
+                    <div style={{ padding: '16px 20px', borderTop: '2px solid var(--bs-border-color)', background: 'var(--bs-body-secondary-bg)' }}>
+                      <div className="d-flex justify-content-between mb-2" style={{ fontSize: 13, color: 'var(--bs-secondary-color)' }}>
+                        <span>Subtotal ({scanCart.reduce((s, i) => s + i.qty, 0)} items)</span>
+                        <span>{fmt(scSub)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between mb-3" style={{ fontSize: 13, color: 'var(--bs-secondary-color)' }}>
+                        <span>VAT (7.5%)</span>
+                        <span>{fmt(scVat)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between mb-4">
+                        <span style={{ fontWeight: 800, fontSize: 17 }}>Total Payable</span>
+                        <span style={{ fontWeight: 900, fontSize: 22, color: '#0ab39c' }}>{fmt(scTotal)}</span>
+                      </div>
+                      <div className="d-flex gap-3">
+                        <button
+                          className="btn btn-outline-primary flex-fill py-2"
+                          style={{ fontSize: 14, fontWeight: 700 }}
+                          onClick={scannerAddToOrder}>
+                          <i className="ri-add-circle-line me-2"></i> Add to Current Order
+                        </button>
+                        <button
+                          className="btn btn-primary flex-fill py-2"
+                          style={{ fontSize: 14, fontWeight: 700 }}
+                          onClick={scannerQuickPay}>
+                          <i className="ri-secure-payment-line me-2"></i> Instant Quick Pay
                         </button>
                       </div>
-                    )
-                  })}
+                    </div>
+                  )}
                 </div>
-
-                {/* Totals + actions */}
-                {scanCart.length > 0 && (
-                  <div style={{ padding:'16px 20px', borderTop:'2px solid var(--bs-border-color)', background:'var(--bs-body-secondary-bg)' }}>
-                    <div className="d-flex justify-content-between mb-2" style={{ fontSize:13, color:'var(--bs-secondary-color)' }}>
-                      <span>Subtotal ({scanCart.reduce((s,i) => s+i.qty, 0)} items)</span>
-                      <span>{fmt(scSub)}</span>
-                    </div>
-                    <div className="d-flex justify-content-between mb-3" style={{ fontSize:13, color:'var(--bs-secondary-color)' }}>
-                      <span>VAT (7.5%)</span>
-                      <span>{fmt(scVat)}</span>
-                    </div>
-                    <div className="d-flex justify-content-between mb-4">
-                      <span style={{ fontWeight:700, fontSize:18 }}>Total</span>
-                      <span style={{ fontWeight:900, fontSize:24, color:'#0ab39c' }}>{fmt(scTotal)}</span>
-                    </div>
-                    <div className="d-flex gap-3">
-                      <button className="btn btn-outline-primary flex-fill py-3" style={{ fontSize:15, fontWeight:700 }}
-                        onClick={scannerAddToOrder}>
-                        <i className="ri-add-circle-line me-2" style={{ fontSize:18 }}></i>Add to Order
-                      </button>
-                      <button className="btn btn-primary flex-fill py-3" style={{ fontSize:15, fontWeight:700 }}
-                        onClick={scannerQuickPay}>
-                        <i className="ri-secure-payment-line me-2" style={{ fontSize:18 }}></i>Quick Pay
-                      </button>
-                    </div>
-                    <div style={{ textAlign:'center', fontSize:11, color:'var(--bs-secondary-color)', marginTop:10 }}>
-                      <b>Add to Order</b> — merges into current order &nbsp;·&nbsp; <b>Quick Pay</b> — goes straight to payment
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
             </div>
           </div>
         )
@@ -1145,595 +2167,778 @@ function getProductIcon(name = '', cat = '') {
 
       {/* ─── Online Orders Modal ────────────────────────────────────────── */}
       {activeModal === 'online' && (
-        <div className="modal show d-block" style={{ zIndex:810 }} tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth:820 }}>
-          <div className="modal-content" style={{ borderRadius:16, overflow:'hidden', maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
-
-            {/* Header */}
-            <div className="modal-header px-4 py-3" style={{ background:'linear-gradient(135deg,#405189,#0ab39c)', flexShrink:0 }}>
-              <div className="d-flex align-items-center gap-3">
-                <div style={{ width:46, height:46, borderRadius:12, background:'rgba(255,255,255,.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24 }}>📥</div>
-                <div>
-                  <h5 className="modal-title mb-0" style={{ color:'#fff', fontSize:18, fontWeight:700 }}>Online Orders</h5>
-                  <div style={{ fontSize:12, color:'rgba(255,255,255,.8)', marginTop:2 }}>
-                    {onlineOrders.filter(o=>o.status==='new').length} new · {onlineOrders.filter(o=>o.status==='pending').length} pending · {onlineOrders.length} total
+        <div className="modal show d-block" style={{ zIndex: 810 }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 820 }}>
+            <div className="modal-content" style={{ borderRadius: 16, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+              <div className="modal-header px-4 py-3" style={{ background: 'linear-gradient(135deg, #405189, #0ab39c)', flexShrink: 0 }}>
+                <div className="d-flex align-items-center gap-3">
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+                    📥
+                  </div>
+                  <div>
+                    <h5 className="modal-title mb-0" style={{ color: '#fff', fontSize: 17, fontWeight: 800 }}>
+                      Online & WhatsApp Orders
+                    </h5>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>
+                      {onlineOrders.filter(o => o.status === 'new').length} New · {onlineOrders.length} Total Incoming
+                    </div>
                   </div>
                 </div>
+                <button className="btn-close btn-close-white ms-auto" onClick={closeModal}></button>
               </div>
-              <button className="btn-close btn-close-white ms-auto" onClick={closeModal}></button>
-            </div>
 
-            {/* Filter tabs */}
-            <div style={{ display:'flex', gap:0, borderBottom:'1px solid var(--bs-border-color)', background:'var(--bs-body-bg)', flexShrink:0 }}>
-              {[
-                { key:'all',        label:'All Orders',  count: onlineOrders.length },
-                { key:'new',        label:'🔴 New',       count: onlineOrders.filter(o=>o.status==='new').length },
-                { key:'pending',    label:'🟡 Pending',   count: onlineOrders.filter(o=>o.status==='pending').length },
-                { key:'processing', label:'🔵 Processing',count: onlineOrders.filter(o=>o.status==='processing').length },
-              ].map(tab => (
-                <button key={tab.key} onClick={() => setOnlineFilter(tab.key)}
-                  style={{ flex:1, padding:'12px 8px', border:'none', borderBottom: onlineFilter===tab.key ? '3px solid #405189' : '3px solid transparent', background:'transparent', fontWeight: onlineFilter===tab.key ? 700 : 500, fontSize:13, color: onlineFilter===tab.key ? '#405189' : 'var(--bs-secondary-color)', cursor:'pointer', transition:'all .15s' }}>
-                  {tab.label} <span style={{ marginLeft:4, background: onlineFilter===tab.key?'#405189':'var(--bs-border-color)', color: onlineFilter===tab.key?'#fff':'var(--bs-secondary-color)', borderRadius:20, padding:'1px 8px', fontSize:11 }}>{tab.count}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Order list */}
-            <div style={{ overflowY:'auto', flex:1 }}>
-              {onlineOrders
-                .filter(o => onlineFilter === 'all' || o.status === onlineFilter)
-                .map(order => {
-                  const ch       = CHANNEL_META[order.channel]
-                  const st       = STATUS_META[order.status]
-                  const orderTotal = order.items.reduce((s, { productId, qty }) => {
-                    const p = productsList.find(x => x.id === productId)
-                    return s + (p ? p.price * qty : 0)
-                  }, 0)
-                  const isExpanded = expandedOrder === order.id
-                  return (
-                    <div key={order.id} style={{ borderBottom:'1px solid var(--bs-border-color)', padding:'16px 20px', transition:'background .15s' }}>
-                      {/* Order header row */}
-                      <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-                        {/* Channel icon */}
-                        <div style={{ width:44, height:44, borderRadius:12, background:ch.color+'18', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                          <i className={ch.icon} style={{ fontSize:22, color:ch.color }}></i>
-                        </div>
-                        {/* Info */}
-                        <div style={{ flex:1, overflow:'hidden' }}>
-                          <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                            <span style={{ fontWeight:700, fontSize:14 }}>{order.id}</span>
-                            <span style={{ fontSize:11, padding:'2px 10px', borderRadius:20, background:st.bg, color:st.color, fontWeight:700 }}>{st.label}</span>
-                            <span style={{ fontSize:11, color:'var(--bs-secondary-color)' }}><i className={ch.icon + ' me-1'}></i>{ch.label}</span>
-                          </div>
-                          <div style={{ fontSize:13, marginTop:3 }}>
-                            <span style={{ fontWeight:600 }}>{order.customer}</span>
-                            <span style={{ color:'var(--bs-secondary-color)', marginLeft:8 }}>{order.phone}</span>
-                          </div>
-                          <div style={{ fontSize:11, color:'var(--bs-secondary-color)', marginTop:2 }}>
-                            🕐 {order.time} &nbsp;·&nbsp; {order.items.reduce((s,i)=>s+i.qty,0)} items &nbsp;·&nbsp; <strong style={{ color:'var(--bs-body-color)' }}>{fmt(orderTotal)}</strong>
-                          </div>
-                        </div>
-                        {/* Actions */}
-                        <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-                          <button
-                            className="btn btn-sm btn-outline-secondary"
-                            onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
-                            style={{ fontSize:12 }}>
-                            <i className={isExpanded ? 'ri-eye-off-line' : 'ri-eye-line'}></i>
-                          </button>
-                          {order.status !== 'processing' && (
-                            <button
-                              className="btn btn-sm btn-primary px-3"
-                              onClick={() => loadOnlineOrderToCart(order)}
-                              style={{ fontSize:12, fontWeight:700, whiteSpace:'nowrap' }}>
-                              <i className="ri-shopping-cart-2-line me-1"></i>Load to Cart
-                            </button>
-                          )}
-                          {order.status === 'processing' && (
-                            <span style={{ fontSize:11, color:'#299cdb', fontWeight:600 }}>
-                              <i className="ri-check-double-line me-1"></i>Loaded
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Expanded item list */}
-                      {isExpanded && (
-                        <div style={{ marginTop:12, background:'var(--bs-body-secondary-bg)', borderRadius:10, overflow:'hidden', border:'1px solid var(--bs-border-color)' }}>
-                          {order.note && (
-                            <div style={{ padding:'8px 14px', background:'#f7b84b18', borderBottom:'1px solid var(--bs-border-color)', fontSize:12, color:'#8b6914' }}>
-                              <i className="ri-sticky-note-line me-1"></i><strong>Note:</strong> {order.note}
-                            </div>
-                          )}
-                          {order.items.map(({ productId, qty }) => {
-                            const p = productsList.find(x => x.id === productId)
-                            if (!p) return null
-                            const color = CAT_COLORS[p.cat] || '#0ab39c'
-                            return (
-                              <div key={productId} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderBottom:'1px solid var(--bs-border-color)' }}>
-                                <div style={{ width:34, height:34, borderRadius:8, background:color+'18', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>{p.icon}</div>
-                                <div style={{ flex:1, fontSize:13, fontWeight:500 }}>{p.name}</div>
-                                <div style={{ fontSize:12, color:'var(--bs-secondary-color)' }}>× {qty}</div>
-                                <div style={{ fontSize:13, fontWeight:700, minWidth:80, textAlign:'right' }}>{fmt(p.price * qty)}</div>
-                              </div>
-                            )
-                          })}
-                          <div style={{ display:'flex', justifyContent:'flex-end', padding:'10px 14px', fontWeight:800, fontSize:14 }}>
-                            Total: <span style={{ color:'#0ab39c', marginLeft:8 }}>{fmt(orderTotal)}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })
-              }
-            </div>
-
-          </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Cash Modal ─────────────────────────────────────────────────── */}
-      {activeModal === 'cash' && (
-        <div className="modal show d-block" style={{ zIndex:810 }} tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth:440 }}>
-          <div className="modal-content">
-            <div className="modal-header">
-              <h6 className="modal-title">Cash Payment</h6>
-              <button className="btn-close" onClick={closeModal}></button>
-            </div>
-            <div className="modal-body">
-              {/* Summary */}
-              <div className="mb-5">
-                <div className="d-flex justify-content-between mb-3">
-                  <span className="text-muted">Total Payable</span>
-                  <span className="fw-semibold fs-17">{fmt(total)}</span>
-                </div>
-                <div className="d-flex justify-content-between">
-                  <span className="text-muted">Payment Method</span>
-                  <span className="badge bg-success-subtle text-success border border-success-subtle">Cash</span>
-                </div>
-              </div>
-              {/* Cash input */}
-              <div className="mb-3">
-                <label className="form-label fw-medium">Cash Received</label>
-                <div className="input-group">
-                  <span className="input-group-text">₦</span>
-                  <input type="number" className="form-control" placeholder="0.00"
-                    value={cashReceived} onChange={e => setCashReceived(e.target.value)} autoFocus />
-                </div>
-              </div>
-              {/* Quick amounts */}
-              <div className="d-flex flex-wrap gap-2 mb-5">
-                {[500,1000,2000,5000].map(a => (
-                  <button key={a} type="button" className="btn btn-outline-light border flex-fill"
-                    onClick={() => setCashReceived(String(a))}>{fmt(a)}</button>
+              {/* Filter Tabs */}
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--bs-border-color)', background: 'var(--bs-body-bg)', flexShrink: 0 }}>
+                {[
+                  { key: 'all',        label: 'All Orders',  count: onlineOrders.length },
+                  { key: 'new',        label: '🔴 New',       count: onlineOrders.filter(o => o.status === 'new').length },
+                  { key: 'pending',    label: '🟡 Pending',   count: onlineOrders.filter(o => o.status === 'pending').length },
+                  { key: 'processing', label: '🔵 Loaded',    count: onlineOrders.filter(o => o.status === 'processing').length },
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setOnlineFilter(tab.key)}
+                    style={{
+                      flex: 1,
+                      padding: '10px 8px',
+                      border: 'none',
+                      borderBottom: onlineFilter === tab.key ? '3px solid #405189' : '3px solid transparent',
+                      background: 'transparent',
+                      fontWeight: onlineFilter === tab.key ? 700 : 500,
+                      fontSize: 12,
+                      color: onlineFilter === tab.key ? '#405189' : 'var(--bs-secondary-color)',
+                      cursor: 'pointer'
+                    }}>
+                    {tab.label} ({tab.count})
+                  </button>
                 ))}
-                <button type="button" className="btn btn-outline-light border flex-fill"
-                  onClick={() => setCashReceived(String(total))}>Exact</button>
               </div>
-              {/* Change / short alert */}
-              {cashReceived && Number(cashReceived) >= total && (
-                <div className="alert alert-success d-flex justify-content-between align-items-center mb-4">
-                  <span className="fw-medium">Change to Return</span>
-                  <span className="fw-semibold">{fmt(cashChange)}</span>
-                </div>
-              )}
-              {cashReceived && Number(cashReceived) < total && (
-                <div className="alert alert-danger d-flex justify-content-between align-items-center mb-4">
-                  <span className="fw-medium">Amount Short</span>
-                  <span className="fw-semibold">{fmt(total - Number(cashReceived))}</span>
-                </div>
-              )}
-              <div className="d-flex gap-3 mt-7">
-                <button type="button" className="btn btn-light w-50" onClick={closeModal}>Cancel</button>
-                <button type="button" className="btn btn-primary w-50"
-                  disabled={!cashReceived || Number(cashReceived) < total}
-                  onClick={() => confirmPayment('Cash')}>Submit</button>
+
+              {/* Order List */}
+              <div style={{ overflowY: 'auto', flex: 1 }}>
+                {onlineOrders
+                  .filter(o => onlineFilter === 'all' || o.status === onlineFilter)
+                  .map(order => {
+                    const ch = CHANNEL_META[order.channel] || CHANNEL_META.website
+                    const st = STATUS_META[order.status] || STATUS_META.pending
+                    const orderTotal = order.items.reduce((s, { productId, qty }) => {
+                      const p = productsList.find(x => x.id === productId)
+                      return s + (p ? p.price * qty : 0)
+                    }, 0)
+                    const isExpanded = expandedOrder === order.id
+
+                    return (
+                      <div key={order.id} style={{ borderBottom: '1px solid var(--bs-border-color)', padding: '14px 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 10, background: ch.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <i className={ch.icon} style={{ fontSize: 20, color: ch.color }}></i>
+                          </div>
+                          <div style={{ flex: 1, overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontWeight: 800, fontSize: 13 }}>{order.id}</span>
+                              <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 12, background: st.bg, color: st.color, fontWeight: 700 }}>
+                                {st.label}
+                              </span>
+                              <span style={{ fontSize: 11, color: 'var(--bs-secondary-color)' }}>
+                                {ch.label}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 12, marginTop: 2 }}>
+                              <span style={{ fontWeight: 700 }}>{order.customer}</span>
+                              <span style={{ color: 'var(--bs-secondary-color)', marginLeft: 8 }}>{order.phone}</span>
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--bs-secondary-color)', marginTop: 2 }}>
+                              🕐 {order.time} · {order.items.reduce((s, i) => s + i.qty, 0)} items · <strong style={{ color: 'var(--bs-body-color)' }}>{fmt(orderTotal)}</strong>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            <button
+                              className="btn btn-sm btn-outline-secondary"
+                              onClick={() => setExpandedOrder(isExpanded ? null : order.id)}>
+                              <i className={isExpanded ? 'ri-eye-off-line' : 'ri-eye-line'}></i>
+                            </button>
+                            {order.status !== 'processing' ? (
+                              <button
+                                className="btn btn-sm btn-primary px-3"
+                                onClick={() => loadOnlineOrderToCart(order)}
+                                style={{ fontSize: 11, fontWeight: 700 }}>
+                                <i className="ri-shopping-cart-2-line me-1"></i> Load to Cart
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: 11, color: '#299cdb', fontWeight: 700 }}>
+                                <i className="ri-check-double-line me-1"></i> Loaded
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {isExpanded && (
+                          <div style={{ marginTop: 10, background: 'var(--bs-body-secondary-bg)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--bs-border-color)', padding: 10 }}>
+                            {order.note && (
+                              <div style={{ padding: '6px 10px', background: '#f7b84b18', borderRadius: 6, marginBottom: 8, fontSize: 11, color: '#8b6914' }}>
+                                <strong>Note:</strong> {order.note}
+                              </div>
+                            )}
+                            {order.items.map(({ productId, qty }) => {
+                              const p = productsList.find(x => x.id === productId)
+                              if (!p) return null
+                              return (
+                                <div key={productId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '4px 0' }}>
+                                  <span>{p.icon} {p.name} × {qty}</span>
+                                  <span style={{ fontWeight: 700 }}>{fmt(p.price * qty)}</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
               </div>
             </div>
-          </div></div>
+          </div>
         </div>
       )}
 
-      {/* ─── Card / POS Modal ───────────────────────────────────────────── */}
-      {activeModal === 'card' && (
-        <div className="modal show d-block" style={{ zIndex:810 }} tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth:460 }}>
-          <div className="modal-content">
-            <div className="modal-header">
-              <h6 className="modal-title d-flex align-items-center gap-2">
-                <i className="ri-bank-card-line text-primary"></i> Card / POS Payment
-              </h6>
-              <button className="btn-close" onClick={closeModal}></button>
-            </div>
-            <div className="modal-body">
-              {/* Amount */}
-              <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
-                <span className="text-muted">Total to charge on terminal</span>
-                <span className="fw-bold fs-17">{fmt(total)}</span>
-              </div>
-
-              {/* Terminal instruction strip */}
-              <div style={{ background:'rgba(64,81,137,.08)', border:'1px solid rgba(64,81,137,.2)', borderRadius:10, padding:'12px 16px', marginBottom:20, display:'flex', alignItems:'center', gap:12 }}>
-                <i className="ri-bank-card-2-line" style={{ fontSize:28, color:'#405189', flexShrink:0 }}></i>
-                <div style={{ fontSize:12, color:'var(--bs-secondary-color)', lineHeight:1.6 }}>
-                  Process <strong style={{ color:'var(--bs-body-color)' }}>{fmt(total)}</strong> on the external POS terminal.<br/>
-                  Once the terminal confirms, click <strong style={{ color:'#405189' }}>Confirm Payment</strong> below — the system will record it automatically.
+      {/* ─── Cash Payment Modal (with 1-Tap Quick Tenders & Numpad) ───────── */}
+      {activeModal === 'cash' && (
+        <div className="modal show d-block" style={{ zIndex: 810 }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 480 }}>
+            <div className="modal-content" style={{ borderRadius: 16, overflow: 'hidden' }}>
+              <div className="modal-header py-3 px-4" style={{ background: 'linear-gradient(135deg, #0ab39c, #099885)' }}>
+                <div className="d-flex align-items-center gap-2 text-white">
+                  <i className="ri-money-dollar-circle-line fs-20"></i>
+                  <h6 className="modal-title mb-0 text-white fw-bold">Cash Tender & Change</h6>
                 </div>
+                <button className="btn-close btn-close-white" onClick={closeModal}></button>
               </div>
 
-              {/* Card type (optional, for records) */}
-              <div className="mb-4">
-                <label className="form-label fw-semibold" style={{ fontSize:12 }}>Card Type <span className="text-muted fw-normal">(optional)</span></label>
+              <div className="modal-body p-4">
+                {/* Total Display */}
+                <div className="d-flex justify-content-between align-items-center p-3 rounded mb-3" style={{ background: 'rgba(10,179,156,0.1)' }}>
+                  <div>
+                    <span style={{ fontSize: 11, color: 'var(--bs-secondary-color)', textTransform: 'uppercase', fontWeight: 700 }}>Total Payable</span>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: '#0ab39c' }}>{fmt(total)}</div>
+                  </div>
+                  <span className="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fs-12 fw-bold">
+                    CASH
+                  </span>
+                </div>
+
+                {/* Cash Received Input */}
+                <div className="mb-3">
+                  <label className="form-label fw-bold small">Amount Tendered (₦)</label>
+                  <div className="input-group input-group-lg">
+                    <span className="input-group-text fw-bold">₦</span>
+                    <input
+                      type="number"
+                      className="form-control fw-bold"
+                      placeholder="0.00"
+                      value={cashReceived}
+                      onChange={e => setCashReceived(e.target.value)}
+                      autoFocus
+                      style={{ fontSize: 20 }}
+                    />
+                    {cashReceived && (
+                      <button className="btn btn-outline-secondary" onClick={() => setCashReceived('')}>
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 1-Tap Quick Tender Buttons */}
+                <div className="mb-3">
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--bs-secondary-color)', textTransform: 'uppercase', marginBottom: 6 }}>
+                    Quick Tender Options
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                    {quickCashOptions.map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm fw-bold py-2"
+                        onClick={() => setCashReceived(String(amt))}>
+                        {amt === total ? `Exact (${fmt(amt)})` : fmt(amt)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Change or Shortage Alert */}
+                {cashReceived && Number(cashReceived) >= total && (
+                  <div className="alert alert-success d-flex justify-content-between align-items-center mb-4 py-2">
+                    <span className="fw-bold">Change Due to Customer</span>
+                    <span className="fw-bolder fs-18">{fmt(cashChange)}</span>
+                  </div>
+                )}
+                {cashReceived && Number(cashReceived) < total && (
+                  <div className="alert alert-danger d-flex justify-content-between align-items-center mb-4 py-2">
+                    <span className="fw-bold">Amount Remaining</span>
+                    <span className="fw-bolder fs-18">{fmt(total - Number(cashReceived))}</span>
+                  </div>
+                )}
+
                 <div className="d-flex gap-2">
-                  {['Visa','Mastercard','Verve','Other'].map(t => (
-                    <button key={t} type="button"
-                      onClick={() => setCardTab(t.toLowerCase())}
-                      style={{ flex:1, padding:'8px 4px', borderRadius:8, border: cardTab===t.toLowerCase() ? '2px solid #405189' : '1px solid var(--bs-border-color)', background: cardTab===t.toLowerCase() ? 'rgba(64,81,137,.1)' : 'transparent', fontSize:11, fontWeight:600, cursor:'pointer', color: cardTab===t.toLowerCase() ? '#405189' : 'var(--bs-secondary-color)' }}>
-                      {t}
-                    </button>
-                  ))}
+                  <button type="button" className="btn btn-light w-50 py-2 fw-semibold" onClick={closeModal}>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary w-50 py-2 fw-bold"
+                    disabled={!cashReceived || Number(cashReceived) < total}
+                    onClick={() => confirmPayment('Cash')}>
+                    Complete Sale
+                  </button>
                 </div>
-              </div>
-
-              <div className="d-flex gap-3">
-                <button type="button" className="btn btn-light w-50" onClick={closeModal}>Cancel</button>
-                <button type="button" className="btn btn-primary w-50" onClick={() => confirmPayment('Card / POS')}>
-                  <i className="ri-check-double-line me-1"></i>Confirm Payment
-                </button>
               </div>
             </div>
           </div>
-        </div>
         </div>
       )}
 
-      {/* ─── QR / USSD Modal ────────────────────────────────────────────── */}
-      {activeModal === 'qr' && (
-        <div className="modal show d-block" style={{ zIndex:810 }} tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth:340 }}>
-          <div className="modal-content">
-            <div className="modal-body text-center pt-4">
-              <div style={{ fontSize:12, color:'var(--bs-secondary-color)', marginBottom:4 }}>Total Amount</div>
-              <div style={{ fontSize:26, fontWeight:900, marginBottom:16 }}>{fmt(total)}</div>
-              {/* Fake QR placeholder */}
-              <div style={{ width:160, height:160, margin:'0 auto 12px', background:'#f8f9fa', border:'2px solid var(--bs-border-color)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:6, color:'var(--bs-secondary-color)' }}>
-                <i className="ri-qr-code-line" style={{ fontSize:72 }}></i>
-                <div style={{ fontSize:9, fontWeight:600, letterSpacing:.5 }}>SCAN TO PAY</div>
+      {/* ─── Card / POS Terminal Modal ───────────────────────────────────── */}
+      {activeModal === 'card' && (
+        <div className="modal show d-block" style={{ zIndex: 810 }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 460 }}>
+            <div className="modal-content" style={{ borderRadius: 16, overflow: 'hidden' }}>
+              <div className="modal-header py-3 px-4" style={{ background: 'linear-gradient(135deg, #405189, #2b3a67)' }}>
+                <h6 className="modal-title text-white fw-bold d-flex align-items-center gap-2">
+                  <i className="ri-bank-card-line"></i> Card / External POS Terminal
+                </h6>
+                <button className="btn-close btn-close-white" onClick={closeModal}></button>
               </div>
-              <p className="text-muted mb-1" style={{ fontSize:12 }}>Ask customer to scan the QR code<br/>or dial USSD to complete payment</p>
-              <div style={{ background:'#405189', color:'#fff', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:700, marginBottom:16, display:'inline-block' }}>
-                *737*000#{total}
-              </div>
-              <div className="d-flex gap-3">
-                <button type="button" className="btn btn-light w-50" onClick={closeModal}>Cancel</button>
-                <button type="button" className="btn btn-primary w-50" onClick={() => confirmPayment('QR / USSD')}>Confirm Payment</button>
+              <div className="modal-body p-4">
+                <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                  <span className="text-muted">Charge on POS Terminal</span>
+                  <span className="fw-bolder fs-20 text-primary">{fmt(total)}</span>
+                </div>
+
+                <div style={{ background: 'rgba(64,81,137,0.08)', border: '1px solid rgba(64,81,137,0.2)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <i className="ri-bank-card-2-line" style={{ fontSize: 32, color: '#405189', flexShrink: 0 }}></i>
+                  <div style={{ fontSize: 12, color: 'var(--bs-secondary-color)', lineHeight: 1.5 }}>
+                    Swipe/insert customer card on the physical POS machine for <strong style={{ color: 'var(--bs-body-color)' }}>{fmt(total)}</strong>.<br/>
+                    Once approved on terminal, click <strong>Confirm Payment</strong> below.
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="form-label fw-bold small">Card Type (Optional Record)</label>
+                  <div className="d-flex gap-2">
+                    {['Visa', 'Mastercard', 'Verve', 'Other'].map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setCardTab(t.toLowerCase())}
+                        style={{
+                          flex: 1,
+                          padding: '8px 4px',
+                          borderRadius: 6,
+                          border: cardTab === t.toLowerCase() ? '2px solid #405189' : '1px solid var(--bs-border-color)',
+                          background: cardTab === t.toLowerCase() ? 'rgba(64,81,137,0.15)' : 'transparent',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          color: cardTab === t.toLowerCase() ? '#405189' : 'var(--bs-body-color)'
+                        }}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-light w-50 py-2 fw-semibold" onClick={closeModal}>Cancel</button>
+                  <button type="button" className="btn btn-primary w-50 py-2 fw-bold" onClick={() => confirmPayment('Card / POS')}>
+                    <i className="ri-check-double-line me-1"></i> Confirm Payment
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
         </div>
       )}
 
       {/* ─── Bank Transfer Modal ────────────────────────────────────────── */}
       {activeModal === 'transfer' && (
-        <div className="modal show d-block" style={{ zIndex:810 }} tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth:440 }}>
-          <div className="modal-content">
-            <div className="modal-header"><h6 className="modal-title">Bank Transfer</h6><button className="btn-close" onClick={closeModal}></button></div>
-            <div className="modal-body pt-3">
-              <div className="mb-4">
-                <div className="d-flex justify-content-between mb-2">
-                  <span className="text-muted">Total Payable</span>
-                  <span className="fw-semibold fs-17">{fmt(total)}</span>
+        <div className="modal show d-block" style={{ zIndex: 810 }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 460 }}>
+            <div className="modal-content" style={{ borderRadius: 16, overflow: 'hidden' }}>
+              <div className="modal-header py-3 px-4" style={{ background: 'linear-gradient(135deg, #f7b84b, #e09f3e)' }}>
+                <h6 className="modal-title text-dark fw-bold">Direct Bank Transfer</h6>
+                <button className="btn-close" onClick={closeModal}></button>
+              </div>
+              <div className="modal-body p-4">
+                <div className="d-flex justify-content-between mb-3">
+                  <span className="text-muted">Total Transfer Amount</span>
+                  <span className="fw-bolder fs-18">{fmt(total)}</span>
                 </div>
-                <div className="d-flex justify-content-between">
-                  <span className="text-muted">Payment Method</span>
-                  <span className="badge bg-info-subtle text-info border border-info-subtle">Bank Transfer</span>
+
+                <div className="alert alert-primary mb-3" style={{ fontSize: 12 }}>
+                  <div className="fw-bold mb-1">Transfer to: Bems Farms Ltd</div>
+                  <div>GTBank · <strong>0123456789</strong></div>
+                  <div className="text-muted mt-1">Ref ID: <strong>{orderId}</strong></div>
                 </div>
-              </div>
-              {/* Bank details card */}
-              <div className="alert alert-primary mb-4" style={{ fontSize:12 }}>
-                <div className="fw-bold mb-1">Transfer to: Bems Farms Ltd</div>
-                <div>GTBank · <strong>0123456789</strong></div>
-                <div className="text-muted mt-1">Use <strong>{orderId}</strong> as reference</div>
-              </div>
-              <div className="mb-3"><label className="form-label">Customer's Bank Name</label><input type="text" className="form-control" placeholder="e.g. GTBank, Access, Zenith" value={bankName} onChange={e=>setBankName(e.target.value)} /></div>
-              <div className="mb-3"><label className="form-label">Transaction Reference / Session ID</label><input type="text" className="form-control" placeholder="Enter reference number" value={txnRef} onChange={e=>setTxnRef(e.target.value)} /></div>
-              <div className="mb-4"><label className="form-label">Transfer Date</label><input type="date" className="form-control" value={transferDate} onChange={e=>setTransferDate(e.target.value)} /></div>
-              <div className="alert alert-info d-flex align-items-start gap-2 mb-4">
-                <i className="ri-bank-line fs-5"></i>
-                <div className="small">Ensure the transfer is confirmed in your bank before submitting.</div>
-              </div>
-              <div className="d-flex gap-3">
-                <button type="button" className="btn btn-light w-50" onClick={closeModal}>Cancel</button>
-                <button type="button" className="btn btn-primary w-50" onClick={() => confirmPayment('Bank Transfer')}>Submit</button>
+
+                <div className="mb-3">
+                  <label className="form-label small fw-bold">Customer Bank Name</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    placeholder="e.g. GTBank, Access, Zenith, Kuda"
+                    value={bankName}
+                    onChange={e => setBankName(e.target.value)}
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="form-label small fw-bold">Transaction Reference / Session ID</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    placeholder="Enter bank reference number"
+                    value={txnRef}
+                    onChange={e => setTxnRef(e.target.value)}
+                  />
+                </div>
+
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-light w-50 py-2 fw-semibold" onClick={closeModal}>Cancel</button>
+                  <button type="button" className="btn btn-primary w-50 py-2 fw-bold" onClick={() => confirmPayment('Bank Transfer')}>
+                    Confirm Transfer
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* ─── QR / USSD Modal ────────────────────────────────────────────── */}
+      {activeModal === 'qr' && (
+        <div className="modal show d-block" style={{ zIndex: 810 }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 360 }}>
+            <div className="modal-content" style={{ borderRadius: 16, overflow: 'hidden' }}>
+              <div className="modal-body text-center p-4">
+                <div style={{ fontSize: 11, color: 'var(--bs-secondary-color)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  QR & USSD Payment
+                </div>
+                <div style={{ fontSize: 24, fontWeight: 900, margin: '6px 0 16px', color: '#0ab39c' }}>
+                  {fmt(total)}
+                </div>
+
+                <div style={{
+                  width: 150,
+                  height: 150,
+                  margin: '0 auto 12px',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '2px solid var(--bs-border-color)',
+                  borderRadius: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'column',
+                  gap: 4
+                }}>
+                  <i className="ri-qr-code-line" style={{ fontSize: 68, color: '#0ab39c' }}></i>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5 }}>SCAN WITH BANK APP</div>
+                </div>
+
+                <div style={{
+                  background: 'rgba(64,81,137,0.15)',
+                  color: 'var(--bs-body-color)',
+                  borderRadius: 8,
+                  padding: '8px 14px',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  marginBottom: 16,
+                  display: 'inline-block'
+                }}>
+                  *737*000*{total}#
+                </div>
+
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-light w-50 py-2 fw-semibold" onClick={closeModal}>Cancel</button>
+                  <button type="button" className="btn btn-primary w-50 py-2 fw-bold" onClick={() => confirmPayment('QR / USSD')}>
+                    Confirm Payment
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* ─── Split Payment Modal ────────────────────────────────────────── */}
+      {/* ─── Split Tender Modal ─────────────────────────────────────────── */}
       {activeModal === 'split' && (
-        <div className="modal show d-block" style={{ zIndex:810 }} tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth:520 }}>
-          <div className="modal-content">
-            <div className="modal-header"><h6 className="modal-title">Split Payment</h6><button className="btn-close" onClick={closeModal}></button></div>
-            <div className="modal-body">
-              <div className="d-flex justify-content-between mb-4 pb-3 border-bottom">
-                <span className="text-muted">Total Payable</span><span className="fw-semibold fs-17">{fmt(total)}</span>
+        <div className="modal show d-block" style={{ zIndex: 810 }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 520 }}>
+            <div className="modal-content" style={{ borderRadius: 16, overflow: 'hidden' }}>
+              <div className="modal-header py-3 px-4" style={{ background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)' }}>
+                <h6 className="modal-title text-white fw-bold">Split Payment Tender</h6>
+                <button className="btn-close btn-close-white" onClick={closeModal}></button>
               </div>
-              <div className="d-flex flex-column gap-3 mb-3" id="paymentRows">
-                {splitRows.map((row,i) => (
-                  <div key={i} className="border rounded-3 p-3">
-                    <div className="row g-2 align-items-center">
-                      <div className="col-md-5">
-                        <label className="form-label small text-muted">Payment Method</label>
-                        <select className="form-select" value={row.method} onChange={e=>updateSplit(i,'method',e.target.value)}>
-                          {['Cash','Card / POS','Bank Transfer','QR / USSD','Loyalty Points','Wallet'].map(m=>(
-                            <option key={m}>{m}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="col-md-5">
-                        <label className="form-label small text-muted">Amount (₦)</label>
-                        <input type="number" className="form-control" placeholder="0.00" value={row.amount} onChange={e=>updateSplit(i,'amount',e.target.value)} />
-                      </div>
-                      <div className="col-md-2 text-end">
-                        <label className="form-label small text-muted d-block">&nbsp;</label>
-                        {splitRows.length > 2 && (
-                          <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setSplitRows(r=>r.filter((_,ri)=>ri!==i))}>✕</button>
-                        )}
+              <div className="modal-body p-4">
+                <div className="d-flex justify-content-between mb-3 pb-2 border-bottom">
+                  <span className="text-muted">Total Bill</span>
+                  <span className="fw-bolder fs-18">{fmt(total)}</span>
+                </div>
+
+                <div className="d-flex flex-column gap-2 mb-3">
+                  {splitRows.map((row, i) => (
+                    <div key={i} className="border rounded p-2" style={{ background: 'var(--bs-body-secondary-bg)' }}>
+                      <div className="row g-2 align-items-center">
+                        <div className="col-5">
+                          <select className="form-select form-select-sm" value={row.method} onChange={e => updateSplit(i, 'method', e.target.value)}>
+                            {['Cash', 'Card / POS', 'Bank Transfer', 'QR / USSD', 'Wallet'].map(m => (
+                              <option key={m}>{m}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="col-5">
+                          <input
+                            type="number"
+                            className="form-control form-control-sm"
+                            placeholder="Amount (₦)"
+                            value={row.amount}
+                            onChange={e => updateSplit(i, 'amount', e.target.value)}
+                          />
+                        </div>
+                        <div className="col-2 text-end">
+                          {splitRows.length > 2 && (
+                            <button type="button" className="btn btn-sm btn-outline-danger py-1 px-2" onClick={() => setSplitRows(r => r.filter((_, ri) => ri !== i))}>
+                              ✕
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-              <div className="d-flex justify-content-between align-items-center mb-4">
-                <button type="button" className="btn btn-outline-light border" onClick={addSplitRow}><i className="ri-add-line me-1"></i>Add Another</button>
-                <div style={{ fontSize:12, color:'var(--bs-secondary-color)' }}>
-                  Allocated: <strong>{fmt(splitRows.reduce((s,r)=>s+(Number(r.amount)||0),0))}</strong> / {fmt(total)}
+                  ))}
                 </div>
-              </div>
-              <div className="d-flex gap-3">
-                <button type="button" className="btn btn-light w-50" onClick={closeModal}>Cancel</button>
-                <button type="button" className="btn btn-primary w-50" onClick={() => confirmPayment('Split Payment')}>Submit</button>
+
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                  <button type="button" className="btn btn-sm btn-outline-secondary" onClick={addSplitRow}>
+                    <i className="ri-add-line me-1"></i> Add Split Method
+                  </button>
+                  <div style={{ fontSize: 12 }}>
+                    Allocated: <strong>{fmt(splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0))}</strong> / {fmt(total)}
+                  </div>
+                </div>
+
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-light w-50 py-2 fw-semibold" onClick={closeModal}>Cancel</button>
+                  <button type="button" className="btn btn-primary w-50 py-2 fw-bold" onClick={() => confirmPayment('Split Payment')}>
+                    Submit Split Sale
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
         </div>
       )}
 
-      {/* ─── Hold Modal ──────────────────────────────────────────────────── */}
+      {/* ─── Hold Order Modal ───────────────────────────────────────────── */}
       {activeModal === 'hold' && (
-        <div className="modal show d-block" style={{ zIndex:810 }} tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth:420 }}>
-          <div className="modal-content">
-            <div className="modal-header"><h6 className="modal-title">Hold Bill</h6><button className="btn-close" onClick={closeModal}></button></div>
-            <div className="modal-body">
-              <div className="d-flex flex-column gap-4">
-                <div className="rounded p-3 bg-body-secondary">
+        <div className="modal show d-block" style={{ zIndex: 810 }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 420 }}>
+            <div className="modal-content" style={{ borderRadius: 16, overflow: 'hidden' }}>
+              <div className="modal-header py-3 px-4" style={{ background: 'linear-gradient(135deg, #0ab39c, #405189)' }}>
+                <h6 className="modal-title text-white fw-bold">Hold Bill [F4]</h6>
+                <button className="btn-close btn-close-white" onClick={closeModal}></button>
+              </div>
+              <div className="modal-body p-4">
+                <div className="p-3 rounded mb-3" style={{ background: 'var(--bs-body-secondary-bg)' }}>
                   <div className="d-flex justify-content-between align-items-center">
-                    <span>Total Bill Amount</span>
-                    <h6 className="fs-16 mb-0">{fmt(total)}</h6>
+                    <span>Held Amount</span>
+                    <strong className="fs-16">{fmt(total)}</strong>
                   </div>
                 </div>
-                <div>
-                  <label className="form-label">Hold Reference</label>
-                  <input type="text" className="form-control" placeholder="e.g. Table 3 / Mrs Okonkwo order" value={holdRef} onChange={e=>setHoldRef(e.target.value)} />
-                  <p className="text-muted mb-0 mt-1 fs-sm">Helps identify this bill when you recall it later.</p>
+                <div className="mb-3">
+                  <label className="form-label small fw-bold">Hold Reference / Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="e.g. Table 4 / Mrs Okonkwo"
+                    value={holdRef}
+                    onChange={e => setHoldRef(e.target.value)}
+                    autoFocus
+                  />
                 </div>
-                <div>
-                  <label className="form-label">Notes</label>
-                  <textarea className="form-control" rows="3" placeholder="Optional instructions…" value={holdNote} onChange={e=>setHoldNote(e.target.value)}></textarea>
+                <div className="mb-4">
+                  <label className="form-label small fw-bold">Hold Note</label>
+                  <textarea
+                    className="form-control"
+                    rows="2"
+                    placeholder="Optional details..."
+                    value={holdNote}
+                    onChange={e => setHoldNote(e.target.value)}
+                  />
                 </div>
-                <div className="d-flex gap-3">
-                  <button type="button" className="btn btn-light w-50" onClick={closeModal}>Cancel</button>
-                  <button type="button" className="btn btn-primary w-50" disabled={cart.length===0} onClick={doHold}>Hold Bill</button>
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-light w-50 py-2 fw-semibold" onClick={closeModal}>Cancel</button>
+                  <button type="button" className="btn btn-primary w-50 py-2 fw-bold" onClick={doHold}>
+                    Confirm Hold
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
         </div>
       )}
 
       {/* ─── Invoice Preview Modal ──────────────────────────────────────── */}
       {activeModal === 'invoice' && (
-        <div className="modal show d-block" style={{ zIndex:810 }} tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth:680 }}>
-          <div className="modal-content">
-            <div className="modal-header border-bottom-0 pb-0">
-              <div className="d-flex flex-wrap align-items-center gap-4">
-                <h5 className="modal-title">Invoice Preview</h5>
-                <div className="d-flex flex-wrap gap-2">
-                  <button type="button" className="btn btn-light btn-sm px-4 h-9"><i className="ri-file-pdf-2-line me-1"></i>PDF</button>
-                  <button type="button" className="btn btn-active-dark btn-sm px-4 h-9"><i className="ri-mail-line me-1"></i>Email</button>
-                  <button type="button" className="btn btn-active-dark btn-sm px-4 h-9"><i className="ri-printer-line me-1"></i>Print</button>
+        <div className="modal show d-block" style={{ zIndex: 810 }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 660 }}>
+            <div className="modal-content" style={{ borderRadius: 16, overflow: 'hidden' }}>
+              <div className="modal-header py-3 px-4" style={{ background: 'linear-gradient(135deg, #405189, #0ab39c)' }}>
+                <div className="d-flex align-items-center gap-2">
+                  <i className="ri-file-text-line fs-20 text-white"></i>
+                  <h6 className="modal-title mb-0 text-white fw-bold">Invoice Preview · {orderId}</h6>
                 </div>
+                <button className="btn-close btn-close-white ms-auto" onClick={closeModal}></button>
               </div>
-              <button type="button" className="btn btn-primary flex-shrink-0 ms-auto btn-sm px-4 h-9 rounded" onClick={closeModal}>Close</button>
-            </div>
-            <div className="modal-body">
-              <div className="border p-4 rounded">
-                <div className="d-flex justify-content-between mb-4">
-                  <h6 className="fs-16">{orderId}</h6>
-                  <div style={{ fontSize:18, fontWeight:800, color:'#0ab39c' }}>🌾 Bems Farms</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-md-6">
-                    <p className="text-muted mb-1">Issued On:</p>
-                    <h6>{new Date().toLocaleDateString('en-NG',{day:'numeric',month:'long',year:'numeric'})}</h6>
+              <div className="modal-body p-4">
+                <div className="border p-3 rounded mb-3" style={{ background: 'var(--bs-body-secondary-bg)' }}>
+                  <div className="d-flex justify-content-between mb-2">
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 900, color: '#0ab39c' }}>🌾 BEMS FARMS LTD</div>
+                      <div style={{ fontSize: 11, color: 'var(--bs-secondary-color)' }}>Fresh Grocery & Agricultural Retail</div>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: 11 }}>
+                      <div><strong>Date:</strong> {new Date().toLocaleDateString('en-NG')}</div>
+                      <div><strong>Bill:</strong> {orderId}</div>
+                    </div>
                   </div>
-                  <div className="col-md-6 text-md-end">
-                    <p className="text-muted mb-1">Customer:</p>
-                    <h6>{customer?.name || 'Walk-in Customer'}</h6>
-                    {customer && <p className="text-muted mb-0">{customer.phone}</p>}
+                  <div style={{ fontSize: 12, marginTop: 6 }}>
+                    <strong>Customer:</strong> {customer?.name || 'Walk-in Customer'} {customer?.phone && `(${customer.phone})`}
                   </div>
                 </div>
+
                 <div className="table-responsive mb-3">
-                  <table className="table table-borderless text-nowrap align-middle">
-                    <thead><tr className="border-bottom">
-                      <th className="fw-medium text-muted">Item</th>
-                      <th className="fw-medium text-muted text-center">Qty</th>
-                      <th className="fw-medium text-muted text-end">Unit</th>
-                      <th className="fw-medium text-muted text-end">Total</th>
-                    </tr></thead>
-                    <tbody>
-                      {cart.map(item => (
-                        <tr key={item.id}><td>{item.icon} {item.name}</td><td className="text-center">{item.qty}</td><td className="text-end">{fmt(item.price)}</td><td className="text-end">{fmt(item.price*item.qty)}</td></tr>
+                  <table className="table table-sm table-borderless align-middle">
+                    <thead>
+                      <tr className="border-bottom text-muted" style={{ fontSize: 11 }}>
+                        <th>ITEM</th>
+                        <th className="text-center">QTY</th>
+                        <th className="text-end">PRICE</th>
+                        <th className="text-end">TOTAL</th>
+                      </tr>
+                    </thead>
+                    <tbody style={{ fontSize: 12 }}>
+                      {cart.map(i => (
+                        <tr key={i.id}>
+                          <td>{i.icon} {i.name}</td>
+                          <td className="text-center">{i.qty}</td>
+                          <td className="text-end">{fmt(i.price)}</td>
+                          <td className="text-end fw-bold">{fmt(i.price * i.qty)}</td>
+                        </tr>
                       ))}
-                      {discountPct > 0 && <tr><th colSpan="3" className="text-end text-danger">Discount ({discountPct}%)</th><th className="text-end text-danger">− {fmt(discountAmt)}</th></tr>}
-                      <tr><th colSpan="3" className="text-end text-muted">VAT (7.5%)</th><th className="text-end text-muted">{fmt(vat)}</th></tr>
-                      <tr><th colSpan="3" className="text-end">Total Payable</th><th className="text-end text-success">{fmt(total)}</th></tr>
+                      {discountPct > 0 && (
+                        <tr className="text-danger">
+                          <td colSpan="3" className="text-end">Discount ({discountPct}%)</td>
+                          <td className="text-end fw-bold">− {fmt(discountAmt)}</td>
+                        </tr>
+                      )}
+                      <tr className="text-muted">
+                        <td colSpan="3" className="text-end">VAT (7.5%)</td>
+                        <td className="text-end">{fmt(vat)}</td>
+                      </tr>
+                      <tr className="border-top fs-14 fw-bold">
+                        <td colSpan="3" className="text-end">Total Payable</td>
+                        <td className="text-end text-success fw-bolder">{fmt(total)}</td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
-                <div className="row">
-                  <div className="col-md-6">
-                    <h6>Payment Information:</h6>
-                    <p className="text-muted mb-0">Bems Farms Ltd · GTBank · 0123456789</p>
-                    <p className="text-muted">Ref: {orderId}</p>
-                  </div>
-                  <div className="col-md-6 text-end">
-                    <p className="text-muted mb-1">Fresh from farm to your table 🌱</p>
-                    <p className="text-muted mb-0" style={{ fontSize:11 }}>Thank you for choosing Bems Farms!</p>
-                  </div>
+
+                <div className="d-flex gap-2">
+                  <button className="btn btn-outline-secondary w-50" onClick={() => window.print()}>
+                    <i className="ri-printer-line me-1"></i> Print
+                  </button>
+                  <button className="btn btn-primary w-50" onClick={closeModal}>
+                    Close
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
         </div>
       )}
 
       {/* ─── Pay Later Modal ────────────────────────────────────────────── */}
       {activeModal === 'paylater' && (
-        <div className="modal show d-block" style={{ zIndex:810 }} tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth:420 }}>
-          <div className="modal-content">
-            <div className="modal-header"><h6 className="modal-title">Pay Later</h6><button className="btn-close" onClick={closeModal}></button></div>
-            <div className="modal-body">
-              <div className="d-flex flex-column gap-4">
-                <div className="rounded p-3 bg-body-secondary">
+        <div className="modal show d-block" style={{ zIndex: 810 }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 420 }}>
+            <div className="modal-content" style={{ borderRadius: 16, overflow: 'hidden' }}>
+              <div className="modal-header py-3 px-4" style={{ background: 'linear-gradient(135deg, #f7b84b, #d97706)' }}>
+                <h6 className="modal-title text-dark fw-bold">Pay Later / Credit Sale</h6>
+                <button className="btn-close" onClick={closeModal}></button>
+              </div>
+              <div className="modal-body p-4">
+                <div className="p-3 rounded mb-3" style={{ background: 'var(--bs-body-secondary-bg)' }}>
                   <div className="d-flex justify-content-between align-items-center">
-                    <span>Total Bill Amount</span>
-                    <h6 className="fs-16 mb-0">{fmt(total)}</h6>
+                    <span>Credit Amount</span>
+                    <strong className="fs-16">{fmt(total)}</strong>
                   </div>
                 </div>
-                <div>
-                  <label className="form-label">Customer</label>
-                  <input type="text" className="form-control" placeholder="Search customer name or phone" value={payLaterCust} onChange={e=>setPayLaterCust(e.target.value)} />
+                <div className="mb-3">
+                  <label className="form-label small fw-bold">Customer Name / Phone</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Enter customer name"
+                    value={payLaterCust || customer?.name || ''}
+                    onChange={e => setPayLaterCust(e.target.value)}
+                  />
                 </div>
-                <div>
-                  <label className="form-label">Due Date</label>
-                  <input type="date" className="form-control" value={payLaterDate} onChange={e=>setPayLaterDate(e.target.value)} />
+                <div className="mb-4">
+                  <label className="form-label small fw-bold">Due Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={payLaterDate}
+                    onChange={e => setPayLaterDate(e.target.value)}
+                  />
                 </div>
-                <div className="d-flex gap-3">
-                  <button type="button" className="btn btn-light w-50" onClick={closeModal}>Cancel</button>
-                  <button type="button" className="btn btn-primary w-50" onClick={() => { showToast('Pay-later order saved!', 'success', '⏰'); closeModal() }}>Confirm</button>
+                <div className="d-flex gap-2">
+                  <button type="button" className="btn btn-light w-50 py-2 fw-semibold" onClick={closeModal}>Cancel</button>
+                  <button
+                    type="button"
+                    className="btn btn-warning w-50 py-2 fw-bold text-dark"
+                    onClick={() => {
+                      showToast('Credit sale logged successfully!', 'success', '⏰')
+                      closeModal()
+                      clearCart()
+                    }}>
+                    Save Credit Sale
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
         </div>
       )}
 
       {/* ─── Billing History Modal ──────────────────────────────────────── */}
       {activeModal === 'history' && (
-        <div className="modal show d-block" style={{ zIndex:810 }} tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth:720 }}>
-          <div className="modal-content">
-            <div className="modal-header"><h6 className="modal-title">Billing History</h6><button className="btn-close" onClick={closeModal}></button></div>
-            <div className="modal-body">
-              <div className="d-flex align-items-center gap-2 mb-4">
-                <div className="position-relative flex-grow-1">
-                  <input type="text" className="form-control ps-9" placeholder="Search invoices…" />
-                  <i className="ri-search-line size-4 position-absolute top-50 start-0 ms-3 translate-middle-y"></i>
-                </div>
-                <div className="dropdown">
-                  <button type="button" className="btn btn-outline-light border btn-icon" data-bs-toggle="dropdown"><i className="ri-filter-3-line fs-xl"></i></button>
-                  <ul className="dropdown-menu dropdown-menu-end">
-                    {['Cash','Card / POS','Transfer','QR / USSD'].map(m=><li key={m}><a href="#!" className="dropdown-item">{m}</a></li>)}
-                  </ul>
+        <div className="modal show d-block" style={{ zIndex: 810 }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 740 }}>
+            <div className="modal-content" style={{ borderRadius: 16, overflow: 'hidden' }}>
+              <div className="modal-header py-3 px-4" style={{ background: 'linear-gradient(135deg, #299cdb, #405189)' }}>
+                <h6 className="modal-title text-white fw-bold">Recent POS Sales & Receipts</h6>
+                <button className="btn-close btn-close-white" onClick={closeModal}></button>
+              </div>
+              <div className="modal-body p-4" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+                <div className="table-responsive">
+                  <table className="table table-hover align-middle mb-0" style={{ fontSize: 12 }}>
+                    <thead>
+                      <tr className="text-muted border-bottom">
+                        <th>INVOICE</th>
+                        <th>CUSTOMER</th>
+                        <th>METHOD</th>
+                        <th>TIME</th>
+                        <th className="text-end">AMOUNT</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historyList.map(h => (
+                        <tr key={h.inv}>
+                          <td className="fw-bold text-primary">{h.inv}</td>
+                          <td>{h.cust}</td>
+                          <td>
+                            <span className="badge bg-light text-dark border">
+                              {h.method}
+                            </span>
+                          </td>
+                          <td className="text-muted">{h.time}</td>
+                          <td className="text-end fw-bold">{fmt(h.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-              <div className="table-card table-responsive">
-                <table className="table table-borderless align-middle mb-0">
-                  <thead><tr className="bg-body-secondary">
-                    <th><div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div></th>
-                    <th className="fw-medium text-muted">Invoice</th>
-                    <th className="fw-medium text-muted">Customer</th>
-                    <th className="fw-medium text-muted">Payment</th>
-                    <th className="fw-medium text-muted">Time</th>
-                    <th className="fw-medium text-muted">Amount</th>
-                    <th className="fw-medium text-muted text-end">Action</th>
-                  </tr></thead>
-                  <tbody>
-                    {historyList.map(h => (
-                      <tr key={h.inv}>
-                        <td><div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div></td>
-                        <td><a href="#!" className="link link-custom-primary">{h.inv}</a></td>
-                        <td>{h.cust}</td>
-                        <td>{h.method}</td>
-                        <td>{new Date().toLocaleDateString('en-NG',{day:'numeric',month:'short'})} <span className="text-muted ms-2">{h.time}</span></td>
-                        <td className="fw-semibold">{fmt(h.amount)}</td>
-                        <td>
-                          <div className="dropdown d-flex justify-content-end">
-                            <a href="#!" className="link link-custom-primary" data-bs-toggle="dropdown"><i className="ri-more-2-fill"></i></a>
-                            <ul className="dropdown-menu dropdown-menu-end">
-                              <li><a href="#!" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> View</a></li>
-                              <li><a href="#!" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-printer-line"></i> Print</a></li>
-                              <li><a href="#!" className="dropdown-item d-flex gap-3 align-items-center text-danger"><i className="ri-delete-bin-5-line"></i> Delete</a></li>
-                            </ul>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="modal-footer p-3">
+                <button className="btn btn-secondary w-100" onClick={closeModal}>Close History</button>
               </div>
             </div>
           </div>
-        </div>
         </div>
       )}
 
       {/* ─── Payment Success Modal ──────────────────────────────────────── */}
       {activeModal === 'success' && successData && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:900, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-          <div style={{ backgroundColor:'var(--bs-modal-bg, #ffffff)', borderRadius:16, width:'100%', maxWidth:380, boxShadow:'0 24px 48px rgba(0,0,0,.3)', border:'1px solid var(--bs-modal-border-color, rgba(0,0,0,.175))' }}>
-            <button type="button" className="btn-close position-absolute" style={{ top:16, right:16 }} onClick={newOrder}></button>
-            <div className="modal-body pt-4 text-center pb-4">
-              <div style={{ width:80, height:80, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:36 }}>✅</div>
-              <h5>Payment Successful!</h5>
-              <p className="text-muted mb-4">Transaction processed successfully.</p>
-              <div className="mb-4">
-                <small className="text-muted">Amount</small>
-                <h4 className="my-1 fw-bold">{fmt(successData.total)}</h4>
-                <small className="text-muted">
-                  {successData.paidAt.toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'})} · Bill ID: <span className="text-body fw-semibold">{successData.orderId}</span>
-                </small>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{
+            backgroundColor: 'var(--bs-modal-bg, #1e293b)',
+            borderRadius: 16,
+            width: '100%',
+            maxWidth: 390,
+            boxShadow: '0 24px 48px rgba(0,0,0,0.4)',
+            border: '1px solid var(--bs-modal-border-color, rgba(255,255,255,0.1))',
+            padding: 24,
+            textAlign: 'center'
+          }}>
+            <div style={{
+              width: 68,
+              height: 68,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #0ab39c, #2ec4b0)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 14px',
+              fontSize: 32,
+              color: '#fff',
+              boxShadow: '0 8px 24px rgba(10,179,156,0.35)'
+            }}>
+              ✓
+            </div>
+
+            <h5 style={{ fontWeight: 800, marginBottom: 4, color: 'var(--bs-body-color, #fff)' }}>
+              Payment Completed!
+            </h5>
+            <div style={{ fontSize: 12, color: 'var(--bs-secondary-color, #94a3b8)', marginBottom: 16 }}>
+              Receipt {successData.orderId}
+            </div>
+
+            <div style={{
+              background: 'var(--bs-body-secondary-bg, rgba(255,255,255,0.04))',
+              borderRadius: 10,
+              padding: 14,
+              marginBottom: 16,
+              textAlign: 'left',
+              fontSize: 12
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ color: 'var(--bs-secondary-color)' }}>Customer</span>
+                <strong style={{ color: 'var(--bs-body-color)' }}>{successData.customer?.name || 'Walk-in'}</strong>
               </div>
-              <div className="rounded p-3 bg-body-secondary mb-4" style={{ fontSize:12, textAlign:'left' }}>
-                <div className="d-flex justify-content-between mb-1"><span className="text-muted">Customer</span><span className="fw-medium">{successData.customer?.name || 'Walk-in'}</span></div>
-                <div className="d-flex justify-content-between mb-1"><span className="text-muted">Method</span><span className="fw-medium">{successData.method}</span></div>
-                <div className="d-flex justify-content-between"><span className="text-muted">Items</span><span className="fw-medium">{successData.cart.reduce((s,i)=>s+i.qty,0)} item(s)</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ color: 'var(--bs-secondary-color)' }}>Payment Method</span>
+                <strong style={{ color: '#0ab39c' }}>{successData.method}</strong>
               </div>
-              <div className="d-flex justify-content-center gap-2 mb-3">
-                <button className="btn btn-outline-light border btn-sm"><i className="ri-file-pdf-2-line me-1"></i>Download</button>
-                <button className="btn btn-outline-light border btn-sm"><i className="ri-printer-line me-1"></i>Print Receipt</button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ color: 'var(--bs-secondary-color)' }}>Total Charged</span>
+                <strong style={{ fontSize: 14, color: 'var(--bs-body-color)' }}>{fmt(successData.total)}</strong>
               </div>
-              <button className="btn btn-primary w-100" onClick={newOrder}>
-                <i className="ri-add-circle-line me-1"></i>New Order
+              {successData.method === 'Cash' && successData.change > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid var(--bs-border-color)' }}>
+                  <span style={{ color: '#f7b84b', fontWeight: 700 }}>Change Returned</span>
+                  <strong style={{ color: '#f7b84b', fontSize: 13 }}>{fmt(successData.change)}</strong>
+                </div>
+              )}
+            </div>
+
+            <div className="d-flex gap-2 mb-3">
+              <button className="btn btn-outline-secondary flex-fill btn-sm py-2" onClick={() => window.print()}>
+                <i className="ri-printer-line me-1"></i> Print Receipt
               </button>
             </div>
+
+            <button className="btn btn-primary w-100 py-2 fw-bold" onClick={newOrder}>
+              <i className="ri-add-circle-line me-1"></i> Next Customer [Enter]
+            </button>
           </div>
         </div>
       )}
@@ -1741,12 +2946,13 @@ function getProductIcon(name = '', cat = '') {
       {/* ─── Goods Return Modal ─────────────────────────────────────────── */}
       {activeModal === 'return' && (() => {
         const retTotal = Number(returnForm.qty) * Number(returnForm.unitPrice)
+
         async function submitReturn() {
           const ref = 'RTN-POS-' + String(Date.now()).slice(-5)
           try {
             await api.post('/admin/pos/returns', {
               ref,
-              product_id: returnForm.product.id,
+              product_id: returnForm.product?.id,
               quantity: Number(returnForm.qty),
               unit_price: Number(returnForm.unitPrice),
               reason: returnForm.reason,
@@ -1759,219 +2965,214 @@ function getProductIcon(name = '', cat = '') {
           } catch (e) {
             console.warn('POS return request error', e)
           }
-          setReturnLogs(prev => [...prev, { ...returnForm, ref, total:retTotal, date:new Date().toLocaleString('en-NG') }])
-          setReturnSuccess({ ref, total:retTotal, method:returnForm.refundMethod, condition:returnForm.condition })
-        }
-        if (returnSuccess) return (
-          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:820, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-            <div style={{ background:'var(--bs-modal-bg,#fff)', borderRadius:16, maxWidth:360, width:'100%', padding:32, textAlign:'center', boxShadow:'0 24px 48px rgba(0,0,0,.3)' }}>
-              <div style={{ width:72, height:72, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:32 }}>✅</div>
-              <h6 className="fw-bold mb-1">Return Processed</h6>
-              <div className="text-muted mb-3" style={{ fontSize:13 }}>{returnSuccess.ref}</div>
-              <div className="rounded p-3 mb-4" style={{ background:'var(--bs-body-secondary-bg)', fontSize:13, textAlign:'left' }}>
-                <div className="d-flex justify-content-between mb-1"><span className="text-muted">Refund Amount</span><span className="fw-bold text-danger">₦{returnSuccess.total.toLocaleString()}</span></div>
-                <div className="d-flex justify-content-between mb-1"><span className="text-muted">Method</span><span>{returnSuccess.method}</span></div>
-                <div className="d-flex justify-content-between"><span className="text-muted">Goods</span><span>{{resalable:'Back to stock',damaged:'Written off',partial:'Split'	}[returnSuccess.condition]}</span></div>
-              </div>
-              <button className="btn btn-primary w-100" onClick={closeModal}>Done</button>
-            </div>
-          </div>
-        )
-        return (
-          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:820, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-            <div style={{ background:'var(--bs-modal-bg,#fff)', borderRadius:16, maxWidth:600, width:'100%', boxShadow:'0 24px 48px rgba(0,0,0,.3)', overflow:'hidden' }}>
 
-              {/* Header */}
-              <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--bs-border-color)', display:'flex', alignItems:'center', justifyContent:'space-between', background:'var(--bs-body-secondary-bg)' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#f06548,#e04b2f)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    <i className="ri-arrow-go-back-line" style={{ fontSize:18, color:'#fff' }}></i>
+          setReturnLogs(prev => [...prev, { ...returnForm, ref, total: retTotal, date: new Date().toLocaleString('en-NG') }])
+          setReturnSuccess({ ref, total: retTotal, method: returnForm.refundMethod, condition: returnForm.condition })
+        }
+
+        if (returnSuccess) {
+          return (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 820, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <div style={{ background: 'var(--bs-modal-bg, #1e293b)', borderRadius: 16, maxWidth: 360, width: '100%', padding: 28, textAlign: 'center', boxShadow: '0 24px 48px rgba(0,0,0,0.3)' }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#0ab39c', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', fontSize: 28, color: '#fff' }}>
+                  ✓
+                </div>
+                <h6 className="fw-bold mb-1" style={{ color: 'var(--bs-body-color, #fff)' }}>Return Processed</h6>
+                <div className="text-muted mb-3" style={{ fontSize: 12 }}>Ref: {returnSuccess.ref}</div>
+                <div className="rounded p-3 mb-3" style={{ background: 'var(--bs-body-secondary-bg)', fontSize: 12, textAlign: 'left' }}>
+                  <div className="d-flex justify-content-between mb-1">
+                    <span className="text-muted">Refund Amount</span>
+                    <span className="fw-bold text-danger">{fmt(returnSuccess.total)}</span>
+                  </div>
+                  <div className="d-flex justify-content-between mb-1">
+                    <span className="text-muted">Method</span>
+                    <span>{returnSuccess.method}</span>
+                  </div>
+                  <div className="d-flex justify-content-between">
+                    <span className="text-muted">Goods Condition</span>
+                    <span>{{ resalable: 'Back to stock', damaged: 'Written off', partial: 'Split' }[returnSuccess.condition]}</span>
+                  </div>
+                </div>
+                <button className="btn btn-primary w-100 py-2 fw-bold" onClick={closeModal}>Done</button>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 820, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div style={{ background: 'var(--bs-modal-bg, #1e293b)', borderRadius: 16, maxWidth: 580, width: '100%', boxShadow: '0 24px 48px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--bs-border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bs-body-secondary-bg)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 8, background: 'linear-gradient(135deg, #f06548, #e04b2f)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                    <i className="ri-arrow-go-back-line"></i>
                   </div>
                   <div>
-                    <div style={{ fontWeight:700, fontSize:14 }}>Goods Return</div>
-                    <div style={{ fontSize:11, color:'var(--bs-secondary-color)' }}>Step {returnStep} of 2</div>
+                    <div style={{ fontWeight: 800, fontSize: 14 }}>Goods Return & Refund</div>
+                    <div style={{ fontSize: 11, color: 'var(--bs-secondary-color)' }}>Step {returnStep} of 2</div>
                   </div>
                 </div>
                 <button className="btn-close" onClick={closeModal}></button>
               </div>
 
-              {/* Step indicators */}
-              <div style={{ display:'flex', gap:0, borderBottom:'1px solid var(--bs-border-color)' }}>
-                {[{n:1,label:'Return Details'},{n:2,label:'Inspect & Refund'}].map(s=>(
-                  <div key={s.n} style={{ flex:1, padding:'10px 16px', textAlign:'center', fontSize:12, fontWeight: returnStep===s.n?700:400, color: returnStep===s.n?'#f06548':'var(--bs-secondary-color)', borderBottom: returnStep===s.n?'3px solid #f06548':'3px solid transparent', cursor:'pointer', background:'var(--bs-body-bg)' }}
-                    onClick={() => returnStep > s.n && setReturnStep(s.n)}>
-                    <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:'50%', background: returnStep>=s.n?'#f06548':'var(--bs-border-color)', color: returnStep>=s.n?'#fff':'var(--bs-secondary-color)', fontSize:10, fontWeight:700, marginRight:6 }}>{s.n}</span>
-                    {s.label}
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ padding:20, maxHeight:'70vh', overflowY:'auto' }}>
-
-                {/* ── STEP 1: Details ── */}
-                {returnStep === 1 && (
+              <div style={{ padding: 20, maxHeight: '70vh', overflowY: 'auto' }}>
+                {returnStep === 1 ? (
                   <div className="row g-3">
-
-                    {/* Barcode scan field */}
                     <div className="col-12">
-                      <label className="form-label fw-medium" style={{ fontSize:13 }}>
-                        <i className="ri-barcode-line me-1 text-danger"></i>Scan Barcode / Enter SKU
-                      </label>
-                      <div className="position-relative">
-                        <input
-                          autoFocus
-                          className="form-control form-control-sm ps-9"
-                          placeholder="Scan barcode or type SKU + Enter  (e.g. BF-VEG-001 or VEG-001)"
-                          style={{ borderColor:'#f06548', boxShadow:'0 0 0 3px rgba(240,101,72,.1)' }}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              const code = e.target.value.trim().toUpperCase()
-                              const found = BY_BARCODE[code] || BY_BARCODE['BF-' + code] || BY_SKU[code]
-                              if (found) {
-                                setReturnForm(f=>({...f, product:found, unitPrice:found.price}))
-                                showToast(`${found.name} selected`, 'success', found.icon)
-                                e.target.value = ''
-                              } else {
-                                showToast('Product not found: ' + code, 'error', '❌')
-                              }
-                            }
-                          }}
-                        />
-                        <i className="ri-barcode-line position-absolute top-50 start-0 ms-3 translate-middle-y text-danger"></i>
-                      </div>
-                      <div className="form-text">Or select manually from the dropdown below</div>
-                    </div>
-
-                    {/* Selected product preview */}
-                    {returnForm.product && (
-                      <div className="col-12">
-                        <div className="d-flex align-items-center gap-3 p-2 rounded" style={{ background:'rgba(240,101,72,.08)', border:'1px solid rgba(240,101,72,.25)' }}>
-                          <span style={{ fontSize:28 }}>{returnForm.product.icon}</span>
-                          <div style={{ flex:1 }}>
-                            <div className="fw-bold" style={{ fontSize:13 }}>{returnForm.product.name}</div>
-                            <div className="text-muted" style={{ fontSize:11 }}>{returnForm.product.sku} · ₦{returnForm.product.price.toLocaleString()} / {returnForm.product.unit}</div>
-                          </div>
-                          <span className="badge bg-danger-subtle text-danger border border-danger-subtle" style={{ fontSize:10 }}>Selected</span>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="col-12">
-                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Product Being Returned <span className="text-danger">*</span></label>
-                      <select className="form-select form-select-sm" value={returnForm.product?.id || ''}
-                        onChange={e => { const p=productsList.find(p=>p.id===Number(e.target.value)); if(p) setReturnForm(f=>({...f,product:p,unitPrice:p.price})) }}>
-                        {productsList.map(p=><option key={p.id} value={p.id}>{p.icon} {p.name} — ₦{p.price.toLocaleString()} / {p.unit}</option>)}
+                      <label className="form-label fw-bold small">Product Being Returned</label>
+                      <select
+                        className="form-select form-select-sm"
+                        value={returnForm.product?.id || ''}
+                        onChange={e => {
+                          const p = productsList.find(x => x.id === Number(e.target.value))
+                          if (p) setReturnForm(f => ({ ...f, product: p, unitPrice: p.price }))
+                        }}>
+                        {productsList.map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.icon} {p.name} — {fmt(p.price)} / {p.unit}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Customer Name</label>
-                      <input className="form-control form-control-sm" placeholder="Walk-in / Customer name" value={returnForm.customer}
-                        onChange={e => setReturnForm(f=>({...f,customer:e.target.value}))} />
+                      <label className="form-label fw-bold small">Customer Name</label>
+                      <input
+                        className="form-control form-control-sm"
+                        placeholder="Walk-in / Customer name"
+                        value={returnForm.customer}
+                        onChange={e => setReturnForm(f => ({ ...f, customer: e.target.value }))}
+                      />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Phone (optional)</label>
-                      <input className="form-control form-control-sm" placeholder="0800 000 0000" value={returnForm.phone}
-                        onChange={e => setReturnForm(f=>({...f,phone:e.target.value}))} />
+                      <label className="form-label fw-bold small">Phone (optional)</label>
+                      <input
+                        className="form-control form-control-sm"
+                        placeholder="0800 000 0000"
+                        value={returnForm.phone}
+                        onChange={e => setReturnForm(f => ({ ...f, phone: e.target.value }))}
+                      />
                     </div>
                     <div className="col-md-4">
-                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Quantity</label>
-                      <input type="number" className="form-control form-control-sm" min="1" value={returnForm.qty}
-                        onChange={e => setReturnForm(f=>({...f,qty:Number(e.target.value)}))} />
+                      <label className="form-label fw-bold small">Quantity</label>
+                      <input
+                        type="number"
+                        className="form-control form-control-sm"
+                        min="1"
+                        value={returnForm.qty}
+                        onChange={e => setReturnForm(f => ({ ...f, qty: Number(e.target.value) }))}
+                      />
                     </div>
                     <div className="col-md-4">
-                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Unit Price (₦)</label>
-                      <input type="number" className="form-control form-control-sm" min="0" value={returnForm.unitPrice}
-                        onChange={e => setReturnForm(f=>({...f,unitPrice:Number(e.target.value)}))} />
+                      <label className="form-label fw-bold small">Unit Price (₦)</label>
+                      <input
+                        type="number"
+                        className="form-control form-control-sm"
+                        min="0"
+                        value={returnForm.unitPrice}
+                        onChange={e => setReturnForm(f => ({ ...f, unitPrice: Number(e.target.value) }))}
+                      />
                     </div>
                     <div className="col-md-4">
-                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Return Value</label>
-                      <input className="form-control form-control-sm bg-light fw-bold text-danger" readOnly value={`₦${retTotal.toLocaleString()}`} />
+                      <label className="form-label fw-bold small">Refund Value</label>
+                      <input
+                        className="form-control form-control-sm fw-bold text-danger"
+                        readOnly
+                        value={fmt(retTotal)}
+                      />
                     </div>
                     <div className="col-12">
-                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Return Reason <span className="text-danger">*</span></label>
-                      <select className="form-select form-select-sm" value={returnForm.reason}
-                        onChange={e => setReturnForm(f=>({...f,reason:e.target.value}))}>
-                        {POS_RETURN_REASONS.map(r=><option key={r}>{r}</option>)}
+                      <label className="form-label fw-bold small">Reason for Return</label>
+                      <select
+                        className="form-select form-select-sm"
+                        value={returnForm.reason}
+                        onChange={e => setReturnForm(f => ({ ...f, reason: e.target.value }))}>
+                        {POS_RETURN_REASONS.map(r => (
+                          <option key={r}>{r}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-12">
-                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Customer Notes</label>
-                      <textarea className="form-control form-control-sm" rows="2" placeholder="What did the customer say?" value={returnForm.notes}
-                        onChange={e => setReturnForm(f=>({...f,notes:e.target.value}))} />
+                      <label className="form-label fw-bold small">Customer Notes</label>
+                      <textarea
+                        className="form-control form-control-sm"
+                        rows="2"
+                        placeholder="Customer remarks..."
+                        value={returnForm.notes}
+                        onChange={e => setReturnForm(f => ({ ...f, notes: e.target.value }))}
+                      />
                     </div>
                     <div className="col-12 d-flex gap-2 pt-2">
-                      <button className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
-                      <button className="btn btn-danger w-100" onClick={() => setReturnStep(2)} disabled={!returnForm.product||returnForm.qty<1}>
-                        Next: Inspect Goods <i className="ri-arrow-right-line ms-1"></i>
+                      <button className="btn btn-light w-50 py-2" onClick={closeModal}>Cancel</button>
+                      <button
+                        className="btn btn-danger w-50 py-2 fw-bold"
+                        onClick={() => setReturnStep(2)}
+                        disabled={!returnForm.product || returnForm.qty < 1}>
+                        Next: Condition & Refund
                       </button>
                     </div>
                   </div>
-                )}
-
-                {/* ── STEP 2: Inspect + Refund ── */}
-                {returnStep === 2 && (
-                  <>
-                    {/* Return summary */}
-                    <div className="p-3 rounded mb-4" style={{ background:'var(--bs-body-secondary-bg)', border:'1px solid var(--bs-border-color)', fontSize:13 }}>
+                ) : (
+                  <div>
+                    <div className="p-3 rounded mb-3" style={{ background: 'var(--bs-body-secondary-bg)', fontSize: 12 }}>
                       <div className="d-flex justify-content-between mb-1">
-                        <span className="text-muted">Product</span>
-                        <span className="fw-medium">{returnForm.product.icon} {returnForm.product.name}</span>
-                      </div>
-                      <div className="d-flex justify-content-between mb-1">
-                        <span className="text-muted">Qty · Reason</span>
-                        <span>{returnForm.qty} {returnForm.product.unit} · {returnForm.reason}</span>
+                        <span className="text-muted">Item</span>
+                        <strong>{returnForm.product?.name} × {returnForm.qty}</strong>
                       </div>
                       <div className="d-flex justify-content-between">
-                        <span className="text-muted">Refund Value</span>
-                        <span className="fw-bold text-danger">₦{retTotal.toLocaleString()}</span>
+                        <span className="text-muted">Total Refund</span>
+                        <strong className="text-danger fs-14">{fmt(retTotal)}</strong>
                       </div>
                     </div>
 
-                    {/* Goods condition */}
-                    <div className="mb-4">
-                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Goods Condition <span className="text-danger">*</span></label>
+                    <div className="mb-3">
+                      <label className="form-label fw-bold small">Condition of Goods</label>
                       <div className="row g-2">
                         {[
-                          { val:'resalable', icon:'ri-checkbox-circle-line', color:'#0ab39c', title:'Resalable',        desc:'Good condition — return to stock' },
-                          { val:'damaged',   icon:'ri-close-circle-line',    color:'#f06548', title:'Damaged / Spoiled',desc:'Write off — cannot resell'        },
-                          { val:'partial',   icon:'ri-indeterminate-circle-line', color:'#f7b84b', title:'Partially Good',  desc:'Some back to stock, rest written off' },
+                          { val: 'resalable', title: 'Resalable', desc: 'Restock immediately', color: '#0ab39c' },
+                          { val: 'damaged',   title: 'Damaged',   desc: 'Write off loss',      color: '#f06548' },
+                          { val: 'partial',   title: 'Partial',   desc: 'Partially good',      color: '#f7b84b' },
                         ].map(opt => (
                           <div className="col-4" key={opt.val}>
-                            <div onClick={() => setReturnForm(f=>({...f,condition:opt.val}))}
-                              style={{ padding:'12px 8px', borderRadius:10, border:`2px solid ${returnForm.condition===opt.val?opt.color:'var(--bs-border-color)'}`, background: returnForm.condition===opt.val?`${opt.color}12`:'transparent', cursor:'pointer', textAlign:'center' }}>
-                              <i className={`${opt.icon} d-block fs-20 mb-1`} style={{ color:opt.color }}></i>
-                              <div style={{ fontSize:11, fontWeight:700, color:opt.color }}>{opt.title}</div>
-                              <div className="text-muted mt-1" style={{ fontSize:10 }}>{opt.desc}</div>
+                            <div
+                              onClick={() => setReturnForm(f => ({ ...f, condition: opt.val }))}
+                              style={{
+                                padding: '10px 6px',
+                                borderRadius: 8,
+                                border: `2px solid ${returnForm.condition === opt.val ? opt.color : 'var(--bs-border-color)'}`,
+                                background: returnForm.condition === opt.val ? `${opt.color}15` : 'transparent',
+                                cursor: 'pointer',
+                                textAlign: 'center'
+                              }}>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: opt.color }}>{opt.title}</div>
+                              <div className="text-muted mt-1" style={{ fontSize: 9 }}>{opt.desc}</div>
                             </div>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    {/* Refund method */}
                     <div className="mb-4">
-                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Refund Method</label>
+                      <label className="form-label fw-bold small">Refund Payment Method</label>
                       <div className="d-flex gap-2">
-                        {['Cash','Wallet Credit','Bank Transfer'].map(m => (
-                          <button key={m} type="button"
-                            className={`btn btn-sm flex-grow-1 ${returnForm.refundMethod===m?'btn-danger':'btn-outline-secondary'}`}
-                            onClick={() => setReturnForm(f=>({...f,refundMethod:m}))}>
-                            {m==='Cash'?'💵':m==='Wallet Credit'?'👛':'🏦'} {m}
+                        {['Cash', 'Wallet Credit', 'Bank Transfer'].map(m => (
+                          <button
+                            key={m}
+                            type="button"
+                            className={`btn btn-sm flex-grow-1 ${returnForm.refundMethod === m ? 'btn-danger' : 'btn-outline-secondary'}`}
+                            onClick={() => setReturnForm(f => ({ ...f, refundMethod: m }))}>
+                            {m}
                           </button>
                         ))}
                       </div>
                     </div>
 
-                    <div className="d-flex gap-2 pt-2">
-                      <button className="btn btn-light" style={{ minWidth:100 }} onClick={() => setReturnStep(1)}>
-                        <i className="ri-arrow-left-line me-1"></i> Back
-                      </button>
-                      <button className="btn btn-danger flex-grow-1 fw-medium" onClick={submitReturn}>
-                        <i className="ri-check-double-line me-1"></i>
-                        Confirm Return · Refund ₦{retTotal.toLocaleString()} via {returnForm.refundMethod}
+                    <div className="d-flex gap-2">
+                      <button className="btn btn-light py-2" onClick={() => setReturnStep(1)}>Back</button>
+                      <button className="btn btn-danger flex-grow-1 py-2 fw-bold" onClick={submitReturn}>
+                        Complete Return & Refund {fmt(retTotal)}
                       </button>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             </div>
@@ -1979,38 +3180,39 @@ function getProductIcon(name = '', cat = '') {
         )
       })()}
 
-      {/* ═══ SCAN TOAST ═══════════════════════════════════════════════════ */}
+      {/* ═══ SCAN TOAST NOTIFICATION ══════════════════════════════════════ */}
       {toast && (
-        <div style={{ position:'fixed', bottom:30, right:30, zIndex:999, padding:'10px 18px', borderRadius:10, background: toast.type==='error'?'#f06548':'#0ab39c', color:'#fff', fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:8, boxShadow:'0 8px 24px rgba(0,0,0,.25)', animation:'fadeIn .2s ease', maxWidth:280 }}>
-          <span style={{ fontSize:20 }}>{toast.icon}</span><span>{toast.msg}</span>
+        <div style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          zIndex: 999,
+          padding: '10px 16px',
+          borderRadius: 8,
+          background: toast.type === 'error' ? '#f06548' : '#0ab39c',
+          color: '#fff',
+          fontSize: 12,
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+          animation: 'fadeIn 0.2s ease',
+          maxWidth: 320
+        }}>
+          <span style={{ fontSize: 18 }}>{toast.icon}</span>
+          <span>{toast.msg}</span>
         </div>
       )}
 
+      {/* Global POS CSS overrides */}
       <style>{`
-        @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-        body.sidebar-hidden { background: var(--bs-body-bg, #f3f6f9) !important; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        body.sidebar-hidden { background: var(--bs-body-bg, #0f172a) !important; }
         body.sidebar-hidden .page-wrapper { display: none !important; }
         body.sidebar-hidden #main-sidebar { display: none !important; }
         body.sidebar-hidden #main-topbar  { display: none !important; }
       `}</style>
     </div>
   )
-}
-
-// ── Modal layout helpers ───────────────────────────────────────────────────────
-const modalStyle = {
-  position:'fixed', inset:0, zIndex:810,
-  display:'flex', alignItems:'center', justifyContent:'center', padding:20,
-}
-function modalBox(maxW) {
-  return {
-    width:'100%', maxWidth:maxW, maxHeight:'90vh', overflowY:'auto',
-    boxShadow:'0 24px 48px rgba(0,0,0,.35)', position:'relative',
-    // Explicit opaque background — CSS variables alone can be transparent
-    // when rendered outside the normal .modal > .modal-dialog hierarchy
-    backgroundColor: 'var(--bs-modal-bg, #ffffff)',
-    backgroundClip: 'padding-box',
-    border: '1px solid var(--bs-modal-border-color, rgba(0,0,0,.175))',
-    borderRadius: 12,
-  }
 }
