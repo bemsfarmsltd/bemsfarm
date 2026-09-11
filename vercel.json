@@ -15,7 +15,7 @@
       "destination": "/admin/index.html"
     },
     {
-      "source": "/admin/((?!assets/|css/|javascript/|.*\\.[a-zA-Z0-9]+$).*)",
+      "source": "/admin/:match*",
       "destination": "/admin/index.html"
     },
     {

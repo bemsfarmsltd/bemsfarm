@@ -200,6 +200,10 @@ function App() {
         />
         <Route path="/deals" element={<Navigate to="/chef-chat" replace />} />
 
+        {/* Admin redirects */}
+        <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
+        <Route path="/admin/*" element={<Navigate to="/admin/login" replace />} />
+
         {/* Catch-all — must stay last */}
         <Route path="*" element={<NotFoundPage />} />
         </Routes>
