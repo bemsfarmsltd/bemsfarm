@@ -1,22 +1,34 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
+import { isStaffRole } from '../lib/roles'
 
 const AuthContext = createContext(null)
-
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) { setLoading(false); return }
+    const adminToken = localStorage.getItem('admin_token') || localStorage.getItem('token')
+    if (!adminToken) {
+      setLoading(false)
+      return
+    }
 
-    api.get('/auth/me')
-      .then((res) => setUser(res.data.user))
+    api.get('/auth/me', { headers: { Authorization: `Bearer ${adminToken}` } })
+      .then((res) => {
+        const u = res.data.user
+        if (u && isStaffRole(u.role)) {
+          setUser(u)
+          localStorage.setItem('admin_token', adminToken)
+          localStorage.setItem('admin_user', JSON.stringify(u))
+        } else {
+          setUser(null)
+        }
+      })
       .catch(() => {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
+        localStorage.removeItem('admin_token')
+        localStorage.removeItem('admin_user')
         setUser(null)
       })
       .finally(() => setLoading(false))
@@ -25,15 +37,18 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const res = await api.post('/auth/login', { email, password })
     const { token, user: userData } = res.data
-    localStorage.setItem('token', token)
-    localStorage.setItem('user', JSON.stringify(userData))
+    if (!isStaffRole(userData?.role)) {
+      throw new Error('Access Denied: This portal is strictly restricted to Bems Farms staff and administrators.')
+    }
+    localStorage.setItem('admin_token', token)
+    localStorage.setItem('admin_user', JSON.stringify(userData))
     setUser(userData)
     return userData
   }, [])
 
   const logout = useCallback(() => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    localStorage.removeItem('admin_token')
+    localStorage.removeItem('admin_user')
     setUser(null)
   }, [])
 
@@ -52,8 +67,8 @@ export function AuthProvider({ children }) {
   const bypassLogin = useCallback(async () => {
     const res = await api.post('/auth/admin-bypass')
     const { token, user: userData } = res.data
-    localStorage.setItem('token', token)
-    localStorage.setItem('user', JSON.stringify(userData))
+    localStorage.setItem('admin_token', token)
+    localStorage.setItem('admin_user', JSON.stringify(userData))
     setUser(userData)
     return userData
   }, [])

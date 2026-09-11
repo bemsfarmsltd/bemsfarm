@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
-import { isStaff, STAFF_HOME, handoff } from "../../../../shared/authRouting";
+import { isStaffRole, STAFF_HOME } from "../../lib/roles";
 import toast from "react-hot-toast";
 
 export default function Login() {
@@ -18,13 +18,9 @@ export default function Login() {
 
   useEffect(() => {
     if (authLoading || !user) return;
-    if (isStaff(user.role)) {
+    if (isStaffRole(user.role)) {
       const from = location.state?.from || STAFF_HOME[user.role] || "/dashboard";
       navigate(from, { replace: true });
-    } else if (user.role === "user") {
-      window.location.href = "https://bemsfarms.com/home";
-    } else {
-      navigate("/unauthorized", { replace: true });
     }
   }, [user, authLoading, navigate, location]);
 

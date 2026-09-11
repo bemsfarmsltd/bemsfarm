@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom'
-import { isStaff } from '../../../../shared/authRouting'
+import { isStaffRole } from '../../lib/roles'
 import { useAuth } from '../../context/AuthContext'
 
 export default function ProtectedRoute({ allowedRoles }) {
@@ -20,7 +20,7 @@ export default function ProtectedRoute({ allowedRoles }) {
 
   if (!user) return <Navigate to="/login" replace />
 
-  if (!isStaff(user.role)) return <Navigate to="/login" replace />
+  if (!isStaffRole(user.role)) return <Navigate to="/login" replace />
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/unauthorized" replace />

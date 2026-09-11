@@ -20,6 +20,19 @@ export const ROLES = {
 /** Every role */
 export const ALL_ROLES = Object.values(ROLES)
 
+export const isStaffRole = (role) => ALL_ROLES.includes(role)
+
+export const STAFF_HOME = Object.freeze({
+  superadmin: '/dashboard',
+  admin: '/dashboard',
+  manager: '/dashboard',
+  accountant: '/accounts/overview',
+  delivery_manager: '/deliveries/active',
+  cashier: '/pos',
+  storekeeper: '/inventory/stock',
+  kitchen_staff: '/orders',
+})
+
 /** Superadmin + Manager only */
 export const ADMIN_ONLY = ['superadmin', 'admin', 'manager']
 
