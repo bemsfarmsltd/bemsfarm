@@ -35,6 +35,7 @@ export default function ProfilePage() {
 
   const [avatar, setAvatar] = useState(null);
   const [avatarError, setAvatarError] = useState(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -187,34 +188,82 @@ export default function ProfilePage() {
     );
   }
 
-  // Avatar Upload
+  // Avatar Upload with client-side compression
   const handleAvatarUpload = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("Please select a valid image file (JPG, PNG, WebP).");
+      return;
+    }
     setAvatarError(null);
+    setUploadingAvatar(true);
+
+    const img = new Image();
     const reader = new FileReader();
-    reader.onloadend = async () => {
-      setAvatar(reader.result);
-      try {
-        const res = await api.patch("/auth/avatar", { avatar_url: reader.result });
-        updateUser(res.data.user);
-      } catch (err) {
-        setAvatar(user?.avatar_url || null);
-        setAvatarError(err?.response?.data?.message || "Failed to save photo — please try a smaller image");
-      }
+    reader.onload = (event) => {
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const MAX_SIZE = 480;
+          let { width, height } = img;
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height = Math.round((height * MAX_SIZE) / width);
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width = Math.round((width * MAX_SIZE) / height);
+              height = MAX_SIZE;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+          setAvatar(compressedDataUrl);
+          const res = await api.patch("/auth/avatar", { avatar_url: compressedDataUrl });
+          if (res.data?.user) {
+            updateUser(res.data.user);
+          }
+        } catch (err) {
+          setAvatar(user?.avatar_url || null);
+          setAvatarError(err?.response?.data?.message || "Failed to save photo. Please try again.");
+        } finally {
+          setUploadingAvatar(false);
+        }
+      };
+      img.onerror = () => {
+        setUploadingAvatar(false);
+        setAvatarError("Could not read image file.");
+      };
+      img.src = event.target.result;
+    };
+    reader.onerror = () => {
+      setUploadingAvatar(false);
+      setAvatarError("Failed to read image file.");
     };
     reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   const handleDeleteAvatar = async () => {
     setAvatar(null);
     setAvatarError(null);
+    setUploadingAvatar(true);
     try {
       const res = await api.patch("/auth/avatar", { avatar_url: null });
-      updateUser(res.data.user);
+      if (res.data?.user) {
+        updateUser(res.data.user);
+      }
     } catch (err) {
       setAvatar(user?.avatar_url || null);
       setAvatarError(err?.response?.data?.message || "Failed to remove photo");
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -418,30 +467,86 @@ export default function ProfilePage() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-            {/* Avatar / Monogram */}
-            <div
-              style={{
-                width: "76px",
-                height: "76px",
-                borderRadius: "50%",
-                backgroundColor: "#FAF8F5",
-                color: "#143c2d",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "28px",
-                fontWeight: 900,
-                boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
-                overflow: "hidden",
-                border: "3px solid rgba(255,255,255,0.8)",
-                flexShrink: 0,
-              }}
-            >
-              {avatar ? (
-                <img src={avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                <span>{initials}</span>
-              )}
+            {/* Avatar / Monogram with Interactive Upload Badge */}
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleAvatarUpload}
+                accept="image/*"
+                style={{ display: "none" }}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                title="Click to upload/change profile photo"
+                style={{
+                  width: "76px",
+                  height: "76px",
+                  borderRadius: "50%",
+                  backgroundColor: "#FAF8F5",
+                  color: "#143c2d",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "28px",
+                  fontWeight: 900,
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
+                  overflow: "hidden",
+                  border: "3px solid rgba(255,255,255,0.85)",
+                  cursor: uploadingAvatar ? "wait" : "pointer",
+                  padding: 0,
+                  position: "relative",
+                  transition: "transform 0.2s, box-shadow 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  if (!uploadingAvatar) e.currentTarget.style.transform = "scale(1.04)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
+              >
+                {uploadingAvatar ? (
+                  <div className="mx-auto h-7 w-7 animate-spin rounded-full border-3 border-[#143c2d] border-t-transparent" />
+                ) : avatar ? (
+                  <img src={avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <span>{initials}</span>
+                )}
+              </button>
+
+              {/* Camera Icon Badge */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Upload Photo"
+                style={{
+                  position: "absolute",
+                  bottom: "-2px",
+                  right: "-2px",
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "50%",
+                  backgroundColor: "#F59E0B",
+                  color: "#071F14",
+                  border: "2px solid #071F14",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+                  cursor: "pointer",
+                  padding: 0,
+                  transition: "transform 0.15s, background-color 0.15s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#FBBF24")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#F59E0B")}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </button>
             </div>
 
             <div>
@@ -680,29 +785,39 @@ export default function ProfilePage() {
                         JPG or PNG up to 2MB.
                       </p>
                       <div style={{ display: "flex", gap: "10px" }}>
-                        <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} accept="image/*" style={{ display: "none" }} />
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingAvatar}
                           style={{
-                            padding: "6px 14px",
+                            padding: "7px 16px",
                             backgroundColor: "#143c2d",
                             color: "white",
                             border: "none",
                             borderRadius: "8px",
                             fontSize: "12px",
                             fontWeight: 700,
-                            cursor: "pointer",
+                            cursor: uploadingAvatar ? "wait" : "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
                           }}
                         >
-                          Upload Photo
+                          {uploadingAvatar ? (
+                            <>
+                              <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                              <span>Uploading...</span>
+                            </>
+                          ) : (
+                            <span>{avatar ? "Change Photo" : "Upload Photo"}</span>
+                          )}
                         </button>
-                        {avatar && (
+                        {avatar && !uploadingAvatar && (
                           <button
                             type="button"
                             onClick={handleDeleteAvatar}
                             style={{
-                              padding: "6px 14px",
+                              padding: "7px 14px",
                               backgroundColor: "transparent",
                               color: "#DC2626",
                               border: "1px solid #FCA5A5",

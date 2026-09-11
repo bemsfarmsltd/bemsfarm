@@ -30,7 +30,7 @@ const updateProfile = z.object({
 const updateAvatar = z.object({
   // A data: URI from FileReader.readAsDataURL — capped well above what a
   // reasonably-compressed profile photo needs, to keep the users row small.
-  avatar_url: z.string({ error: "Image data is required" }).trim().min(1).max(2_000_000, "Image is too large"),
+  avatar_url: z.string().trim().max(2_000_000, "Image is too large").nullable().optional(),
 });
 
 const changePassword = z.object({

@@ -752,9 +752,14 @@ export default function Navbar() {
                       fontSize: "11px",
                       fontWeight: 700,
                       flexShrink: 0,
+                      overflow: "hidden",
                     }}
                   >
-                    {user?.name?.[0]?.toUpperCase() || "U"}
+                    {user?.avatar_url ? (
+                      <img src={user.avatar_url} alt={user.name || "User"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      user?.name?.[0]?.toUpperCase() || "U"
+                    )}
                   </div>
                   <span
                     className="bf-navbar-user-name"
@@ -1091,8 +1096,12 @@ export default function Navbar() {
                 {user ? (
                   <>
                     <div style={{ padding: "8px 14px", backgroundColor: "#F9FAFB", borderRadius: "10px", display: "flex", alignItems: "center", gap: "10px" }}>
-                      <div style={{ width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "#1B4332", color: "white", display: "grid", placeItems: "center", fontWeight: 700, fontSize: "14px" }}>
-                        {user.name ? user.name[0].toUpperCase() : "U"}
+                      <div style={{ width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "#1B4332", color: "white", display: "grid", placeItems: "center", fontWeight: 700, fontSize: "14px", overflow: "hidden", flexShrink: 0 }}>
+                        {user?.avatar_url ? (
+                          <img src={user.avatar_url} alt={user.name || "User"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          user?.name ? user.name[0].toUpperCase() : "U"
+                        )}
                       </div>
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <p style={{ margin: 0, fontWeight: 700, fontSize: "13px", color: "#111827", truncate: "true" }}>{user.name || "Customer"}</p>
