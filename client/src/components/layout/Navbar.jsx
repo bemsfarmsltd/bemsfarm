@@ -481,7 +481,7 @@ export default function Navbar() {
     { label: "My Orders", path: "/orders" },
   ];
 
-  const ADMIN_PANEL_URL = "https://bems-admin.vercel.app/login";
+  const ADMIN_PANEL_URL = "/admin/login";
 
   const isAdmin = ["superadmin", "admin", "manager", "staff"].includes(user?.role);
   // Fraud Monitor / Forecasting are behind a stricter role gate (see
@@ -827,7 +827,7 @@ export default function Navbar() {
                           type="button"
                           role="menuitem"
                           onClick={() => {
-                            if (item.path.startsWith("http")) {
+                            if (item.path.startsWith("http") || item.path.startsWith("/admin")) {
                               window.location.href = item.path;
                             } else {
                               navigate(item.path);
