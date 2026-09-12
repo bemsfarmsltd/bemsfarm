@@ -7,6 +7,7 @@ const doc = {
     version: '1.0.0',
   },
   schemes: ['https', 'http'],
+  host: 'api.bemsfarms.com',
   securityDefinitions: {
     bearerAuth: {
       type: 'apiKey',
