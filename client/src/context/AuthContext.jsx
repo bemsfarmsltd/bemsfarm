@@ -32,14 +32,52 @@ const STAFF_ROLES = ["superadmin", "admin", "manager", "accountant", "delivery_m
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  // Customer Session
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Customer Session (Synchronous init from localStorage for zero flicker)
+  const [token, setToken] = useState(() => {
+    try {
+      return localStorage.getItem("token") || null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem("user");
+      if (!savedUser) return null;
+      const parsed = JSON.parse(savedUser);
+      return (typeof parsed === "object" && parsed?.id) ? parsed : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [loading, setLoading] = useState(() => {
+    try {
+      const savedToken = localStorage.getItem("token");
+      const savedUser = localStorage.getItem("user");
+      return !savedToken || !savedUser;
+    } catch {
+      return false;
+    }
+  });
 
   // Admin / Staff Session (Completely isolated)
-  const [adminUser, setAdminUser] = useState(null);
-  const [adminToken, setAdminToken] = useState(null);
+  const [adminUser, setAdminUser] = useState(() => {
+    try {
+      const savedAdminUser = localStorage.getItem("admin_user");
+      return savedAdminUser ? JSON.parse(savedAdminUser) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [adminToken, setAdminToken] = useState(() => {
+    try {
+      return localStorage.getItem("admin_token") || null;
+    } catch {
+      return null;
+    }
+  });
 
   // Restore Customer session on mount
   useEffect(() => {
