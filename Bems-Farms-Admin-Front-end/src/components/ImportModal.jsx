@@ -30,7 +30,6 @@ function mockURLData(entityName) {
   const map = {
     Categories:      'Name,Status\nDairy Products,active\nFresh Produce,active\nBaked Goods,active\nSnacks & Confectionery,active',
     'Sub-Categories':'Name,Parent Category,Status\nWhole Milk,Dairy & Eggs,active\nFree-range Eggs,Dairy & Eggs,active\nLeafy Greens,Vegetables,active\nRoot Vegetables,Vegetables,active',
-    Brands:          'Name,Status\nBems Farms,active\nGreen Valley,active\nFresh Direct,active\nAgro Kings,active',
     Products:        'Name,SKU,Category,Price,Cost,Unit,Stock,Status\nRice (5kg),GRN-RIC-002,Grains & Carbs,6500,4800,bag,50,active\nTomatoes,VEG-TOM-002,Vegetables,1200,800,kg,20,active',
   }
   return map[entityName] || `Name,Status\nSample Item,active`

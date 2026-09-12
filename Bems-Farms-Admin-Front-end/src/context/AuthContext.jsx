@@ -51,7 +51,16 @@ export function AuthProvider({ children }) {
       return null
     }
   })
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => {
+    try {
+      const token = localStorage.getItem('admin_token')
+      const stored = localStorage.getItem('admin_user')
+      // If user has active credentials cached, don't block render with a preloader spinner
+      return !token || !stored
+    } catch {
+      return false
+    }
+  })
 
   // Verify session on mount
   useEffect(() => {

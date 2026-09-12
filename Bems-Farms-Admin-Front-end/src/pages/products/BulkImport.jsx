@@ -50,18 +50,6 @@ const IMPORT_TYPES = {
     ],
     templateHeaders: ['name','category_id','code','description','status'],
   },
-  brands: {
-    label: 'Brands',
-    icon: 'ri-price-tag-3-line',
-    color: '#f7b84b',
-    fields: [
-      { key: 'name',        label: 'Brand Name',   required: true  },
-      { key: 'description', label: 'Description',  required: false },
-      { key: 'website',     label: 'Website URL',  required: false },
-      { key: 'status',      label: 'Status',       required: false },
-    ],
-    templateHeaders: ['name','description','website','status'],
-  },
 }
 
 const HISTORY = [
