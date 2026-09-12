@@ -244,25 +244,17 @@ export default function Sidebar() {
       }
       
       .sub-panel-header {
-        padding: 1rem 1.15rem 0.75rem;
+        padding: 0.95rem 1.15rem 0.85rem;
         border-bottom: 1px solid #F1F5F9;
         background: #FFFFFF;
       }
-      .sub-panel-brand {
-        font-size: 11px;
-        font-weight: 750;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #94A3B8;
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-      }
       .sub-panel-title {
-        font-size: 14.5px;
+        font-size: 15px;
         font-weight: 800;
         color: #0F172A;
-        margin-top: 2px;
+        letter-spacing: -0.01em;
+        margin: 0;
+      }
         letter-spacing: -0.01em;
       }
       
@@ -508,10 +500,6 @@ export default function Sidebar() {
 
           {/* Subpanel Header */}
           <div className="sub-panel-header">
-            <div className="sub-panel-brand">
-              <i className="ri-store-2-line text-warning"></i>
-              <span>Bems Farms</span>
-            </div>
             <div className="sub-panel-title">
               {activeTab === 'main' && 'Overview'}
               {activeTab === 'products' && 'Products & Catalog'}
