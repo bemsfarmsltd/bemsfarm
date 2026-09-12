@@ -492,15 +492,15 @@ export default function SalesHub({
               <span>Z-Report</span>
             </button>
 
-            {/* Fullscreen Button */}
+            {/* Fullscreen Icon Button */}
             <button
               type="button"
-              className="sh-secondary-btn"
+              className="sh-secondary-btn px-2.5"
               onClick={toggleFullScreen}
-              title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen (F11)'}
+              title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Mode (F11)'}
+              aria-label="Toggle Fullscreen"
             >
-              <i className={isFullscreen ? 'ri-fullscreen-exit-line text-dark' : 'ri-fullscreen-line text-dark'} style={{ fontSize: '15px' }}></i>
-              <span className="d-none d-xl-inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+              <i className={isFullscreen ? 'ri-fullscreen-exit-line text-dark' : 'ri-fullscreen-line text-dark'} style={{ fontSize: '16px' }}></i>
             </button>
 
             {/* Admin Switcher / Logout */}
