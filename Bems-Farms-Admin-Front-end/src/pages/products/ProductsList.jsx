@@ -88,7 +88,7 @@ export default function ProductsList() {
     setGeneratingBarcodeId(product.id)
     const newCode = generateUniversalGoodsCode(product, 'CODE128')
     try {
-      await api.put(`/admin/products/${product.id}`, { barcode: newCode })
+      await api.patch(`/admin/products/${product.id}`, { barcode: newCode })
       setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, barcode: newCode } : p)))
       toast.success(`Assigned Barcode: ${newCode}`)
     } catch (err) {

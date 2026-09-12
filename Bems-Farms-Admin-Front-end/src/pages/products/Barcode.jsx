@@ -166,7 +166,7 @@ export default function Barcode() {
   const handleGenerateSingle = async (product) => {
     const newCode = generateUniversalGoodsCode(product, symbology)
     try {
-      await api.put(`/admin/products/${product.id}`, { barcode: newCode })
+      await api.patch(`/admin/products/${product.id}`, { barcode: newCode })
       setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, barcode: newCode } : p)))
       // Update queue item if present
       if (printQueue[product.id]) {
@@ -200,7 +200,7 @@ export default function Barcode() {
     for (const prod of productsMissingBarcode) {
       const newCode = generateUniversalGoodsCode(prod, symbology)
       try {
-        await api.put(`/admin/products/${prod.id}`, { barcode: newCode })
+        await api.patch(`/admin/products/${prod.id}`, { barcode: newCode })
         const idx = updatedProducts.findIndex((p) => p.id === prod.id)
         if (idx !== -1) {
           updatedProducts[idx] = { ...updatedProducts[idx], barcode: newCode }
@@ -233,7 +233,7 @@ export default function Barcode() {
 
     setSavingBarcode(true)
     try {
-      await api.put(`/admin/products/${editingBarcodeProduct.id}`, { barcode: trimmed })
+      await api.patch(`/admin/products/${editingBarcodeProduct.id}`, { barcode: trimmed })
       setProducts((prev) =>
         prev.map((p) => (p.id === editingBarcodeProduct.id ? { ...p, barcode: trimmed } : p))
       )
