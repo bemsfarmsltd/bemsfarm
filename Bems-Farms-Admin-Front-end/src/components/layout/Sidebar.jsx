@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { ROLE_META } from '../../lib/roles'
 
 export default function Sidebar() {
   const { user, hasRole, logout } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
 
   // Role helpers
   const is = (...roles) => hasRole(...roles)
@@ -504,8 +505,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'settings' ? 'active' : ''}`}
-                onClick={() => setActiveTab('settings')}
-                title="System Settings"
+                onClick={() => {
+                  setActiveTab('settings')
+                  navigate('/settings')
+                }}
+                title="Settings"
               >
                 <i className="ri-settings-3-line rail-icon"></i>
                 <span className="rail-label">Settings</span>
@@ -544,7 +548,7 @@ export default function Sidebar() {
               {activeTab === 'reports' && 'Analytics & Reports'}
               {activeTab === 'chef' && 'Chef Bems AI'}
               {activeTab === 'stores' && 'Multi-Store Network'}
-              {activeTab === 'settings' && 'System Settings'}
+              {activeTab === 'settings' && 'Settings'}
             </div>
           </div>
 
@@ -880,45 +884,71 @@ export default function Sidebar() {
             {/* 12. SETTINGS */}
             {activeTab === 'settings' && (
               <>
-                <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>General Store Info</span>
+                <NavLink
+                  to="/settings"
+                  end
+                  className={({ isActive }) => `dual-sub-link ${isActive || location.pathname === '/settings/all' ? 'active' : ''}`}
+                >
+                  <i className="ri-settings-4-line mr-2 text-slate-500"></i>
+                  <span>All Settings</span>
                 </NavLink>
-                {is('superadmin', 'admin') && (
-                  <NavLink to="/settings/pos" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>POS Terminal Config</span>
-                  </NavLink>
-                )}
+
+                <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <i className="ri-equalizer-line mr-2 text-slate-500"></i>
+                  <span>Preferences</span>
+                </NavLink>
+
                 {is('superadmin', 'admin') && (
                   <NavLink to="/settings/payment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Payment Gateways</span>
+                    <i className="ri-bank-card-line mr-2 text-slate-500"></i>
+                    <span>Payment Methods</span>
                   </NavLink>
                 )}
-                {is('superadmin', 'admin') && (
-                  <NavLink to="/settings/coupons" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Discounts &amp; Coupons</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin') && (
-                  <NavLink to="/settings/tax" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Tax &amp; VAT</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin') && (
-                  <NavLink to="/settings/currencies" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Currencies</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin') && (
-                  <NavLink to="/settings/invoices" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Invoice Templates</span>
-                  </NavLink>
-                )}
+
                 <NavLink to="/settings/notifications" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Notifications</span>
+                  <i className="ri-sound-module-line mr-2 text-slate-500"></i>
+                  <span>Configuration</span>
                 </NavLink>
+
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/pos" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <i className="ri-store-2-line mr-2 text-slate-500"></i>
+                    <span>Business Settings</span>
+                  </NavLink>
+                )}
+
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/payment#transfers" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <i className="ri-exchange-dollar-line mr-2 text-slate-500"></i>
+                    <span>Funds Transfer</span>
+                  </NavLink>
+                )}
+
                 {is('superadmin', 'admin') && (
                   <NavLink to="/settings/manager" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Manager Permissions</span>
+                    <i className="ri-shield-check-line mr-2 text-slate-500"></i>
+                    <span>Approval</span>
+                  </NavLink>
+                )}
+
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/currencies" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <i className="ri-money-dollar-circle-line mr-2 text-slate-500"></i>
+                    <span>FX Rate</span>
+                  </NavLink>
+                )}
+
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/coupons" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <i className="ri-shopping-basket-line mr-2 text-slate-500"></i>
+                    <span>Commerce Settings</span>
+                  </NavLink>
+                )}
+
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/invoices" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <i className="ri-flag-line mr-2 text-slate-500"></i>
+                    <span>Feature Flag</span>
                   </NavLink>
                 )}
               </>
