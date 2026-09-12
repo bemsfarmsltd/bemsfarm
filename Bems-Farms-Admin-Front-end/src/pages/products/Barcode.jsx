@@ -604,7 +604,7 @@ export default function Barcode() {
             </div>
 
             {/* Table of Products */}
-            <div className="table-responsive" style={{ maxHeight: '600px' }}>
+            <div className="table-responsive" style={{ maxHeight: '600px', overflowY: 'auto' }}>
               <table className="table table-hover align-middle mb-0 text-nowrap">
                 <thead className="table-light text-muted fs-xs text-uppercase sticky-top">
                   <tr>
