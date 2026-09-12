@@ -562,27 +562,48 @@ export default function Barcode() {
                 </div>
               </div>
 
-              <div className="row g-2">
+              {/* Search + Filter – sticky so it stays visible while scrolling the table */}
+              <div
+                className="row g-2"
+                style={{
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10,
+                  background: '#fff',
+                  paddingBottom: 8,
+                }}
+              >
                 {/* Search */}
                 <div className="col-12 col-md-7">
-                  <div className="input-group">
-                    <span className="input-group-text bg-light border-end-0 text-muted">
-                      <i className="ri-search-line"></i>
+                  <div className="input-group shadow-sm">
+                    <span className="input-group-text bg-white border-end-0 text-success">
+                      <i className="ri-search-2-line fw-bold"></i>
                     </span>
                     <input
                       type="text"
-                      className="form-control border-start-0 bg-light"
-                      placeholder="Search by product name, SKU, or barcode…"
+                      className="form-control border-start-0"
+                      placeholder="🔍 Search product name, SKU, or barcode…"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{ borderLeft: 'none' }}
                     />
+                    {searchTerm && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary btn-sm px-2"
+                        onClick={() => setSearchTerm('')}
+                        title="Clear search"
+                      >
+                        <i className="ri-close-line"></i>
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {/* Category Select */}
                 <div className="col-12 col-md-5">
                   <select
-                    className="form-select bg-light"
+                    className="form-select"
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
                   >
@@ -595,11 +616,28 @@ export default function Barcode() {
                   </select>
                 </div>
               </div>
+
+              {/* Result count */}
+              {searchTerm && (
+                <div className="text-muted fs-xs mb-1 mt-1">
+                  <i className="ri-filter-3-line me-1"></i>
+                  {filteredProducts.length === 0
+                    ? 'No products match your search'
+                    : `${filteredProducts.length} product${filteredProducts.length !== 1 ? 's' : ''} found`}
+                </div>
+              )}
             </div>
 
-            {/* Table of Products */}
-            <div className="table-responsive" style={{ maxHeight: '600px', overflowY: 'auto' }}>
-              <table className="table table-hover align-middle mb-0 text-nowrap">
+            {/* Table of Products — plain div for reliable x+y scroll */}
+            <div
+              style={{
+                maxHeight: '65vh',
+                overflowY: 'auto',
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              <table className="table table-hover align-middle mb-0" style={{ whiteSpace: 'nowrap', minWidth: 700 }}>
                 <thead className="table-light text-muted fs-xs text-uppercase sticky-top">
                   <tr>
                     <th style={{ width: '40px' }}>
