@@ -77,15 +77,15 @@ export default function Sidebar() {
         width: 415px;
       }
       
-      /* ── COLUMN 1: DARK RAIL (68px default -> expands to 215px on hover) ── */
+      /* ── COLUMN 1: LIGHT RAIL (68px default -> expands to 215px on hover) ── */
       .sidebar-icon-rail {
         position: absolute;
         left: 0;
         top: 0;
         bottom: 0;
         width: 68px;
-        background-color: #0E111B;
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        background-color: #FFFFFF;
+        border-right: 1px solid #E5E7EB;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -102,7 +102,7 @@ export default function Sidebar() {
       .sidebar-icon-rail.rail-open,
       body.rail-is-hovered .sidebar-icon-rail {
         width: 215px;
-        box-shadow: 12px 0 36px rgba(0, 0, 0, 0.45);
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.08);
       }
       
       /* Rail Brand Header (Begins right from top bar level) */
@@ -112,7 +112,7 @@ export default function Sidebar() {
         min-height: 3.5rem;
         display: flex;
         align-items: center;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 1px solid #E5E7EB;
         margin-bottom: 0.65rem;
       }
       
@@ -130,7 +130,7 @@ export default function Sidebar() {
         overflow: hidden;
       }
       .rail-brand-btn:hover {
-        background: rgba(255, 255, 255, 0.06);
+        background: #F8FAFC;
       }
       
       .rail-brand-b {
@@ -138,7 +138,7 @@ export default function Sidebar() {
         height: 34px;
         min-width: 34px;
         object-fit: contain;
-        filter: drop-shadow(0 2px 8px rgba(180, 83, 9, 0.45));
+        filter: drop-shadow(0 2px 6px rgba(20, 60, 45, 0.15));
         flex-shrink: 0;
       }
       
@@ -184,7 +184,7 @@ export default function Sidebar() {
         align-items: center;
         background: transparent;
         border: none;
-        color: #94A3B8;
+        color: #475569;
         cursor: pointer;
         padding: 0 11px;
         transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
@@ -222,15 +222,15 @@ export default function Sidebar() {
       }
       
       .rail-btn:hover {
-        background: rgba(255, 255, 255, 0.08);
-        color: #FFFFFF;
+        background: #F1F5F9;
+        color: #0F172A;
       }
       
-      /* Active Gold/Amber Signature Bank Pill */
+      /* Active Luxury Forest Green Client-Side Pill */
       .rail-btn.active {
-        background: linear-gradient(135deg, #B45309, #92400E);
+        background: linear-gradient(135deg, #143C2D, #0B281B);
         color: #FFFFFF !important;
-        box-shadow: 0 4px 14px rgba(180, 83, 9, 0.35);
+        box-shadow: 0 4px 14px rgba(20, 60, 45, 0.28);
       }
       .rail-btn.active::before {
         content: '';
@@ -251,7 +251,7 @@ export default function Sidebar() {
         top: 3.5rem;
         bottom: 0;
         width: 200px;
-        background: #FFFFFF;
+        background: #FAFAFA;
         border-right: 1px solid #E5E7EB;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
         display: flex;
@@ -268,8 +268,8 @@ export default function Sidebar() {
       
       .sub-panel-header {
         padding: 0.95rem 1.15rem 0.85rem;
-        border-bottom: 1px solid #F1F5F9;
-        background: #FFFFFF;
+        border-bottom: 1px solid #E5E7EB;
+        background: #FAFAFA;
       }
       .sub-panel-title {
         font-size: 15px;

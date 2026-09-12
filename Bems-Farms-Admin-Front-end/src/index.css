@@ -118,19 +118,19 @@ body.sidebar-condensed #main-sidebar {
   z-index: 2 !important;
 }
 
-/* ── TOPBAR (HOSTINGER-INSPIRED DARK HEADER) ─────────────────────── */
+/* ── TOPBAR (CLIENT-SIDE LUXURY WHITE & FOREST GREEN HEADER) ──────── */
 .main-topbar {
   position: fixed !important;
   top: 0 !important;
   left: 68px !important;
   right: 0 !important;
-  background-color: #0F111A !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #E5E7EB !important;
   padding: 0 1.25rem !important;
   height: 3.5rem !important;
   display: flex !important;
   align-items: center !important;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
   z-index: 1003 !important;
   transition: left 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
@@ -144,34 +144,34 @@ body.sidebar-condensed .main-topbar {
 }
 
 .main-topbar .sidebar-toggle {
-  background-color: transparent !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background-color: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
   border-radius: 8px !important;
-  width: 32px !important;
-  height: 32px !important;
+  width: 34px !important;
+  height: 34px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  color: #94A3B8 !important;
+  color: #334155 !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
 }
 
 .main-topbar .sidebar-toggle:hover {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-  color: #FFFFFF !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
 }
 
-/* Search Bar (Hostinger Sleek Dark Input) */
+/* Search Bar (Clean Light Luxury Input) */
 .topbar-search-input {
-  background-color: rgba(255, 255, 255, 0.06) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background-color: #F1F5F9 !important;
+  border: 1px solid #E2E8F0 !important;
   border-radius: 9999px !important;
-  padding: 0.4rem 0.85rem 0.4rem 2.2rem !important;
-  font-size: 0.8rem !important;
+  padding: 0.45rem 0.85rem 0.45rem 2.2rem !important;
+  font-size: 0.82rem !important;
   font-weight: 500 !important;
-  color: #FFFFFF !important;
+  color: #0F172A !important;
   transition: all 0.2s ease !important;
 }
 
@@ -180,9 +180,9 @@ body.sidebar-condensed .main-topbar {
 }
 
 .topbar-search-input:focus {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05) !important;
+  background-color: #FFFFFF !important;
+  border-color: #143C2D !important;
+  box-shadow: 0 0 0 3px rgba(20, 60, 45, 0.1) !important;
   outline: none !important;
 }
 
@@ -199,15 +199,15 @@ body.sidebar-condensed .main-topbar {
 }
 
 .btn-primary-bf {
-  background-color: #143c2d !important;
-  border-color: #143c2d !important;
+  background-color: #143C2D !important;
+  border-color: #143C2D !important;
   color: #ffffff !important;
   box-shadow: 0 2px 8px 0 rgba(20, 60, 45, 0.2) !important;
 }
 
 .btn-primary-bf:hover {
-  background-color: #1a4e3b !important;
-  border-color: #1a4e3b !important;
+  background-color: #0B281B !important;
+  border-color: #0B281B !important;
   transform: translateY(-1px);
 }
 
