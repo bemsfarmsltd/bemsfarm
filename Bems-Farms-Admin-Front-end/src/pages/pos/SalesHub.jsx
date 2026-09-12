@@ -373,78 +373,15 @@ export default function SalesHub({
       {/* ── TOP NAV HEADER ── */}
       <header className="sales-hub-header">
         <div className="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-3">
-          {/* Left: Brand + Terminal Location + Cashier Pill */}
-          <div className="d-flex align-items-center gap-2.5 flex-wrap">
-            {/* Logo */}
+          {/* Left: Brand Logo */}
+          <div className="d-flex align-items-center">
             <Link to="/dashboard" className="d-flex align-items-center text-decoration-none">
               <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height: 38, objectFit: 'contain' }} />
             </Link>
-
-            <div className="vr d-none d-sm-block text-muted opacity-25" style={{ height: 28 }}></div>
-
-            {/* Terminal Pill */}
-            <div
-              className="d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill"
-              style={{
-                backgroundColor: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-              }}
-            >
-              <i className="ri-store-2-line text-success" style={{ fontSize: 15 }}></i>
-              <span className="fw-bold text-dark" style={{ fontSize: '0.84rem' }}>
-                POS Terminal 01
-              </span>
-              <span
-                className="badge d-inline-flex align-items-center gap-1.5 ms-1"
-                style={{
-                  backgroundColor: '#ECFDF5',
-                  color: '#047857',
-                  border: '1px solid #A7F3D0',
-                  fontSize: '9px',
-                  fontWeight: 800,
-                  padding: '2px 7px',
-                  borderRadius: '12px',
-                  letterSpacing: '0.03em'
-                }}
-              >
-                <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
-                Shift Active
-              </span>
-            </div>
-
-            {/* Cashier Badge Pill */}
-            <div
-              className="d-none d-lg-flex align-items-center gap-2 px-2.5 py-1 rounded-pill"
-              style={{
-                backgroundColor: '#FAF8F5',
-                border: '1px solid #EFECE6'
-              }}
-            >
-              <div
-                className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
-                style={{
-                  width: 24,
-                  height: 24,
-                  backgroundColor: '#143C2D',
-                  fontSize: '10px'
-                }}
-              >
-                {(user?.first_name?.[0] || 'B') + (user?.last_name?.[0] || 'F')}
-              </div>
-              <div className="d-flex flex-column" style={{ lineHeight: 1.1 }}>
-                <span className="fw-bold text-dark" style={{ fontSize: '0.78rem' }}>
-                  {user?.first_name || 'Bems Farms'} {user?.last_name || 'Admin'}
-                </span>
-                <span className="text-muted" style={{ fontSize: '0.65rem' }}>
-                  Cashier on Duty
-                </span>
-              </div>
-            </div>
           </div>
 
           {/* Right: Register Launcher + Quick Actions */}
-          <div className="d-flex align-items-center gap-2.5">
+          <div className="d-flex align-items-center gap-2">
             {/* BIG PRIMARY CTA: Launch POS Terminal */}
             <button
               type="button"
@@ -452,7 +389,7 @@ export default function SalesHub({
               onClick={onOpenRegister}
               title="Open Barcode Scanner & Ringing Register (F1)"
             >
-              <i className="ri-barcode-box-line" style={{ fontSize: '19px' }}></i>
+              <i className="ri-barcode-box-line" style={{ fontSize: '18px' }}></i>
               <span>Open POS Register</span>
               <span
                 style={{
@@ -515,18 +452,35 @@ export default function SalesHub({
       {/* ── MAIN DASHBOARD CONTAINER ── */}
       <main className="container-fluid py-4">
         
-        {/* Dynamic Analytics Header & Timeframe Filter Toolbar */}
+        {/* Terminal Header & Timeframe Filter Toolbar */}
         <div className="d-flex flex-wrap align-items-center justify-content-between p-3 mb-4 rounded-3 border bg-white shadow-xs gap-3">
           <div className="d-flex align-items-center gap-3">
-            <div className="avatar size-10 rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center flex-shrink-0">
-              <i className="ri-line-chart-line fs-20"></i>
+            <div className="rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 44, height: 44 }}>
+              <i className="ri-store-2-line" style={{ fontSize: '20px' }}></i>
             </div>
             <div>
-              <div className="d-flex align-items-center gap-2">
-                <h5 className="fw-bold mb-0 font-display">Deep Sales &amp; Shift Analytics</h5>
-                <span className="badge bg-primary-subtle text-primary fs-xxs fw-bold">Live AI Engine</span>
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <h5 className="fw-bold mb-0 font-display text-dark">POS Terminal 01</h5>
+                <span
+                  className="badge d-inline-flex align-items-center gap-1.5"
+                  style={{
+                    backgroundColor: '#ECFDF5',
+                    color: '#047857',
+                    border: '1px solid #A7F3D0',
+                    fontSize: '9.5px',
+                    fontWeight: 800,
+                    padding: '2.5px 8px',
+                    borderRadius: '12px',
+                    letterSpacing: '0.04em'
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
+                  Shift Active
+                </span>
               </div>
-              <p className="text-muted fs-xs mb-0">Dynamic real-time revenue intelligence, category margins, and register audit ledger.</p>
+              <p className="text-muted fs-xs mb-0 mt-0.5">
+                Cashier: <strong className="text-dark">{user?.first_name || 'Staff Member'} {user?.last_name || ''}</strong> • {todayStr}
+              </p>
             </div>
           </div>
 
