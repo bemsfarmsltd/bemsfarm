@@ -369,18 +369,6 @@ export default function Sidebar() {
               <span className="rail-label">Dashboards</span>
             </button>
 
-            {/* Point of Sale (Standalone on First Bar) */}
-            {showPOS && (
-              <Link
-                to="/pos"
-                className={`rail-btn ${location.pathname.startsWith('/pos') ? 'active' : ''}`}
-                title="Point of Sale"
-              >
-                <i className="ri-computer-line rail-icon"></i>
-                <span className="rail-label">Point of Sale</span>
-              </Link>
-            )}
-
             {/* Products */}
             {showProducts && (
               <button

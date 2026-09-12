@@ -128,6 +128,17 @@ export default function Topbar({ onToggleSidebar }) {
             </div>
           </div>
         </div>
+
+        {/* Standalone Point of Sale Button on Topbar */}
+        <Link
+          to="/pos"
+          className="btn topbar-action-pill-light d-inline-flex align-items-center gap-1.5 text-decoration-none"
+          title="Open Point of Sale (POS)"
+        >
+          <i className="ri-computer-line text-success"></i>
+          <span className="fw-bold">Point of Sale</span>
+          <span className="badge" style={{ backgroundColor: '#DCFCE7', color: '#166534', fontSize: 9 }}>Live</span>
+        </Link>
       </div>
 
       {/* ── Center Zone: Global Executive Command Search Bar ── */}
@@ -144,19 +155,8 @@ export default function Topbar({ onToggleSidebar }) {
         <span className="topbar-search-shortcut">⌘K</span>
       </div>
 
-      {/* ── Right Zone: POS Portal + Live Store + Notifications + Profile ── */}
+      {/* ── Right Zone: Live Store + Notifications + Profile ── */}
       <div className="d-flex align-items-center gap-2 ms-auto">
-        {/* POS Portal Quick Pill */}
-        <Link
-          to="/pos"
-          className="btn topbar-action-pill-light d-none d-xl-inline-flex text-decoration-none"
-          title="Open Point of Sale Screen"
-        >
-          <i className="ri-computer-line text-success"></i>
-          <span>POS Portal</span>
-          <span className="badge" style={{ backgroundColor: '#DCFCE7', color: '#166534', fontSize: 9 }}>Live</span>
-        </Link>
-
         {/* Live Storefront Link */}
         <a
           href="https://www.bemsfarms.com"
