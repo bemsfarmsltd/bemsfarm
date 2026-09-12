@@ -111,15 +111,29 @@ export default function Sidebar() {
         width: 415px;
       }
       
-      /* ── COLUMN 1: LIGHT RAIL (68px default -> expands to 215px on hover) ── */
+      /* ── COLUMN 1: BRAND FOREST GREEN RAIL WITH MULTI-TONE TEXTURE & AMBIENT GLOWS ── */
       .sidebar-icon-rail {
         position: absolute;
         left: 0;
         top: 0;
         bottom: 0;
         width: 68px;
-        background-color: #FFFFFF;
-        border-right: 1px solid #E5E7EB;
+        background: 
+          /* Distinct precision angled design dashes / micro-weave texture ("design rashes") */
+          repeating-linear-gradient(
+            -45deg,
+            rgba(255, 255, 255, 0.04) 0px,
+            rgba(255, 255, 255, 0.04) 2px,
+            transparent 2px,
+            transparent 8px
+          ),
+          /* Multi-color ambient radial glows */
+          radial-gradient(ellipse 120% 50% at 50% 0%, rgba(16, 185, 129, 0.28) 0%, transparent 65%),
+          radial-gradient(circle at 100% 90%, rgba(245, 158, 11, 0.15) 0%, transparent 55%),
+          radial-gradient(circle at 0% 50%, rgba(5, 150, 105, 0.18) 0%, transparent 50%),
+          /* Deep rich brand forest green gradient */
+          linear-gradient(180deg, #061A12 0%, #0D2E20 30%, #143C2D 65%, #081F16 100%);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -129,6 +143,7 @@ export default function Sidebar() {
         overflow-y: auto;
         transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease;
         scrollbar-width: none;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.25);
       }
       .sidebar-icon-rail::-webkit-scrollbar { display: none; }
       
@@ -136,7 +151,7 @@ export default function Sidebar() {
       .sidebar-icon-rail.rail-open,
       body.rail-is-hovered .sidebar-icon-rail {
         width: 215px;
-        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.08);
+        box-shadow: 12px 0 35px rgba(0, 0, 0, 0.35);
       }
       
       /* Rail Brand Header (Begins right from top bar level) */
@@ -146,34 +161,51 @@ export default function Sidebar() {
         min-height: 3.5rem;
         display: flex;
         align-items: center;
-        border-bottom: 1px solid #E5E7EB;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         margin-bottom: 0.65rem;
       }
       
       .rail-brand-btn {
         width: 100%;
-        height: 42px;
+        height: 44px;
         border-radius: 12px;
         display: flex;
         align-items: center;
         background: transparent;
         border: none;
-        padding: 0 7px;
+        padding: 0 5px;
         text-decoration: none;
         transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
         overflow: hidden;
       }
       .rail-brand-btn:hover {
-        background: #F8FAFC;
+        background: rgba(255, 255, 255, 0.08);
+      }
+      
+      /* White Badge Container for High-Contrast Clean Logo Display */
+      .rail-brand-badge {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        background: #FFFFFF;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.25);
+        flex-shrink: 0;
+        padding: 4px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .rail-brand-btn:hover .rail-brand-badge {
+        transform: scale(1.05);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
       }
       
       .rail-brand-b {
-        width: 34px;
-        height: 34px;
-        min-width: 34px;
+        width: 28px;
+        height: 28px;
         object-fit: contain;
-        filter: drop-shadow(0 2px 6px rgba(20, 60, 45, 0.15));
-        flex-shrink: 0;
       }
       
       .rail-brand-full {
@@ -187,8 +219,17 @@ export default function Sidebar() {
         pointer-events: none;
       }
       
+      .rail-brand-text-card {
+        background: #FFFFFF;
+        padding: 4px 10px;
+        border-radius: 8px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.25);
+        display: flex;
+        align-items: center;
+      }
+      
       .rail-brand-text-img {
-        height: 18px;
+        height: 16px;
         width: auto;
         object-fit: contain;
       }
@@ -218,7 +259,7 @@ export default function Sidebar() {
         align-items: center;
         background: transparent;
         border: none;
-        color: #475569;
+        color: rgba(226, 232, 240, 0.82);
         cursor: pointer;
         padding: 0 11px;
         transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
@@ -234,6 +275,7 @@ export default function Sidebar() {
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        transition: transform 0.18s ease;
       }
       
       .rail-btn .rail-label {
@@ -256,15 +298,21 @@ export default function Sidebar() {
       }
       
       .rail-btn:hover {
-        background: #F1F5F9;
-        color: #0F172A;
+        background: rgba(255, 255, 255, 0.12);
+        color: #FFFFFF;
+        backdrop-filter: blur(4px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      }
+      .rail-btn:hover .rail-icon {
+        transform: scale(1.08);
       }
       
-      /* Active Luxury Forest Green Client-Side Pill */
+      /* Active Luminous Emerald Pill with Amber Gold Indicator */
       .rail-btn.active {
-        background: linear-gradient(135deg, #143C2D, #0B281B);
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.38), rgba(5, 150, 105, 0.58));
+        border: 1px solid rgba(110, 231, 183, 0.4);
         color: #FFFFFF !important;
-        box-shadow: 0 4px 14px rgba(20, 60, 45, 0.28);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.35);
       }
       .rail-btn.active::before {
         content: '';
@@ -276,16 +324,17 @@ export default function Sidebar() {
         height: 22px;
         background: #F59E0B;
         border-radius: 0 4px 4px 0;
+        box-shadow: 0 0 8px #F59E0B, 0 0 4px #F59E0B;
       }
       
-      /* ── COLUMN 2: WHITE SUB-NAVIGATION PANEL (PUSHES SMOOTHLY WHEN RAIL EXPANDS) ── */
+      /* ── COLUMN 2: SUB-NAVIGATION PANEL (PUSHES SMOOTHLY WHEN RAIL EXPANDS) ── */
       .sidebar-sub-panel {
         position: absolute;
         left: 68px;
         top: 3.5rem;
         bottom: 0;
         width: 200px;
-        background: #FAFAFA;
+        background: #FAFAF8;
         border-right: 1px solid #E5E7EB;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
         display: flex;
@@ -303,7 +352,7 @@ export default function Sidebar() {
       .sub-panel-header {
         padding: 0.95rem 1.15rem 0.85rem;
         border-bottom: 1px solid #E5E7EB;
-        background: #FAFAFA;
+        background: #FAFAF8;
       }
       .sub-panel-title {
         font-size: 15px;
@@ -373,12 +422,16 @@ export default function Sidebar() {
           onMouseEnter={() => setIsRailExpanded(true)}
           onMouseLeave={() => setIsRailExpanded(false)}
         >
-          {/* Top Brand / Logo Mark (Only B when closed, expands to full BEMS FARMS) */}
+          {/* Top Brand / Logo Mark with Crisp White Contrast Badging */}
           <div className="rail-brand-header">
             <Link to="/dashboard" className="rail-brand-btn" title="Bems Farms">
-              <img src="/bemsfarms_icon_b.png" alt="B" className="rail-brand-b" />
+              <div className="rail-brand-badge">
+                <img src="/bemsfarms_icon_b.png" alt="B" className="rail-brand-b" />
+              </div>
               <div className="rail-brand-full">
-                <img src="/bemsfarms_text.png" alt="Bems Farms" className="rail-brand-text-img" />
+                <div className="rail-brand-text-card">
+                  <img src="/bemsfarms_text.png" alt="Bems Farms" className="rail-brand-text-img" />
+                </div>
               </div>
             </Link>
           </div>

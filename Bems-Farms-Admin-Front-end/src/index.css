@@ -122,18 +122,32 @@ body.sidebar-condensed #main-sidebar {
 }
 
 /* ── TOPBAR (CLIENT-SIDE LUXURY WHITE & FOREST GREEN HEADER) ──────── */
+/* ── TOPBAR (EXECUTIVE BRAND FOREST GREEN WITH TEXTURED DESIGN DASHES) ──────── */
 .main-topbar {
   position: fixed !important;
   top: 0 !important;
   left: 68px !important;
   right: 0 !important;
-  background-color: #FFFFFF !important;
-  border-bottom: 1px solid #E5E7EB !important;
+  background: 
+    /* Distinct precision angled design dashes / micro-weave texture ("design rashes") */
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.04) 0px,
+      rgba(255, 255, 255, 0.04) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    /* Multi-color ambient radial lighting */
+    radial-gradient(ellipse 60% 120% at 0% 50%, rgba(16, 185, 129, 0.28) 0%, transparent 60%),
+    radial-gradient(circle at 100% 50%, rgba(245, 158, 11, 0.20) 0%, transparent 50%),
+    /* Forest green gradient matching brand buttons */
+    linear-gradient(90deg, #071E15 0%, #0E3524 35%, #143C2D 75%, #092017 100%) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
   padding: 0 1.25rem !important;
   height: 3.5rem !important;
   display: flex !important;
   align-items: center !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 0 4px 20px rgba(7, 31, 21, 0.35) !important;
   z-index: 1003 !important;
   transition: left 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
@@ -147,26 +161,26 @@ body.sidebar-condensed .main-topbar {
 }
 
 .main-topbar .sidebar-toggle {
-  background-color: #F8FAFC !important;
-  border: 1px solid #E2E8F0 !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 8px !important;
   width: 34px !important;
   height: 34px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  color: #334155 !important;
+  color: #FFFFFF !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
 }
 
 .main-topbar .sidebar-toggle:hover {
-  background-color: #F1F5F9 !important;
-  color: #0F172A !important;
-  border-color: #CBD5E1 !important;
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
-/* Search Bar (Clean Light Luxury Input) */
+/* Search Bar (Translucent Dark Glass Command Input) */
 .topbar-search-container {
   max-width: 380px !important;
   width: 100% !important;
@@ -174,24 +188,26 @@ body.sidebar-condensed .main-topbar {
 }
 
 .topbar-search-input {
-  background-color: #F8FAFC !important;
-  border: 1px solid #E2E8F0 !important;
+  background-color: rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 9999px !important;
   padding: 0.45rem 2.2rem 0.45rem 2.2rem !important;
   font-size: 0.82rem !important;
   font-weight: 500 !important;
-  color: #0F172A !important;
+  color: #FFFFFF !important;
+  backdrop-filter: blur(8px) !important;
   transition: all 0.2s ease !important;
 }
 
 .topbar-search-input::placeholder {
-  color: #64748B !important;
+  color: rgba(255, 255, 255, 0.6) !important;
 }
 
 .topbar-search-input:focus {
-  background-color: #FFFFFF !important;
-  border-color: #143C2D !important;
-  box-shadow: 0 0 0 3px rgba(20, 60, 45, 0.1) !important;
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
+  color: #FFFFFF !important;
   outline: none !important;
 }
 
@@ -202,9 +218,9 @@ body.sidebar-condensed .main-topbar {
   transform: translateY(-50%) !important;
   font-size: 10px !important;
   font-weight: 700 !important;
-  color: #64748B !important;
-  background: #FFFFFF !important;
-  border: 1px solid #CBD5E1 !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
   border-radius: 4px !important;
   padding: 1px 5px !important;
   pointer-events: none !important;
@@ -215,34 +231,34 @@ body.sidebar-condensed .main-topbar {
   height: 7px;
   border-radius: 50%;
   background-color: #10B981;
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.35);
   display: inline-block;
 }
 
 .topbar-branch-pill {
-  background-color: #F8FAFC !important;
-  border: 1px solid #E2E8F0 !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 9999px !important;
   padding: 0.35rem 0.75rem !important;
   font-size: 0.78rem !important;
   font-weight: 600 !important;
-  color: #0F172A !important;
+  color: #FFFFFF !important;
   transition: all 0.18s ease !important;
 }
 
 .topbar-branch-pill:hover {
-  background-color: #F1F5F9 !important;
-  border-color: #CBD5E1 !important;
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
 .topbar-action-pill-light {
-  background-color: #F8FAFC !important;
-  border: 1px solid #E2E8F0 !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 9999px !important;
   padding: 0.38rem 0.85rem !important;
   font-size: 0.78rem !important;
   font-weight: 600 !important;
-  color: #1E293B !important;
+  color: #FFFFFF !important;
   display: inline-flex !important;
   align-items: center !important;
   gap: 0.4rem !important;
@@ -250,9 +266,9 @@ body.sidebar-condensed .main-topbar {
 }
 
 .topbar-action-pill-light:hover {
-  background-color: #F1F5F9 !important;
-  border-color: #CBD5E1 !important;
-  color: #0F172A !important;
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #FFFFFF !important;
   transform: translateY(-1px);
 }
 
@@ -260,33 +276,67 @@ body.sidebar-condensed .main-topbar {
   width: 35px !important;
   height: 35px !important;
   border-radius: 50% !important;
-  background-color: #F8FAFC !important;
-  border: 1px solid #E2E8F0 !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
   padding: 0 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  color: #475569 !important;
+  color: #FFFFFF !important;
   transition: all 0.18s ease !important;
 }
 
 .topbar-icon-btn:hover {
-  background-color: #F1F5F9 !important;
-  border-color: #CBD5E1 !important;
-  color: #0F172A !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.32) !important;
+  color: #FFFFFF !important;
 }
 
 .topbar-profile-btn {
-  border: 1px solid #E2E8F0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 9999px !important;
-  background-color: #FFFFFF !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
   padding: 2px 10px 2px 3px !important;
   transition: all 0.18s ease !important;
 }
 
 .topbar-profile-btn:hover {
-  background-color: #F8FAFC !important;
-  border-color: #CBD5E1 !important;
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.32) !important;
+}
+
+/* Hero Quick Action Amber Pill */
+.btn-amber-bf,
+.topbar-action-pill.btn-amber-bf {
+  background: 
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.08) 0px,
+      rgba(255, 255, 255, 0.08) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
+  background-color: #F59E0B !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35) !important;
+}
+
+.btn-amber-bf:hover,
+.topbar-action-pill.btn-amber-bf:hover {
+  background: 
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.12) 0px,
+      rgba(255, 255, 255, 0.12) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    linear-gradient(135deg, #D97706 0%, #B45309 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.5) !important;
+  transform: translateY(-1px);
 }
 
 /* Quick Action Pills */
@@ -304,6 +354,7 @@ body.sidebar-condensed .main-topbar {
 /* ══════════════════════════════════════════════════════════════════
    GLOBAL BRAND BUTTON DESIGN SYSTEM (NO TEMPLATE ORANGE)
    Executive Forest Emerald (#143C2D / #1B5E3F) + Golden Amber Highlights
+   Crafted with tactile diagonal design dashes ("design rashes")
    ══════════════════════════════════════════════════════════════════ */
 
 /* 1. PRIMARY BUTTONS (.btn-primary) */
@@ -311,11 +362,21 @@ body.sidebar-condensed .main-topbar {
 .btn-primary-bf,
 button.btn-primary,
 a.btn-primary {
-  background: linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
+  background: 
+    /* Tactile diagonal design dashes / micro-weave texture */
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.05) 0px,
+      rgba(255, 255, 255, 0.05) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    /* Deep brand forest emerald gradient */
+    linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
   background-color: #143C2D !important;
-  border-color: #143C2D !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   color: #FFFFFF !important;
-  box-shadow: 0 2px 8px rgba(20, 60, 45, 0.22), 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(20, 60, 45, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
   font-weight: 600 !important;
   letter-spacing: 0.01em !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
@@ -327,11 +388,19 @@ button.btn-primary:hover,
 a.btn-primary:hover,
 .btn-primary:focus,
 .btn-primary-bf:focus {
-  background: linear-gradient(135deg, #0B281B 0%, #143C2D 100%) !important;
+  background: 
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.08) 0px,
+      rgba(255, 255, 255, 0.08) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    linear-gradient(135deg, #0B281B 0%, #143C2D 100%) !important;
   background-color: #0B281B !important;
-  border-color: #0B281B !important;
+  border-color: rgba(110, 231, 183, 0.4) !important;
   color: #FFFFFF !important;
-  box-shadow: 0 4px 14px rgba(20, 60, 45, 0.35) !important;
+  box-shadow: 0 4px 14px rgba(20, 60, 45, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
   transform: translateY(-1px);
 }
 
@@ -367,7 +436,15 @@ a.btn-primary:hover,
 
 .btn-sub-primary:hover,
 .btn-soft-primary:hover {
-  background: linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
+  background: 
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.06) 0px,
+      rgba(255, 255, 255, 0.06) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
   border-color: #143C2D !important;
   color: #FFFFFF !important;
   box-shadow: 0 3px 10px rgba(20, 60, 45, 0.25) !important;
@@ -385,7 +462,15 @@ a.btn-primary:hover,
 
 .btn-outline-primary:hover,
 .btn-outline-primary:focus {
-  background: linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
+  background: 
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.06) 0px,
+      rgba(255, 255, 255, 0.06) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
   border-color: #143C2D !important;
   color: #FFFFFF !important;
   box-shadow: 0 3px 10px rgba(20, 60, 45, 0.25) !important;
@@ -424,68 +509,97 @@ a.btn-primary:hover,
 
 /* 5. DANGER & SUB-DANGER BUTTONS */
 .btn-danger {
-  background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%) !important;
-  border-color: #DC2626 !important;
+  background: 
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.07) 0px,
+      rgba(255, 255, 255, 0.07) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    linear-gradient(135deg, #DC2626 0%, #B91C1C 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   color: #FFFFFF !important;
   box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25) !important;
 }
 
 .btn-danger:hover {
-  background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%) !important;
+  background: 
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.1) 0px,
+      rgba(255, 255, 255, 0.1) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    linear-gradient(135deg, #B91C1C 0%, #991B1B 100%) !important;
   border-color: #991B1B !important;
   color: #FFFFFF !important;
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35) !important;
   transform: translateY(-1px);
 }
 
-.btn-sub-danger,
-.btn-soft-danger {
-  background-color: #FEF2F2 !important;
-  border: 1px solid #FECACA !important;
-  color: #DC2626 !important;
-  font-weight: 600 !important;
-  transition: all 0.18s ease !important;
-}
-
-.btn-sub-danger:hover,
-.btn-soft-danger:hover {
-  background-color: #DC2626 !important;
-  border-color: #DC2626 !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.25) !important;
-  transform: translateY(-1px);
-}
-
 /* 6. SUCCESS & SUB-SUCCESS BUTTONS */
 .btn-success {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-  border-color: #059669 !important;
+  background: 
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.06) 0px,
+      rgba(255, 255, 255, 0.06) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   color: #FFFFFF !important;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25) !important;
 }
 
-.btn-sub-success {
-  background-color: #ECFDF5 !important;
-  border: 1px solid #A7F3D0 !important;
-  color: #059669 !important;
-}
-
-.btn-sub-success:hover {
-  background-color: #059669 !important;
+.btn-success:hover {
+  background: 
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.09) 0px,
+      rgba(255, 255, 255, 0.09) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    linear-gradient(135deg, #047857 0%, #065F46 100%) !important;
+  border-color: rgba(110, 231, 183, 0.4) !important;
   color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35) !important;
+  transform: translateY(-1px);
 }
 
 /* 7. WARNING & SUB-WARNING BUTTONS (AMBER ACCENTS) */
 .btn-warning {
-  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
-  border-color: #D97706 !important;
+  background: 
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.08) 0px,
+      rgba(255, 255, 255, 0.08) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
   color: #FFFFFF !important;
   box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25) !important;
 }
 
 .btn-warning:hover {
-  background: linear-gradient(135deg, #D97706 0%, #B45309 100%) !important;
+  background: 
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.12) 0px,
+      rgba(255, 255, 255, 0.12) 2px,
+      transparent 2px,
+      transparent 6px
+    ),
+    linear-gradient(135deg, #D97706 0%, #B45309 100%) !important;
   border-color: #B45309 !important;
   color: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4) !important;
   transform: translateY(-1px);
 }
 
