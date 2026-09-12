@@ -344,6 +344,25 @@ export default function POS() {
   })
 
   const scanInputRef = useRef(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement))
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch((err) => {
+        console.warn('Error attempting to enable fullscreen:', err.message)
+      })
+    } else {
+      document.exitFullscreen?.()
+    }
+  }
 
   // Load Live Backend Data
   useEffect(() => {
@@ -1017,6 +1036,15 @@ export default function POS() {
               <span>{heldOrders.length} Held</span>
             </button>
           )}
+
+          {/* Fullscreen Toggle Icon Button */}
+          <button
+            type="button"
+            onClick={toggleFullScreen}
+            className="pos-icon-circle-btn"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Mode (F11)'}>
+            <i className={isFullscreen ? 'ri-fullscreen-exit-line' : 'ri-fullscreen-line'}></i>
+          </button>
 
           {/* Theme Toggle Icon Button */}
           <button

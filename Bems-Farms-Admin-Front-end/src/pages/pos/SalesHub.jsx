@@ -38,6 +38,25 @@ export default function SalesHub({
     20: '',
   })
   const [drawerNotes, setDrawerNotes] = useState('')
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement))
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch((err) => {
+        console.warn('Error attempting to enable fullscreen:', err.message)
+      })
+    } else {
+      document.exitFullscreen?.()
+    }
+  }
 
   // Global Function Keys listener on SalesHub (F1: Open Register, F2: Cash Drawer, F3: Z-Report, F4: Timeframe)
   useEffect(() => {
@@ -471,6 +490,17 @@ export default function SalesHub({
             >
               <i className="ri-file-text-line text-primary" style={{ fontSize: '15px' }}></i>
               <span>Z-Report</span>
+            </button>
+
+            {/* Fullscreen Button */}
+            <button
+              type="button"
+              className="sh-secondary-btn"
+              onClick={toggleFullScreen}
+              title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen (F11)'}
+            >
+              <i className={isFullscreen ? 'ri-fullscreen-exit-line text-dark' : 'ri-fullscreen-line text-dark'} style={{ fontSize: '15px' }}></i>
+              <span className="d-none d-xl-inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
             </button>
 
             {/* Admin Switcher / Logout */}
