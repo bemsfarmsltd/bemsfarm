@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # 1. Admin SPA Routing (/admin/*)
+  RewriteRule ^admin/index\.html$ - [L]
+  RewriteCond %{REQUEST_URI} ^/admin(/|$) [NC]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^admin/.*$ /admin/index.html [L]
+
+  # 2. Storefront SPA Routing (/*)
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>

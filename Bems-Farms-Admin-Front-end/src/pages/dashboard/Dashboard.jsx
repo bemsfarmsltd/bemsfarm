@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import StatsCard from '../../components/ui/StatsCard'
 import Badge, { statusColor } from '../../components/ui/Badge'
 import PageHeader from '../../components/ui/PageHeader'
@@ -1119,18 +1119,19 @@ function ChefBemsTab() {
 // ── Main Dashboard ───────────────────────────────────────────────────────────
 // All dashboard tabs with role restrictions (null = all roles)
 const ALL_TABS = [
-  { key: 'overview',   label: 'Overview',       icon: 'ri-dashboard-2-line',            roles: ['superadmin', 'manager'] },
+  { key: 'overview',   label: 'Overview',       icon: 'ri-dashboard-2-line',            roles: ['superadmin', 'admin', 'manager'] },
   { key: 'sales',      label: 'Sales & Orders', icon: 'ri-shopping-cart-2-line',         roles: null },
-  { key: 'finance',    label: 'Finance',         icon: 'ri-money-dollar-circle-line',    roles: ['superadmin', 'manager', 'accountant'] },
-  { key: 'inventory',  label: 'Inventory',       icon: 'ri-archive-stack-line',          roles: ['superadmin', 'manager', 'kitchen_staff'] },
-  { key: 'operations', label: 'Operations',      icon: 'ri-truck-line',                  roles: ['superadmin', 'manager', 'delivery_manager'] },
-  { key: 'customers',  label: 'Customers',       icon: 'ri-group-line',                  roles: ['superadmin', 'manager', 'cashier'] },
-  { key: 'ai',         label: 'Chef Bems AI',    icon: 'ri-robot-line', badge: 'AI',     roles: ['superadmin', 'manager', 'kitchen_staff'] },
+  { key: 'finance',    label: 'Finance',         icon: 'ri-money-dollar-circle-line',    roles: ['superadmin', 'admin', 'manager', 'accountant'] },
+  { key: 'inventory',  label: 'Inventory',       icon: 'ri-archive-stack-line',          roles: ['superadmin', 'admin', 'manager', 'kitchen_staff'] },
+  { key: 'operations', label: 'Operations',      icon: 'ri-truck-line',                  roles: ['superadmin', 'admin', 'manager', 'delivery_manager'] },
+  { key: 'customers',  label: 'Customers',       icon: 'ri-group-line',                  roles: ['superadmin', 'admin', 'manager', 'cashier'] },
+  { key: 'ai',         label: 'Chef Bems AI',    icon: 'ri-robot-line', badge: 'AI',     roles: ['superadmin', 'admin', 'manager', 'kitchen_staff'] },
 ]
 
 // Default landing tab per role
 const DEFAULT_TAB = {
   superadmin:       'overview',
+  admin:            'overview',
   manager:          'overview',
   accountant:       'finance',
   delivery_manager: 'operations',
@@ -1140,15 +1141,17 @@ const DEFAULT_TAB = {
 
 export default function Dashboard() {
   const { user, hasRole } = useAuth()
+  const [searchParams] = useSearchParams()
 
   // Filter tabs to only those the current user can see
   const TABS = ALL_TABS.filter(t => !t.roles || (user && t.roles.includes(user.role)))
-  const defaultTab = (user && DEFAULT_TAB[user.role]) ?? 'sales'
-  // Ensure the default tab is actually visible for this role
-  const firstTab = TABS[0]?.key ?? 'sales'
-  const [activeTab, setActiveTab] = useState(
-    TABS.find(t => t.key === defaultTab) ? defaultTab : firstTab
-  )
+  const defaultTab = (user && DEFAULT_TAB[user.role]) ?? 'overview'
+  const firstTab = TABS[0]?.key ?? 'overview'
+
+  const tabParam = searchParams.get('tab')
+  const activeTab = (tabParam && TABS.some(t => t.key === tabParam))
+    ? tabParam
+    : (TABS.some(t => t.key === defaultTab) ? defaultTab : firstTab)
 
   const today = new Date().toLocaleDateString('en-NG', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -1166,42 +1169,7 @@ export default function Dashboard() {
         }
       />
 
-      {/* ── Tab navigation (Compact Streamlined Bar) ── */}
-      <div className="card mb-3" style={{ borderRadius: '0.625rem', border: '1px solid #EFECE6' }}>
-        <div className="card-body p-1.5">
-          <div className="d-flex align-items-center gap-1 flex-nowrap overflow-auto" style={{ whiteSpace: 'nowrap' }}>
-            {TABS.map((tab) => (
-              <button
-                key={tab.key}
-                className={`btn d-flex align-items-center gap-1.5 border-0 px-2.5 py-1.5 ${activeTab === tab.key ? 'btn-primary-bf fw-bold' : 'text-muted fw-semibold bg-transparent'}`}
-                style={{
-                  borderRadius: '9999px',
-                  fontSize: '0.75rem',
-                  transition: 'all 0.15s ease',
-                  cursor: 'pointer'
-                }}
-                onClick={() => setActiveTab(tab.key)}
-              >
-                <i className={`${tab.icon}`} style={{ fontSize: 14 }}></i>
-                <span>{tab.label}</span>
-                {tab.badge && (
-                  <span className="badge" style={{
-                    backgroundColor: activeTab === tab.key ? '#FEF3C7' : 'rgba(245, 158, 11, 0.15)',
-                    color: activeTab === tab.key ? '#B45309' : '#D97706',
-                    fontSize: 8.5,
-                    fontWeight: 800,
-                    padding: '0.1rem 0.35rem'
-                  }}>
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Tab content ── */}
+      {/* ── Tab content (controlled seamlessly via the second left bar) ── */}
       {activeTab === 'overview'   && <OverviewTab />}
       {activeTab === 'sales'      && <SalesTab />}
       {activeTab === 'finance'    && <FinanceTab />}

@@ -1,207 +1,14 @@
-import { useEffect } from 'react'
-import { NavLink, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { ROLE_META } from '../../lib/roles'
 
-function SideLink({ to, icon, badge, children }) {
-  return (
-    <NavLink
-      to={to}
-      className={({ isActive }) => `nav-link d-flex align-items-center gap-2.5 ${isActive ? 'active' : ''}`}
-    >
-      {icon && <i className={`${icon} menu-icon`}></i>}
-      <span className="nav-link-text">{children}</span>
-      {badge && <span className="nav-badge-pill ms-auto">{badge}</span>}
-    </NavLink>
-  )
-}
-
-function CollapseMenu({ id, icon, label, badge, children }) {
-  return (
-    <li className="nav-item">
-      <a
-        className="nav-link collapsed d-flex align-items-center gap-2.5"
-        href={`#${id}`}
-        data-bs-toggle="collapse"
-        role="button"
-        aria-expanded="false"
-        aria-controls={id}
-      >
-        <i className={`${icon} menu-icon`}></i>
-        <span className="nav-link-text flex-grow-1">{label}</span>
-        {badge && (
-          <span className="badge-luxury-ai me-1">{badge}</span>
-        )}
-        <i className="ri-arrow-right-s-line menu-arrow"></i>
-      </a>
-      <div className="collapse" id={id}>
-        <ul className="sub-navbar-nav list-unstyled">
-          {children}
-        </ul>
-      </div>
-    </li>
-  )
-}
-
 export default function Sidebar() {
   const { user, hasRole, logout } = useAuth()
-  const initials = user ? `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}` : 'BF'
-  const roleMeta = user ? ROLE_META[user.role] : null
-
-  /* Inject/update refined sidebar styles on mount */
-  useEffect(() => {
-    const id = 'sidebar-luxury-styles'
-    let style = document.getElementById(id)
-    if (!style) {
-      style = document.createElement('style')
-      style.id = id
-      document.head.appendChild(style)
-    }
-    style.textContent = `
-      #main-sidebar .sidebar-wrapper {
-        height: 100% !important;
-        overflow: hidden !important;
-        display: block !important;
-        background: transparent !important;
-      }
-      #main-sidebar .navbar-menu {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 76px !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        height: auto !important;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(255,255,255,0.12) transparent;
-        padding: 0.75rem 0.65rem 1.5rem !important;
-        background: transparent !important;
-      }
-      #main-sidebar .navbar-menu::-webkit-scrollbar { width: 3px; }
-      #main-sidebar .navbar-menu::-webkit-scrollbar-track { background: transparent; }
-      #main-sidebar .navbar-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
-      
-      #main-sidebar .sidebar-profile-footer {
-        position: absolute !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        height: 76px !important;
-        z-index: 10 !important;
-        background: linear-gradient(to top, rgba(4, 18, 11, 0.94) 60%, rgba(7, 31, 20, 0.85)) !important;
-        backdrop-filter: blur(10px) !important;
-        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-      }
-      
-      .menu-section-divider {
-        font-size: 0.65rem !important;
-        font-weight: 800 !important;
-        letter-spacing: 0.12em !important;
-        text-transform: uppercase !important;
-        color: rgba(167, 243, 208, 0.5) !important;
-        padding: 1.1rem 0.65rem 0.35rem !important;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        white-space: nowrap !important;
-      }
-      .menu-section-divider:first-of-type {
-        padding-top: 0.35rem !important;
-      }
-      
-      #main-sidebar .nav-link {
-        color: rgba(226, 232, 240, 0.8) !important;
-        font-size: 0.835rem !important;
-        font-weight: 600 !important;
-        border-radius: 0.65rem !important;
-        padding: 0.52rem 0.75rem !important;
-        margin: 0.1rem 0 !important;
-        transition: all 0.15s ease !important;
-        position: relative;
-        text-decoration: none !important;
-        white-space: nowrap !important;
-        display: flex !important;
-        align-items: center !important;
-      }
-      #main-sidebar .nav-link-text {
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        display: inline-block !important;
-      }
-      #main-sidebar .nav-link:hover {
-        color: #FFFFFF !important;
-        background-color: rgba(255, 255, 255, 0.07) !important;
-        transform: translateX(2px);
-      }
-      #main-sidebar .nav-link.active {
-        color: #FFFFFF !important;
-        background: linear-gradient(135deg, rgba(20, 60, 45, 0.95), rgba(27, 94, 63, 0.85)) !important;
-        border: 1px solid rgba(110, 231, 183, 0.35) !important;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
-        font-weight: 700 !important;
-      }
-      #main-sidebar .nav-link.active .menu-icon {
-        color: #F59E0B !important;
-      }
-      
-      #main-sidebar .menu-icon {
-        font-size: 1.1rem !important;
-        color: rgba(167, 243, 208, 0.7) !important;
-        width: 20px;
-        text-align: center;
-        flex-shrink: 0;
-      }
-      
-      #main-sidebar .menu-arrow {
-        font-size: 1rem !important;
-        color: rgba(255, 255, 255, 0.4) !important;
-        transition: transform 0.2s ease;
-      }
-      #main-sidebar .nav-link:not(.collapsed) .menu-arrow {
-        transform: rotate(90deg);
-        color: #F59E0B !important;
-      }
-      
-      #main-sidebar .sub-navbar-nav {
-        border-left: 1px solid rgba(255, 255, 255, 0.12);
-        margin: 0.2rem 0 0.4rem 1.45rem !important;
-        padding-left: 0.6rem !important;
-      }
-      #main-sidebar .sub-navbar-nav .nav-link {
-        font-size: 0.8rem !important;
-        font-weight: 500 !important;
-        color: rgba(203, 213, 225, 0.7) !important;
-        padding: 0.35rem 0.65rem !important;
-        border-radius: 0.5rem !important;
-      }
-      #main-sidebar .sub-navbar-nav .nav-link:hover {
-        color: #6EE7B7 !important;
-        background-color: rgba(255, 255, 255, 0.05) !important;
-      }
-      #main-sidebar .sub-navbar-nav .nav-link.active {
-        color: #FFFFFF !important;
-        background-color: rgba(20, 60, 45, 0.8) !important;
-        border: 1px solid rgba(110, 231, 183, 0.25) !important;
-      }
-      
-      .badge-luxury-ai {
-        background: linear-gradient(135deg, #F59E0B, #D97706);
-        color: #071F14;
-        font-size: 9px;
-        font-weight: 900;
-        letter-spacing: 0.04em;
-        padding: 2px 6px;
-        border-radius: 9999px;
-        box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
-      }
-    `
-  }, [])
+  const location = useLocation()
 
   // Role helpers
   const is = (...roles) => hasRole(...roles)
-
   const showProducts  = is('superadmin', 'admin', 'manager', 'kitchen_staff')
   const showInventory = is('superadmin', 'admin', 'manager', 'kitchen_staff')
   const showOrders    = is('superadmin', 'admin', 'manager', 'accountant', 'delivery_manager', 'cashier', 'kitchen_staff')
@@ -215,286 +22,910 @@ export default function Sidebar() {
   const showSettings  = is('superadmin', 'admin', 'manager')
   const showPOS       = is('superadmin', 'admin', 'manager', 'cashier')
 
+  // Auto-detect active category based on current pathname
+  const getActiveCategoryFromPath = (path) => {
+    if (path.startsWith('/dashboard')) return 'dashboards'
+    if (path.startsWith('/products')) return 'products'
+    if (path.startsWith('/inventory')) return 'inventory'
+    if (path.startsWith('/orders')) return 'orders'
+    if (path.startsWith('/deliveries')) return 'deliveries'
+    if (path.startsWith('/customers')) return 'customers'
+    if (path.startsWith('/staff')) return 'staff'
+    if (path.startsWith('/accounts')) return 'finance'
+    if (path.startsWith('/reports')) return 'reports'
+    if (path.startsWith('/chef-bems')) return 'chef'
+    if (path.startsWith('/stores')) return 'stores'
+    if (path.startsWith('/settings')) return 'settings'
+    if (path.startsWith('/pos')) return 'pos'
+    return 'dashboards'
+  }
+
+  const [activeTab, setActiveTab] = useState(() => getActiveCategoryFromPath(location.pathname))
+  const [isRailExpanded, setIsRailExpanded] = useState(false)
+
+  useEffect(() => {
+    setActiveTab(getActiveCategoryFromPath(location.pathname))
+  }, [location.pathname])
+
+  // Helper to check which dashboard tab is currently open
+  const isDashboardTabActive = (tabKey) => {
+    if (!location.pathname.startsWith('/dashboard')) return false
+    const currentTab = new URLSearchParams(location.search).get('tab')
+    if (!currentTab && tabKey === 'overview') return true
+    return currentTab === tabKey
+  }
+
+  // Sync body class when rail expands on hover so entire layout pushes smoothly together
+  useEffect(() => {
+    if (isRailExpanded) {
+      document.body.classList.add('rail-is-hovered')
+    } else {
+      document.body.classList.remove('rail-is-hovered')
+    }
+    return () => document.body.classList.remove('rail-is-hovered')
+  }, [isRailExpanded])
+
+  // Inject Two-Column Dual Sidebar Styles
+  useEffect(() => {
+    const id = 'sidebar-signature-dual-styles'
+    let style = document.getElementById(id)
+    if (!style) {
+      style = document.createElement('style')
+      style.id = id
+      document.head.appendChild(style)
+    }
+    style.textContent = `
+      .dual-sidebar-container {
+        display: flex;
+        width: 268px;
+        height: 100%;
+        position: relative;
+        transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      body.rail-is-hovered .dual-sidebar-container {
+        width: 415px;
+      }
+      
+      /* ── COLUMN 1: LIGHT RAIL (68px default -> expands to 215px on hover) ── */
+      .sidebar-icon-rail {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 68px;
+        background-color: #FFFFFF;
+        border-right: 1px solid #E5E7EB;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 0 0.5rem 0.75rem;
+        z-index: 20;
+        overflow-x: hidden;
+        overflow-y: auto;
+        transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease;
+        scrollbar-width: none;
+      }
+      .sidebar-icon-rail::-webkit-scrollbar { display: none; }
+      
+      .sidebar-icon-rail:hover,
+      .sidebar-icon-rail.rail-open,
+      body.rail-is-hovered .sidebar-icon-rail {
+        width: 215px;
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.08);
+      }
+      
+      /* Rail Brand Header (Begins right from top bar level) */
+      .rail-brand-header {
+        width: 100%;
+        height: 3.5rem;
+        min-height: 3.5rem;
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid #E5E7EB;
+        margin-bottom: 0.65rem;
+      }
+      
+      .rail-brand-btn {
+        width: 100%;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        background: transparent;
+        border: none;
+        padding: 0 7px;
+        text-decoration: none;
+        transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        overflow: hidden;
+      }
+      .rail-brand-btn:hover {
+        background: #F8FAFC;
+      }
+      
+      .rail-brand-b {
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+        object-fit: contain;
+        filter: drop-shadow(0 2px 6px rgba(20, 60, 45, 0.15));
+        flex-shrink: 0;
+      }
+      
+      .rail-brand-full {
+        margin-left: 0.65rem;
+        opacity: 0;
+        transform: translateX(-8px);
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        pointer-events: none;
+      }
+      
+      .rail-brand-text-img {
+        height: 18px;
+        width: auto;
+        object-fit: contain;
+      }
+      
+      .sidebar-icon-rail:hover .rail-brand-full,
+      .sidebar-icon-rail.rail-open .rail-brand-full,
+      body.rail-is-hovered .rail-brand-full {
+        opacity: 1;
+        transform: translateX(0);
+        pointer-events: auto;
+      }
+      
+      .rail-nav-list {
+        flex: 1;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+      
+      .rail-btn {
+        width: 100%;
+        min-height: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        background: transparent;
+        border: none;
+        color: #475569;
+        cursor: pointer;
+        padding: 0 11px;
+        transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        position: relative;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      
+      .rail-btn .rail-icon {
+        font-size: 1.25rem;
+        min-width: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      
+      .rail-btn .rail-label {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: inherit;
+        margin-left: 0.5rem;
+        opacity: 0;
+        transform: translateX(-6px);
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        pointer-events: none;
+      }
+      
+      .sidebar-icon-rail:hover .rail-btn .rail-label,
+      .sidebar-icon-rail.rail-open .rail-btn .rail-label,
+      body.rail-is-hovered .rail-btn .rail-label {
+        opacity: 1;
+        transform: translateX(0);
+        pointer-events: auto;
+      }
+      
+      .rail-btn:hover {
+        background: #F1F5F9;
+        color: #0F172A;
+      }
+      
+      /* Active Luxury Forest Green Client-Side Pill */
+      .rail-btn.active {
+        background: linear-gradient(135deg, #143C2D, #0B281B);
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 14px rgba(20, 60, 45, 0.28);
+      }
+      .rail-btn.active::before {
+        content: '';
+        position: absolute;
+        left: -8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 22px;
+        background: #F59E0B;
+        border-radius: 0 4px 4px 0;
+      }
+      
+      /* ── COLUMN 2: WHITE SUB-NAVIGATION PANEL (PUSHES SMOOTHLY WHEN RAIL EXPANDS) ── */
+      .sidebar-sub-panel {
+        position: absolute;
+        left: 68px;
+        top: 3.5rem;
+        bottom: 0;
+        width: 200px;
+        background: #FAFAFA;
+        border-right: 1px solid #E5E7EB;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
+        display: flex;
+        flex-direction: column;
+        z-index: 10;
+        overflow: hidden;
+        transition: left 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      
+      .sidebar-icon-rail:hover ~ .sidebar-sub-panel,
+      body.rail-is-hovered .sidebar-sub-panel {
+        left: 215px;
+      }
+      
+      .sub-panel-header {
+        padding: 0.95rem 1.15rem 0.85rem;
+        border-bottom: 1px solid #E5E7EB;
+        background: #FAFAFA;
+      }
+      .sub-panel-title {
+        font-size: 15px;
+        font-weight: 800;
+        color: #0F172A;
+        letter-spacing: -0.01em;
+        margin: 0;
+      }
+        letter-spacing: -0.01em;
+      }
+      
+      .sub-panel-nav {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.75rem 0.65rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+      
+      .dual-sub-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.55rem 0.85rem;
+        border-radius: 8px;
+        color: #475569;
+        font-size: 13px;
+        font-weight: 550;
+        text-decoration: none;
+        transition: all 0.15s ease;
+      }
+      .dual-sub-link:hover {
+        background: #F8FAFC;
+        color: #0F172A;
+      }
+      .dual-sub-link.active {
+        background: #FEF3C7;
+        color: #92400E;
+        font-weight: 750;
+      }
+      
+      .sub-badge {
+        font-size: 10px;
+        font-weight: 800;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: #F1F5F9;
+        color: #475569;
+      }
+      .dual-sub-link.active .sub-badge {
+        background: #FDE68A;
+        color: #78350F;
+      }
+    `
+  }, [])
+
   return (
     <div id="main-sidebar" className="main-sidebar">
-      <div className="sidebar-wrapper">
+      <div className="dual-sidebar-container">
 
-        {/* ── Scrollable nav menu ── */}
-        <div className="navbar-menu" id="navbar-menu-list">
-          <ul className="list-unstyled navbar-nav-menu mb-0">
+        {/* ── LEFT COLUMN: DARK RAIL (Hover expands to full width with text) ── */}
+        <div
+          className={`sidebar-icon-rail ${isRailExpanded ? 'rail-open' : ''}`}
+          onMouseEnter={() => setIsRailExpanded(true)}
+          onMouseLeave={() => setIsRailExpanded(false)}
+        >
+          {/* Top Brand / Logo Mark (Only B when closed, expands to full BEMS FARMS) */}
+          <div className="rail-brand-header">
+            <Link to="/dashboard" className="rail-brand-btn" title="Bems Farms">
+              <img src="/bemsfarms_icon_b.png" alt="B" className="rail-brand-b" />
+              <div className="rail-brand-full">
+                <img src="/bemsfarms_text.png" alt="Bems Farms" className="rail-brand-text-img" />
+              </div>
+            </Link>
+          </div>
 
-            {/* ── MAIN ── */}
-            <li className="menu-section-divider">
-              <span>Main</span>
-            </li>
+          <div className="rail-nav-list">
 
-            <li className="nav-item">
-              <SideLink to="/dashboard" icon="ri-dashboard-2-line">
-                Dashboard
-              </SideLink>
-            </li>
-
-            {showPOS && (
-              <li className="nav-item">
-                <SideLink to="/pos" icon="ri-store-2-line">
-                  Point of Sale
-                </SideLink>
-              </li>
-            )}
-
-            {/* ── PRODUCTS & STOCK ── */}
-            {(showProducts || showInventory) && (
-              <li className="menu-section-divider">
-                <span>Products &amp; Stock</span>
-              </li>
-            )}
-
-            {showProducts && (
-              <CollapseMenu id="productsMenu" icon="ri-price-tag-3-line" label="Products">
-                <li><SideLink to="/products">All Products</SideLink></li>
-                {is('superadmin', 'admin', 'manager') && <li><SideLink to="/products/add">Add Product</SideLink></li>}
-                <li><SideLink to="/products/categories">Categories</SideLink></li>
-                <li><SideLink to="/products/sub-categories">Sub-Categories</SideLink></li>
-                <li><SideLink to="/products/units">Units of Measure</SideLink></li>
-                {is('superadmin', 'admin', 'manager') && <li><SideLink to="/products/brands">Brands</SideLink></li>}
-                {is('superadmin', 'admin', 'manager') && <li><SideLink to="/products/variants">Variants</SideLink></li>}
-                <li><SideLink to="/products/reviews">Reviews</SideLink></li>
-                {is('superadmin', 'admin', 'manager') && <li><SideLink to="/products/barcode">Barcode</SideLink></li>}
-                {is('superadmin', 'admin', 'manager') && <li><SideLink to="/products/export">Bulk Export</SideLink></li>}
-              </CollapseMenu>
-            )}
-
-            {showInventory && (
-              <CollapseMenu id="inventoryMenu" icon="ri-archive-stack-line" label="Inventory">
-                <li><SideLink to="/inventory/stock">Stock List</SideLink></li>
-                {is('superadmin', 'admin', 'manager') && <li><SideLink to="/inventory/stock-in">Stock In</SideLink></li>}
-                {is('superadmin', 'admin', 'manager') && <li><SideLink to="/inventory/stock-out">Stock Out</SideLink></li>}
-                {is('superadmin', 'admin', 'manager') && <li><SideLink to="/inventory/adjustment">Adjustments</SideLink></li>}
-                {is('superadmin', 'admin', 'manager') && <li><SideLink to="/inventory/transfer">Stock Transfer</SideLink></li>}
-                {is('superadmin', 'admin', 'manager') && <li><SideLink to="/inventory/batches">Batches &amp; Expiry</SideLink></li>}
-                {is('superadmin', 'admin', 'manager') && <li><SideLink to="/inventory/warehouses">Warehouses</SideLink></li>}
-                <li><SideLink to="/inventory/alerts">Low Stock Alerts</SideLink></li>
-                {is('superadmin', 'admin', 'manager') && <li><SideLink to="/inventory/valuation">Valuation</SideLink></li>}
-                {is('superadmin', 'admin', 'manager') && <li><SideLink to="/inventory/lost-items">Lost &amp; Damaged</SideLink></li>}
-              </CollapseMenu>
-            )}
-
-            {/* ── SALES & ORDERS ── */}
-            {showOrders && (
-              <li className="menu-section-divider">
-                <span>Sales &amp; Orders</span>
-              </li>
-            )}
-
-            {showOrders && (
-              <CollapseMenu id="ordersMenu" icon="ri-shopping-bag-3-line" label="Orders">
-                <li><SideLink to="/orders">All Orders</SideLink></li>
-                <li><SideLink to="/orders/invoices">Invoices</SideLink></li>
-                {is('superadmin', 'admin', 'manager') && (
-                  <li><SideLink to="/orders/refunds">Refunds</SideLink></li>
-                )}
-              </CollapseMenu>
-            )}
-
-            {/* ── OPERATIONS ── */}
-            {(showDelivery || showCustomers || showStaff) && (
-              <li className="menu-section-divider">
-                <span>Operations</span>
-              </li>
-            )}
-
-            {showDelivery && (
-              <CollapseMenu id="deliveriesMenu" icon="ri-truck-line" label="Deliveries">
-                <li><SideLink to="/deliveries/active">Active Deliveries</SideLink></li>
-                <li><SideLink to="/deliveries/map">Delivery Map</SideLink></li>
-                <li><SideLink to="/deliveries/zones">Delivery Zones</SideLink></li>
-                <li><SideLink to="/deliveries/drivers">Drivers</SideLink></li>
-              </CollapseMenu>
-            )}
-
-            {showCustomers && (
-              <CollapseMenu id="customersMenu" icon="ri-user-heart-line" label="Customers">
-                <li><SideLink to="/customers">All Customers</SideLink></li>
-                <li><SideLink to="/customers/loyalty">Loyalty Points</SideLink></li>
-                <li><SideLink to="/customers/activity">Activity Log</SideLink></li>
-              </CollapseMenu>
-            )}
-
-            {showStaff && (
-              <CollapseMenu id="staffMenu" icon="ri-team-line" label="Staff &amp; HR">
-                <li><SideLink to="/staff">Staff List</SideLink></li>
-                <li><SideLink to="/staff/add">Add Staff</SideLink></li>
-                <li><SideLink to="/staff/roles">Roles &amp; Permissions</SideLink></li>
-                <li><SideLink to="/staff/attendance">Attendance</SideLink></li>
-                <li><SideLink to="/staff/schedule">Schedule &amp; Shifts</SideLink></li>
-                <li><SideLink to="/staff/holidays">Holidays</SideLink></li>
-                <li><SideLink to="/staff/payroll">Payroll</SideLink></li>
-              </CollapseMenu>
-            )}
-
-            {/* ── FINANCE & REPORTS ── */}
-            {(showFinance || showReports) && (
-              <li className="menu-section-divider">
-                <span>Finance &amp; Reports</span>
-              </li>
-            )}
-
-            {showFinance && (
-              <CollapseMenu id="accountsMenu" icon="ri-bank-card-line" label="Accounts">
-                <li><SideLink to="/accounts/overview">Overview</SideLink></li>
-                <li><SideLink to="/accounts/transactions">All Transactions</SideLink></li>
-                <li><SideLink to="/accounts/income">Income</SideLink></li>
-                <li><SideLink to="/accounts/expenses">Expenses</SideLink></li>
-                {is('superadmin', 'admin', 'manager') && (
-                  <li><SideLink to="/accounts/commissions">Driver Commissions</SideLink></li>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <li><SideLink to="/accounts/bank">Bank Accounts</SideLink></li>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <li><SideLink to="/accounts/transfer">Money Transfer</SideLink></li>
-                )}
-              </CollapseMenu>
-            )}
-
-            {showReports && (
-              <CollapseMenu id="reportsMenu" icon="ri-bar-chart-grouped-line" label="Reports">
-                <li><SideLink to="/reports/sales">Sales Report</SideLink></li>
-                {is('superadmin', 'admin', 'manager') && (
-                  <li><SideLink to="/reports/inventory">Inventory Report</SideLink></li>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <li><SideLink to="/reports/customers">Customer Report</SideLink></li>
-                )}
-                <li><SideLink to="/reports/expenses">Expense Report</SideLink></li>
-                <li><SideLink to="/reports/finance">Finance Report</SideLink></li>
-              </CollapseMenu>
-            )}
-
-            {/* ── TOOLS & CONFIG ── */}
-            {(showChefAI || showStores || showSettings) && (
-              <li className="menu-section-divider">
-                <span>Tools &amp; Config</span>
-              </li>
-            )}
-
-            {showChefAI && (
-              <CollapseMenu id="chefBemsMenu" icon="ri-robot-line" label="Chef Bems AI" badge="AI">
-                <li><SideLink to="/chef-bems/conversations">Conversations</SideLink></li>
-                {is('superadmin', 'admin', 'manager') && (
-                  <li><SideLink to="/chef-bems/dietary-rules">Dietary Rules</SideLink></li>
-                )}
-                <li><SideLink to="/chef-bems/meal-associations">Meal Associations</SideLink></li>
-              </CollapseMenu>
-            )}
-
-            {showStores && (
-              <CollapseMenu id="storesMenu" icon="ri-store-3-line" label="Multi-Store">
-                <li><SideLink to="/stores">All Stores</SideLink></li>
-                <li><SideLink to="/stores/add">Add Store</SideLink></li>
-              </CollapseMenu>
-            )}
-
-            {showSettings && (
-              <CollapseMenu id="settingsMenu" icon="ri-settings-3-line" label="Settings">
-                <li><SideLink to="/settings/general">General</SideLink></li>
-                {is('superadmin', 'admin') && <li><SideLink to="/settings/pos">POS Settings</SideLink></li>}
-                {is('superadmin', 'admin') && <li><SideLink to="/settings/payment">Payment Methods</SideLink></li>}
-                {is('superadmin', 'admin') && <li><SideLink to="/settings/coupons">Coupons &amp; Discounts</SideLink></li>}
-                {is('superadmin', 'admin') && <li><SideLink to="/settings/tax">Tax Settings</SideLink></li>}
-                {is('superadmin', 'admin') && <li><SideLink to="/settings/currencies">Currencies</SideLink></li>}
-                {is('superadmin', 'admin') && <li><SideLink to="/settings/invoices">Invoice Templates</SideLink></li>}
-                <li><SideLink to="/settings/notifications">Notifications</SideLink></li>
-                {is('superadmin', 'admin') && <li><SideLink to="/settings/manager">Manager Settings</SideLink></li>}
-              </CollapseMenu>
-            )}
-
-            <li className="mb-3"></li>
-          </ul>
-        </div>
-
-        {/* ── Profile pinned to bottom ── */}
-        <div className="sidebar-profile-footer px-3 d-flex align-items-center">
-          <div className="dropdown dropup w-100">
+            {/* Dashboards */}
             <button
-              className="btn p-2 w-100 text-start d-flex align-items-center gap-2.5 border-0"
               type="button"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                borderRadius: '0.75rem',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                transition: 'background 0.2s ease'
-              }}
+              className={`rail-btn ${activeTab === 'dashboards' ? 'active' : ''}`}
+              onClick={() => setActiveTab('dashboards')}
+              title="Dashboards"
             >
-              <div className="position-relative flex-shrink-0">
-                <div
-                  className="d-flex align-items-center justify-content-center rounded-circle fw-bold text-white"
-                  style={{
-                    width: 36,
-                    height: 36,
-                    fontSize: 13,
-                    background: 'linear-gradient(135deg, #F59E0B, #B45309)',
-                    boxShadow: '0 2px 8px rgba(245, 158, 11, 0.35)'
-                  }}
-                >
-                  {initials}
-                </div>
-                {/* Active green pulse badge */}
-                <span
-                  className="position-absolute rounded-circle"
-                  style={{
-                    width: 9,
-                    height: 9,
-                    backgroundColor: '#10B981',
-                    border: '2px solid #071F14',
-                    bottom: 0,
-                    right: 0
-                  }}
-                />
-              </div>
-
-              <div className="flex-grow-1 overflow-hidden">
-                <div className="fw-bold text-truncate" style={{ fontSize: 13, color: '#FFFFFF', letterSpacing: '-0.01em' }}>
-                  {user?.first_name || 'Bems'} {user?.last_name || 'Admin'}
-                </div>
-                <div style={{ fontSize: 10.5, color: '#6EE7B7', fontWeight: 700 }}>
-                  {roleMeta?.label ?? user?.role ?? 'Super Admin'}
-                </div>
-              </div>
-
-              <i className="ri-arrow-up-s-line" style={{ color: 'rgba(255,255,255,0.5)', fontSize: 16 }}></i>
+              <i className="ri-dashboard-2-line rail-icon"></i>
+              <span className="rail-label">Dashboards</span>
             </button>
 
-            <div className="dropdown-menu mb-2 shadow-lg" style={{ borderRadius: '0.875rem', border: '1px solid #EFECE6', padding: '0.5rem' }}>
-              <div className="px-3 py-2 border-bottom mb-1">
-                <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>Active Role Profile</div>
-                <div className="d-flex align-items-center gap-2 mt-1">
-                  <span className="badge" style={{ backgroundColor: '#FEF3C7', color: '#B45309', fontSize: 11, fontWeight: 700 }}>
-                    <i className="ri-shield-star-line me-1"></i>{roleMeta?.label ?? 'Staff'}
-                  </span>
-                </div>
-              </div>
-              <Link className="dropdown-item py-2 fw-medium rounded" to="/settings/general" style={{ fontSize: 13 }}>
-                <i className="ri-user-line me-2 text-muted"></i>My Profile
-              </Link>
-              {showSettings && (
-                <Link className="dropdown-item py-2 fw-medium rounded" to="/settings/general" style={{ fontSize: 13 }}>
-                  <i className="ri-settings-3-line me-2 text-muted"></i>Settings
-                </Link>
-              )}
-              <div className="dropdown-divider"></div>
+            {/* Products */}
+            {showProducts && (
               <button
                 type="button"
-                className="dropdown-item text-danger border-0 bg-transparent w-100 text-start py-2 fw-bold rounded"
-                style={{ fontSize: 13 }}
-                onClick={logout}
+                className={`rail-btn ${activeTab === 'products' ? 'active' : ''}`}
+                onClick={() => setActiveTab('products')}
+                title="Products & Catalog"
               >
-                <i className="ri-logout-box-r-line me-2"></i>Sign Out
+                <i className="ri-price-tag-3-line rail-icon"></i>
+                <span className="rail-label">Products</span>
               </button>
+            )}
+
+            {/* Inventory */}
+            {showInventory && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'inventory' ? 'active' : ''}`}
+                onClick={() => setActiveTab('inventory')}
+                title="Stock & Inventory"
+              >
+                <i className="ri-archive-stack-line rail-icon"></i>
+                <span className="rail-label">Inventory</span>
+              </button>
+            )}
+
+            {/* Orders */}
+            {showOrders && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'orders' ? 'active' : ''}`}
+                onClick={() => setActiveTab('orders')}
+                title="Sales & Orders"
+              >
+                <i className="ri-shopping-bag-3-line rail-icon"></i>
+                <span className="rail-label">Orders</span>
+              </button>
+            )}
+
+            {/* Deliveries */}
+            {showDelivery && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'deliveries' ? 'active' : ''}`}
+                onClick={() => setActiveTab('deliveries')}
+                title="Operations & Dispatch"
+              >
+                <i className="ri-truck-line rail-icon"></i>
+                <span className="rail-label">Deliveries</span>
+              </button>
+            )}
+
+            {/* Customers */}
+            {showCustomers && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'customers' ? 'active' : ''}`}
+                onClick={() => setActiveTab('customers')}
+                title="Customers CRM"
+              >
+                <i className="ri-user-heart-line rail-icon"></i>
+                <span className="rail-label">Customers</span>
+              </button>
+            )}
+
+            {/* Staff */}
+            {showStaff && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'staff' ? 'active' : ''}`}
+                onClick={() => setActiveTab('staff')}
+                title="Staff & HR"
+              >
+                <i className="ri-team-line rail-icon"></i>
+                <span className="rail-label">Staff &amp; HR</span>
+              </button>
+            )}
+
+            {/* Finance */}
+            {showFinance && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'finance' ? 'active' : ''}`}
+                onClick={() => setActiveTab('finance')}
+                title="Finance & Accounts"
+              >
+                <i className="ri-bank-card-line rail-icon"></i>
+                <span className="rail-label">Accounts</span>
+              </button>
+            )}
+
+            {/* Reports */}
+            {showReports && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'reports' ? 'active' : ''}`}
+                onClick={() => setActiveTab('reports')}
+                title="Reports & Analytics"
+              >
+                <i className="ri-bar-chart-grouped-line rail-icon"></i>
+                <span className="rail-label">Reports</span>
+              </button>
+            )}
+
+            {/* Chef AI */}
+            {showChefAI && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'chef' ? 'active' : ''}`}
+                onClick={() => setActiveTab('chef')}
+                title="Chef Bems AI"
+              >
+                <i className="ri-robot-line rail-icon"></i>
+                <span className="rail-label">Chef Bems AI</span>
+              </button>
+            )}
+
+            {/* Multi-Store */}
+            {showStores && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'stores' ? 'active' : ''}`}
+                onClick={() => setActiveTab('stores')}
+                title="Multi-Store Locations"
+              >
+                <i className="ri-store-3-line rail-icon"></i>
+                <span className="rail-label">Multi-Store</span>
+              </button>
+            )}
+
+            {/* Settings */}
+            {showSettings && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'settings' ? 'active' : ''}`}
+                onClick={() => setActiveTab('settings')}
+                title="System Settings"
+              >
+                <i className="ri-settings-3-line rail-icon"></i>
+                <span className="rail-label">Settings</span>
+              </button>
+            )}
+          </div>
+
+          {/* Bottom Logout */}
+          <div className="pt-2 border-top border-secondary border-opacity-10 w-100">
+            <button
+              type="button"
+              className="rail-btn text-danger"
+              onClick={logout}
+              title="Sign Out"
+            >
+              <i className="ri-logout-box-r-line rail-icon"></i>
+              <span className="rail-label font-weight-bold">Sign Out</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ── RIGHT COLUMN: WHITE SUB-NAVIGATION PANEL (ALWAYS OPEN & DOCKED) ── */}
+        <div className="sidebar-sub-panel">
+
+          {/* Subpanel Header */}
+          <div className="sub-panel-header">
+            <div className="sub-panel-title">
+              {activeTab === 'dashboards' && 'Dashboards'}
+              {activeTab === 'products' && 'Products & Catalog'}
+              {activeTab === 'inventory' && 'Stock & Warehouses'}
+              {activeTab === 'orders' && 'Sales & Orders'}
+              {activeTab === 'deliveries' && 'Operations & Dispatch'}
+              {activeTab === 'customers' && 'Customer CRM'}
+              {activeTab === 'staff' && 'Staff & Payroll'}
+              {activeTab === 'finance' && 'Accounts & Finance'}
+              {activeTab === 'reports' && 'Analytics & Reports'}
+              {activeTab === 'chef' && 'Chef Bems AI'}
+              {activeTab === 'stores' && 'Multi-Store Network'}
+              {activeTab === 'settings' && 'System Settings'}
             </div>
           </div>
+
+          {/* Subpanel Links List */}
+          <div className="sub-panel-nav">
+
+            {/* 1. DASHBOARDS */}
+            {activeTab === 'dashboards' && (
+              <>
+                {is('superadmin', 'admin', 'manager') && (
+                  <Link
+                    to="/dashboard?tab=overview"
+                    className={`dual-sub-link ${isDashboardTabActive('overview') ? 'active' : ''}`}
+                  >
+                    <span>Overview</span>
+                  </Link>
+                )}
+                <Link
+                  to="/dashboard?tab=sales"
+                  className={`dual-sub-link ${isDashboardTabActive('sales') ? 'active' : ''}`}
+                >
+                  <span>Sales &amp; Orders</span>
+                </Link>
+                {is('superadmin', 'admin', 'manager', 'accountant') && (
+                  <Link
+                    to="/dashboard?tab=finance"
+                    className={`dual-sub-link ${isDashboardTabActive('finance') ? 'active' : ''}`}
+                  >
+                    <span>Finance &amp; Revenue</span>
+                  </Link>
+                )}
+                {is('superadmin', 'admin', 'manager', 'kitchen_staff') && (
+                  <Link
+                    to="/dashboard?tab=inventory"
+                    className={`dual-sub-link ${isDashboardTabActive('inventory') ? 'active' : ''}`}
+                  >
+                    <span>Inventory &amp; Stock</span>
+                  </Link>
+                )}
+                {is('superadmin', 'admin', 'manager', 'delivery_manager') && (
+                  <Link
+                    to="/dashboard?tab=operations"
+                    className={`dual-sub-link ${isDashboardTabActive('operations') ? 'active' : ''}`}
+                  >
+                    <span>Operations &amp; Dispatch</span>
+                  </Link>
+                )}
+                {is('superadmin', 'admin', 'manager', 'cashier') && (
+                  <Link
+                    to="/dashboard?tab=customers"
+                    className={`dual-sub-link ${isDashboardTabActive('customers') ? 'active' : ''}`}
+                  >
+                    <span>Customer Insights</span>
+                  </Link>
+                )}
+                {is('superadmin', 'admin', 'manager', 'kitchen_staff') && (
+                  <Link
+                    to="/dashboard?tab=ai"
+                    className={`dual-sub-link ${isDashboardTabActive('ai') ? 'active' : ''}`}
+                  >
+                    <span>Chef Bems AI</span>
+                    <span className="sub-badge" style={{ background: '#FEF3C7', color: '#B45309' }}>AI</span>
+                  </Link>
+                )}
+              </>
+            )}
+
+            {/* 2. PRODUCTS */}
+            {activeTab === 'products' && (
+              <>
+                <NavLink to="/products" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>All Products</span>
+                </NavLink>
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/products/add" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Add Product</span>
+                  </NavLink>
+                )}
+                <NavLink to="/products/categories" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Categories</span>
+                </NavLink>
+                <NavLink to="/products/sub-categories" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Sub-Categories</span>
+                </NavLink>
+                <NavLink to="/products/units" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Units of Measure</span>
+                </NavLink>
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/products/brands" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Brands</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/products/variants" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Variants</span>
+                  </NavLink>
+                )}
+                <NavLink to="/products/reviews" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Customer Reviews</span>
+                </NavLink>
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/products/barcode" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Barcode Generator</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/products/export" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Bulk Export</span>
+                  </NavLink>
+                )}
+              </>
+            )}
+
+            {/* 3. INVENTORY */}
+            {activeTab === 'inventory' && (
+              <>
+                <NavLink to="/inventory/stock" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Stock List</span>
+                </NavLink>
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/stock-in" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Stock In (Receiving)</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/stock-out" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Stock Out (Dispatch)</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/adjustment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Adjustments</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/transfer" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Stock Transfer</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/batches" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Batches &amp; Expiry</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/warehouses" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Warehouses</span>
+                  </NavLink>
+                )}
+                <NavLink to="/inventory/alerts" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Low Stock Alerts</span>
+                  <span className="sub-badge" style={{ background: '#FEE2E2', color: '#DC2626' }}>Alert</span>
+                </NavLink>
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/valuation" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Valuation</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/inventory/lost-items" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Lost &amp; Damaged</span>
+                  </NavLink>
+                )}
+              </>
+            )}
+
+            {/* 4. ORDERS */}
+            {activeTab === 'orders' && (
+              <>
+                <NavLink to="/orders" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>All Orders</span>
+                </NavLink>
+                <NavLink to="/orders/invoices" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Invoices</span>
+                </NavLink>
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/orders/refunds" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Refunds &amp; Returns</span>
+                  </NavLink>
+                )}
+              </>
+            )}
+
+            {/* 5. DELIVERIES */}
+            {activeTab === 'deliveries' && (
+              <>
+                <NavLink to="/deliveries/active" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Active Deliveries</span>
+                  <span className="sub-badge" style={{ background: '#EFF6FF', color: '#2563EB' }}>Live</span>
+                </NavLink>
+                <NavLink to="/deliveries/map" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Delivery Map</span>
+                </NavLink>
+                <NavLink to="/deliveries/zones" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Coverage Zones</span>
+                </NavLink>
+                <NavLink to="/deliveries/drivers" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Dispatch Drivers</span>
+                </NavLink>
+              </>
+            )}
+
+            {/* 6. CUSTOMERS */}
+            {activeTab === 'customers' && (
+              <>
+                <NavLink to="/customers" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>All Customers</span>
+                </NavLink>
+                <NavLink to="/customers/loyalty" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Loyalty Rewards</span>
+                </NavLink>
+                <NavLink to="/customers/activity" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Customer Activity</span>
+                </NavLink>
+              </>
+            )}
+
+            {/* 7. STAFF */}
+            {activeTab === 'staff' && (
+              <>
+                <NavLink to="/staff" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Staff Directory</span>
+                </NavLink>
+                <NavLink to="/staff/add" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Add New Staff</span>
+                </NavLink>
+                <NavLink to="/staff/roles" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Roles &amp; Permissions</span>
+                </NavLink>
+                <NavLink to="/staff/attendance" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Attendance</span>
+                </NavLink>
+                <NavLink to="/staff/schedule" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Shift Schedules</span>
+                </NavLink>
+                <NavLink to="/staff/holidays" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Holidays &amp; Leaves</span>
+                </NavLink>
+                <NavLink to="/staff/payroll" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Payroll</span>
+                </NavLink>
+              </>
+            )}
+
+            {/* 8. FINANCE */}
+            {activeTab === 'finance' && (
+              <>
+                <NavLink to="/accounts/overview" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Overview</span>
+                </NavLink>
+                <NavLink to="/accounts/transactions" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>All Transactions</span>
+                </NavLink>
+                <NavLink to="/accounts/income" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Income &amp; Revenue</span>
+                </NavLink>
+                <NavLink to="/accounts/expenses" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Expenses</span>
+                </NavLink>
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/accounts/commissions" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Driver Commissions</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/accounts/bank" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Bank Accounts</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/accounts/transfer" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Money Transfer</span>
+                  </NavLink>
+                )}
+              </>
+            )}
+
+            {/* 9. REPORTS */}
+            {activeTab === 'reports' && (
+              <>
+                <NavLink to="/reports/sales" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Sales Report</span>
+                </NavLink>
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/reports/inventory" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Inventory Report</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/reports/customers" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Customer Report</span>
+                  </NavLink>
+                )}
+                <NavLink to="/reports/expenses" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Expense Report</span>
+                </NavLink>
+                <NavLink to="/reports/finance" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Finance &amp; P&amp;L</span>
+                </NavLink>
+              </>
+            )}
+
+            {/* 10. CHEF BEMS AI */}
+            {activeTab === 'chef' && (
+              <>
+                <NavLink to="/chef-bems/conversations" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Live Conversations</span>
+                  <span className="sub-badge" style={{ background: '#EDE9FE', color: '#7C3AED' }}>AI</span>
+                </NavLink>
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/chef-bems/dietary-rules" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Dietary &amp; Nutrition Rules</span>
+                  </NavLink>
+                )}
+                <NavLink to="/chef-bems/meal-associations" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Meal &amp; Recipe Associations</span>
+                </NavLink>
+              </>
+            )}
+
+            {/* 11. STORES */}
+            {activeTab === 'stores' && (
+              <>
+                <NavLink to="/stores" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>All Store Locations</span>
+                </NavLink>
+                <NavLink to="/stores/add" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Add New Store</span>
+                </NavLink>
+              </>
+            )}
+
+            {/* 12. SETTINGS */}
+            {activeTab === 'settings' && (
+              <>
+                <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>General Store Info</span>
+                </NavLink>
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/pos" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>POS Terminal Config</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/payment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Payment Gateways</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/coupons" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Discounts &amp; Coupons</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/tax" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Tax &amp; VAT</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/currencies" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Currencies</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/invoices" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Invoice Templates</span>
+                  </NavLink>
+                )}
+                <NavLink to="/settings/notifications" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Notifications</span>
+                </NavLink>
+                {is('superadmin', 'admin') && (
+                  <NavLink to="/settings/manager" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Manager Permissions</span>
+                  </NavLink>
+                )}
+              </>
+            )}
+
+          </div>
+
         </div>
 
       </div>

@@ -29,7 +29,7 @@ export default function PageWrapper({ children, noFooter = false }) {
       }}
     >
       <Navbar />
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: noFooter ? "hidden" : undefined }}>
         {children}
       </main>
       {!noFooter && <Footer />}

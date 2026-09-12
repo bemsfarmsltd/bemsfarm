@@ -97,6 +97,7 @@ import ExpenseReport   from './pages/reports/ExpenseReport'
 import FinanceReport   from './pages/reports/FinanceReport'
 
 // Settings
+import SettingsAll          from './pages/settings/SettingsAll'
 import GeneralSettings      from './pages/settings/GeneralSettings'
 import NotificationSettings from './pages/settings/NotificationSettings'
 import PaymentSettings      from './pages/settings/PaymentSettings'
@@ -226,6 +227,8 @@ function App() {
 
             {/* ── Settings ── */}
             <Route element={<ProtectedRoute allowedRoles={SETTINGS_ROLES} />}>
+              <Route path="/settings"               element={<SettingsAll />} />
+              <Route path="/settings/all"           element={<SettingsAll />} />
               <Route path="/settings/general"       element={<GeneralSettings />} />
               <Route path="/settings/notifications" element={<NotificationSettings />} />
               <Route path="/settings/payment"       element={<PaymentSettings />} />
