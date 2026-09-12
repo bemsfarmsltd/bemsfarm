@@ -22,3 +22,7 @@ npm-debug.log*
 # Claude Code personal/local overrides
 .claude/settings.local.json
 .claude/worktrees/
+# Local API docs and PDFs
+*.pdf
+CLIENT_API_SPECIFICATION.md
+scripts/generate_pdf.js
