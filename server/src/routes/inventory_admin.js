@@ -468,6 +468,104 @@ router.get("/movements", requireRole("superadmin", "manager", "admin", "storekee
 });
 
 // ════════════════════════════════════════════════════════════════════════════
+// STOCK IN / RECEIVING  ──  POST /api/admin/inventory/stock-in
+// ════════════════════════════════════════════════════════════════════════════
+router.post(
+  "/stock-in",
+  requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const {
+        product_id,
+        warehouse_id,
+        quantity,
+        unit_cost,
+        supplier,
+        supplier_id,
+        reference,
+        notes,
+        batch_no,
+        expiry_date,
+      } = req.body;
+
+      const qty = parseInt(quantity);
+      if (!product_id || isNaN(qty) || qty <= 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Valid product_id and quantity (> 0) required" });
+      }
+
+      const prodRes = await client.query(
+        "SELECT id, name, sku, stock, cost_price, unit_price FROM products WHERE id = $1 FOR UPDATE",
+        [parseInt(product_id)]
+      );
+      if (!prodRes.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      const prod = prodRes.rows[0];
+      const cost = unit_cost !== undefined && unit_cost !== null && !isNaN(parseFloat(unit_cost))
+        ? parseFloat(unit_cost)
+        : parseFloat(prod.cost_price || 0);
+
+      const ref = reference?.trim() || `SI-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const stockChange = await applyStockChange(client, {
+        productId: parseInt(product_id),
+        warehouseId: warehouse_id ? parseInt(warehouse_id) : null,
+        type: "stock_in",
+        delta: qty,
+        reference: ref,
+        reason: supplier ? `Intake from ${supplier}` : "Direct Stock In / Harvest Intake",
+        notes: notes || null,
+        unitCost: cost,
+        userId: req.user.id,
+      });
+
+      let createdBatch = null;
+      if (batch_no?.trim()) {
+        const batchRes = await client.query(
+          `INSERT INTO batch_management
+             (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, supplier_id, notes, received_at, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+           RETURNING *`,
+          [
+            parseInt(product_id),
+            warehouse_id ? parseInt(warehouse_id) : null,
+            batch_no.trim(),
+            qty,
+            cost,
+            expiry_date || null,
+            supplier_id ? parseInt(supplier_id) : null,
+            notes || null,
+          ]
+        );
+        createdBatch = batchRes.rows[0];
+      }
+
+      await client.query("COMMIT");
+
+      res.status(201).json({
+        success: true,
+        message: `Stock received: +${qty} units for "${prod.name}"`,
+        movement_id: stockChange.movement_id,
+        before_qty: stockChange.before_qty,
+        after_qty: stockChange.after_qty,
+        batch: createdBatch,
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
+
+// ════════════════════════════════════════════════════════════════════════════
 // STOCK ADJUSTMENT  ──  POST /api/admin/inventory/adjust
 // ════════════════════════════════════════════════════════════════════════════
 router.post(

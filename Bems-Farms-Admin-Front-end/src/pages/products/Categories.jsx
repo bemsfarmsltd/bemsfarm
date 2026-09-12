@@ -1,138 +1,217 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import api from '../../lib/api'
 import ImportModal from '../../components/ImportModal'
 
-// ── Code generator ───────────────────────────────────────────────────────────
-function genCode(name, existingCodes = []) {
+const IMPORT_FIELDS = [
+  { key: 'name', label: 'Category Name', required: true },
+  { key: 'code', label: 'Category Code', required: false },
+  { key: 'description', label: 'Description', required: false },
+  { key: 'status', label: 'Status', required: false, hint: 'active | inactive' },
+]
+
+function genCode(name) {
   const slug = name.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3).padEnd(3, 'X')
-  let n = 1, code
-  do { code = `CAT-${slug}-${String(n).padStart(3,'0')}`; n++ }
-  while (existingCodes.includes(code))
-  return code
+  const rand = Math.floor(100 + Math.random() * 900)
+  return `CAT-${slug}-${rand}`
 }
 
-// ── Import field definitions ─────────────────────────────────────────────────
-const IMPORT_FIELDS = [
-  { key:'name',   label:'Name',   required:true  },
-  { key:'status', label:'Status', required:false },
-]
-
-// ── Mock data ─────────────────────────────────────────────────────────────────
-const MOCK = [
-  { id:1, name:'Meals',          code:'CAT-MEA-001', products:12, status:'active',   created:'2026-01-15' },
-  { id:2, name:'Seafood',        code:'CAT-SEA-001', products:8,  status:'active',   created:'2026-01-15' },
-  { id:3, name:'Meat',           code:'CAT-MEA-002', products:6,  status:'active',   created:'2026-01-15' },
-  { id:4, name:'Grains & Carbs', code:'CAT-GRA-001', products:15, status:'active',   created:'2026-01-15' },
-  { id:5, name:'Vegetables',     code:'CAT-VEG-001', products:9,  status:'active',   created:'2026-01-20' },
-  { id:6, name:'Dairy & Eggs',   code:'CAT-DAI-001', products:7,  status:'active',   created:'2026-01-20' },
-  { id:7, name:'Beverages',      code:'CAT-BEV-001', products:5,  status:'inactive', created:'2026-02-01' },
-  { id:8, name:'Fresh Farm',     code:'CAT-FRE-001', products:11, status:'active',   created:'2026-02-01' },
-]
-
-const BLANK = { name:'', code:'', products:0, status:'active' }
-
 export default function Categories() {
-  const [items, setItems]           = useState(MOCK)
-  const [search, setSearch]         = useState('')
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
-  const [activeModal, setActiveModal] = useState(null)  // 'form' | 'delete' | 'import'
-  const [editItem, setEditItem]     = useState(null)
-  const [form, setForm]             = useState(BLANK)
 
-  // Auto-generate code when name changes (add only)
-  useEffect(() => {
-    if (!editItem && form.name.trim()) {
-      setForm(f => ({ ...f, code: genCode(f.name, items.map(i => i.code)) }))
+  // Modals
+  const [activeModal, setActiveModal] = useState(null) // 'form' | 'delete' | 'import'
+  const [editItem, setEditItem] = useState(null)
+  const [deleteItem, setDeleteItem] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  const [form, setForm] = useState({
+    name: '',
+    code: '',
+    description: '',
+    status: 'active',
+  })
+
+  const fetchCategories = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/config/categories')
+      if (res.data?.categories) {
+        setCategories(res.data.categories)
+      }
+    } catch (err) {
+      toast.error('Failed to load categories')
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
-  }, [form.name])  // eslint-disable-line
+  }, [])
 
-  const filtered = useMemo(() => items.filter(r => {
-    const m = r.name.toLowerCase().includes(search.toLowerCase()) ||
-              r.code.toLowerCase().includes(search.toLowerCase())
-    return m && (filterStatus === 'all' || r.status === filterStatus)
-  }), [items, search, filterStatus])
+  useEffect(() => {
+    fetchCategories()
+  }, [fetchCategories])
 
-  const stats = useMemo(() => ({
-    total:    items.length,
-    active:   items.filter(i => i.status === 'active').length,
-    inactive: items.filter(i => i.status === 'inactive').length,
-    products: items.reduce((s, i) => s + i.products, 0),
-  }), [items])
-
-  // ── Modal helpers ────────────────────────────────────────────────────────
   function openAdd() {
     setEditItem(null)
-    setForm({ ...BLANK, code: genCode('', items.map(i => i.code)) })
+    setForm({ name: '', code: genCode('NEW'), description: '', status: 'active' })
     setActiveModal('form')
   }
-  function openEdit(r) { setEditItem(r); setForm({ ...r }); setActiveModal('form') }
-  function openDelete(r) { setEditItem(r); setActiveModal('delete') }
-  function closeModal() { setActiveModal(null); setEditItem(null) }
 
-  function saveForm(e) {
-    e.preventDefault()
-    if (editItem) {
-      setItems(prev => prev.map(r => r.id === editItem.id ? { ...r, ...form } : r))
-    } else {
-      const code = form.code || genCode(form.name, items.map(i => i.code))
-      setItems(prev => [...prev, { id: Math.max(...prev.map(r=>r.id))+1, ...form, code, products:0, created: new Date().toISOString().slice(0,10) }])
-    }
-    closeModal()
-  }
-
-  function confirmDelete() {
-    setItems(prev => prev.filter(r => r.id !== editItem.id))
-    closeModal()
-  }
-
-  function handleImport(rows) {
-    const existingCodes = items.map(i => i.code)
-    const today = new Date().toISOString().slice(0,10)
-    const newItems = rows.map((row, idx) => {
-      const name = row.name?.trim() || `Imported ${idx + 1}`
-      const code = genCode(name, [...existingCodes])
-      existingCodes.push(code)
-      return {
-        id: Math.max(...items.map(i=>i.id), 0) + idx + 1,
-        name, code,
-        products: 0,
-        status: row.status?.toLowerCase() === 'inactive' ? 'inactive' : 'active',
-        created: today,
-      }
+  function openEdit(c) {
+    setEditItem(c)
+    setForm({
+      name: c.name || '',
+      code: c.code || genCode(c.name || 'CAT'),
+      description: c.description || '',
+      status: c.status || 'active',
     })
-    setItems(prev => [...prev, ...newItems])
-    closeModal()
+    setActiveModal('form')
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  function openDelete(c) {
+    setDeleteItem(c)
+    setActiveModal('delete')
+  }
+
+  function closeModal() {
+    setActiveModal(null)
+    setEditItem(null)
+    setDeleteItem(null)
+  }
+
+  async function handleSave(e) {
+    e.preventDefault()
+    if (!form.name.trim()) return toast.error('Category name is required')
+
+    setSaving(true)
+    try {
+      const payload = {
+        name: form.name.trim(),
+        code: form.code?.trim() || genCode(form.name),
+        description: form.description?.trim() || null,
+        status: form.status || 'active',
+      }
+
+      if (editItem) {
+        await api.put(`/admin/config/categories/${editItem.id}`, payload)
+        toast.success(`Category "${form.name}" updated!`)
+      } else {
+        await api.post('/admin/config/categories', payload)
+        toast.success(`Category "${form.name}" created!`)
+      }
+
+      closeModal()
+      fetchCategories()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save category')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteItem) return
+    setSaving(true)
+    try {
+      await api.delete(`/admin/config/categories/${deleteItem.id}`)
+      toast.success(`Category "${deleteItem.name}" deleted!`)
+      closeModal()
+      fetchCategories()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Cannot delete category in use')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleImport(rows) {
+    setSaving(true)
+    let count = 0
+    for (const r of rows) {
+      if (r.name?.trim()) {
+        try {
+          await api.post('/admin/config/categories', {
+            name: r.name.trim(),
+            code: r.code?.trim() || genCode(r.name),
+            description: r.description?.trim() || null,
+            status: r.status?.trim() || 'active',
+          })
+          count++
+        } catch {
+          // continue
+        }
+      }
+    }
+    toast.success(`Imported ${count} categories!`)
+    setActiveModal(null)
+    setSaving(false)
+    fetchCategories()
+  }
+
+  const filtered = categories.filter((c) => {
+    const q = search.toLowerCase()
+    const matchSearch = c.name?.toLowerCase().includes(q) || c.code?.toLowerCase().includes(q)
+    const matchStatus = filterStatus === 'all' || c.status === filterStatus
+    return matchSearch && matchStatus
+  })
+
+  const stats = {
+    total: categories.length,
+    active: categories.filter((c) => c.status === 'active').length,
+    inactive: categories.filter((c) => c.status === 'inactive').length,
+    products: categories.reduce((sum, c) => sum + (parseInt(c.products) || 0), 0),
+  }
+
   return (
     <div className="container-fluid">
-      <div className="gap-2 page-heading mb-3">
-        <h6 className="flex-grow-1 mb-0">Categories</h6>
-        <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><a href="#">Products</a></li>
-          <li className="breadcrumb-item active">Categories</li>
-        </ul>
+      {/* Header */}
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row d-flex align-items-md-center justify-content-between">
+        <div>
+          <h6 className="flex-grow-1 mb-0 fw-bold">Product Categories</h6>
+          <ul className="breadcrumb flex-shrink-0 mb-0">
+            <li className="breadcrumb-item"><Link to="/products">Products</Link></li>
+            <li className="breadcrumb-item active">Categories</li>
+          </ul>
+        </div>
+        <div className="d-flex gap-2">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+            onClick={() => setActiveModal('import')}>
+            <i className="ri-upload-cloud-line"></i> Bulk Import
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm"
+            onClick={openAdd}>
+            <i className="ri-add-line"></i> + Add Category
+          </button>
+        </div>
       </div>
 
-      {/* Stat cards */}
+      {/* Stat Cards */}
       <div className="row g-3 mb-4">
         {[
-          { label:'Total Categories', value:stats.total,    icon:'ri-price-tag-3-line',     color:'#405189', filter:'all'      },
-          { label:'Active',           value:stats.active,   icon:'ri-checkbox-circle-line', color:'#0ab39c', filter:'active'   },
-          { label:'Inactive',         value:stats.inactive, icon:'ri-close-circle-line',    color:'#f7b84b', filter:'inactive' },
-          { label:'Total Products',   value:stats.products, icon:'ri-box-3-line',           color:'#299cdb', filter:'all'      },
-        ].map(c => (
+          { label: 'Total Categories', value: stats.total, icon: 'ri-folder-line', color: '#405189' },
+          { label: 'Active Categories', value: stats.active, icon: 'ri-checkbox-circle-line', color: '#0ab39c' },
+          { label: 'Inactive Categories', value: stats.inactive, icon: 'ri-close-circle-line', color: '#f06548' },
+          { label: 'Total Products Assigned', value: stats.products, icon: 'ri-box-3-line', color: '#299cdb' },
+        ].map((c) => (
           <div className="col-6 col-xl-3" key={c.label}>
-            <div className="card mb-0 cursor-pointer" style={{ borderLeft:`3px solid ${c.color}` }}
-              onClick={() => setFilterStatus(c.filter)}>
+            <div className="card mb-0 shadow-sm border-0" style={{ borderLeft: `3px solid ${c.color}` }}>
               <div className="card-body d-flex align-items-center gap-3 py-3">
-                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width:44, height:44, background:`${c.color}1a` }}>
-                  <i className={`${c.icon} fs-20`} style={{ color:c.color }}></i>
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: 44, height: 44, background: `${c.color}1a` }}>
+                  <i className={`${c.icon} fs-20`} style={{ color: c.color }}></i>
                 </div>
                 <div>
-                  <div className="fw-bold fs-18" style={{ color:c.color }}>{c.value}</div>
-                  <div className="text-muted" style={{ fontSize:12 }}>{c.label}</div>
+                  <div className="fs-20 fw-bold" style={{ color: c.color }}>{c.value}</div>
+                  <div className="text-muted fs-12">{c.label}</div>
                 </div>
               </div>
             </div>
@@ -140,156 +219,218 @@ export default function Categories() {
         ))}
       </div>
 
-      {/* Table card */}
-      <div className="card">
-        <div className="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
-          <div className="position-relative">
-            <input className="form-control ps-9" placeholder="Search categories…" value={search}
-              onChange={e => setSearch(e.target.value)} style={{ minWidth:220 }} />
-            <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
+      {/* Table Card */}
+      <div className="card shadow-sm border-0">
+        <div className="card-body">
+          <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+            <div className="search-box flex-grow-1" style={{ maxWidth: 300 }}>
+              <div className="position-relative">
+                <input
+                  type="text"
+                  className="form-control form-control-sm ps-4"
+                  placeholder="Search categories..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <i className="ri-search-line position-absolute top-50 start-0 translate-middle-y ms-2 text-muted" style={{ fontSize: 14 }}></i>
+              </div>
+            </div>
+
+            <div className="d-flex align-items-center gap-1">
+              <button
+                type="button"
+                className={`btn btn-sm ${filterStatus === 'all' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => setFilterStatus('all')}>
+                All ({categories.length})
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${filterStatus === 'active' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => setFilterStatus('active')}>
+                Active
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${filterStatus === 'inactive' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => setFilterStatus('inactive')}>
+                Inactive
+              </button>
+            </div>
           </div>
-          <div className="d-flex gap-2 ms-auto flex-wrap">
-            <select className="form-select" style={{ width:'auto' }} value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-            <button className="btn btn-outline-secondary d-flex align-items-center gap-1"
-              onClick={() => setActiveModal('import')}>
-              <i className="ri-upload-cloud-2-line"></i> Import
-            </button>
-            <button className="btn btn-primary d-flex align-items-center gap-1" onClick={openAdd}>
-              <i className="ri-add-line"></i> Add Category
-            </button>
-          </div>
-        </div>
-        <div className="card-body pt-0">
+
           <div className="table-responsive">
-            <table className="table align-middle text-nowrap mb-0">
-              <thead>
-                <tr className="bg-light border-bottom">
-                  <th className="fw-medium text-muted">Category</th>
-                  <th className="fw-medium text-muted">Code</th>
-                  <th className="fw-medium text-muted">Products</th>
-                  <th className="fw-medium text-muted">Status</th>
-                  <th className="fw-medium text-muted">Created</th>
-                  <th className="fw-medium text-muted">Action</th>
+            <table className="table table-hover align-middle mb-0">
+              <thead className="table-light">
+                <tr>
+                  <th>Category Name</th>
+                  <th>Code</th>
+                  <th>Description</th>
+                  <th className="text-center">Assigned Products</th>
+                  <th className="text-center">Status</th>
+                  <th className="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 && (
-                  <tr><td colSpan={6} className="text-center py-5 text-muted">
-                    <i className="ri-price-tag-3-line fs-2 d-block mb-2"></i>No categories found
-                  </td></tr>
-                )}
-                {filtered.map(r => (
-                  <tr key={r.id}>
-                    <td className="fw-medium">{r.name}</td>
-                    <td><code style={{ fontSize:12 }}>{r.code}</code></td>
-                    <td>
-                      <span className="badge bg-light text-dark border">{r.products}</span>
-                    </td>
-                    <td>
-                      <span className={`badge ${r.status === 'active' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}`}>
-                        {r.status === 'active' ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="text-muted">{r.created}</td>
-                    <td>
-                      <div className="d-flex gap-1">
-                        <button className="btn btn-sm btn-soft-primary px-2" onClick={() => openEdit(r)}>
-                          <i className="ri-pencil-line"></i>
-                        </button>
-                        <button className="btn btn-sm btn-soft-danger px-2" onClick={() => openDelete(r)}>
-                          <i className="ri-delete-bin-line"></i>
-                        </button>
-                      </div>
+                {loading ? (
+                  <tr>
+                    <td colSpan="6" className="text-center py-5">
+                      <div className="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+                      <span className="text-muted">Loading categories...</span>
                     </td>
                   </tr>
-                ))}
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="text-center py-5 text-muted">
+                      <i className="ri-folder-open-line fs-32 text-secondary mb-2 d-block"></i>
+                      No categories found. Click <strong>"+ Add Category"</strong> to create one.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((c) => (
+                    <tr key={c.id}>
+                      <td className="fw-semibold text-dark">
+                        <i className="ri-folder-3-fill me-2 text-primary opacity-75"></i>
+                        {c.name}
+                      </td>
+                      <td><code className="text-primary">{c.code || `CAT-${c.id}`}</code></td>
+                      <td className="text-muted fs-13">{c.description || '—'}</td>
+                      <td className="text-center fw-bold">
+                        <span className="badge bg-light text-dark">{c.products || 0} products</span>
+                      </td>
+                      <td className="text-center">
+                        <span className={`badge ${c.status === 'active' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}`}>
+                          {c.status || 'active'}
+                        </span>
+                      </td>
+                      <td className="text-end">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-secondary me-1 py-1 px-2"
+                          onClick={() => openEdit(c)}
+                          title="Edit">
+                          <i className="ri-edit-line"></i>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger py-1 px-2"
+                          onClick={() => openDelete(c)}
+                          title="Delete">
+                          <i className="ri-delete-bin-line"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
-          </div>
-          <div className="mt-3 text-muted" style={{ fontSize:13 }}>
-            Showing {filtered.length} of {items.length} categories
           </div>
         </div>
       </div>
 
-      {/* ── ADD / EDIT MODAL ─────────────────────────────────── */}
+      {/* Add / Edit Category Modal */}
       {activeModal === 'form' && (
-        <>
-          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
-            <div className="modal-dialog modal-dialog-centered">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h6 className="modal-title">{editItem ? 'Edit Category' : 'Add New Category'}</h6>
-                  <button className="btn-close" onClick={closeModal}></button>
-                </div>
-                <div className="modal-body">
-                  <form onSubmit={saveForm}>
-                    <div className="mb-3">
-                      <label className="form-label fw-medium">Category Name <span className="text-danger">*</span></label>
-                      <input className="form-control" required value={form.name}
-                        onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                        placeholder="e.g., Fresh Produce" />
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label fw-medium">
-                        Code <span className="text-muted fw-normal">(auto-generated)</span>
-                      </label>
-                      <input className="form-control bg-light" readOnly value={form.code}
-                        placeholder="Type name above to generate code" />
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label fw-medium">Status</label>
-                      <select className="form-select" value={form.status}
-                        onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                      </select>
-                    </div>
-                    <div className="d-flex gap-2 mt-4">
-                      <button type="button" className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
-                      <button type="submit" className="btn btn-primary w-100">
-                        {editItem ? 'Save Changes' : 'Add Category'}
-                      </button>
-                    </div>
-                  </form>
-                </div>
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">
+                  {editItem ? `Edit Category: ${editItem.name}` : 'Add New Category'}
+                </h5>
+                <button type="button" className="btn-close" onClick={closeModal}></button>
               </div>
-            </div>
-          </div>
-          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
-        </>
-      )}
+              <form onSubmit={handleSave}>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Category Name <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Fresh Poultry & Eggs"
+                      value={form.name}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setForm((f) => ({
+                          ...f,
+                          name: val,
+                          code: !editItem ? genCode(val) : f.code,
+                        }))
+                      }}
+                      required
+                    />
+                  </div>
 
-      {/* ── DELETE MODAL ─────────────────────────────────────── */}
-      {activeModal === 'delete' && (
-        <>
-          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
-            <div className="modal-dialog modal-dialog-centered modal-sm">
-              <div className="modal-content p-4 text-center">
-                <div className="d-flex justify-content-center mb-3">
-                  <div className="rounded-circle bg-danger-subtle d-flex align-items-center justify-content-center" style={{ width:56, height:56 }}>
-                    <i className="ri-delete-bin-line text-danger fs-22"></i>
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Category Code</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. CAT-PLT-001"
+                      value={form.code}
+                      onChange={(e) => setForm({ ...form, code: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Description</label>
+                    <textarea
+                      className="form-control"
+                      rows="2"
+                      placeholder="Short description for this category..."
+                      value={form.description}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    ></textarea>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">Status</label>
+                    <select
+                      className="form-select"
+                      value={form.status}
+                      onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                      <option value="active">Active (Visible)</option>
+                      <option value="inactive">Inactive (Hidden)</option>
+                    </select>
                   </div>
                 </div>
-                <h6 className="mb-1">Delete Category?</h6>
-                <p className="text-muted mb-4" style={{ fontSize:13 }}>{editItem?.name}</p>
-                <div className="d-flex gap-2">
-                  <button className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
-                  <button className="btn btn-danger w-100" onClick={confirmDelete}>Delete</button>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-light" onClick={closeModal}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" disabled={saving}>
+                    {saving ? 'Saving...' : editItem ? 'Update Category' : 'Save Category'}
+                  </button>
                 </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {activeModal === 'delete' && deleteItem && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold text-danger">Delete Category</h5>
+                <button type="button" className="btn-close" onClick={closeModal}></button>
+              </div>
+              <div className="modal-body">
+                <p>Are you sure you want to delete category <strong>"{deleteItem.name}"</strong>?</p>
+                <p className="text-muted fs-13 mb-0">
+                  Note: Categories with assigned products cannot be deleted until those products are moved or deleted.
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-light" onClick={closeModal}>Cancel</button>
+                <button type="button" className="btn btn-danger" onClick={confirmDelete} disabled={saving}>
+                  {saving ? 'Deleting...' : 'Confirm Delete'}
+                </button>
               </div>
             </div>
           </div>
-          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
-        </>
+        </div>
       )}
 
-      {/* ── IMPORT MODAL ─────────────────────────────────────── */}
+      {/* Import Wizard */}
       {activeModal === 'import' && (
         <ImportModal
           entityName="Categories"
