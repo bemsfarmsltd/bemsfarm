@@ -294,16 +294,36 @@ body.sidebar-condensed .main-topbar {
   border-radius: 9999px !important;
   font-size: 0.78rem !important;
   font-weight: 700 !important;
-  padding: 0.4rem 0.85rem !important;
+  padding: 0.42rem 0.95rem !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 0.4rem !important;
-  transition: all 0.2s ease !important;
+  gap: 0.45rem !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Hero Quick Action Amber Pill */
+.btn-amber-bf,
+.topbar-action-pill.btn-amber-bf {
+  background: linear-gradient(135deg, #F59E0B 0%, #E08705 50%, #C97204 100%) !important;
+  background-color: #F59E0B !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 3px 10px rgba(217, 119, 6, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  font-weight: 600 !important;
+}
+
+.btn-amber-bf:hover,
+.topbar-action-pill.btn-amber-bf:hover {
+  background: linear-gradient(135deg, #E08705 0%, #C97204 50%, #A85D02 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 6px 18px rgba(217, 119, 6, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  transform: translateY(-1.5px);
 }
 
 /* ══════════════════════════════════════════════════════════════════
    GLOBAL BRAND BUTTON DESIGN SYSTEM (NO TEMPLATE ORANGE)
    Executive Forest Emerald (#143C2D / #1B5E3F) + Golden Amber Highlights
+   Crafted with tactile 3D bevels, multi-stop gradients & luminous elevation
    ══════════════════════════════════════════════════════════════════ */
 
 /* 1. PRIMARY BUTTONS (.btn-primary) */
@@ -311,13 +331,14 @@ body.sidebar-condensed .main-topbar {
 .btn-primary-bf,
 button.btn-primary,
 a.btn-primary {
-  background: linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
-  background-color: #143C2D !important;
-  border-color: #143C2D !important;
+  background: linear-gradient(135deg, #103B2C 0%, #164C39 50%, #1A5943 100%) !important;
+  background-color: #103B2C !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
   color: #FFFFFF !important;
-  box-shadow: 0 2px 8px rgba(20, 60, 45, 0.22), 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 3px 8px rgba(16, 59, 44, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -1px 0 rgba(0, 0, 0, 0.15) !important;
   font-weight: 600 !important;
   letter-spacing: 0.01em !important;
+  border-radius: 8px !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
@@ -327,22 +348,22 @@ button.btn-primary:hover,
 a.btn-primary:hover,
 .btn-primary:focus,
 .btn-primary-bf:focus {
-  background: linear-gradient(135deg, #0B281B 0%, #143C2D 100%) !important;
-  background-color: #0B281B !important;
-  border-color: #0B281B !important;
+  background: linear-gradient(135deg, #0D3225 0%, #134332 50%, #17503B 100%) !important;
+  background-color: #0D3225 !important;
+  border-color: rgba(52, 211, 153, 0.6) !important;
   color: #FFFFFF !important;
-  box-shadow: 0 4px 14px rgba(20, 60, 45, 0.35) !important;
-  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(16, 59, 44, 0.38), 0 0 14px rgba(16, 185, 129, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  transform: translateY(-1.5px);
 }
 
 .btn-primary:active,
 .btn-primary-bf:active,
 .btn-primary.active {
-  background: #071F14 !important;
-  border-color: #071F14 !important;
+  background: #09261B !important;
+  border-color: #09261B !important;
   color: #FFFFFF !important;
-  transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(20, 60, 45, 0.2) !important;
+  transform: translateY(0.5px);
+  box-shadow: 0 1px 3px rgba(16, 59, 44, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
 }
 
 .btn-primary:disabled,
@@ -359,19 +380,21 @@ a.btn-primary:hover,
 .btn-sub-primary,
 .btn-soft-primary {
   background-color: #EAF5EF !important;
-  border: 1px solid #C8E6D5 !important;
-  color: #143C2D !important;
+  border: 1px solid #B8E2CB !important;
+  color: #103B2C !important;
   font-weight: 600 !important;
-  transition: all 0.18s ease !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(16, 59, 44, 0.06) !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .btn-sub-primary:hover,
 .btn-soft-primary:hover {
-  background: linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
-  border-color: #143C2D !important;
+  background: linear-gradient(135deg, #103B2C 0%, #164C39 100%) !important;
+  border-color: #103B2C !important;
   color: #FFFFFF !important;
-  box-shadow: 0 3px 10px rgba(20, 60, 45, 0.25) !important;
-  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 59, 44, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-1.5px);
 }
 
 /* 3. OUTLINE PRIMARY BUTTONS (.btn-outline-primary) */
@@ -380,16 +403,17 @@ a.btn-primary:hover,
   border: 1.5px solid #143C2D !important;
   color: #143C2D !important;
   font-weight: 600 !important;
-  transition: all 0.18s ease !important;
+  border-radius: 8px !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .btn-outline-primary:hover,
 .btn-outline-primary:focus {
-  background: linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
-  border-color: #143C2D !important;
+  background: linear-gradient(135deg, #103B2C 0%, #164C39 100%) !important;
+  border-color: #103B2C !important;
   color: #FFFFFF !important;
-  box-shadow: 0 3px 10px rgba(20, 60, 45, 0.25) !important;
-  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 59, 44, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-1.5px);
 }
 
 /* 4. SECONDARY & SUB-SECONDARY BUTTONS */
@@ -397,12 +421,17 @@ a.btn-primary:hover,
   background-color: #475569 !important;
   border-color: #475569 !important;
   color: #FFFFFF !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 6px rgba(71, 85, 105, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transition: all 0.18s ease !important;
 }
 
 .btn-secondary:hover {
   background-color: #334155 !important;
   border-color: #334155 !important;
   color: #FFFFFF !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(71, 85, 105, 0.3) !important;
 }
 
 .btn-sub-secondary,
@@ -411,6 +440,8 @@ a.btn-primary:hover,
   border: 1px solid #CBD5E1 !important;
   color: #334155 !important;
   font-weight: 600 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
   transition: all 0.18s ease !important;
 }
 
@@ -419,23 +450,26 @@ a.btn-primary:hover,
   background-color: #F8FAFC !important;
   border-color: #94A3B8 !important;
   color: #0F172A !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08) !important;
+  transform: translateY(-1px);
 }
 
 /* 5. DANGER & SUB-DANGER BUTTONS */
 .btn-danger {
   background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%) !important;
-  border-color: #DC2626 !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
   color: #FFFFFF !important;
-  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25) !important;
+  box-shadow: 0 3px 8px rgba(220, 38, 38, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  border-radius: 8px !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .btn-danger:hover {
   background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%) !important;
   border-color: #991B1B !important;
   color: #FFFFFF !important;
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35) !important;
-  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.38) !important;
+  transform: translateY(-1.5px);
 }
 
 .btn-sub-danger,
@@ -444,6 +478,7 @@ a.btn-primary:hover,
   border: 1px solid #FECACA !important;
   color: #DC2626 !important;
   font-weight: 600 !important;
+  border-radius: 8px !important;
   transition: all 0.18s ease !important;
 }
 
@@ -459,14 +494,26 @@ a.btn-primary:hover,
 /* 6. SUCCESS & SUB-SUCCESS BUTTONS */
 .btn-success {
   background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-  border-color: #059669 !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
   color: #FFFFFF !important;
+  box-shadow: 0 3px 8px rgba(5, 150, 105, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  border-radius: 8px !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, #047857 0%, #065F46 100%) !important;
+  border-color: rgba(110, 231, 183, 0.4) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.38) !important;
+  transform: translateY(-1.5px);
 }
 
 .btn-sub-success {
   background-color: #ECFDF5 !important;
   border: 1px solid #A7F3D0 !important;
   color: #059669 !important;
+  border-radius: 8px !important;
 }
 
 .btn-sub-success:hover {
@@ -477,16 +524,19 @@ a.btn-primary:hover,
 /* 7. WARNING & SUB-WARNING BUTTONS (AMBER ACCENTS) */
 .btn-warning {
   background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
-  border-color: #D97706 !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
   color: #FFFFFF !important;
-  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25) !important;
+  box-shadow: 0 3px 8px rgba(245, 158, 11, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  border-radius: 8px !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .btn-warning:hover {
   background: linear-gradient(135deg, #D97706 0%, #B45309 100%) !important;
   border-color: #B45309 !important;
   color: #FFFFFF !important;
-  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.38) !important;
+  transform: translateY(-1.5px);
 }
 
 .btn-sub-warning {
