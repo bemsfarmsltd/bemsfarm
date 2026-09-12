@@ -111,27 +111,26 @@ export default function Sidebar() {
         width: 415px;
       }
       
-      /* ── COLUMN 1: SLEEK EMERALD GLASSMORPHISM RAIL ── */
+      /* ── COLUMN 1: BRAND FOREST GREEN RAIL WITH SCULPTED CONTOURS ── */
       .sidebar-icon-rail {
         position: absolute;
         left: 0;
         top: 0;
         bottom: 0;
         width: 68px;
-        background: linear-gradient(180deg, rgba(8, 31, 22, 0.96) 0%, rgba(14, 53, 36, 0.93) 50%, rgba(10, 38, 27, 0.96) 100%);
-        backdrop-filter: blur(20px) saturate(180%);
-        -webkit-backdrop-filter: blur(20px) saturate(180%);
-        border-right: 1px solid rgba(16, 185, 129, 0.2);
+        background: linear-gradient(180deg, #061A12 0%, #0D2E20 30%, #143C2D 65%, #081F16 100%);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 0 0 20px 0;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        padding: 0 0.5rem 0.75rem;
+        padding: 0 0 0.75rem 0.5rem;
         z-index: 20;
         overflow-x: hidden;
         overflow-y: auto;
         transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease;
         scrollbar-width: none;
-        box-shadow: 4px 0 24px rgba(7, 31, 21, 0.22);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.25);
       }
       .sidebar-icon-rail::-webkit-scrollbar { display: none; }
       
@@ -151,6 +150,7 @@ export default function Sidebar() {
         align-items: center;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         margin-bottom: 0.65rem;
+        padding-right: 0.5rem;
       }
       
       .rail-brand-btn {
@@ -351,6 +351,7 @@ export default function Sidebar() {
         width: 200px;
         background: #FAFAF8;
         border-right: 1px solid #E5E7EB;
+        border-radius: 0 0 20px 0;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
         display: flex;
         flex-direction: column;
