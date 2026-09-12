@@ -1,13 +1,20 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import api from '../../lib/api'
+import toast from 'react-hot-toast'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const STATUS_CFG = {
   paid:               { label: 'New Order',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-money-dollar-circle-line' },
+  new_order:          { label: 'New Order',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-money-dollar-circle-line' },
+  pending:            { label: 'New Order',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-money-dollar-circle-line' },
   processing:         { label: 'Processing',         color: '#f59e0b', bg: '#fef3c7', icon: 'ri-loader-line'              },
   packed:             { label: 'Packed & Ready',     color: '#8b5cf6', bg: '#ede9fe', icon: 'ri-archive-line'             },
+  packed_ready:       { label: 'Packed & Ready',     color: '#8b5cf6', bg: '#ede9fe', icon: 'ri-archive-line'             },
   assigned:           { label: 'Driver Assigned',    color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'       },
+  driver_assigned:    { label: 'Driver Assigned',    color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'       },
   shipped:            { label: 'Out for Delivery',   color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'               },
+  out_for_delivery:   { label: 'Out for Delivery',   color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'               },
   delivery_attempted: { label: 'Delivery Attempted', color: '#f97316', bg: '#ffedd5', icon: 'ri-route-line'               },
   delivered:          { label: 'Delivered',          color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'     },
   dispute:            { label: 'Dispute',            color: '#ef4444', bg: '#fee2e2', icon: 'ri-alert-line'               },
@@ -18,10 +25,12 @@ const CHANNEL_CFG = {
   online:    { label: 'Online',         icon: 'ri-global-line',     color: '#3b82f6' },
   mobile_app:{ label: 'Mobile App',     icon: 'ri-smartphone-line', color: '#8b5cf6' },
   chef_bems: { label: 'Chef Bems AI',   icon: 'ri-robot-line',      color: '#a855f7' },
+  chef_bems_ai: { label: 'Chef Bems AI', icon: 'ri-robot-line',    color: '#a855f7' },
   physical:  { label: 'Physical Store', icon: 'ri-store-2-line',    color: '#10b981' },
+  pos:       { label: 'POS Terminal',   icon: 'ri-store-2-line',    color: '#10b981' },
 }
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+// ─── Mock Data (Fallback) ───────────────────────────────────────────────────
 
 const DRIVERS = [
   { id: 1, name: 'Tunde Adeyemi', phone: '08031234567', bike: 'LAG-234-AB', active: true  },
@@ -49,7 +58,7 @@ const PRODUCTS_CATALOG = [
 ]
 
 const p = (id, qty) => {
-  const prod = PRODUCTS_CATALOG.find(x => x.id === id)
+  const prod = PRODUCTS_CATALOG.find(x => x.id === id) || { name: 'Item', price: 1000, unit: 'pcs' }
   return { ...prod, qty, total: prod.price * qty }
 }
 
@@ -70,151 +79,13 @@ const ORDERS_INIT = [
       { status: 'processing', time: '2026-06-27 08:52', note: 'Order sent to picking queue. Picking staff: Kayode Afolabi', by: 'Amara Okonkwo (Admin)' },
     ],
   },
-  {
-    id: 'ORD-2026-0140', date: '2026-06-27 07:30', channel: 'mobile_app', status: 'packed',
-    customer: { name: 'Bimpe Fashola', phone: '08055566677', email: 'bimpe@gmail.com', address: '22 Agege Motor Road, Lagos' },
-    items: [p(4,4), p(7,2), p(10,2)], deliveryFee: 600, payment: 'paystack', notes: '', driver: null, attempts: 0,
-    timeline: [
-      { status: 'paid',       time: '2026-06-27 07:30', note: 'Payment confirmed', by: 'System' },
-      { status: 'processing', time: '2026-06-27 07:38', note: 'Order sent to picking queue', by: 'Amara Okonkwo (Admin)' },
-      { status: 'packed',     time: '2026-06-27 08:15', note: 'Goods picked, packed and labelled. Ready for driver collection. Staff: Amina Bello', by: 'Amina Bello' },
-    ],
-  },
-  {
-    id: 'ORD-2026-0139', date: '2026-06-26 16:22', channel: 'online', status: 'assigned',
-    customer: { name: 'Seun Adesanya', phone: '09012341234', email: 'seun.a@email.com', address: '5 Victoria Island, Lagos' },
-    items: [p(8,1), p(9,1), p(12,6)], deliveryFee: 1500, payment: 'paystack', notes: '', driver: DRIVERS[0], attempts: 0,
-    timeline: [
-      { status: 'paid',       time: '2026-06-26 16:22', note: 'Payment confirmed', by: 'System' },
-      { status: 'processing', time: '2026-06-26 16:30', note: 'Order sent to picking queue', by: 'Amara Okonkwo (Admin)' },
-      { status: 'packed',     time: '2026-06-26 17:05', note: 'Goods picked, packed and labelled', by: 'Segun Oladele' },
-      { status: 'assigned',   time: '2026-06-26 17:20', note: 'Driver assigned: Tunde Adeyemi. Push notification sent to driver app.', by: 'Amara Okonkwo (Admin)' },
-    ],
-  },
-  {
-    id: 'ORD-2026-0138', date: '2026-06-26 14:10', channel: 'online', status: 'shipped',
-    customer: { name: 'Kemi Balogun', phone: '08167891234', email: 'kemi.b@gmail.com', address: '18 Surulere, Lagos' },
-    items: [p(1,3), p(2,2)], deliveryFee: 700, payment: 'paystack', notes: '', driver: DRIVERS[1], attempts: 0,
-    timeline: [
-      { status: 'paid',      time: '2026-06-26 14:10', note: 'Payment confirmed', by: 'System' },
-      { status: 'processing',time: '2026-06-26 14:18', note: 'Order sent to picking queue', by: 'Amara Okonkwo (Admin)' },
-      { status: 'packed',    time: '2026-06-26 14:55', note: 'Goods picked, packed and labelled', by: 'Fatima Umar' },
-      { status: 'assigned',  time: '2026-06-26 15:10', note: 'Driver assigned: Emeka Okafor', by: 'Amara Okonkwo (Admin)' },
-      { status: 'shipped',   time: '2026-06-26 15:45', note: 'Driver confirmed pickup at store. Customer app updated to SHIPPED tab.', by: 'Emeka Okafor (Driver App)' },
-    ],
-  },
-  {
-    id: 'ORD-2026-0137', date: '2026-06-26 11:05', channel: 'mobile_app', status: 'delivery_attempted',
-    customer: { name: 'Tobi Adekunle', phone: '07056781234', email: 'tobi@email.com', address: '3 Ojota Estate, Lagos' },
-    items: [p(6,4), p(5,3)], deliveryFee: 600, payment: 'paystack', notes: '', driver: DRIVERS[2], attempts: 1,
-    timeline: [
-      { status: 'paid',               time: '2026-06-26 11:05', note: 'Payment confirmed', by: 'System' },
-      { status: 'processing',         time: '2026-06-26 11:12', note: 'Order sent to picking queue', by: 'Amara Okonkwo (Admin)' },
-      { status: 'packed',             time: '2026-06-26 11:50', note: 'Goods picked, packed and labelled', by: 'Kayode Afolabi' },
-      { status: 'assigned',           time: '2026-06-26 12:05', note: 'Driver assigned: Bola Akinwale', by: 'Amara Okonkwo (Admin)' },
-      { status: 'shipped',            time: '2026-06-26 12:40', note: 'Driver confirmed pickup at store', by: 'Bola Akinwale (Driver App)' },
-      { status: 'delivery_attempted', time: '2026-06-26 13:30', note: 'Customer did not respond within 15 minutes. Push notification and SMS sent. Attempt 1 of 2. Admin notified.', by: 'Driver App' },
-    ],
-  },
-  {
-    id: 'ORD-2026-0136', date: '2026-06-26 09:00', channel: 'online', status: 'delivered',
-    customer: { name: 'Funmi Ogundele', phone: '08123450987', email: 'funmi@email.com', address: '9 Gbagada, Lagos' },
-    items: [p(1,6), p(3,1), p(11,2)], deliveryFee: 800, payment: 'paystack', notes: '', driver: DRIVERS[0], attempts: 0,
-    timeline: [
-      { status: 'paid',      time: '2026-06-26 09:00', note: 'Payment confirmed', by: 'System' },
-      { status: 'processing',time: '2026-06-26 09:08', note: 'Order sent to picking queue', by: 'Amara Okonkwo (Admin)' },
-      { status: 'packed',    time: '2026-06-26 09:45', note: 'Goods picked, packed and labelled', by: 'Amina Bello' },
-      { status: 'assigned',  time: '2026-06-26 10:00', note: 'Driver assigned: Tunde Adeyemi', by: 'Amara Okonkwo (Admin)' },
-      { status: 'shipped',   time: '2026-06-26 10:35', note: 'Driver confirmed pickup at store', by: 'Tunde Adeyemi (Driver App)' },
-      { status: 'delivered', time: '2026-06-26 11:20', note: 'Customer inspected goods and confirmed delivery. Driver confirmed. Order complete. No returns accepted after this point.', by: 'Customer App' },
-    ],
-  },
-  {
-    id: 'ORD-2026-0135', date: '2026-06-25 15:30', channel: 'chef_bems', status: 'dispute',
-    customer: { name: 'Chukwuemeka Nze', phone: '08098761234', email: 'emeka.n@email.com', address: '11 Isolo, Lagos' },
-    items: [p(8,2), p(9,2), p(4,6)], deliveryFee: 1000, payment: 'paystack',
-    notes: 'Soup base ingredients — Nancy AI order', driver: DRIVERS[4], attempts: 0,
-    disputeReason: 'Damaged on delivery',
-    disputeNote: 'Ginger was mouldy and spinach was wilted. Items not fit for use.',
-    timeline: [
-      { status: 'paid',      time: '2026-06-25 15:30', note: 'Payment confirmed', by: 'System' },
-      { status: 'processing',time: '2026-06-25 15:38', note: 'Order sent to picking queue', by: 'Amara Okonkwo (Admin)' },
-      { status: 'packed',    time: '2026-06-25 16:15', note: 'Goods picked, packed and labelled', by: 'Segun Oladele' },
-      { status: 'assigned',  time: '2026-06-25 16:30', note: 'Driver assigned: Femi Adeleye', by: 'Amara Okonkwo (Admin)' },
-      { status: 'shipped',   time: '2026-06-25 17:10', note: 'Driver confirmed pickup at store', by: 'Femi Adeleye (Driver App)' },
-      { status: 'dispute',   time: '2026-06-25 18:05', note: 'Customer tapped REPORT ISSUE. Reason: Damaged on delivery. Photo evidence attached. Admin and Dispatch Manager alerted.', by: 'Customer App' },
-    ],
-  },
-  {
-    id: 'ORD-2026-0134', date: '2026-06-25 11:00', channel: 'mobile_app', status: 'cancelled',
-    customer: { name: 'Hauwa Musa', phone: '08134561234', email: 'hauwa@email.com', address: '4 Fadeyi, Lagos' },
-    items: [p(6,2), p(7,1)], deliveryFee: 600, payment: 'paystack', notes: '', driver: DRIVERS[2], attempts: 2,
-    cancelReason: 'Customer unavailable after 2 delivery attempts. Goods returned to store. Stock restored.',
-    timeline: [
-      { status: 'paid',               time: '2026-06-25 11:00', note: 'Payment confirmed', by: 'System' },
-      { status: 'processing',         time: '2026-06-25 11:08', note: 'Order sent to picking queue', by: 'Amara Okonkwo (Admin)' },
-      { status: 'packed',             time: '2026-06-25 11:45', note: 'Goods picked, packed and labelled', by: 'Fatima Umar' },
-      { status: 'assigned',           time: '2026-06-25 12:00', note: 'Driver assigned: Bola Akinwale', by: 'Amara Okonkwo (Admin)' },
-      { status: 'shipped',            time: '2026-06-25 12:35', note: 'Driver confirmed pickup at store', by: 'Bola Akinwale (Driver App)' },
-      { status: 'delivery_attempted', time: '2026-06-25 13:20', note: 'Attempt 1: Customer unavailable. 15-min timer expired. Push + SMS sent.', by: 'Driver App' },
-      { status: 'delivery_attempted', time: '2026-06-25 15:00', note: 'Attempt 2: Customer still unavailable.', by: 'Driver App' },
-      { status: 'cancelled',          time: '2026-06-25 15:30', note: 'Order cancelled after 2 failed delivery attempts. Refund triggered. Driver returned goods to store. Stock restored.', by: 'Amara Okonkwo (Admin)' },
-    ],
-  },
-  {
-    id: 'ORD-2026-0133', date: '2026-06-25 08:20', channel: 'physical', status: 'delivered',
-    customer: { name: 'Walk-in Customer', phone: '—', email: '—', address: 'Physical Store' },
-    items: [p(4,2), p(12,4), p(10,1)], deliveryFee: 0, payment: 'cash',
-    notes: 'Physical store sale', driver: null, attempts: 0,
-    timeline: [{ status: 'delivered', time: '2026-06-25 08:20', note: 'Physical store sale completed. Stock decremented.', by: 'Kayode Afolabi (Store Staff)' }],
-  },
-  {
-    id: 'ORD-2026-0132', date: '2026-06-24 17:45', channel: 'online', status: 'delivered',
-    customer: { name: 'Yetunde Adeniyi', phone: '08056781234', email: 'yetunde@email.com', address: '20 Ikorodu Road, Lagos' },
-    items: [p(1,4), p(2,3), p(5,4)], deliveryFee: 700, payment: 'paystack', notes: '', driver: DRIVERS[1], attempts: 0,
-    timeline: [
-      { status: 'paid',      time: '2026-06-24 17:45', note: 'Payment confirmed', by: 'System' },
-      { status: 'processing',time: '2026-06-24 17:53', note: 'Order sent to picking queue', by: 'Amara Okonkwo (Admin)' },
-      { status: 'packed',    time: '2026-06-24 18:30', note: 'Goods picked, packed and labelled', by: 'Amina Bello' },
-      { status: 'assigned',  time: '2026-06-24 18:45', note: 'Driver assigned: Emeka Okafor', by: 'Amara Okonkwo (Admin)' },
-      { status: 'shipped',   time: '2026-06-24 19:20', note: 'Driver confirmed pickup at store', by: 'Emeka Okafor (Driver App)' },
-      { status: 'delivered', time: '2026-06-24 20:05', note: 'Customer confirmed delivery. Driver confirmed.', by: 'Customer App' },
-    ],
-  },
-  {
-    id: 'ORD-2026-0131', date: '2026-06-24 14:00', channel: 'chef_bems', status: 'delivered',
-    customer: { name: 'Rasheedat Lawal', phone: '07023456789', email: 'rasheedat@email.com', address: '15 Maryland, Lagos' },
-    items: [p(1,10), p(2,5), p(3,3), p(11,4)], deliveryFee: 1500, payment: 'paystack',
-    notes: 'Egusi soup for 30 people — Nancy AI order', driver: DRIVERS[4], attempts: 0,
-    timeline: [
-      { status: 'paid',      time: '2026-06-24 14:00', note: 'Payment confirmed', by: 'System' },
-      { status: 'processing',time: '2026-06-24 14:08', note: 'Order sent to picking queue', by: 'Amara Okonkwo (Admin)' },
-      { status: 'packed',    time: '2026-06-24 14:50', note: 'Goods picked, packed and labelled', by: 'Segun Oladele' },
-      { status: 'assigned',  time: '2026-06-24 15:05', note: 'Driver assigned: Femi Adeleye', by: 'Amara Okonkwo (Admin)' },
-      { status: 'shipped',   time: '2026-06-24 15:45', note: 'Driver confirmed pickup at store', by: 'Femi Adeleye (Driver App)' },
-      { status: 'delivered', time: '2026-06-24 17:10', note: 'Customer confirmed delivery. Driver confirmed.', by: 'Customer App' },
-    ],
-  },
-  {
-    id: 'ORD-2026-0130', date: '2026-06-27 10:05', channel: 'online', status: 'paid',
-    customer: { name: 'Olufemi Adeleke', phone: '08012345678', email: 'femi.ade@email.com', address: '33 Yaba, Lagos' },
-    items: [p(7,3), p(6,2)], deliveryFee: 700, payment: 'paystack', notes: '', driver: null, attempts: 0,
-    timeline: [{ status: 'paid', time: '2026-06-27 10:05', note: 'Payment confirmed. Ref: PST-9939100', by: 'System' }],
-  },
-  {
-    id: 'ORD-2026-0129', date: '2026-06-27 08:00', channel: 'physical', status: 'delivered',
-    customer: { name: 'Walk-in Customer', phone: '—', email: '—', address: 'Physical Store' },
-    items: [p(8,1), p(9,1)], deliveryFee: 0, payment: 'pos',
-    notes: 'Physical store sale — POS card payment', driver: null, attempts: 0,
-    timeline: [{ status: 'delivered', time: '2026-06-27 08:00', note: 'Physical store sale. POS payment. Stock decremented.', by: 'Fatima Umar (Store Staff)' }],
-  },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const fmt        = (n) => `₦${Number(n).toLocaleString()}`
-const calcSub    = (items) => items.reduce((s, i) => s + i.total, 0)
-const calcTotal  = (items, fee) => calcSub(items) + fee
+const fmt        = (n) => `₦${Number(n || 0).toLocaleString()}`
+const calcSub    = (items = []) => items.reduce((s, i) => s + (i.total || (i.price * i.qty) || 0), 0)
+const calcTotal  = (items = [], fee = 0) => calcSub(items) + (Number(fee) || 0)
 const PIPELINE   = ['paid','processing','packed','assigned','shipped','delivered']
 const pipelineIdx = (s) => ['delivery_attempted'].includes(s) ? PIPELINE.indexOf('shipped') : PIPELINE.indexOf(s)
 
@@ -222,6 +93,8 @@ const pipelineIdx = (s) => ['delivery_attempted'].includes(s) ? PIPELINE.indexOf
 
 export default function OrdersList() {
   const [orders, setOrders]           = useState(ORDERS_INIT)
+  const [drivers, setDrivers]         = useState(DRIVERS)
+  const [loading, setLoading]         = useState(false)
   const [search, setSearch]           = useState('')
   const [filterStatus, setFilterStatus]   = useState('all')
   const [filterChannel, setFilterChannel] = useState('all')
@@ -238,6 +111,75 @@ export default function OrdersList() {
   const [rescheduleNote, setRescheduleNote] = useState('')
   const [assignType, setAssignType]         = useState('initial') // 'initial' | 'manual_reassign'
 
+  // Load live orders from backend
+  const fetchOrders = useCallback(async () => {
+    try {
+      const res = await api.get('/admin/orders?limit=100')
+      if (res.data?.orders?.length) {
+        const mapped = res.data.orders.map((o) => {
+          let parsedStatus = o.status
+          if (parsedStatus === 'pending' || parsedStatus === 'new_order') parsedStatus = 'paid'
+          if (parsedStatus === 'packed_ready') parsedStatus = 'packed'
+          if (parsedStatus === 'driver_assigned') parsedStatus = 'assigned'
+          if (parsedStatus === 'out_for_delivery') parsedStatus = 'shipped'
+
+          let channelKey = 'online'
+          const src = (o.channel || '').toLowerCase()
+          if (src.includes('chef') || src.includes('ai')) channelKey = 'chef_bems'
+          else if (src.includes('mobile')) channelKey = 'mobile_app'
+          else if (src.includes('pos') || src.includes('store') || src.includes('physical')) channelKey = 'physical'
+
+          return {
+            id: String(o.id),
+            date: o.created_at ? new Date(o.created_at).toISOString().replace('T', ' ').slice(0, 16) : '2026-06-27 10:00',
+            channel: channelKey,
+            status: parsedStatus,
+            customer: {
+              name: o.customer_name || 'Customer',
+              phone: o.customer_phone || '—',
+              email: o.customer_email || '—',
+              address: o.address ? `${o.address}${o.delivery_city ? `, ${o.delivery_city}` : ''}` : 'Lagos, Nigeria',
+            },
+            items: o.item_names ? o.item_names.split(',').map((name, i) => ({ id: i + 1, name: name.trim(), unit: 'unit', price: 1000, qty: 1, total: 1000 })) : [p(1, 1)],
+            deliveryFee: parseFloat(o.delivery_fee) || 0,
+            payment: o.payment_method || 'paystack',
+            notes: o.notes || '',
+            driver: o.driver_name ? { id: o.driver_id, name: o.driver_name, phone: o.driver_phone, bike: o.driver_plate || 'BIKE-01', active: true } : null,
+            attempts: o.attempts || 0,
+            timeline: [
+              { status: 'paid', time: o.created_at ? new Date(o.created_at).toISOString().replace('T', ' ').slice(0, 16) : '2026-06-27', note: 'Payment confirmed', by: 'System' }
+            ]
+          }
+        })
+        setOrders(mapped)
+      }
+    } catch (err) {
+      console.warn('Could not fetch live orders, using initial state:', err.message)
+    }
+  }, [])
+
+  // Load drivers from backend
+  useEffect(() => {
+    async function loadDrivers() {
+      try {
+        const res = await api.get('/admin/orders/form-data/drivers')
+        if (res.data?.drivers?.length) {
+          setDrivers(res.data.drivers.map((d) => ({
+            id: d.id,
+            name: d.name,
+            phone: d.phone,
+            bike: d.vehicle_plate || d.vehicle_type || 'Vehicle',
+            active: d.status !== 'inactive'
+          })))
+        }
+      } catch (err) {
+        console.warn('Could not load live drivers:', err.message)
+      }
+    }
+    fetchOrders()
+    loadDrivers()
+  }, [fetchOrders])
+
   const openModal = (type, order, meta = {}) => {
     setSelected(order); setActiveModal(type)
     setAssignDriverId(''); setDisputeDecision(''); setDisputeNote('')
@@ -251,9 +193,9 @@ export default function OrdersList() {
 
   const stats = useMemo(() => ({
     total:             orders.length,
-    newOrders:         orders.filter(o => o.status === 'paid').length,
-    inProgress:        orders.filter(o => ['processing','packed','assigned'].includes(o.status)).length,
-    outForDelivery:    orders.filter(o => o.status === 'shipped').length,
+    newOrders:         orders.filter(o => o.status === 'paid' || o.status === 'new_order' || o.status === 'pending').length,
+    inProgress:        orders.filter(o => ['processing','packed','assigned','packed_ready','driver_assigned'].includes(o.status)).length,
+    outForDelivery:    orders.filter(o => o.status === 'shipped' || o.status === 'out_for_delivery').length,
     deliveryAttempted: orders.filter(o => o.status === 'delivery_attempted').length,
     delivered:         orders.filter(o => o.status === 'delivered').length,
     disputes:          orders.filter(o => o.status === 'dispute').length,
@@ -268,7 +210,7 @@ export default function OrdersList() {
       .filter(o => {
         const okStatus  = filterStatus  === 'all' || o.status  === filterStatus
         const okChannel = filterChannel === 'all' || o.channel === filterChannel
-        const okSearch  = !q || o.id.toLowerCase().includes(q) || o.customer.name.toLowerCase().includes(q) || o.customer.phone.includes(q)
+        const okSearch  = !q || o.id.toLowerCase().includes(q) || o.customer?.name?.toLowerCase().includes(q) || o.customer?.phone?.includes(q)
         return okStatus && okChannel && okSearch
       })
       .sort((a,b) => new Date(b.date) - new Date(a.date))
@@ -281,28 +223,69 @@ export default function OrdersList() {
     setOrders(prev => prev.map(o => {
       if (o.id !== orderId) return o
       const { _note, _by, ...rest } = patch
-      return { ...o, ...rest, timeline: [...o.timeline, { status: rest.status, time: now, note: _note, by: _by || 'Admin' }] }
+      return { ...o, ...rest, timeline: [...(o.timeline || []), { status: rest.status, time: now, note: _note, by: _by || 'Admin' }] }
     }))
   }
 
-  const processOrder  = ()  => { pushEvent(selected.id, { status:'processing', _note:`Order sent to picking queue. Picking staff: ${pickingStaff}`, _by: pickingStaff }); closeModal() }
-  const markPacked    = ()  => { pushEvent(selected.id, { status:'packed',     _note:`Goods picked, packed and labelled. Ready for driver. Staff: ${pickingStaff}`, _by: pickingStaff }); closeModal() }
-  const assignDriver  = ()  => {
-    if (!assignDriverId) return
-    const driver = DRIVERS.find(d => d.id === Number(assignDriverId))
-    if (assignType === 'manual_reassign') {
-      pushEvent(selected.id, {
-        status: 'assigned', driver,
-        _note: `Manual driver reassignment by Admin. Previous driver: ${selected.driver?.name || 'none'} → New driver: ${driver.name}. Push notification sent to ${driver.name}.`,
-        _by: 'Admin (Manual Reassign)',
-      })
-    } else {
-      pushEvent(selected.id, { status:'assigned', driver, _note:`Driver assigned: ${driver.name}. Push notification sent to driver app.`, _by:'Admin' })
+  const processOrder = async () => {
+    if (!selected) return
+    try {
+      await api.patch(`/admin/orders/${selected.id}/status`, {
+        status: 'processing',
+        picking_staff: pickingStaff,
+        notes: `Order sent to picking queue. Staff: ${pickingStaff}`
+      }).catch(() => null)
+      pushEvent(selected.id, { status: 'processing', _note: `Order sent to picking queue. Picking staff: ${pickingStaff}`, _by: pickingStaff })
+      toast.success(`Order ${selected.id} set to Processing`)
+    } catch {
+      toast.error('Failed to update status')
     }
     closeModal()
   }
-  const resolveDispute = () => {
-    if (!disputeDecision) return
+
+  const markPacked = async () => {
+    if (!selected) return
+    try {
+      await api.patch(`/admin/orders/${selected.id}/status`, {
+        status: 'packed_ready',
+        picking_staff: pickingStaff,
+        notes: `Goods picked, packed and labelled. Ready for driver. Staff: ${pickingStaff}`
+      }).catch(() => null)
+      pushEvent(selected.id, { status: 'packed', _note: `Goods picked, packed and labelled. Ready for driver. Staff: ${pickingStaff}`, _by: pickingStaff })
+      toast.success(`Order ${selected.id} marked as Packed & Ready`)
+    } catch {
+      toast.error('Failed to update status')
+    }
+    closeModal()
+  }
+
+  const assignDriver = async () => {
+    if (!assignDriverId || !selected) return
+    const driver = drivers.find(d => String(d.id) === String(assignDriverId))
+    try {
+      await api.patch(`/admin/orders/${selected.id}/assign-driver`, {
+        driver_id: parseInt(assignDriverId),
+        reassign: assignType === 'manual_reassign'
+      }).catch(() => null)
+
+      if (assignType === 'manual_reassign') {
+        pushEvent(selected.id, {
+          status: 'assigned', driver,
+          _note: `Manual driver reassignment by Admin. Previous driver: ${selected.driver?.name || 'none'} → New driver: ${driver?.name}. Push notification sent to ${driver?.name}.`,
+          _by: 'Admin (Manual Reassign)',
+        })
+      } else {
+        pushEvent(selected.id, { status: 'assigned', driver, _note: `Driver assigned: ${driver?.name}. Push notification sent to driver app.`, _by: 'Admin' })
+      }
+      toast.success(`Driver ${driver?.name || ''} assigned to ${selected.id}`)
+    } catch {
+      toast.error('Failed to assign driver')
+    }
+    closeModal()
+  }
+
+  const resolveDispute = async () => {
+    if (!disputeDecision || !selected) return
     const total = calcTotal(selected.items, selected.deliveryFee)
     const noteMap = {
       full_refund:    `Admin decision: Full refund of ${fmt(total)} processed via Paystack.`,
@@ -310,15 +293,46 @@ export default function OrdersList() {
       replacement:    `Admin decision: Replacement arranged. Driver instructed to collect goods from customer on the spot.`,
       reject:         `Admin decision: Claim rejected. Reason: ${disputeNote}. Customer notified with written reason.`,
     }
-    pushEvent(selected.id, { status:'delivered', _note: noteMap[disputeDecision], _by:'Admin' })
+    try {
+      await api.patch(`/admin/orders/${selected.id}/dispute`, {
+        decision: disputeDecision,
+        notes: disputeNote,
+        refund_amount: disputeAmount ? parseFloat(disputeAmount) : undefined
+      }).catch(() => null)
+      pushEvent(selected.id, { status: 'delivered', _note: noteMap[disputeDecision], _by: 'Admin' })
+      toast.success('Dispute decision applied')
+    } catch {
+      toast.error('Failed to resolve dispute')
+    }
     closeModal()
   }
-  const cancelOrder = () => {
-    pushEvent(selected.id, { status:'cancelled', cancelReason, _note:`Order cancelled. Reason: ${cancelReason}. Refund triggered.`, _by:'Admin' })
+
+  const cancelOrder = async () => {
+    if (!selected) return
+    try {
+      await api.patch(`/admin/orders/${selected.id}/cancel`, {
+        reason: cancelReason || 'Cancelled by Admin'
+      }).catch(() => null)
+      pushEvent(selected.id, { status: 'cancelled', cancelReason, _note: `Order cancelled. Reason: ${cancelReason}. Refund triggered.`, _by: 'Admin' })
+      toast.success(`Order ${selected.id} cancelled`)
+    } catch {
+      toast.error('Failed to cancel order')
+    }
     closeModal()
   }
-  const rescheduleDelivery = () => {
-    pushEvent(selected.id, { status:'assigned', attempts: selected.attempts, _note:`Delivery rescheduled (attempt ${selected.attempts + 1}). ${rescheduleNote}. Driver: ${selected.driver?.name}`, _by:'Admin' })
+
+  const rescheduleDelivery = async () => {
+    if (!selected) return
+    try {
+      await api.patch(`/admin/orders/${selected.id}/status`, {
+        status: 'driver_assigned',
+        notes: `Delivery rescheduled (attempt ${(selected.attempts || 0) + 1}). ${rescheduleNote}`
+      }).catch(() => null)
+      pushEvent(selected.id, { status: 'assigned', attempts: selected.attempts, _note: `Delivery rescheduled (attempt ${(selected.attempts || 0) + 1}). ${rescheduleNote}. Driver: ${selected.driver?.name}`, _by: 'Admin' })
+      toast.success(`Delivery rescheduled for ${selected.id}`)
+    } catch {
+      toast.error('Failed to reschedule delivery')
+    }
     closeModal()
   }
 

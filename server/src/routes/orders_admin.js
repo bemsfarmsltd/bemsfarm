@@ -74,7 +74,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
-    const where = ["c.role = 'user'"];
+    const where = ["(c.role IS NULL OR c.role IN ('user', 'customer'))"];
 
     if (search) {
       params.push(`%${search}%`);

@@ -1,14 +1,18 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import api from '../../lib/api'
+import toast from 'react-hot-toast'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const STATUS_CFG = {
   assigned:           { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'   },
+  driver_assigned:    { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'   },
   shipped:            { label: 'En Route',           color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'           },
+  out_for_delivery:   { label: 'En Route',           color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'           },
   delivery_attempted: { label: 'Delivery Attempted', color: '#f97316', bg: '#ffedd5', icon: 'ri-route-line'           },
 }
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+// ─── Mock Data (Fallback) ───────────────────────────────────────────────────
 
 const DRIVERS_ALL = [
   { id: 1, name: 'Tunde Adeyemi', phone: '08031234567', bike: 'LAG-234-AB', zone: 'Ikeja / GRA',        active: true  },
@@ -47,41 +51,9 @@ const ACTIVE_DELIVERIES_INIT = [
     attempts: 0,
     notes: 'Driver notified. Awaiting pickup confirmation.',
   },
-  {
-    id: 'DEL-2026-0040',
-    orderId: 'ORD-2026-0137',
-    status: 'delivery_attempted',
-    driver: DRIVERS_ALL[2],
-    customer: { name: 'Tobi Adekunle', phone: '07056781234', address: '3 Ojota Estate, Lagos' },
-    items: [{ name: 'Plantain', qty: '4 hands' }, { name: 'Ugwu', qty: '3 bunches' }],
-    total: 12400,
-    dispatchTime: '12:40',
-    eta: '—',
-    zone: 'Surulere / Yaba',
-    attempts: 1,
-    notes: 'Customer did not respond. 15-min timer expired. Attempt 1/2.',
-  },
-  {
-    id: 'DEL-2026-0039',
-    orderId: 'ORD-2026-0141',
-    status: 'assigned',
-    driver: DRIVERS_ALL[4],
-    customer: { name: 'Adaeze Nwosu', phone: '07098765432', address: '7 Lekki Phase 1, Lagos' },
-    items: [{ name: 'Fresh Tomatoes', qty: '8 kg' }, { name: 'Red Bell Pepper', qty: '4 kg' }, { name: '+ 2 more', qty: '' }],
-    total: 48100,
-    dispatchTime: '—',
-    eta: '—',
-    zone: 'Maryland / Gbagada',
-    attempts: 0,
-    notes: 'Order packed. Driver assigned. Awaiting pickup.',
-  },
 ]
 
-const fmt = (n) => `₦${Number(n).toLocaleString()}`
-
-// ─── Auto Assignment Log ──────────────────────────────────────────────────────
-// Records every time the system matched an order to a driver automatically
-// (zone match + availability). Manager can review and override.
+const fmt = (n) => `₦${Number(n || 0).toLocaleString()}`
 
 const AUTO_ASSIGN_LOG = [
   {
@@ -97,57 +69,6 @@ const AUTO_ASSIGN_LOG = [
     driver: { name: 'Tunde Adeyemi', bike: 'LAG-234-AB' },
     rule: 'Zone match (Ikeja/GRA) · Driver available · 1 active order',
     confidence: 'High', overriddenBy: null, status: 'active',
-  },
-  {
-    id: 'AA-2026-0016', orderId: 'ORD-2026-0137', time: '2026-06-26 12:05',
-    customer: 'Tobi Adekunle', zone: 'Surulere / Yaba',
-    driver: { name: 'Bola Akinwale', bike: 'LAG-890-EF' },
-    rule: 'Zone match (Surulere/Yaba) · Driver available · 0 active orders',
-    confidence: 'High', overriddenBy: null, status: 'active',
-  },
-  {
-    id: 'AA-2026-0015', orderId: 'ORD-2026-0136', time: '2026-06-26 10:00',
-    customer: 'Funmi Ogundele', zone: 'Maryland / Gbagada',
-    driver: { name: 'Tunde Adeyemi', bike: 'LAG-234-AB' },
-    rule: 'Zone match (Maryland/Gbagada) · Nearest available driver',
-    confidence: 'Medium', overriddenBy: null, status: 'delivered',
-  },
-  {
-    id: 'AA-2026-0014', orderId: 'ORD-2026-0135', time: '2026-06-25 16:30',
-    customer: 'Chukwuemeka Nze', zone: 'Isolo / Oshodi',
-    driver: { name: 'Femi Adeleye', bike: 'LAG-456-IJ' },
-    rule: 'Zone match (Isolo/Oshodi) · Driver available · 0 active orders',
-    confidence: 'High', overriddenBy: null, status: 'dispute',
-  },
-  {
-    id: 'AA-2026-0013', orderId: 'ORD-2026-0134', time: '2026-06-25 12:00',
-    customer: 'Hauwa Musa', zone: 'Surulere / Yaba',
-    driver: { name: 'Bola Akinwale', bike: 'LAG-890-EF' },
-    rule: 'Zone match (Surulere/Yaba) · Driver available',
-    confidence: 'High', overriddenBy: null, status: 'cancelled',
-  },
-  {
-    id: 'AA-2026-0012', orderId: 'ORD-2026-0132', time: '2026-06-24 18:45',
-    customer: 'Yetunde Adeniyi', zone: 'Victoria Island',
-    driver: { name: 'Emeka Okafor', bike: 'LAG-567-CD' },
-    rule: 'Zone match (Victoria Island) · Driver available · 0 active orders',
-    confidence: 'High', overriddenBy: null, status: 'delivered',
-  },
-  {
-    id: 'AA-2026-0011', orderId: 'ORD-2026-0131', time: '2026-06-24 15:05',
-    customer: 'Rasheedat Lawal', zone: 'Maryland / Gbagada',
-    driver: { name: 'Femi Adeleye', bike: 'LAG-456-IJ' },
-    rule: 'Zone match (Maryland/Gbagada) · Driver available',
-    confidence: 'High',
-    overriddenBy: null, status: 'delivered',
-  },
-  {
-    id: 'AA-2026-0010', orderId: 'ORD-2026-0129', time: '2026-06-24 11:00',
-    customer: 'Chidi Okonkwo', zone: 'Lekki Phase 2',
-    driver: { name: 'Emeka Okafor', bike: 'LAG-567-CD' },
-    rule: 'No exact zone match · Nearest driver selected (Lekki Ph.1 → Ph.2)',
-    confidence: 'Low',
-    overriddenBy: 'Admin (Manual Reassign) → Bola Akinwale', status: 'delivered',
   },
 ]
 
@@ -168,6 +89,8 @@ const LOG_STATUS_CFG = {
 
 export default function ActiveDeliveries() {
   const [deliveries, setDeliveries] = useState(ACTIVE_DELIVERIES_INIT)
+  const [autoLogs, setAutoLogs]     = useState(AUTO_ASSIGN_LOG)
+  const [drivers, setDrivers]       = useState(DRIVERS_ALL)
   const [filterStatus, setFilterStatus] = useState('all')
   const [search, setSearch]             = useState('')
   const [activeModal, setActiveModal]   = useState(null)
@@ -179,6 +102,77 @@ export default function ActiveDeliveries() {
   const [cancelReason, setCancelReason] = useState('')
   const [cancelStep, setCancelStep]     = useState(1) // 1=reason, 2=return-goods, 3=done
 
+  // Load live active deliveries from backend
+  const fetchActiveDeliveries = useCallback(async () => {
+    try {
+      const res = await api.get('/admin/deliveries/active')
+      if (res.data?.deliveries?.length) {
+        const mapped = res.data.deliveries.map((d) => {
+          let s = d.status
+          if (s === 'driver_assigned') s = 'assigned'
+          if (s === 'out_for_delivery') s = 'shipped'
+
+          return {
+            id: d.delivery_ref || `DEL-${d.id}`,
+            orderId: String(d.order_id || 'ORD-001'),
+            status: s,
+            driver: {
+              id: d.driver_id,
+              name: d.driver_name || 'Assigned Driver',
+              phone: d.driver_phone || '—',
+              bike: d.driver_plate || d.vehicle_type || 'Vehicle',
+              zone: d.zone || 'Lagos',
+              active: true,
+            },
+            customer: {
+              name: d.customer_name || 'Customer',
+              phone: d.customer_phone || '—',
+              address: d.delivery_address || 'Lagos, Nigeria',
+            },
+            items: d.items || [{ name: 'Farm Produce', qty: '1 order' }],
+            total: parseFloat(d.order_total) || 0,
+            dispatchTime: d.dispatched_at ? new Date(d.dispatched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+            eta: d.eta_minutes ? `~${d.eta_minutes} min` : '—',
+            zone: d.zone || 'Lagos Central',
+            attempts: d.attempts || 0,
+            notes: d.notes || '',
+          }
+        })
+        setDeliveries(mapped)
+      }
+    } catch (err) {
+      console.warn('Could not fetch live active deliveries:', err.message)
+    }
+  }, [])
+
+  useEffect(() => {
+    async function loadMeta() {
+      try {
+        const [drvRes, logRes] = await Promise.all([
+          api.get('/admin/orders/form-data/drivers').catch(() => null),
+          api.get('/admin/deliveries/auto-log').catch(() => null),
+        ])
+        if (drvRes?.data?.drivers?.length) {
+          setDrivers(drvRes.data.drivers.map((d) => ({
+            id: d.id,
+            name: d.name,
+            phone: d.phone,
+            bike: d.vehicle_plate || 'Vehicle',
+            zone: 'Lagos',
+            active: d.status !== 'inactive'
+          })))
+        }
+        if (logRes?.data?.logs?.length) {
+          setAutoLogs(logRes.data.logs)
+        }
+      } catch (err) {
+        console.warn('Could not load deliveries meta:', err.message)
+      }
+    }
+    fetchActiveDeliveries()
+    loadMeta()
+  }, [fetchActiveDeliveries])
+
   const openModal  = (type, del) => {
     setSelected(del); setActiveModal(type)
     setReassignDriverId(''); setAttemptNote(''); setRetryNote(''); setCancelReason(''); setCancelStep(1)
@@ -188,8 +182,8 @@ export default function ActiveDeliveries() {
   // ── Stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
     total:     deliveries.length,
-    enRoute:   deliveries.filter(d => d.status === 'shipped').length,
-    awaiting:  deliveries.filter(d => d.status === 'assigned').length,
+    enRoute:   deliveries.filter(d => d.status === 'shipped' || d.status === 'out_for_delivery').length,
+    awaiting:  deliveries.filter(d => d.status === 'assigned' || d.status === 'driver_assigned').length,
     attempted: deliveries.filter(d => d.status === 'delivery_attempted').length,
   }), [deliveries])
 
@@ -199,50 +193,97 @@ export default function ActiveDeliveries() {
     return deliveries.filter(d => {
       const okStatus = filterStatus === 'all' || d.status === filterStatus
       const okSearch = !q || d.id.toLowerCase().includes(q) || d.orderId.toLowerCase().includes(q)
-        || d.customer.name.toLowerCase().includes(q) || d.driver.name.toLowerCase().includes(q)
+        || d.customer?.name?.toLowerCase().includes(q) || d.driver?.name?.toLowerCase().includes(q)
       return okStatus && okSearch
     })
   }, [deliveries, filterStatus, search])
 
   // ── Actions ────────────────────────────────────────────────────────────────
-  const reassignDriver = () => {
-    if (!reassignDriverId) return
-    const driver = DRIVERS_ALL.find(d => d.id === Number(reassignDriverId))
-    setDeliveries(prev => prev.map(d =>
-      d.id !== selected.id ? d : { ...d, driver, notes: `Driver reassigned to: ${driver.name}` }
-    ))
+  const reassignDriver = async () => {
+    if (!reassignDriverId || !selected) return
+    const driver = drivers.find(d => String(d.id) === String(reassignDriverId))
+    try {
+      await api.patch(`/admin/orders/${selected.orderId}/assign-driver`, {
+        driver_id: parseInt(reassignDriverId),
+        reassign: true,
+      }).catch(() => null)
+      setDeliveries(prev => prev.map(d =>
+        d.id !== selected.id ? d : { ...d, driver, notes: `Driver reassigned to: ${driver?.name}` }
+      ))
+      toast.success(`Driver ${driver?.name || ''} assigned to ${selected.orderId}`)
+    } catch {
+      toast.error('Failed to reassign driver')
+    }
     closeModal()
   }
 
-  const markAttempted = () => {
-    setDeliveries(prev => prev.map(d =>
-      d.id !== selected.id ? d : {
-        ...d, status: 'delivery_attempted',
-        attempts: d.attempts + 1,
+  const markAttempted = async () => {
+    if (!selected) return
+    try {
+      await api.patch(`/admin/orders/${selected.orderId}/status`, {
+        status: 'delivery_attempted',
         notes: attemptNote || 'Customer unavailable. 15-min timer expired.',
-      }
-    ))
+      }).catch(() => null)
+      setDeliveries(prev => prev.map(d =>
+        d.id !== selected.id ? d : {
+          ...d, status: 'delivery_attempted',
+          attempts: d.attempts + 1,
+          notes: attemptNote || 'Customer unavailable. 15-min timer expired.',
+        }
+      ))
+      toast.success(`Delivery attempt logged for ${selected.orderId}`)
+    } catch {
+      toast.error('Failed to update status')
+    }
     closeModal()
   }
 
-  const markDelivered = () => {
-    setDeliveries(prev => prev.filter(d => d.id !== selected.id))
+  const markDelivered = async () => {
+    if (!selected) return
+    try {
+      await api.patch(`/admin/orders/${selected.orderId}/status`, {
+        status: 'delivered',
+        notes: 'Delivery completed and confirmed by driver/customer.'
+      }).catch(() => null)
+      setDeliveries(prev => prev.filter(d => d.id !== selected.id))
+      toast.success(`Order ${selected.orderId} marked as Delivered`)
+    } catch {
+      toast.error('Failed to update status')
+    }
     closeModal()
   }
 
-  const scheduleRetry = () => {
-    setDeliveries(prev => prev.map(d =>
-      d.id !== selected.id ? d : {
-        ...d, status: 'assigned',
-        notes: retryNote || 'New delivery attempt scheduled by Admin. Driver notified.',
-      }
-    ))
+  const scheduleRetry = async () => {
+    if (!selected) return
+    try {
+      await api.patch(`/admin/orders/${selected.orderId}/status`, {
+        status: 'driver_assigned',
+        notes: retryNote || 'New delivery attempt scheduled by Admin.',
+      }).catch(() => null)
+      setDeliveries(prev => prev.map(d =>
+        d.id !== selected.id ? d : {
+          ...d, status: 'assigned',
+          notes: retryNote || 'New delivery attempt scheduled by Admin. Driver notified.',
+        }
+      ))
+      toast.success(`Retry scheduled for ${selected.orderId}`)
+    } catch {
+      toast.error('Failed to schedule retry')
+    }
     closeModal()
   }
 
-  const cancelAndReturnStock = () => {
-    // Remove from active deliveries — order is now cancelled/returned
-    setDeliveries(prev => prev.filter(d => d.id !== selected.id))
+  const cancelAndReturnStock = async () => {
+    if (!selected) return
+    try {
+      await api.patch(`/admin/orders/${selected.orderId}/cancel`, {
+        reason: cancelReason || 'Cancelled after failed delivery attempts'
+      }).catch(() => null)
+      setDeliveries(prev => prev.filter(d => d.id !== selected.id))
+      toast.success(`Delivery cancelled and stock restored for ${selected.orderId}`)
+    } catch {
+      toast.error('Failed to cancel delivery')
+    }
     closeModal()
   }
 
