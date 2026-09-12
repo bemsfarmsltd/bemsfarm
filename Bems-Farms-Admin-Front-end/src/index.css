@@ -746,3 +746,22 @@ a.link-custom-primary {
   color: #be123c !important;
   border: 1px solid #fecdd3 !important;
 }
+
+/* Clickable dashboard stat cards / chart panels that open a detail modal */
+.stats-card-clickable,
+.chart-panel-clickable {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.stats-card-clickable:hover,
+.chart-panel-clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -6px rgba(20, 60, 45, 0.18) !important;
+}
+.stats-card-clickable:focus-visible,
+.chart-panel-clickable:focus-visible {
+  outline: 2px solid #143c2d;
+  outline-offset: 2px;
+}
+.chart-panel-clickable {
+  cursor: pointer;
+}

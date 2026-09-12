@@ -4,6 +4,8 @@ import StatsCard from '../../components/ui/StatsCard'
 import Badge, { statusColor } from '../../components/ui/Badge'
 import PageHeader from '../../components/ui/PageHeader'
 import { Table, Thead, Th, Tbody, Tr, Td } from '../../components/ui/Table'
+import DetailModal from '../../components/ui/DetailModal'
+import DetailTable from '../../components/ui/DetailTable'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../lib/api'
 
@@ -22,6 +24,47 @@ function fmtNaira(v) {
   if (n >= 1_000)     return `₦${(n / 1_000).toFixed(0)}K`
   return `₦${n.toLocaleString()}`
 }
+
+// ── Shared drill-down column presets ──────────────────────────────────────────
+
+const orderColumns = [
+  { key: 'order', label: 'Order', render: (r) => r.order_ref || r.id },
+  { key: 'customer', label: 'Customer', render: (r) => r.customer_name || r.customer || '—' },
+  { key: 'items', label: 'Items', align: 'right', render: (r) => r.item_count ?? r.items ?? '—' },
+  { key: 'total', label: 'Total', align: 'right', render: (r) => fmtNaira(r.total_amount ?? r.total) },
+  { key: 'status', label: 'Status', render: (r) => <Badge label={r.status} color={statusColor(r.status)} /> },
+  { key: 'created_at', label: 'Date', render: (r) => r.created_at ? new Date(r.created_at).toLocaleString() : (r.time_ago || r.time || '—') },
+]
+
+const productSoldColumns = [
+  { key: 'name', label: 'Product', render: (r) => <><p className="fw-medium fs-sm mb-0">{r.name}</p><span className="text-muted fs-xs">{r.sku}</span></> },
+  { key: 'sold', label: 'Units Sold', align: 'right', render: (r) => r.units_sold ?? r.sold ?? r.qty_sold ?? '—' },
+  { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtNaira(r.total_revenue ?? r.revenue) },
+]
+
+const lowStockColumns = [
+  { key: 'name', label: 'Product', render: (r) => r.name },
+  { key: 'sku', label: 'SKU', render: (r) => <span className="badge bg-light text-dark fs-xs">{r.sku}</span> },
+  { key: 'stock', label: 'In Stock', align: 'right', render: (r) => r.stock ?? r.qty },
+  { key: 'reorder', label: 'Reorder At', align: 'right', render: (r) => r.low_stock_threshold ?? r.reorder_qty ?? '—' },
+]
+
+const deliveryColumns = [
+  { key: 'ref', label: 'Ref', render: (r) => r.delivery_ref || r.id },
+  { key: 'customer', label: 'Customer' },
+  { key: 'driver', label: 'Driver', render: (r) => r.driver || '—' },
+  { key: 'zone', label: 'Zone', render: (r) => r.zone || '—' },
+  { key: 'eta', label: 'ETA', align: 'right', render: (r) => r.eta ? `${r.eta} min` : '—' },
+  { key: 'status', label: 'Status', render: (r) => <Badge label={(r.status || '').replace(/_/g, ' ')} color={r.status === 'en_route' ? 'green' : r.status === 'awaiting_pickup' ? 'blue' : 'amber'} /> },
+]
+
+const staffColumns = [
+  { key: 'name', label: 'Name' },
+  { key: 'role', label: 'Role', render: (r) => r.role || '—' },
+  { key: 'shift', label: 'Shift', render: (r) => r.shift || '—' },
+  { key: 'clock_in', label: 'Clock In', render: (r) => r.clock_in ? new Date(r.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—' },
+  { key: 'status', label: 'Status', render: (r) => <Badge label={(r.status || '').replace(/_/g, ' ')} color={r.status === 'present' ? 'green' : r.status === 'absent' ? 'red' : 'amber'} /> },
+]
 
 function useApexChart(ref, optionsFn, deps = []) {
   useEffect(() => {
@@ -67,6 +110,7 @@ function OverviewTab() {
   const [data, setData]     = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]   = useState(false)
+  const [modal, setModal]   = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
@@ -118,6 +162,53 @@ function OverviewTab() {
   const lowStock      = data?.low_stock ?? []
   const activeDeliveries = data?.active_deliveries ?? []
   const aiConvs       = data?.recent_convs ?? []
+  const activeCustomersList = data?.active_customers_list ?? []
+  const staffTodayList = data?.staff_today ?? []
+
+  const openOrders = () => setModal({
+    title: "Recent Orders", subtitle: 'Most recent orders across all channels',
+    icon: 'ri-shopping-cart-2-line', columns: orderColumns, rows: recentOrders,
+  })
+  const openPending = () => setModal({
+    title: 'Pending Orders', subtitle: 'Confirmed / processing — from most recent orders',
+    icon: 'ri-time-line', columns: orderColumns,
+    rows: recentOrders.filter(o => ['new_order', 'processing', 'pending'].includes(o.status)),
+  })
+  const openDeliveries = () => setModal({
+    title: 'Active Deliveries', subtitle: 'Currently dispatched or en route',
+    icon: 'ri-bike-line', columns: deliveryColumns, rows: activeDeliveries,
+  })
+  const openLowStock = () => setModal({
+    title: 'Low Stock Alerts', subtitle: 'At or below reorder threshold',
+    icon: 'ri-alert-line', columns: lowStockColumns, rows: lowStock,
+  })
+  const openActiveCustomers = () => setModal({
+    title: 'Active Customers', subtitle: 'Ordered in the last 30 days, by spend',
+    icon: 'ri-user-3-line',
+    columns: [
+      { key: 'name', label: 'Name' },
+      { key: 'phone', label: 'Phone' },
+      { key: 'orders', label: 'Orders', align: 'right' },
+      { key: 'spent', label: 'Total Spent', align: 'right', render: (r) => fmtNaira(r.spent) },
+    ],
+    rows: activeCustomersList,
+  })
+  const openStaffToday = () => setModal({
+    title: 'Staff on Duty', subtitle: "Today's attendance",
+    icon: 'ri-team-line', columns: staffColumns, rows: staffTodayList,
+  })
+  const openWeekRevenue = () => setModal({
+    title: 'Revenue This Week', subtitle: 'Daily gross receipts',
+    icon: 'ri-line-chart-line',
+    columns: [{ key: 'label', label: 'Day' }, { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtNaira(r.revenue) }],
+    rows: data?.charts?.week_revenue ?? [],
+  })
+  const openWeekOrders = () => setModal({
+    title: 'Orders Per Day', subtitle: 'Volume across the last 7 days',
+    icon: 'ri-bar-chart-grouped-line',
+    columns: [{ key: 'label', label: 'Day' }, { key: 'orders', label: 'Orders', align: 'right' }],
+    rows: data?.charts?.week_orders ?? [],
+  })
 
   const pipelineChips = [
     { label: 'Confirmed',        count: pipeline.confirmed   ?? 0, icon: 'ri-time-line',             bg: '#fef3c7', txt: '#b45309', border: '#fde68a', link: '/orders',                   roles: null },
@@ -133,22 +224,22 @@ function OverviewTab() {
       {/* KPI row */}
       <div className="row g-2 mb-2.5">
         <div className="col-6 col-sm-4 col-xl-2">
-          <StatsCard title="Today's Revenue"   value={fmtNaira(kpis.revenue_today)}         sub={`${kpis.orders_today ?? 0} orders today`}        riIcon="ri-money-dollar-circle-line" color="green" />
+          <StatsCard title="Today's Revenue"   value={fmtNaira(kpis.revenue_today)}         sub={`${kpis.orders_today ?? 0} orders today`}        riIcon="ri-money-dollar-circle-line" color="green" onClick={openOrders} />
         </div>
         <div className="col-6 col-sm-4 col-xl-2">
-          <StatsCard title="Pending Orders"    value={kpis.pending_orders ?? 0}              sub={`${kpis.ready_dispatch ?? 0} ready for dispatch`} riIcon="ri-shopping-cart-2-line"    color="amber" />
+          <StatsCard title="Pending Orders"    value={kpis.pending_orders ?? 0}              sub={`${kpis.ready_dispatch ?? 0} ready for dispatch`} riIcon="ri-shopping-cart-2-line"    color="amber" onClick={openPending} />
         </div>
         <div className="col-6 col-sm-4 col-xl-2">
-          <StatsCard title="Active Deliveries" value={kpis.active_deliveries ?? 0}           sub={`${kpis.en_route ?? 0} en route now`}             riIcon="ri-bike-line"               color="blue" />
+          <StatsCard title="Active Deliveries" value={kpis.active_deliveries ?? 0}           sub={`${kpis.en_route ?? 0} en route now`}             riIcon="ri-bike-line"               color="blue" onClick={openDeliveries} />
         </div>
         <div className="col-6 col-sm-4 col-xl-2">
-          <StatsCard title="Low Stock Alerts"  value={kpis.low_stock_alerts ?? 0}             sub="Action required"                                  riIcon="ri-alert-line"              color="red" />
+          <StatsCard title="Low Stock Alerts"  value={kpis.low_stock_alerts ?? 0}             sub="Action required"                                  riIcon="ri-alert-line"              color="red" onClick={openLowStock} />
         </div>
         <div className="col-6 col-sm-4 col-xl-2">
-          <StatsCard title="Active Customers"  value={(kpis.active_customers ?? 0).toLocaleString()} sub={`↑ ${kpis.new_this_week ?? 0} new this week`}  riIcon="ri-user-3-line"             color="purple" />
+          <StatsCard title="Active Customers"  value={(kpis.active_customers ?? 0).toLocaleString()} sub={`↑ ${kpis.new_this_week ?? 0} new this week`}  riIcon="ri-user-3-line"             color="purple" onClick={openActiveCustomers} />
         </div>
         <div className="col-6 col-sm-4 col-xl-2">
-          <StatsCard title="Staff on Duty"     value={kpis.staff_on_duty ?? 0}               sub={`${kpis.staff_absent ?? 0} absent today`}         riIcon="ri-team-line"               color="teal" />
+          <StatsCard title="Staff on Duty"     value={kpis.staff_on_duty ?? 0}               sub={`${kpis.staff_absent ?? 0} absent today`}         riIcon="ri-team-line"               color="teal" onClick={openStaffToday} />
         </div>
       </div>
 
@@ -180,12 +271,12 @@ function OverviewTab() {
       {/* Charts */}
       <div className="row g-2.5 mb-2.5">
         <div className="col-xl-8">
-          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+          <div className="card mb-0 h-100 chart-panel-clickable" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }} onClick={openWeekRevenue} role="button" tabIndex={0}>
             <div className="card-body p-3">
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <div>
                   <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.92rem' }}>Revenue This Week</h6>
-                  <p className="text-muted fw-medium mb-0" style={{ fontSize: '0.72rem' }}>Daily gross receipts in Naira (₦)</p>
+                  <p className="text-muted fw-medium mb-0" style={{ fontSize: '0.72rem' }}>Daily gross receipts in Naira (₦) · click for details</p>
                 </div>
               </div>
               <div ref={revenueRef} />
@@ -193,10 +284,10 @@ function OverviewTab() {
           </div>
         </div>
         <div className="col-xl-4">
-          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+          <div className="card mb-0 h-100 chart-panel-clickable" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }} onClick={openWeekOrders} role="button" tabIndex={0}>
             <div className="card-body p-3">
               <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.92rem' }}>Orders Per Day</h6>
-              <p className="text-muted fw-medium mb-2" style={{ fontSize: '0.72rem' }}>Volume across active days</p>
+              <p className="text-muted fw-medium mb-2" style={{ fontSize: '0.72rem' }}>Volume across active days · click for details</p>
               <div ref={ordersRef} />
             </div>
           </div>
@@ -430,6 +521,12 @@ function OverviewTab() {
           </div>
         </div>
       </div>
+
+      {modal && (
+        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+          <DetailTable columns={modal.columns} rows={modal.rows} />
+        </DetailModal>
+      )}
     </>
   )
 }
@@ -442,6 +539,7 @@ function SalesTab() {
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(false)
+  const [modal, setModal]     = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
@@ -509,26 +607,78 @@ function SalesTab() {
 
   const topProducts  = data?.top_products ?? []
   const recentOrders = data?.recent_orders ?? []
+  const returnsTodayList = data?.returns_today_list ?? []
+  const skusSoldList = data?.skus_sold_list ?? []
+
+  const openRecentOrders = (title, sub) => setModal({ title, subtitle: sub, icon: 'ri-shopping-cart-2-line', columns: orderColumns, rows: recentOrders })
+  const openReturnsToday = () => setModal({
+    title: 'Returns Today', subtitle: 'Refund requests submitted today',
+    icon: 'ri-arrow-go-back-line',
+    columns: [
+      { key: 'order_id', label: 'Order' },
+      { key: 'product', label: 'Product', render: (r) => r.product || '—' },
+      { key: 'reason', label: 'Reason', render: (r) => r.reason || '—' },
+      { key: 'refund_amount', label: 'Amount', align: 'right', render: (r) => fmtNaira(r.refund_amount) },
+      { key: 'status', label: 'Status', render: (r) => <Badge label={r.status} color={statusColor(r.status)} /> },
+    ],
+    rows: returnsTodayList,
+  })
+  const openSkusSold = () => setModal({
+    title: 'Total SKUs Sold Today', subtitle: 'Unique products with at least one sale today',
+    icon: 'ri-price-tag-3-line', columns: productSoldColumns, rows: skusSoldList,
+  })
+  const openDaily7d = () => setModal({
+    title: 'Revenue This Week', subtitle: 'Daily breakdown',
+    icon: 'ri-line-chart-line',
+    columns: [{ key: 'day_label', label: 'Day' }, { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtNaira(r.revenue) }],
+    rows: data?.charts?.daily_7d ?? [],
+  })
+  const openMonthly6m = () => setModal({
+    title: 'Revenue Last 6 Months', subtitle: 'Monthly totals',
+    icon: 'ri-bar-chart-grouped-line',
+    columns: [
+      { key: 'month', label: 'Month' },
+      { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtNaira(r.revenue) },
+      { key: 'orders', label: 'Orders', align: 'right' },
+    ],
+    rows: data?.charts?.monthly_6m ?? [],
+  })
+  const openByCategory = () => setModal({
+    title: 'Revenue by Category', subtitle: 'This month',
+    icon: 'ri-pie-chart-line',
+    columns: [{ key: 'category', label: 'Category' }, { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtNaira(r.revenue) }],
+    rows: data?.charts?.by_category ?? [],
+  })
+  const openByPayment = () => setModal({
+    title: 'By Payment Method', subtitle: 'This month',
+    icon: 'ri-bank-card-line',
+    columns: [
+      { key: 'method', label: 'Method', render: (r) => (r.method || '').replace(/_/g, ' ') },
+      { key: 'count', label: 'Orders', align: 'right' },
+      { key: 'amount', label: 'Amount', align: 'right', render: (r) => fmtNaira(r.amount) },
+    ],
+    rows: data?.charts?.by_payment ?? [],
+  })
 
   return (
     <>
       <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Today's Revenue"  value={fmtNaira(kpis.today_revenue)}   sub={`${kpis.orders_today ?? 0} orders`}         riIcon="ri-money-dollar-circle-line" color="green" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Monthly Revenue"  value={fmtNaira(kpis.month_revenue)}   sub={new Date().toLocaleString('default',{month:'long',year:'numeric'})} riIcon="ri-line-chart-line" color="green" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Orders Today"     value={kpis.orders_today ?? 0}          sub={`Avg ${fmtNaira(kpis.avg_order_value)}/order`} riIcon="ri-shopping-cart-2-line" color="blue" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Avg Order Value"  value={fmtNaira(kpis.avg_order_value)} sub="Per transaction"                               riIcon="ri-funds-line" color="amber" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Returns Today"    value={kpis.returns_today ?? 0}         sub={fmtNaira(kpis.returns_value) + ' refunded'}   riIcon="ri-arrow-go-back-line" color="red" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total SKUs Sold"  value={kpis.skus_sold ?? 0}             sub="Unique products today"                         riIcon="ri-price-tag-3-line" color="teal" /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Today's Revenue"  value={fmtNaira(kpis.today_revenue)}   sub={`${kpis.orders_today ?? 0} orders`}         riIcon="ri-money-dollar-circle-line" color="green" onClick={() => openRecentOrders("Today's Revenue — Orders", 'Most recent orders')} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Monthly Revenue"  value={fmtNaira(kpis.month_revenue)}   sub={new Date().toLocaleString('default',{month:'long',year:'numeric'})} riIcon="ri-line-chart-line" color="green" onClick={openMonthly6m} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Orders Today"     value={kpis.orders_today ?? 0}          sub={`Avg ${fmtNaira(kpis.avg_order_value)}/order`} riIcon="ri-shopping-cart-2-line" color="blue" onClick={() => openRecentOrders('Orders Today', 'Most recent orders')} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Avg Order Value"  value={fmtNaira(kpis.avg_order_value)} sub="Per transaction"                               riIcon="ri-funds-line" color="amber" onClick={() => openRecentOrders('Avg Order Value — Orders', 'Most recent orders')} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Returns Today"    value={kpis.returns_today ?? 0}         sub={fmtNaira(kpis.returns_value) + ' refunded'}   riIcon="ri-arrow-go-back-line" color="red" onClick={openReturnsToday} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total SKUs Sold"  value={kpis.skus_sold ?? 0}             sub="Unique products today"                         riIcon="ri-price-tag-3-line" color="teal" onClick={openSkusSold} /></div>
       </div>
 
       <div className="row g-4 mb-4">
-        <div className="col-xl-6"><div className="card mb-0"><div className="card-body"><h6 className="fw-semibold mb-0">Revenue This Week</h6><p className="text-muted fs-xs mb-2 mt-1">Daily breakdown</p><div ref={revWeekRef} /></div></div></div>
-        <div className="col-xl-6"><div className="card mb-0"><div className="card-body"><h6 className="fw-semibold mb-0">Revenue Last 6 Months</h6><p className="text-muted fs-xs mb-2 mt-1">Monthly totals</p><div ref={revMonthRef} /></div></div></div>
+        <div className="col-xl-6"><div className="card mb-0 chart-panel-clickable" onClick={openDaily7d} role="button" tabIndex={0}><div className="card-body"><h6 className="fw-semibold mb-0">Revenue This Week</h6><p className="text-muted fs-xs mb-2 mt-1">Daily breakdown</p><div ref={revWeekRef} /></div></div></div>
+        <div className="col-xl-6"><div className="card mb-0 chart-panel-clickable" onClick={openMonthly6m} role="button" tabIndex={0}><div className="card-body"><h6 className="fw-semibold mb-0">Revenue Last 6 Months</h6><p className="text-muted fs-xs mb-2 mt-1">Monthly totals</p><div ref={revMonthRef} /></div></div></div>
       </div>
 
       <div className="row g-4 mb-4">
-        <div className="col-xl-3"><div className="card mb-0 h-100"><div className="card-body"><h6 className="fw-semibold mb-0">Revenue by Category</h6><p className="text-muted fs-xs mb-2 mt-1">This month</p><div ref={categoryRef} /></div></div></div>
-        <div className="col-xl-3"><div className="card mb-0 h-100"><div className="card-body"><h6 className="fw-semibold mb-0">By Payment Method</h6><p className="text-muted fs-xs mb-2 mt-1">This month</p><div ref={paymentRef} /></div></div></div>
+        <div className="col-xl-3"><div className="card mb-0 h-100 chart-panel-clickable" onClick={openByCategory} role="button" tabIndex={0}><div className="card-body"><h6 className="fw-semibold mb-0">Revenue by Category</h6><p className="text-muted fs-xs mb-2 mt-1">This month</p><div ref={categoryRef} /></div></div></div>
+        <div className="col-xl-3"><div className="card mb-0 h-100 chart-panel-clickable" onClick={openByPayment} role="button" tabIndex={0}><div className="card-body"><h6 className="fw-semibold mb-0">By Payment Method</h6><p className="text-muted fs-xs mb-2 mt-1">This month</p><div ref={paymentRef} /></div></div></div>
         <div className="col-xl-6">
           <div className="card mb-0 h-100">
             <div className="card-header d-flex align-items-center justify-content-between">
@@ -581,6 +731,12 @@ function SalesTab() {
           </Table>
         </div>
       </div>
+
+      {modal && (
+        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+          <DetailTable columns={modal.columns} rows={modal.rows} />
+        </DetailModal>
+      )}
     </>
   )
 }
@@ -591,6 +747,7 @@ function FinanceTab() {
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(false)
+  const [modal, setModal]     = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
@@ -635,27 +792,70 @@ function FinanceTab() {
   if (loading) return <TabSkeleton />
   if (error)   return <TabError onRetry={load} />
 
+  const monthlyColumns = [
+    { key: 'month', label: 'Month' },
+    { key: 'income', label: 'Income', align: 'right', render: (r) => fmtNaira(r.income) },
+    { key: 'expenses', label: 'Expenses', align: 'right', render: (r) => fmtNaira(r.expenses) },
+    { key: 'net', label: 'Net Profit', align: 'right', render: (r) => fmtNaira(Number(r.income || 0) - Number(r.expenses || 0)) },
+  ]
+  const openMonthly = (title, sub) => setModal({ title, subtitle: sub, icon: 'ri-line-chart-line', columns: monthlyColumns, rows: data?.charts?.monthly_6m ?? [] })
+  const openAccounts = () => setModal({
+    title: 'Bank Accounts', subtitle: 'Active accounts',
+    icon: 'ri-bank-line',
+    columns: [
+      { key: 'account_name', label: 'Account', render: (r) => r.account_name || r.account },
+      { key: 'bank_name', label: 'Bank', render: (r) => r.bank_name || r.bank },
+      { key: 'account_type', label: 'Type', render: (r) => r.account_type || r.type },
+      { key: 'balance', label: 'Balance', align: 'right', render: (r) => fmtNaira(r.balance) },
+      { key: 'status', label: 'Status', render: (r) => <Badge label={r.status || 'active'} color="green" /> },
+    ],
+    rows: accounts,
+  })
+  const openDues = () => setModal({
+    title: 'Supplier Payments Due', subtitle: 'Pending produce-purchase invoices',
+    icon: 'ri-truck-line',
+    columns: [
+      { key: 'name', label: 'Supplier', render: (r) => r.name || r.supplier },
+      { key: 'amount', label: 'Amount', align: 'right', render: (r) => fmtNaira(r.amount) },
+      { key: 'due_date', label: 'Due', render: (r) => r.due_date || r.due || '—' },
+      { key: 'status', label: 'Status', render: (r) => <Badge label={(r.status || '').replace('-', ' ')} color={r.status === 'overdue' ? 'red' : 'blue'} /> },
+    ],
+    rows: dues,
+  })
+  const openProductProfitability = (title, sub) => setModal({
+    title, subtitle: sub, icon: 'ri-scales-3-line',
+    columns: [
+      { key: 'name', label: 'Product', render: (r) => <><p className="fw-medium fs-sm mb-0">{r.name}</p><span className="text-muted fs-xs">{r.sku}</span></> },
+      { key: 'cost_price', label: 'Cost Price', align: 'right', render: (r) => fmtNaira(r.cost_price) },
+      { key: 'selling_price', label: 'Selling Price', align: 'right', render: (r) => fmtNaira(r.selling_price) },
+      { key: 'units_sold', label: 'Units Sold', align: 'right' },
+      { key: 'margin_pct', label: 'Margin', align: 'right', render: (r) => `${r.margin_pct.toFixed(1)}%` },
+      { key: 'profit', label: 'Profit', align: 'right', render: (r) => fmtNaira(r.profit) },
+    ],
+    rows: productProfitability,
+  })
+
   return (
     <>
       <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Monthly Revenue"    value={fmtNaira(kpis.month_revenue)}    sub={new Date().toLocaleString('default',{month:'long'})} riIcon="ri-money-dollar-circle-line" color="green" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Monthly Expenses"   value={fmtNaira(kpis.month_expenses)}   sub="Total outflows"                              riIcon="ri-subtract-line"    color="red" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Net Profit"         value={fmtNaira(kpis.net_profit)}       sub="This month"                                  riIcon="ri-funds-line"       color="blue" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Outstanding Dues"   value={fmtNaira(kpis.outstanding_dues)} sub={`${kpis.due_count ?? 0} supplier invoices`}  riIcon="ri-bank-card-line"   color="amber" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total Bank Balance" value={fmtNaira(kpis.total_balance)}    sub={`Across ${kpis.account_count ?? 0} accounts`} riIcon="ri-bank-line"        color="teal" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Profit Margin"      value={kpis.profit_margin ? `${Number(kpis.profit_margin).toFixed(1)}%` : '—'} sub="This month" riIcon="ri-percent-line" color="purple" /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Monthly Revenue"    value={fmtNaira(kpis.month_revenue)}    sub={new Date().toLocaleString('default',{month:'long'})} riIcon="ri-money-dollar-circle-line" color="green" onClick={() => openMonthly('Monthly Revenue', 'Income by month, last 6 months')} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Monthly Expenses"   value={fmtNaira(kpis.month_expenses)}   sub="Total outflows"                              riIcon="ri-subtract-line"    color="red" onClick={() => openMonthly('Monthly Expenses', 'Expenses by month, last 6 months')} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Net Profit"         value={fmtNaira(kpis.net_profit)}       sub="This month"                                  riIcon="ri-funds-line"       color="blue" onClick={() => openMonthly('Net Profit', 'Income vs. expenses, last 6 months')} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Outstanding Dues"   value={fmtNaira(kpis.outstanding_dues)} sub={`${kpis.due_count ?? 0} supplier invoices`}  riIcon="ri-bank-card-line"   color="amber" onClick={openDues} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total Bank Balance" value={fmtNaira(kpis.total_balance)}    sub={`Across ${kpis.account_count ?? 0} accounts`} riIcon="ri-bank-line"        color="teal" onClick={openAccounts} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Profit Margin"      value={kpis.profit_margin ? `${Number(kpis.profit_margin).toFixed(1)}%` : '—'} sub="This month" riIcon="ri-percent-line" color="purple" onClick={() => openMonthly('Profit Margin', 'Income vs. expenses, last 6 months')} /></div>
       </div>
 
       <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Product Revenue"    value={fmtNaira(kpis.cogs_month != null ? Number(kpis.cogs_month) + Number(kpis.gross_profit_month || 0) : 0)} sub="From order line items" riIcon="ri-shopping-cart-2-line" color="blue" /></div>
-        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Cost of Goods Sold" value={fmtNaira(kpis.cogs_month)}       sub="Cost price × units sold"                     riIcon="ri-price-tag-3-line" color="red" /></div>
-        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Gross Profit"       value={fmtNaira(kpis.gross_profit_month)} sub="Revenue − COGS · this month"               riIcon="ri-line-chart-line"  color="green" /></div>
-        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Gross Margin"       value={kpis.gross_margin_pct ? `${Number(kpis.gross_margin_pct).toFixed(1)}%` : '—'} sub="Product-level margin" riIcon="ri-percent-line" color="amber" /></div>
+        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Product Revenue"    value={fmtNaira(kpis.cogs_month != null ? Number(kpis.cogs_month) + Number(kpis.gross_profit_month || 0) : 0)} sub="From order line items" riIcon="ri-shopping-cart-2-line" color="blue" onClick={() => openProductProfitability('Product Revenue', 'Last 30 days, by product')} /></div>
+        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Cost of Goods Sold" value={fmtNaira(kpis.cogs_month)}       sub="Cost price × units sold"                     riIcon="ri-price-tag-3-line" color="red" onClick={() => openProductProfitability('Cost of Goods Sold', 'Cost price × units sold — last 30 days')} /></div>
+        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Gross Profit"       value={fmtNaira(kpis.gross_profit_month)} sub="Revenue − COGS · this month"               riIcon="ri-line-chart-line"  color="green" onClick={() => openProductProfitability('Gross Profit', 'Revenue − COGS, by product — last 30 days')} /></div>
+        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Gross Margin"       value={kpis.gross_margin_pct ? `${Number(kpis.gross_margin_pct).toFixed(1)}%` : '—'} sub="Product-level margin" riIcon="ri-percent-line" color="amber" onClick={() => openProductProfitability('Gross Margin', 'Margin by product — last 30 days')} /></div>
       </div>
 
       <div className="row g-4 mb-4">
         <div className="col-xl-7">
-          <div className="card mb-0">
+          <div className="card mb-0 chart-panel-clickable" onClick={() => openMonthly('Income vs Expenses', 'Last 6 months')} role="button" tabIndex={0}>
             <div className="card-header d-flex align-items-center justify-content-between">
               <div><h6 className="fw-semibold mb-0">Income vs Expenses</h6><p className="text-muted fs-xs mb-0 mt-1">Last 6 months</p></div>
               <div className="d-flex gap-3">
@@ -667,7 +867,7 @@ function FinanceTab() {
           </div>
         </div>
         <div className="col-xl-5">
-          <div className="card mb-0">
+          <div className="card mb-0 chart-panel-clickable" onClick={() => openMonthly('Net Profit by Month', 'Last 6 months')} role="button" tabIndex={0}>
             <div className="card-body"><h6 className="fw-semibold mb-0">Net Profit by Month</h6><p className="text-muted fs-xs mb-2 mt-1">Last 6 months</p><div ref={profitRef} /></div>
           </div>
         </div>
@@ -759,6 +959,12 @@ function FinanceTab() {
           </Table>
         </div>
       </div>
+
+      {modal && (
+        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+          <DetailTable columns={modal.columns} rows={modal.rows} />
+        </DetailModal>
+      )}
     </>
   )
 }
@@ -768,6 +974,7 @@ function InventoryTab() {
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(false)
+  const [modal, setModal]     = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
@@ -782,6 +989,7 @@ function InventoryTab() {
   const kpis      = data?.kpis ?? {}
   const lowStock  = data?.low_stock_items ?? []
   const invList   = data?.inventory_list ?? []
+  const expiringBatches = data?.expiring_batches ?? []
 
   useApexChart(stockRef, () => ({
     chart: { type: 'bar', height: 220, toolbar: { show: false } },
@@ -797,20 +1005,53 @@ function InventoryTab() {
   if (loading) return <TabSkeleton />
   if (error)   return <TabError onRetry={load} />
 
+  const openInvList = (title, sub, rows = invList) => setModal({
+    title, subtitle: sub, icon: 'ri-archive-stack-line',
+    columns: [
+      { key: 'name', label: 'Product' },
+      { key: 'sku', label: 'SKU', render: (r) => <span className="badge bg-light text-dark fs-xs">{r.sku}</span> },
+      { key: 'category', label: 'Category', render: (r) => r.category || '—' },
+      { key: 'stock', label: 'Qty', align: 'right', render: (r) => r.stock ?? r.qty },
+      { key: 'value', label: 'Value', align: 'right', render: (r) => fmtNaira(r.value ?? (r.stock ?? 0) * (r.unit_price || r.price || 0)) },
+    ],
+    rows,
+  })
+  const openLowStock = () => setModal({
+    title: 'Below Reorder Level', subtitle: 'Products at or under their reorder threshold',
+    icon: 'ri-alert-line', columns: lowStockColumns, rows: lowStock,
+  })
+  const openExpiring = () => setModal({
+    title: 'Expiring Batches', subtitle: 'Within the next 7 days',
+    icon: 'ri-timer-flash-line',
+    columns: [
+      { key: 'name', label: 'Product' },
+      { key: 'batch_no', label: 'Batch #' },
+      { key: 'quantity', label: 'Qty', align: 'right' },
+      { key: 'expiry_date', label: 'Expiry Date', render: (r) => r.expiry_date ? new Date(r.expiry_date).toLocaleDateString() : '—' },
+    ],
+    rows: expiringBatches,
+  })
+  const openByCategory = () => setModal({
+    title: 'Stock Value by Category', subtitle: 'Current value in warehouse',
+    icon: 'ri-list-check-2',
+    columns: [{ key: 'category', label: 'Category' }, { key: 'value', label: 'Value', align: 'right', render: (r) => fmtNaira(r.value) }],
+    rows: data?.charts?.value_by_category ?? [],
+  })
+
   return (
     <>
       <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total Active SKUs"    value={kpis.total_skus ?? 0}                          sub="Across all categories"   riIcon="ri-price-tag-3-line"   color="blue" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total Stock Value"    value={fmtNaira(kpis.total_value)}                    sub="All warehouses"          riIcon="ri-store-line"         color="green" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Below Reorder Level" value={`${kpis.low_stock_count ?? 0} items`}           sub="Immediate action"        riIcon="ri-alert-line"         color="red" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Expiring (7 days)"   value={`${kpis.expiring_count ?? 0} batches`}          sub="Check expiry dates"      riIcon="ri-timer-flash-line"   color="amber" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Categories"          value={catNames.length ?? 0}                           sub="With active stock"       riIcon="ri-list-check-2"       color="teal" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Zero Stock Items"    value={kpis.out_of_stock ?? 0}                         sub="Out of stock"            riIcon="ri-delete-bin-line"    color="red" /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total Active SKUs"    value={kpis.total_skus ?? 0}                          sub="Across all categories"   riIcon="ri-price-tag-3-line"   color="blue" onClick={() => openInvList('Active SKUs', 'All active products, by stock level')} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total Stock Value"    value={fmtNaira(kpis.total_value)}                    sub="All warehouses"          riIcon="ri-store-line"         color="green" onClick={openByCategory} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Below Reorder Level" value={`${kpis.low_stock_count ?? 0} items`}           sub="Immediate action"        riIcon="ri-alert-line"         color="red" onClick={openLowStock} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Expiring (7 days)"   value={`${kpis.expiring_count ?? 0} batches`}          sub="Check expiry dates"      riIcon="ri-timer-flash-line"   color="amber" onClick={openExpiring} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Categories"          value={catNames.length ?? 0}                           sub="With active stock"       riIcon="ri-list-check-2"       color="teal" onClick={openByCategory} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Zero Stock Items"    value={kpis.out_of_stock ?? 0}                         sub="Out of stock"            riIcon="ri-delete-bin-line"    color="red" onClick={() => openInvList('Zero Stock Items', 'Products currently out of stock', invList.filter(i => Number(i.stock ?? i.qty) === 0))} /></div>
       </div>
 
       <div className="row g-4 mb-4">
         <div className="col-xl-6">
-          <div className="card mb-0">
+          <div className="card mb-0 chart-panel-clickable" onClick={openByCategory} role="button" tabIndex={0}>
             <div className="card-body">
               <h6 className="fw-semibold mb-0">Stock Value by Category</h6>
               <p className="text-muted fs-xs mb-2 mt-1">Current value in warehouse</p>
@@ -874,6 +1115,12 @@ function InventoryTab() {
           </Table>
         </div>
       </div>
+
+      {modal && (
+        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+          <DetailTable columns={modal.columns} rows={modal.rows} />
+        </DetailModal>
+      )}
     </>
   )
 }
@@ -883,6 +1130,7 @@ function OperationsTab() {
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(false)
+  const [modal, setModal]     = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
@@ -915,16 +1163,63 @@ function OperationsTab() {
   const deliveries = data?.active_deliveries ?? []
   const staffList  = data?.staff_today ?? []
   const purchaseOrders = data?.purchase_orders ?? []
+  const driversOnDutyList = data?.drivers_on_duty_list ?? []
+  const deliveryTimesList = data?.delivery_times_list ?? []
+
+  const openDeliveries = () => setModal({ title: 'Active Deliveries', subtitle: 'Currently dispatched', icon: 'ri-bike-line', columns: deliveryColumns, rows: deliveries })
+  const openDrivers = () => setModal({
+    title: 'Drivers On Duty', subtitle: 'Active or currently on delivery',
+    icon: 'ri-steering-2-line',
+    columns: [
+      { key: 'name', label: 'Name' },
+      { key: 'vehicle_type', label: 'Vehicle', render: (r) => r.vehicle_type || '—' },
+      { key: 'zone', label: 'Zone', render: (r) => r.zone || '—' },
+      { key: 'rating', label: 'Rating', align: 'right', render: (r) => r.rating ?? '—' },
+      { key: 'status', label: 'Status', render: (r) => <Badge label={(r.status || '').replace(/_/g, ' ')} color={r.status === 'on_delivery' ? 'blue' : 'green'} /> },
+    ],
+    rows: driversOnDutyList,
+  })
+  const openAvgDeliveryTime = () => setModal({
+    title: 'Avg Delivery Time', subtitle: "Today's completed deliveries",
+    icon: 'ri-time-line',
+    columns: [
+      { key: 'delivery_ref', label: 'Ref' },
+      { key: 'dispatched_at', label: 'Dispatched', render: (r) => r.dispatched_at ? new Date(r.dispatched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—' },
+      { key: 'delivered_at', label: 'Delivered', render: (r) => r.delivered_at ? new Date(r.delivered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—' },
+      { key: 'minutes', label: 'Minutes', align: 'right', render: (r) => r.minutes ?? '—' },
+    ],
+    rows: deliveryTimesList,
+  })
+  const openStaffToday = () => setModal({ title: 'Staff Attendance Today', subtitle: 'Full roster', icon: 'ri-team-line', columns: staffColumns, rows: staffList })
+  const openPurchaseOrders = () => setModal({
+    title: 'Purchase Orders', subtitle: 'Most recent',
+    icon: 'ri-shopping-bag-3-line',
+    columns: [
+      { key: 'po_ref', label: 'Ref', render: (r) => r.po_ref || r.reference || r.id },
+      { key: 'supplier', label: 'Supplier' },
+      { key: 'amount', label: 'Amount', align: 'right', render: (r) => fmtNaira(r.amount) },
+      { key: 'date', label: 'Date', render: (r) => r.date ? new Date(r.date).toLocaleDateString() : '—' },
+      { key: 'status', label: 'Status', render: (r) => <Badge label={r.status} color={r.status === 'paid' ? 'green' : r.status === 'received' ? 'blue' : r.status === 'pending' ? 'amber' : 'red'} /> },
+    ],
+    rows: purchaseOrders,
+  })
+  const openStaffAbsent = () => setModal({ title: 'Staff Absent Today', subtitle: 'Not clocked in', icon: 'ri-user-unfollow-line', columns: staffColumns, rows: staffList.filter(s => s.status === 'absent') })
+  const openDeliveryBreakdown = () => setModal({
+    title: 'Delivery Status Breakdown', subtitle: 'Today',
+    icon: 'ri-pie-chart-line',
+    columns: [{ key: 'status', label: 'Status', render: (r) => (r.status || '').replace(/_/g, ' ') }, { key: 'count', label: 'Count', align: 'right' }],
+    rows: Object.entries(breakdown).map(([status, count]) => ({ status, count })),
+  })
 
   return (
     <>
       <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Active Deliveries" value={kpis.active_deliveries ?? 0}           sub="Currently dispatched"      riIcon="ri-bike-line"            color="blue" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Drivers On Duty"   value={kpis.drivers_on_duty ?? 0}             sub="Available on road"         riIcon="ri-steering-2-line"      color="teal" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Avg Delivery Time" value={`${kpis.avg_delivery_mins ?? 0} min`}  sub="vs target 30 min"          riIcon="ri-time-line"            color="amber" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Staff on Duty"     value={kpis.staff_on_duty ?? 0}               sub="Clocked in today"          riIcon="ri-team-line"            color="green" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Purchase Orders"   value={purchaseOrders.length}                 sub="Recent POs"                riIcon="ri-shopping-bag-3-line"  color="red" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Staff Absent"      value={staffList.filter(s=>s.status==='absent').length} sub="Today" riIcon="ri-user-unfollow-line" color="purple" /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Active Deliveries" value={kpis.active_deliveries ?? 0}           sub="Currently dispatched"      riIcon="ri-bike-line"            color="blue" onClick={openDeliveries} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Drivers On Duty"   value={kpis.drivers_on_duty ?? 0}             sub="Available on road"         riIcon="ri-steering-2-line"      color="teal" onClick={openDrivers} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Avg Delivery Time" value={`${kpis.avg_delivery_mins ?? 0} min`}  sub="vs target 30 min"          riIcon="ri-time-line"            color="amber" onClick={openAvgDeliveryTime} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Staff on Duty"     value={kpis.staff_on_duty ?? 0}               sub="Clocked in today"          riIcon="ri-team-line"            color="green" onClick={openStaffToday} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Purchase Orders"   value={purchaseOrders.length}                 sub="Recent POs"                riIcon="ri-shopping-bag-3-line"  color="red" onClick={openPurchaseOrders} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Staff Absent"      value={staffList.filter(s=>s.status==='absent').length} sub="Today" riIcon="ri-user-unfollow-line" color="purple" onClick={openStaffAbsent} /></div>
       </div>
 
       <div className="row g-4 mb-4">
@@ -956,7 +1251,7 @@ function OperationsTab() {
           </div>
         </div>
         <div className="col-xl-4">
-          <div className="card mb-0 h-100">
+          <div className="card mb-0 h-100 chart-panel-clickable" onClick={openDeliveryBreakdown} role="button" tabIndex={0}>
             <div className="card-body">
               <h6 className="fw-semibold mb-0">Delivery Status Breakdown</h6>
               <p className="text-muted fs-xs mb-2 mt-1">Today</p>
@@ -1020,15 +1315,31 @@ function OperationsTab() {
           </div>
         </div>
       </div>
+
+      {modal && (
+        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+          <DetailTable columns={modal.columns} rows={modal.rows} />
+        </DetailModal>
+      )}
     </>
   )
 }
+
+const customerColumns = [
+  { key: 'name', label: 'Name', render: (r) => r.name },
+  { key: 'phone', label: 'Phone', render: (r) => r.phone },
+  { key: 'orders', label: 'Orders', align: 'right', render: (r) => r.total_orders ?? r.orders },
+  { key: 'points', label: 'Points', align: 'right', render: (r) => `${(r.points ?? 0).toLocaleString()} pts` },
+  { key: 'wallet', label: 'Wallet', align: 'right', render: (r) => fmtNaira(r.wallet_balance ?? r.wallet) },
+  { key: 'status', label: 'Status', render: (r) => <Badge label={r.status} color={r.status === 'active' ? 'green' : 'red'} /> },
+]
 
 function CustomersTab() {
   const growthRef = useRef(null)
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(false)
+  const [modal, setModal]     = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
@@ -1057,20 +1368,28 @@ function CustomersTab() {
   if (loading) return <TabSkeleton />
   if (error)   return <TabError onRetry={load} />
 
+  const openCustomers = (title, sub) => setModal({ title, subtitle: sub, icon: 'ri-group-line', columns: customerColumns, rows: customers })
+  const openGrowth = () => setModal({
+    title: 'New Customer Growth', subtitle: 'Last 6 months',
+    icon: 'ri-line-chart-line',
+    columns: [{ key: 'month', label: 'Month' }, { key: 'new_customers', label: 'New Customers', align: 'right' }],
+    rows: data?.charts?.growth_last_6 ?? [],
+  })
+
   return (
     <>
       <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total Customers"  value={(kpis.total_customers ?? 0).toLocaleString()} sub="All time"               riIcon="ri-group-line"          color="blue" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="New This Month"   value={kpis.new_this_month ?? 0}                    sub="Current month"          riIcon="ri-user-add-line"        color="green" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Loyalty Points"   value={(kpis.total_points ?? 0).toLocaleString()}   sub="Active balance"         riIcon="ri-vip-crown-line"       color="amber" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Lifetime Points"  value={(kpis.lifetime_points ?? 0).toLocaleString()} sub="All time issued"        riIcon="ri-medal-line"           color="teal" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Wallet Balance"   value={fmtNaira(kpis.wallet_balance)}               sub="Combined customer wallets" riIcon="ri-wallet-3-line"     color="purple" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Wallet Funded"    value={fmtNaira(kpis.wallet_funded)}                sub="Total top-ups"          riIcon="ri-bank-card-line"       color="green" /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total Customers"  value={(kpis.total_customers ?? 0).toLocaleString()} sub="All time"               riIcon="ri-group-line"          color="blue" onClick={() => openCustomers('Total Customers', 'Top 10 by order volume')} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="New This Month"   value={kpis.new_this_month ?? 0}                    sub="Current month"          riIcon="ri-user-add-line"        color="green" onClick={openGrowth} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Loyalty Points"   value={(kpis.total_points ?? 0).toLocaleString()}   sub="Active balance"         riIcon="ri-vip-crown-line"       color="amber" onClick={() => openCustomers('Loyalty Points', 'By customer, top 10')} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Lifetime Points"  value={(kpis.lifetime_points ?? 0).toLocaleString()} sub="All time issued"        riIcon="ri-medal-line"           color="teal" onClick={() => openCustomers('Lifetime Points', 'By customer, top 10')} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Wallet Balance"   value={fmtNaira(kpis.wallet_balance)}               sub="Combined customer wallets" riIcon="ri-wallet-3-line"     color="purple" onClick={() => openCustomers('Wallet Balance', 'By customer, top 10')} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Wallet Funded"    value={fmtNaira(kpis.wallet_funded)}                sub="Total top-ups"          riIcon="ri-bank-card-line"       color="green" onClick={() => openCustomers('Wallet Funded', 'By customer, top 10')} /></div>
       </div>
 
       <div className="row g-4 mb-4">
         <div className="col-xl-5">
-          <div className="card mb-0">
+          <div className="card mb-0 chart-panel-clickable" onClick={openGrowth} role="button" tabIndex={0}>
             <div className="card-body">
               <h6 className="fw-semibold mb-0">New Customer Growth</h6>
               <p className="text-muted fs-xs mb-2 mt-1">Last 6 months</p>
@@ -1133,6 +1452,12 @@ function CustomersTab() {
           </Table>
         </div>
       </div>
+
+      {modal && (
+        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+          <DetailTable columns={modal.columns} rows={modal.rows} />
+        </DetailModal>
+      )}
     </>
   )
 }
@@ -1142,6 +1467,7 @@ function ChefBemsTab() {
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(false)
+  const [modal, setModal]     = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
@@ -1174,20 +1500,54 @@ function ChefBemsTab() {
   const dietaryRules  = data?.dietary_rules ?? []
   const mealAssocs    = data?.meal_associations ?? []
 
+  const convColumns = [
+    { key: 'customer', label: 'Customer' },
+    { key: 'query', label: 'Message', render: (r) => `"${r.query}"` },
+    { key: 'status', label: 'Status', render: (r) => <Badge label={r.status} color={r.status === 'new' ? 'amber' : r.status === 'resolved' ? 'green' : 'blue'} /> },
+    { key: 'created_at', label: 'Time', render: (r) => r.created_at ? new Date(r.created_at).toLocaleString() : '—' },
+  ]
+  const openConvs = (title, sub, rows = convs) => setModal({ title, subtitle: sub, icon: 'ri-robot-line', columns: convColumns, rows })
+  const openDietaryRules = () => setModal({
+    title: 'Active Dietary Rules', subtitle: 'Configured constraints',
+    icon: 'ri-file-list-3-line',
+    columns: [
+      { key: 'name', label: 'Rule', render: (r) => r.name || r.condition || r.rule },
+      { key: 'scope', label: 'Scope', render: (r) => r.scope || r.rule_text || 'Active constraint' },
+      { key: 'status', label: 'Status', render: (r) => <Badge label={r.status || 'active'} color="green" /> },
+    ],
+    rows: dietaryRules,
+  })
+  const openMealAssocs = () => setModal({
+    title: 'Meal Associations', subtitle: 'Product ↔ meal links',
+    icon: 'ri-links-line',
+    columns: [{ key: 'meal', label: 'Meal' }, { key: 'association_count', label: 'Associations', align: 'right' }],
+    rows: mealAssocs,
+  })
+  const openBreakdown = () => setModal({
+    title: 'Conversation Status', subtitle: 'Today',
+    icon: 'ri-pie-chart-line',
+    columns: [{ key: 'status', label: 'Status' }, { key: 'count', label: 'Count', align: 'right' }],
+    rows: [
+      { status: 'New', count: breakdown.new ?? 0 },
+      { status: 'Pending', count: breakdown.pending ?? 0 },
+      { status: 'Resolved', count: breakdown.resolved ?? 0 },
+    ],
+  })
+
   return (
     <>
       <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Conversations Today" value={kpis.conversations_today ?? 0} sub="Today total"          riIcon="ri-robot-line"           color="blue" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Pending Replies"     value={kpis.pending_replies ?? 0}     sub="Needs attention"      riIcon="ri-message-3-line"       color="amber" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Resolved Today"      value={breakdown.resolved ?? 0}       sub="Successfully answered" riIcon="ri-checkbox-circle-line" color="green" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Dietary Rules"       value={kpis.dietary_rules ?? 0}       sub="Active constraints"   riIcon="ri-file-list-3-line"     color="teal" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Meal Associations"   value={kpis.meal_associations ?? 0}   sub="Product ↔ meal links" riIcon="ri-links-line"           color="purple" /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="New Today"           value={breakdown.new ?? 0}            sub="Unread conversations" riIcon="ri-notification-3-line"  color="red" /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Conversations Today" value={kpis.conversations_today ?? 0} sub="Today total"          riIcon="ri-robot-line"           color="blue" onClick={() => openConvs('Conversations Today', 'Most recent conversations')} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Pending Replies"     value={kpis.pending_replies ?? 0}     sub="Needs attention"      riIcon="ri-message-3-line"       color="amber" onClick={() => openConvs('Pending Replies', 'Awaiting a response', convs.filter(c => c.status === 'pending'))} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Resolved Today"      value={breakdown.resolved ?? 0}       sub="Successfully answered" riIcon="ri-checkbox-circle-line" color="green" onClick={() => openConvs('Resolved Today', 'Successfully answered', convs.filter(c => c.status === 'resolved'))} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Dietary Rules"       value={kpis.dietary_rules ?? 0}       sub="Active constraints"   riIcon="ri-file-list-3-line"     color="teal" onClick={openDietaryRules} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Meal Associations"   value={kpis.meal_associations ?? 0}   sub="Product ↔ meal links" riIcon="ri-links-line"           color="purple" onClick={openMealAssocs} /></div>
+        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="New Today"           value={breakdown.new ?? 0}            sub="Unread conversations" riIcon="ri-notification-3-line"  color="red" onClick={() => openConvs('New Today', 'Unread conversations', convs.filter(c => c.status === 'new'))} /></div>
       </div>
 
       <div className="row g-4 mb-4">
         <div className="col-xl-4">
-          <div className="card mb-0 h-100">
+          <div className="card mb-0 h-100 chart-panel-clickable" onClick={openBreakdown} role="button" tabIndex={0}>
             <div className="card-body">
               <h6 className="fw-semibold mb-0">Conversation Status</h6>
               <p className="text-muted fs-xs mb-2 mt-1">Today</p>
@@ -1272,6 +1632,12 @@ function ChefBemsTab() {
           </div>
         </div>
       </div>
+
+      {modal && (
+        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+          <DetailTable columns={modal.columns} rows={modal.rows} />
+        </DetailModal>
+      )}
     </>
   )
 }

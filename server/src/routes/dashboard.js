@@ -34,20 +34,42 @@ async function q1(sql, params = []) {
   return rows[0] || {};
 }
 
+// Real orders.status values (see BEMS_FARMS_DATABASE.md) collapsed into the
+// friendly pipeline-chip stages the Overview tab displays.
+const PIPELINE_STAGE_MAP = {
+  new_order: "confirmed",
+  processing: "preparing",
+  packed_ready: "preparing",
+  driver_assigned: "dispatched",
+  out_for_delivery: "dispatched",
+  delivery_attempted: "dispatched",
+  delivered: "delivered",
+};
+
 // ── OVERVIEW TAB ─────────────────────────────────────────────────
 router.get("/overview", async (req, res, next) => {
   try {
     const [
       revenueToday,
       pendingOrders,
+      readyDispatch,
       activeDeliveries,
+      enRoute,
       lowStock,
       activeCustomers,
+      newThisWeek,
       staffOnDuty,
+      staffAbsent,
+      pendingAi,
+      returnsToday,
       pipeline,
       recentOrders,
       weekRevenue,
       weekOrders,
+      topProducts,
+      lowStockList,
+      activeDeliveriesList,
+      recentConvs,
     ] = await Promise.all([
       // Today's revenue + order count
       q1(`SELECT
@@ -59,11 +81,18 @@ router.get("/overview", async (req, res, next) => {
 
       // Pending orders
       q1(`SELECT COUNT(*) AS count FROM orders
-          WHERE status IN ('pending','new_order','processing')`),
+          WHERE status IN ('new_order','processing')`),
+
+      // Ready for dispatch
+      q1(`SELECT COUNT(*) AS count FROM orders
+          WHERE status = 'packed_ready'`),
 
       // Active deliveries
       q1(`SELECT COUNT(*) AS count FROM deliveries
           WHERE status IN ('assigned','awaiting_pickup','en_route')`),
+
+      // En route right now
+      q1(`SELECT COUNT(*) AS count FROM deliveries WHERE status = 'en_route'`),
 
       // Low stock items
       q1(`SELECT COUNT(*) AS count FROM products
@@ -74,9 +103,23 @@ router.get("/overview", async (req, res, next) => {
       q1(`SELECT COUNT(DISTINCT customer_id) AS count FROM orders
           WHERE created_at >= NOW() - INTERVAL '30 days'`),
 
+      // New customer signups this week
+      q1(`SELECT COUNT(*) AS count FROM users
+          WHERE joined_at >= NOW() - INTERVAL '7 days'`),
+
       // Staff on duty today
       q1(`SELECT COUNT(*) AS count FROM staff_attendance
           WHERE date = CURRENT_DATE AND status = 'present'`),
+
+      // Staff absent today
+      q1(`SELECT COUNT(*) AS count FROM staff_attendance
+          WHERE date = CURRENT_DATE AND status = 'absent'`),
+
+      // Pending AI conversations
+      q1(`SELECT COUNT(*) AS count FROM ai_conversations WHERE status = 'pending'`),
+
+      // Returns/refunds submitted today
+      q1(`SELECT COUNT(*) AS count FROM returns WHERE DATE(created_at) = CURRENT_DATE`),
 
       // Pipeline counts
       q(`SELECT status, COUNT(*) AS count FROM orders
@@ -120,26 +163,109 @@ router.get("/overview", async (req, res, next) => {
            AND o.status NOT IN ('cancelled')
          GROUP BY d.day
          ORDER BY d.day`),
+
+      // Top selling produce, last 30 days
+      q(`SELECT
+           p.name, p.sku,
+           SUM(oi.quantity) AS units_sold,
+           SUM(oi.subtotal) AS total_revenue
+         FROM order_items oi
+         JOIN products p ON oi.product_id = p.id
+         JOIN orders o ON oi.order_id = o.id
+         WHERE o.created_at >= NOW() - INTERVAL '30 days'
+           AND o.status NOT IN ('cancelled')
+         GROUP BY p.id, p.name, p.sku
+         ORDER BY total_revenue DESC
+         LIMIT 5`),
+
+      // Low stock watchlist
+      q(`SELECT id, name, sku, stock, low_stock_threshold
+         FROM products
+         WHERE stock <= low_stock_threshold
+           AND status = 'active'
+         ORDER BY stock ASC
+         LIMIT 5`),
+
+      // Active deliveries list
+      q(`SELECT
+           d.id, d.delivery_ref, d.status,
+           COALESCE(o.customer_name, c.name, 'Customer') AS customer,
+           COALESCE(dr.name, '—') AS driver,
+           dz.zone_name AS zone,
+           d.eta_minutes AS eta
+         FROM deliveries d
+         LEFT JOIN orders o ON d.order_id = o.id
+         LEFT JOIN users c ON o.customer_id = c.id
+         LEFT JOIN drivers dr ON d.driver_id = dr.id
+         LEFT JOIN delivery_zones dz ON d.zone_id = dz.zone_id
+         WHERE d.status IN ('assigned','awaiting_pickup','en_route')
+         ORDER BY d.created_at DESC
+         LIMIT 4`),
+
+      // Recent AI conversations
+      q(`SELECT
+           ac.id,
+           COALESCE(c.name, 'Anonymous') AS customer,
+           COALESCE(ac.messages->0->>'content', 'No message') AS query,
+           ac.status,
+           ac.started_at AS created_at
+         FROM ai_conversations ac
+         LEFT JOIN users c ON ac.customer_id = c.id
+         ORDER BY ac.started_at DESC
+         LIMIT 3`),
     ]);
 
-    // Build pipeline map
+    const [activeCustomersList, staffOnDutyList] = await Promise.all([
+      // Customers who ordered in the last 30 days
+      q(`SELECT c.name, c.phone, COUNT(o.id) AS orders, COALESCE(SUM(o.total),0) AS spent
+         FROM orders o
+         JOIN users c ON o.customer_id = c.id
+         WHERE o.created_at >= NOW() - INTERVAL '30 days'
+         GROUP BY c.id, c.name, c.phone
+         ORDER BY spent DESC
+         LIMIT 10`),
+
+      // Staff clocked in today
+      q(`SELECT s.name, st.role, st.shift, sa.clock_in, sa.status
+         FROM staff_attendance sa
+         JOIN staff st ON sa.staff_id = st.id
+         JOIN users s ON st.user_id = s.id
+         WHERE sa.date = CURRENT_DATE
+         ORDER BY sa.clock_in ASC NULLS LAST
+         LIMIT 10`),
+    ]);
+
+    // Build pipeline map, collapsing real order statuses into friendly stages
     const pipelineMap = {};
     pipeline.forEach((r) => {
-      pipelineMap[r.status] = parseInt(r.count);
+      const stage = PIPELINE_STAGE_MAP[r.status] || r.status;
+      pipelineMap[stage] = (pipelineMap[stage] || 0) + parseInt(r.count);
     });
+    pipelineMap.returned = parseInt(returnsToday.count || 0);
 
     res.json({
       kpis: {
         revenue_today: parseFloat(revenueToday.revenue || 0),
         orders_today: parseInt(revenueToday.orders || 0),
         pending_orders: parseInt(pendingOrders.count || 0),
+        ready_dispatch: parseInt(readyDispatch.count || 0),
         active_deliveries: parseInt(activeDeliveries.count || 0),
+        en_route: parseInt(enRoute.count || 0),
         low_stock_alerts: parseInt(lowStock.count || 0),
         active_customers: parseInt(activeCustomers.count || 0),
+        new_this_week: parseInt(newThisWeek.count || 0),
         staff_on_duty: parseInt(staffOnDuty.count || 0),
+        staff_absent: parseInt(staffAbsent.count || 0),
+        pending_ai: parseInt(pendingAi.count || 0),
       },
       pipeline: pipelineMap,
       recent_orders: recentOrders,
+      top_products: topProducts,
+      low_stock: lowStockList,
+      active_deliveries: activeDeliveriesList,
+      recent_convs: recentConvs,
+      active_customers_list: activeCustomersList,
+      staff_today: staffOnDutyList,
       charts: {
         week_revenue: weekRevenue.map((r) => ({
           label: r.label,
@@ -162,6 +288,9 @@ router.get("/sales", async (req, res, next) => {
     const [
       todayStats,
       monthStats,
+      returnsToday,
+      skusSold,
+      daily7d,
       last6Months,
       topProducts,
       recentOrders,
@@ -183,6 +312,32 @@ router.get("/sales", async (req, res, next) => {
           FROM orders
           WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
             AND status NOT IN ('cancelled')`),
+
+      // Returns/refunds submitted today
+      q1(`SELECT COUNT(*) AS count, COALESCE(SUM(refund_amount),0) AS total
+          FROM returns
+          WHERE DATE(created_at) = CURRENT_DATE`),
+
+      // Distinct SKUs sold today
+      q1(`SELECT COUNT(DISTINCT oi.product_id) AS count
+          FROM order_items oi
+          JOIN orders o ON oi.order_id = o.id
+          WHERE DATE(o.created_at) = CURRENT_DATE
+            AND o.status NOT IN ('cancelled')`),
+
+      // Revenue last 7 days (daily)
+      q(`SELECT
+           TO_CHAR(d.day, 'Dy') AS day_label,
+           COALESCE(SUM(o.total), 0) AS revenue
+         FROM generate_series(
+           CURRENT_DATE - INTERVAL '6 days',
+           CURRENT_DATE, '1 day'
+         ) AS d(day)
+         LEFT JOIN orders o
+           ON DATE(o.created_at) = d.day
+           AND o.status NOT IN ('cancelled')
+         GROUP BY d.day
+         ORDER BY d.day`),
 
       q(`SELECT
            TO_CHAR(DATE_TRUNC('month', created_at), 'Mon') AS month,
@@ -234,7 +389,7 @@ router.get("/sales", async (req, res, next) => {
       q(`SELECT
            COALESCE(payment_method, 'unknown') AS method,
            COUNT(*) AS count,
-           SUM(total) AS revenue
+           SUM(total) AS amount
          FROM orders
          WHERE created_at >= DATE_TRUNC('month', NOW())
            AND status NOT IN ('cancelled')
@@ -252,22 +407,47 @@ router.get("/sales", async (req, res, next) => {
          ORDER BY count DESC`),
     ]);
 
+    const [returnsTodayList, skusSoldList] = await Promise.all([
+      q(`SELECT r.id, r.order_id, p.name AS product, r.reason, r.refund_amount, r.status
+         FROM returns r
+         LEFT JOIN products p ON r.product_id = p.id
+         WHERE DATE(r.created_at) = CURRENT_DATE
+         ORDER BY r.created_at DESC
+         LIMIT 10`),
+
+      q(`SELECT p.name, p.sku, SUM(oi.quantity) AS qty_sold, SUM(oi.subtotal) AS revenue
+         FROM order_items oi
+         JOIN orders o ON oi.order_id = o.id
+         JOIN products p ON oi.product_id = p.id
+         WHERE DATE(o.created_at) = CURRENT_DATE
+           AND o.status NOT IN ('cancelled')
+         GROUP BY p.id, p.name, p.sku
+         ORDER BY revenue DESC
+         LIMIT 20`),
+    ]);
+
     res.json({
       kpis: {
-        revenue_today: parseFloat(todayStats.revenue || 0),
+        today_revenue: parseFloat(todayStats.revenue || 0),
         orders_today: parseInt(todayStats.orders || 0),
         avg_order_value: parseFloat(todayStats.avg_order || 0),
-        revenue_month: parseFloat(monthStats.revenue || 0),
+        month_revenue: parseFloat(monthStats.revenue || 0),
         orders_month: parseInt(monthStats.orders || 0),
+        returns_today: parseInt(returnsToday.count || 0),
+        returns_value: parseFloat(returnsToday.total || 0),
+        skus_sold: parseInt(skusSold.count || 0),
       },
       charts: {
-        last_6_months: last6Months,
+        daily_7d: daily7d,
+        monthly_6m: last6Months,
         by_category: byCategory,
         by_payment: byPayment,
         by_source: bySource,
       },
       top_products: topProducts,
       recent_orders: recentOrders,
+      returns_today_list: returnsTodayList,
+      skus_sold_list: skusSoldList,
     });
   } catch (err) {
     next(err);
@@ -423,6 +603,7 @@ router.get("/inventory", async (req, res, next) => {
     const [
       totalSkus,
       totalValue,
+      outOfStock,
       lowStockItems,
       expiringBatches,
       inventoryList,
@@ -432,6 +613,9 @@ router.get("/inventory", async (req, res, next) => {
 
       q1(`SELECT COALESCE(SUM(stock * COALESCE(unit_price, price, 0)), 0) AS total
           FROM products WHERE status = 'active'`),
+
+      q1(`SELECT COUNT(*) AS count FROM products
+          WHERE stock = 0 AND status = 'active'`),
 
       q(`SELECT id, name, sku, stock AS qty, low_stock_threshold AS reorder_qty,
                 expiry_date, status
@@ -482,6 +666,7 @@ router.get("/inventory", async (req, res, next) => {
         total_value: parseFloat(totalValue.total || 0),
         low_stock_count: lowStockItems.length,
         expiring_count: expiringBatches.length,
+        out_of_stock: parseInt(outOfStock.count || 0),
       },
       low_stock_items: lowStockItems,
       expiring_batches: expiringBatches,
@@ -557,6 +742,24 @@ router.get("/operations", async (req, res, next) => {
          GROUP BY status`),
     ]);
 
+    const [driversOnDutyList, deliveryTimesList] = await Promise.all([
+      q(`SELECT dr.name, dr.vehicle_type, dz.zone_name AS zone, dr.rating, dr.status
+         FROM drivers dr
+         LEFT JOIN delivery_zones dz ON dr.primary_zone_id = dz.zone_id
+         WHERE dr.status IN ('active','on_delivery')
+         ORDER BY dr.name ASC
+         LIMIT 10`),
+
+      q(`SELECT
+           delivery_ref, dispatched_at, delivered_at,
+           ROUND(EXTRACT(EPOCH FROM (delivered_at - dispatched_at)) / 60) AS minutes
+         FROM deliveries
+         WHERE status = 'delivered'
+           AND DATE(delivered_at) = CURRENT_DATE
+         ORDER BY delivered_at DESC
+         LIMIT 10`),
+    ]);
+
     const breakdownMap = {};
     deliveryBreakdown.forEach((r) => {
       breakdownMap[r.status] = parseInt(r.count);
@@ -573,6 +776,8 @@ router.get("/operations", async (req, res, next) => {
       staff_today: staffToday,
       purchase_orders: purchaseOrders,
       delivery_breakdown: breakdownMap,
+      drivers_on_duty_list: driversOnDutyList,
+      delivery_times_list: deliveryTimesList,
     });
   } catch (err) {
     next(err);
@@ -633,6 +838,7 @@ router.get("/customers", async (req, res, next) => {
         lifetime_points: parseInt(loyaltyStats.total_lifetime || 0),
         wallet_balance: parseFloat(walletStats.total_balance || 0),
         wallet_funded: parseFloat(walletStats.total_funded || 0),
+        wallet_spent: parseFloat(walletStats.total_spent || 0),
       },
       customer_list: customerList,
       charts: { growth_last_6: growthLast6 },

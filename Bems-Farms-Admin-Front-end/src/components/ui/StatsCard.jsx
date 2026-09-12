@@ -11,11 +11,19 @@ const TINT_MAP = {
   slate:  { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' },
 }
 
-export default function StatsCard({ title, value, sub, icon: Icon, riIcon, color = 'green', trend }) {
+export default function StatsCard({ title, value, sub, icon: Icon, riIcon, color = 'green', trend, onClick }) {
   const tint = TINT_MAP[color] ?? TINT_MAP.green
+  const clickable = typeof onClick === 'function'
 
   return (
-    <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6', boxShadow: '0 2px 12px -2px rgba(20, 60, 45, 0.04)' }}>
+    <div
+      className={`card mb-0 h-100${clickable ? ' stats-card-clickable' : ''}`}
+      style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6', boxShadow: '0 2px 12px -2px rgba(20, 60, 45, 0.04)', cursor: clickable ? 'pointer' : 'default' }}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(e) } } : undefined}
+    >
       <div className="card-body p-3">
         <div className="d-flex align-items-start justify-content-between gap-2">
           <div className="flex-grow-1 overflow-hidden">
