@@ -55,12 +55,6 @@ export default function Barcode() {
         setCategories(formRes.data.categories)
       }
 
-      // Default queue: add first 3 products with 1 copy each for instant preview
-      const initialQueue = {}
-      prods.slice(0, 3).forEach((p) => {
-        initialQueue[p.id] = { product: p, copies: 1 }
-      })
-      setPrintQueue(initialQueue)
     } catch (err) {
       console.error('Failed to load products for barcode studio:', err)
       toast.error('Could not load products catalog')
