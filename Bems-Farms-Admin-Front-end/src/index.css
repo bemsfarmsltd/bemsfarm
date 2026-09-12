@@ -114,63 +114,12 @@ body.sidebar-condensed #main-sidebar {
 .main-topbar {
   background-color: #0F111A !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-  padding: 0 1.25rem 0 0 !important;
+  padding: 0 1.25rem !important;
   height: 3.5rem !important;
   display: flex !important;
   align-items: center !important;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25) !important;
   z-index: 1003 !important;
-}
-
-.main-topbar .navbar-brand {
-  width: 268px !important;
-  min-width: 268px !important;
-  max-width: 268px !important;
-  height: 3.5rem !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  padding: 0 0.85rem !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
-  background-color: #0E111B !important;
-  overflow: hidden !important;
-}
-
-.brand-logo-link {
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.65rem !important;
-  text-decoration: none !important;
-  height: 100% !important;
-  width: 100% !important;
-}
-
-.brand-icon-wrapper {
-  width: 36px !important;
-  min-width: 36px !important;
-  height: 36px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.brand-logo-b {
-  height: 30px !important;
-  width: 30px !important;
-  object-fit: contain !important;
-  filter: drop-shadow(0 2px 6px rgba(180, 83, 9, 0.4)) !important;
-}
-
-.brand-text-wrapper {
-  display: flex !important;
-  align-items: center !important;
-  overflow: hidden !important;
-}
-
-.brand-logo-text {
-  height: 18px !important;
-  width: auto !important;
-  object-fit: contain !important;
 }
 
 .main-topbar .sidebar-toggle {

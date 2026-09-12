@@ -24,20 +24,8 @@ export default function Topbar({ onToggleSidebar }) {
 
   return (
     <header className="main-topbar" id="main-topbar">
-      {/* Left: Brand logo */}
-      <div className="navbar-brand">
-        <Link to="/dashboard" aria-label="Bems Farms Admin" className="brand-logo-link">
-          <div className="brand-icon-wrapper">
-            <img src="/bemsfarms_icon_b.png" alt="B" className="brand-logo-b" />
-          </div>
-          <div className="brand-text-wrapper">
-            <img src="/bemsfarms_text.png" alt="Bems Farms" className="brand-logo-text" />
-          </div>
-        </Link>
-      </div>
-
-      {/* Centre: Sidebar toggle + quick actions */}
-      <div className="d-flex align-items-center gap-2 ps-2">
+      {/* Left: Sidebar toggle + quick actions */}
+      <div className="d-flex align-items-center gap-2 ps-3">
         <button
           type="button"
           id="toggleSidebar"
