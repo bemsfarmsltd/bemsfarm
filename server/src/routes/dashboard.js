@@ -281,8 +281,11 @@ router.get("/finance", async (req, res, next) => {
       monthIncome,
       monthExpenses,
       bankAccounts,
+      supplierDuesTotal,
       supplierDues,
       last6Months,
+      productMargin,
+      topProductProfit,
     ] = await Promise.all([
       q1(`SELECT COALESCE(SUM(amount),0) AS total
           FROM income
@@ -300,7 +303,12 @@ router.get("/finance", async (req, res, next) => {
          WHERE status = 'active'
          ORDER BY balance DESC`),
 
-      q(`SELECT supplier_name, amount, due_date, status
+      q1(`SELECT COALESCE(SUM(amount),0) AS total, COUNT(*) AS count
+          FROM expenses
+          WHERE status = 'pending'
+            AND category = 'produce_purchase'`),
+
+      q(`SELECT supplier_name AS name, amount, due_date, status
          FROM expenses
          WHERE status = 'pending'
            AND category = 'produce_purchase'
@@ -326,6 +334,40 @@ router.get("/finance", async (req, res, next) => {
            GROUP BY m
          ) e ON e.m = d
          ORDER BY d`),
+
+      // Cost of goods sold vs. product revenue this month (based on
+      // products.cost_price / unit_price, not the income/expenses ledger)
+      q1(`SELECT
+            COALESCE(SUM(oi.subtotal), 0) AS revenue,
+            COALESCE(SUM(oi.quantity * COALESCE(p.cost_price, 0)), 0) AS cogs
+          FROM order_items oi
+          JOIN orders o ON oi.order_id = o.id
+          LEFT JOIN products p ON oi.product_id = p.id
+          WHERE DATE_TRUNC('month', o.created_at) = DATE_TRUNC('month', NOW())
+            AND o.status NOT IN ('cancelled')`),
+
+      // Per-product cost price / selling price / profit, last 30 days
+      q(`SELECT
+           p.name,
+           p.sku,
+           COALESCE(p.cost_price, 0) AS cost_price,
+           COALESCE(p.unit_price, p.price, 0) AS selling_price,
+           SUM(oi.quantity) AS units_sold,
+           SUM(oi.subtotal) AS revenue,
+           SUM(oi.quantity * COALESCE(p.cost_price, 0)) AS cost_total,
+           SUM(oi.subtotal) - SUM(oi.quantity * COALESCE(p.cost_price, 0)) AS profit,
+           CASE WHEN SUM(oi.subtotal) > 0
+             THEN ((SUM(oi.subtotal) - SUM(oi.quantity * COALESCE(p.cost_price, 0))) / SUM(oi.subtotal)) * 100
+             ELSE 0
+           END AS margin_pct
+         FROM order_items oi
+         JOIN orders o ON oi.order_id = o.id
+         JOIN products p ON oi.product_id = p.id
+         WHERE o.created_at >= NOW() - INTERVAL '30 days'
+           AND o.status NOT IN ('cancelled')
+         GROUP BY p.id, p.name, p.sku, p.cost_price, p.unit_price, p.price
+         ORDER BY profit DESC
+         LIMIT 10`),
     ]);
 
     const income = parseFloat(monthIncome.total || 0);
@@ -335,18 +377,40 @@ router.get("/finance", async (req, res, next) => {
       0,
     );
 
+    const productRevenue = parseFloat(productMargin.revenue || 0);
+    const cogs = parseFloat(productMargin.cogs || 0);
+    const grossProfit = productRevenue - cogs;
+    const grossMarginPct =
+      productRevenue > 0 ? ((grossProfit / productRevenue) * 100).toFixed(1) : 0;
+
     res.json({
       kpis: {
-        revenue_month: income,
-        expenses_month: expenses,
+        month_revenue: income,
+        month_expenses: expenses,
         net_profit: income - expenses,
         profit_margin:
           income > 0 ? (((income - expenses) / income) * 100).toFixed(1) : 0,
-        total_bank_balance: totalBankBalance,
+        total_balance: totalBankBalance,
+        account_count: bankAccounts.length,
+        outstanding_dues: parseFloat(supplierDuesTotal.total || 0),
+        due_count: parseInt(supplierDuesTotal.count || 0),
+        cogs_month: cogs,
+        gross_profit_month: grossProfit,
+        gross_margin_pct: grossMarginPct,
       },
-      bank_accounts: bankAccounts,
+      accounts: bankAccounts,
       supplier_dues: supplierDues,
-      charts: { last_6_months: last6Months },
+      charts: { monthly_6m: last6Months },
+      product_profitability: topProductProfit.map((p) => ({
+        name: p.name,
+        sku: p.sku,
+        cost_price: parseFloat(p.cost_price || 0),
+        selling_price: parseFloat(p.selling_price || 0),
+        units_sold: parseInt(p.units_sold || 0),
+        revenue: parseFloat(p.revenue || 0),
+        profit: parseFloat(p.profit || 0),
+        margin_pct: parseFloat(p.margin_pct || 0),
+      })),
     });
   } catch (err) {
     next(err);

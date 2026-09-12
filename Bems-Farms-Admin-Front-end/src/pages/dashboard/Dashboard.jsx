@@ -606,6 +606,7 @@ function FinanceTab() {
   const kpis     = data?.kpis ?? {}
   const accounts = data?.accounts ?? []
   const dues     = data?.supplier_dues ?? []
+  const productProfitability = data?.product_profitability ?? []
 
   useApexChart(incomeRef, () => ({
     chart: { type: 'line', height: 220, toolbar: { show: false } },
@@ -643,6 +644,13 @@ function FinanceTab() {
         <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Outstanding Dues"   value={fmtNaira(kpis.outstanding_dues)} sub={`${kpis.due_count ?? 0} supplier invoices`}  riIcon="ri-bank-card-line"   color="amber" /></div>
         <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total Bank Balance" value={fmtNaira(kpis.total_balance)}    sub={`Across ${kpis.account_count ?? 0} accounts`} riIcon="ri-bank-line"        color="teal" /></div>
         <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Profit Margin"      value={kpis.profit_margin ? `${Number(kpis.profit_margin).toFixed(1)}%` : '—'} sub="This month" riIcon="ri-percent-line" color="purple" /></div>
+      </div>
+
+      <div className="row g-3 mb-4">
+        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Product Revenue"    value={fmtNaira(kpis.cogs_month != null ? Number(kpis.cogs_month) + Number(kpis.gross_profit_month || 0) : 0)} sub="From order line items" riIcon="ri-shopping-cart-2-line" color="blue" /></div>
+        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Cost of Goods Sold" value={fmtNaira(kpis.cogs_month)}       sub="Cost price × units sold"                     riIcon="ri-price-tag-3-line" color="red" /></div>
+        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Gross Profit"       value={fmtNaira(kpis.gross_profit_month)} sub="Revenue − COGS · this month"               riIcon="ri-line-chart-line"  color="green" /></div>
+        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Gross Margin"       value={kpis.gross_margin_pct ? `${Number(kpis.gross_margin_pct).toFixed(1)}%` : '—'} sub="Product-level margin" riIcon="ri-percent-line" color="amber" /></div>
       </div>
 
       <div className="row g-4 mb-4">
@@ -722,6 +730,33 @@ function FinanceTab() {
               )}
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="card mb-0 mt-4">
+        <div className="card-header d-flex align-items-center justify-content-between">
+          <div><h6 className="fw-semibold mb-0"><i className="ri-scales-3-line text-success me-2" />Product Profitability</h6><p className="text-muted fs-xs mb-0 mt-1">Cost vs. selling price · last 30 days</p></div>
+          <Link to="/products/list" className="link link-custom fs-sm">Manage products →</Link>
+        </div>
+        <div className="card-body p-0">
+          <Table>
+            <Thead><Th>Product</Th><Th>SKU</Th><Th>Cost Price</Th><Th>Selling Price</Th><Th>Units Sold</Th><Th>Margin</Th><Th>Profit</Th></Thead>
+            <Tbody>
+              {productProfitability.length === 0 ? (
+                <Tr><Td colSpan={7} className="text-center text-muted py-4 fs-sm">No product sales in the last 30 days.</Td></Tr>
+              ) : productProfitability.map((p, i) => (
+                <Tr key={i}>
+                  <Td><p className="fw-medium fs-sm mb-0">{p.name}</p></Td>
+                  <Td><span className="badge bg-light text-dark fs-xs">{p.sku}</span></Td>
+                  <Td className="fs-sm">{fmtNaira(p.cost_price)}</Td>
+                  <Td className="fs-sm">{fmtNaira(p.selling_price)}</Td>
+                  <Td className="fs-sm">{p.units_sold}</Td>
+                  <Td><Badge label={`${p.margin_pct.toFixed(1)}%`} color={p.margin_pct >= 20 ? 'green' : p.margin_pct >= 0 ? 'amber' : 'red'} /></Td>
+                  <Td className={`fw-semibold fs-sm ${p.profit < 0 ? 'text-danger' : 'text-success'}`}>{fmtNaira(p.profit)}</Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
         </div>
       </div>
     </>
