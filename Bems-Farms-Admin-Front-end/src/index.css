@@ -164,11 +164,17 @@ body.sidebar-condensed .main-topbar {
 }
 
 /* Search Bar (Clean Light Luxury Input) */
+.topbar-search-container {
+  max-width: 380px !important;
+  width: 100% !important;
+  position: relative !important;
+}
+
 .topbar-search-input {
-  background-color: #F1F5F9 !important;
+  background-color: #F8FAFC !important;
   border: 1px solid #E2E8F0 !important;
   border-radius: 9999px !important;
-  padding: 0.45rem 0.85rem 0.45rem 2.2rem !important;
+  padding: 0.45rem 2.2rem 0.45rem 2.2rem !important;
   font-size: 0.82rem !important;
   font-weight: 500 !important;
   color: #0F172A !important;
@@ -184,6 +190,100 @@ body.sidebar-condensed .main-topbar {
   border-color: #143C2D !important;
   box-shadow: 0 0 0 3px rgba(20, 60, 45, 0.1) !important;
   outline: none !important;
+}
+
+.topbar-search-shortcut {
+  position: absolute !important;
+  right: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #64748B !important;
+  background: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+  border-radius: 4px !important;
+  padding: 1px 5px !important;
+  pointer-events: none !important;
+}
+
+.live-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #10B981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+  display: inline-block;
+}
+
+.topbar-branch-pill {
+  background-color: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 9999px !important;
+  padding: 0.35rem 0.75rem !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  color: #0F172A !important;
+  transition: all 0.18s ease !important;
+}
+
+.topbar-branch-pill:hover {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+}
+
+.topbar-action-pill-light {
+  background-color: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 9999px !important;
+  padding: 0.38rem 0.85rem !important;
+  font-size: 0.78rem !important;
+  font-weight: 600 !important;
+  color: #1E293B !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.4rem !important;
+  transition: all 0.18s ease !important;
+}
+
+.topbar-action-pill-light:hover {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+  transform: translateY(-1px);
+}
+
+.topbar-icon-btn {
+  width: 35px !important;
+  height: 35px !important;
+  border-radius: 50% !important;
+  background-color: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #475569 !important;
+  transition: all 0.18s ease !important;
+}
+
+.topbar-icon-btn:hover {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+.topbar-profile-btn {
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 9999px !important;
+  background-color: #FFFFFF !important;
+  padding: 2px 10px 2px 3px !important;
+  transition: all 0.18s ease !important;
+}
+
+.topbar-profile-btn:hover {
+  background-color: #F8FAFC !important;
+  border-color: #CBD5E1 !important;
 }
 
 /* Quick Action Pills */
