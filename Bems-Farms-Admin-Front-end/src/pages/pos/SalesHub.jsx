@@ -370,14 +370,59 @@ export default function SalesHub({
         }
       `}</style>
 
-      {/* ── TOP NAV HEADER ── */}
+      {/* ── TOP NAV HEADER (UNIFIED COMMAND BAR) ── */}
       <header className="sales-hub-header">
         <div className="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-3">
-          {/* Left: Brand Logo */}
-          <div className="d-flex align-items-center">
+          {/* Left: Brand Logo + Terminal & Shift Status */}
+          <div className="d-flex align-items-center gap-3">
             <Link to="/dashboard" className="d-flex align-items-center text-decoration-none">
               <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height: 38, objectFit: 'contain' }} />
             </Link>
+
+            <div className="vr d-none d-sm-block text-muted opacity-25" style={{ height: 28 }}></div>
+
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.94rem', letterSpacing: '-0.01em' }}>
+                POS Terminal 01
+              </h6>
+              <span
+                className="badge d-inline-flex align-items-center gap-1.5"
+                style={{
+                  backgroundColor: '#ECFDF5',
+                  color: '#047857',
+                  border: '1px solid #A7F3D0',
+                  fontSize: '9px',
+                  fontWeight: 800,
+                  padding: '2.5px 7.5px',
+                  borderRadius: '12px',
+                  letterSpacing: '0.03em'
+                }}
+              >
+                <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
+                Shift Active
+              </span>
+            </div>
+          </div>
+
+          {/* Center: Period Switcher */}
+          <div className="d-none d-xl-flex align-items-center gap-1 bg-light p-1 rounded-pill border">
+            {[
+              { id: 'shift', label: 'Active Shift' },
+              { id: 'today', label: 'Today (Full)' },
+              { id: 'yesterday', label: 'Yesterday' },
+              { id: 'week', label: '7 Days' },
+              { id: 'month', label: '30 Days' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`sh-pill-tab py-1 px-2.5 ${timeframe === t.id ? 'active' : ''}`}
+                style={{ fontSize: '0.74rem' }}
+                onClick={() => setTimeframe(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
 
           {/* Right: Register Launcher + Quick Actions */}
@@ -452,44 +497,13 @@ export default function SalesHub({
       {/* ── MAIN DASHBOARD CONTAINER ── */}
       <main className="container-fluid py-4">
         
-        {/* Terminal Header & Timeframe Filter Toolbar */}
-        <div className="d-flex flex-wrap align-items-center justify-content-between p-3 mb-4 rounded-3 border bg-white shadow-xs gap-3">
-          <div className="d-flex align-items-center gap-3">
-            <div className="rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 44, height: 44 }}>
-              <i className="ri-store-2-line" style={{ fontSize: '20px' }}></i>
-            </div>
-            <div>
-              <div className="d-flex align-items-center gap-2 flex-wrap">
-                <h5 className="fw-bold mb-0 font-display text-dark">POS Terminal 01</h5>
-                <span
-                  className="badge d-inline-flex align-items-center gap-1.5"
-                  style={{
-                    backgroundColor: '#ECFDF5',
-                    color: '#047857',
-                    border: '1px solid #A7F3D0',
-                    fontSize: '9.5px',
-                    fontWeight: 800,
-                    padding: '2.5px 8px',
-                    borderRadius: '12px',
-                    letterSpacing: '0.04em'
-                  }}
-                >
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
-                  Shift Active
-                </span>
-              </div>
-              <p className="text-muted fs-xs mb-0 mt-0.5">
-                Cashier: <strong className="text-dark">{user?.first_name || 'Staff Member'} {user?.last_name || ''}</strong> • {todayStr}
-              </p>
-            </div>
-          </div>
-
-          {/* Dynamic Period Pills Switcher */}
-          <div className="d-flex flex-wrap align-items-center gap-1.5">
-            <span className="text-muted fs-xs fw-bold me-1 d-none d-sm-inline">Period:</span>
+        {/* Mobile Period Pills Switcher */}
+        <div className="d-xl-none d-flex flex-wrap align-items-center justify-content-between p-2.5 mb-3 rounded-3 border bg-white shadow-xs gap-2">
+          <span className="text-muted fs-xs fw-bold">Period:</span>
+          <div className="d-flex flex-wrap align-items-center gap-1">
             {[
               { id: 'shift', label: 'Active Shift' },
-              { id: 'today', label: 'Today (Full)' },
+              { id: 'today', label: 'Today' },
               { id: 'yesterday', label: 'Yesterday' },
               { id: 'week', label: '7 Days' },
               { id: 'month', label: '30 Days' },
@@ -497,7 +511,8 @@ export default function SalesHub({
               <button
                 key={t.id}
                 type="button"
-                className={`sh-pill-tab ${timeframe === t.id ? 'active' : ''}`}
+                className={`sh-pill-tab py-1 px-2 ${timeframe === t.id ? 'active' : ''}`}
+                style={{ fontSize: '0.72rem' }}
                 onClick={() => setTimeframe(t.id)}
               >
                 {t.label}
