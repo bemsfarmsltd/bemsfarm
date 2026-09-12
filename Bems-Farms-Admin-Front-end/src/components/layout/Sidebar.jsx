@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
-import { NavLink, Link, useLocation } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { ROLE_META } from '../../lib/roles'
 
 export default function Sidebar() {
   const { user, hasRole, logout } = useAuth()
   const location = useLocation()
-  const initials = user ? `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}` : 'BF'
   const roleMeta = user ? ROLE_META[user.role] : null
 
   // Role helpers
@@ -42,6 +41,7 @@ export default function Sidebar() {
   }
 
   const [activeTab, setActiveTab] = useState(() => getActiveCategoryFromPath(location.pathname))
+  const [isHovered, setIsHovered] = useState(false)
 
   useEffect(() => {
     setActiveTab(getActiveCategoryFromPath(location.pathname))
@@ -59,12 +59,13 @@ export default function Sidebar() {
     style.textContent = `
       .dual-sidebar-container {
         display: flex;
-        width: 100%;
+        width: 272px;
         height: 100%;
         background: #FFFFFF;
+        position: relative;
       }
       
-      /* ── COLUMN 1: SLIM DARK ICON RAIL (70px) ── */
+      /* ── COLUMN 1: SLIM DARK ICON RAIL (68px) ── */
       .sidebar-icon-rail {
         width: 68px;
         min-width: 68px;
@@ -74,7 +75,7 @@ export default function Sidebar() {
         flex-direction: column;
         align-items: center;
         padding: 0.75rem 0;
-        z-index: 5;
+        z-index: 10;
       }
       
       .rail-nav-list {
@@ -131,40 +132,37 @@ export default function Sidebar() {
         border-radius: 0 4px 4px 0;
       }
       
-      .rail-btn .rail-tooltip {
-        position: absolute;
-        left: 64px;
-        background: #1E293B;
-        color: #FFFFFF;
-        font-size: 11px;
-        font-weight: 700;
-        padding: 4px 8px;
-        border-radius: 6px;
-        white-space: nowrap;
-        pointer-events: none;
-        opacity: 0;
-        transform: translateX(-6px);
-        transition: all 0.15s ease;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-        z-index: 100;
-      }
-      .rail-btn:hover .rail-tooltip {
-        opacity: 1;
-        transform: translateX(0);
-      }
-      
-      /* ── COLUMN 2: WHITE SUB-NAVIGATION PANEL ── */
+      /* ── COLUMN 2: WHITE SUB-NAVIGATION FLYOUT PANEL (204px) ── */
       .sidebar-sub-panel {
-        flex: 1;
+        width: 204px;
+        min-width: 204px;
         background: #FFFFFF;
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        border-right: 1px solid #E5E7EB;
+        box-shadow: 4px 0 16px rgba(0, 0, 0, 0.06);
+        transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      
+      /* Smooth Hover Flyout Controls */
+      #main-sidebar:not(:hover):not(.sidebar-expanded) .sidebar-sub-panel {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(-8px);
+      }
+      
+      #main-sidebar:hover .sidebar-sub-panel,
+      #main-sidebar.sidebar-expanded .sidebar-sub-panel {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(0);
       }
       
       .sub-panel-header {
         padding: 1rem 1.15rem 0.75rem;
         border-bottom: 1px solid #F1F5F9;
+        background: #FFFFFF;
       }
       .sub-panel-brand {
         font-size: 11px;
@@ -177,7 +175,7 @@ export default function Sidebar() {
         gap: 0.35rem;
       }
       .sub-panel-title {
-        font-size: 15px;
+        font-size: 14.5px;
         font-weight: 800;
         color: #0F172A;
         margin-top: 2px;
@@ -230,8 +228,17 @@ export default function Sidebar() {
     `
   }, [])
 
+  const handleRailHover = (categoryKey) => {
+    setActiveTab(categoryKey)
+  }
+
   return (
-    <div id="main-sidebar" className="main-sidebar">
+    <div
+      id="main-sidebar"
+      className={`main-sidebar ${isHovered ? 'sidebar-expanded' : ''}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div className="dual-sidebar-container">
 
         {/* ── LEFT COLUMN: SLIM ICON RAIL ── */}
@@ -242,11 +249,11 @@ export default function Sidebar() {
             <button
               type="button"
               className={`rail-btn ${activeTab === 'main' ? 'active' : ''}`}
+              onMouseEnter={() => handleRailHover('main')}
               onClick={() => setActiveTab('main')}
               title="Overview"
             >
               <i className="ri-dashboard-2-line"></i>
-              <span className="rail-tooltip">Overview</span>
             </button>
 
             {/* Products */}
@@ -254,11 +261,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'products' ? 'active' : ''}`}
+                onMouseEnter={() => handleRailHover('products')}
                 onClick={() => setActiveTab('products')}
                 title="Products"
               >
                 <i className="ri-price-tag-3-line"></i>
-                <span className="rail-tooltip">Products</span>
               </button>
             )}
 
@@ -267,11 +274,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'inventory' ? 'active' : ''}`}
+                onMouseEnter={() => handleRailHover('inventory')}
                 onClick={() => setActiveTab('inventory')}
                 title="Inventory"
               >
                 <i className="ri-archive-stack-line"></i>
-                <span className="rail-tooltip">Inventory</span>
               </button>
             )}
 
@@ -280,11 +287,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'orders' ? 'active' : ''}`}
+                onMouseEnter={() => handleRailHover('orders')}
                 onClick={() => setActiveTab('orders')}
                 title="Orders"
               >
                 <i className="ri-shopping-bag-3-line"></i>
-                <span className="rail-tooltip">Orders</span>
               </button>
             )}
 
@@ -293,11 +300,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'deliveries' ? 'active' : ''}`}
+                onMouseEnter={() => handleRailHover('deliveries')}
                 onClick={() => setActiveTab('deliveries')}
                 title="Deliveries"
               >
                 <i className="ri-truck-line"></i>
-                <span className="rail-tooltip">Deliveries</span>
               </button>
             )}
 
@@ -306,11 +313,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'customers' ? 'active' : ''}`}
+                onMouseEnter={() => handleRailHover('customers')}
                 onClick={() => setActiveTab('customers')}
                 title="Customers"
               >
                 <i className="ri-user-heart-line"></i>
-                <span className="rail-tooltip">Customers</span>
               </button>
             )}
 
@@ -319,11 +326,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'staff' ? 'active' : ''}`}
+                onMouseEnter={() => handleRailHover('staff')}
                 onClick={() => setActiveTab('staff')}
                 title="Staff & HR"
               >
                 <i className="ri-team-line"></i>
-                <span className="rail-tooltip">Staff &amp; HR</span>
               </button>
             )}
 
@@ -332,11 +339,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'finance' ? 'active' : ''}`}
+                onMouseEnter={() => handleRailHover('finance')}
                 onClick={() => setActiveTab('finance')}
                 title="Finance & Accounts"
               >
                 <i className="ri-bank-card-line"></i>
-                <span className="rail-tooltip">Finance</span>
               </button>
             )}
 
@@ -345,11 +352,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'reports' ? 'active' : ''}`}
+                onMouseEnter={() => handleRailHover('reports')}
                 onClick={() => setActiveTab('reports')}
                 title="Reports"
               >
                 <i className="ri-bar-chart-grouped-line"></i>
-                <span className="rail-tooltip">Reports</span>
               </button>
             )}
 
@@ -358,11 +365,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'chef' ? 'active' : ''}`}
+                onMouseEnter={() => handleRailHover('chef')}
                 onClick={() => setActiveTab('chef')}
                 title="Chef Bems AI"
               >
                 <i className="ri-robot-line"></i>
-                <span className="rail-tooltip">Chef Bems AI</span>
               </button>
             )}
 
@@ -371,11 +378,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'stores' ? 'active' : ''}`}
+                onMouseEnter={() => handleRailHover('stores')}
                 onClick={() => setActiveTab('stores')}
                 title="Multi-Store"
               >
                 <i className="ri-store-3-line"></i>
-                <span className="rail-tooltip">Multi-Store</span>
               </button>
             )}
 
@@ -384,11 +391,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'settings' ? 'active' : ''}`}
+                onMouseEnter={() => handleRailHover('settings')}
                 onClick={() => setActiveTab('settings')}
                 title="Settings"
               >
                 <i className="ri-settings-3-line"></i>
-                <span className="rail-tooltip">Settings</span>
               </button>
             )}
           </div>
@@ -402,19 +409,18 @@ export default function Sidebar() {
               title="Sign Out"
             >
               <i className="ri-logout-box-r-line"></i>
-              <span className="rail-tooltip">Sign Out</span>
             </button>
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN: WHITE SUB-NAVIGATION PANEL ── */}
+        {/* ── RIGHT COLUMN: WHITE SUB-NAVIGATION FLYOUT PANEL ── */}
         <div className="sidebar-sub-panel">
 
           {/* Subpanel Header */}
           <div className="sub-panel-header">
             <div className="sub-panel-brand">
               <i className="ri-store-2-line text-warning"></i>
-              <span>Bems Farms Admin</span>
+              <span>Bems Farms</span>
             </div>
             <div className="sub-panel-title">
               {activeTab === 'main' && 'Overview'}
