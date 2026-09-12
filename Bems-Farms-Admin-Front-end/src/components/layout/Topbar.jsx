@@ -238,7 +238,7 @@ export default function Topbar({ onToggleSidebar }) {
                 <i className="ri-user-line me-2 text-muted"></i>My Profile
               </Link>
               <Link className="dropdown-item rounded-3 py-2 fw-semibold fs-sm" to="/staff">
-                <i className="ri-team-line me-2 text-muted"></i>Staff &amp; HR
+                <i className="ri-shield-user-line me-2 text-muted"></i>Staff Accounts
               </Link>
               <Link className="dropdown-item rounded-3 py-2 fw-semibold fs-sm" to="/settings/general">
                 <i className="ri-settings-3-line me-2 text-muted"></i>Settings

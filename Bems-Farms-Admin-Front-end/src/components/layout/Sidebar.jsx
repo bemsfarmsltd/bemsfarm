@@ -440,10 +440,10 @@ export default function Sidebar() {
                 type="button"
                 className={`rail-btn ${activeTab === 'staff' ? 'active' : ''}`}
                 onClick={() => setActiveTab('staff')}
-                title="Staff & HR"
+                title="Staff Accounts & Roles"
               >
-                <i className="ri-team-line rail-icon"></i>
-                <span className="rail-label">Staff &amp; HR</span>
+                <i className="ri-shield-user-line rail-icon"></i>
+                <span className="rail-label">Staff</span>
               </button>
             )}
 
@@ -539,7 +539,7 @@ export default function Sidebar() {
               {activeTab === 'orders' && 'Sales & Orders'}
               {activeTab === 'deliveries' && 'Operations & Dispatch'}
               {activeTab === 'customers' && 'Customer CRM'}
-              {activeTab === 'staff' && 'Staff & Payroll'}
+              {activeTab === 'staff' && 'Staff Accounts & Roles'}
               {activeTab === 'finance' && 'Accounts & Finance'}
               {activeTab === 'reports' && 'Analytics & Reports'}
               {activeTab === 'chef' && 'Chef Bems AI'}
@@ -762,29 +762,17 @@ export default function Sidebar() {
               </>
             )}
 
-            {/* 7. STAFF */}
+            {/* 7. STAFF ACCOUNTS & ROLES */}
             {activeTab === 'staff' && (
               <>
                 <NavLink to="/staff" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Staff Directory</span>
+                  <span>Staff Accounts</span>
                 </NavLink>
                 <NavLink to="/staff/add" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Add New Staff</span>
+                  <span>Add Staff Account</span>
                 </NavLink>
                 <NavLink to="/staff/roles" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Roles &amp; Permissions</span>
-                </NavLink>
-                <NavLink to="/staff/attendance" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Attendance</span>
-                </NavLink>
-                <NavLink to="/staff/schedule" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Shift Schedules</span>
-                </NavLink>
-                <NavLink to="/staff/holidays" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Holidays &amp; Leaves</span>
-                </NavLink>
-                <NavLink to="/staff/payroll" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Payroll</span>
                 </NavLink>
               </>
             )}
