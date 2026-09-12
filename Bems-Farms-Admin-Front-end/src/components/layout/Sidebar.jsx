@@ -75,7 +75,7 @@ export default function Sidebar() {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        padding: 0.65rem 0.5rem;
+        padding: 0 0.5rem 0.75rem;
         z-index: 20;
         overflow-x: hidden;
         overflow-y: auto;
@@ -90,12 +90,15 @@ export default function Sidebar() {
         box-shadow: 12px 0 36px rgba(0, 0, 0, 0.45);
       }
       
-      /* Rail Brand Header (Only B when closed -> Full Logo text on hover) */
+      /* Rail Brand Header (Begins right from top bar level) */
       .rail-brand-header {
         width: 100%;
-        margin-bottom: 0.65rem;
-        padding-bottom: 0.6rem;
+        height: 3.5rem;
+        min-height: 3.5rem;
+        display: flex;
+        align-items: center;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        margin-bottom: 0.65rem;
       }
       
       .rail-brand-btn {
@@ -104,29 +107,28 @@ export default function Sidebar() {
         border-radius: 12px;
         display: flex;
         align-items: center;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.07);
-        padding: 0 9px;
+        background: transparent;
+        border: none;
+        padding: 0 7px;
         text-decoration: none;
         transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
         overflow: hidden;
       }
       .rail-brand-btn:hover {
-        background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(245, 158, 11, 0.35);
+        background: rgba(255, 255, 255, 0.06);
       }
       
       .rail-brand-b {
-        width: 32px;
-        height: 32px;
-        min-width: 32px;
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
         object-fit: contain;
-        filter: drop-shadow(0 2px 6px rgba(180, 83, 9, 0.45));
+        filter: drop-shadow(0 2px 8px rgba(180, 83, 9, 0.45));
         flex-shrink: 0;
       }
       
       .rail-brand-full {
-        margin-left: 0.6rem;
+        margin-left: 0.65rem;
         opacity: 0;
         transform: translateX(-8px);
         transition: opacity 0.18s ease, transform 0.18s ease;
@@ -137,7 +139,7 @@ export default function Sidebar() {
       }
       
       .rail-brand-text-img {
-        height: 16px;
+        height: 18px;
         width: auto;
         object-fit: contain;
       }
@@ -225,11 +227,11 @@ export default function Sidebar() {
         border-radius: 0 4px 4px 0;
       }
       
-      /* ── COLUMN 2: WHITE SUB-NAVIGATION PANEL (ALWAYS DOCKED AT LEFT: 68px, WIDTH: 200px) ── */
+      /* ── COLUMN 2: WHITE SUB-NAVIGATION PANEL (ALWAYS DOCKED AT LEFT: 68px, TOP: 3.5rem) ── */
       .sidebar-sub-panel {
         position: absolute;
         left: 68px;
-        top: 0;
+        top: 3.5rem;
         bottom: 0;
         width: 200px;
         background: #FFFFFF;
