@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
+import BarcodeSvg from '../../components/ui/BarcodeSvg'
+import { generateUniversalGoodsCode } from '../../lib/barcodeGenerator'
 
 export default function ProductsList() {
   const navigate = useNavigate()
@@ -14,9 +16,14 @@ export default function ProductsList() {
   const [category, setCategory] = useState('')
   const [status, setStatus] = useState('')
   const [stockFilter, setStockFilter] = useState('')
+  const [barcodeFilter, setBarcodeFilter] = useState('') // '' | 'has' | 'missing'
   const [categories, setCategories] = useState([])
   const [productToDelete, setProductToDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
+
+  // Quick Barcode Modal State
+  const [previewBarcodeProduct, setPreviewBarcodeProduct] = useState(null)
+  const [generatingBarcodeId, setGeneratingBarcodeId] = useState(null)
 
   // Fetch categories for filter dropdown
   useEffect(() => {
@@ -76,9 +83,32 @@ export default function ProductsList() {
     }
   }
 
+  // Quick Inline Generate Barcode
+  const handleQuickGenerateBarcode = async (product) => {
+    setGeneratingBarcodeId(product.id)
+    const newCode = generateUniversalGoodsCode(product, 'CODE128')
+    try {
+      await api.put(`/admin/products/${product.id}`, { barcode: newCode })
+      setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, barcode: newCode } : p)))
+      toast.success(`Assigned Barcode: ${newCode}`)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to assign barcode')
+    } finally {
+      setGeneratingBarcodeId(null)
+    }
+  }
+
   const formatNaira = (amount) => {
     return '₦' + Number(amount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
+
+  // Filter products by Barcode client-side if selected
+  const displayedProducts = useMemo(() => {
+    if (!barcodeFilter) return products
+    if (barcodeFilter === 'has') return products.filter((p) => p.barcode && p.barcode.trim())
+    if (barcodeFilter === 'missing') return products.filter((p) => !p.barcode || !p.barcode.trim())
+    return products
+  }, [products, barcodeFilter])
 
   return (
     <div className="container-fluid py-3">
@@ -86,9 +116,12 @@ export default function ProductsList() {
       <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
           <h5 className="mb-0 fw-bold text-dark">Products &amp; Master Catalog</h5>
-          <small className="text-muted">Manage store inventory, prices, SKUs, and stock thresholds</small>
+          <small className="text-muted">Manage store inventory, prices, SKUs, universal barcodes, and stock thresholds</small>
         </div>
         <div className="d-flex gap-2">
+          <Link to="/products/barcode" className="btn btn-outline-success d-flex align-items-center gap-1 shadow-sm">
+            <i className="ri-barcode-line"></i> Barcode Studio
+          </Link>
           <Link to="/products/add" className="btn btn-primary d-flex align-items-center gap-1 shadow-sm">
             <i className="ri-add-line"></i> Add New Product
           </Link>
@@ -100,12 +133,12 @@ export default function ProductsList() {
         <div className="card-body border-bottom p-3">
           <div className="row g-2 align-items-center">
             {/* Search Box */}
-            <div className="col-12 col-md-4">
+            <div className="col-12 col-md-3">
               <form onSubmit={handleSearchSubmit} className="position-relative">
                 <input
                   type="text"
                   className="form-control ps-4"
-                  placeholder="Search by name, SKU, or barcode…"
+                  placeholder="Search name, SKU, barcode…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -119,7 +152,7 @@ export default function ProductsList() {
             </div>
 
             {/* Category Filter */}
-            <div className="col-6 col-md-3">
+            <div className="col-6 col-md-2">
               <select
                 className="form-select"
                 value={category}
@@ -129,6 +162,19 @@ export default function ProductsList() {
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
+              </select>
+            </div>
+
+            {/* Barcode Filter */}
+            <div className="col-6 col-md-2">
+              <select
+                className="form-select"
+                value={barcodeFilter}
+                onChange={(e) => setBarcodeFilter(e.target.value)}
+              >
+                <option value="">All Barcodes</option>
+                <option value="has">✓ Has Barcode</option>
+                <option value="missing">⚠️ Missing Barcode</option>
               </select>
             </div>
 
@@ -164,7 +210,7 @@ export default function ProductsList() {
               <button
                 type="button"
                 className="btn btn-outline-secondary w-100"
-                onClick={() => { setSearch(''); setCategory(''); setStatus(''); setStockFilter(''); setPage(1); }}
+                onClick={() => { setSearch(''); setCategory(''); setStatus(''); setStockFilter(''); setBarcodeFilter(''); setPage(1); }}
                 title="Reset Filters"
               >
                 Reset
@@ -174,193 +220,317 @@ export default function ProductsList() {
         </div>
 
         {/* Table Body */}
-        <div className="card-body p-0">
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0 text-nowrap">
-              <thead className="table-light text-muted fs-xs text-uppercase">
+        <div className="table-responsive">
+          <table className="table table-hover align-middle mb-0 text-nowrap">
+            <thead className="table-light text-muted fs-xs text-uppercase">
+              <tr>
+                <th style={{ width: '50px' }}>#</th>
+                <th>Product</th>
+                <th>SKU</th>
+                <th>Universal Barcode</th>
+                <th>Category</th>
+                <th>Selling Price</th>
+                <th>Cost Price</th>
+                <th>Stock QTY</th>
+                <th>Status</th>
+                <th className="text-end pe-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
                 <tr>
-                  <th style={{ width: '50px' }}>#</th>
-                  <th>Product</th>
-                  <th>SKU / Barcode</th>
-                  <th>Category</th>
-                  <th>Selling Price</th>
-                  <th>Cost Price</th>
-                  <th>Stock QTY</th>
-                  <th>Status</th>
-                  <th className="text-end pe-3">Actions</th>
+                  <td colSpan="10" className="text-center py-5 text-muted">
+                    <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                    Loading products catalog…
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="9" className="text-center py-5 text-muted">
-                      <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                      Loading products catalog…
-                    </td>
-                  </tr>
-                ) : products.length === 0 ? (
-                  <tr>
-                    <td colSpan="9" className="text-center py-5 text-muted">
-                      <i className="ri-inbox-line fs-1 d-block mb-2 text-muted"></i>
-                      No products found matching your search.
-                    </td>
-                  </tr>
-                ) : (
-                  products.map((p, index) => {
-                    const isLowStock = Number(p.stock || p.stock_quantity || 0) <= Number(p.low_stock_threshold || 10) && Number(p.stock || p.stock_quantity || 0) > 0
-                    const isOutStock = Number(p.stock || p.stock_quantity || 0) <= 0
+              ) : displayedProducts.length === 0 ? (
+                <tr>
+                  <td colSpan="10" className="text-center py-5 text-muted">
+                    <i className="ri-inbox-line fs-1 d-block mb-2 text-muted"></i>
+                    No products found matching your search.
+                  </td>
+                </tr>
+              ) : (
+                displayedProducts.map((p, index) => {
+                  const isLowStock = Number(p.stock || p.stock_quantity || 0) <= Number(p.low_stock_threshold || 10) && Number(p.stock || p.stock_quantity || 0) > 0
+                  const isOutStock = Number(p.stock || p.stock_quantity || 0) <= 0
+                  const hasBarcode = Boolean(p.barcode && p.barcode.trim())
 
-                    return (
-                      <tr key={p.id}>
-                        <td className="text-muted fw-semibold">{(page - 1) * 15 + index + 1}</td>
-                        <td>
-                          <div className="d-flex align-items-center gap-2">
-                            {p.image_url ? (
-                              <img
-                                src={p.image_url}
-                                alt={p.name}
-                                className="rounded-3 object-fit-cover shadow-xs border"
-                                style={{ width: '42px', height: '42px' }}
-                              />
-                            ) : (
-                              <div
-                                className="rounded-3 bg-light d-flex align-items-center justify-content-center text-muted border"
-                                style={{ width: '42px', height: '42px' }}
-                              >
-                                <i className="ri-image-line"></i>
-                              </div>
-                            )}
-                            <div>
-                              <div className="fw-bold text-dark">{p.name}</div>
-                              {p.is_featured && (
-                                <span className="badge bg-warning-subtle text-warning fs-xs">Featured</span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="fw-mono fs-sm text-dark">{p.sku || '—'}</div>
-                          {p.barcode && <small className="text-muted fs-xs">BC: {p.barcode}</small>}
-                        </td>
-                        <td>
-                          <span className="badge bg-light text-dark border">{p.category || 'General'}</span>
-                        </td>
-                        <td className="fw-bold text-dark">
-                          {formatNaira(p.price || p.unit_price)}
-                        </td>
-                        <td className="text-muted">
-                          {p.cost_price ? formatNaira(p.cost_price) : '—'}
-                        </td>
-                        <td>
-                          <div className="d-flex align-items-center gap-2">
-                            <span className="fw-bold">{p.stock ?? p.stock_quantity ?? 0}</span>
-                            {isOutStock ? (
-                              <span className="badge bg-danger-subtle text-danger fs-xs">Out of Stock</span>
-                            ) : isLowStock ? (
-                              <span className="badge bg-warning-subtle text-warning fs-xs">Low Stock</span>
-                            ) : (
-                              <span className="badge bg-success-subtle text-success fs-xs">In Stock</span>
-                            )}
-                          </div>
-                        </td>
-                        <td>
-                          {p.status === 'active' ? (
-                            <span className="badge bg-success text-white">Active</span>
-                          ) : p.status === 'draft' ? (
-                            <span className="badge bg-secondary text-white">Draft</span>
+                  return (
+                    <tr key={p.id}>
+                      <td className="text-muted fw-semibold">{(page - 1) * 15 + index + 1}</td>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          {p.image_url ? (
+                            <img
+                              src={p.image_url}
+                              alt={p.name}
+                              className="rounded-3 object-fit-cover shadow-xs border"
+                              style={{ width: '42px', height: '42px' }}
+                            />
                           ) : (
-                            <span className="badge bg-danger text-white">Inactive</span>
+                            <div
+                              className="rounded-3 bg-light d-flex align-items-center justify-content-center text-muted border"
+                              style={{ width: '42px', height: '42px' }}
+                            >
+                              <i className="ri-image-line"></i>
+                            </div>
                           )}
-                        </td>
-                        <td className="text-end pe-3">
-                          <div className="btn-group btn-group-sm">
+                          <div>
+                            <div className="fw-bold text-dark">{p.name}</div>
+                            {p.is_featured && (
+                              <span className="badge bg-warning-subtle text-warning fs-xs">Featured</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="font-monospace fs-sm text-dark">{p.sku || '—'}</span>
+                      </td>
+                      <td>
+                        {hasBarcode ? (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-light border d-inline-flex align-items-center gap-1 py-1 px-2 text-start"
+                            onClick={() => setPreviewBarcodeProduct(p)}
+                            title="Click to view & print barcode"
+                          >
+                            <i className="ri-barcode-line text-success fs-6"></i>
+                            <span className="font-monospace fs-xs fw-semibold text-dark">{p.barcode}</span>
+                          </button>
+                        ) : (
+                          <div className="d-inline-flex align-items-center gap-1">
+                            <span className="badge bg-warning-subtle text-warning fs-xs">No Barcode</span>
                             <button
                               type="button"
-                              className="btn btn-outline-secondary"
-                              onClick={() => navigate(`/products/add?edit=${p.id}`)}
-                              title="Edit Product"
+                              className="btn btn-xs btn-outline-success py-0 px-2"
+                              disabled={generatingBarcodeId === p.id}
+                              onClick={() => handleQuickGenerateBarcode(p)}
+                              title="Generate Universal Barcode"
                             >
-                              <i className="ri-pencil-line"></i>
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-outline-danger"
-                              onClick={() => setProductToDelete(p)}
-                              title="Delete Product"
-                            >
-                              <i className="ri-delete-bin-line"></i>
+                              {generatingBarcodeId === p.id ? '…' : '+ Generate'}
                             </button>
                           </div>
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                        )}
+                      </td>
+                      <td>
+                        <span className="badge bg-light text-dark border">{p.category || 'General'}</span>
+                      </td>
+                      <td className="fw-bold text-dark">
+                        {formatNaira(p.price || p.unit_price)}
+                      </td>
+                      <td className="text-muted">
+                        {p.cost_price ? formatNaira(p.cost_price) : '—'}
+                      </td>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="fw-bold">{p.stock ?? p.stock_quantity ?? 0}</span>
+                          {isOutStock ? (
+                            <span className="badge bg-danger-subtle text-danger fs-xs">Out of Stock</span>
+                          ) : isLowStock ? (
+                            <span className="badge bg-warning-subtle text-warning fs-xs">Low Stock</span>
+                          ) : (
+                            <span className="badge bg-success-subtle text-success fs-xs">In Stock</span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        {p.status === 'active' ? (
+                          <span className="badge bg-success text-white">Active</span>
+                        ) : p.status === 'draft' ? (
+                          <span className="badge bg-secondary text-white">Draft</span>
+                        ) : (
+                          <span className="badge bg-danger text-white">Inactive</span>
+                        )}
+                      </td>
+                      <td className="text-end pe-3">
+                        <div className="btn-group btn-group-sm">
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            onClick={() => navigate(`/products/add?edit=${p.id}`)}
+                            title="Edit Product"
+                          >
+                            <i className="ri-pencil-line"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline-danger"
+                            onClick={() => setProductToDelete(p)}
+                            title="Delete Product"
+                          >
+                            <i className="ri-delete-bin-line"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
-          {/* Pagination Footer */}
-          <div className="d-flex justify-content-between align-items-center p-3 border-top flex-wrap gap-2">
-            <small className="text-muted">
-              Showing <strong>{products.length}</strong> of <strong>{total}</strong> products
-            </small>
+        {/* Pagination Footer */}
+        <div className="card-footer bg-white border-top d-flex justify-content-between align-items-center flex-wrap gap-2 p-3">
+          <small className="text-muted">
+            Showing {(page - 1) * 15 + 1} to {Math.min(page * 15, total)} of {total} products
+          </small>
+
+          {pages > 1 && (
             <div className="btn-group btn-group-sm">
               <button
                 type="button"
                 className="btn btn-outline-secondary"
-                disabled={page <= 1 || loading}
-                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
-                ← Previous
+                Previous
               </button>
-              <button type="button" className="btn btn-outline-secondary active disabled">
-                Page {page} of {pages || 1}
-              </button>
+              {Array.from({ length: pages }).map((_, i) => (
+                <button
+                  key={i + 1}
+                  type="button"
+                  className={`btn ${page === i + 1 ? 'btn-primary' : 'btn-outline-secondary'}`}
+                  onClick={() => setPage(i + 1)}
+                >
+                  {i + 1}
+                </button>
+              ))}
               <button
                 type="button"
                 className="btn btn-outline-secondary"
-                disabled={page >= pages || loading}
-                onClick={() => setPage((p) => Math.min(p + 1, pages))}
+                disabled={page >= pages}
+                onClick={() => setPage((p) => Math.min(pages, p + 1))}
               >
-                Next →
+                Next
               </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {productToDelete && (
-        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-dialog-centered modal-sm">
-            <div className="modal-content rounded-4 border-0 p-3 shadow-lg text-center">
-              <div
-                className="rounded-circle bg-danger-subtle text-danger mx-auto d-flex align-items-center justify-content-center mb-3"
-                style={{ width: '54px', height: '54px' }}
-              >
-                <i className="ri-delete-bin-line fs-3"></i>
-              </div>
-              <h6 className="fw-bold mb-1">Delete Product</h6>
-              <p className="text-muted fs-sm mb-4">
-                Are you sure you want to delete <strong>{productToDelete.name}</strong>? This will archive the item from sales.
-              </p>
-              <div className="d-flex gap-2">
+      {/* ── Quick Barcode Preview Modal ──────────────────────────── */}
+      {previewBarcodeProduct && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content rounded-4 shadow border-0">
+              <div className="modal-header border-0 pb-0">
+                <div>
+                  <h6 className="modal-title fw-bold">Bems Farms Barcode Label</h6>
+                  <p className="text-muted fs-xs mb-0">{previewBarcodeProduct.name}</p>
+                </div>
                 <button
                   type="button"
-                  className="btn btn-light flex-grow-1"
-                  disabled={deleting}
+                  className="btn-close"
+                  onClick={() => setPreviewBarcodeProduct(null)}
+                ></button>
+              </div>
+
+              <div className="modal-body text-center py-4">
+                <div
+                  className="p-3 bg-white rounded-3 mx-auto shadow-sm border"
+                  style={{ maxWidth: '280px', border: '1.5px solid #1f2937' }}
+                >
+                  <div className="d-flex justify-content-between align-items-center mb-1 border-bottom pb-1">
+                    <span
+                      style={{
+                        background: '#064e3b',
+                        color: '#fff',
+                        fontSize: '9px',
+                        fontWeight: 'bold',
+                        padding: '1px 5px',
+                        borderRadius: '2px',
+                      }}
+                    >
+                      BEMS FARMS
+                    </span>
+                    <span className="text-muted" style={{ fontSize: '9px' }}>Fresh Produce</span>
+                  </div>
+
+                  <div className="fw-bold text-dark text-start mb-1 fs-sm text-truncate">
+                    {previewBarcodeProduct.name}
+                  </div>
+
+                  <div className="d-flex justify-content-between align-items-baseline mb-2">
+                    <span className="fw-bold text-success fs-5">
+                      {formatNaira(previewBarcodeProduct.price || previewBarcodeProduct.unit_price)}
+                    </span>
+                    <span className="text-muted fs-xs">{previewBarcodeProduct.unit || 'per unit'}</span>
+                  </div>
+
+                  <div className="my-2">
+                    <BarcodeSvg
+                      value={previewBarcodeProduct.barcode}
+                      format="CODE128"
+                      width={1.6}
+                      height={44}
+                      fontSize={11}
+                    />
+                  </div>
+
+                  <div className="text-muted font-monospace fs-xs">
+                    SKU: {previewBarcodeProduct.sku || '—'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer border-0 pt-0">
+                <Link
+                  to="/products/barcode"
+                  className="btn btn-outline-secondary"
+                  onClick={() => setPreviewBarcodeProduct(null)}
+                >
+                  Open in Barcode Studio
+                </Link>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => window.print()}
+                >
+                  <i className="ri-printer-line me-1"></i> Print Label
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ────────────────────────────── */}
+      {productToDelete && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content rounded-4 shadow border-0">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title text-danger fw-bold">Delete Product</h5>
+                <button
+                  type="button"
+                  className="btn-close"
                   onClick={() => setProductToDelete(null)}
+                ></button>
+              </div>
+              <div className="modal-body py-3">
+                <p className="mb-0">
+                  Are you sure you want to delete <strong>{productToDelete.name}</strong>? This action cannot be undone.
+                </p>
+              </div>
+              <div className="modal-footer border-0 pt-0">
+                <button
+                  type="button"
+                  className="btn btn-light"
+                  onClick={() => setProductToDelete(null)}
+                  disabled={deleting}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  className="btn btn-danger flex-grow-1"
-                  disabled={deleting}
+                  className="btn btn-danger"
                   onClick={handleDelete}
+                  disabled={deleting}
                 >
-                  {deleting ? 'Deleting…' : 'Delete'}
+                  {deleting ? 'Deleting…' : 'Delete Product'}
                 </button>
               </div>
             </div>
@@ -370,4 +540,3 @@ export default function ProductsList() {
     </div>
   )
 }
-

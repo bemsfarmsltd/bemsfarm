@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import ImportModal from '../../components/ImportModal'
+import BarcodeSvg from '../../components/ui/BarcodeSvg'
+import { generateUniversalGoodsCode } from '../../lib/barcodeGenerator'
 
 // ── Default Reference data (fallbacks if DB has not been seeded yet) ────────
 const FALLBACK_CATEGORIES = [
@@ -223,6 +225,18 @@ export default function AddProduct() {
     const newSku = `${prefix}-${catSuffix}-${rand}`
     setFormData((prev) => ({ ...prev, sku: newSku }))
     toast.success(`Generated SKU: ${newSku}`)
+  }
+
+  // Auto-generate Universal Barcode
+  function handleGenerateBarcode() {
+    const categoryObj = categories.find((c) => String(c.id) === String(formData.category_id))
+    const code = generateUniversalGoodsCode({
+      name: formData.name,
+      category: categoryObj?.name || 'GEN',
+      id: editId,
+    }, 'CODE128')
+    setFormData((prev) => ({ ...prev, barcode: code }))
+    toast.success(`Generated Universal Barcode: ${code}`)
   }
 
   // Margin Calculation
@@ -665,15 +679,32 @@ export default function AddProduct() {
                     </div>
 
                     <div className="col-md-6">
-                      <label htmlFor="barcode" className="form-label fw-semibold">Barcode / EAN</label>
-                      <input
-                        type="text"
-                        id="barcode"
-                        className="form-control"
-                        placeholder="Scan or type barcode number"
-                        value={formData.barcode}
-                        onChange={(e) => handleChange('barcode', e.target.value)}
-                      />
+                      <label htmlFor="barcode" className="form-label fw-semibold">
+                        Universal Barcode / Goods Code
+                      </label>
+                      <div className="input-group">
+                        <input
+                          type="text"
+                          id="barcode"
+                          className="form-control font-monospace"
+                          placeholder="e.g. BF-VEG-9402 or scan barcode"
+                          value={formData.barcode}
+                          onChange={(e) => handleChange('barcode', e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-outline-success"
+                          onClick={handleGenerateBarcode}
+                          title="Auto-Generate Universal Goods Code"
+                        >
+                          <i className="ri-magic-line me-1"></i> Auto
+                        </button>
+                      </div>
+                      {formData.barcode && (
+                        <div className="mt-2 p-2 bg-light rounded text-center border">
+                          <BarcodeSvg value={formData.barcode} format="CODE128" width={1.4} height={32} />
+                        </div>
+                      )}
                     </div>
 
                     <div className="col-md-4">

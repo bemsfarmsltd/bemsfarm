@@ -238,7 +238,10 @@ export default function StockList() {
                             </div>
                           </div>
                         </td>
-                        <td><code className="text-primary">{p.sku || '—'}</code></td>
+                        <td>
+                          <code className="text-primary d-block">{p.sku || '—'}</code>
+                          {p.barcode && <small className="text-muted font-monospace" style={{ fontSize: '11px' }}>BC: {p.barcode}</small>}
+                        </td>
                         <td><span className="badge bg-light text-dark">{p.category || 'General'}</span></td>
                         <td className="text-end fw-bold">
                           <span className={p.stock === 0 ? 'text-danger' : p.stock <= (p.low_stock_threshold || 5) ? 'text-warning' : 'text-success'}>
