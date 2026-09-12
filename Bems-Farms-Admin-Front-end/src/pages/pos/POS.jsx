@@ -16,7 +16,6 @@ const CATEGORY_DEFINITIONS = [
   { id: 'beverages',  label: 'Beverages & Drinks',  emoji: '🧃', key: 'beverages' },
   { id: 'vegetables', label: 'Fresh Produce',       emoji: '🥬', key: 'vegetables' },
   { id: 'meat',       label: 'Meat & Seafood',      emoji: '🥩', key: 'meat' },
-  { id: 'meals',      label: 'Cooked Meals',        emoji: '🍲', key: 'meals' },
   { id: 'dairy',      label: 'Dairy & Eggs',        emoji: '🥛', key: 'dairy' },
 ]
 
@@ -31,7 +30,6 @@ const CAT_COLORS = {
   beverages: '#2563eb',
   vegetables: '#059669',
   meat: '#e11d48',
-  meals: '#7c3aed',
   dairy: '#4f46e5',
 }
 
@@ -61,8 +59,6 @@ const DEFAULT_POS_PRODUCTS = [
   { id: 23, barcode: 'BF-BEV-002',  sku: 'CHIV-JUC',  name: 'Chivita 100% Real Orange Juice (1L Pack of 10)', cat: 'beverages', price: 11500, stock: 30, unit: 'Carton (10)', image: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=500&auto=format&fit=crop&q=80', icon: '🧃' },
   { id: 24, barcode: 'BF-HSE-001',  sku: 'VIVA-1KG',  name: 'Viva Plus Aromatherapy Laundry Detergent (1kg Pack)', cat: 'household', price: 2100, stock: 90, unit: '1kg Bag', image: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=500&auto=format&fit=crop&q=80', icon: '🧼' },
   { id: 25, barcode: 'BF-HSE-002',  sku: 'HYPO-1L',   name: 'Hypo Super Bleach & Disinfectant (1L Bottle)', cat: 'household', price: 1400, stock: 75, unit: '1L Bottle', image: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=500&auto=format&fit=crop&q=80', icon: '🧼' },
-  { id: 26, barcode: 'BF-MEAL-001', sku: 'JOL-CMB',   name: 'Party Jollof Rice & Smoked Chicken Combo Box', cat: 'meals', price: 4800, stock: 50, unit: 'Portion Box', image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500&auto=format&fit=crop&q=80', icon: '🍲' },
-  { id: 27, barcode: 'BF-MEAL-002', sku: 'EGU-POU',   name: 'Special Egusi Soup with Goat Meat & Pounded Yam', cat: 'meals', price: 5500, stock: 45, unit: 'Platter', image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop&q=80', icon: '🍲' },
 ]
 
 const MOCK_CUSTOMERS = [
@@ -204,7 +200,6 @@ function getProductCat(p) {
   if (catName.includes('bev') || catName.includes('drink') || catName.includes('juice') || name.includes('milo') || name.includes('zobo') || name.includes('kunu') || name.includes('water') || name.includes('juice') || name.includes('tea') || name.includes('drink') || name.includes('chivita') || name.includes('coke') || name.includes('malt') || name.includes('milk') || name.includes('peak') || name.includes('dano') || name.includes('cowbell')) return 'beverages'
   if (catName.includes('veg') || catName.includes('fruit') || catName.includes('fresh') || name.includes('onion') || name.includes('spinach') || name.includes('efo') || name.includes('ugu') || name.includes('pepper') || name.includes('rodo') || name.includes('tatashe') || name.includes('carrot') || name.includes('cucumber') || name.includes('cabbage')) return 'vegetables'
   if (catName.includes('fish') || catName.includes('sea') || catName.includes('meat') || catName.includes('poultry') || name.includes('tilapia') || name.includes('catfish') || name.includes('mackerel') || name.includes('stockfish') || name.includes('goat') || name.includes('chicken') || name.includes('turkey') || name.includes('beef') || name.includes('prawn')) return 'meat'
-  if (catName.includes('meal') || catName.includes('soup') || catName.includes('food') || name.includes('soup') || name.includes('jollof') || name.includes('fried rice') || name.includes('egusi') || name.includes('ofada') || name.includes('afang') || name.includes('banga')) return 'meals'
   if (catName.includes('dairy') || catName.includes('egg') || name.includes('egg') || name.includes('yogurt') || name.includes('cheese')) return 'dairy'
   return 'grains'
 }
@@ -216,7 +211,6 @@ function getProductIcon(name = '', cat = '') {
   if (n.includes('bean') || n.includes('oloyin')) return '🫘'
   if (n.includes('yam') || n.includes('poundo') || n.includes('cassava') || n.includes('potato')) return '🍠'
   if (n.includes('plantain') || n.includes('banana')) return '🍌'
-  if (n.includes('soup') || n.includes('egusi') || n.includes('ofada') || n.includes('afang') || n.includes('banga')) return '🍲'
   if (n.includes('chicken') || n.includes('turkey') || n.includes('fowl')) return '🍗'
   if (n.includes('beef') || n.includes('meat') || n.includes('goat')) return '🥩'
   if (n.includes('fish') || n.includes('tilapia') || n.includes('catfish') || n.includes('mackerel') || n.includes('crayfish') || n.includes('prawn') || n.includes('stockfish')) return '🐟'

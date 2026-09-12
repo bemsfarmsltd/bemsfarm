@@ -139,13 +139,13 @@ export default function SalesHub({
       { hour: '06:00 PM', amount: Math.round(16200 * timeframeMultiplier.mult * 0.55), count: Math.round(4 * timeframeMultiplier.mult), pct: 52, traffic: 'Moderate' },
     ]
 
-    // Category Distribution Data
+    // Category Distribution Data (Physical Farm Produce & Grocery Goods)
     const categoryData = [
-      { name: 'Cooking Oils & Fats', revenue: Math.round(totalSales * 0.34), share: 34, icon: '🫒', color: '#D97706', itemsSold: Math.round(18 * timeframeMultiplier.mult) },
+      { name: 'Cooking Oils & Fats', revenue: Math.round(totalSales * 0.35), share: 35, icon: '🫒', color: '#D97706', itemsSold: Math.round(19 * timeframeMultiplier.mult) },
       { name: 'Grains, Tubers & Flours', revenue: Math.round(totalSales * 0.28), share: 28, icon: '🌾', color: '#B45309', itemsSold: Math.round(26 * timeframeMultiplier.mult) },
-      { name: 'Poultry, Meat & Eggs', revenue: Math.round(totalSales * 0.18), share: 18, icon: '🍗', color: '#E11D48', itemsSold: Math.round(22 * timeframeMultiplier.mult) },
-      { name: 'Fresh Produce & Veggies', revenue: Math.round(totalSales * 0.11), share: 11, icon: '🥬', color: '#059669', itemsSold: Math.round(35 * timeframeMultiplier.mult) },
-      { name: 'Cooked Meals & Delicacies', revenue: Math.round(totalSales * 0.09), share: 9, icon: '🍲', color: '#7C3AED', itemsSold: Math.round(14 * timeframeMultiplier.mult) },
+      { name: 'Poultry, Meat & Seafood', revenue: Math.round(totalSales * 0.18), share: 18, icon: '🍗', color: '#E11D48', itemsSold: Math.round(22 * timeframeMultiplier.mult) },
+      { name: 'Spices & Seasonings', revenue: Math.round(totalSales * 0.11), share: 11, icon: '🧂', color: '#DB2777', itemsSold: Math.round(45 * timeframeMultiplier.mult) },
+      { name: 'Fresh Produce & Veggies', revenue: Math.round(totalSales * 0.08), share: 8, icon: '🥬', color: '#059669', itemsSold: Math.round(30 * timeframeMultiplier.mult) },
     ]
 
     // Channel Distribution Data
@@ -155,12 +155,12 @@ export default function SalesHub({
       { name: 'WhatsApp & Direct Call', revenue: Math.round(totalSales * 0.08), share: 8, icon: 'ri-whatsapp-line', color: '#059669', count: Math.round(txnCount * 0.07) },
     ]
 
-    // Fast Moving Products & Margin Analytics
+    // Fast Moving Products & Margin Analytics (Physical Goods)
     const topMovingProducts = [
       { name: 'Kings Pure Vegetable Oil (5L)', sku: 'OIL-5L', qty: Math.round(12 * timeframeMultiplier.mult), revenue: Math.round(162000 * timeframeMultiplier.mult), margin: '28%', stock: 33, status: 'In Stock', icon: '🫒' },
       { name: 'Fresh Jumbo Organic Eggs (Crate of 30)', sku: 'EGG-CRT', qty: Math.round(18 * timeframeMultiplier.mult), revenue: Math.round(75600 * timeframeMultiplier.mult), margin: '34%', stock: 92, status: 'In Stock', icon: '🥚' },
       { name: 'Mama Gold Rice (25kg Bag)', sku: 'RICE-25KG', qty: Math.round(6 * timeframeMultiplier.mult), revenue: Math.round(219000 * timeframeMultiplier.mult), margin: '22%', stock: 18, status: 'Low Stock', icon: '🌾' },
-      { name: 'Party Jollof Rice & Smoked Chicken Combo', sku: 'JOL-CMB', qty: Math.round(14 * timeframeMultiplier.mult), revenue: Math.round(67200 * timeframeMultiplier.mult), margin: '48%', stock: 36, status: 'In Stock', icon: '🍲' },
+      { name: 'Abakaliki Heavy Yam Tubers (Tuber)', sku: 'YAM-TUB', qty: Math.round(20 * timeframeMultiplier.mult), revenue: Math.round(56000 * timeframeMultiplier.mult), margin: '35%', stock: 40, status: 'In Stock', icon: '🍠' },
       { name: 'Ijebu Crisp White Garri (Paint Rubber)', sku: 'GARI-PNT', qty: Math.round(15 * timeframeMultiplier.mult), revenue: Math.round(48000 * timeframeMultiplier.mult), margin: '38%', stock: 70, status: 'In Stock', icon: '🌾' },
       { name: 'Whole Broiler Farm Chicken (2.5kg)', sku: 'CHK-WHL', qty: Math.round(9 * timeframeMultiplier.mult), revenue: Math.round(67500 * timeframeMultiplier.mult), margin: '30%', stock: 19, status: 'In Stock', icon: '🍗' },
     ]
