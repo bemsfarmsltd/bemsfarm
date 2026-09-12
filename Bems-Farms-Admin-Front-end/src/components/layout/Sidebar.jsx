@@ -24,6 +24,7 @@ export default function Sidebar() {
 
   // Auto-detect active category based on current pathname
   const getActiveCategoryFromPath = (path) => {
+    if (path.startsWith('/dashboard')) return 'dashboards'
     if (path.startsWith('/products')) return 'products'
     if (path.startsWith('/inventory')) return 'inventory'
     if (path.startsWith('/orders')) return 'orders'
@@ -35,8 +36,8 @@ export default function Sidebar() {
     if (path.startsWith('/chef-bems')) return 'chef'
     if (path.startsWith('/stores')) return 'stores'
     if (path.startsWith('/settings')) return 'settings'
-    if (path.startsWith('/pos')) return 'main'
-    return 'main'
+    if (path.startsWith('/pos')) return 'pos'
+    return 'dashboards'
   }
 
   const [activeTab, setActiveTab] = useState(() => getActiveCategoryFromPath(location.pathname))
@@ -45,6 +46,14 @@ export default function Sidebar() {
   useEffect(() => {
     setActiveTab(getActiveCategoryFromPath(location.pathname))
   }, [location.pathname])
+
+  // Helper to check which dashboard tab is currently open
+  const isDashboardTabActive = (tabKey) => {
+    if (!location.pathname.startsWith('/dashboard')) return false
+    const currentTab = new URLSearchParams(location.search).get('tab')
+    if (!currentTab && tabKey === 'overview') return true
+    return currentTab === tabKey
+  }
 
   // Sync body class when rail expands on hover so entire layout pushes smoothly together
   useEffect(() => {
@@ -349,16 +358,28 @@ export default function Sidebar() {
 
           <div className="rail-nav-list">
 
-            {/* Dashboard / Main */}
+            {/* Dashboards */}
             <button
               type="button"
-              className={`rail-btn ${activeTab === 'main' ? 'active' : ''}`}
-              onClick={() => setActiveTab('main')}
-              title="Overview"
+              className={`rail-btn ${activeTab === 'dashboards' ? 'active' : ''}`}
+              onClick={() => setActiveTab('dashboards')}
+              title="Dashboards"
             >
               <i className="ri-dashboard-2-line rail-icon"></i>
-              <span className="rail-label">Overview</span>
+              <span className="rail-label">Dashboards</span>
             </button>
+
+            {/* Point of Sale (Standalone on First Bar) */}
+            {showPOS && (
+              <Link
+                to="/pos"
+                className={`rail-btn ${location.pathname.startsWith('/pos') ? 'active' : ''}`}
+                title="Point of Sale"
+              >
+                <i className="ri-computer-line rail-icon"></i>
+                <span className="rail-label">Point of Sale</span>
+              </Link>
+            )}
 
             {/* Products */}
             {showProducts && (
@@ -524,7 +545,7 @@ export default function Sidebar() {
           {/* Subpanel Header */}
           <div className="sub-panel-header">
             <div className="sub-panel-title">
-              {activeTab === 'main' && 'Overview'}
+              {activeTab === 'dashboards' && 'Dashboards'}
               {activeTab === 'products' && 'Products & Catalog'}
               {activeTab === 'inventory' && 'Stock & Warehouses'}
               {activeTab === 'orders' && 'Sales & Orders'}
@@ -542,17 +563,63 @@ export default function Sidebar() {
           {/* Subpanel Links List */}
           <div className="sub-panel-nav">
 
-            {/* 1. MAIN / OVERVIEW */}
-            {activeTab === 'main' && (
+            {/* 1. DASHBOARDS */}
+            {activeTab === 'dashboards' && (
               <>
-                <NavLink to="/dashboard" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Dashboard</span>
-                </NavLink>
-                {showPOS && (
-                  <NavLink to="/pos" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Point of Sale</span>
-                    <span className="sub-badge" style={{ background: '#ECFDF5', color: '#059669' }}>Live</span>
-                  </NavLink>
+                {is('superadmin', 'admin', 'manager') && (
+                  <Link
+                    to="/dashboard?tab=overview"
+                    className={`dual-sub-link ${isDashboardTabActive('overview') ? 'active' : ''}`}
+                  >
+                    <span>Overview</span>
+                  </Link>
+                )}
+                <Link
+                  to="/dashboard?tab=sales"
+                  className={`dual-sub-link ${isDashboardTabActive('sales') ? 'active' : ''}`}
+                >
+                  <span>Sales &amp; Orders</span>
+                </Link>
+                {is('superadmin', 'admin', 'manager', 'accountant') && (
+                  <Link
+                    to="/dashboard?tab=finance"
+                    className={`dual-sub-link ${isDashboardTabActive('finance') ? 'active' : ''}`}
+                  >
+                    <span>Finance &amp; Revenue</span>
+                  </Link>
+                )}
+                {is('superadmin', 'admin', 'manager', 'kitchen_staff') && (
+                  <Link
+                    to="/dashboard?tab=inventory"
+                    className={`dual-sub-link ${isDashboardTabActive('inventory') ? 'active' : ''}`}
+                  >
+                    <span>Inventory &amp; Stock</span>
+                  </Link>
+                )}
+                {is('superadmin', 'admin', 'manager', 'delivery_manager') && (
+                  <Link
+                    to="/dashboard?tab=operations"
+                    className={`dual-sub-link ${isDashboardTabActive('operations') ? 'active' : ''}`}
+                  >
+                    <span>Operations &amp; Dispatch</span>
+                  </Link>
+                )}
+                {is('superadmin', 'admin', 'manager', 'cashier') && (
+                  <Link
+                    to="/dashboard?tab=customers"
+                    className={`dual-sub-link ${isDashboardTabActive('customers') ? 'active' : ''}`}
+                  >
+                    <span>Customer Insights</span>
+                  </Link>
+                )}
+                {is('superadmin', 'admin', 'manager', 'kitchen_staff') && (
+                  <Link
+                    to="/dashboard?tab=ai"
+                    className={`dual-sub-link ${isDashboardTabActive('ai') ? 'active' : ''}`}
+                  >
+                    <span>Chef Bems AI</span>
+                    <span className="sub-badge" style={{ background: '#FEF3C7', color: '#B45309' }}>AI</span>
+                  </Link>
                 )}
               </>
             )}
