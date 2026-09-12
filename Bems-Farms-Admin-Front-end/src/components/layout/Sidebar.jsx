@@ -111,16 +111,15 @@ export default function Sidebar() {
         width: 415px;
       }
       
-      /* ── COLUMN 1: BRAND FOREST GREEN RAIL WITH SCULPTED CONTOURS ── */
+      /* ── COLUMN 1: LIGHT RAIL (68px default -> expands to 215px on hover) ── */
       .sidebar-icon-rail {
         position: absolute;
         left: 0;
         top: 0;
         bottom: 0;
         width: 68px;
-        background: linear-gradient(180deg, #061A12 0%, #0D2E20 30%, #143C2D 65%, #081F16 100%);
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 0 0 20px 0;
+        background-color: #FFFFFF;
+        border-right: 1px solid #E5E7EB;
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -130,7 +129,6 @@ export default function Sidebar() {
         overflow-y: auto;
         transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease;
         scrollbar-width: none;
-        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.25);
       }
       .sidebar-icon-rail::-webkit-scrollbar { display: none; }
       
@@ -138,7 +136,7 @@ export default function Sidebar() {
       .sidebar-icon-rail.rail-open,
       body.rail-is-hovered .sidebar-icon-rail {
         width: 215px;
-        box-shadow: 12px 0 35px rgba(0, 0, 0, 0.35);
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.08);
       }
       
       /* Rail Brand Header (Begins right from top bar level) */
@@ -148,51 +146,34 @@ export default function Sidebar() {
         min-height: 3.5rem;
         display: flex;
         align-items: center;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid #E5E7EB;
         margin-bottom: 0.65rem;
       }
       
       .rail-brand-btn {
         width: 100%;
-        height: 44px;
+        height: 42px;
         border-radius: 12px;
         display: flex;
         align-items: center;
         background: transparent;
         border: none;
-        padding: 0 5px;
+        padding: 0 7px;
         text-decoration: none;
         transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
         overflow: hidden;
       }
       .rail-brand-btn:hover {
-        background: rgba(255, 255, 255, 0.08);
-      }
-      
-      /* White Badge Container for High-Contrast Clean Logo Display */
-      .rail-brand-badge {
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
-        background: #FFFFFF;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.25);
-        flex-shrink: 0;
-        padding: 4px;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-      }
-      .rail-brand-btn:hover .rail-brand-badge {
-        transform: scale(1.05);
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+        background: #F8FAFC;
       }
       
       .rail-brand-b {
-        width: 28px;
-        height: 28px;
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
         object-fit: contain;
+        filter: drop-shadow(0 2px 6px rgba(20, 60, 45, 0.15));
+        flex-shrink: 0;
       }
       
       .rail-brand-full {
@@ -206,17 +187,8 @@ export default function Sidebar() {
         pointer-events: none;
       }
       
-      .rail-brand-text-card {
-        background: #FFFFFF;
-        padding: 4px 10px;
-        border-radius: 8px;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.25);
-        display: flex;
-        align-items: center;
-      }
-      
       .rail-brand-text-img {
-        height: 16px;
+        height: 18px;
         width: auto;
         object-fit: contain;
       }
@@ -246,7 +218,7 @@ export default function Sidebar() {
         align-items: center;
         background: transparent;
         border: none;
-        color: rgba(226, 232, 240, 0.82);
+        color: #475569;
         cursor: pointer;
         padding: 0 11px;
         transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
@@ -262,7 +234,6 @@ export default function Sidebar() {
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        transition: transform 0.18s ease;
       }
       
       .rail-btn .rail-label {
@@ -285,21 +256,15 @@ export default function Sidebar() {
       }
       
       .rail-btn:hover {
-        background: rgba(255, 255, 255, 0.12);
-        color: #FFFFFF;
-        backdrop-filter: blur(4px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      }
-      .rail-btn:hover .rail-icon {
-        transform: scale(1.08);
+        background: #F1F5F9;
+        color: #0F172A;
       }
       
-      /* Active Luminous Emerald Pill with Amber Gold Indicator */
+      /* Active Luxury Forest Green Client-Side Pill */
       .rail-btn.active {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.38), rgba(5, 150, 105, 0.58));
-        border: 1px solid rgba(110, 231, 183, 0.4);
+        background: linear-gradient(135deg, #143C2D, #0B281B);
         color: #FFFFFF !important;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        box-shadow: 0 4px 14px rgba(20, 60, 45, 0.28);
       }
       .rail-btn.active::before {
         content: '';
@@ -311,19 +276,17 @@ export default function Sidebar() {
         height: 22px;
         background: #F59E0B;
         border-radius: 0 4px 4px 0;
-        box-shadow: 0 0 8px #F59E0B, 0 0 4px #F59E0B;
       }
       
-      /* ── COLUMN 2: SUB-NAVIGATION PANEL (PUSHES SMOOTHLY WHEN RAIL EXPANDS) ── */
+      /* ── COLUMN 2: WHITE SUB-NAVIGATION PANEL (PUSHES SMOOTHLY WHEN RAIL EXPANDS) ── */
       .sidebar-sub-panel {
         position: absolute;
         left: 68px;
         top: 3.5rem;
         bottom: 0;
         width: 200px;
-        background: #FAFAF8;
+        background: #FAFAFA;
         border-right: 1px solid #E5E7EB;
-        border-radius: 0 0 20px 0;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
         display: flex;
         flex-direction: column;
@@ -340,7 +303,7 @@ export default function Sidebar() {
       .sub-panel-header {
         padding: 0.95rem 1.15rem 0.85rem;
         border-bottom: 1px solid #E5E7EB;
-        background: #FAFAF8;
+        background: #FAFAFA;
       }
       .sub-panel-title {
         font-size: 15px;
@@ -410,16 +373,12 @@ export default function Sidebar() {
           onMouseEnter={() => setIsRailExpanded(true)}
           onMouseLeave={() => setIsRailExpanded(false)}
         >
-          {/* Top Brand / Logo Mark with Crisp White Contrast Badging */}
+          {/* Top Brand / Logo Mark (Only B when closed, expands to full BEMS FARMS) */}
           <div className="rail-brand-header">
             <Link to="/dashboard" className="rail-brand-btn" title="Bems Farms">
-              <div className="rail-brand-badge">
-                <img src="/bemsfarms_icon_b.png" alt="B" className="rail-brand-b" />
-              </div>
+              <img src="/bemsfarms_icon_b.png" alt="B" className="rail-brand-b" />
               <div className="rail-brand-full">
-                <div className="rail-brand-text-card">
-                  <img src="/bemsfarms_text.png" alt="Bems Farms" className="rail-brand-text-img" />
-                </div>
+                <img src="/bemsfarms_text.png" alt="Bems Farms" className="rail-brand-text-img" />
               </div>
             </Link>
           </div>

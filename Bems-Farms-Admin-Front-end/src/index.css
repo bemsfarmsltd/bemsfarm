@@ -122,7 +122,6 @@ body.sidebar-condensed #main-sidebar {
 }
 
 /* ── TOPBAR (CLIENT-SIDE LUXURY WHITE & FOREST GREEN HEADER) ──────── */
-/* ── TOPBAR (DESIGNED LUXURY WHITE WITH CRISP EXECUTIVE ACCENTS) ──────── */
 .main-topbar {
   position: fixed !important;
   top: 0 !important;
@@ -290,24 +289,6 @@ body.sidebar-condensed .main-topbar {
   border-color: #CBD5E1 !important;
 }
 
-/* Hero Quick Action Amber Pill */
-.btn-amber-bf,
-.topbar-action-pill.btn-amber-bf {
-  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
-  background-color: #F59E0B !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
-}
-
-.btn-amber-bf:hover,
-.topbar-action-pill.btn-amber-bf:hover {
-  background: linear-gradient(135deg, #D97706 0%, #B45309 100%) !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
-  transform: translateY(-1px);
-}
-
 /* Quick Action Pills */
 .topbar-action-pill {
   border-radius: 9999px !important;
@@ -332,9 +313,9 @@ button.btn-primary,
 a.btn-primary {
   background: linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
   background-color: #143C2D !important;
-  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  border-color: #143C2D !important;
   color: #FFFFFF !important;
-  box-shadow: 0 2px 8px rgba(20, 60, 45, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(20, 60, 45, 0.22), 0 1px 3px rgba(0, 0, 0, 0.08) !important;
   font-weight: 600 !important;
   letter-spacing: 0.01em !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
@@ -348,9 +329,9 @@ a.btn-primary:hover,
 .btn-primary-bf:focus {
   background: linear-gradient(135deg, #0B281B 0%, #143C2D 100%) !important;
   background-color: #0B281B !important;
-  border-color: rgba(52, 211, 153, 0.6) !important;
+  border-color: #0B281B !important;
   color: #FFFFFF !important;
-  box-shadow: 0 4px 14px rgba(20, 60, 45, 0.35), 0 0 12px rgba(16, 185, 129, 0.25) !important;
+  box-shadow: 0 4px 14px rgba(20, 60, 45, 0.35) !important;
   transform: translateY(-1px);
 }
 
@@ -444,7 +425,7 @@ a.btn-primary:hover,
 /* 5. DANGER & SUB-DANGER BUTTONS */
 .btn-danger {
   background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-color: #DC2626 !important;
   color: #FFFFFF !important;
   box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25) !important;
 }
@@ -457,26 +438,46 @@ a.btn-primary:hover,
   transform: translateY(-1px);
 }
 
+.btn-sub-danger,
+.btn-soft-danger {
+  background-color: #FEF2F2 !important;
+  border: 1px solid #FECACA !important;
+  color: #DC2626 !important;
+  font-weight: 600 !important;
+  transition: all 0.18s ease !important;
+}
+
+.btn-sub-danger:hover,
+.btn-soft-danger:hover {
+  background-color: #DC2626 !important;
+  border-color: #DC2626 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.25) !important;
+  transform: translateY(-1px);
+}
+
 /* 6. SUCCESS & SUB-SUCCESS BUTTONS */
 .btn-success {
   background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-color: #059669 !important;
   color: #FFFFFF !important;
-  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25) !important;
 }
 
-.btn-success:hover {
-  background: linear-gradient(135deg, #047857 0%, #065F46 100%) !important;
-  border-color: rgba(110, 231, 183, 0.4) !important;
+.btn-sub-success {
+  background-color: #ECFDF5 !important;
+  border: 1px solid #A7F3D0 !important;
+  color: #059669 !important;
+}
+
+.btn-sub-success:hover {
+  background-color: #059669 !important;
   color: #FFFFFF !important;
-  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35) !important;
-  transform: translateY(-1px);
 }
 
 /* 7. WARNING & SUB-WARNING BUTTONS (AMBER ACCENTS) */
 .btn-warning {
   background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-color: #D97706 !important;
   color: #FFFFFF !important;
   box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25) !important;
 }
@@ -485,7 +486,6 @@ a.btn-primary:hover,
   background: linear-gradient(135deg, #D97706 0%, #B45309 100%) !important;
   border-color: #B45309 !important;
   color: #FFFFFF !important;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4) !important;
   transform: translateY(-1px);
 }
 
