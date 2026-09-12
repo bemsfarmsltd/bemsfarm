@@ -6,7 +6,7 @@ export default function StoreList() {
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
               <h6 className="flex-grow-1 mb-0">Store List</h6>
               <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Multi Store</a></li>
+                  <li className="breadcrumb-item"><Link to="/stores">Stores</Link></li>
                   <li className="breadcrumb-item active">Store List</li>
               </ul>
           </div>

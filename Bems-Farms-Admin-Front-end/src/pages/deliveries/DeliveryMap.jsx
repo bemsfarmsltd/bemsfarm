@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -195,7 +196,7 @@ export default function DeliveryMap() {
           <span className="text-muted small">{deliveries.length} active deliveries</span>
         </div>
         <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><a href="#">Deliveries</a></li>
+          <li className="breadcrumb-item"><Link to="/deliveries/active">Deliveries</Link></li>
           <li className="breadcrumb-item active">Live Map</li>
         </ul>
       </div>

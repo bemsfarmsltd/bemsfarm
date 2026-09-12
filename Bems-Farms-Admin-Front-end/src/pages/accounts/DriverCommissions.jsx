@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 
 const fmt = n => `₦${Number(n).toLocaleString()}`
 const ini  = name => name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()
@@ -80,7 +81,7 @@ export default function DriverCommissions() {
           <p className="text-muted mb-0" style={{ fontSize:12 }}>Track and pay driver earnings per delivery</p>
         </div>
         <ul className="breadcrumb mb-0">
-          <li className="breadcrumb-item text-muted">Accounts</li>
+          <li className="breadcrumb-item"><Link to="/accounts/overview">Accounts</Link></li>
           <li className="breadcrumb-item active">Commissions</li>
         </ul>
       </div>

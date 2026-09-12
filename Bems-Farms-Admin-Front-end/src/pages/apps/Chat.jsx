@@ -6,8 +6,8 @@ export default function Chat() {
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
               <h6 className="flex-grow-1 mb-0">Default Chat</h6>
               <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Chats</a></li>
-                  <li className="breadcrumb-item active">Default Chat</li>
+                  <li className="breadcrumb-item"><Link to="/apps/chat">Apps</Link></li>
+                  <li className="breadcrumb-item active">Chat</li>
               </ul>
           </div>
           <div className="row">

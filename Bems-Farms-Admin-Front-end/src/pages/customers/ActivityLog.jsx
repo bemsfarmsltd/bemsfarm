@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 
 const ini = name => name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
@@ -97,7 +98,7 @@ export default function ActivityLog() {
           <p className="text-muted mb-0" style={{fontSize:12}}>All customer actions across the platform — orders, logins, wallet, points</p>
         </div>
         <ul className="breadcrumb mb-0">
-          <li className="breadcrumb-item text-muted">Customers</li>
+          <li className="breadcrumb-item"><Link to="/customers">Customers</Link></li>
           <li className="breadcrumb-item active">Activity Log</li>
         </ul>
       </div>

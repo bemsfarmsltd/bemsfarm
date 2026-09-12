@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 
 const WAREHOUSES = ['Main Store', 'Cold Room', 'Dry Store', 'Farm Store']
 const REASONS    = ['Sales Order', 'Internal Use', 'Wastage', 'Return to Supplier', 'Transfer', 'Spoilage']
@@ -73,7 +74,7 @@ export default function StockOut() {
       <div className="gap-2 page-heading mb-3">
         <h6 className="flex-grow-1 mb-0">Stock Out</h6>
         <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><a href="#">Inventory</a></li>
+          <li className="breadcrumb-item"><Link to="/inventory/stock">Inventory</Link></li>
           <li className="breadcrumb-item active">Stock Out</li>
         </ul>
       </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import ImportModal from '../../components/ImportModal'
 
 const BRAND_IMPORT_FIELDS = [
@@ -35,7 +36,7 @@ export default function Brands() {
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
               <h6 className="flex-grow-1 mb-0">Brands</h6>
               <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Products</a></li>
+                  <li className="breadcrumb-item"><Link to="/products">Products</Link></li>
                   <li className="breadcrumb-item active">Brands</li>
               </ul>
           </div>

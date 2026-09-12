@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 
 const MOCK_VALUATION = [
   { id:1,  product:'Basmati Rice (5kg)',  sku:'GRN-RIC-001', category:'Grains & Carbs', unit:'bag',    qty:120, cost:4800,  price:6500  },
@@ -49,7 +50,7 @@ export default function StockValuation() {
       <div className="gap-2 page-heading mb-3">
         <h6 className="flex-grow-1 mb-0">Stock Valuation</h6>
         <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><a href="#">Inventory</a></li>
+          <li className="breadcrumb-item"><Link to="/inventory/stock">Inventory</Link></li>
           <li className="breadcrumb-item active">Valuation</li>
         </ul>
       </div>

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 
 const fmt = n => `₦${Number(n).toLocaleString()}`
 const ini = name => name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -131,7 +132,7 @@ export default function WalletBalance() {
           <p className="text-muted mb-0" style={{fontSize:12}}>Manage customer wallet funds, top-ups, and credits</p>
         </div>
         <ul className="breadcrumb mb-0">
-          <li className="breadcrumb-item text-muted">Customers</li>
+          <li className="breadcrumb-item"><Link to="/customers">Customers</Link></li>
           <li className="breadcrumb-item active">Wallet Balance</li>
         </ul>
       </div>

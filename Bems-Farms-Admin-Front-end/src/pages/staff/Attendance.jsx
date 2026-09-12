@@ -6,7 +6,7 @@ export default function Attendance() {
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
               <h6 className="flex-grow-1 mb-0">Attendance</h6>
               <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Staff</a></li>
+                  <li className="breadcrumb-item"><Link to="/staff">Staff</Link></li>
                   <li className="breadcrumb-item active">Attendance</li>
               </ul>
           </div>

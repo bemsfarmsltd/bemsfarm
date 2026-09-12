@@ -6,7 +6,7 @@ export default function SupplierBalance() {
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
               <h6 className="flex-grow-1 mb-0">Balance Reports</h6>
               <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Suppliers</a></li>
+                  <li className="breadcrumb-item"><Link to="/suppliers">Suppliers</Link></li>
                   <li className="breadcrumb-item active">Balance Reports</li>
               </ul>
           </div>

@@ -6,7 +6,7 @@ export default function Email() {
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
               <h6 className="flex-grow-1 mb-0">Mailbox</h6>
               <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Apps</a></li>
+                  <li className="breadcrumb-item"><Link to="/apps/email">Apps</Link></li>
                   <li className="breadcrumb-item active">Mailbox</li>
               </ul>
           </div>

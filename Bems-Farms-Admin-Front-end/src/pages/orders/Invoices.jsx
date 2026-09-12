@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -290,7 +291,7 @@ export default function Invoices() {
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
         <h6 className="flex-grow-1 mb-0">Invoices</h6>
         <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><a href="#">Orders</a></li>
+          <li className="breadcrumb-item"><Link to="/orders">Orders</Link></li>
           <li className="breadcrumb-item active">Invoices</li>
         </ul>
       </div>

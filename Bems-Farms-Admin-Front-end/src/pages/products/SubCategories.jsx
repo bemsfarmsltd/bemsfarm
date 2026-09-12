@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import ImportModal from '../../components/ImportModal'
 
 const CATEGORIES = [
@@ -125,7 +126,7 @@ export default function SubCategories() {
       <div className="gap-2 page-heading mb-3">
         <h6 className="flex-grow-1 mb-0">Sub-Categories</h6>
         <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><a href="#">Products</a></li>
+          <li className="breadcrumb-item"><Link to="/products">Products</Link></li>
           <li className="breadcrumb-item active">Sub-Categories</li>
         </ul>
       </div>

@@ -82,7 +82,7 @@ export default function CustomersList() {
           </p>
         </div>
         <ul className="breadcrumb mb-0">
-          <li className="breadcrumb-item text-muted">Customers</li>
+          <li className="breadcrumb-item"><Link to="/customers">Customers</Link></li>
           <li className="breadcrumb-item active">All Customers</li>
         </ul>
       </div>

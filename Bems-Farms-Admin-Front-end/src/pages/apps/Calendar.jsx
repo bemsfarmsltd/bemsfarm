@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Link } from 'react-router-dom'
 
 export default function Calendar() {
   useEffect(() => {
@@ -32,8 +33,8 @@ export default function Calendar() {
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
               <h6 className="flex-grow-1 mb-0">Default</h6>
               <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Calendar</a></li>
-                  <li className="breadcrumb-item active">Default</li>
+                  <li className="breadcrumb-item"><Link to="/apps/calendar">Apps</Link></li>
+                  <li className="breadcrumb-item active">Calendar</li>
               </ul>
           </div>
           <div className="d-flex flex-wrap align-items-center gap-2 mb-3" id="external-events">

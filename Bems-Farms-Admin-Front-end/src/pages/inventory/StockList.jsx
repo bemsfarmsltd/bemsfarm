@@ -104,7 +104,7 @@ export default function StockList() {
         <div>
           <h6 className="flex-grow-1 mb-0 fw-bold">Stock List & Valuation</h6>
           <ul className="breadcrumb flex-shrink-0 mb-0">
-            <li className="breadcrumb-item"><Link to="/dashboard">Dashboard</Link></li>
+            <li className="breadcrumb-item"><Link to="/inventory/stock">Inventory</Link></li>
             <li className="breadcrumb-item active">Stock List</li>
           </ul>
         </div>

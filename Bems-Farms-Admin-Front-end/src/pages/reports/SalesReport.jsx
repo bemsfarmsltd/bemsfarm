@@ -75,7 +75,6 @@ export default function SalesReport() {
           <p className="text-muted fs-sm mb-0">Track store performance, gross margins, customer volume, and item velocity.</p>
         </div>
         <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><Link to="/dashboard">Dashboard</Link></li>
           <li className="breadcrumb-item"><Link to="/reports/sales">Reports</Link></li>
           <li className="breadcrumb-item active">Sales</li>
         </ul>

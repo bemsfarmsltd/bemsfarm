@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 const fmt  = n => `₦${Number(n).toLocaleString()}`
 const fmtD = s => new Date(s).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
@@ -100,7 +101,7 @@ export default function Income() {
       <div className="page-heading d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <h6 className="mb-0">Income</h6>
         <ul className="breadcrumb mb-0">
-          <li className="breadcrumb-item text-muted">Accounts</li>
+          <li className="breadcrumb-item"><Link to="/accounts/overview">Accounts</Link></li>
           <li className="breadcrumb-item active">Income</li>
         </ul>
       </div>

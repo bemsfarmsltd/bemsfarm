@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 
 const ini    = name => name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
 const fmtPts = n => Number(n).toLocaleString()+' pts'
@@ -90,7 +91,7 @@ export default function LoyaltyPoints() {
           <p className="text-muted mb-0" style={{fontSize:12}}>Manage customer loyalty tiers and points — earn 1 pt per ₦10 spent</p>
         </div>
         <ul className="breadcrumb mb-0">
-          <li className="breadcrumb-item text-muted">Customers</li>
+          <li className="breadcrumb-item"><Link to="/customers">Customers</Link></li>
           <li className="breadcrumb-item active">Loyalty Points</li>
         </ul>
       </div>

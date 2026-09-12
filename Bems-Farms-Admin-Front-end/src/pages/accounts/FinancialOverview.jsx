@@ -149,7 +149,7 @@ export default function FinancialOverview() {
           <p className="text-muted mb-0" style={{ fontSize:12 }}>All financial movement across Bems Farms — June 2026</p>
         </div>
         <ul className="breadcrumb mb-0">
-          <li className="breadcrumb-item text-muted">Accounts</li>
+          <li className="breadcrumb-item"><Link to="/accounts/overview">Accounts</Link></li>
           <li className="breadcrumb-item active">Overview</li>
         </ul>
       </div>

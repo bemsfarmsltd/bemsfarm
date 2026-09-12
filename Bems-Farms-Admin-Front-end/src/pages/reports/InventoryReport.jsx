@@ -6,7 +6,7 @@ export default function InventoryReport() {
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
               <h6 className="flex-grow-1 mb-0">Products</h6>
               <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Reports</a></li>
+                  <li className="breadcrumb-item"><Link to="/reports/sales">Reports</Link></li>
                   <li className="breadcrumb-item active">Products</li>
               </ul>
           </div>

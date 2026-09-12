@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 
 const WAREHOUSES = ['Main Store', 'Cold Room', 'Dry Store', 'Farm Store']
 const PRODUCTS   = ['Basmati Rice (5kg)','Fresh Tomatoes','Palm Oil (25L)','Catfish (Smoked)','Fresh Pepper','Chicken (Whole)','Fresh Yam','Cassava Flour','Fresh Milk','Plantain (Bunch)']
@@ -77,7 +78,7 @@ export default function StockTransfer() {
       <div className="gap-2 page-heading mb-3">
         <h6 className="flex-grow-1 mb-0">Stock Transfer</h6>
         <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><a href="#">Inventory</a></li>
+          <li className="breadcrumb-item"><Link to="/inventory/stock">Inventory</Link></li>
           <li className="breadcrumb-item active">Stock Transfer</li>
         </ul>
       </div>

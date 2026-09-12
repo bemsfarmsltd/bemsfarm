@@ -6,8 +6,8 @@ export default function PurchaseList() {
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
               <h6 className="flex-grow-1 mb-0">Purchase</h6>
               <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Purchase</a></li>
-                  <li className="breadcrumb-item active">Purchase</li>
+                  <li className="breadcrumb-item"><Link to="/purchase">Purchases</Link></li>
+                  <li className="breadcrumb-item active">Purchase List</li>
               </ul>
           </div>
           <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xxl-5">
