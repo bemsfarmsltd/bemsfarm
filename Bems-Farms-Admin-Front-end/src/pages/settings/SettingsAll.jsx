@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 const SETTINGS_SECTIONS = [
   {
@@ -110,9 +110,6 @@ const SETTINGS_SECTIONS = [
 
 export default function SettingsAll() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [deleteConfirmText, setDeleteConfirmText] = useState('')
-  const navigate = useNavigate()
 
   // Filter sections and items based on search input
   const filteredSections = useMemo(() => {
@@ -134,70 +131,164 @@ export default function SettingsAll() {
   }, [searchQuery])
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen">
+    <div className="container-fluid px-3 px-md-4 py-3 py-md-4" style={{ maxWidth: '1560px' }}>
       {/* Top Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3 mb-4">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+          <div style={{ fontSize: '11.5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94A3B8', marginBottom: '2px' }}>
             Settings
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+          <h1 style={{ fontSize: '28px', fontWeight: 800, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
             Settings
           </h1>
         </div>
 
         {/* Search Setting Bar */}
-        <div className="relative w-full sm:w-80">
-          <i className="ri-search-line absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none"></i>
+        <div style={{ position: 'relative', width: '100%', maxWidth: '320px' }}>
+          <i
+            className="ri-search-line"
+            style={{
+              position: 'absolute',
+              left: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#94A3B8',
+              fontSize: '15px',
+              pointerEvents: 'none'
+            }}
+          ></i>
           <input
             type="text"
             placeholder="Search Setting..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/10 transition shadow-sm"
+            style={{
+              width: '100%',
+              paddingLeft: '36px',
+              paddingRight: searchQuery ? '36px' : '14px',
+              paddingTop: '9px',
+              paddingBottom: '9px',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              borderRadius: '10px',
+              fontSize: '13.5px',
+              color: '#0F172A',
+              outline: 'none',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+              transition: 'border-color 0.15s, box-shadow 0.15s'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#143c2d'
+              e.target.style.boxShadow = '0 0 0 3px rgba(20, 60, 45, 0.1)'
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = '#E2E8F0'
+              e.target.style.boxShadow = '0 1px 2px rgba(0,0,0,0.03)'
+            }}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: '#94A3B8',
+                cursor: 'pointer',
+                padding: '2px',
+                display: 'flex',
+                alignItems: 'center'
+              }}
             >
-              <i className="ri-close-line"></i>
+              <i className="ri-close-line" style={{ fontSize: '16px' }}></i>
             </button>
           )}
         </div>
       </div>
 
-      {/* 3-Column Settings Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      {/* 3-Column Settings Cards Grid */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+          gap: '20px',
+          marginBottom: '32px'
+        }}
+      >
         {filteredSections.length > 0 ? (
           filteredSections.map((section) => (
             <div
               key={section.id}
-              className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition duration-200 flex flex-col justify-between"
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: '14px',
+                padding: '22px 24px',
+                border: '1px solid #E5E7EB',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                minHeight: '210px',
+                transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)'
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.06)'
+                e.currentTarget.style.borderColor = '#CBD5E1'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'none'
+                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)'
+                e.currentTarget.style.borderColor = '#E5E7EB'
+              }}
             >
               <div>
                 {/* Card Title & Icon */}
-                <div className="flex items-start gap-3 mb-1.5">
-                  <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-700 flex-shrink-0 mt-0.5">
-                    <i className={`${section.icon} text-base text-slate-600`}></i>
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 leading-snug">
-                      {section.title}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                      {section.subtitle}
-                    </p>
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <i className={`${section.icon}`} style={{ fontSize: '16px', color: '#475569' }}></i>
+                  <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
+                    {section.title}
+                  </h3>
                 </div>
 
+                <p style={{ fontSize: '12.5px', color: '#64748B', margin: 0, lineHeight: 1.4 }}>
+                  {section.subtitle}
+                </p>
+
                 {/* Sub-links List */}
-                <div className="mt-5 pt-4 border-t border-slate-100 space-y-2.5">
+                <div
+                  style={{
+                    marginTop: '16px',
+                    paddingTop: '14px',
+                    borderTop: '1px solid #F1F5F9',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '9px'
+                  }}
+                >
                   {section.items.map((item, idx) => (
                     <div key={idx}>
                       <Link
                         to={item.path}
-                        className="inline-block text-[13.5px] font-semibold text-[#8B1538] hover:text-[#5c0d23] hover:translate-x-0.5 transition-all"
+                        style={{
+                          color: '#8B1538',
+                          fontSize: '13.5px',
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          display: 'inline-block',
+                          transition: 'color 0.15s, transform 0.15s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.color = '#5C0D23'
+                          e.target.style.transform = 'translateX(2px)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.color = '#8B1538'
+                          e.target.style.transform = 'none'
+                        }}
                       >
                         {item.name}
                       </Link>
@@ -208,100 +299,37 @@ export default function SettingsAll() {
             </div>
           ))
         ) : (
-          <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-dashed border-slate-200">
-            <i className="ri-search-2-line text-3xl text-slate-300 mb-2 block"></i>
-            <p className="text-sm font-semibold text-slate-600">No settings found matching "{searchQuery}"</p>
+          <div
+            style={{
+              gridColumn: '1 / -1',
+              padding: '60px 20px',
+              textAlign: 'center',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '14px',
+              border: '1px dashed #E2E8F0'
+            }}
+          >
+            <i className="ri-search-2-line" style={{ fontSize: '32px', color: '#94A3B8', display: 'block', marginBottom: '8px' }}></i>
+            <p style={{ fontSize: '14px', fontWeight: 600, color: '#475569', margin: '0 0 8px' }}>
+              No settings found matching "{searchQuery}"
+            </p>
             <button
               onClick={() => setSearchQuery('')}
-              className="mt-3 text-xs font-semibold text-emerald-700 hover:underline"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#143c2d',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
             >
               Clear Search
             </button>
           </div>
         )}
       </div>
-
-      {/* Danger Zone: Delete Business Account */}
-      <div className="bg-white rounded-2xl p-6 sm:p-7 border border-red-200/90 shadow-sm mt-10">
-        <div className="flex items-start gap-3.5 mb-2">
-          <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600 flex-shrink-0 mt-0.5">
-            <i className="ri-delete-bin-7-line text-lg"></i>
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-900">
-              Delete Business Account
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
-              Permanently remove this business account and all of its contents. This action is not reversible, so please continue with caution.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 sm:pl-[46px]">
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="px-5 py-2.5 bg-[#E11D48] hover:bg-[#BE123C] text-white text-sm font-semibold rounded-xl shadow-sm transition active:scale-[0.98] inline-flex items-center gap-2"
-          >
-            <i className="ri-delete-bin-line"></i>
-            Delete Business Account
-          </button>
-        </div>
-      </div>
-
-      {/* Confirmation Modal for Safety */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 text-xl">
-              <i className="ri-error-warning-fill"></i>
-            </div>
-            <h3 className="text-lg font-bold text-slate-900 text-center mb-2">
-              Are you absolutely sure?
-            </h3>
-            <p className="text-xs text-slate-500 text-center mb-5 leading-relaxed">
-              This will permanently delete the store catalog, transactional history, customer wallets, and configurations. This action cannot be undone.
-            </p>
-
-            <div className="mb-5">
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Type <span className="font-mono text-red-600 font-bold">DELETE</span> to confirm:
-              </label>
-              <input
-                type="text"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder="DELETE"
-                className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-red-500"
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDeleteModal(false)
-                  setDeleteConfirmText('')
-                }}
-                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={deleteConfirmText !== 'DELETE'}
-                onClick={() => {
-                  alert('For enterprise security and data integrity, business account deletion requires direct SuperAdmin OTP confirmation.')
-                  setShowDeleteModal(false)
-                  setDeleteConfirmText('')
-                }}
-                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition"
-              >
-                Confirm Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
