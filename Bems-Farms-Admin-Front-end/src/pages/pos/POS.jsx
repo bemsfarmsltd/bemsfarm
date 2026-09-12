@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../lib/api'
+import SalesHub from './SalesHub'
 
 // ── Categories & Definitions ────────────────────────────────────────────────
 const CATEGORY_DEFINITIONS = [
@@ -233,6 +234,7 @@ function getProductIcon(name = '', cat = '') {
 // ── Main POS Component ────────────────────────────────────────────────────────
 export default function POS() {
   const { user } = useAuth()
+  const [viewMode, setViewMode] = useState('hub') // 'hub' (First Screen) | 'register' (Active Ringing)
 
   // Theme state: defaults to crisp 'light' mode or saved preference
   const [theme, setTheme] = useState(() => localStorage.getItem('bems_pos_theme') || 'light')
@@ -905,7 +907,28 @@ export default function POS() {
     setSplitRows(r => r.map((row, ri) => ri === i ? { ...row, [field]: val } : row))
   }
 
-  // ── UI Render ──────────────────────────────────────────────────────────────
+  // ── Render First Screen: Sales Hub & Shift Dashboard ──────────────────────
+  if (viewMode === 'hub') {
+    return (
+      <SalesHub
+        onOpenRegister={() => setViewMode('register')}
+        historyList={historyList}
+        onlineOrders={onlineOrders}
+        onOpenOnlineOrder={(order) => {
+          loadOnlineOrderToCart(order)
+          setViewMode('register')
+        }}
+        onReprintReceipt={(receipt) => {
+          setSuccessData(receipt)
+          setActiveModal('receipt')
+          setViewMode('register')
+        }}
+        user={user}
+      />
+    )
+  }
+
+  // ── Render Active Ringing & Scanning Terminal ─────────────────────────────
   return (
     <div className={`pos-app-root theme-${theme}`}>
 
@@ -943,8 +966,18 @@ export default function POS() {
           )}
         </div>
 
-        {/* Right Controls: Online Orders, Analytics, Theme, Exit, Cashier */}
+        {/* Right Controls: Return to Sales Hub, Online Orders, Theme, Exit */}
         <div className="pos-hud-controls">
+          {/* Return to Sales Hub Button (Dedicated First Screen) */}
+          <button
+            onClick={() => setViewMode('hub')}
+            className="pos-header-analytics-pill"
+            style={{ background: '#F1F5F9', color: '#0F172A', border: '1px solid #CBD5E1' }}
+            title="Return to Sales Hub & Shift Dashboard">
+            <i className="ri-arrow-left-line text-dark"></i>
+            <span className="text-dark fw-bold">Sales Hub</span>
+          </button>
+
           {/* Online Orders with Live Notification Badge */}
           {(() => {
             const newCount = onlineOrders.filter(o => o.status === 'new').length
@@ -959,16 +992,6 @@ export default function POS() {
               </button>
             )
           })()}
-
-          {/* Salesperson & Shift Analytics Header Pill */}
-          <button
-            onClick={() => setActiveModal('analytics')}
-            className="pos-header-analytics-pill"
-            title="View Live Salesperson Analytics & Shift X-Report [F7]">
-            <i className="ri-bar-chart-box-fill"></i>
-            <span>Analytics</span>
-            <span className="pos-analytics-shift-badge">{fmt(shiftStats.totalSales)}</span>
-          </button>
 
           {heldOrders.length > 0 && (
             <button onClick={() => recallOrder(0)} className="pos-held-counter-btn">
