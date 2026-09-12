@@ -373,50 +373,76 @@ export default function SalesHub({
       {/* ── TOP NAV HEADER ── */}
       <header className="sales-hub-header">
         <div className="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-3">
-          {/* Left: Brand & Terminal status */}
-          <div className="d-flex align-items-center gap-3.5">
+          {/* Left: Brand + Terminal Location + Cashier Pill */}
+          <div className="d-flex align-items-center gap-2.5 flex-wrap">
+            {/* Logo */}
             <Link to="/dashboard" className="d-flex align-items-center text-decoration-none">
-              <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height: 40, objectFit: 'contain' }} />
+              <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height: 38, objectFit: 'contain' }} />
             </Link>
 
-            <div className="vr d-none d-sm-block text-muted opacity-25" style={{ height: 32 }}></div>
+            <div className="vr d-none d-sm-block text-muted opacity-25" style={{ height: 28 }}></div>
 
-            <div className="d-flex flex-column justify-content-center">
-              <div className="d-flex align-items-center gap-2 flex-wrap">
-                <span className="fw-bold text-dark font-display" style={{ fontSize: '0.98rem', letterSpacing: '-0.01em' }}>
-                  POS Terminal 01
-                </span>
-                <span className="text-muted opacity-40" style={{ fontSize: '0.85rem' }}>•</span>
-                <span className="text-muted fw-semibold" style={{ fontSize: '0.85rem' }}>
-                  Bems Farms HQ
-                </span>
-                <span
-                  className="badge d-inline-flex align-items-center gap-1.5 ms-1"
-                  style={{
-                    backgroundColor: '#ECFDF5',
-                    color: '#047857',
-                    border: '1px solid #A7F3D0',
-                    fontSize: '9.5px',
-                    fontWeight: 800,
-                    padding: '2.5px 8px',
-                    borderRadius: '12px',
-                    letterSpacing: '0.04em'
-                  }}
-                >
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block', boxShadow: '0 0 0 2px #A7F3D0' }}></span>
-                  SHIFT ACTIVE
-                </span>
+            {/* Store & Terminal Pill */}
+            <div
+              className="d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill"
+              style={{
+                backgroundColor: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+              }}
+            >
+              <i className="ri-store-2-line text-success" style={{ fontSize: 15 }}></i>
+              <span className="fw-bold text-dark" style={{ fontSize: '0.84rem' }}>
+                Bems Farms HQ
+              </span>
+              <span className="text-muted opacity-40">•</span>
+              <span className="text-muted fw-semibold" style={{ fontSize: '0.82rem' }}>
+                Terminal 01
+              </span>
+              <span
+                className="badge d-inline-flex align-items-center gap-1.5 ms-1"
+                style={{
+                  backgroundColor: '#ECFDF5',
+                  color: '#047857',
+                  border: '1px solid #A7F3D0',
+                  fontSize: '9px',
+                  fontWeight: 800,
+                  padding: '2px 7px',
+                  borderRadius: '12px',
+                  letterSpacing: '0.03em'
+                }}
+              >
+                <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
+                Shift Active
+              </span>
+            </div>
+
+            {/* Cashier Badge Pill */}
+            <div
+              className="d-none d-lg-flex align-items-center gap-2 px-2.5 py-1 rounded-pill"
+              style={{
+                backgroundColor: '#FAF8F5',
+                border: '1px solid #EFECE6'
+              }}
+            >
+              <div
+                className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                style={{
+                  width: 24,
+                  height: 24,
+                  backgroundColor: '#143C2D',
+                  fontSize: '10px'
+                }}
+              >
+                {(user?.first_name?.[0] || 'B') + (user?.last_name?.[0] || 'F')}
               </div>
-
-              <div className="d-flex align-items-center gap-2 text-muted mt-0.5 flex-wrap" style={{ fontSize: '11.5px' }}>
-                <span className="d-inline-flex align-items-center gap-1">
-                  <span className="text-muted">Cashier:</span>
-                  <strong className="text-dark fw-bold">
-                    {user?.first_name || 'Staff Member'} {user?.last_name || ''}
-                  </strong>
+              <div className="d-flex flex-column" style={{ lineHeight: 1.1 }}>
+                <span className="fw-bold text-dark" style={{ fontSize: '0.78rem' }}>
+                  {user?.first_name || 'Bems Farms'} {user?.last_name || 'Admin'}
                 </span>
-                <span className="text-muted opacity-30">•</span>
-                <span className="text-muted">{todayStr}</span>
+                <span className="text-muted" style={{ fontSize: '0.65rem' }}>
+                  Cashier on Duty
+                </span>
               </div>
             </div>
           </div>
