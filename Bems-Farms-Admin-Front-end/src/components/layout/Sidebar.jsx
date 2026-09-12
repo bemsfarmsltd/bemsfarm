@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { ROLE_META } from '../../lib/roles'
 
@@ -75,7 +75,7 @@ export default function Sidebar() {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        padding: 0.75rem 0.5rem;
+        padding: 0.65rem 0.5rem;
         z-index: 20;
         overflow-x: hidden;
         overflow-y: auto;
@@ -88,6 +88,65 @@ export default function Sidebar() {
       .sidebar-icon-rail.rail-open {
         width: 215px;
         box-shadow: 12px 0 36px rgba(0, 0, 0, 0.45);
+      }
+      
+      /* Rail Brand Header (Only B when closed -> Full Logo text on hover) */
+      .rail-brand-header {
+        width: 100%;
+        margin-bottom: 0.65rem;
+        padding-bottom: 0.6rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      
+      .rail-brand-btn {
+        width: 100%;
+        height: 42px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        padding: 0 9px;
+        text-decoration: none;
+        transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        overflow: hidden;
+      }
+      .rail-brand-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(245, 158, 11, 0.35);
+      }
+      
+      .rail-brand-b {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        object-fit: contain;
+        filter: drop-shadow(0 2px 6px rgba(180, 83, 9, 0.45));
+        flex-shrink: 0;
+      }
+      
+      .rail-brand-full {
+        margin-left: 0.6rem;
+        opacity: 0;
+        transform: translateX(-8px);
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        pointer-events: none;
+      }
+      
+      .rail-brand-text-img {
+        height: 16px;
+        width: auto;
+        object-fit: contain;
+      }
+      
+      .sidebar-icon-rail:hover .rail-brand-full,
+      .sidebar-icon-rail.rail-open .rail-brand-full {
+        opacity: 1;
+        transform: translateX(0);
+        pointer-events: auto;
       }
       
       .rail-nav-list {
@@ -261,6 +320,16 @@ export default function Sidebar() {
           onMouseEnter={() => setIsRailExpanded(true)}
           onMouseLeave={() => setIsRailExpanded(false)}
         >
+          {/* Top Brand / Logo Mark (Only B when closed, expands to full BEMS FARMS) */}
+          <div className="rail-brand-header">
+            <Link to="/dashboard" className="rail-brand-btn" title="Bems Farms">
+              <img src="/bemsfarms_icon_b.png" alt="B" className="rail-brand-b" />
+              <div className="rail-brand-full">
+                <img src="/bemsfarms_text.png" alt="Bems Farms" className="rail-brand-text-img" />
+              </div>
+            </Link>
+          </div>
+
           <div className="rail-nav-list">
 
             {/* Dashboard / Main */}

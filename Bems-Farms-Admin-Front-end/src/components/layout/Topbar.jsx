@@ -26,8 +26,13 @@ export default function Topbar({ onToggleSidebar }) {
     <header className="main-topbar" id="main-topbar">
       {/* Left: Brand logo */}
       <div className="navbar-brand">
-        <Link to="/dashboard" aria-label="Bems Farms Admin" className="d-flex align-items-center text-decoration-none">
-          <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height: 32, width: 'auto', objectFit: 'contain' }} />
+        <Link to="/dashboard" aria-label="Bems Farms Admin" className="brand-logo-link">
+          <div className="brand-icon-wrapper">
+            <img src="/bemsfarms_icon_b.png" alt="B" className="brand-logo-b" />
+          </div>
+          <div className="brand-text-wrapper">
+            <img src="/bemsfarms_text.png" alt="Bems Farms" className="brand-logo-text" />
+          </div>
         </Link>
       </div>
 
