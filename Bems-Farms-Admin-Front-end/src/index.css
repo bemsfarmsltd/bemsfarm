@@ -11,7 +11,8 @@
   --bf-green-brand: #143c2d;
   --bf-green-mid: #1b5e3f;
   --bf-green-light: #d1fae5;
-  --bf-green-glow: rgba(20, 60, 45, 0.12);
+  --bf-green-subtle: #eaf5ef;
+  --bf-green-glow: rgba(20, 60, 45, 0.14);
 
   --bf-amber-brand: #F59E0B;
   --bf-amber-dark: #B45309;
@@ -26,6 +27,8 @@
   --bf-text-muted: #64748B;
   --bf-text-light: #94A3B8;
 
+  --bs-primary: #143C2D;
+  --bs-primary-rgb: 20, 60, 45;
   --bs-body-font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --bs-body-bg: #FAF8F5;
   --bs-body-color: #0F172A;
@@ -298,17 +301,295 @@ body.sidebar-condensed .main-topbar {
   transition: all 0.2s ease !important;
 }
 
-.btn-primary-bf {
+/* ══════════════════════════════════════════════════════════════════
+   GLOBAL BRAND BUTTON DESIGN SYSTEM (NO TEMPLATE ORANGE)
+   Executive Forest Emerald (#143C2D / #1B5E3F) + Golden Amber Highlights
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 1. PRIMARY BUTTONS (.btn-primary) */
+.btn-primary,
+.btn-primary-bf,
+button.btn-primary,
+a.btn-primary {
+  background: linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
   background-color: #143C2D !important;
   border-color: #143C2D !important;
-  color: #ffffff !important;
-  box-shadow: 0 2px 8px 0 rgba(20, 60, 45, 0.2) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 8px rgba(20, 60, 45, 0.22), 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-.btn-primary-bf:hover {
+.btn-primary:hover,
+.btn-primary-bf:hover,
+button.btn-primary:hover,
+a.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary-bf:focus {
+  background: linear-gradient(135deg, #0B281B 0%, #143C2D 100%) !important;
   background-color: #0B281B !important;
   border-color: #0B281B !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(20, 60, 45, 0.35) !important;
   transform: translateY(-1px);
+}
+
+.btn-primary:active,
+.btn-primary-bf:active,
+.btn-primary.active {
+  background: #071F14 !important;
+  border-color: #071F14 !important;
+  color: #FFFFFF !important;
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(20, 60, 45, 0.2) !important;
+}
+
+.btn-primary:disabled,
+.btn-primary.disabled {
+  background: #94A3B8 !important;
+  border-color: #94A3B8 !important;
+  color: #FFFFFF !important;
+  opacity: 0.65 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* 2. SUB-PRIMARY / SOFT PRIMARY BUTTONS (.btn-sub-primary, .btn-soft-primary) */
+.btn-sub-primary,
+.btn-soft-primary {
+  background-color: #EAF5EF !important;
+  border: 1px solid #C8E6D5 !important;
+  color: #143C2D !important;
+  font-weight: 600 !important;
+  transition: all 0.18s ease !important;
+}
+
+.btn-sub-primary:hover,
+.btn-soft-primary:hover {
+  background: linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
+  border-color: #143C2D !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 3px 10px rgba(20, 60, 45, 0.25) !important;
+  transform: translateY(-1px);
+}
+
+/* 3. OUTLINE PRIMARY BUTTONS (.btn-outline-primary) */
+.btn-outline-primary {
+  background-color: transparent !important;
+  border: 1.5px solid #143C2D !important;
+  color: #143C2D !important;
+  font-weight: 600 !important;
+  transition: all 0.18s ease !important;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+  background: linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
+  border-color: #143C2D !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 3px 10px rgba(20, 60, 45, 0.25) !important;
+  transform: translateY(-1px);
+}
+
+/* 4. SECONDARY & SUB-SECONDARY BUTTONS */
+.btn-secondary {
+  background-color: #475569 !important;
+  border-color: #475569 !important;
+  color: #FFFFFF !important;
+}
+
+.btn-secondary:hover {
+  background-color: #334155 !important;
+  border-color: #334155 !important;
+  color: #FFFFFF !important;
+}
+
+.btn-sub-secondary,
+.btn-outline-secondary {
+  background-color: #FFFFFF !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #334155 !important;
+  font-weight: 600 !important;
+  transition: all 0.18s ease !important;
+}
+
+.btn-sub-secondary:hover,
+.btn-outline-secondary:hover {
+  background-color: #F8FAFC !important;
+  border-color: #94A3B8 !important;
+  color: #0F172A !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* 5. DANGER & SUB-DANGER BUTTONS */
+.btn-danger {
+  background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%) !important;
+  border-color: #DC2626 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25) !important;
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%) !important;
+  border-color: #991B1B !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35) !important;
+  transform: translateY(-1px);
+}
+
+.btn-sub-danger,
+.btn-soft-danger {
+  background-color: #FEF2F2 !important;
+  border: 1px solid #FECACA !important;
+  color: #DC2626 !important;
+  font-weight: 600 !important;
+  transition: all 0.18s ease !important;
+}
+
+.btn-sub-danger:hover,
+.btn-soft-danger:hover {
+  background-color: #DC2626 !important;
+  border-color: #DC2626 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.25) !important;
+  transform: translateY(-1px);
+}
+
+/* 6. SUCCESS & SUB-SUCCESS BUTTONS */
+.btn-success {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  border-color: #059669 !important;
+  color: #FFFFFF !important;
+}
+
+.btn-sub-success {
+  background-color: #ECFDF5 !important;
+  border: 1px solid #A7F3D0 !important;
+  color: #059669 !important;
+}
+
+.btn-sub-success:hover {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+}
+
+/* 7. WARNING & SUB-WARNING BUTTONS (AMBER ACCENTS) */
+.btn-warning {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
+  border-color: #D97706 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25) !important;
+}
+
+.btn-warning:hover {
+  background: linear-gradient(135deg, #D97706 0%, #B45309 100%) !important;
+  border-color: #B45309 !important;
+  color: #FFFFFF !important;
+  transform: translateY(-1px);
+}
+
+.btn-sub-warning {
+  background-color: #FFFBEB !important;
+  border: 1px solid #FDE68A !important;
+  color: #B45309 !important;
+}
+
+.btn-sub-warning:hover {
+  background-color: #D97706 !important;
+  color: #FFFFFF !important;
+}
+
+/* 8. ACTIVE BUTTON STATES */
+.btn-active-primary {
+  background: #143C2D !important;
+  border-color: #143C2D !important;
+  color: #FFFFFF !important;
+}
+
+.btn-active-secondary {
+  background: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+/* 9. GLOBAL PRIMARY TEXT, LINKS & HIGHLIGHTS */
+.text-primary,
+.link-primary,
+.link-custom-primary,
+a.link-custom-primary {
+  color: #143C2D !important;
+}
+
+.text-primary:hover,
+.link-custom-primary:hover {
+  color: #0B281B !important;
+}
+
+.bg-primary {
+  background-color: #143C2D !important;
+  color: #FFFFFF !important;
+}
+
+.bg-primary-subtle {
+  background-color: #EAF5EF !important;
+  color: #143C2D !important;
+  border: 1px solid #C8E6D5 !important;
+}
+
+.border-primary {
+  border-color: #143C2D !important;
+}
+
+/* 10. PAGINATION CONTROLS */
+.pagination .page-item.active .page-link {
+  background: linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
+  border-color: #143C2D !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 6px rgba(20, 60, 45, 0.25) !important;
+  font-weight: 700 !important;
+}
+
+.pagination .page-link {
+  color: #143C2D !important;
+  font-weight: 600 !important;
+  border-color: #E2E8F0 !important;
+}
+
+.pagination .page-link:hover {
+  background-color: #EAF5EF !important;
+  border-color: #C8E6D5 !important;
+  color: #0B281B !important;
+}
+
+/* 11. FORM CONTROLS & CHECKBOXES */
+.form-check-input:checked {
+  background-color: #143C2D !important;
+  border-color: #143C2D !important;
+}
+
+.form-check-input:focus {
+  border-color: #143C2D !important;
+  box-shadow: 0 0 0 3px rgba(20, 60, 45, 0.15) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: #143C2D !important;
+  box-shadow: 0 0 0 3px rgba(20, 60, 45, 0.12) !important;
+}
+
+/* 12. NAV TABS & PILLS */
+.nav-pills .nav-link.active {
+  background: linear-gradient(135deg, #143C2D 0%, #1B5E3F 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 6px rgba(20, 60, 45, 0.2) !important;
+}
+
+.nav-tabs .nav-link.active {
+  color: #143C2D !important;
+  border-bottom: 2px solid #143C2D !important;
+  font-weight: 700 !important;
 }
 
 /* ── CARDS & STATS (COMPACT LUXURY ELEVATION) ─────────────────────── */

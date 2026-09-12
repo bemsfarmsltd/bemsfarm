@@ -341,9 +341,11 @@ export default function Sidebar() {
         color: #0F172A;
       }
       .dual-sub-link.active {
-        background: #FEF3C7;
-        color: #92400E;
+        background: #EAF5EF;
+        color: #143C2D;
         font-weight: 750;
+        border-left: 3px solid #143C2D;
+        padding-left: calc(0.85rem - 3px);
       }
       
       .sub-badge {
