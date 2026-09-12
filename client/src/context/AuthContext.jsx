@@ -201,9 +201,13 @@ export function AuthProvider({ children }) {
   const verifyEmail = useCallback(
     async (email, token) => {
       const { data } = await api.post('/auth/verify-email', { email, token });
+      const { user: userData, token: authToken } = data;
+      if (userData?.id && authToken) {
+        _storeSession(userData, authToken);
+      }
       return data;
     },
-    [],
+    [_storeSession],
   );
 
   // ── RESEND VERIFICATION ──────────────────────────────────────

@@ -586,6 +586,9 @@ router.post("/reset-password", validate(authSchemas.resetPassword), async (req, 
 // VERIFY EMAIL
 // ─────────────────────────────────────────────
 router.post("/verify-email", validate(authSchemas.verifyEmail), async (req, res, next) => {
+  const clientIP = req.ip || req.connection?.remoteAddress || "unknown";
+  const origin = req.headers["origin"] || req.headers["referer"] || "mobile/unknown";
+
   try {
     const { email, token } = req.body;
     const result = await pool.query(
@@ -599,12 +602,48 @@ router.post("/verify-email", validate(authSchemas.verifyEmail), async (req, res,
     
     const user = result.rows[0];
     
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user.id);
+
     await pool.query(
-      "UPDATE users SET email_verified = true, verification_token = NULL WHERE id = $1",
-      [user.id]
+      "UPDATE users SET email_verified = true, verification_token = NULL, refresh_token = $1, last_login = NOW() WHERE id = $2",
+      [refreshToken, user.id]
     );
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    const nameParts = (user.name || "").trim().split(" ");
+    const userPayload = {
+      id: user.id,
+      name: user.name,
+      first_name: nameParts[0] || "",
+      last_name: nameParts.slice(1).join(" ") || "",
+      email: user.email,
+      role: user.role,
+      avatar_url: user.avatar_url || null,
+      store_id: user.store_id || null,
+      status: user.status,
+    };
+
+    upsertContext(user.id, {
+      full_name:  user.name,
+      email:      user.email,
+      phone:      user.phone || null,
+      role:       user.role,
+      last_login: new Date().toISOString(),
+    });
+    trackActivity(user.id, "email_verified_login", { ip: clientIP, metadata: { origin } });
     
-    res.json({ message: "Email verified successfully. Please sign in to continue." });
+    res.json({
+      message: "Email verified successfully",
+      token: accessToken,
+      user: userPayload,
+    });
   } catch (err) {
     next(err);
   }
