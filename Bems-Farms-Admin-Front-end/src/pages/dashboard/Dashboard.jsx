@@ -523,7 +523,10 @@ function OverviewTab() {
       </div>
 
       {modal && (
-        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+        <DetailModal
+          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+        >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
       )}
@@ -733,7 +736,10 @@ function SalesTab() {
       </div>
 
       {modal && (
-        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+        <DetailModal
+          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+        >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
       )}
@@ -961,7 +967,10 @@ function FinanceTab() {
       </div>
 
       {modal && (
-        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+        <DetailModal
+          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+        >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
       )}
@@ -1117,7 +1126,10 @@ function InventoryTab() {
       </div>
 
       {modal && (
-        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+        <DetailModal
+          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+        >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
       )}
@@ -1317,7 +1329,10 @@ function OperationsTab() {
       </div>
 
       {modal && (
-        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+        <DetailModal
+          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+        >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
       )}
@@ -1454,7 +1469,10 @@ function CustomersTab() {
       </div>
 
       {modal && (
-        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+        <DetailModal
+          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+        >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
       )}
@@ -1634,7 +1652,10 @@ function ChefBemsTab() {
       </div>
 
       {modal && (
-        <DetailModal title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}>
+        <DetailModal
+          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+        >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
       )}
