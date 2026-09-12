@@ -1,11 +1,28 @@
 import { useState, useEffect } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { ROLE_META } from '../../lib/roles'
 
 export default function Sidebar() {
   const { user, hasRole, logout } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
+
+  // First sub-category route mapping for each rail category
+  const CATEGORY_FIRST_ROUTES = {
+    dashboards: '/dashboard?tab=overview',
+    products: '/products',
+    inventory: '/inventory/stock',
+    orders: '/orders',
+    deliveries: '/deliveries/active',
+    customers: '/customers',
+    staff: '/staff',
+    finance: '/accounts/overview',
+    reports: '/reports/sales',
+    chef: '/chef-bems/conversations',
+    stores: '/stores',
+    settings: '/settings/general',
+  }
 
   // Role helpers
   const is = (...roles) => hasRole(...roles)
@@ -42,6 +59,14 @@ export default function Sidebar() {
 
   const [activeTab, setActiveTab] = useState(() => getActiveCategoryFromPath(location.pathname))
   const [isRailExpanded, setIsRailExpanded] = useState(false)
+
+  const handleCategoryClick = (tabKey) => {
+    setActiveTab(tabKey)
+    const targetRoute = CATEGORY_FIRST_ROUTES[tabKey]
+    if (targetRoute) {
+      navigate(targetRoute)
+    }
+  }
 
   useEffect(() => {
     setActiveTab(getActiveCategoryFromPath(location.pathname))
@@ -362,7 +387,7 @@ export default function Sidebar() {
             <button
               type="button"
               className={`rail-btn ${activeTab === 'dashboards' ? 'active' : ''}`}
-              onClick={() => setActiveTab('dashboards')}
+              onClick={() => handleCategoryClick('dashboards')}
               title="Dashboards"
             >
               <i className="ri-dashboard-2-line rail-icon"></i>
@@ -374,7 +399,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'products' ? 'active' : ''}`}
-                onClick={() => setActiveTab('products')}
+                onClick={() => handleCategoryClick('products')}
                 title="Products & Catalog"
               >
                 <i className="ri-price-tag-3-line rail-icon"></i>
@@ -387,7 +412,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'inventory' ? 'active' : ''}`}
-                onClick={() => setActiveTab('inventory')}
+                onClick={() => handleCategoryClick('inventory')}
                 title="Stock & Inventory"
               >
                 <i className="ri-archive-stack-line rail-icon"></i>
@@ -400,7 +425,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'orders' ? 'active' : ''}`}
-                onClick={() => setActiveTab('orders')}
+                onClick={() => handleCategoryClick('orders')}
                 title="Sales & Orders"
               >
                 <i className="ri-shopping-bag-3-line rail-icon"></i>
@@ -413,7 +438,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'deliveries' ? 'active' : ''}`}
-                onClick={() => setActiveTab('deliveries')}
+                onClick={() => handleCategoryClick('deliveries')}
                 title="Operations & Dispatch"
               >
                 <i className="ri-truck-line rail-icon"></i>
@@ -426,7 +451,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'customers' ? 'active' : ''}`}
-                onClick={() => setActiveTab('customers')}
+                onClick={() => handleCategoryClick('customers')}
                 title="Customers CRM"
               >
                 <i className="ri-user-heart-line rail-icon"></i>
@@ -439,7 +464,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'staff' ? 'active' : ''}`}
-                onClick={() => setActiveTab('staff')}
+                onClick={() => handleCategoryClick('staff')}
                 title="Staff Accounts & Roles"
               >
                 <i className="ri-shield-user-line rail-icon"></i>
@@ -452,7 +477,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'finance' ? 'active' : ''}`}
-                onClick={() => setActiveTab('finance')}
+                onClick={() => handleCategoryClick('finance')}
                 title="Finance & Accounts"
               >
                 <i className="ri-bank-card-line rail-icon"></i>
@@ -465,7 +490,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'reports' ? 'active' : ''}`}
-                onClick={() => setActiveTab('reports')}
+                onClick={() => handleCategoryClick('reports')}
                 title="Reports & Analytics"
               >
                 <i className="ri-bar-chart-grouped-line rail-icon"></i>
@@ -478,7 +503,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'chef' ? 'active' : ''}`}
-                onClick={() => setActiveTab('chef')}
+                onClick={() => handleCategoryClick('chef')}
                 title="Chef Bems AI"
               >
                 <i className="ri-robot-line rail-icon"></i>
@@ -491,7 +516,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'stores' ? 'active' : ''}`}
-                onClick={() => setActiveTab('stores')}
+                onClick={() => handleCategoryClick('stores')}
                 title="Multi-Store Locations"
               >
                 <i className="ri-store-3-line rail-icon"></i>
@@ -504,7 +529,7 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'settings' ? 'active' : ''}`}
-                onClick={() => setActiveTab('settings')}
+                onClick={() => handleCategoryClick('settings')}
                 title="System Settings"
               >
                 <i className="ri-settings-3-line rail-icon"></i>
