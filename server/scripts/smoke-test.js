@@ -14,6 +14,7 @@
 const { spawn } = require("child_process");
 const http = require("http");
 const path = require("path");
+const { readFileSync } = require("fs");
 
 const PORT = 5099;
 const BASE_URL = `http://localhost:${PORT}`;
@@ -82,12 +83,19 @@ async function main() {
   try {
     await waitForBoot(child);
 
+    // Exercise the URLs actually requested by the dashboard, so frontend/server
+    // prefix drift fails here instead of appearing only after deployment.
+    const dashboardSource = readFileSync(path.join(__dirname, "../../Bems-Farms-Admin-Front-end/src/pages/dashboard/Dashboard.jsx"), "utf8");
+    const dashboardPaths = [...dashboardSource.matchAll(/api\.get\(['"]([^'"]*dashboard\/[^'"]+)['"]/g)].map(match => `/api${match[1]}`);
+    if (new Set(dashboardPaths).size !== 7) return fail("Expected requests for all seven dashboard tabs");
+
     const checks = [
       ["GET /health -> 200", () => get("/health").then((r) => r.status === 200)],
       ["GET /api -> 200", () => get("/api").then((r) => r.status === 200)],
       ["GET /test -> 200", () => get("/test").then((r) => r.status === 200)],
       ["GET /api/admin/stats (no auth) -> 401", () => get("/api/admin/stats").then((r) => r.status === 401)],
       ["GET /api/dashboard/overview (no auth) -> 401", () => get("/api/dashboard/overview").then((r) => r.status === 401)],
+      ...dashboardPaths.map(url => [`GET ${url} (dashboard request, no auth) -> 401`, () => get(url).then(r => r.status === 401)]),
     ];
 
     for (const [label, check] of checks) {

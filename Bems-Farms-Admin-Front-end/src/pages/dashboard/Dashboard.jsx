@@ -71,7 +71,7 @@ function OverviewTab() {
   const load = useCallback(async () => {
     setLoading(true); setError(false)
     try {
-      const res = await api.get('/admin/dashboard/overview')
+      const res = await api.get('/dashboard/overview')
       setData(res.data)
     } catch { setError(true) }
     finally { setLoading(false) }
@@ -79,9 +79,9 @@ function OverviewTab() {
 
   useEffect(() => { load() }, [load])
 
-  const weekDays   = data?.charts?.revenue_7d?.map(r => r.day_label) ?? []
-  const revenueArr = data?.charts?.revenue_7d?.map(r => Number(r.revenue)) ?? []
-  const ordersArr  = data?.charts?.revenue_7d?.map(r => Number(r.orders)) ?? []
+  const weekDays   = data?.charts?.week_revenue?.map(r => r.label) ?? []
+  const revenueArr = data?.charts?.week_revenue?.map(r => Number(r.revenue)) ?? []
+  const ordersArr  = data?.charts?.week_orders?.map(r => Number(r.orders)) ?? []
   const pipeline   = data?.pipeline ?? {}
   const kpis       = data?.kpis ?? {}
 
@@ -112,7 +112,7 @@ function OverviewTab() {
   if (loading) return <TabSkeleton />
   if (error)   return <TabError onRetry={load} />
 
-  const todayRevenue  = Number(kpis.today_revenue || 0)
+  const todayRevenue  = Number(kpis.revenue_today || 0)
   const recentOrders  = data?.recent_orders ?? []
   const topProducts   = data?.top_products ?? []
   const lowStock      = data?.low_stock ?? []
@@ -133,7 +133,7 @@ function OverviewTab() {
       {/* KPI row */}
       <div className="row g-2 mb-2.5">
         <div className="col-6 col-sm-4 col-xl-2">
-          <StatsCard title="Today's Revenue"   value={fmtNaira(kpis.today_revenue)}         sub={`${kpis.orders_today ?? 0} orders today`}        riIcon="ri-money-dollar-circle-line" color="green" />
+          <StatsCard title="Today's Revenue"   value={fmtNaira(kpis.revenue_today)}         sub={`${kpis.orders_today ?? 0} orders today`}        riIcon="ri-money-dollar-circle-line" color="green" />
         </div>
         <div className="col-6 col-sm-4 col-xl-2">
           <StatsCard title="Pending Orders"    value={kpis.pending_orders ?? 0}              sub={`${kpis.ready_dispatch ?? 0} ready for dispatch`} riIcon="ri-shopping-cart-2-line"    color="amber" />
@@ -142,7 +142,7 @@ function OverviewTab() {
           <StatsCard title="Active Deliveries" value={kpis.active_deliveries ?? 0}           sub={`${kpis.en_route ?? 0} en route now`}             riIcon="ri-bike-line"               color="blue" />
         </div>
         <div className="col-6 col-sm-4 col-xl-2">
-          <StatsCard title="Low Stock Alerts"  value={kpis.low_stock_count ?? 0}             sub="Action required"                                  riIcon="ri-alert-line"              color="red" />
+          <StatsCard title="Low Stock Alerts"  value={kpis.low_stock_alerts ?? 0}             sub="Action required"                                  riIcon="ri-alert-line"              color="red" />
         </div>
         <div className="col-6 col-sm-4 col-xl-2">
           <StatsCard title="Active Customers"  value={(kpis.active_customers ?? 0).toLocaleString()} sub={`↑ ${kpis.new_this_week ?? 0} new this week`}  riIcon="ri-user-3-line"             color="purple" />
@@ -445,7 +445,7 @@ function SalesTab() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
-    try { setData((await api.get('/admin/dashboard/sales')).data) }
+    try { setData((await api.get('/dashboard/sales')).data) }
     catch { setError(true) }
     finally { setLoading(false) }
   }, [])
@@ -594,7 +594,7 @@ function FinanceTab() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
-    try { setData((await api.get('/admin/dashboard/finance')).data) }
+    try { setData((await api.get('/dashboard/finance')).data) }
     catch { setError(true) }
     finally { setLoading(false) }
   }, [])
@@ -736,7 +736,7 @@ function InventoryTab() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
-    try { setData((await api.get('/admin/dashboard/inventory')).data) }
+    try { setData((await api.get('/dashboard/inventory')).data) }
     catch { setError(true) }
     finally { setLoading(false) }
   }, [])
@@ -851,7 +851,7 @@ function OperationsTab() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
-    try { setData((await api.get('/admin/dashboard/operations')).data) }
+    try { setData((await api.get('/dashboard/operations')).data) }
     catch { setError(true) }
     finally { setLoading(false) }
   }, [])
@@ -997,7 +997,7 @@ function CustomersTab() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
-    try { setData((await api.get('/admin/dashboard/customers')).data) }
+    try { setData((await api.get('/dashboard/customers')).data) }
     catch { setError(true) }
     finally { setLoading(false) }
   }, [])
@@ -1110,7 +1110,7 @@ function ChefBemsTab() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
-    try { setData((await api.get('/admin/dashboard/ai')).data) }
+    try { setData((await api.get('/dashboard/ai')).data) }
     catch { setError(true) }
     finally { setLoading(false) }
   }, [])
