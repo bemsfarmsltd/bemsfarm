@@ -36,6 +36,48 @@ export default function SalesHub({
   })
   const [drawerNotes, setDrawerNotes] = useState('')
 
+  // Global Function Keys listener on SalesHub (F1: Open Register, F2: Cash Drawer, F3: Z-Report, F4: Timeframe)
+  useEffect(() => {
+    function handleKeyDown(e) {
+      const tag = e.target.tagName
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+      if (isInput) return
+
+      if (e.key === 'F1') {
+        e.preventDefault()
+        onOpenRegister()
+        return
+      }
+      if (e.key === 'F2') {
+        e.preventDefault()
+        setShowDrawerModal(true)
+        return
+      }
+      if (e.key === 'F3') {
+        e.preventDefault()
+        setShowZReportModal(true)
+        return
+      }
+      if (e.key === 'F4') {
+        e.preventDefault()
+        const order = ['shift', 'today', 'yesterday', 'week', 'month']
+        setTimeframe((curr) => {
+          const idx = order.indexOf(curr)
+          return order[(idx + 1) % order.length]
+        })
+        return
+      }
+      if (e.key === 'Escape') {
+        if (showDrawerModal) setShowDrawerModal(false)
+        if (showZReportModal) setShowZReportModal(false)
+        return
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onOpenRegister, showDrawerModal, showZReportModal])
+
   // Multiplier datasets for dynamic timeframes
   const timeframeMultiplier = useMemo(() => {
     switch (timeframe) {

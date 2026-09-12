@@ -533,7 +533,11 @@ export default function POS() {
 
       if (e.key === 'F1') {
         e.preventDefault()
-        scanInputRef.current?.focus()
+        if (viewMode === 'hub') {
+          setViewMode('register')
+        } else {
+          scanInputRef.current?.focus()
+        }
         return
       }
       if (e.key === 'F2') {
@@ -551,7 +555,7 @@ export default function POS() {
         if (cart.length > 0) setActiveModal('hold')
         return
       }
-      if (e.key === 'F7') {
+      if (e.key === 'F6' || e.key === 'F7') {
         e.preventDefault()
         setActiveModal('analytics')
         return
@@ -566,11 +570,31 @@ export default function POS() {
         if (cart.length > 0) setActiveModal('card')
         return
       }
+      if (e.key === 'F10') {
+        e.preventDefault()
+        if (cart.length > 0) setActiveModal('transfer')
+        return
+      }
+      if (e.key === 'F11') {
+        e.preventDefault()
+        if (cart.length > 0) setActiveModal('split')
+        return
+      }
+      if (e.key === 'F12') {
+        e.preventDefault()
+        setActiveModal('return')
+        return
+      }
       if (e.key === 'Escape') {
         if (activeModal) {
+          e.preventDefault()
           closeModal()
         } else if (search) {
+          e.preventDefault()
           setSearch('')
+        } else if (viewMode === 'register' && cart.length === 0) {
+          e.preventDefault()
+          setViewMode('hub')
         }
         return
       }
@@ -594,7 +618,7 @@ export default function POS() {
 
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeModal, search, cart.length])
+  }, [viewMode, activeModal, search, cart.length])
 
   useEffect(() => {
     document.body.classList.add('sidebar-hidden')
