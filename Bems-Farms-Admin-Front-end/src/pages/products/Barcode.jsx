@@ -905,89 +905,75 @@ export default function Barcode() {
                 </div>
               </div>
 
-              {/* Label Elements Toggles */}
+              {/* Label Elements Toggles — 2-column pill grid */}
               <div className="mb-4">
                 <label className="form-label fw-semibold fs-xs text-uppercase text-muted mb-2">
                   Label Design Content
                 </label>
-                <div className="d-flex flex-column gap-2">
-                  <div className="form-check form-switch">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      id="toggleBrand"
-                      checked={showBrandHeader}
-                      onChange={(e) => setShowBrandHeader(e.target.checked)}
-                    />
-                    <label className="form-check-label fs-sm" htmlFor="toggleBrand">
-                      Bems Farms Brand Header
-                    </label>
-                  </div>
-
-                  <div className="form-check form-switch">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      id="toggleName"
-                      checked={showProductName}
-                      onChange={(e) => setShowProductName(e.target.checked)}
-                    />
-                    <label className="form-check-label fs-sm" htmlFor="toggleName">
-                      Product Name
-                    </label>
-                  </div>
-
-                  <div className="form-check form-switch">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      id="togglePrice"
-                      checked={showPrice}
-                      onChange={(e) => setShowPrice(e.target.checked)}
-                    />
-                    <label className="form-check-label fs-sm" htmlFor="togglePrice">
-                      Selling Price (₦)
-                    </label>
-                  </div>
-
-                  <div className="form-check form-switch">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      id="toggleSku"
-                      checked={showSku}
-                      onChange={(e) => setShowSku(e.target.checked)}
-                    />
-                    <label className="form-check-label fs-sm" htmlFor="toggleSku">
-                      Product Code / SKU
-                    </label>
-                  </div>
-
-                  <div className="form-check form-switch">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      id="toggleHuman"
-                      checked={showHumanCode}
-                      onChange={(e) => setShowHumanCode(e.target.checked)}
-                    />
-                    <label className="form-check-label fs-sm" htmlFor="toggleHuman">
-                      Readable Barcode Text
-                    </label>
-                  </div>
-
-                  <div className="form-check form-switch">
-                    <input
-                      className="form-check-input"
-                      type="checkbox"
-                      id="toggleDates"
-                      checked={showDates}
-                      onChange={(e) => setShowDates(e.target.checked)}
-                    />
-                    <label className="form-check-label fs-sm" htmlFor="toggleDates">
-                      Packing &amp; Best Before Dates
-                    </label>
-                  </div>
+                <div className="row g-2">
+                  {[
+                    { id: 'toggleBrand',  label: 'Brand Header',    icon: 'ri-store-2-line',      val: showBrandHeader,  set: setShowBrandHeader },
+                    { id: 'toggleName',   label: 'Product Name',    icon: 'ri-box-3-line',        val: showProductName,  set: setShowProductName },
+                    { id: 'togglePrice',  label: 'Selling Price',   icon: 'ri-money-naira-line',  val: showPrice,        set: setShowPrice },
+                    { id: 'toggleSku',    label: 'Product Code',    icon: 'ri-hashtag',           val: showSku,          set: setShowSku },
+                    { id: 'toggleHuman',  label: 'Barcode Text',    icon: 'ri-eye-line',          val: showHumanCode,    set: setShowHumanCode },
+                    { id: 'toggleDates',  label: 'Best Before',     icon: 'ri-calendar-line',     val: showDates,        set: setShowDates },
+                  ].map(({ id, label, icon, val, set }) => (
+                    <div className="col-6" key={id}>
+                      <button
+                        type="button"
+                        onClick={() => set(!val)}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 7,
+                          padding: '7px 9px',
+                          borderRadius: 10,
+                          border: `1.5px solid ${val ? '#059669' : '#e5e7eb'}`,
+                          background: val ? 'rgba(5,150,105,0.07)' : '#f9fafb',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          outline: 'none',
+                        }}
+                      >
+                        {/* mini animated toggle pill */}
+                        <div style={{
+                          flexShrink: 0,
+                          width: 28,
+                          height: 15,
+                          borderRadius: 8,
+                          background: val ? '#059669' : '#d1d5db',
+                          position: 'relative',
+                          transition: 'background 0.2s',
+                        }}>
+                          <div style={{
+                            position: 'absolute',
+                            top: 1.5,
+                            left: val ? 13 : 1.5,
+                            width: 12,
+                            height: 12,
+                            borderRadius: '50%',
+                            background: '#fff',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                            transition: 'left 0.18s ease',
+                          }} />
+                        </div>
+                        <i className={icon} style={{ fontSize: 13, color: val ? '#059669' : '#9ca3af', flexShrink: 0 }} />
+                        <span style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: val ? '#064e3b' : '#6b7280',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          lineHeight: 1.2,
+                        }}>
+                          {label}
+                        </span>
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
 
