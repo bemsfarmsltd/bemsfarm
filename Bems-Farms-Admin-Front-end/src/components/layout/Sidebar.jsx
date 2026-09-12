@@ -46,6 +46,16 @@ export default function Sidebar() {
     setActiveTab(getActiveCategoryFromPath(location.pathname))
   }, [location.pathname])
 
+  // Sync body class when rail expands on hover so entire layout pushes smoothly together
+  useEffect(() => {
+    if (isRailExpanded) {
+      document.body.classList.add('rail-is-hovered')
+    } else {
+      document.body.classList.remove('rail-is-hovered')
+    }
+    return () => document.body.classList.remove('rail-is-hovered')
+  }, [isRailExpanded])
+
   // Inject Two-Column Dual Sidebar Styles
   useEffect(() => {
     const id = 'sidebar-signature-dual-styles'
@@ -61,6 +71,10 @@ export default function Sidebar() {
         width: 268px;
         height: 100%;
         position: relative;
+        transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      body.rail-is-hovered .dual-sidebar-container {
+        width: 415px;
       }
       
       /* ── COLUMN 1: DARK RAIL (68px default -> expands to 215px on hover) ── */
@@ -85,7 +99,8 @@ export default function Sidebar() {
       .sidebar-icon-rail::-webkit-scrollbar { display: none; }
       
       .sidebar-icon-rail:hover,
-      .sidebar-icon-rail.rail-open {
+      .sidebar-icon-rail.rail-open,
+      body.rail-is-hovered .sidebar-icon-rail {
         width: 215px;
         box-shadow: 12px 0 36px rgba(0, 0, 0, 0.45);
       }
@@ -145,7 +160,8 @@ export default function Sidebar() {
       }
       
       .sidebar-icon-rail:hover .rail-brand-full,
-      .sidebar-icon-rail.rail-open .rail-brand-full {
+      .sidebar-icon-rail.rail-open .rail-brand-full,
+      body.rail-is-hovered .rail-brand-full {
         opacity: 1;
         transform: translateX(0);
         pointer-events: auto;
@@ -198,7 +214,8 @@ export default function Sidebar() {
       }
       
       .sidebar-icon-rail:hover .rail-btn .rail-label,
-      .sidebar-icon-rail.rail-open .rail-btn .rail-label {
+      .sidebar-icon-rail.rail-open .rail-btn .rail-label,
+      body.rail-is-hovered .rail-btn .rail-label {
         opacity: 1;
         transform: translateX(0);
         pointer-events: auto;
@@ -227,7 +244,7 @@ export default function Sidebar() {
         border-radius: 0 4px 4px 0;
       }
       
-      /* ── COLUMN 2: WHITE SUB-NAVIGATION PANEL (ALWAYS DOCKED AT LEFT: 68px, TOP: 3.5rem) ── */
+      /* ── COLUMN 2: WHITE SUB-NAVIGATION PANEL (PUSHES SMOOTHLY WHEN RAIL EXPANDS) ── */
       .sidebar-sub-panel {
         position: absolute;
         left: 68px;
@@ -241,6 +258,12 @@ export default function Sidebar() {
         flex-direction: column;
         z-index: 10;
         overflow: hidden;
+        transition: left 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      
+      .sidebar-icon-rail:hover ~ .sidebar-sub-panel,
+      body.rail-is-hovered .sidebar-sub-panel {
+        left: 215px;
       }
       
       .sub-panel-header {
