@@ -235,22 +235,23 @@ export default function Sidebar() {
         width: 100%;
         display: flex;
         flex-direction: column;
-        gap: 0.35rem;
+        gap: 0.45rem;
+        padding-right: 0;
       }
       
       .rail-btn {
         width: 100%;
-        min-height: 44px;
-        height: 44px;
-        border-radius: 12px;
+        min-height: 46px;
+        height: 46px;
+        border-radius: 14px 0 0 14px;
         display: flex;
         align-items: center;
         background: transparent;
         border: none;
         color: rgba(226, 232, 240, 0.82);
         cursor: pointer;
-        padding: 0 11px;
-        transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        padding: 0 12px;
+        transition: color 0.18s ease, background-color 0.18s ease;
         position: relative;
         text-decoration: none;
         white-space: nowrap;
@@ -285,34 +286,60 @@ export default function Sidebar() {
         pointer-events: auto;
       }
       
-      .rail-btn:hover {
-        background: rgba(255, 255, 255, 0.12);
+      .rail-btn:hover:not(.active) {
+        background: rgba(255, 255, 255, 0.1);
         color: #FFFFFF;
-        backdrop-filter: blur(4px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        border-radius: 12px;
       }
-      .rail-btn:hover .rail-icon {
+      .rail-btn:hover:not(.active) .rail-icon {
         transform: scale(1.08);
       }
       
-      /* Active Luminous Emerald Pill with Amber Gold Indicator */
+      /* ── ACTIVE CUTOUT TAB BRIDGING SMOOTHLY INTO SUB-PANEL ── */
       .rail-btn.active {
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.38), rgba(5, 150, 105, 0.58));
-        border: 1px solid rgba(110, 231, 183, 0.4);
-        color: #FFFFFF !important;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        background: #FAFAF8 !important;
+        color: #143C2D !important;
+        border-radius: 16px 0 0 16px !important;
+        box-shadow: -4px 0 12px rgba(0, 0, 0, 0.08);
+        z-index: 25;
       }
+      .rail-btn.active .rail-icon {
+        color: #143C2D !important;
+        font-weight: 800;
+      }
+      .rail-btn.active .rail-label {
+        color: #143C2D !important;
+        font-weight: 800;
+      }
+      
+      /* Top Inverted Corner Cutout Curve */
       .rail-btn.active::before {
         content: '';
         position: absolute;
-        left: -8px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 4px;
-        height: 22px;
-        background: #F59E0B;
-        border-radius: 0 4px 4px 0;
-        box-shadow: 0 0 8px #F59E0B, 0 0 4px #F59E0B;
+        top: -16px;
+        right: 0;
+        width: 16px;
+        height: 16px;
+        background: transparent;
+        border-bottom-right-radius: 16px;
+        box-shadow: 6px 6px 0 6px #FAFAF8;
+        pointer-events: none;
+        z-index: 25;
+      }
+      
+      /* Bottom Inverted Corner Cutout Curve */
+      .rail-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: -16px;
+        right: 0;
+        width: 16px;
+        height: 16px;
+        background: transparent;
+        border-top-right-radius: 16px;
+        box-shadow: 6px -6px 0 6px #FAFAF8;
+        pointer-events: none;
+        z-index: 25;
       }
       
       /* ── COLUMN 2: SUB-NAVIGATION PANEL (PUSHES SMOOTHLY WHEN RAIL EXPANDS) ── */
