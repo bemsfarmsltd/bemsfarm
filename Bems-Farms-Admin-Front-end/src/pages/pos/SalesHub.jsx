@@ -15,6 +15,9 @@ export default function SalesHub({
   const { logout, hasRole } = useAuth()
   const isManager = hasRole ? hasRole('superadmin', 'admin', 'manager') : true
 
+  // Top-Level Domain Analytics Tabs ('overview' | 'products' | 'payments' | 'channels' | 'customers')
+  const [mainAnalyticsTab, setMainAnalyticsTab] = useState('overview')
+
   // Timeframe and Category Filters for dynamic analytics
   const [timeframe, setTimeframe] = useState('shift') // 'shift' | 'today' | 'yesterday' | 'week' | 'month'
   const [channelFilter, setChannelFilter] = useState('all') // 'all' | 'pos' | 'online'
@@ -512,220 +515,227 @@ export default function SalesHub({
           </div>
         </div>
 
-        {/* ── PRIMARY KPI CARDS ROW (6 METRICS SUITE) ── */}
-        <div className="row g-3 mb-4">
-          
-          {/* 1. Gross Revenue */}
-          <div className="col-12 col-sm-6 col-xl-2">
-            <div className="sh-card h-100">
-              <div className="d-flex align-items-center justify-content-between">
-                <span className="text-muted fs-xs fw-bold text-uppercase">Gross Sales</span>
-                <div className="sh-icon-circle" style={{ backgroundColor: '#ECFDF5', color: '#059669', width: 36, height: 36, fontSize: '1.1rem' }}>
-                  <i className="ri-money-dollar-circle-line"></i>
-                </div>
-              </div>
-              <div className="sh-metric-val text-success" style={{ fontSize: '1.45rem' }}>{fmt(analytics.totalSales)}</div>
-              <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                <span className="text-success fw-bold">{timeframeMultiplier.baseGrowth}</span>
-                <span>{analytics.txnCount} tickets</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 2. Cash Collected (In Drawer) */}
-          <div className="col-12 col-sm-6 col-xl-2">
-            <div className="sh-card h-100">
-              <div className="d-flex align-items-center justify-content-between">
-                <span className="text-muted fs-xs fw-bold text-uppercase">Cash Drawer</span>
-                <div className="sh-icon-circle" style={{ backgroundColor: '#FEF3C7', color: '#B45309', width: 36, height: 36, fontSize: '1.1rem' }}>
-                  <i className="ri-hand-coin-line"></i>
-                </div>
-              </div>
-              <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(analytics.expectedDrawerCash)}</div>
-              <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                <span>Float: {fmt(analytics.startingFloat)}</span>
-                <span className="text-success fw-semibold">+{fmt(analytics.cashSales)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 3. Card & Digital Payments */}
-          <div className="col-12 col-sm-6 col-xl-2">
-            <div className="sh-card h-100">
-              <div className="d-flex align-items-center justify-content-between">
-                <span className="text-muted fs-xs fw-bold text-uppercase">Digital Tender</span>
-                <div className="sh-icon-circle" style={{ backgroundColor: '#EFF6FF', color: '#2563EB', width: 36, height: 36, fontSize: '1.1rem' }}>
-                  <i className="ri-bank-card-line"></i>
-                </div>
-              </div>
-              <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(analytics.cardSales + analytics.transferSales)}</div>
-              <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                <span>POS: {fmt(analytics.cardSales)}</span>
-                <span className="badge bg-primary-subtle text-primary">0% Fail</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 4. Average Ticket Size (AOV) */}
-          <div className="col-12 col-sm-6 col-xl-2">
-            <div className="sh-card h-100">
-              <div className="d-flex align-items-center justify-content-between">
-                <span className="text-muted fs-xs fw-bold text-uppercase">Average Ticket</span>
-                <div className="sh-icon-circle" style={{ backgroundColor: '#F5F3FF', color: '#7C3AED', width: 36, height: 36, fontSize: '1.1rem' }}>
-                  <i className="ri-shopping-bag-2-line"></i>
-                </div>
-              </div>
-              <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(analytics.aov)}</div>
-              <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                <span>UPT: {analytics.itemsPerTxn} items</span>
-                <span className="fw-bold text-primary">{analytics.targetPct}% target</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 5. Estimated Gross Margin & Profit */}
-          <div className="col-12 col-sm-6 col-xl-2">
-            <div className="sh-card h-100">
-              <div className="d-flex align-items-center justify-content-between">
-                <span className="text-muted fs-xs fw-bold text-uppercase">Gross Margin</span>
-                <div className="sh-icon-circle" style={{ backgroundColor: '#ECFDF5', color: '#047857', width: 36, height: 36, fontSize: '1.1rem' }}>
-                  <i className="ri-pie-chart-line"></i>
-                </div>
-              </div>
-              <div className="sh-metric-val text-success" style={{ fontSize: '1.45rem' }}>{analytics.grossMarginPct}%</div>
-              <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                <span>Est. Net Profit:</span>
-                <strong className="text-dark">{fmt(analytics.estimatedProfit)}</strong>
-              </div>
-            </div>
-          </div>
-
-          {/* 6. Online Inflow Queue */}
-          <div className="col-12 col-sm-6 col-xl-2">
-            <div className="sh-card h-100">
-              <div className="d-flex align-items-center justify-content-between">
-                <span className="text-muted fs-xs fw-bold text-uppercase">Online Queue</span>
-                <div className="sh-icon-circle" style={{ backgroundColor: '#FFF7ED', color: '#C2410C', width: 36, height: 36, fontSize: '1.1rem' }}>
-                  <i className="ri-notification-3-line"></i>
-                </div>
-              </div>
-              <div className="sh-metric-val text-warning" style={{ fontSize: '1.45rem' }}>{analytics.pendingOnlineCount} New</div>
-              <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                <span>{onlineOrders.length} Total orders</span>
-                <button
-                  type="button"
-                  className="btn btn-link p-0 text-decoration-none fs-xxs fw-bold text-primary"
-                  onClick={onOpenRegister}
-                >
-                  Load Cart →
-                </button>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* ── AI SALES & DEMAND INTELLIGENCE BANNER ── */}
-        <div className="sh-ai-box mb-4">
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
-            <div className="d-flex align-items-center gap-2">
-              <span className="avatar size-7 rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center flex-shrink-0 fs-xs">
-                ✨
+        {/* ── TOP-LEVEL ANALYTICS DOMAIN TABS ── */}
+        <div className="d-flex flex-wrap align-items-center gap-2 p-1.5 mb-4 bg-white rounded-4 border shadow-xs">
+          {[
+            { id: 'overview',  label: 'Executive & Shift Overview', icon: 'ri-dashboard-3-line', badge: 'Live' },
+            { id: 'products',  label: 'Produce & Margins Studio',   icon: 'ri-trophy-line',       badge: `${analytics.topMovingProducts.length} Items` },
+            { id: 'payments',  label: 'Cash Drawer & Tender Audit', icon: 'ri-bank-card-line',    badge: fmt(analytics.expectedDrawerCash) },
+            { id: 'channels',  label: 'Multi-Channel & Online Hub', icon: 'ri-store-2-line',      badge: `${analytics.pendingOnlineCount} New` },
+            { id: 'customers', label: 'Customer Loyalty & VIPs',    icon: 'ri-user-star-line',    badge: `${analytics.topCustomers.length} VIPs` },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`btn rounded-pill d-inline-flex align-items-center gap-2 px-3.5 py-2 fs-sm fw-bold border-0 transition-all ${
+                mainAnalyticsTab === tab.id
+                  ? 'btn-primary-bf shadow-sm text-white'
+                  : 'btn-light text-muted'
+              }`}
+              onClick={() => setMainAnalyticsTab(tab.id)}
+            >
+              <i className={`${tab.icon} fs-16`}></i>
+              <span>{tab.label}</span>
+              <span className={`badge rounded-pill fs-xxs py-0.5 px-2 ${
+                mainAnalyticsTab === tab.id
+                  ? 'bg-white text-dark bg-opacity-90'
+                  : 'bg-secondary bg-opacity-10 text-muted'
+              }`}>
+                {tab.badge}
               </span>
-              <div>
-                <h6 className="fw-bold mb-0 font-display text-dark">Bems AI Smart Store Insights &amp; Real-time Demand Engine</h6>
-                <span className="text-muted fs-xxs">Automated telemetry powered by Gemini Farm-Core</span>
-              </div>
-            </div>
-            <span className="badge bg-light text-muted border fw-bold fs-xxs px-2.5 py-1 rounded-pill">
-              <i className="ri-pulse-line text-success me-1"></i>Real-time Feed
-            </span>
-          </div>
-
-          <div className="row g-3">
-            <div className="col-12 col-md-4">
-              <div className="sh-ai-insight-item">
-                <div className="d-flex align-items-center justify-content-between mb-1.5">
-                  <span className="badge bg-warning-subtle text-warning border border-warning-subtle fw-bold fs-xxs">Demand Surge</span>
-                  <span className="text-muted fs-xxs">High Velocity</span>
-                </div>
-                <h6 className="fw-bold fs-xs text-dark mb-1">Kings Pure Vegetable Oil (5L)</h6>
-                <p className="fs-xxs text-muted mb-0 leading-relaxed">
-                  Demand is <strong className="text-dark">35% higher</strong> than average {timeframeMultiplier.label}. Estimated stockout in 3.5 hrs without restock.
-                </p>
-              </div>
-            </div>
-
-            <div className="col-12 col-md-4">
-              <div className="sh-ai-insight-item">
-                <div className="d-flex align-items-center justify-content-between mb-1.5">
-                  <span className="badge bg-success-subtle text-success border border-success-subtle fw-bold fs-xxs">Peak Footfall</span>
-                  <span className="text-muted fs-xxs">11:30 AM – 3:30 PM</span>
-                </div>
-                <h6 className="fw-bold fs-xs text-dark mb-1">Register Throughput Optimal</h6>
-                <p className="fs-xxs text-muted mb-0 leading-relaxed">
-                  Highest transaction volume during lunch rush. Cashier checkout speed averaged <strong className="text-dark">42s / customer</strong>.
-                </p>
-              </div>
-            </div>
-
-            <div className="col-12 col-md-4">
-              <div className="sh-ai-insight-item">
-                <div className="d-flex align-items-center justify-content-between mb-1.5">
-                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold fs-xxs">Basket Attach</span>
-                  <span className="text-muted fs-xxs">+68% Uplift</span>
-                </div>
-                <h6 className="fw-bold fs-xs text-dark mb-1">Chef Bems Combo Suggestion</h6>
-                <p className="fs-xxs text-muted mb-0 leading-relaxed">
-                  Recommending Seasoning Cubes with Grains lifted average ticket size by <strong className="text-dark">+₦1,450</strong> across active tickets.
-                </p>
-              </div>
-            </div>
-          </div>
+            </button>
+          ))}
         </div>
 
-        {/* ── DEEP VISUAL ANALYTICS STUDIO ROW ── */}
-        <div className="row g-4 mb-4">
-          
-          {/* Main Visual Studio Chart (Hourly / Category / Tender Switchable) */}
-          <div className="col-12 col-lg-8">
-            <div className="sh-card h-100">
+        {/* ═════════════════════════════════════════════════════════════════ */}
+        {/* TAB 1: EXECUTIVE & SHIFT OVERVIEW                                */}
+        {/* ═════════════════════════════════════════════════════════════════ */}
+        {mainAnalyticsTab === 'overview' && (
+          <div>
+            {/* ── PRIMARY KPI CARDS ROW (6 METRICS SUITE) ── */}
+            <div className="row g-3 mb-4">
               
-              {/* Chart Studio Header */}
-              <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
-                <div>
-                  <h6 className="fw-bold mb-0 font-display">Revenue Velocity &amp; Distribution Breakdown</h6>
-                  <p className="text-muted fs-xs mb-0">Showing dynamic telemetry across {timeframeMultiplier.label}</p>
-                </div>
-
-                {/* Sub-tab Switchers */}
-                <div className="d-flex align-items-center gap-1.5 bg-light p-1 rounded-pill">
-                  {[
-                    { id: 'hourly', label: 'Hourly Flow', icon: 'ri-time-line' },
-                    { id: 'categories', label: 'Produce Categories', icon: 'ri-pie-chart-2-line' },
-                    { id: 'channels', label: 'Sales Channels', icon: 'ri-store-2-line' },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      className={`btn btn-sm rounded-pill fs-xs py-1 px-3 fw-bold border-0 ${
-                        activeAnalysisTab === tab.id ? 'btn-primary-bf shadow-xs' : 'btn-light text-muted'
-                      }`}
-                      onClick={() => setActiveAnalysisTab(tab.id)}
-                    >
-                      <i className={`${tab.icon} me-1`}></i>
-                      {tab.label}
-                    </button>
-                  ))}
+              {/* 1. Gross Revenue */}
+              <div className="col-12 col-sm-6 col-xl-2">
+                <div className="sh-card h-100">
+                  <div className="d-flex align-items-center justify-content-between">
+                    <span className="text-muted fs-xs fw-bold text-uppercase">Gross Sales</span>
+                    <div className="sh-icon-circle" style={{ backgroundColor: '#ECFDF5', color: '#059669', width: 36, height: 36, fontSize: '1.1rem' }}>
+                      <i className="ri-money-dollar-circle-line"></i>
+                    </div>
+                  </div>
+                  <div className="sh-metric-val text-success" style={{ fontSize: '1.45rem' }}>{fmt(analytics.totalSales)}</div>
+                  <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
+                    <span className="text-success fw-bold">{timeframeMultiplier.baseGrowth}</span>
+                    <span>{analytics.txnCount} tickets</span>
+                  </div>
                 </div>
               </div>
 
-              {/* View 1: Hourly Flow Bars */}
-              {activeAnalysisTab === 'hourly' && (
-                <div>
-                  <div className="d-flex align-items-center justify-content-between mb-2">
-                    <span className="text-muted fs-xs">Peak Velocity Window: <strong className="text-dark">4:00 PM (100% Volume)</strong></span>
-                    <span className="badge bg-success-subtle text-success fs-xs fw-bold">Active Sales Surge</span>
+              {/* 2. Cash Collected (In Drawer) */}
+              <div className="col-12 col-sm-6 col-xl-2">
+                <div className="sh-card h-100">
+                  <div className="d-flex align-items-center justify-content-between">
+                    <span className="text-muted fs-xs fw-bold text-uppercase">Cash Drawer</span>
+                    <div className="sh-icon-circle" style={{ backgroundColor: '#FEF3C7', color: '#B45309', width: 36, height: 36, fontSize: '1.1rem' }}>
+                      <i className="ri-hand-coin-line"></i>
+                    </div>
+                  </div>
+                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(analytics.expectedDrawerCash)}</div>
+                  <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
+                    <span>Float: {fmt(analytics.startingFloat)}</span>
+                    <span className="text-success fw-semibold">+{fmt(analytics.cashSales)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Card & Digital Payments */}
+              <div className="col-12 col-sm-6 col-xl-2">
+                <div className="sh-card h-100">
+                  <div className="d-flex align-items-center justify-content-between">
+                    <span className="text-muted fs-xs fw-bold text-uppercase">Digital Tender</span>
+                    <div className="sh-icon-circle" style={{ backgroundColor: '#EFF6FF', color: '#2563EB', width: 36, height: 36, fontSize: '1.1rem' }}>
+                      <i className="ri-bank-card-line"></i>
+                    </div>
+                  </div>
+                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(analytics.cardSales + analytics.transferSales)}</div>
+                  <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
+                    <span>POS: {fmt(analytics.cardSales)}</span>
+                    <span className="badge bg-primary-subtle text-primary">0% Fail</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Average Ticket Size (AOV) */}
+              <div className="col-12 col-sm-6 col-xl-2">
+                <div className="sh-card h-100">
+                  <div className="d-flex align-items-center justify-content-between">
+                    <span className="text-muted fs-xs fw-bold text-uppercase">Average Ticket</span>
+                    <div className="sh-icon-circle" style={{ backgroundColor: '#F5F3FF', color: '#7C3AED', width: 36, height: 36, fontSize: '1.1rem' }}>
+                      <i className="ri-shopping-bag-2-line"></i>
+                    </div>
+                  </div>
+                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(analytics.aov)}</div>
+                  <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
+                    <span>UPT: {analytics.itemsPerTxn} items</span>
+                    <span className="fw-bold text-primary">{analytics.targetPct}% target</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. Estimated Gross Margin & Profit */}
+              <div className="col-12 col-sm-6 col-xl-2">
+                <div className="sh-card h-100">
+                  <div className="d-flex align-items-center justify-content-between">
+                    <span className="text-muted fs-xs fw-bold text-uppercase">Gross Margin</span>
+                    <div className="sh-icon-circle" style={{ backgroundColor: '#ECFDF5', color: '#047857', width: 36, height: 36, fontSize: '1.1rem' }}>
+                      <i className="ri-pie-chart-line"></i>
+                    </div>
+                  </div>
+                  <div className="sh-metric-val text-success" style={{ fontSize: '1.45rem' }}>{analytics.grossMarginPct}%</div>
+                  <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
+                    <span>Est. Net Profit:</span>
+                    <strong className="text-dark">{fmt(analytics.estimatedProfit)}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* 6. Online Inflow Queue */}
+              <div className="col-12 col-sm-6 col-xl-2">
+                <div className="sh-card h-100">
+                  <div className="d-flex align-items-center justify-content-between">
+                    <span className="text-muted fs-xs fw-bold text-uppercase">Online Queue</span>
+                    <div className="sh-icon-circle" style={{ backgroundColor: '#FFF7ED', color: '#C2410C', width: 36, height: 36, fontSize: '1.1rem' }}>
+                      <i className="ri-notification-3-line"></i>
+                    </div>
+                  </div>
+                  <div className="sh-metric-val text-warning" style={{ fontSize: '1.45rem' }}>{analytics.pendingOnlineCount} New</div>
+                  <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
+                    <span>{onlineOrders.length} Total orders</span>
+                    <button
+                      type="button"
+                      className="btn btn-link p-0 text-decoration-none fs-xxs fw-bold text-primary"
+                      onClick={() => setMainAnalyticsTab('channels')}
+                    >
+                      View Hub →
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* ── AI SALES & DEMAND INTELLIGENCE BANNER ── */}
+            <div className="sh-ai-box mb-4">
+              <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
+                <div className="d-flex align-items-center gap-2">
+                  <span className="avatar size-7 rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center flex-shrink-0 fs-xs">
+                    ✨
+                  </span>
+                  <div>
+                    <h6 className="fw-bold mb-0 font-display text-dark">Bems AI Smart Store Insights &amp; Real-time Demand Engine</h6>
+                    <span className="text-muted fs-xxs">Automated telemetry powered by Gemini Farm-Core</span>
+                  </div>
+                </div>
+                <span className="badge bg-light text-muted border fw-bold fs-xxs px-2.5 py-1 rounded-pill">
+                  <i className="ri-pulse-line text-success me-1"></i>Real-time Feed
+                </span>
+              </div>
+
+              <div className="row g-3">
+                <div className="col-12 col-md-4">
+                  <div className="sh-ai-insight-item">
+                    <div className="d-flex align-items-center justify-content-between mb-1.5">
+                      <span className="badge bg-warning-subtle text-warning border border-warning-subtle fw-bold fs-xxs">Demand Surge</span>
+                      <span className="text-muted fs-xxs">High Velocity</span>
+                    </div>
+                    <h6 className="fw-bold fs-xs text-dark mb-1">Kings Pure Vegetable Oil (5L)</h6>
+                    <p className="fs-xxs text-muted mb-0 leading-relaxed">
+                      Demand is <strong className="text-dark">35% higher</strong> than average {timeframeMultiplier.label}. Estimated stockout in 3.5 hrs without restock.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="col-12 col-md-4">
+                  <div className="sh-ai-insight-item">
+                    <div className="d-flex align-items-center justify-content-between mb-1.5">
+                      <span className="badge bg-success-subtle text-success border border-success-subtle fw-bold fs-xxs">Peak Footfall</span>
+                      <span className="text-muted fs-xxs">11:30 AM – 3:30 PM</span>
+                    </div>
+                    <h6 className="fw-bold fs-xs text-dark mb-1">Register Throughput Optimal</h6>
+                    <p className="fs-xxs text-muted mb-0 leading-relaxed">
+                      Highest transaction volume during lunch rush. Cashier checkout speed averaged <strong className="text-dark">42s / customer</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="col-12 col-md-4">
+                  <div className="sh-ai-insight-item">
+                    <div className="d-flex align-items-center justify-content-between mb-1.5">
+                      <span className="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold fs-xxs">Basket Attach</span>
+                      <span className="text-muted fs-xxs">+68% Uplift</span>
+                    </div>
+                    <h6 className="fw-bold fs-xs text-dark mb-1">Chef Bems Combo Suggestion</h6>
+                    <p className="fs-xxs text-muted mb-0 leading-relaxed">
+                      Recommending Seasoning Cubes with Grains lifted average ticket size by <strong className="text-dark">+₦1,450</strong> across active tickets.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── DEEP VISUAL ANALYTICS STUDIO ROW ── */}
+            <div className="row g-4 mb-4">
+              
+              {/* Hourly Flow Bars */}
+              <div className="col-12 col-lg-8">
+                <div className="sh-card h-100">
+                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
+                    <div>
+                      <h6 className="fw-bold mb-0 font-display">Hourly Sales Velocity &amp; Peak Rush Flow</h6>
+                      <p className="text-muted fs-xs mb-0">Showing dynamic transaction flow across {timeframeMultiplier.label}</p>
+                    </div>
+                    <span className="badge bg-success-subtle text-success fs-xs fw-bold">Peak Rush: 4:00 PM</span>
                   </div>
 
                   <div className="d-flex align-items-end justify-content-between gap-2 pt-3 pb-2" style={{ minHeight: 180 }}>
@@ -741,326 +751,576 @@ export default function SalesHub({
                     ))}
                   </div>
                 </div>
-              )}
+              </div>
 
-              {/* View 2: Category Breakdown */}
-              {activeAnalysisTab === 'categories' && (
-                <div className="vstack gap-3 pt-2">
-                  {analytics.categoryData.map((cat) => (
-                    <div key={cat.name}>
-                      <div className="d-flex justify-content-between align-items-center fs-xs mb-1">
-                        <span className="d-flex align-items-center gap-2 fw-bold text-dark">
-                          <span>{cat.icon}</span>
-                          <span>{cat.name}</span>
-                          <span className="text-muted fw-normal fs-xxs">({cat.itemsSold} units)</span>
-                        </span>
-                        <span className="fw-bold text-dark">
-                          {fmt(cat.revenue)} <span className="text-muted fw-normal">({cat.share}%)</span>
-                        </span>
+              {/* Payment Split Snapshot */}
+              <div className="col-12 col-lg-4">
+                <div className="sh-card h-100 d-flex flex-column justify-content-between">
+                  <div>
+                    <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                      <div>
+                        <h6 className="fw-bold mb-0 font-display">Tender &amp; Gateway Split</h6>
+                        <p className="text-muted fs-xs mb-0">Settlement distribution</p>
                       </div>
-                      <div className="progress" style={{ height: 8, borderRadius: 6, backgroundColor: '#F1F5F9' }}>
-                        <div
-                          className="progress-bar"
-                          style={{
-                            width: `${cat.share}%`,
-                            backgroundColor: cat.color,
-                            borderRadius: 6,
-                          }}
-                        ></div>
-                      </div>
+                      <span className="badge bg-success-subtle text-success fs-xxs fw-bold">100% Balanced</span>
                     </div>
-                  ))}
-                </div>
-              )}
 
-              {/* View 3: Sales Channels */}
-              {activeAnalysisTab === 'channels' && (
-                <div className="row g-3 pt-2">
-                  {analytics.channelData.map((ch) => (
-                    <div key={ch.name} className="col-12 col-md-4">
-                      <div className="p-3 rounded-3 border bg-light h-100 d-flex flex-column justify-content-between">
-                        <div>
-                          <div className="d-flex align-items-center justify-content-between mb-2">
-                            <i className={`${ch.icon} fs-20`} style={{ color: ch.color }}></i>
-                            <span className="badge bg-white text-dark border fs-xxs fw-bold">{ch.share}% Share</span>
-                          </div>
-                          <h6 className="fw-bold mb-1 fs-sm">{ch.name}</h6>
-                          <div className="text-muted fs-xs">{ch.count} Completed Orders</div>
+                    <div className="vstack gap-3 mt-3">
+                      <div>
+                        <div className="d-flex justify-content-between fs-xs fw-semibold mb-1">
+                          <span className="d-flex align-items-center gap-1.5"><i className="ri-money-dollar-circle-fill text-success"></i> Cash in Drawer</span>
+                          <strong className="text-dark">{fmt(analytics.cashSales)} (73%)</strong>
                         </div>
-                        <div className="mt-3 pt-2 border-top">
-                          <span className="fs-5 fw-bold text-dark">{fmt(ch.revenue)}</span>
+                        <div className="progress" style={{ height: 7, borderRadius: 4 }}>
+                          <div className="progress-bar bg-success" style={{ width: '73%' }}></div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="d-flex justify-content-between fs-xs fw-semibold mb-1">
+                          <span className="d-flex align-items-center gap-1.5"><i className="ri-bank-card-fill text-primary"></i> Debit Card / POS</span>
+                          <strong className="text-dark">{fmt(analytics.cardSales)} (27%)</strong>
+                        </div>
+                        <div className="progress" style={{ height: 7, borderRadius: 4 }}>
+                          <div className="progress-bar bg-primary" style={{ width: '27%' }}></div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="d-flex justify-content-between fs-xs fw-semibold mb-1">
+                          <span className="d-flex align-items-center gap-1.5"><i className="ri-qr-code-line text-warning"></i> Bank Transfer / QR</span>
+                          <strong className="text-dark">{fmt(analytics.transferSales)} (0%)</strong>
+                        </div>
+                        <div className="progress" style={{ height: 7, borderRadius: 4 }}>
+                          <div className="progress-bar bg-warning" style={{ width: '0%' }}></div>
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-
-            </div>
-          </div>
-
-          {/* Payment Method Split & Tender Health */}
-          <div className="col-12 col-lg-4">
-            <div className="sh-card h-100 d-flex flex-column justify-content-between">
-              <div>
-                <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
-                  <div>
-                    <h6 className="fw-bold mb-0 font-display">Tender &amp; Gateway Split</h6>
-                    <p className="text-muted fs-xs mb-0">Settlement distribution</p>
-                  </div>
-                  <span className="badge bg-success-subtle text-success fs-xxs fw-bold">100% Balanced</span>
-                </div>
-
-                <div className="vstack gap-3 mt-3">
-                  {/* Cash */}
-                  <div>
-                    <div className="d-flex justify-content-between fs-xs fw-semibold mb-1">
-                      <span className="d-flex align-items-center gap-1.5"><i className="ri-money-dollar-circle-fill text-success"></i> Cash in Drawer</span>
-                      <strong className="text-dark">{fmt(analytics.cashSales)} (73%)</strong>
-                    </div>
-                    <div className="progress" style={{ height: 7, borderRadius: 4 }}>
-                      <div className="progress-bar bg-success" style={{ width: '73%' }}></div>
-                    </div>
                   </div>
 
-                  {/* Card / POS */}
-                  <div>
-                    <div className="d-flex justify-content-between fs-xs fw-semibold mb-1">
-                      <span className="d-flex align-items-center gap-1.5"><i className="ri-bank-card-fill text-primary"></i> Debit Card / POS Terminal</span>
-                      <strong className="text-dark">{fmt(analytics.cardSales)} (27%)</strong>
-                    </div>
-                    <div className="progress" style={{ height: 7, borderRadius: 4 }}>
-                      <div className="progress-bar bg-primary" style={{ width: '27%' }}></div>
-                    </div>
-                  </div>
-
-                  {/* Bank Transfer / QR */}
-                  <div>
-                    <div className="d-flex justify-content-between fs-xs fw-semibold mb-1">
-                      <span className="d-flex align-items-center gap-1.5"><i className="ri-qr-code-line text-warning"></i> Bank Transfer / USSD</span>
-                      <strong className="text-dark">{fmt(analytics.transferSales)} (0%)</strong>
-                    </div>
-                    <div className="progress" style={{ height: 7, borderRadius: 4 }}>
-                      <div className="progress-bar bg-warning" style={{ width: '0%' }}></div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Cashier Speed & Operational Score */}
-                <div className="mt-4 p-3 rounded-3 bg-light border">
-                  <div className="d-flex justify-content-between align-items-center mb-1.5">
-                    <span className="text-muted fs-xs font-semibold">Average Scan Speed:</span>
-                    <strong className="text-dark fs-xs">42 sec / customer</strong>
-                  </div>
-                  <div className="d-flex justify-content-between align-items-center mb-1.5">
-                    <span className="text-muted fs-xs font-semibold">Refund / Void Rate:</span>
-                    <strong className="text-success fs-xs">0.0% (Clean)</strong>
-                  </div>
-                  <div className="d-flex justify-content-between align-items-center">
-                    <span className="text-muted fs-xs font-semibold">Discount Volume:</span>
-                    <strong className="text-dark fs-xs">₦0 (Standard)</strong>
+                  <div className="mt-4 pt-3 border-top d-flex align-items-center justify-content-between">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-secondary rounded-pill px-3 fs-xs fw-bold"
+                      onClick={() => setMainAnalyticsTab('payments')}
+                    >
+                      Deep Tender Audit →
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-primary-bf rounded-pill px-3 fs-xs fw-bold"
+                      onClick={onOpenRegister}
+                    >
+                      Open POS (F1)
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* Action Button */}
-              <div className="mt-3 pt-3 border-top d-flex align-items-center justify-content-between">
-                <span className="text-muted fs-xs">Ready to ring a ticket?</span>
-                <button type="button" className="btn btn-sm btn-primary-bf rounded-pill px-3 fw-bold" onClick={onOpenRegister}>
-                  Open Terminal (F1) →
-                </button>
+            </div>
+
+            {/* Recent Receipts Quick Ledger */}
+            <div className="sh-card mb-4">
+              <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
+                <div>
+                  <h6 className="fw-bold mb-0 font-display">Recent Register Receipts &amp; Transactions</h6>
+                  <p className="text-muted fs-xs mb-0">Live audit log from register terminal</p>
+                </div>
+                <div className="input-group input-group-sm" style={{ maxWidth: 240 }}>
+                  <span className="input-group-text bg-light border-end-0 text-muted">
+                    <i className="ri-search-line"></i>
+                  </span>
+                  <input
+                    type="text"
+                    className="form-control bg-light border-start-0 fs-xs"
+                    placeholder="Search receipts..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="table-responsive">
+                <table className="table align-middle table-hover mb-0">
+                  <thead className="table-light fs-xs text-muted">
+                    <tr>
+                      <th>Receipt #</th>
+                      <th>Customer Name</th>
+                      <th>Payment Tender</th>
+                      <th>Timestamp</th>
+                      <th className="text-end">Total Amount</th>
+                      <th className="text-center">Reprint</th>
+                    </tr>
+                  </thead>
+                  <tbody className="fs-sm">
+                    {filteredReceipts.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="text-center py-4 text-muted">
+                          No transactions found matching your search.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredReceipts.map((t) => (
+                        <tr key={t.inv}>
+                          <td>
+                            <span className="fw-bold text-dark font-monospace fs-xs">{t.inv}</span>
+                          </td>
+                          <td>
+                            <span className="fw-semibold text-dark">{t.cust || 'Walk-in Customer'}</span>
+                          </td>
+                          <td>
+                            <span className="badge bg-light text-dark border px-2 py-1">{t.method}</span>
+                          </td>
+                          <td className="text-muted fs-xs">{t.time}</td>
+                          <td className="text-end fw-bold text-success">{fmt(t.amount)}</td>
+                          <td className="text-center">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-light py-0 px-2 rounded-pill fs-xs text-muted"
+                              onClick={() => onReprintReceipt ? onReprintReceipt(t) : onOpenRegister()}
+                              title="Reprint Receipt"
+                            >
+                              <i className="ri-printer-line"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* ── LOWER DEEP-DIVE EXPLORER STUDIO (TABBED TABLES) ── */}
-        <div className="sh-card mb-4">
-          
-          {/* Table Tabs & Search Bar Header */}
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
-            
-            {/* Table Tabs */}
-            <div className="d-flex flex-wrap align-items-center gap-1.5">
-              {[
-                { id: 'receipts', label: 'Recent Register Receipts', icon: 'ri-receipt-line', count: historyList.length },
-                { id: 'top_products', label: 'Top Moving Produce & Margins', icon: 'ri-trophy-line', count: analytics.topMovingProducts.length },
-                { id: 'top_customers', label: 'Customer Loyalty & Spenders', icon: 'ri-user-star-line', count: analytics.topCustomers.length },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  className={`btn btn-sm rounded-pill fs-xs px-3 py-1.5 fw-bold border ${
-                    tableTab === tab.id ? 'btn-primary-bf border-0 shadow-xs' : 'btn-light text-muted border-light'
-                  }`}
-                  onClick={() => setTableTab(tab.id)}
-                >
-                  <i className={`${tab.icon} me-1.5`}></i>
-                  {tab.label}
-                  <span className="badge bg-white bg-opacity-25 ms-1.5 py-0 px-1.5 rounded-pill">{tab.count}</span>
-                </button>
+        {/* ═════════════════════════════════════════════════════════════════ */}
+        {/* TAB 2: PRODUCE & MARGINS STUDIO                                  */}
+        {/* ═════════════════════════════════════════════════════════════════ */}
+        {mainAnalyticsTab === 'products' && (
+          <div>
+            {/* Category Cards Overview */}
+            <div className="row g-3 mb-4">
+              {analytics.categoryData.map((cat) => (
+                <div key={cat.name} className="col-12 col-sm-6 col-xl">
+                  <div className="sh-card h-100">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <span className="fs-22">{cat.icon}</span>
+                      <span className="badge rounded-pill fw-bold fs-xxs px-2 py-0.5" style={{ backgroundColor: `${cat.color}15`, color: cat.color }}>
+                        {cat.share}% of Sales
+                      </span>
+                    </div>
+                    <div className="fw-bold fs-xs text-muted text-truncate">{cat.name}</div>
+                    <div className="sh-metric-val" style={{ fontSize: '1.35rem' }}>{fmt(cat.revenue)}</div>
+                    <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
+                      <span>{cat.itemsSold} Units Sold</span>
+                      <span className="text-success fw-semibold">High Demand</span>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
 
-            {/* Quick Search Input */}
-            <div className="d-flex align-items-center gap-2">
-              <div className="input-group input-group-sm" style={{ maxWidth: 240 }}>
-                <span className="input-group-text bg-light border-end-0 text-muted">
-                  <i className="ri-search-line"></i>
-                </span>
-                <input
-                  type="text"
-                  className="form-control bg-light border-start-0 fs-xs"
-                  placeholder="Filter table items..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+            {/* Deep Produce Margins Table */}
+            <div className="sh-card mb-4">
+              <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
+                <div>
+                  <h6 className="fw-bold mb-0 font-display">Produce Margin &amp; Inventory Velocity Ledger</h6>
+                  <p className="text-muted fs-xs mb-0">High-margin items, real-time stock levels, and revenue performance</p>
+                </div>
+                <div className="d-flex align-items-center gap-2">
+                  <span className="badge bg-success-subtle text-success fs-xs fw-bold px-3 py-1.5 rounded-pill">
+                    Avg Gross Margin: {analytics.grossMarginPct}%
+                  </span>
+                </div>
               </div>
 
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary rounded-pill fs-xs fw-semibold text-nowrap"
-                onClick={onOpenRegister}
-              >
-                <i className="ri-history-line me-1"></i>Open History in POS
-              </button>
+              <div className="table-responsive">
+                <table className="table align-middle table-hover mb-0">
+                  <thead className="table-light fs-xs text-muted">
+                    <tr>
+                      <th>Produce Item &amp; SKU</th>
+                      <th>Units Sold</th>
+                      <th>Gross Margin %</th>
+                      <th>Inventory Remaining</th>
+                      <th>Stock Velocity Risk</th>
+                      <th className="text-end">Total Revenue Contribution</th>
+                    </tr>
+                  </thead>
+                  <tbody className="fs-sm">
+                    {analytics.topMovingProducts.map((p) => (
+                      <tr key={p.sku}>
+                        <td>
+                          <div className="d-flex align-items-center gap-2.5">
+                            <span className="fs-20">{p.icon}</span>
+                            <div>
+                              <span className="fw-bold text-dark fs-xs d-block">{p.name}</span>
+                              <span className="text-muted fs-xxs font-monospace">SKU: {p.sku}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="badge bg-success-subtle text-success font-semibold px-2 py-1">{p.qty} units</span>
+                        </td>
+                        <td>
+                          <strong className="text-dark fs-sm">{p.margin}</strong>
+                        </td>
+                        <td>
+                          <span className={`badge ${p.stock <= 20 ? 'bg-danger-subtle text-danger' : 'bg-light text-dark border'}`}>
+                            {p.stock} units left
+                          </span>
+                        </td>
+                        <td>
+                          {p.stock <= 20 ? (
+                            <span className="badge bg-danger text-white fs-xxs px-2 py-0.5 rounded-pill">
+                              <i className="ri-alarm-warning-line me-1"></i>Restock Required
+                            </span>
+                          ) : (
+                            <span className="badge bg-success-subtle text-success fs-xxs px-2 py-0.5 rounded-pill">
+                              <i className="ri-check-line me-1"></i>Healthy Velocity
+                            </span>
+                          )}
+                        </td>
+                        <td className="text-end fw-bold text-dark fs-sm">{fmt(p.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Chef Bems Combo Attach Intelligence */}
+            <div className="sh-card">
+              <div className="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom">
+                <i className="ri-magic-line text-primary fs-18"></i>
+                <h6 className="fw-bold mb-0 font-display">Chef Bems Cross-Sell Attach Rate Analysis</h6>
+              </div>
+              <div className="row g-3">
+                <div className="col-12 col-md-4">
+                  <div className="p-3 rounded-3 border bg-light">
+                    <div className="d-flex justify-content-between mb-1">
+                      <strong className="fs-xs text-dark">🌾 Mama Gold Rice + 🫒 Vegetable Oil</strong>
+                      <span className="badge bg-success text-white fs-xxs">74% Attach</span>
+                    </div>
+                    <p className="text-muted fs-xxs mb-0">Customers buying 25kg/50kg rice purchase 5L cooking oil in 3 out of 4 register transactions.</p>
+                  </div>
+                </div>
+                <div className="col-12 col-md-4">
+                  <div className="p-3 rounded-3 border bg-light">
+                    <div className="d-flex justify-content-between mb-1">
+                      <strong className="fs-xs text-dark">🍗 Broiler Chicken + 🧂 Knorr Seasoning</strong>
+                      <span className="badge bg-primary text-white fs-xxs">68% Attach</span>
+                    </div>
+                    <p className="text-muted fs-xxs mb-0">Poultry purchases attach seasoning cubes and spices when prompted at checkout cashier terminal.</p>
+                  </div>
+                </div>
+                <div className="col-12 col-md-4">
+                  <div className="p-3 rounded-3 border bg-light">
+                    <div className="d-flex justify-content-between mb-1">
+                      <strong className="fs-xs text-dark">🥚 Jumbo Eggs + 🥛 Peak Milk Powder</strong>
+                      <span className="badge bg-warning text-dark fs-xxs">59% Attach</span>
+                    </div>
+                    <p className="text-muted fs-xxs mb-0">Breakfast staple synergy increases morning checkout ticket value by +₦3,400 on average.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+        )}
 
-          {/* TAB 1: RECEIPTS LEDGER */}
-          {tableTab === 'receipts' && (
-            <div className="table-responsive">
-              <table className="table align-middle table-hover mb-0">
-                <thead className="table-light fs-xs text-muted">
-                  <tr>
-                    <th>Receipt #</th>
-                    <th>Customer Name</th>
-                    <th>Payment Tender</th>
-                    <th>Timestamp</th>
-                    <th className="text-end">Total Amount</th>
-                    <th className="text-center">Reprint</th>
-                  </tr>
-                </thead>
-                <tbody className="fs-sm">
-                  {filteredReceipts.length === 0 ? (
+        {/* ═════════════════════════════════════════════════════════════════ */}
+        {/* TAB 3: CASH DRAWER & TENDER AUDIT                                */}
+        {/* ═════════════════════════════════════════════════════════════════ */}
+        {mainAnalyticsTab === 'payments' && (
+          <div>
+            {/* Drawer Reconciliation Quick Audit */}
+            <div className="row g-4 mb-4">
+              <div className="col-12 col-lg-6">
+                <div className="sh-card h-100">
+                  <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <div>
+                      <h6 className="fw-bold mb-0 font-display">Physical Drawer Balance &amp; Float Ledger</h6>
+                      <p className="text-muted fs-xs mb-0">End-of-shift cash verification and variance tracking</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-warning rounded-pill px-3 fs-xs fw-bold"
+                      onClick={() => setShowDrawerModal(true)}
+                    >
+                      <i className="ri-safe-2-line me-1"></i>Count Bills (F2)
+                    </button>
+                  </div>
+
+                  <div className="vstack gap-2.5">
+                    <div className="d-flex justify-content-between align-items-center p-2.5 rounded-3 bg-light fs-xs">
+                      <span className="text-muted">Opening Shift Cash Float:</span>
+                      <strong className="text-dark">{fmt(analytics.startingFloat)}</strong>
+                    </div>
+                    <div className="d-flex justify-content-between align-items-center p-2.5 rounded-3 bg-light fs-xs">
+                      <span className="text-muted">Cash Collected From Sales:</span>
+                      <strong className="text-success">+{fmt(analytics.cashSales)}</strong>
+                    </div>
+                    <div className="d-flex justify-content-between align-items-center p-2.5 rounded-3 bg-light fs-xs">
+                      <span className="text-muted">Card Payments (POS Terminal):</span>
+                      <strong className="text-primary">{fmt(analytics.cardSales)}</strong>
+                    </div>
+                    <div className="d-flex justify-content-between align-items-center p-2.5 rounded-3 bg-light fs-xs">
+                      <span className="text-muted">Direct Bank Transfers / QR:</span>
+                      <strong className="text-dark">{fmt(analytics.transferSales)}</strong>
+                    </div>
+                    <div className="d-flex justify-content-between align-items-center p-3 rounded-3 bg-success-subtle border border-success border-opacity-25 mt-1">
+                      <span className="fw-bold text-dark fs-sm">Expected Physical Cash in Drawer:</span>
+                      <strong className="fs-5 text-success">{fmt(analytics.expectedDrawerCash)}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Z-Report & Audit Summary Card */}
+              <div className="col-12 col-lg-6">
+                <div className="sh-card h-100 d-flex flex-column justify-content-between">
+                  <div>
+                    <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                      <div>
+                        <h6 className="fw-bold mb-0 font-display">Terminal Operational &amp; Audit Health</h6>
+                        <p className="text-muted fs-xs mb-0">POS Terminal 01 Integrity Report</p>
+                      </div>
+                      <span className="badge bg-success text-white fs-xxs fw-bold">Audit Passed</span>
+                    </div>
+
+                    <div className="row g-3 mb-3">
+                      <div className="col-6">
+                        <div className="p-3 rounded-3 bg-light text-center">
+                          <span className="text-muted fs-xxs d-block text-uppercase">Average Checkout</span>
+                          <strong className="fs-5 text-dark font-display">42 sec</strong>
+                          <span className="text-muted fs-xxs d-block">Per customer ticket</span>
+                        </div>
+                      </div>
+                      <div className="col-6">
+                        <div className="p-3 rounded-3 bg-light text-center">
+                          <span className="text-muted fs-xxs d-block text-uppercase">Refund / Void Rate</span>
+                          <strong className="fs-5 text-success font-display">0.0%</strong>
+                          <span className="text-muted fs-xxs d-block">Zero transaction errors</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-3 border bg-light fs-xs">
+                      <div className="d-flex justify-content-between mb-1">
+                        <span className="text-muted">Shift Cashier:</span>
+                        <strong className="text-dark">{user?.first_name || 'Staff Member'} {user?.last_name || ''}</strong>
+                      </div>
+                      <div className="d-flex justify-content-between mb-1">
+                        <span className="text-muted">Total Tickets Ringed:</span>
+                        <strong className="text-dark">{analytics.txnCount} tickets</strong>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span className="text-muted">Discounts Authorized:</span>
+                        <strong className="text-dark">₦0.00</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-top d-flex gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-primary-bf rounded-pill px-4 fs-sm fw-bold flex-grow-1"
+                      onClick={() => setShowZReportModal(true)}
+                    >
+                      <i className="ri-file-text-line me-1.5"></i>Generate Shift Z-Report (F3)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═════════════════════════════════════════════════════════════════ */}
+        {/* TAB 4: MULTI-CHANNEL & ONLINE ORDER HUB                          */}
+        {/* ═════════════════════════════════════════════════════════════════ */}
+        {mainAnalyticsTab === 'channels' && (
+          <div>
+            {/* Channel Metrics Row */}
+            <div className="row g-3 mb-4">
+              {analytics.channelData.map((ch) => (
+                <div key={ch.name} className="col-12 col-md-4">
+                  <div className="sh-card h-100">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <i className={`${ch.icon} fs-24`} style={{ color: ch.color }}></i>
+                      <span className="badge rounded-pill fw-bold fs-xxs px-2.5 py-1" style={{ backgroundColor: `${ch.color}15`, color: ch.color }}>
+                        {ch.share}% Volume Share
+                      </span>
+                    </div>
+                    <div className="fw-bold fs-sm text-dark">{ch.name}</div>
+                    <div className="sh-metric-val" style={{ fontSize: '1.5rem' }}>{fmt(ch.revenue)}</div>
+                    <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
+                      <span>{ch.count} Completed Orders</span>
+                      <span className="text-success fw-semibold">Instant Fulfillment</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Live Incoming Online & WhatsApp Orders */}
+            <div className="sh-card mb-4">
+              <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
+                <div>
+                  <h6 className="fw-bold mb-0 font-display">Live Incoming Web &amp; WhatsApp Orders Queue</h6>
+                  <p className="text-muted fs-xs mb-0">Pack items and ring orders directly into the active POS register</p>
+                </div>
+                <span className="badge bg-warning-subtle text-warning fs-xs fw-bold px-3 py-1.5 rounded-pill">
+                  {onlineOrders.length} Pending Orders in Queue
+                </span>
+              </div>
+
+              <div className="table-responsive">
+                <table className="table align-middle table-hover mb-0">
+                  <thead className="table-light fs-xs text-muted">
                     <tr>
-                      <td colSpan="6" className="text-center py-4 text-muted">
-                        No transactions found matching your search.
-                      </td>
+                      <th>Order ID</th>
+                      <th>Channel</th>
+                      <th>Customer</th>
+                      <th>Phone</th>
+                      <th>Time Received</th>
+                      <th>Delivery Notes</th>
+                      <th>Items Count</th>
+                      <th className="text-center">Action</th>
                     </tr>
-                  ) : (
-                    filteredReceipts.map((t) => (
-                      <tr key={t.inv}>
+                  </thead>
+                  <tbody className="fs-sm">
+                    {onlineOrders.map((ord) => (
+                      <tr key={ord.id}>
                         <td>
-                          <span className="fw-bold text-dark font-monospace fs-xs">{t.inv}</span>
+                          <span className="fw-bold text-dark font-monospace fs-xs">{ord.id}</span>
                         </td>
                         <td>
-                          <span className="fw-semibold text-dark">{t.cust || 'Walk-in Customer'}</span>
+                          <span className="badge bg-primary-subtle text-primary text-capitalize px-2 py-1">
+                            <i className="ri-global-line me-1"></i>{ord.channel}
+                          </span>
                         </td>
                         <td>
-                          <span className="badge bg-light text-dark border px-2 py-1">{t.method}</span>
+                          <span className="fw-bold text-dark">{ord.customer}</span>
                         </td>
-                        <td className="text-muted fs-xs">{t.time}</td>
-                        <td className="text-end fw-bold text-success">{fmt(t.amount)}</td>
+                        <td className="text-muted fs-xs">{ord.phone}</td>
+                        <td className="text-muted fs-xs">{ord.time}</td>
+                        <td className="text-muted fs-xs text-truncate" style={{ maxWidth: 220 }}>
+                          {ord.note || 'Standard packaging'}
+                        </td>
+                        <td>
+                          <span className="badge bg-light text-dark border">{ord.items.length} items</span>
+                        </td>
                         <td className="text-center">
                           <button
                             type="button"
-                            className="btn btn-sm btn-light py-0 px-2 rounded-pill fs-xs text-muted"
-                            onClick={() => onReprintReceipt ? onReprintReceipt(t) : onOpenRegister()}
-                            title="Reprint Receipt"
+                            className="btn btn-sm btn-primary-bf rounded-pill px-3 fs-xs fw-bold"
+                            onClick={() => onOpenOnlineOrder ? onOpenOnlineOrder(ord) : onOpenRegister()}
                           >
-                            <i className="ri-printer-line"></i>
+                            <i className="ri-shopping-cart-2-line me-1"></i>Load to Cart
                           </button>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* TAB 2: TOP PRODUCTS & MARGINS */}
-          {tableTab === 'top_products' && (
-            <div className="table-responsive">
-              <table className="table align-middle table-hover mb-0">
-                <thead className="table-light fs-xs text-muted">
-                  <tr>
-                    <th>Product &amp; SKU</th>
-                    <th>Units Sold</th>
-                    <th>Est. Margin %</th>
-                    <th>Current Inventory</th>
-                    <th className="text-end">Total Revenue</th>
-                  </tr>
-                </thead>
-                <tbody className="fs-sm">
-                  {analytics.topMovingProducts.map((p) => (
-                    <tr key={p.sku}>
-                      <td>
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="fs-18">{p.icon}</span>
-                          <div>
-                            <span className="fw-bold text-dark fs-xs d-block">{p.name}</span>
-                            <span className="text-muted fs-xxs font-monospace">SKU: {p.sku}</span>
+        {/* ═════════════════════════════════════════════════════════════════ */}
+        {/* TAB 5: CUSTOMER LOYALTY & VIPs                                   */}
+        {/* ═════════════════════════════════════════════════════════════════ */}
+        {mainAnalyticsTab === 'customers' && (
+          <div>
+            {/* VIP Tier Cards */}
+            <div className="row g-3 mb-4">
+              <div className="col-12 col-md-4">
+                <div className="sh-card h-100 border-start border-4 border-purple" style={{ borderLeftColor: '#7C3AED !important' }}>
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <span className="badge bg-purple-subtle text-purple fw-bold fs-xxs">Platinum Tier (VIP)</span>
+                    <i className="ri-vip-crown-fill text-purple fs-18"></i>
+                  </div>
+                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(327000 * timeframeMultiplier.mult * 0.4)}</div>
+                  <p className="text-muted fs-xs mb-0">Contributes 48% of gross repeat grocery basket volume.</p>
+                </div>
+              </div>
+              <div className="col-12 col-md-4">
+                <div className="sh-card h-100 border-start border-4 border-warning">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <span className="badge bg-warning-subtle text-warning fw-bold fs-xxs">Gold Tier</span>
+                    <i className="ri-medal-fill text-warning fs-18"></i>
+                  </div>
+                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(170700 * timeframeMultiplier.mult * 0.35)}</div>
+                  <p className="text-muted fs-xs mb-0">Bi-weekly shoppers purchasing bulk grains, eggs, and cooking oils.</p>
+                </div>
+              </div>
+              <div className="col-12 col-md-4">
+                <div className="sh-card h-100 border-start border-4 border-success">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <span className="badge bg-success-subtle text-success fw-bold fs-xxs">Customer Retention</span>
+                    <i className="ri-user-heart-line text-success fs-18"></i>
+                  </div>
+                  <div className="sh-metric-val text-success" style={{ fontSize: '1.45rem' }}>78.4%</div>
+                  <p className="text-muted fs-xs mb-0">Repeat visit cycle averages every 4.2 days per active family account.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Customer Spenders Table */}
+            <div className="sh-card mb-4">
+              <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
+                <div>
+                  <h6 className="fw-bold mb-0 font-display">Top VIP Customers, Wallet Balances &amp; Loyalty Points</h6>
+                  <p className="text-muted fs-xs mb-0">Highest spending farm patrons and points redemption ledger</p>
+                </div>
+                <span className="badge bg-primary-subtle text-primary fs-xs fw-bold px-3 py-1.5 rounded-pill">
+                  {analytics.topCustomers.length} Top Registered Patrons
+                </span>
+              </div>
+
+              <div className="table-responsive">
+                <table className="table align-middle table-hover mb-0">
+                  <thead className="table-light fs-xs text-muted">
+                    <tr>
+                      <th>Customer Name</th>
+                      <th>Contact Phone</th>
+                      <th>Loyalty Tier</th>
+                      <th>Total Orders</th>
+                      <th>Accumulated Points</th>
+                      <th className="text-end">Total Lifetime Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody className="fs-sm">
+                    {analytics.topCustomers.map((c) => (
+                      <tr key={c.phone}>
+                        <td>
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="avatar size-7 rounded-circle bg-light text-dark fw-bold d-flex align-items-center justify-content-center fs-xs">
+                              {c.name.charAt(0)}
+                            </span>
+                            <span className="fw-bold text-dark fs-xs">{c.name}</span>
                           </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="badge bg-success-subtle text-success font-semibold">{p.qty} units</span>
-                      </td>
-                      <td>
-                        <strong className="text-dark">{p.margin}</strong>
-                      </td>
-                      <td>
-                        <span className={`badge ${p.stock <= 20 ? 'bg-danger-subtle text-danger' : 'bg-light text-dark border'}`}>
-                          {p.stock} units left
-                        </span>
-                      </td>
-                      <td className="text-end fw-bold text-dark">{fmt(p.revenue)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </td>
+                        <td className="text-muted fs-xs font-monospace">{c.phone}</td>
+                        <td>
+                          <span className={`badge ${c.tier === 'Platinum' ? 'bg-purple-subtle text-purple border' : 'bg-warning-subtle text-warning border'} px-2 py-0.5`}>
+                            {c.tier}
+                          </span>
+                        </td>
+                        <td>{c.orders} orders</td>
+                        <td>
+                          <span className="fw-bold text-primary font-monospace">{c.loyaltyPts} pts</span>
+                        </td>
+                        <td className="text-end fw-bold text-success fs-sm">{fmt(c.totalSpent)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          )}
-
-          {/* TAB 3: TOP CUSTOMERS & SPENDERS */}
-          {tableTab === 'top_customers' && (
-            <div className="table-responsive">
-              <table className="table align-middle table-hover mb-0">
-                <thead className="table-light fs-xs text-muted">
-                  <tr>
-                    <th>Customer Name</th>
-                    <th>Phone</th>
-                    <th>Loyalty Tier</th>
-                    <th>Lifetime Orders</th>
-                    <th>Reward Points</th>
-                    <th className="text-end">Total Spent</th>
-                  </tr>
-                </thead>
-                <tbody className="fs-sm">
-                  {analytics.topCustomers.map((c) => (
-                    <tr key={c.phone}>
-                      <td>
-                        <span className="fw-bold text-dark fs-xs">{c.name}</span>
-                      </td>
-                      <td className="text-muted fs-xs">{c.phone}</td>
-                      <td>
-                        <span className="badge bg-warning-subtle text-warning border px-2 py-0.5">{c.tier}</span>
-                      </td>
-                      <td>{c.orders} orders</td>
-                      <td>
-                        <span className="fw-bold text-primary">{c.loyaltyPts} pts</span>
-                      </td>
-                      <td className="text-end fw-bold text-success">{fmt(c.totalSpent)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-        </div>
+          </div>
+        )}
       </main>
 
       {/* ── MODAL 1: DRAWER CASH RECONCILIATION ── */}
