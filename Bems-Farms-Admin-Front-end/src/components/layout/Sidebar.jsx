@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { NavLink, Link } from 'react-router-dom'
+import { NavLink, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { ROLE_META } from '../../lib/roles'
 
@@ -10,8 +10,8 @@ function SideLink({ to, icon, badge, children }) {
       className={({ isActive }) => `nav-link d-flex align-items-center gap-2.5 ${isActive ? 'active' : ''}`}
     >
       {icon && <i className={`${icon} menu-icon`}></i>}
-      <span className="nav-link-text">{children}</span>
-      {badge && <span className="nav-badge-pill ms-auto">{badge}</span>}
+      <span className="nav-link-text flex-grow-1">{children}</span>
+      {badge && <span className="hostinger-badge-pill ms-auto">{badge}</span>}
     </NavLink>
   )
 }
@@ -30,7 +30,7 @@ function CollapseMenu({ id, icon, label, badge, children }) {
         <i className={`${icon} menu-icon`}></i>
         <span className="nav-link-text flex-grow-1">{label}</span>
         {badge && (
-          <span className="badge-luxury-ai me-1">{badge}</span>
+          <span className="hostinger-badge-pill me-1">{badge}</span>
         )}
         <i className="ri-arrow-right-s-line menu-arrow"></i>
       </a>
@@ -45,12 +45,13 @@ function CollapseMenu({ id, icon, label, badge, children }) {
 
 export default function Sidebar() {
   const { user, hasRole, logout } = useAuth()
+  const location = useLocation()
   const initials = user ? `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}` : 'BF'
   const roleMeta = user ? ROLE_META[user.role] : null
 
-  /* Inject/update refined sidebar styles on mount */
+  /* Inject/update Hostinger-inspired sidebar styles on mount */
   useEffect(() => {
-    const id = 'sidebar-luxury-styles'
+    const id = 'sidebar-hostinger-styles'
     let style = document.getElementById(id)
     if (!style) {
       style = document.createElement('style')
@@ -58,66 +59,70 @@ export default function Sidebar() {
       document.head.appendChild(style)
     }
     style.textContent = `
+      #main-sidebar {
+        background-color: #0F111A !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+      }
       #main-sidebar .sidebar-wrapper {
         height: 100% !important;
         overflow: hidden !important;
         display: block !important;
-        background: transparent !important;
+        background: #0F111A !important;
       }
       #main-sidebar .navbar-menu {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
         right: 0 !important;
-        bottom: 76px !important;
+        bottom: 74px !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
         height: auto !important;
         scrollbar-width: thin;
         scrollbar-color: rgba(255,255,255,0.12) transparent;
-        padding: 0.75rem 0.65rem 1.5rem !important;
+        padding: 0.85rem 0.75rem 1.5rem !important;
         background: transparent !important;
       }
-      #main-sidebar .navbar-menu::-webkit-scrollbar { width: 3px; }
+      #main-sidebar .navbar-menu::-webkit-scrollbar { width: 4px; }
       #main-sidebar .navbar-menu::-webkit-scrollbar-track { background: transparent; }
-      #main-sidebar .navbar-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
+      #main-sidebar .navbar-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
       
       #main-sidebar .sidebar-profile-footer {
         position: absolute !important;
         bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
-        height: 76px !important;
+        height: 74px !important;
         z-index: 10 !important;
-        background: linear-gradient(to top, rgba(4, 18, 11, 0.94) 60%, rgba(7, 31, 20, 0.85)) !important;
-        backdrop-filter: blur(10px) !important;
+        background: rgba(15, 17, 26, 0.96) !important;
+        backdrop-filter: blur(12px) !important;
         border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
       }
       
       .menu-section-divider {
-        font-size: 0.65rem !important;
-        font-weight: 800 !important;
-        letter-spacing: 0.12em !important;
+        font-size: 0.68rem !important;
+        font-weight: 750 !important;
+        letter-spacing: 0.06em !important;
         text-transform: uppercase !important;
-        color: rgba(167, 243, 208, 0.5) !important;
-        padding: 1.1rem 0.65rem 0.35rem !important;
+        color: #64748B !important;
+        padding: 1.25rem 0.85rem 0.35rem !important;
         display: flex;
         align-items: center;
         gap: 0.5rem;
         white-space: nowrap !important;
       }
       .menu-section-divider:first-of-type {
-        padding-top: 0.35rem !important;
+        padding-top: 0.4rem !important;
       }
       
       #main-sidebar .nav-link {
-        color: rgba(226, 232, 240, 0.8) !important;
-        font-size: 0.835rem !important;
-        font-weight: 600 !important;
-        border-radius: 0.65rem !important;
-        padding: 0.52rem 0.75rem !important;
-        margin: 0.1rem 0 !important;
-        transition: all 0.15s ease !important;
+        color: #94A3B8 !important;
+        font-size: 0.84rem !important;
+        font-weight: 550 !important;
+        border-radius: 10px !important;
+        padding: 0.58rem 0.85rem !important;
+        margin: 0.12rem 0 !important;
+        transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
         position: relative;
         text-decoration: none !important;
         white-space: nowrap !important;
@@ -132,69 +137,78 @@ export default function Sidebar() {
       }
       #main-sidebar .nav-link:hover {
         color: #FFFFFF !important;
-        background-color: rgba(255, 255, 255, 0.07) !important;
-        transform: translateX(2px);
+        background-color: rgba(255, 255, 255, 0.08) !important;
       }
+      
+      /* Hostinger Clean Active Highlight */
       #main-sidebar .nav-link.active {
-        color: #FFFFFF !important;
-        background: linear-gradient(135deg, rgba(20, 60, 45, 0.95), rgba(27, 94, 63, 0.85)) !important;
-        border: 1px solid rgba(110, 231, 183, 0.35) !important;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+        color: #0F172A !important;
+        background-color: #FFFFFF !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18) !important;
         font-weight: 700 !important;
       }
       #main-sidebar .nav-link.active .menu-icon {
-        color: #F59E0B !important;
+        color: #059669 !important;
+      }
+      #main-sidebar .nav-link.active .menu-arrow {
+        color: #0F172A !important;
       }
       
       #main-sidebar .menu-icon {
-        font-size: 1.1rem !important;
-        color: rgba(167, 243, 208, 0.7) !important;
+        font-size: 1.15rem !important;
+        color: #64748B !important;
         width: 20px;
         text-align: center;
         flex-shrink: 0;
+        transition: color 0.15s ease;
+      }
+      #main-sidebar .nav-link:hover .menu-icon {
+        color: #E2E8F0 !important;
       }
       
       #main-sidebar .menu-arrow {
         font-size: 1rem !important;
-        color: rgba(255, 255, 255, 0.4) !important;
-        transition: transform 0.2s ease;
+        color: #64748B !important;
+        transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       }
       #main-sidebar .nav-link:not(.collapsed) .menu-arrow {
         transform: rotate(90deg);
-        color: #F59E0B !important;
+        color: #FFFFFF !important;
       }
       
       #main-sidebar .sub-navbar-nav {
-        border-left: 1px solid rgba(255, 255, 255, 0.12);
+        border-left: 1.5px solid rgba(255, 255, 255, 0.1) !important;
         margin: 0.2rem 0 0.4rem 1.45rem !important;
-        padding-left: 0.6rem !important;
+        padding-left: 0.65rem !important;
       }
       #main-sidebar .sub-navbar-nav .nav-link {
-        font-size: 0.8rem !important;
+        font-size: 0.81rem !important;
         font-weight: 500 !important;
-        color: rgba(203, 213, 225, 0.7) !important;
-        padding: 0.35rem 0.65rem !important;
-        border-radius: 0.5rem !important;
+        color: #94A3B8 !important;
+        padding: 0.38rem 0.7rem !important;
+        border-radius: 8px !important;
       }
       #main-sidebar .sub-navbar-nav .nav-link:hover {
-        color: #6EE7B7 !important;
-        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #FFFFFF !important;
+        background-color: rgba(255, 255, 255, 0.06) !important;
       }
       #main-sidebar .sub-navbar-nav .nav-link.active {
-        color: #FFFFFF !important;
-        background-color: rgba(20, 60, 45, 0.8) !important;
-        border: 1px solid rgba(110, 231, 183, 0.25) !important;
+        color: #34D399 !important;
+        background-color: rgba(16, 185, 129, 0.14) !important;
+        border: 1px solid rgba(16, 185, 129, 0.22) !important;
+        font-weight: 600 !important;
+        box-shadow: none !important;
       }
       
-      .badge-luxury-ai {
-        background: linear-gradient(135deg, #F59E0B, #D97706);
-        color: #071F14;
-        font-size: 9px;
-        font-weight: 900;
+      .hostinger-badge-pill {
+        background: rgba(99, 102, 241, 0.16);
+        color: #A5B4FC;
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        font-size: 9.5px;
+        font-weight: 800;
         letter-spacing: 0.04em;
-        padding: 2px 6px;
+        padding: 2px 7px;
         border-radius: 9999px;
-        box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
       }
     `
   }, [])
