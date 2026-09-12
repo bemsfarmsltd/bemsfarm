@@ -28,19 +28,8 @@ export default function Topbar({ onToggleSidebar }) {
 
   return (
     <header className="main-topbar" id="main-topbar">
-      {/* ── Left Zone: Toggle + Active Branch Indicator + Add New Action ── */}
+      {/* ── Left Zone: Active Branch Indicator + Add New Action + POS ── */}
       <div className="d-flex align-items-center gap-2">
-        <button
-          type="button"
-          id="toggleSidebar"
-          className="sidebar-toggle btn p-0"
-          aria-label="sidebar-toggle"
-          onClick={onToggleSidebar}
-          title="Toggle Navigation"
-        >
-          <i className="ri-layout-left-line fs-17 text-dark"></i>
-        </button>
-
         {/* Branch / Store Selector Pill */}
         <div className="dropdown d-none d-lg-block">
           <button
