@@ -41,7 +41,7 @@ export default function Topbar({ onToggleSidebar }) {
           onClick={onToggleSidebar}
           title="Toggle Sidebar"
         >
-          <i className="ri-layout-left-line fs-17 text-dark"></i>
+          <i className="ri-layout-left-line fs-17 text-white"></i>
         </button>
 
         {/* Add New dropdown */}
@@ -92,11 +92,11 @@ export default function Topbar({ onToggleSidebar }) {
         {/* Store switcher */}
         <div className="dropdown d-none d-xl-block">
           <button
-            className="btn topbar-action-pill bg-white border text-dark"
+            className="btn topbar-action-pill text-white"
             type="button"
             data-bs-toggle="dropdown"
             aria-expanded="false"
-            style={{ borderColor: '#E2DDD5' }}
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
           >
             <i className="ri-store-2-line text-success"></i>
             <span>Bems Farms HQ</span>
@@ -111,8 +111,8 @@ export default function Topbar({ onToggleSidebar }) {
           href="https://www.bemsfarms.com"
           target="_blank"
           rel="noreferrer"
-          className="btn topbar-action-pill bg-white border text-dark d-none d-sm-inline-flex text-decoration-none"
-          style={{ borderColor: '#E2DDD5' }}
+          className="btn topbar-action-pill text-white d-none d-sm-inline-flex text-decoration-none"
+          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
         >
           <i className="ri-external-link-line text-warning"></i>
           <span>Live Storefront</span>
@@ -120,7 +120,7 @@ export default function Topbar({ onToggleSidebar }) {
 
         {/* Search */}
         <div className="align-items-center d-none d-lg-flex position-relative">
-          <i className="ri-search-line position-absolute text-muted" style={{ left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14 }}></i>
+          <i className="ri-search-line position-absolute" style={{ left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: '#94A3B8' }}></i>
           <input
             type="search"
             className="topbar-search-input"
@@ -132,9 +132,10 @@ export default function Topbar({ onToggleSidebar }) {
         {/* Fullscreen */}
         <button
           type="button"
-          className="btn p-2 rounded-circle border-0 d-none d-md-block text-muted"
+          className="btn p-2 rounded-circle border-0 d-none d-md-block"
           id="fullScreenButton"
           aria-label="fullscreen"
+          style={{ color: '#94A3B8' }}
           onClick={() => {
             if (!document.fullscreenElement) document.documentElement.requestFullscreen?.()
             else document.exitFullscreen?.()
@@ -146,13 +147,14 @@ export default function Topbar({ onToggleSidebar }) {
         {/* Notifications */}
         <div className="dropdown d-none d-md-block">
           <button
-            className="btn p-2 rounded-circle border-0 position-relative text-muted"
+            className="btn p-2 rounded-circle border-0 position-relative"
             type="button"
             data-bs-toggle="dropdown"
             aria-expanded="false"
+            style={{ color: '#94A3B8' }}
           >
             <i className="ri-notification-3-line fs-17"></i>
-            <span className="position-absolute top-1 end-1 p-1 bg-success border border-light rounded-circle"></span>
+            <span className="position-absolute top-1 end-1 p-1 bg-success border border-dark rounded-circle"></span>
           </button>
           <div className="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0" style={{ width: 320, borderRadius: '1rem' }}>
             <div className="d-flex align-items-center justify-content-between p-3 border-bottom">
