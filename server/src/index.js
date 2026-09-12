@@ -124,6 +124,7 @@ const configAdminRoutes = require("./routes/config_admin");
 const issuesRoutes = require("./routes/issues");
 const addressesRoutes = require("./routes/addresses");
 const wishlistRoutes = require("./routes/wishlist");
+const telemetryRoutes = require("./routes/telemetry");
 
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/orders", paymentLimiter, ordersRoutes);
@@ -158,6 +159,7 @@ app.use("/api/ai/context", aiContextRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/addresses", addressesRoutes);
 app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/telemetry", telemetryRoutes);
 app.use("/api", miscRoutes);
 app.use("/api/advanced-ai", aiLimiter, advancedAiRoutes);
 
