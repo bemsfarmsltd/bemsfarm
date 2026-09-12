@@ -344,11 +344,26 @@ export default function SalesHub({
           transition: height 0.4s ease;
         }
         .sh-ai-box {
-          background: linear-gradient(135deg, #0f2c20, #143c2d);
-          color: #FFFFFF;
+          background: #FFFFFF;
+          color: #0F172A;
+          border: 1px solid #E5E7EB;
+          border-left: 4px solid #10B981;
           border-radius: 1rem;
-          padding: 1.25rem 1.4rem;
-          box-shadow: 0 4px 20px rgba(20, 60, 45, 0.2);
+          padding: 1.15rem 1.4rem;
+          box-shadow: 0 2px 12px -2px rgba(20, 60, 45, 0.05);
+        }
+        .sh-ai-insight-item {
+          background: #F8FAFC;
+          border: 1px solid #E2E8F0;
+          border-radius: 0.75rem;
+          padding: 0.85rem 1rem;
+          height: 100%;
+          transition: all 0.2s ease;
+        }
+        .sh-ai-insight-item:hover {
+          background: #F0FDF4;
+          border-color: #BBF7D0;
+          transform: translateY(-1px);
         }
       `}</style>
 
@@ -612,47 +627,57 @@ export default function SalesHub({
 
         {/* ── AI SALES & DEMAND INTELLIGENCE BANNER ── */}
         <div className="sh-ai-box mb-4">
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-2.5">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
             <div className="d-flex align-items-center gap-2">
-              <span className="fs-18">✨</span>
-              <h6 className="fw-bold mb-0 text-white font-display">Bems AI Smart Store Insights &amp; Real-time Demand Engine</h6>
+              <span className="avatar size-7 rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center flex-shrink-0 fs-xs">
+                ✨
+              </span>
+              <div>
+                <h6 className="fw-bold mb-0 font-display text-dark">Bems AI Smart Store Insights &amp; Real-time Demand Engine</h6>
+                <span className="text-muted fs-xxs">Automated telemetry powered by Gemini Farm-Core</span>
+              </div>
             </div>
-            <span className="badge bg-white text-dark fw-bold fs-xxs px-2.5 py-1 rounded-pill">Model: Gemini Farm-Core</span>
+            <span className="badge bg-light text-muted border fw-bold fs-xxs px-2.5 py-1 rounded-pill">
+              <i className="ri-pulse-line text-success me-1"></i>Real-time Feed
+            </span>
           </div>
 
           <div className="row g-3">
             <div className="col-12 col-md-4">
-              <div className="p-2.5 rounded-3 bg-white bg-opacity-10 border border-white border-opacity-15 h-100">
-                <div className="d-flex align-items-center gap-2 mb-1">
-                  <span className="badge bg-warning text-dark fw-bold fs-xxs">Demand Surge</span>
-                  <span className="fw-bold text-white fs-xs">Vegetable Oil &amp; Flours</span>
+              <div className="sh-ai-insight-item">
+                <div className="d-flex align-items-center justify-content-between mb-1.5">
+                  <span className="badge bg-warning-subtle text-warning border border-warning-subtle fw-bold fs-xxs">Demand Surge</span>
+                  <span className="text-muted fs-xxs">High Velocity</span>
                 </div>
-                <p className="fs-xs text-white text-opacity-80 mb-0">
-                  Kings 5L Oil demand is <strong>35% higher</strong> than typical {timeframeMultiplier.label}. Re-ordering advised before 5:00 PM stockout.
+                <h6 className="fw-bold fs-xs text-dark mb-1">Kings Pure Vegetable Oil (5L)</h6>
+                <p className="fs-xxs text-muted mb-0 leading-relaxed">
+                  Demand is <strong className="text-dark">35% higher</strong> than average {timeframeMultiplier.label}. Estimated stockout in 3.5 hrs without restock.
                 </p>
               </div>
             </div>
 
             <div className="col-12 col-md-4">
-              <div className="p-2.5 rounded-3 bg-white bg-opacity-10 border border-white border-opacity-15 h-100">
-                <div className="d-flex align-items-center gap-2 mb-1">
-                  <span className="badge bg-success text-white fw-bold fs-xxs">Peak Footfall</span>
-                  <span className="fw-bold text-white fs-xs">11:30 AM – 3:30 PM</span>
+              <div className="sh-ai-insight-item">
+                <div className="d-flex align-items-center justify-content-between mb-1.5">
+                  <span className="badge bg-success-subtle text-success border border-success-subtle fw-bold fs-xxs">Peak Footfall</span>
+                  <span className="text-muted fs-xxs">11:30 AM – 3:30 PM</span>
                 </div>
-                <p className="fs-xs text-white text-opacity-80 mb-0">
-                  Highest register throughput concentrated around lunchtime. Staffing is optimal with 42s average customer ringing speed.
+                <h6 className="fw-bold fs-xs text-dark mb-1">Register Throughput Optimal</h6>
+                <p className="fs-xxs text-muted mb-0 leading-relaxed">
+                  Highest transaction volume during lunch rush. Cashier checkout speed averaged <strong className="text-dark">42s / customer</strong>.
                 </p>
               </div>
             </div>
 
             <div className="col-12 col-md-4">
-              <div className="p-2.5 rounded-3 bg-white bg-opacity-10 border border-white border-opacity-15 h-100">
-                <div className="d-flex align-items-center gap-2 mb-1">
-                  <span className="badge bg-info text-dark fw-bold fs-xxs">Attach Rate</span>
-                  <span className="fw-bold text-white fs-xs">Chef Bems Combos +68%</span>
+              <div className="sh-ai-insight-item">
+                <div className="d-flex align-items-center justify-content-between mb-1.5">
+                  <span className="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold fs-xxs">Basket Attach</span>
+                  <span className="text-muted fs-xxs">+68% Uplift</span>
                 </div>
-                <p className="fs-xs text-white text-opacity-80 mb-0">
-                  Recommending Maggi &amp; Fresh Pepper with Grains raised basket ticket size by an average of <strong>+₦1,450</strong> per ticket.
+                <h6 className="fw-bold fs-xs text-dark mb-1">Chef Bems Combo Suggestion</h6>
+                <p className="fs-xxs text-muted mb-0 leading-relaxed">
+                  Recommending Seasoning Cubes with Grains lifted average ticket size by <strong className="text-dark">+₦1,450</strong> across active tickets.
                 </p>
               </div>
             </div>
