@@ -12,15 +12,15 @@ const pool = new Pool({
 // Fetch all saved items for the logged-in user
 router.get("/", protect, async (req, res) => {
   try {
-    const customerId = req.user.id;
+    const userId = req.user.id;
     const query = `
       SELECT p.*
       FROM products p
       JOIN customer_saved_items csi ON p.id = csi.product_id
-      WHERE csi.customer_id = $1
+      WHERE csi.user_id = $1
       ORDER BY csi.created_at DESC;
     `;
-    const result = await pool.query(query, [customerId]);
+    const result = await pool.query(query, [userId]);
     res.json({ products: result.rows });
   } catch (error) {
     console.error("Error fetching wishlist:", error);
@@ -32,7 +32,7 @@ router.get("/", protect, async (req, res) => {
 // Add an item to the wishlist
 router.post("/", protect, async (req, res) => {
   try {
-    const customerId = req.user.id;
+    const userId = req.user.id;
     const { productId } = req.body;
 
     if (!productId) {
@@ -41,12 +41,12 @@ router.post("/", protect, async (req, res) => {
 
     // Upsert (do nothing if already exists due to unique constraint)
     const query = `
-      INSERT INTO customer_saved_items (customer_id, product_id)
+      INSERT INTO customer_saved_items (user_id, product_id)
       VALUES ($1, $2)
-      ON CONFLICT (customer_id, product_id) DO NOTHING
+      ON CONFLICT (user_id, product_id) DO NOTHING
       RETURNING *;
     `;
-    const result = await pool.query(query, [customerId, productId]);
+    const result = await pool.query(query, [userId, productId]);
     
     res.json({ message: "Product added to wishlist", savedItem: result.rows[0] || null });
   } catch (error) {
@@ -59,15 +59,15 @@ router.post("/", protect, async (req, res) => {
 // Remove an item from the wishlist
 router.delete("/:productId", protect, async (req, res) => {
   try {
-    const customerId = req.user.id;
+    const userId = req.user.id;
     const productId = req.params.productId;
 
     const query = `
       DELETE FROM customer_saved_items
-      WHERE customer_id = $1 AND product_id = $2
+      WHERE user_id = $1 AND product_id = $2
       RETURNING *;
     `;
-    const result = await pool.query(query, [customerId, productId]);
+    const result = await pool.query(query, [userId, productId]);
 
     if (result.rowCount === 0) {
       return res.status(404).json({ message: "Item not found in wishlist" });

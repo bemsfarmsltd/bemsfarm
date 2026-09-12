@@ -102,6 +102,15 @@ CREATE TABLE IF NOT EXISTS returns (
 );
 
 
+-- ── WISHLIST (SAVED ITEMS) ────────────────────────────────────
+CREATE TABLE IF NOT EXISTS customer_saved_items (
+  user_id     INT REFERENCES users(id) ON DELETE CASCADE,
+  product_id  INT REFERENCES products(id) ON DELETE CASCADE,
+  created_at  TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (user_id, product_id)
+);
+
+
 -- ── SEED: CATEGORIES ─────────────────────────────────────────
 -- Run this to pre-fill categories so products page works immediately
 INSERT INTO categories (name) VALUES
