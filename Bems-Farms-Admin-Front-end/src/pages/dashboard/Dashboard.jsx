@@ -38,11 +38,11 @@ const ACTIVE_DELIVERIES = [
 ]
 
 const TOP_PRODUCTS = [
-  { name: 'Jollof Rice Box',    sku: 'MEAL-001', sold: 142, revenue: '₦568,000', trend:  12 },
-  { name: 'Grilled Tilapia',    sku: 'MEAL-004', sold:  98, revenue: '₦392,000', trend:   8 },
-  { name: 'Egusi Soup + Eba',   sku: 'MEAL-002', sold:  87, revenue: '₦261,000', trend:  -3 },
-  { name: 'Vegetable Stir-Fry', sku: 'MEAL-003', sold:  76, revenue: '₦228,000', trend:  21 },
-  { name: 'Fresh Tilapia (kg)', sku: 'FSH-001',  sold:  65, revenue: '₦195,000', trend:   5 },
+  { name: 'Fresh Live Catfish (kg)', sku: 'FSH-001', sold: 142, revenue: '₦568,000', trend:  12 },
+  { name: 'Premium Palm Oil (5L)',  sku: 'OIL-001', sold:  98, revenue: '₦392,000', trend:   8 },
+  { name: 'Ondo White Garri (50kg)',sku: 'GRN-002', sold:  87, revenue: '₦261,000', trend:  -3 },
+  { name: 'Plum Tomatoes (Basket)', sku: 'VEG-001', sold:  76, revenue: '₦228,000', trend:  21 },
+  { name: 'Organic Fresh Eggs (Crate)', sku: 'EGG-002', sold:  65, revenue: '₦195,000', trend:   5 },
 ]
 
 const STAFF_LIST = [
@@ -311,6 +311,247 @@ function OverviewTab() {
                   ))}
                 </Tbody>
               </Table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Operational Watchlist: Top Produce, Active Dispatch, and Low Stock Alerts */}
+      <div className="row g-2.5 mb-3">
+        {/* 1. Top Selling Produce */}
+        <div className="col-xl-4 col-md-6">
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 d-flex align-items-center justify-content-between border-bottom">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-fire-line text-danger" style={{ fontSize: 16 }}></i>
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Top Selling Produce</h6>
+              </div>
+              <Link to="/reports/sales" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Sales Report →</Link>
+            </div>
+            <div className="card-body p-0">
+              <div className="table-responsive">
+                <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.76rem' }}>
+                  <thead className="bg-light text-muted border-bottom" style={{ fontSize: '0.68rem' }}>
+                    <tr>
+                      <th className="ps-3 py-2">PRODUCT</th>
+                      <th className="text-center py-2">SOLD</th>
+                      <th className="text-end pe-3 py-2">REVENUE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {TOP_PRODUCTS.map((p, idx) => (
+                      <tr key={p.sku}>
+                        <td className="ps-3 py-2">
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="badge rounded-pill bg-light text-dark fw-bold border" style={{ fontSize: '0.65rem' }}>#{idx + 1}</span>
+                            <div className="min-w-0">
+                              <div className="fw-bold text-dark text-truncate" style={{ maxWidth: 140 }}>{p.name}</div>
+                              <div className="text-muted" style={{ fontSize: '0.65rem' }}>{p.sku}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="text-center py-2 fw-semibold text-dark">{p.sold}</td>
+                        <td className="text-end pe-3 py-2 fw-bold text-success font-display">{p.revenue}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Active Deliveries & Fleet */}
+        <div className="col-xl-4 col-md-6">
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 d-flex align-items-center justify-content-between border-bottom">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-bike-line text-primary" style={{ fontSize: 16 }}></i>
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Active Deliveries</h6>
+              </div>
+              <Link to="/deliveries/active" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Dispatch Hub →</Link>
+            </div>
+            <div className="card-body p-2.5">
+              <div className="d-flex flex-column gap-2">
+                {ACTIVE_DELIVERIES.map((d) => (
+                  <div
+                    key={d.id}
+                    className="p-2 rounded d-flex align-items-center justify-content-between"
+                    style={{ backgroundColor: '#FAF8F5', border: '1px solid #EFECE6' }}
+                  >
+                    <div className="d-flex align-items-center gap-2 min-w-0">
+                      <div className="rounded-circle d-flex align-items-center justify-content-center bg-white border flex-shrink-0" style={{ width: 30, height: 30 }}>
+                        <i className="ri-e-bike-2-line text-success" style={{ fontSize: 14 }}></i>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="d-flex align-items-center gap-1.5">
+                          <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.76rem' }}>{d.customer}</span>
+                          <span className="text-muted" style={{ fontSize: '0.68rem' }}>({d.id})</span>
+                        </div>
+                        <div className="text-muted text-truncate" style={{ fontSize: '0.68rem' }}>
+                          <i className="ri-map-pin-line me-1"></i>{d.zone} • <span className="fw-semibold text-dark">{d.driver}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-end flex-shrink-0 ps-2">
+                      <span
+                        className="badge"
+                        style={{
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          backgroundColor: d.status === 'en-route' ? '#e0f2fe' : d.status === 'picked-up' ? '#fef3c7' : '#f1f5f9',
+                          color: d.status === 'en-route' ? '#0369a1' : d.status === 'picked-up' ? '#b45309' : '#475569',
+                          border: '1px solid currentColor'
+                        }}
+                      >
+                        {d.status}
+                      </span>
+                      {d.eta !== '—' && (
+                        <div className="text-muted mt-0.5" style={{ fontSize: '0.65rem' }}>ETA: {d.eta}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Low Stock Attention Alerts */}
+        <div className="col-xl-4 col-md-12">
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 d-flex align-items-center justify-content-between border-bottom">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-alert-line text-danger" style={{ fontSize: 16 }}></i>
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Low Stock Watchlist</h6>
+              </div>
+              <Link to="/inventory/stock-in" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Stock In →</Link>
+            </div>
+            <div className="card-body p-2.5">
+              <div className="d-flex flex-column gap-2">
+                {LOW_STOCK.map((item) => (
+                  <div
+                    key={item.sku}
+                    className="p-2 rounded d-flex align-items-center justify-content-between"
+                    style={{ backgroundColor: '#FFFDF5', border: '1px solid #FEF3C7' }}
+                  >
+                    <div>
+                      <div className="fw-bold text-dark" style={{ fontSize: '0.76rem' }}>{item.name}</div>
+                      <div className="text-muted" style={{ fontSize: '0.68rem' }}>
+                        SKU: <span className="font-monospace">{item.sku}</span> • Reorder at: {item.reorder}
+                      </div>
+                    </div>
+                    <div className="text-end">
+                      <span className="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold" style={{ fontSize: '0.72rem' }}>
+                        {item.qty} left
+                      </span>
+                      <div className="mt-1">
+                        <Link
+                          to="/inventory/stock-in"
+                          className="btn btn-xs py-0.5 px-2 btn-outline-success fw-bold"
+                          style={{ fontSize: '0.65rem', borderRadius: '0.375rem' }}
+                        >
+                          Restock
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Financial Distribution & AI Activity */}
+      <div className="row g-2.5 mb-3">
+        {/* Sales Channel Mix */}
+        <div className="col-xl-6">
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 d-flex align-items-center justify-content-between border-bottom">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-pie-chart-2-line text-success" style={{ fontSize: 16 }}></i>
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Sales Channel Distribution</h6>
+              </div>
+              <span className="badge bg-light text-muted" style={{ fontSize: '0.68rem' }}>Today: ₦115,000</span>
+            </div>
+            <div className="card-body p-3">
+              <div className="row g-3">
+                {[
+                  { channel: 'Storefront POS Terminal', amount: '₦58,000', pct: 50.4, count: '13 sales', icon: 'ri-store-2-line', color: '#143c2d', bg: '#dcfce7' },
+                  { channel: 'Online Web Store',       amount: '₦42,000', pct: 36.5, count: '7 orders',  icon: 'ri-shopping-bag-3-line', color: '#0284c7', bg: '#e0f2fe' },
+                  { channel: 'Direct Bank Transfer',   amount: '₦15,000', pct: 13.1, count: '3 orders',  icon: 'ri-bank-card-line', color: '#d97706', bg: '#fef3c7' },
+                ].map((c) => (
+                  <div className="col-12" key={c.channel}>
+                    <div className="d-flex align-items-center justify-content-between mb-1">
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="rounded p-1 d-flex align-items-center justify-content-center" style={{ backgroundColor: c.bg, color: c.color, width: 26, height: 26 }}>
+                          <i className={c.icon} style={{ fontSize: 13 }}></i>
+                        </div>
+                        <span className="fw-bold text-dark" style={{ fontSize: '0.78rem' }}>{c.channel}</span>
+                        <span className="text-muted" style={{ fontSize: '0.7rem' }}>({c.count})</span>
+                      </div>
+                      <div className="text-end">
+                        <span className="fw-bold font-display text-dark" style={{ fontSize: '0.8rem' }}>{c.amount}</span>
+                        <span className="text-muted ms-1.5" style={{ fontSize: '0.72rem' }}>({c.pct}%)</span>
+                      </div>
+                    </div>
+                    <div className="progress" style={{ height: 6, borderRadius: 3, backgroundColor: '#EFECE6' }}>
+                      <div
+                        className="progress-bar"
+                        role="progressbar"
+                        style={{ width: `${c.pct}%`, backgroundColor: c.color, borderRadius: 3 }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Chef Bems AI Pulse */}
+        <div className="col-xl-6">
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 d-flex align-items-center justify-content-between border-bottom">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-robot-line text-info" style={{ fontSize: 16 }}></i>
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Chef Bems AI Activity</h6>
+              </div>
+              <Link to="/chef-bems/conversations" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>View All →</Link>
+            </div>
+            <div className="card-body p-2.5">
+              <div className="d-flex flex-column gap-2">
+                {AI_CONVERSATIONS.slice(0, 3).map((conv, i) => (
+                  <div
+                    key={i}
+                    className="p-2 rounded d-flex align-items-center justify-content-between"
+                    style={{ backgroundColor: '#FAF8F5', border: '1px solid #EFECE6' }}
+                  >
+                    <div className="min-w-0 me-2">
+                      <div className="d-flex align-items-center gap-1.5">
+                        <span className="fw-bold text-dark text-truncate" style={{ fontSize: '0.76rem' }}>{conv.customer}</span>
+                        <span className="text-muted" style={{ fontSize: '0.68rem' }}>• {conv.time}</span>
+                      </div>
+                      <div className="text-muted text-truncate" style={{ fontSize: '0.72rem' }}>
+                        "{conv.query}"
+                      </div>
+                    </div>
+                    <span
+                      className="badge flex-shrink-0"
+                      style={{
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        backgroundColor: conv.status === 'resolved' ? '#dcfce7' : '#fef3c7',
+                        color: conv.status === 'resolved' ? '#15803d' : '#b45309',
+                        border: '1px solid currentColor'
+                      }}
+                    >
+                      {conv.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
