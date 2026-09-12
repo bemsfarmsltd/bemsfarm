@@ -434,27 +434,13 @@ export default function ProfilePage() {
 
   return (
     <PageWrapper>
-      <div style={{ maxWidth: "1160px", margin: "0 auto", padding: "28px 20px 80px", fontFamily: "var(--body-font), sans-serif" }}>
+      <div className="max-w-[1160px] mx-auto px-4 sm:px-6 py-6 sm:py-8 font-sans">
 
         {/* Hero Banner */}
-        <div
-          style={{
-            background: "linear-gradient(135deg, #143c2d 0%, #1a4f3b 60%, #23654b 100%)",
-            borderRadius: "24px",
-            padding: "32px 36px",
-            color: "white",
-            marginBottom: "32px",
-            boxShadow: "0 10px 30px rgba(20, 60, 45, 0.15)",
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "24px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+        <div className="bg-gradient-to-r from-[#143c2d] via-[#1a4f3b] to-[#23654b] rounded-2xl sm:rounded-3xl p-5 sm:p-7 md:p-8 text-white mb-6 sm:mb-8 shadow-xl flex flex-col md:flex-row items-center md:items-start justify-between gap-5 sm:gap-6">
+          <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-4 sm:gap-5 w-full md:w-auto min-w-0">
             {/* Avatar / Monogram with Interactive Upload Badge */}
-            <div style={{ position: "relative", flexShrink: 0 }}>
+            <div className="relative flex-shrink-0">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -467,36 +453,12 @@ export default function ProfilePage() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingAvatar}
                 title="Click to upload/change profile photo"
-                style={{
-                  width: "76px",
-                  height: "76px",
-                  borderRadius: "50%",
-                  backgroundColor: "#FAF8F5",
-                  color: "#143c2d",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "28px",
-                  fontWeight: 900,
-                  boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
-                  overflow: "hidden",
-                  border: "3px solid rgba(255,255,255,0.85)",
-                  cursor: uploadingAvatar ? "wait" : "pointer",
-                  padding: 0,
-                  position: "relative",
-                  transition: "transform 0.2s, box-shadow 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  if (!uploadingAvatar) e.currentTarget.style.transform = "scale(1.04)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "scale(1)";
-                }}
+                className="w-[72px] h-[72px] sm:w-[76px] sm:h-[76px] rounded-full bg-[#FAF8F5] text-[#143c2d] flex items-center justify-center text-2xl sm:text-3xl font-black shadow-lg overflow-hidden border-3 border-white/90 cursor-pointer p-0 relative transition-transform hover:scale-105"
               >
                 {uploadingAvatar ? (
                   <div className="mx-auto h-7 w-7 animate-spin rounded-full border-3 border-[#143c2d] border-t-transparent" />
                 ) : avatar ? (
-                  <img src={avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   <span>{initials}</span>
                 )}
@@ -507,130 +469,97 @@ export default function ProfilePage() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 title="Upload Photo"
-                style={{
-                  position: "absolute",
-                  bottom: "-2px",
-                  right: "-2px",
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  backgroundColor: "#F59E0B",
-                  color: "#071F14",
-                  border: "2px solid #071F14",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
-                  cursor: "pointer",
-                  padding: 0,
-                  transition: "transform 0.15s, background-color 0.15s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#FBBF24")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#F59E0B")}
+                className="absolute -bottom-0.5 -right-0.5 w-7 h-7 rounded-full bg-amber-500 text-[#071F14] border-2 border-[#071F14] flex items-center justify-center shadow-md cursor-pointer p-0 hover:bg-amber-400 transition"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                   <circle cx="12" cy="13" r="4" />
                 </svg>
               </button>
             </div>
 
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                <h1 style={{ fontSize: "24px", fontWeight: 800, margin: 0, fontFamily: "var(--heading-font)" }}>
+            <div className="min-w-0 max-w-full">
+              <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap min-w-0">
+                <h1 className="text-xl sm:text-2xl font-black text-white truncate max-w-full m-0 font-display">
                   {user.name || "Customer Account"}
                 </h1>
-                <span
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.18)",
-                    border: "1px solid rgba(255,255,255,0.3)",
-                    padding: "2px 10px",
-                    borderRadius: "20px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    letterSpacing: "0.03em",
-                  }}
-                >
+                <span className="bg-white/20 border border-white/30 px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide flex-shrink-0">
                   Verified Customer
                 </span>
               </div>
-              <p style={{ margin: "4px 0 0", color: "#E0EFE8", fontSize: "13px" }}>
+              <p className="m-0 mt-1 text-xs sm:text-sm text-emerald-100/90 truncate max-w-full">
                 {user.email} {user.phone ? `• ${user.phone}` : ""}
               </p>
             </div>
           </div>
 
           {/* Quick Stats */}
-          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full md:w-auto min-w-0">
             <div
               onClick={() => setActiveTab("orders")}
-              style={{
-                backgroundColor: "rgba(255,255,255,0.12)",
-                backdropFilter: "blur(10px)",
-                borderRadius: "16px",
-                padding: "12px 20px",
-                textAlign: "center",
-                cursor: "pointer",
-                border: "1px solid rgba(255,255,255,0.15)",
-                minWidth: "90px",
-              }}
+              className="bg-white/10 backdrop-blur-md rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 text-center border border-white/15 cursor-pointer hover:bg-white/20 transition flex-1 min-w-[75px] sm:min-w-[95px]"
             >
-              <div style={{ fontSize: "20px", fontWeight: 800 }}>{myOrders.length}</div>
-              <div style={{ fontSize: "11px", color: "#D1E7DD", fontWeight: 600 }}>Orders</div>
+              <div className="text-lg sm:text-xl font-black text-white">{myOrders.length}</div>
+              <div className="text-[10px] sm:text-[11px] text-emerald-200 font-semibold">Orders</div>
             </div>
 
             <div
               onClick={() => setActiveTab("address")}
-              style={{
-                backgroundColor: "rgba(255,255,255,0.12)",
-                backdropFilter: "blur(10px)",
-                borderRadius: "16px",
-                padding: "12px 20px",
-                textAlign: "center",
-                cursor: "pointer",
-                border: "1px solid rgba(255,255,255,0.15)",
-                minWidth: "90px",
-              }}
+              className="bg-white/10 backdrop-blur-md rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 text-center border border-white/15 cursor-pointer hover:bg-white/20 transition flex-1 min-w-[75px] sm:min-w-[95px]"
             >
-              <div style={{ fontSize: "20px", fontWeight: 800 }}>{addresses.length}</div>
-              <div style={{ fontSize: "11px", color: "#D1E7DD", fontWeight: 600 }}>Addresses</div>
+              <div className="text-lg sm:text-xl font-black text-white">{addresses.length}</div>
+              <div className="text-[10px] sm:text-[11px] text-emerald-200 font-semibold">Addresses</div>
             </div>
 
             <div
               onClick={() => setActiveTab("wishlist")}
-              style={{
-                backgroundColor: "rgba(255,255,255,0.12)",
-                backdropFilter: "blur(10px)",
-                borderRadius: "16px",
-                padding: "12px 20px",
-                textAlign: "center",
-                cursor: "pointer",
-                border: "1px solid rgba(255,255,255,0.15)",
-                minWidth: "90px",
-              }}
+              className="bg-white/10 backdrop-blur-md rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 text-center border border-white/15 cursor-pointer hover:bg-white/20 transition flex-1 min-w-[75px] sm:min-w-[95px]"
             >
-              <div style={{ fontSize: "20px", fontWeight: 800 }}>{wishlistProducts.length}</div>
-              <div style={{ fontSize: "11px", color: "#D1E7DD", fontWeight: 600 }}>Saved</div>
+              <div className="text-lg sm:text-xl font-black text-white">{wishlistProducts.length}</div>
+              <div className="text-[10px] sm:text-[11px] text-emerald-200 font-semibold">Saved</div>
             </div>
           </div>
         </div>
 
-        {/* Main 2-Column Grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: "28px", alignItems: "flex-start" }}>
+        {/* Mobile Horizontal Navigation Tabs Strip (< lg) */}
+        <div className="flex lg:hidden overflow-x-auto no-scrollbar gap-2 pb-2 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0">
+          {menuTabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setAddingAddress(false);
+                }}
+                className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all flex-shrink-0 shadow-sm ${
+                  isActive
+                    ? 'bg-[#143c2d] text-white shadow-md'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                }`}
+              >
+                <span className={isActive ? 'text-white' : 'text-gray-500'}>{tab.icon}</span>
+                <span>{tab.label}</span>
+                {typeof tab.badge === 'number' && tab.badge > 0 && (
+                  <span
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-700'
+                    }`}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-          {/* Left Navigation Sidebar */}
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "20px",
-              padding: "16px",
-              border: "1px solid #E5E7EB",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.02)",
-              display: "flex",
-              flexDirection: "column",
-              gap: "4px",
-            }}
-          >
+        {/* Main 2-Column Grid (Desktop 2-Col, Mobile 1-Col) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 sm:gap-8 items-start">
+
+          {/* Left Navigation Sidebar (Desktop only) */}
+          <div className="hidden lg:flex flex-col bg-white rounded-2xl p-4 border border-gray-200 shadow-sm gap-1 sticky top-24">
             {menuTabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -640,36 +569,21 @@ export default function ProfilePage() {
                     setActiveTab(tab.id);
                     setAddingAddress(false);
                   }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "12px 14px",
-                    borderRadius: "12px",
-                    border: "none",
-                    background: isActive ? "#F0FFF4" : "transparent",
-                    color: isActive ? "#143c2d" : "#4B5563",
-                    fontWeight: isActive ? 700 : 600,
-                    fontSize: "14px",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    transition: "all 0.15s",
-                  }}
+                  className={`flex items-center justify-between p-3 rounded-xl border-none cursor-pointer text-left transition-all ${
+                    isActive
+                      ? 'bg-emerald-50 text-[#143c2d] font-bold'
+                      : 'bg-transparent text-gray-600 font-semibold hover:bg-gray-50'
+                  }`}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{ color: isActive ? "#143c2d" : "#9CA3AF" }}>{tab.icon}</span>
-                    <span>{tab.label}</span>
+                  <div className="flex items-center gap-2.5">
+                    <span className={isActive ? 'text-[#143c2d]' : 'text-gray-400'}>{tab.icon}</span>
+                    <span className="text-sm">{tab.label}</span>
                   </div>
-                  {typeof tab.badge === "number" && tab.badge > 0 && (
+                  {typeof tab.badge === 'number' && tab.badge > 0 && (
                     <span
-                      style={{
-                        backgroundColor: isActive ? "#143c2d" : "#F3F4F6",
-                        color: isActive ? "white" : "#6B7280",
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        padding: "2px 7px",
-                        borderRadius: "12px",
-                      }}
+                      className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        isActive ? 'bg-[#143c2d] text-white' : 'bg-gray-100 text-gray-600'
+                      }`}
                     >
                       {tab.badge}
                     </span>
@@ -678,27 +592,13 @@ export default function ProfilePage() {
               );
             })}
 
-            <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #F3F4F6" }}>
+            <div className="mt-3 pt-3 border-t border-gray-100">
               <button
                 onClick={() => {
                   logout();
                   navigate("/login");
                 }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  width: "100%",
-                  padding: "12px 14px",
-                  borderRadius: "12px",
-                  border: "none",
-                  backgroundColor: "#FEF2F2",
-                  color: "#DC2626",
-                  fontWeight: 700,
-                  fontSize: "13px",
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
+                className="flex items-center gap-2.5 w-full p-3 rounded-xl border-none bg-red-50 text-red-600 font-bold text-xs cursor-pointer text-left hover:bg-red-100 transition"
               >
                 <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
@@ -709,16 +609,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Right Main Content Card */}
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "24px",
-              padding: "32px 36px",
-              border: "1px solid #E5E7EB",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
-              minHeight: "420px",
-            }}
-          >
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 md:p-9 border border-gray-200 shadow-sm min-h-[420px] w-full min-w-0">
             <AnimatePresence mode="wait">
 
               {/* ── TAB 1: PERSONAL PROFILE ── */}
@@ -822,7 +713,7 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Clean Form */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px", marginBottom: "24px" }}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 mb-6">
                     <div>
                       <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
                         First Name *
@@ -958,7 +849,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
-                    <div style={{ gridColumn: "1 / -1" }}>
+                    <div className="sm:col-span-2">
                       <label style={{ display: "block", fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
                         Delivery Instructions / Dietary Notes (Optional)
                       </label>
@@ -1068,7 +959,7 @@ export default function ProfilePage() {
 
                       {addressError && <p style={{ color: "#EF4444", fontSize: "13px", marginBottom: "14px" }}>{addressError}</p>}
 
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "16px" }}>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 mb-4">
                         <div>
                           <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "4px" }}>
                             Address Label
@@ -1120,7 +1011,7 @@ export default function ProfilePage() {
                           </select>
                         </div>
 
-                        <div style={{ gridColumn: "1 / -1" }}>
+                        <div className="sm:col-span-2">
                           <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "4px" }}>
                             Street Address *
                           </label>
@@ -1132,7 +1023,7 @@ export default function ProfilePage() {
                           />
                         </div>
 
-                        <div style={{ gridColumn: "1 / -1" }}>
+                        <div className="sm:col-span-2">
                           <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "4px" }}>
                             City / Town *
                           </label>
@@ -1196,7 +1087,7 @@ export default function ProfilePage() {
                   )}
 
                   {/* Addresses List */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {addresses.map((addr) => (
                       <div
                         key={addr.id}
@@ -1481,7 +1372,7 @@ export default function ProfilePage() {
                       </button>
                     </div>
                   ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "16px" }}>
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                       {wishlistProducts.map((p) => {
                         const price = getNairaPrice(p.price);
                         return (
