@@ -3,107 +3,111 @@ import { Link } from 'react-router-dom'
 
 const SETTINGS_SECTIONS = [
   {
-    id: 'preferences',
-    title: 'Preferences',
-    subtitle: 'Customize the interface of your brand',
-    icon: 'ri-equalizer-line',
-    items: [
-      { name: 'Branding', path: '/settings/general' },
-      { name: 'Email Template', path: '/settings/notifications' },
-      { name: 'Invoice Template', path: '/settings/invoices' },
-      { name: 'Subscription', path: '/settings/general' },
-      { name: 'User Authentication', path: '/settings/manager' }
-    ]
-  },
-  {
-    id: 'payment-methods',
-    title: 'Payment Methods',
-    subtitle: 'Manage Payment Methods for your Services',
-    icon: 'ri-bank-card-line',
-    items: [
-      { name: 'Payment Methods', path: '/settings/payment' }
-    ]
-  },
-  {
-    id: 'configuration',
-    title: 'Configuration',
-    subtitle: 'Setup API Keys & Webhooks and Manage Notifications',
-    icon: 'ri-sound-module-line',
-    items: [
-      { name: 'API Keys & Webhooks', path: '/settings/general' },
-      { name: 'OTP', path: '/settings/notifications' },
-      { name: 'Notifications', path: '/settings/notifications' },
-      { name: 'IP Whitelisting', path: '/settings/manager' }
-    ]
-  },
-  {
-    id: 'business-settings',
-    title: 'Business Settings',
-    subtitle: 'Setup your Business',
+    id: 'store-profile',
+    title: 'Store Profile & Branding',
+    subtitle: 'Manage farm business profile, store locations, and receipt brand identity',
     icon: 'ri-store-2-line',
     items: [
-      { name: 'Settlement & Scheduling', path: '/settings/pos' },
-      { name: 'Settlement Accounts', path: '/settings/payment' },
-      { name: 'Pricing', path: '/settings/tax' },
-      { name: 'Virtual Accounts', path: '/settings/payment' },
-      { name: 'Service Charge', path: '/settings/pos' },
-      { name: 'Wallet Currencies', path: '/settings/currencies' }
+      { name: 'General Store Info & Contact', path: '/settings/general' },
+      { name: 'Store Locations & Branches', path: '/stores' },
+      { name: 'Receipt & Invoice Templates', path: '/settings/invoices' },
+      { name: 'Business Hours & Operations', path: '/settings/general' }
     ]
   },
   {
-    id: 'funds-transfer',
-    title: 'Funds Transfer',
-    subtitle: 'Set transfer limits',
-    icon: 'ri-exchange-dollar-line',
+    id: 'pos-terminal',
+    title: 'POS Terminal Settings',
+    subtitle: 'Configure register terminals, barcode scanners, and cashier shift limits',
+    icon: 'ri-computer-line',
     items: [
-      { name: 'Limit Settings', path: '/settings/pos' },
-      { name: 'Transfer Settings', path: '/settings/payment' }
+      { name: 'POS Hardware & Barcode Scanners', path: '/settings/pos' },
+      { name: 'Cash Drawer Reconciliation & Float', path: '/settings/pos' },
+      { name: 'Quick-Ringing Hotkeys & Presets', path: '/settings/pos' },
+      { name: 'Offline Mode & Auto-Sync', path: '/settings/pos' }
     ]
   },
   {
-    id: 'rewards-settings',
-    title: 'Rewards Settings',
-    subtitle: 'Customize your Rewards',
+    id: 'payment-gateways',
+    title: 'Payment Methods & Gateways',
+    subtitle: 'Manage Paystack, Monnify, Bank Transfers, and POS Card terminals',
+    icon: 'ri-bank-card-line',
+    items: [
+      { name: 'Online Gateways (Paystack & Monnify)', path: '/settings/payment' },
+      { name: 'POS Bank Card Terminals', path: '/settings/payment' },
+      { name: 'Direct Bank Transfer Verification', path: '/settings/payment' },
+      { name: 'Cash on Delivery Settings', path: '/settings/payment' }
+    ]
+  },
+  {
+    id: 'tax-pricing',
+    title: 'Tax, VAT & Pricing',
+    subtitle: 'Configure Value Added Tax (VAT), produce exemptions, and currency rates',
+    icon: 'ri-percent-line',
+    items: [
+      { name: 'VAT & Tax Rates (7.5%)', path: '/settings/tax' },
+      { name: 'Agricultural Produce Exemptions', path: '/settings/tax' },
+      { name: 'Multi-Currency & FX Exchange Rates', path: '/settings/currencies' },
+      { name: 'Dynamic & Tiered Pricing', path: '/settings/tax' }
+    ]
+  },
+  {
+    id: 'discounts-loyalty',
+    title: 'Discounts & Loyalty Rewards',
+    subtitle: 'Setup promotional vouchers, customer loyalty points, and bulk discounts',
     icon: 'ri-gift-line',
     items: [
-      { name: 'Reward System', path: '/settings/coupons' },
-      { name: 'Reward Categories', path: '/settings/coupons' },
-      { name: 'Reward on Product', path: '/settings/coupons' }
+      { name: 'Coupon & Promo Code Rules', path: '/settings/coupons' },
+      { name: 'Customer Loyalty Points System', path: '/settings/coupons' },
+      { name: 'Wholesale & Bulk Volume Discounts', path: '/settings/coupons' },
+      { name: 'Seasonal Produce Deals', path: '/settings/coupons' }
     ]
   },
   {
-    id: 'commerce-settings',
-    title: 'Commerce Settings',
-    subtitle: 'Setup your Store Front',
-    icon: 'ri-shopping-basket-line',
+    id: 'dispatch-logistics',
+    title: 'Dispatch & Delivery Logistics',
+    subtitle: 'Setup doorstep delivery zones, shipping fee tiers, and dispatch routes',
+    icon: 'ri-truck-line',
     items: [
-      { name: 'Customize Store front', path: '/settings/general' },
-      { name: 'Delivery Settings', path: '/settings/pos' },
-      { name: 'Product Categories', path: '/products/categories' }
+      { name: 'Delivery Zones & Neighborhoods', path: '/settings/pos' },
+      { name: 'Shipping Fee Distance Calculator', path: '/settings/pos' },
+      { name: 'Dispatch Rider Fleet Management', path: '/deliveries' },
+      { name: 'Perishable Produce Packaging Rules', path: '/deliveries' }
     ]
   },
   {
-    id: 'payroll-settings',
-    title: 'Payroll Settings',
-    subtitle: 'Setup your payroll settings',
-    icon: 'ri-money-dollar-circle-line',
+    id: 'alerts-notifications',
+    title: 'Alerts & Notifications',
+    subtitle: 'Manage customer SMS updates, email receipts, and low-stock warnings',
+    icon: 'ri-notification-3-line',
     items: [
-      { name: 'Payroll Activities', path: '/staff/payroll' },
-      { name: 'Notifications', path: '/settings/notifications' },
-      { name: 'Role', path: '/settings/manager' },
-      { name: 'Allowance', path: '/settings/manager' },
-      { name: 'Deductions', path: '/settings/tax' },
-      { name: 'Reimbursement', path: '/staff/payroll' }
+      { name: 'SMS & WhatsApp Order Updates', path: '/settings/notifications' },
+      { name: 'Automated Email Receipts', path: '/settings/notifications' },
+      { name: 'Low Stock & Restock Threshold Alerts', path: '/settings/notifications' },
+      { name: 'Daily Shift Sales Summaries', path: '/settings/notifications' }
     ]
   },
   {
-    id: 'feature-flag',
-    title: 'Feature Flag',
-    subtitle: 'Disable Features you do not want to see on the portal',
-    icon: 'ri-flag-line',
+    id: 'roles-approvals',
+    title: 'Roles & Manager Approvals',
+    subtitle: 'Manage staff permissions, shift void approvals, and security policies',
+    icon: 'ri-shield-user-line',
     items: [
-      { name: 'Features', path: '/settings/pos' },
-      { name: 'Request History', path: '/activity-logs' }
+      { name: 'Role-Based Access Control (RBAC)', path: '/settings/manager' },
+      { name: 'Cashier Void & Discount Overrides', path: '/settings/manager' },
+      { name: 'Manager Security PINs', path: '/settings/manager' },
+      { name: 'System Activity & Audit Logs', path: '/activity-logs' }
+    ]
+  },
+  {
+    id: 'chef-bems-ai',
+    title: 'Chef Bems AI & Smart Inventory',
+    subtitle: 'Configure culinary AI recommendations, shelf-life monitoring, and forecasting',
+    icon: 'ri-robot-line',
+    items: [
+      { name: 'Chef Bems Culinary AI Engine', path: '/chef-bems' },
+      { name: 'Smart Demand & Restock Forecasting', path: '/inventory' },
+      { name: 'Perishable Produce Shelf-Life Tracking', path: '/inventory' },
+      { name: 'Recipe & Grocery Pairing Rules', path: '/chef-bems' }
     ]
   }
 ]
@@ -248,7 +252,7 @@ export default function SettingsAll() {
               <div>
                 {/* Card Title & Icon */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                  <i className={`${section.icon}`} style={{ fontSize: '16px', color: '#475569' }}></i>
+                  <i className={`${section.icon}`} style={{ fontSize: '16px', color: '#143c2d' }}></i>
                   <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
                     {section.title}
                   </h3>
