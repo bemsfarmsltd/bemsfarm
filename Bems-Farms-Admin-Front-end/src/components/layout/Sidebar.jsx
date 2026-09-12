@@ -6,7 +6,6 @@ import { ROLE_META } from '../../lib/roles'
 export default function Sidebar() {
   const { user, hasRole, logout } = useAuth()
   const location = useLocation()
-  const roleMeta = user ? ROLE_META[user.role] : null
 
   // Role helpers
   const is = (...roles) => hasRole(...roles)
@@ -41,7 +40,7 @@ export default function Sidebar() {
   }
 
   const [activeTab, setActiveTab] = useState(() => getActiveCategoryFromPath(location.pathname))
-  const [isHovered, setIsHovered] = useState(false)
+  const [isRailExpanded, setIsRailExpanded] = useState(false)
 
   useEffect(() => {
     setActiveTab(getActiveCategoryFromPath(location.pathname))
@@ -49,7 +48,7 @@ export default function Sidebar() {
 
   // Inject Two-Column Dual Sidebar Styles
   useEffect(() => {
-    const id = 'sidebar-dual-column-styles'
+    const id = 'sidebar-signature-dual-styles'
     let style = document.getElementById(id)
     if (!style) {
       style = document.createElement('style')
@@ -59,23 +58,36 @@ export default function Sidebar() {
     style.textContent = `
       .dual-sidebar-container {
         display: flex;
-        width: 272px;
+        width: 268px;
         height: 100%;
-        background: #FFFFFF;
         position: relative;
       }
       
-      /* ── COLUMN 1: SLIM DARK ICON RAIL (68px) ── */
+      /* ── COLUMN 1: DARK RAIL (68px default -> expands to 215px on hover) ── */
       .sidebar-icon-rail {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
         width: 68px;
-        min-width: 68px;
         background-color: #0E111B;
         border-right: 1px solid rgba(255, 255, 255, 0.08);
         display: flex;
         flex-direction: column;
-        align-items: center;
-        padding: 0.75rem 0;
-        z-index: 10;
+        align-items: flex-start;
+        padding: 0.75rem 0.5rem;
+        z-index: 20;
+        overflow-x: hidden;
+        overflow-y: auto;
+        transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease;
+        scrollbar-width: none;
+      }
+      .sidebar-icon-rail::-webkit-scrollbar { display: none; }
+      
+      .sidebar-icon-rail:hover,
+      .sidebar-icon-rail.rail-open {
+        width: 215px;
+        box-shadow: 12px 0 36px rgba(0, 0, 0, 0.45);
       }
       
       .rail-nav-list {
@@ -83,32 +95,54 @@ export default function Sidebar() {
         width: 100%;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        gap: 0.4rem;
-        overflow-y: auto;
-        overflow-x: hidden;
-        padding: 0 0.4rem;
-        scrollbar-width: none;
+        gap: 0.35rem;
       }
-      .rail-nav-list::-webkit-scrollbar { display: none; }
       
       .rail-btn {
-        width: 44px;
+        width: 100%;
+        min-height: 44px;
         height: 44px;
         border-radius: 12px;
         display: flex;
-        flex-direction: column;
         align-items: center;
-        justify-content: center;
         background: transparent;
         border: none;
         color: #94A3B8;
-        font-size: 1.25rem;
         cursor: pointer;
+        padding: 0 11px;
         transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
         position: relative;
         text-decoration: none;
+        white-space: nowrap;
       }
+      
+      .rail-btn .rail-icon {
+        font-size: 1.25rem;
+        min-width: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      
+      .rail-btn .rail-label {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: inherit;
+        margin-left: 0.5rem;
+        opacity: 0;
+        transform: translateX(-6px);
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        pointer-events: none;
+      }
+      
+      .sidebar-icon-rail:hover .rail-btn .rail-label,
+      .sidebar-icon-rail.rail-open .rail-btn .rail-label {
+        opacity: 1;
+        transform: translateX(0);
+        pointer-events: auto;
+      }
+      
       .rail-btn:hover {
         background: rgba(255, 255, 255, 0.08);
         color: #FFFFFF;
@@ -117,46 +151,35 @@ export default function Sidebar() {
       /* Active Gold/Amber Signature Bank Pill */
       .rail-btn.active {
         background: linear-gradient(135deg, #B45309, #92400E);
-        color: #FFFFFF;
-        box-shadow: 0 4px 12px rgba(180, 83, 9, 0.35);
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 14px rgba(180, 83, 9, 0.35);
       }
       .rail-btn.active::before {
         content: '';
         position: absolute;
-        left: -6px;
+        left: -8px;
         top: 50%;
         transform: translateY(-50%);
         width: 4px;
-        height: 20px;
+        height: 22px;
         background: #F59E0B;
         border-radius: 0 4px 4px 0;
       }
       
-      /* ── COLUMN 2: WHITE SUB-NAVIGATION FLYOUT PANEL (204px) ── */
+      /* ── COLUMN 2: WHITE SUB-NAVIGATION PANEL (ALWAYS DOCKED AT LEFT: 68px, WIDTH: 200px) ── */
       .sidebar-sub-panel {
-        width: 204px;
-        min-width: 204px;
+        position: absolute;
+        left: 68px;
+        top: 0;
+        bottom: 0;
+        width: 200px;
         background: #FFFFFF;
+        border-right: 1px solid #E5E7EB;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
         display: flex;
         flex-direction: column;
+        z-index: 10;
         overflow: hidden;
-        border-right: 1px solid #E5E7EB;
-        box-shadow: 4px 0 16px rgba(0, 0, 0, 0.06);
-        transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      
-      /* Smooth Hover Flyout Controls */
-      #main-sidebar:not(:hover):not(.sidebar-expanded) .sidebar-sub-panel {
-        opacity: 0;
-        pointer-events: none;
-        transform: translateX(-8px);
-      }
-      
-      #main-sidebar:hover .sidebar-sub-panel,
-      #main-sidebar.sidebar-expanded .sidebar-sub-panel {
-        opacity: 1;
-        pointer-events: auto;
-        transform: translateX(0);
       }
       
       .sub-panel-header {
@@ -228,32 +251,27 @@ export default function Sidebar() {
     `
   }, [])
 
-  const handleRailHover = (categoryKey) => {
-    setActiveTab(categoryKey)
-  }
-
   return (
-    <div
-      id="main-sidebar"
-      className={`main-sidebar ${isHovered ? 'sidebar-expanded' : ''}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <div id="main-sidebar" className="main-sidebar">
       <div className="dual-sidebar-container">
 
-        {/* ── LEFT COLUMN: SLIM ICON RAIL ── */}
-        <div className="sidebar-icon-rail">
+        {/* ── LEFT COLUMN: DARK RAIL (Hover expands to full width with text) ── */}
+        <div
+          className={`sidebar-icon-rail ${isRailExpanded ? 'rail-open' : ''}`}
+          onMouseEnter={() => setIsRailExpanded(true)}
+          onMouseLeave={() => setIsRailExpanded(false)}
+        >
           <div className="rail-nav-list">
 
             {/* Dashboard / Main */}
             <button
               type="button"
               className={`rail-btn ${activeTab === 'main' ? 'active' : ''}`}
-              onMouseEnter={() => handleRailHover('main')}
               onClick={() => setActiveTab('main')}
               title="Overview"
             >
-              <i className="ri-dashboard-2-line"></i>
+              <i className="ri-dashboard-2-line rail-icon"></i>
+              <span className="rail-label">Overview</span>
             </button>
 
             {/* Products */}
@@ -261,11 +279,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'products' ? 'active' : ''}`}
-                onMouseEnter={() => handleRailHover('products')}
                 onClick={() => setActiveTab('products')}
-                title="Products"
+                title="Products & Catalog"
               >
-                <i className="ri-price-tag-3-line"></i>
+                <i className="ri-price-tag-3-line rail-icon"></i>
+                <span className="rail-label">Products</span>
               </button>
             )}
 
@@ -274,11 +292,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'inventory' ? 'active' : ''}`}
-                onMouseEnter={() => handleRailHover('inventory')}
                 onClick={() => setActiveTab('inventory')}
-                title="Inventory"
+                title="Stock & Inventory"
               >
-                <i className="ri-archive-stack-line"></i>
+                <i className="ri-archive-stack-line rail-icon"></i>
+                <span className="rail-label">Inventory</span>
               </button>
             )}
 
@@ -287,11 +305,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'orders' ? 'active' : ''}`}
-                onMouseEnter={() => handleRailHover('orders')}
                 onClick={() => setActiveTab('orders')}
-                title="Orders"
+                title="Sales & Orders"
               >
-                <i className="ri-shopping-bag-3-line"></i>
+                <i className="ri-shopping-bag-3-line rail-icon"></i>
+                <span className="rail-label">Orders</span>
               </button>
             )}
 
@@ -300,11 +318,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'deliveries' ? 'active' : ''}`}
-                onMouseEnter={() => handleRailHover('deliveries')}
                 onClick={() => setActiveTab('deliveries')}
-                title="Deliveries"
+                title="Operations & Dispatch"
               >
-                <i className="ri-truck-line"></i>
+                <i className="ri-truck-line rail-icon"></i>
+                <span className="rail-label">Deliveries</span>
               </button>
             )}
 
@@ -313,11 +331,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'customers' ? 'active' : ''}`}
-                onMouseEnter={() => handleRailHover('customers')}
                 onClick={() => setActiveTab('customers')}
-                title="Customers"
+                title="Customers CRM"
               >
-                <i className="ri-user-heart-line"></i>
+                <i className="ri-user-heart-line rail-icon"></i>
+                <span className="rail-label">Customers</span>
               </button>
             )}
 
@@ -326,11 +344,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'staff' ? 'active' : ''}`}
-                onMouseEnter={() => handleRailHover('staff')}
                 onClick={() => setActiveTab('staff')}
                 title="Staff & HR"
               >
-                <i className="ri-team-line"></i>
+                <i className="ri-team-line rail-icon"></i>
+                <span className="rail-label">Staff &amp; HR</span>
               </button>
             )}
 
@@ -339,11 +357,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'finance' ? 'active' : ''}`}
-                onMouseEnter={() => handleRailHover('finance')}
                 onClick={() => setActiveTab('finance')}
                 title="Finance & Accounts"
               >
-                <i className="ri-bank-card-line"></i>
+                <i className="ri-bank-card-line rail-icon"></i>
+                <span className="rail-label">Accounts</span>
               </button>
             )}
 
@@ -352,11 +370,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'reports' ? 'active' : ''}`}
-                onMouseEnter={() => handleRailHover('reports')}
                 onClick={() => setActiveTab('reports')}
-                title="Reports"
+                title="Reports & Analytics"
               >
-                <i className="ri-bar-chart-grouped-line"></i>
+                <i className="ri-bar-chart-grouped-line rail-icon"></i>
+                <span className="rail-label">Reports</span>
               </button>
             )}
 
@@ -365,11 +383,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'chef' ? 'active' : ''}`}
-                onMouseEnter={() => handleRailHover('chef')}
                 onClick={() => setActiveTab('chef')}
                 title="Chef Bems AI"
               >
-                <i className="ri-robot-line"></i>
+                <i className="ri-robot-line rail-icon"></i>
+                <span className="rail-label">Chef Bems AI</span>
               </button>
             )}
 
@@ -378,11 +396,11 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'stores' ? 'active' : ''}`}
-                onMouseEnter={() => handleRailHover('stores')}
                 onClick={() => setActiveTab('stores')}
-                title="Multi-Store"
+                title="Multi-Store Locations"
               >
-                <i className="ri-store-3-line"></i>
+                <i className="ri-store-3-line rail-icon"></i>
+                <span className="rail-label">Multi-Store</span>
               </button>
             )}
 
@@ -391,29 +409,30 @@ export default function Sidebar() {
               <button
                 type="button"
                 className={`rail-btn ${activeTab === 'settings' ? 'active' : ''}`}
-                onMouseEnter={() => handleRailHover('settings')}
                 onClick={() => setActiveTab('settings')}
-                title="Settings"
+                title="System Settings"
               >
-                <i className="ri-settings-3-line"></i>
+                <i className="ri-settings-3-line rail-icon"></i>
+                <span className="rail-label">Settings</span>
               </button>
             )}
           </div>
 
           {/* Bottom Logout */}
-          <div className="pt-2 border-top border-secondary border-opacity-10 w-100 d-flex justify-content-center">
+          <div className="pt-2 border-top border-secondary border-opacity-10 w-100">
             <button
               type="button"
               className="rail-btn text-danger"
               onClick={logout}
               title="Sign Out"
             >
-              <i className="ri-logout-box-r-line"></i>
+              <i className="ri-logout-box-r-line rail-icon"></i>
+              <span className="rail-label font-weight-bold">Sign Out</span>
             </button>
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN: WHITE SUB-NAVIGATION FLYOUT PANEL ── */}
+        {/* ── RIGHT COLUMN: WHITE SUB-NAVIGATION PANEL (ALWAYS OPEN & DOCKED) ── */}
         <div className="sidebar-sub-panel">
 
           {/* Subpanel Header */}

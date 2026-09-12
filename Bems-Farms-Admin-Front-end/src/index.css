@@ -69,26 +69,19 @@ h1, h2, h3, h4, h5, h6, .font-display {
   padding-right: 0.75rem !important;
 }
 
-/* ── SIDEBAR (SIGNATURE DUAL-COLUMN HOVER FLYOUT NAVIGATION) ─────────── */
+/* ── SIDEBAR (TWO-TIER: PERMANENT SUBPANEL + HOVER-EXPANDABLE RAIL) ─────── */
 #main-sidebar {
   position: fixed !important;
   top: 3.5rem !important;
   left: 0 !important;
   bottom: 0 !important;
-  width: 68px !important;
-  background-color: #0E111B !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.15) !important;
+  width: 268px !important;
+  background-color: transparent !important;
+  border-right: none !important;
+  box-shadow: none !important;
   overflow: visible !important;
-  z-index: 1005 !important;
-  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease !important;
+  z-index: 1002 !important;
   padding: 0 !important;
-}
-
-#main-sidebar.sidebar-expanded,
-#main-sidebar:hover {
-  width: 272px !important;
-  box-shadow: 12px 0 32px rgba(0, 0, 0, 0.25) !important;
 }
 
 body.sidebar-condensed #main-sidebar {
@@ -97,7 +90,7 @@ body.sidebar-condensed #main-sidebar {
 
 @media (min-width: 992px) {
   .page-wrapper {
-    margin-left: 68px !important;
+    margin-left: 268px !important;
     transition: margin-left 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
   }
   body.sidebar-condensed .page-wrapper {
@@ -113,7 +106,7 @@ body.sidebar-condensed #main-sidebar {
   display: flex !important;
   flex-direction: row !important;
   padding: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   z-index: 2 !important;
 }
 
@@ -130,14 +123,14 @@ body.sidebar-condensed #main-sidebar {
 }
 
 .main-topbar .navbar-brand {
-  width: 68px !important;
-  min-width: 68px !important;
-  max-width: 68px !important;
+  width: 268px !important;
+  min-width: 268px !important;
+  max-width: 268px !important;
   height: 3.5rem !important;
   display: flex !important;
   align-items: center !important;
-  justify-content: center !important;
-  padding: 0 !important;
+  justify-content: flex-start !important;
+  padding: 0 1.25rem !important;
   border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
