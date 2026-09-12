@@ -111,29 +111,17 @@ export default function Sidebar() {
         width: 415px;
       }
       
-      /* ── COLUMN 1: BRAND FOREST GREEN RAIL WITH MULTI-TONE TEXTURE & AMBIENT GLOWS ── */
+      /* ── COLUMN 1: SLEEK EMERALD GLASSMORPHISM RAIL ── */
       .sidebar-icon-rail {
         position: absolute;
         left: 0;
         top: 0;
         bottom: 0;
         width: 68px;
-        background: 
-          /* Distinct precision angled design dashes / micro-weave texture ("design rashes") */
-          repeating-linear-gradient(
-            -45deg,
-            rgba(255, 255, 255, 0.04) 0px,
-            rgba(255, 255, 255, 0.04) 2px,
-            transparent 2px,
-            transparent 8px
-          ),
-          /* Multi-color ambient radial glows */
-          radial-gradient(ellipse 120% 50% at 50% 0%, rgba(16, 185, 129, 0.28) 0%, transparent 65%),
-          radial-gradient(circle at 100% 90%, rgba(245, 158, 11, 0.15) 0%, transparent 55%),
-          radial-gradient(circle at 0% 50%, rgba(5, 150, 105, 0.18) 0%, transparent 50%),
-          /* Deep rich brand forest green gradient */
-          linear-gradient(180deg, #061A12 0%, #0D2E20 30%, #143C2D 65%, #081F16 100%);
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        background: linear-gradient(180deg, rgba(8, 31, 22, 0.96) 0%, rgba(14, 53, 36, 0.93) 50%, rgba(10, 38, 27, 0.96) 100%);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-right: 1px solid rgba(16, 185, 129, 0.2);
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -143,7 +131,7 @@ export default function Sidebar() {
         overflow-y: auto;
         transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease;
         scrollbar-width: none;
-        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.25);
+        box-shadow: 4px 0 24px rgba(7, 31, 21, 0.22);
       }
       .sidebar-icon-rail::-webkit-scrollbar { display: none; }
       
