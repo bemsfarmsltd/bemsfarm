@@ -791,4 +791,392 @@ router.post("/returns", requireRole("superadmin","manager","admin","cashier"), a
   }
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+// ANALYTICS  ──  GET /api/admin/pos/analytics?timeframe=shift|today|yesterday|week|month
+// Every number here is computed live from orders/order_items/payments/products —
+// no demo/placeholder data. 'shift' scopes to the caller's open POS session
+// (or ?session_id= for a manager reviewing a specific one); everything else is
+// a calendar window over POS-channel orders (source = pos / 'Physical Store (POS)').
+// ════════════════════════════════════════════════════════════════════════════
+const POS_DATE_FILTERS = {
+  today:     "DATE(o.created_at) = CURRENT_DATE",
+  yesterday: "DATE(o.created_at) = CURRENT_DATE - INTERVAL '1 day'",
+  week:      "o.created_at >= NOW() - INTERVAL '7 days'",
+  month:     "o.created_at >= NOW() - INTERVAL '30 days'",
+};
+const POS_PREV_DATE_FILTERS = {
+  today:     "DATE(o.created_at) = CURRENT_DATE - INTERVAL '1 day'",
+  yesterday: "DATE(o.created_at) = CURRENT_DATE - INTERVAL '2 days'",
+  week:      "o.created_at >= NOW() - INTERVAL '14 days' AND o.created_at < NOW() - INTERVAL '7 days'",
+  month:     "o.created_at >= NOW() - INTERVAL '60 days' AND o.created_at < NOW() - INTERVAL '30 days'",
+};
+const HOUR_LABEL = (h) => {
+  const hour = parseInt(h);
+  const period = hour >= 12 ? "PM" : "AM";
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${String(h12).padStart(2, "0")}:00 ${period}`;
+};
+
+router.get("/analytics", requireRole("superadmin", "manager", "admin", "cashier"), async (req, res, next) => {
+  try {
+    const timeframe = ["shift", "today", "yesterday", "week", "month"].includes(req.query.timeframe)
+      ? req.query.timeframe
+      : "shift";
+
+    let session = null;
+    let orderWhere = "o.status NOT IN ('cancelled')";
+    let orderParams = [];
+    let prevWhere = null;
+
+    if (timeframe === "shift") {
+      const sessionRes = req.query.session_id
+        ? await pool.query("SELECT * FROM pos_sessions WHERE id=$1", [req.query.session_id])
+        : await pool.query(
+            "SELECT * FROM pos_sessions WHERE cashier_id=$1 AND status='open' ORDER BY opened_at DESC LIMIT 1",
+            [req.user.id]
+          );
+      session = sessionRes.rows[0] || null;
+      if (session) {
+        orderWhere += " AND o.pos_session_id = $1";
+        orderParams = [session.id];
+      } else {
+        orderWhere += " AND 1=0"; // no open session — nothing to analyze yet
+      }
+    } else {
+      orderWhere += ` AND (${POS_DATE_FILTERS[timeframe]}) AND (o.source = 'pos' OR o.source = 'Physical Store (POS)')`;
+      prevWhere = `o.status NOT IN ('cancelled') AND (${POS_PREV_DATE_FILTERS[timeframe]}) AND (o.source = 'pos' OR o.source = 'Physical Store (POS)')`;
+    }
+
+    // pos_returns has its own created_at/session_id, not orders.created_at, so it
+    // needs its own filter mirroring the same window rather than reusing orderWhere.
+    let returnsWhere = "1=1";
+    let returnsParams = [];
+    if (timeframe === "shift") {
+      if (session) {
+        returnsWhere = "session_id = $1";
+        returnsParams = [session.id];
+      } else {
+        returnsWhere = "1=0";
+      }
+    } else {
+      const returnsDateFilter = POS_DATE_FILTERS[timeframe].replace(/o\.created_at/g, "created_at");
+      returnsWhere = returnsDateFilter;
+    }
+
+    const [
+      orderAgg,
+      itemsAgg,
+      marginAgg,
+      tenderDirect,
+      tenderSplit,
+      hourlyRows,
+      categoryRows,
+      channelRows,
+      topProducts,
+      topCustomers,
+      prevAgg,
+      returnsAgg,
+      tierRows,
+      repeatAgg,
+    ] = await Promise.all([
+      pool.query(
+        `SELECT COUNT(*) AS txn_count, COALESCE(SUM(total),0) AS gross_sales, COALESCE(SUM(discount_amount),0) AS discount_total
+         FROM orders o WHERE ${orderWhere}`,
+        orderParams
+      ),
+
+      pool.query(
+        `SELECT COALESCE(SUM(oi.quantity),0) AS items_count, COUNT(DISTINCT oi.product_id) AS sku_count
+         FROM order_items oi JOIN orders o ON oi.order_id = o.id
+         WHERE ${orderWhere}`,
+        orderParams
+      ),
+
+      pool.query(
+        `SELECT
+           COALESCE(SUM(oi.subtotal),0) AS revenue,
+           COALESCE(SUM(oi.quantity * COALESCE(p.cost_price,0)),0) AS cogs
+         FROM order_items oi
+         JOIN orders o ON oi.order_id = o.id
+         LEFT JOIN products p ON oi.product_id = p.id
+         WHERE ${orderWhere}`,
+        orderParams
+      ),
+
+      pool.query(
+        `SELECT COALESCE(payment_method,'unknown') AS method, COUNT(*) AS count, COALESCE(SUM(total),0) AS amount
+         FROM orders o WHERE ${orderWhere} AND COALESCE(payment_method,'') <> 'Split Payment'
+         GROUP BY payment_method`,
+        orderParams
+      ),
+
+      pool.query(
+        `SELECT COALESCE(p.payment_method,'unknown') AS method, COUNT(*) AS count, COALESCE(SUM(p.amount),0) AS amount
+         FROM payments p JOIN orders o ON o.id = p.order_id
+         WHERE ${orderWhere} AND o.payment_method = 'Split Payment' AND p.status = 'paid'
+         GROUP BY p.payment_method`,
+        orderParams
+      ),
+
+      pool.query(
+        `SELECT EXTRACT(HOUR FROM o.created_at) AS hour, COUNT(*) AS count, COALESCE(SUM(o.total),0) AS amount
+         FROM orders o WHERE ${orderWhere}
+         GROUP BY hour ORDER BY hour`,
+        orderParams
+      ),
+
+      pool.query(
+        `SELECT COALESCE(cat.name,'Uncategorized') AS category, COALESCE(SUM(oi.subtotal),0) AS revenue, COALESCE(SUM(oi.quantity),0) AS qty
+         FROM order_items oi
+         JOIN orders o ON oi.order_id = o.id
+         LEFT JOIN products p ON oi.product_id = p.id
+         LEFT JOIN categories cat ON p.category_id = cat.id
+         WHERE ${orderWhere}
+         GROUP BY cat.name ORDER BY revenue DESC`,
+        orderParams
+      ),
+
+      // Full cross-channel mix for context — not scoped to POS-only, so the
+      // cashier can see how much of today's business came through other
+      // channels. Not meaningful for a single 'shift', so skipped there.
+      timeframe === "shift"
+        ? Promise.resolve({ rows: [] })
+        : pool.query(
+            `SELECT COALESCE(source,'Unknown') AS source, COUNT(*) AS count, COALESCE(SUM(total),0) AS revenue
+             FROM orders o
+             WHERE o.status NOT IN ('cancelled') AND (${POS_DATE_FILTERS[timeframe]})
+             GROUP BY source ORDER BY revenue DESC`
+          ),
+
+      pool.query(
+        `SELECT
+           p.name, p.sku,
+           COALESCE(p.cost_price,0) AS cost_price,
+           COALESCE(p.unit_price, p.price, 0) AS selling_price,
+           COALESCE(p.stock, p.stock_quantity, 0) AS stock,
+           COALESCE(p.low_stock_threshold, 10) AS low_stock_threshold,
+           SUM(oi.quantity) AS units_sold,
+           SUM(oi.subtotal) AS revenue,
+           SUM(oi.subtotal) - SUM(oi.quantity * COALESCE(p.cost_price,0)) AS profit,
+           CASE WHEN SUM(oi.subtotal) > 0
+             THEN ((SUM(oi.subtotal) - SUM(oi.quantity * COALESCE(p.cost_price,0))) / SUM(oi.subtotal)) * 100
+             ELSE 0
+           END AS margin_pct
+         FROM order_items oi
+         JOIN orders o ON oi.order_id = o.id
+         JOIN products p ON oi.product_id = p.id
+         WHERE ${orderWhere}
+         GROUP BY p.id, p.name, p.sku, p.cost_price, p.unit_price, p.price, p.stock, p.stock_quantity, p.low_stock_threshold
+         ORDER BY revenue DESC
+         LIMIT 10`,
+        orderParams
+      ),
+
+      pool.query(
+        `SELECT u.id, u.name, u.phone, COUNT(o.id) AS orders,
+                COALESCE(SUM(o.total),0) AS total_spent, COALESCE(u.loyalty_points,0) AS loyalty_points
+         FROM orders o
+         JOIN users u ON o.customer_id = u.id
+         WHERE ${orderWhere}
+         GROUP BY u.id, u.name, u.phone, u.loyalty_points
+         ORDER BY total_spent DESC
+         LIMIT 10`,
+        orderParams
+      ),
+
+      prevWhere
+        ? pool.query(`SELECT COALESCE(SUM(total),0) AS gross_sales FROM orders o WHERE ${prevWhere}`)
+        : Promise.resolve({ rows: [{ gross_sales: null }] }),
+
+      pool.query(`SELECT COUNT(*) AS count, COALESCE(SUM(total),0) AS amount FROM pos_returns WHERE ${returnsWhere}`, returnsParams)
+        .catch(() => ({ rows: [{ count: 0, amount: 0 }] })),
+
+      // Loyalty-tier revenue contribution: a transparent points-threshold
+      // classification computed live, not a stored/fabricated tier.
+      pool.query(
+        `SELECT
+           CASE
+             WHEN COALESCE(u.loyalty_points,0) >= 3000 THEN 'Platinum'
+             WHEN COALESCE(u.loyalty_points,0) >= 1500 THEN 'Gold'
+             WHEN COALESCE(u.loyalty_points,0) >= 500  THEN 'Silver'
+             ELSE 'Bronze'
+           END AS tier,
+           COUNT(DISTINCT u.id) AS customers,
+           COUNT(o.id) AS orders,
+           COALESCE(SUM(o.total),0) AS revenue
+         FROM orders o
+         JOIN users u ON o.customer_id = u.id
+         WHERE ${orderWhere}
+         GROUP BY tier`,
+        orderParams
+      ),
+
+      pool.query(
+        `SELECT
+           COUNT(*) FILTER (WHERE order_count > 1) AS repeat_customers,
+           COUNT(*) AS total_customers
+         FROM (
+           SELECT o.customer_id, COUNT(*) AS order_count
+           FROM orders o
+           WHERE ${orderWhere} AND o.customer_id IS NOT NULL
+           GROUP BY o.customer_id
+         ) t`,
+        orderParams
+      ),
+    ]);
+
+    const grossSales = parseFloat(orderAgg.rows[0].gross_sales || 0);
+    const txnCount = parseInt(orderAgg.rows[0].txn_count || 0);
+    const itemsCount = parseInt(itemsAgg.rows[0].items_count || 0);
+    const skuCount = parseInt(itemsAgg.rows[0].sku_count || 0);
+    const productRevenue = parseFloat(marginAgg.rows[0].revenue || 0);
+    const cogs = parseFloat(marginAgg.rows[0].cogs || 0);
+    const grossProfit = productRevenue - cogs;
+    const grossMarginPct = productRevenue > 0 ? (grossProfit / productRevenue) * 100 : 0;
+
+    const tenderMap = {};
+    [...tenderDirect.rows, ...tenderSplit.rows].forEach((r) => {
+      const method = (r.method || "unknown").toLowerCase();
+      if (!tenderMap[method]) tenderMap[method] = { method, amount: 0, count: 0 };
+      tenderMap[method].amount += parseFloat(r.amount || 0);
+      tenderMap[method].count += parseInt(r.count || 0);
+    });
+    const tenderBreakdown = Object.values(tenderMap).sort((a, b) => b.amount - a.amount);
+    const cashSales = tenderMap.cash?.amount || 0;
+
+    const hourly = hourlyRows.rows.map((r) => ({
+      hour: parseInt(r.hour),
+      label: HOUR_LABEL(r.hour),
+      count: parseInt(r.count || 0),
+      amount: parseFloat(r.amount || 0),
+    }));
+    const maxHourlyAmount = Math.max(1, ...hourly.map((h) => h.amount));
+
+    const categoryBreakdown = categoryRows.rows.map((r) => ({
+      category: r.category,
+      revenue: parseFloat(r.revenue || 0),
+      qty: parseInt(r.qty || 0),
+      share: productRevenue > 0 ? (parseFloat(r.revenue || 0) / productRevenue) * 100 : 0,
+    }));
+
+    const channelTotal = channelRows.rows.reduce((s, r) => s + parseFloat(r.revenue || 0), 0);
+    const channelBreakdown = channelRows.rows.map((r) => ({
+      source: r.source,
+      revenue: parseFloat(r.revenue || 0),
+      count: parseInt(r.count || 0),
+      share: channelTotal > 0 ? (parseFloat(r.revenue || 0) / channelTotal) * 100 : 0,
+    }));
+
+    const topProductsOut = topProducts.rows.map((p) => ({
+      name: p.name,
+      sku: p.sku,
+      cost_price: parseFloat(p.cost_price || 0),
+      selling_price: parseFloat(p.selling_price || 0),
+      stock: parseInt(p.stock || 0),
+      low_stock_threshold: parseInt(p.low_stock_threshold || 10),
+      units_sold: parseInt(p.units_sold || 0),
+      revenue: parseFloat(p.revenue || 0),
+      profit: parseFloat(p.profit || 0),
+      margin_pct: parseFloat(p.margin_pct || 0),
+    }));
+
+    const topCustomersOut = topCustomers.rows.map((c) => ({
+      id: c.id,
+      name: c.name,
+      phone: c.phone,
+      orders: parseInt(c.orders || 0),
+      total_spent: parseFloat(c.total_spent || 0),
+      loyalty_points: parseInt(c.loyalty_points || 0),
+    }));
+
+    const prevGrossSales = prevAgg.rows[0].gross_sales != null ? parseFloat(prevAgg.rows[0].gross_sales) : null;
+    const growthPct = prevGrossSales != null && prevGrossSales > 0
+      ? ((grossSales - prevGrossSales) / prevGrossSales) * 100
+      : null;
+
+    const discountTotal = parseFloat(orderAgg.rows[0].discount_total || 0);
+    const returnsCount = parseInt(returnsAgg.rows[0]?.count || 0);
+    const returnRatePct = txnCount > 0 ? (returnsCount / txnCount) * 100 : 0;
+
+    const tierBreakdown = tierRows.rows.map((r) => ({
+      tier: r.tier,
+      customers: parseInt(r.customers || 0),
+      orders: parseInt(r.orders || 0),
+      revenue: parseFloat(r.revenue || 0),
+    })).sort((a, b) => b.revenue - a.revenue);
+
+    const repeatCustomers = parseInt(repeatAgg.rows[0]?.repeat_customers || 0);
+    const totalDistinctCustomers = parseInt(repeatAgg.rows[0]?.total_customers || 0);
+    const repeatRatePct = totalDistinctCustomers > 0 ? (repeatCustomers / totalDistinctCustomers) * 100 : 0;
+
+    // Real, derived insights — no scripted marketing copy.
+    const insights = [];
+    if (topProductsOut.length) {
+      const top = topProductsOut[0];
+      insights.push({
+        type: "top_seller",
+        title: `${top.name} is your top seller`,
+        detail: `${top.units_sold} sold, ${top.revenue.toLocaleString()} in revenue this period.`,
+      });
+      const bestMargin = [...topProductsOut].sort((a, b) => b.margin_pct - a.margin_pct)[0];
+      if (bestMargin && bestMargin.units_sold > 0) {
+        insights.push({
+          type: "best_margin",
+          title: `${bestMargin.name} has your best margin`,
+          detail: `${bestMargin.margin_pct.toFixed(1)}% margin, ${bestMargin.profit.toLocaleString()} profit this period.`,
+        });
+      }
+    }
+    if (hourly.some((h) => h.count > 0)) {
+      const busiest = [...hourly].sort((a, b) => b.amount - a.amount)[0];
+      insights.push({
+        type: "busiest_hour",
+        title: `${busiest.label} was your busiest hour`,
+        detail: `${busiest.count} transaction${busiest.count === 1 ? "" : "s"}, ${busiest.amount.toLocaleString()} in sales.`,
+      });
+    }
+
+    res.json({
+      timeframe,
+      session: session
+        ? {
+            id: session.id,
+            session_ref: session.session_ref,
+            opened_at: session.opened_at,
+            opening_cash: parseFloat(session.opening_cash || 0),
+          }
+        : null,
+      kpis: {
+        gross_sales: grossSales,
+        txn_count: txnCount,
+        aov: txnCount > 0 ? grossSales / txnCount : 0,
+        items_per_txn: txnCount > 0 ? itemsCount / txnCount : 0,
+        sku_count: skuCount,
+        cash_sales: cashSales,
+        tender_breakdown: tenderBreakdown,
+        gross_margin_pct: grossMarginPct,
+        estimated_profit: grossProfit,
+        starting_float: timeframe === "shift" && session ? parseFloat(session.opening_cash || 0) : null,
+        expected_drawer_cash: timeframe === "shift" && session ? parseFloat(session.opening_cash || 0) + cashSales : null,
+        growth_pct: growthPct,
+        pending_online_count: null, // supplied client-side from the live online-orders feed
+        discount_total: discountTotal,
+        returns_count: returnsCount,
+        return_rate_pct: returnRatePct,
+        repeat_customer_rate_pct: repeatRatePct,
+      },
+      hourly,
+      max_hourly_amount: maxHourlyAmount,
+      category_breakdown: categoryBreakdown,
+      channel_breakdown: channelBreakdown,
+      tier_breakdown: tierBreakdown,
+      top_products: topProductsOut,
+      top_customers: topCustomersOut,
+      insights,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

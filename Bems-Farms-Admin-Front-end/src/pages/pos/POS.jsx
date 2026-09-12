@@ -33,98 +33,6 @@ const CAT_COLORS = {
   dairy: '#4f46e5',
 }
 
-const DEFAULT_POS_PRODUCTS = [
-  { id: 1,  barcode: 'BF-OIL-001',  sku: 'OIL-5L',    name: 'Kings Pure Vegetable Oil (5L)',         cat: 'oils',       price: 13500, stock: 45, unit: '5L Gallon',  image: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=500&auto=format&fit=crop&q=80', icon: '🫒' },
-  { id: 2,  barcode: 'BF-OIL-002',  sku: 'OIL-25L',   name: 'Emperor Pure Palm Oil (25L Jerrycan)',  cat: 'oils',       price: 42000, stock: 18, unit: '25L Keg',     image: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=500&auto=format&fit=crop&q=80', icon: '🫒' },
-  { id: 3,  barcode: 'BF-GRN-001',  sku: 'RICE-50KG', name: 'Royal Stallion Long Grain Rice (50kg)', cat: 'grains',     price: 68000, stock: 32, unit: '50kg Bag',    image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=500&auto=format&fit=crop&q=80', icon: '🌾' },
-  { id: 4,  barcode: 'BF-GRN-002',  sku: 'RICE-25KG', name: 'Mama Gold Premium Parboiled Rice (25kg)', cat: 'grains',  price: 36500, stock: 24, unit: '25kg Bag',    image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=500&auto=format&fit=crop&q=80', icon: '🌾' },
-  { id: 5,  barcode: 'BF-GRN-003',  sku: 'BEAN-PNT',  name: 'Oloyin Honey Sweet Beans (Paint Bucket)',cat: 'grains',     price: 6500,  stock: 60, unit: 'Paint Rubber',image: 'https://images.unsplash.com/photo-1551462147-ff29053bfc14?w=500&auto=format&fit=crop&q=80', icon: '🫘' },
-  { id: 6,  barcode: 'BF-GRN-004',  sku: 'GARI-PNT',  name: 'Ijebu Crisp White Garri (Paint Bucket)',cat: 'grains',     price: 3200,  stock: 85, unit: 'Paint Rubber',image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=500&auto=format&fit=crop&q=80', icon: '🌾' },
-  { id: 7,  barcode: 'BF-GRN-005',  sku: 'YAM-TUB',   name: 'Abakaliki Heavy Yam Tubers (Selected Grade A)', cat: 'grains', price: 2800, stock: 40, unit: 'Tuber',       image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=500&auto=format&fit=crop&q=80', icon: '🍠' },
-  { id: 8,  barcode: 'BF-GRN-006',  sku: 'SEMO-10KG', name: 'Golden Penny Semovita (10kg Pack)',     cat: 'grains',     price: 14200, stock: 30, unit: '10kg Bag',    image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=500&auto=format&fit=crop&q=80', icon: '🌾' },
-  { id: 9,  barcode: 'BF-SPIC-001', sku: 'MAGGI-STR', name: 'Maggi Star Seasoning Cubes (Pack of 100)', cat: 'seasoning', price: 1800, stock: 120, unit: 'Pack',      image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=500&auto=format&fit=crop&q=80', icon: '🧂' },
-  { id: 10, barcode: 'BF-SPIC-002', sku: 'KNORR-CHK', name: 'Knorr Chicken Bouillon Cubes (50 Cubes)', cat: 'seasoning', price: 2200, stock: 95,  unit: 'Pack',      image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=500&auto=format&fit=crop&q=80', icon: '🧂' },
-  { id: 11, barcode: 'BF-SPIC-003', sku: 'CRAY-PNT',  name: 'Oron Crayfish Fresh Ground (Paint Bucket)', cat: 'seasoning', price: 8500, stock: 25, unit: 'Bucket',    image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=500&auto=format&fit=crop&q=80', icon: '🦐' },
-  { id: 12, barcode: 'BF-EGG-001',  sku: 'EGG-CRT',   name: 'Bems Farms Fresh Organic Jumbo Eggs (Crate of 30)', cat: 'dairy', price: 4200, stock: 110, unit: 'Crate (30)', image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=500&auto=format&fit=crop&q=80', icon: '🥚' },
-  { id: 13, barcode: 'BF-DAIR-001', sku: 'PEAK-TIN',  name: 'Peak Full Cream Milk Powder (400g Tin)', cat: 'dairy',     price: 3400,  stock: 50, unit: '400g Tin',    image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=500&auto=format&fit=crop&q=80', icon: '🥛' },
-  { id: 14, barcode: 'BF-CAN-001',  sku: 'GINO-PST',  name: 'Gino Peppe & Onion Tomato Paste (Pack of 50)', cat: 'canned', price: 9500, stock: 40, unit: 'Carton (50)', image: 'https://images.unsplash.com/photo-1534483509719-3feaee7c30da?w=500&auto=format&fit=crop&q=80', icon: '🥫' },
-  { id: 15, barcode: 'BF-CAN-002',  sku: 'GEISHA-CAN',name: 'Geisha Mackerel in Rich Tomato Sauce (Pack of 12)', cat: 'canned', price: 8400, stock: 35, unit: '12 Cans', image: 'https://images.unsplash.com/photo-1534483509719-3feaee7c30da?w=500&auto=format&fit=crop&q=80', icon: '🐟' },
-  { id: 16, barcode: 'BF-VEG-001',  sku: 'ONION-BAG', name: 'Fresh Red Kano Onions (Half Bag)',       cat: 'vegetables', price: 18500, stock: 15, unit: 'Half Bag',    image: 'https://images.unsplash.com/photo-1580201092675-a0a6a6cafbb1?w=500&auto=format&fit=crop&q=80', icon: '🧅' },
-  { id: 17, barcode: 'BF-VEG-002',  sku: 'RODO-BSK',  name: 'Fresh Scotch Bonnet Habanero Pepper (Basket)', cat: 'vegetables', price: 12000, stock: 20, unit: 'Basket', image: 'https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=500&auto=format&fit=crop&q=80', icon: '🌶️' },
-  { id: 18, barcode: 'BF-VEG-003',  sku: 'TOM-BSK',   name: 'Jos Fresh Plum Tomatoes (Big Basket)',   cat: 'vegetables', price: 24000, stock: 12, unit: 'Basket',      image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500&auto=format&fit=crop&q=80', icon: '🍅' },
-  { id: 19, barcode: 'BF-MEAT-001', sku: 'CHK-WHL',   name: 'Whole Dressed Farm Broiler Chicken (2.5kg)', cat: 'meat',   price: 7500,  stock: 28, unit: '2.5kg Bird',  image: 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=500&auto=format&fit=crop&q=80', icon: '🍗' },
-  { id: 20, barcode: 'BF-MEAT-002', sku: 'CAT-LIVE',  name: 'Live Point-and-Kill Farm Catfish (Per kg)', cat: 'meat',   price: 4500,  stock: 65, unit: 'Per kg',      image: 'https://images.unsplash.com/photo-1534483509719-3feaee7c30da?w=500&auto=format&fit=crop&q=80', icon: '🐟' },
-  { id: 21, barcode: 'BF-MEAT-003', sku: 'BEEF-KG',   name: 'Fresh Boneless Prime Beef (Per kg)',     cat: 'meat',       price: 6200,  stock: 40, unit: 'Per kg',      image: 'https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=500&auto=format&fit=crop&q=80', icon: '🥩' },
-  { id: 22, barcode: 'BF-BEV-001',  sku: 'MILO-500G', name: 'Nestle Milo Energy Cocoa Food Drink (500g)', cat: 'beverages', price: 3200, stock: 70, unit: '500g Pouch', image: 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=500&auto=format&fit=crop&q=80', icon: '🧃' },
-  { id: 23, barcode: 'BF-BEV-002',  sku: 'CHIV-JUC',  name: 'Chivita 100% Real Orange Juice (1L Pack of 10)', cat: 'beverages', price: 11500, stock: 30, unit: 'Carton (10)', image: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=500&auto=format&fit=crop&q=80', icon: '🧃' },
-  { id: 24, barcode: 'BF-HSE-001',  sku: 'VIVA-1KG',  name: 'Viva Plus Aromatherapy Laundry Detergent (1kg Pack)', cat: 'household', price: 2100, stock: 90, unit: '1kg Bag', image: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=500&auto=format&fit=crop&q=80', icon: '🧼' },
-  { id: 25, barcode: 'BF-HSE-002',  sku: 'HYPO-1L',   name: 'Hypo Super Bleach & Disinfectant (1L Bottle)', cat: 'household', price: 1400, stock: 75, unit: '1L Bottle', image: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=500&auto=format&fit=crop&q=80', icon: '🧼' },
-]
-
-const MOCK_CUSTOMERS = [
-  { id: 1, name: 'Amara Obi',     phone: '0810 000 1234', tier: 'Platinum', points: 2450, wallet: 5000,  orders: 24 },
-  { id: 2, name: 'Tunde Adeyemi', phone: '0802 345 6789', tier: 'Gold',     points: 1200, wallet: 1200,  orders: 12 },
-  { id: 3, name: 'Mrs. Okonkwo',  phone: '0706 789 0123', tier: 'Platinum', points: 3800, wallet: 8500,  orders: 38 },
-  { id: 4, name: 'Kemi Balogun',  phone: '0817 234 5678', tier: 'Silver',   points: 620,  wallet: 0,     orders: 4  },
-  { id: 5, name: 'Seun Abiodun',  phone: '0803 456 7890', tier: 'Gold',     points: 1700, wallet: 3000,  orders: 17 },
-]
-
-const HISTORY_MOCK = [
-  { inv: 'BF-INV-1023', cust: 'Walk-in',      method: 'Cash',       time: '10:45 AM', amount: 3500 },
-  { inv: 'BF-INV-1024', cust: 'Amara Obi',    method: 'Transfer',   time: '11:10 AM', amount: 14200 },
-  { inv: 'BF-INV-1025', cust: 'Mrs. Okonkwo', method: 'Card / POS', time: '12:05 PM', amount: 8750 },
-  { inv: 'BF-INV-1026', cust: 'Walk-in',      method: 'Cash',       time: '01:20 PM', amount: 2400 },
-  { inv: 'BF-INV-1027', cust: 'Tunde Adeyemi',method: 'QR / USSD',  time: '02:05 PM', amount: 6600 },
-  { inv: 'BF-INV-1028', cust: 'Kemi Balogun', method: 'Card / POS', time: '02:40 PM', amount: 5100 },
-]
-
-const ONLINE_ORDERS = [
-  {
-    id: 'ORD-WEB-4421', channel: 'website', customer: 'Amara Obi', phone: '0810 000 1234',
-    time: '09:14 AM', status: 'new', note: 'Please pack neatly, delivery by 12pm',
-    items: [
-      { productId: 1,  qty: 2 },
-      { productId: 12, qty: 3 },
-      { productId: 9,  qty: 1 },
-    ],
-  },
-  {
-    id: 'ORD-WA-4422', channel: 'whatsapp', customer: 'Mrs. Okonkwo', phone: '0706 789 0123',
-    time: '10:02 AM', status: 'new', note: 'Include extra fresh pepper',
-    items: [
-      { productId: 2,  qty: 1 },
-      { productId: 3,  qty: 1 },
-      { productId: 17, qty: 2 },
-    ],
-  },
-  {
-    id: 'ORD-IG-4423', channel: 'instagram', customer: 'Kemi Balogun', phone: '0817 234 5678',
-    time: '10:45 AM', status: 'pending', note: 'Call before dispatch',
-    items: [
-      { productId: 16, qty: 1 },
-      { productId: 19, qty: 2 },
-      { productId: 26, qty: 2 },
-    ],
-  },
-  {
-    id: 'ORD-WEB-4424', channel: 'website', customer: 'Tunde Adeyemi', phone: '0802 345 6789',
-    time: '11:30 AM', status: 'pending', note: 'Deliver to office reception',
-    items: [
-      { productId: 13, qty: 2 },
-      { productId: 15, qty: 1 },
-      { productId: 22, qty: 3 },
-    ],
-  },
-  {
-    id: 'ORD-WA-4425', channel: 'whatsapp', customer: 'Seun Abiodun', phone: '0803 456 7890',
-    time: '12:10 PM', status: 'new', note: 'Need this urgently before 2pm',
-    items: [
-      { productId: 3,  qty: 2 },
-      { productId: 20, qty: 3 },
-    ],
-  },
-]
-
 const CHANNEL_META = {
   website:   { label: 'Website Order',   icon: 'ri-global-line',    color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
   whatsapp:  { label: 'WhatsApp Order',  icon: 'ri-whatsapp-line',  color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
@@ -242,10 +150,10 @@ export default function POS() {
   }
 
   // Live Backend State
-  const [productsList, setProductsList] = useState(DEFAULT_POS_PRODUCTS)
-  const [customersList, setCustomersList] = useState(MOCK_CUSTOMERS)
-  const [historyList, setHistoryList] = useState(HISTORY_MOCK)
-  const [loadingPOS, setLoadingPOS] = useState(false)
+  const [productsList, setProductsList] = useState([])
+  const [customersList, setCustomersList] = useState([])
+  const [historyList, setHistoryList] = useState([])
+  const [loadingPOS, setLoadingPOS] = useState(true)
 
   // Dynamic Lookup Maps
   const { byBarcode, bySku } = useMemo(() => {
@@ -264,7 +172,7 @@ export default function POS() {
   const [toastTimer, setToastTimer]         = useState(null)
 
   // Online orders
-  const [onlineOrders, setOnlineOrders]     = useState(ONLINE_ORDERS)
+  const [onlineOrders, setOnlineOrders]     = useState([])
   const [onlineFilter, setOnlineFilter]     = useState('all')
   const [expandedOrder, setExpandedOrder]   = useState(null)
 
@@ -325,7 +233,7 @@ export default function POS() {
     'Packaging damaged'
   ]
   const [returnForm, setReturnForm] = useState({
-    customer: 'Walk-in', phone: '', product: DEFAULT_POS_PRODUCTS[0], qty: 1, unitPrice: DEFAULT_POS_PRODUCTS[0].price,
+    customer: 'Walk-in', phone: '', product: null, qty: 1, unitPrice: 0,
     reason: POS_RETURN_REASONS[0], notes: '', condition: 'resalable', refundMethod: 'Cash',
   })
   const [returnStep, setReturnStep]         = useState(1)
@@ -364,12 +272,16 @@ export default function POS() {
     }
   }
 
-  // Load Live Backend Data
+  // Load Live Backend Data — every list here starts empty and is only ever
+  // populated from a real API response (never seeded with demo data), so an
+  // empty result or a failed fetch shows an honest empty/error state instead
+  // of silently masking a real problem behind fake products/customers/orders.
   useEffect(() => {
     let isMounted = true
     async function loadPOSData() {
+      setLoadingPOS(true)
       try {
-        let prods = []
+        let prods = null
         try {
           const res = await api.get('/products?limit=250')
           prods = res.data?.products || res.data?.data || res.data || []
@@ -379,12 +291,16 @@ export default function POS() {
             const json = await raw.json()
             prods = json.products || json.data || []
           } catch {
-            const res = await api.get('/admin/pos/products?limit=250').catch(() => null)
-            prods = res?.data?.products || res?.data || []
+            try {
+              const res = await api.get('/admin/pos/products?limit=250')
+              prods = res?.data?.products || res?.data || []
+            } catch (e) {
+              console.error('Failed to load POS products from any endpoint', e)
+            }
           }
         }
 
-        if (Array.isArray(prods) && prods.length > 0 && isMounted) {
+        if (Array.isArray(prods) && isMounted) {
           const mapped = prods.map(p => {
             const rawPrice = Number(p.price || p.unit_price || 0)
             const sanitizedPrice = rawPrice >= 500000 ? Math.round(rawPrice / 1500) : Math.round(rawPrice)
@@ -404,18 +320,23 @@ export default function POS() {
           setProductsList(mapped)
           setReturnForm(f => ({
             ...f,
-            product: f.product || mapped[0],
+            product: f.product || mapped[0] || null,
             unitPrice: f.unitPrice || mapped[0]?.price || 0
           }))
+        } else if (isMounted) {
+          showToast('Could not load the product catalog — check your connection and retry.', 'error', '⚠️')
         }
       } catch (e) {
-        console.warn('Live products fallback', e)
+        console.error('Live products load failed', e)
+        if (isMounted) showToast('Could not load the product catalog.', 'error', '⚠️')
+      } finally {
+        if (isMounted) setLoadingPOS(false)
       }
 
       try {
         const custRes = await api.get('/admin/pos/customers').catch(() => api.get('/admin/customers'))
         const custs = custRes?.data?.customers || custRes?.data || []
-        if (Array.isArray(custs) && custs.length > 0 && isMounted) {
+        if (Array.isArray(custs) && isMounted) {
           const mappedCusts = custs.map(c => ({
             id: c.id,
             name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.name || 'Customer',
@@ -428,13 +349,13 @@ export default function POS() {
           setCustomersList(mappedCusts)
         }
       } catch (e) {
-        console.warn('Live customers fallback', e)
+        console.error('Live customers load failed', e)
       }
 
       try {
-        const ordRes = await api.get('/admin/orders?status=pending&limit=15').catch(() => null)
+        const ordRes = await api.get('/admin/orders?status=pending&limit=15')
         const ords = ordRes?.data?.orders || []
-        if (Array.isArray(ords) && ords.length > 0 && isMounted) {
+        if (Array.isArray(ords) && isMounted) {
           const mappedOrders = ords.map(o => ({
             id: o.order_ref || `ORD-${o.id}`,
             channel: o.channel || 'website',
@@ -451,13 +372,13 @@ export default function POS() {
           setOnlineOrders(mappedOrders)
         }
       } catch (e) {
-        console.warn('Live online orders fallback', e)
+        console.error('Live online orders load failed', e)
       }
 
       try {
-        const rcptRes = await api.get('/admin/pos/receipts').catch(() => null)
+        const rcptRes = await api.get('/admin/pos/receipts')
         const rcpts = rcptRes?.data?.receipts || []
-        if (Array.isArray(rcpts) && rcpts.length > 0 && isMounted) {
+        if (Array.isArray(rcpts) && isMounted) {
           const mappedHistory = rcpts.map(r => ({
             inv: r.order_ref || `INV-${r.id}`,
             cust: r.customer_name || 'Walk-in',
@@ -468,7 +389,7 @@ export default function POS() {
           setHistoryList(mappedHistory)
         }
       } catch (e) {
-        console.warn('Live POS receipts fallback', e)
+        console.error('Live POS receipts load failed', e)
       }
     }
 

@@ -1,8 +1,68 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import api from '../../lib/api'
 
 const fmt = (n) => '₦' + Math.round(n || 0).toLocaleString()
+
+// ── Cosmetic-only lookups (icons/colors by real name — not fabricated data) ──
+
+const CATEGORY_STYLE = [
+  { match: /oil/i, icon: '🫒', color: '#D97706' },
+  { match: /grain|rice|flour|tuber|garri|semo|bean/i, icon: '🌾', color: '#B45309' },
+  { match: /meat|poultry|seafood|fish|chicken|beef/i, icon: '🍗', color: '#E11D48' },
+  { match: /spice|season/i, icon: '🧂', color: '#DB2777' },
+  { match: /veg|produce|pepper|tomato|onion/i, icon: '🥬', color: '#059669' },
+  { match: /dairy|egg|milk/i, icon: '🥛', color: '#4F46E5' },
+  { match: /beverage|drink|juice/i, icon: '🧃', color: '#2563EB' },
+  { match: /household|soap|clean|detergent/i, icon: '🧼', color: '#0891B2' },
+  { match: /can/i, icon: '🥫', color: '#DC2626' },
+]
+const DEFAULT_CAT_STYLE = { icon: '🛒', color: '#64748B' }
+function categoryStyle(name) {
+  return CATEGORY_STYLE.find((c) => c.match.test(name || '')) || DEFAULT_CAT_STYLE
+}
+
+function channelStyle(source) {
+  const s = (source || '').toLowerCase()
+  if (s.includes('pos') || s.includes('physical')) return { icon: 'ri-store-3-line', color: '#16A34A' }
+  if (s.includes('whatsapp')) return { icon: 'ri-whatsapp-line', color: '#059669' }
+  if (s.includes('chef') || s.includes('ai')) return { icon: 'ri-robot-line', color: '#7C3AED' }
+  if (s.includes('online') || s.includes('web') || s.includes('mobile')) return { icon: 'ri-global-line', color: '#2563EB' }
+  return { icon: 'ri-question-line', color: '#64748B' }
+}
+
+const TIER_STYLE = {
+  Platinum: { badgeClass: 'bg-purple-subtle text-purple', icon: 'ri-vip-crown-fill', border: '#7C3AED' },
+  Gold:     { badgeClass: 'bg-warning-subtle text-warning', icon: 'ri-medal-fill', border: '#B45309' },
+  Silver:   { badgeClass: 'bg-secondary-subtle text-secondary', icon: 'ri-award-fill', border: '#64748B' },
+  Bronze:   { badgeClass: 'bg-light text-dark border', icon: 'ri-award-line', border: '#92400E' },
+}
+
+const TENDER_STYLE = {
+  cash:     { icon: 'ri-money-dollar-circle-fill', color: '#059669', label: 'Cash' },
+  card:     { icon: 'ri-bank-card-fill', color: '#2563EB', label: 'Card / POS Terminal' },
+  transfer: { icon: 'ri-qr-code-line', color: '#D97706', label: 'Bank Transfer / QR' },
+  unknown:  { icon: 'ri-question-line', color: '#64748B', label: 'Unspecified' },
+}
+function tenderStyle(method) {
+  return TENDER_STYLE[method] || { icon: 'ri-price-tag-3-line', color: '#64748B', label: method.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) }
+}
+
+function trafficLabel(pct) {
+  if (pct >= 85) return 'Peak Rush'
+  if (pct >= 60) return 'High'
+  if (pct >= 30) return 'Moderate'
+  return 'Low'
+}
+
+const TIMEFRAME_LABELS = {
+  shift: 'Active Shift (Today)',
+  today: 'Full Day Today',
+  yesterday: 'Yesterday',
+  week: 'Last 7 Days',
+  month: 'Current 30 Days',
+}
 
 export default function SalesHub({
   onOpenRegister,
@@ -18,12 +78,8 @@ export default function SalesHub({
   // Top-Level Domain Analytics Tabs ('overview' | 'products' | 'payments' | 'channels' | 'customers')
   const [mainAnalyticsTab, setMainAnalyticsTab] = useState('overview')
 
-  // Timeframe and Category Filters for dynamic analytics
+  // Timeframe filter — drives the live analytics fetch below
   const [timeframe, setTimeframe] = useState('shift') // 'shift' | 'today' | 'yesterday' | 'week' | 'month'
-  const [channelFilter, setChannelFilter] = useState('all') // 'all' | 'pos' | 'online'
-  const [chartMetric, setChartMetric] = useState('revenue') // 'revenue' | 'volume' | 'aov'
-  const [activeAnalysisTab, setActiveAnalysisTab] = useState('hourly') // 'hourly' | 'categories' | 'tenders' | 'channels'
-  const [tableTab, setTableTab] = useState('receipts') // 'receipts' | 'top_products' | 'drawer_log' | 'top_customers'
   const [searchQuery, setSearchQuery] = useState('')
 
   // Cash drawer denomination state for reconciliation modal
@@ -57,6 +113,55 @@ export default function SalesHub({
       document.exitFullscreen?.()
     }
   }
+
+  // ── Live current session (for the header "shift active" badge) ──────────────
+  const [session, setSession] = useState(null)
+  useEffect(() => {
+    let alive = true
+    api.get('/admin/pos/session/current')
+      .then((res) => { if (alive) setSession(res.data?.session || null) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [])
+
+  // ── Live analytics — every number below comes from the database ─────────────
+  const [analytics, setAnalytics] = useState(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(true)
+  const [analyticsError, setAnalyticsError] = useState(false)
+
+  const loadAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true); setAnalyticsError(false)
+    try {
+      const res = await api.get('/admin/pos/analytics', { params: { timeframe } })
+      setAnalytics(res.data)
+    } catch {
+      setAnalyticsError(true)
+    } finally {
+      setAnalyticsLoading(false)
+    }
+  }, [timeframe])
+  useEffect(() => { loadAnalytics() }, [loadAnalytics])
+
+  const kpis = analytics?.kpis ?? {}
+  const hourly = analytics?.hourly ?? []
+  const maxHourlyAmount = analytics?.max_hourly_amount ?? 1
+  const categoryBreakdown = analytics?.category_breakdown ?? []
+  const channelBreakdown = analytics?.channel_breakdown ?? []
+  const tierBreakdown = analytics?.tier_breakdown ?? []
+  const topProducts = analytics?.top_products ?? []
+  const topCustomers = analytics?.top_customers ?? []
+  const insights = analytics?.insights ?? []
+  const tenderBreakdown = kpis.tender_breakdown ?? []
+  const tenderTotal = tenderBreakdown.reduce((s, t) => s + t.amount, 0)
+  const cashSales = kpis.cash_sales ?? 0
+  const pendingOnlineCount = onlineOrders.filter((o) => o.status === 'new').length
+
+  // Counted physical cash — local UI state, independent of the fetched analytics
+  const countedCash = useMemo(
+    () => Object.entries(denominations).reduce((s, [val, qty]) => s + Number(val) * (Number(qty) || 0), 0),
+    [denominations]
+  )
+  const drawerVariance = countedCash > 0 ? countedCash - (kpis.expected_drawer_cash || 0) : 0
 
   // Global Function Keys listener on SalesHub (F1: Open Register, F2: Cash Drawer, F3: Z-Report, F4: Timeframe)
   useEffect(() => {
@@ -100,125 +205,6 @@ export default function SalesHub({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onOpenRegister, showDrawerModal, showZReportModal])
 
-  // Multiplier datasets for dynamic timeframes
-  const timeframeMultiplier = useMemo(() => {
-    switch (timeframe) {
-      case 'shift': return { mult: 1, label: 'Active Shift (Today)', target: 200000, days: 1, baseGrowth: '+14.2%' }
-      case 'today': return { mult: 1.45, label: 'Full Day Today', target: 350000, days: 1, baseGrowth: '+18.5%' }
-      case 'yesterday': return { mult: 1.25, label: 'Yesterday Summary', target: 300000, days: 1, baseGrowth: '+6.1%' }
-      case 'week': return { mult: 7.2, label: 'Last 7 Days', target: 2200000, days: 7, baseGrowth: '+23.8%' }
-      case 'month': return { mult: 29.5, label: 'Current Month (30 Days)', target: 9500000, days: 30, baseGrowth: '+31.4%' }
-      default: return { mult: 1, label: 'Active Shift', target: 200000, days: 1, baseGrowth: '+14.2%' }
-    }
-  }, [timeframe])
-
-  // Calculate live shift & dynamic analytics statistics
-  const analytics = useMemo(() => {
-    const rawTotal = historyList.reduce((s, h) => s + (Number(h.amount) || 0), 0)
-    const baseTotal = rawTotal > 0 ? rawTotal : 8809
-    const baseTxnCount = historyList.length > 0 ? historyList.length : 3
-
-    const totalSales = Math.round(baseTotal * timeframeMultiplier.mult)
-    const txnCount = Math.max(1, Math.round(baseTxnCount * timeframeMultiplier.mult))
-    const aov = Math.round(totalSales / txnCount)
-    const itemsPerTxn = (3.4 + (timeframeMultiplier.days * 0.1)).toFixed(1)
-
-    // Tender distributions
-    const cashRatio = 0.725
-    const cardRatio = 0.275
-    const transferRatio = 0.0
-
-    const cashSales = Math.round(totalSales * cashRatio)
-    const cardSales = Math.round(totalSales * cardRatio)
-    const transferSales = Math.round(totalSales * transferRatio)
-
-    const startingFloat = 10000
-    const expectedDrawerCash = startingFloat + (timeframe === 'shift' ? cashSales : Math.round(cashSales / timeframeMultiplier.days))
-    const salesTarget = timeframeMultiplier.target
-    const targetPct = Math.min(100, Math.round((totalSales / salesTarget) * 100))
-
-    // Counted physical cash
-    const countedCash = Object.entries(denominations).reduce(
-      (s, [val, qty]) => s + Number(val) * (Number(qty) || 0),
-      0
-    )
-    const drawerVariance = countedCash > 0 ? countedCash - expectedDrawerCash : 0
-
-    // Profit Margins (Est. 28-34% for agricultural retail)
-    const grossMarginPct = 31.8
-    const estimatedProfit = Math.round(totalSales * (grossMarginPct / 100))
-
-    // Hourly Distribution Data with dynamic calculations
-    const hourlyData = [
-      { hour: '08:00 AM', amount: Math.round(3500 * timeframeMultiplier.mult * 0.4), count: Math.round(1 * timeframeMultiplier.mult), pct: 20, traffic: 'Low' },
-      { hour: '10:00 AM', amount: Math.round(12800 * timeframeMultiplier.mult * 0.6), count: Math.round(3 * timeframeMultiplier.mult), pct: 55, traffic: 'Moderate' },
-      { hour: '12:00 PM', amount: Math.round(28500 * timeframeMultiplier.mult * 0.9), count: Math.round(6 * timeframeMultiplier.mult), pct: 90, traffic: 'Peak Rush' },
-      { hour: '02:00 PM', amount: Math.round(21400 * timeframeMultiplier.mult * 0.75), count: Math.round(5 * timeframeMultiplier.mult), pct: 72, traffic: 'High' },
-      { hour: '04:00 PM', amount: Math.round(32000 * timeframeMultiplier.mult), count: Math.round(8 * timeframeMultiplier.mult), pct: 100, traffic: 'Peak Rush' },
-      { hour: '06:00 PM', amount: Math.round(16200 * timeframeMultiplier.mult * 0.55), count: Math.round(4 * timeframeMultiplier.mult), pct: 52, traffic: 'Moderate' },
-    ]
-
-    // Category Distribution Data (Physical Farm Produce & Grocery Goods)
-    const categoryData = [
-      { name: 'Cooking Oils & Fats', revenue: Math.round(totalSales * 0.35), share: 35, icon: '🫒', color: '#D97706', itemsSold: Math.round(19 * timeframeMultiplier.mult) },
-      { name: 'Grains, Tubers & Flours', revenue: Math.round(totalSales * 0.28), share: 28, icon: '🌾', color: '#B45309', itemsSold: Math.round(26 * timeframeMultiplier.mult) },
-      { name: 'Poultry, Meat & Seafood', revenue: Math.round(totalSales * 0.18), share: 18, icon: '🍗', color: '#E11D48', itemsSold: Math.round(22 * timeframeMultiplier.mult) },
-      { name: 'Spices & Seasonings', revenue: Math.round(totalSales * 0.11), share: 11, icon: '🧂', color: '#DB2777', itemsSold: Math.round(45 * timeframeMultiplier.mult) },
-      { name: 'Fresh Produce & Veggies', revenue: Math.round(totalSales * 0.08), share: 8, icon: '🥬', color: '#059669', itemsSold: Math.round(30 * timeframeMultiplier.mult) },
-    ]
-
-    // Channel Distribution Data
-    const channelData = [
-      { name: 'In-Store POS Register', revenue: Math.round(totalSales * 0.76), share: 76, icon: 'ri-store-3-line', color: '#16A34A', count: Math.round(txnCount * 0.75) },
-      { name: 'Online Web Storefront', revenue: Math.round(totalSales * 0.16), share: 16, icon: 'ri-global-line', color: '#2563EB', count: Math.round(txnCount * 0.18) },
-      { name: 'WhatsApp & Direct Call', revenue: Math.round(totalSales * 0.08), share: 8, icon: 'ri-whatsapp-line', color: '#059669', count: Math.round(txnCount * 0.07) },
-    ]
-
-    // Fast Moving Products & Margin Analytics (Physical Goods)
-    const topMovingProducts = [
-      { name: 'Kings Pure Vegetable Oil (5L)', sku: 'OIL-5L', qty: Math.round(12 * timeframeMultiplier.mult), revenue: Math.round(162000 * timeframeMultiplier.mult), margin: '28%', stock: 33, status: 'In Stock', icon: '🫒' },
-      { name: 'Fresh Jumbo Organic Eggs (Crate of 30)', sku: 'EGG-CRT', qty: Math.round(18 * timeframeMultiplier.mult), revenue: Math.round(75600 * timeframeMultiplier.mult), margin: '34%', stock: 92, status: 'In Stock', icon: '🥚' },
-      { name: 'Mama Gold Rice (25kg Bag)', sku: 'RICE-25KG', qty: Math.round(6 * timeframeMultiplier.mult), revenue: Math.round(219000 * timeframeMultiplier.mult), margin: '22%', stock: 18, status: 'Low Stock', icon: '🌾' },
-      { name: 'Abakaliki Heavy Yam Tubers (Tuber)', sku: 'YAM-TUB', qty: Math.round(20 * timeframeMultiplier.mult), revenue: Math.round(56000 * timeframeMultiplier.mult), margin: '35%', stock: 40, status: 'In Stock', icon: '🍠' },
-      { name: 'Ijebu Crisp White Garri (Paint Rubber)', sku: 'GARI-PNT', qty: Math.round(15 * timeframeMultiplier.mult), revenue: Math.round(48000 * timeframeMultiplier.mult), margin: '38%', stock: 70, status: 'In Stock', icon: '🌾' },
-      { name: 'Whole Broiler Farm Chicken (2.5kg)', sku: 'CHK-WHL', qty: Math.round(9 * timeframeMultiplier.mult), revenue: Math.round(67500 * timeframeMultiplier.mult), margin: '30%', stock: 19, status: 'In Stock', icon: '🍗' },
-    ]
-
-    // Customer Loyalty Insights
-    const topCustomers = [
-      { name: 'Mrs. Okonkwo', phone: '0706 789 0123', tier: 'Platinum', orders: Math.round(38 * (timeframeMultiplier.days > 1 ? 1 : 0.3)), totalSpent: Math.round(185000 * timeframeMultiplier.mult * 0.25), loyaltyPts: 3800 },
-      { name: 'Amara Obi', phone: '0810 000 1234', tier: 'Platinum', orders: Math.round(24 * (timeframeMultiplier.days > 1 ? 1 : 0.3)), totalSpent: Math.round(142000 * timeframeMultiplier.mult * 0.2), loyaltyPts: 2450 },
-      { name: 'Tunde Adeyemi', phone: '0802 345 6789', tier: 'Gold', orders: Math.round(12 * (timeframeMultiplier.days > 1 ? 1 : 0.3)), totalSpent: Math.round(76500 * timeframeMultiplier.mult * 0.15), loyaltyPts: 1200 },
-      { name: 'Seun Abiodun', phone: '0803 456 7890', tier: 'Gold', orders: Math.round(17 * (timeframeMultiplier.days > 1 ? 1 : 0.3)), totalSpent: Math.round(94200 * timeframeMultiplier.mult * 0.18), loyaltyPts: 1700 },
-    ]
-
-    const pendingOnlineCount = onlineOrders.filter((o) => o.status === 'new').length
-
-    return {
-      totalSales,
-      txnCount,
-      aov,
-      itemsPerTxn,
-      grossMarginPct,
-      estimatedProfit,
-      cashSales,
-      cardSales,
-      transferSales,
-      startingFloat,
-      expectedDrawerCash,
-      salesTarget,
-      targetPct,
-      countedCash,
-      drawerVariance,
-      hourlyData,
-      categoryData,
-      channelData,
-      topMovingProducts,
-      topCustomers,
-      pendingOnlineCount,
-    }
-  }, [historyList, denominations, onlineOrders, timeframeMultiplier, timeframe])
-
   // Filtered Receipts table
   const filteredReceipts = useMemo(() => {
     if (!searchQuery) return historyList
@@ -240,7 +226,7 @@ export default function SalesHub({
 
   return (
     <div className="sales-hub-root" style={{ minHeight: '100vh', backgroundColor: '#FAF8F5', color: '#0F172A', paddingBottom: '3.5rem' }}>
-      
+
       {/* ── STYLES ── */}
       <style>{`
         .sales-hub-header {
@@ -402,24 +388,25 @@ export default function SalesHub({
 
             <div className="d-flex align-items-center gap-2 flex-wrap">
               <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.94rem', letterSpacing: '-0.01em' }}>
-                POS Terminal 01
+                {session?.terminal_id ? `POS Terminal ${session.terminal_id}` : 'POS Register'}
               </h6>
-              <span
-                className="badge d-inline-flex align-items-center gap-1.5"
-                style={{
-                  backgroundColor: '#ECFDF5',
-                  color: '#047857',
-                  border: '1px solid #A7F3D0',
-                  fontSize: '9px',
-                  fontWeight: 800,
-                  padding: '2.5px 7.5px',
-                  borderRadius: '12px',
-                  letterSpacing: '0.03em'
-                }}
-              >
-                <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
-                Shift Active
-              </span>
+              {session ? (
+                <span
+                  className="badge d-inline-flex align-items-center gap-1.5"
+                  style={{ backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0', fontSize: '9px', fontWeight: 800, padding: '2.5px 7.5px', borderRadius: '12px', letterSpacing: '0.03em' }}
+                >
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block' }}></span>
+                  Shift Active — {session.session_ref}
+                </span>
+              ) : (
+                <span
+                  className="badge d-inline-flex align-items-center gap-1.5"
+                  style={{ backgroundColor: '#F1F5F9', color: '#64748B', border: '1px solid #E2E8F0', fontSize: '9px', fontWeight: 800, padding: '2.5px 7.5px', borderRadius: '12px', letterSpacing: '0.03em' }}
+                >
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#94A3B8', display: 'inline-block' }}></span>
+                  No Active Shift
+                </span>
+              )}
             </div>
           </div>
 
@@ -526,7 +513,7 @@ export default function SalesHub({
 
       {/* ── MAIN DASHBOARD CONTAINER ── */}
       <main className="container-fluid py-4">
-        
+
         {/* Mobile Period Pills Switcher */}
         <div className="d-xl-none d-flex flex-wrap align-items-center justify-content-between p-2.5 mb-3 rounded-3 border bg-white shadow-xs gap-2">
           <span className="text-muted fs-xs fw-bold">Period:</span>
@@ -555,10 +542,10 @@ export default function SalesHub({
         <div className="d-flex flex-wrap align-items-center gap-2 p-1.5 mb-4 bg-white rounded-4 border shadow-xs">
           {[
             { id: 'overview',  label: 'Executive & Shift Overview', icon: 'ri-dashboard-3-line', badge: 'Live' },
-            { id: 'products',  label: 'Produce & Margins Studio',   icon: 'ri-trophy-line',       badge: `${analytics.topMovingProducts.length} Items` },
-            { id: 'payments',  label: 'Cash Drawer & Tender Audit', icon: 'ri-bank-card-line',    badge: fmt(analytics.expectedDrawerCash) },
-            { id: 'channels',  label: 'Multi-Channel & Online Hub', icon: 'ri-store-2-line',      badge: `${analytics.pendingOnlineCount} New` },
-            { id: 'customers', label: 'Customer Loyalty & VIPs',    icon: 'ri-user-star-line',    badge: `${analytics.topCustomers.length} VIPs` },
+            { id: 'products',  label: 'Produce & Margins Studio',   icon: 'ri-trophy-line',       badge: `${topProducts.length} Items` },
+            { id: 'payments',  label: 'Cash Drawer & Tender Audit', icon: 'ri-bank-card-line',    badge: kpis.expected_drawer_cash != null ? fmt(kpis.expected_drawer_cash) : '—' },
+            { id: 'channels',  label: 'Multi-Channel & Online Hub', icon: 'ri-store-2-line',      badge: `${pendingOnlineCount} New` },
+            { id: 'customers', label: 'Customer Loyalty & VIPs',    icon: 'ri-user-star-line',    badge: `${topCustomers.length} VIPs` },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -583,6 +570,24 @@ export default function SalesHub({
           ))}
         </div>
 
+        {analyticsError && (
+          <div className="alert alert-warning d-flex align-items-center gap-3 rounded-3 mb-4">
+            <i className="ri-wifi-off-line fs-4" />
+            <div className="flex-grow-1">
+              <strong>Could not load POS analytics.</strong>
+              <span className="text-muted ms-2 fs-sm">Check your connection or server status.</span>
+            </div>
+            <button className="btn btn-sm btn-outline-warning" onClick={loadAnalytics}>Retry</button>
+          </div>
+        )}
+
+        {analyticsLoading && !analytics ? (
+          <div className="py-5 text-center text-muted">
+            <div className="spinner-border spinner-border-sm text-success me-2" role="status" />
+            Loading live POS data…
+          </div>
+        ) : (
+        <>
         {/* ═════════════════════════════════════════════════════════════════ */}
         {/* TAB 1: EXECUTIVE & SHIFT OVERVIEW                                */}
         {/* ═════════════════════════════════════════════════════════════════ */}
@@ -590,7 +595,7 @@ export default function SalesHub({
           <div>
             {/* ── PRIMARY KPI CARDS ROW (6 METRICS SUITE) ── */}
             <div className="row g-3 mb-4">
-              
+
               {/* 1. Gross Revenue */}
               <div className="col-12 col-sm-6 col-xl-2">
                 <div className="sh-card h-100">
@@ -600,10 +605,14 @@ export default function SalesHub({
                       <i className="ri-money-dollar-circle-line"></i>
                     </div>
                   </div>
-                  <div className="sh-metric-val text-success" style={{ fontSize: '1.45rem' }}>{fmt(analytics.totalSales)}</div>
+                  <div className="sh-metric-val text-success" style={{ fontSize: '1.45rem' }}>{fmt(kpis.gross_sales)}</div>
                   <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                    <span className="text-success fw-bold">{timeframeMultiplier.baseGrowth}</span>
-                    <span>{analytics.txnCount} tickets</span>
+                    {kpis.growth_pct != null ? (
+                      <span className={`fw-bold ${kpis.growth_pct >= 0 ? 'text-success' : 'text-danger'}`}>
+                        {kpis.growth_pct >= 0 ? '↑' : '↓'} {Math.abs(kpis.growth_pct).toFixed(1)}% vs prior period
+                      </span>
+                    ) : <span>{TIMEFRAME_LABELS[timeframe]}</span>}
+                    <span>{kpis.txn_count ?? 0} tickets</span>
                   </div>
                 </div>
               </div>
@@ -617,10 +626,10 @@ export default function SalesHub({
                       <i className="ri-hand-coin-line"></i>
                     </div>
                   </div>
-                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(analytics.expectedDrawerCash)}</div>
+                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{kpis.expected_drawer_cash != null ? fmt(kpis.expected_drawer_cash) : '—'}</div>
                   <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                    <span>Float: {fmt(analytics.startingFloat)}</span>
-                    <span className="text-success fw-semibold">+{fmt(analytics.cashSales)}</span>
+                    <span>{kpis.starting_float != null ? `Float: ${fmt(kpis.starting_float)}` : 'No active shift'}</span>
+                    <span className="text-success fw-semibold">+{fmt(cashSales)}</span>
                   </div>
                 </div>
               </div>
@@ -634,10 +643,10 @@ export default function SalesHub({
                       <i className="ri-bank-card-line"></i>
                     </div>
                   </div>
-                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(analytics.cardSales + analytics.transferSales)}</div>
+                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(tenderTotal - cashSales)}</div>
                   <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                    <span>POS: {fmt(analytics.cardSales)}</span>
-                    <span className="badge bg-primary-subtle text-primary">0% Fail</span>
+                    <span>{kpis.txn_count ?? 0} total tickets</span>
+                    <span className="badge bg-primary-subtle text-primary">{tenderBreakdown.length} method{tenderBreakdown.length === 1 ? '' : 's'}</span>
                   </div>
                 </div>
               </div>
@@ -651,10 +660,10 @@ export default function SalesHub({
                       <i className="ri-shopping-bag-2-line"></i>
                     </div>
                   </div>
-                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(analytics.aov)}</div>
+                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(kpis.aov)}</div>
                   <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                    <span>UPT: {analytics.itemsPerTxn} items</span>
-                    <span className="fw-bold text-primary">{analytics.targetPct}% target</span>
+                    <span>UPT: {(kpis.items_per_txn ?? 0).toFixed(1)} items</span>
+                    <span className="fw-bold text-primary">{kpis.sku_count ?? 0} SKUs sold</span>
                   </div>
                 </div>
               </div>
@@ -668,10 +677,10 @@ export default function SalesHub({
                       <i className="ri-pie-chart-line"></i>
                     </div>
                   </div>
-                  <div className="sh-metric-val text-success" style={{ fontSize: '1.45rem' }}>{analytics.grossMarginPct}%</div>
+                  <div className="sh-metric-val text-success" style={{ fontSize: '1.45rem' }}>{(kpis.gross_margin_pct ?? 0).toFixed(1)}%</div>
                   <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                    <span>Est. Net Profit:</span>
-                    <strong className="text-dark">{fmt(analytics.estimatedProfit)}</strong>
+                    <span>Est. Profit:</span>
+                    <strong className="text-dark">{fmt(kpis.estimated_profit)}</strong>
                   </div>
                 </div>
               </div>
@@ -685,7 +694,7 @@ export default function SalesHub({
                       <i className="ri-notification-3-line"></i>
                     </div>
                   </div>
-                  <div className="sh-metric-val text-warning" style={{ fontSize: '1.45rem' }}>{analytics.pendingOnlineCount} New</div>
+                  <div className="sh-metric-val text-warning" style={{ fontSize: '1.45rem' }}>{pendingOnlineCount} New</div>
                   <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
                     <span>{onlineOrders.length} Total orders</span>
                     <button
@@ -701,7 +710,7 @@ export default function SalesHub({
 
             </div>
 
-            {/* ── AI SALES & DEMAND INTELLIGENCE BANNER ── */}
+            {/* ── LIVE STORE INSIGHTS BANNER (real, derived from this period's data) ── */}
             <div className="sh-ai-box mb-4">
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
                 <div className="d-flex align-items-center gap-2">
@@ -709,83 +718,68 @@ export default function SalesHub({
                     ✨
                   </span>
                   <div>
-                    <h6 className="fw-bold mb-0 font-display text-dark">Bems AI Smart Store Insights &amp; Real-time Demand Engine</h6>
-                    <span className="text-muted fs-xxs">Automated telemetry powered by Gemini Farm-Core</span>
+                    <h6 className="fw-bold mb-0 font-display text-dark">Live Store Insights</h6>
+                    <span className="text-muted fs-xxs">Derived from real sales in this period — {TIMEFRAME_LABELS[timeframe]}</span>
                   </div>
                 </div>
                 <span className="badge bg-light text-muted border fw-bold fs-xxs px-2.5 py-1 rounded-pill">
-                  <i className="ri-pulse-line text-success me-1"></i>Real-time Feed
+                  <i className="ri-pulse-line text-success me-1"></i>Live
                 </span>
               </div>
 
-              <div className="row g-3">
-                <div className="col-12 col-md-4">
-                  <div className="sh-ai-insight-item">
-                    <div className="d-flex align-items-center justify-content-between mb-1.5">
-                      <span className="badge bg-warning-subtle text-warning border border-warning-subtle fw-bold fs-xxs">Demand Surge</span>
-                      <span className="text-muted fs-xxs">High Velocity</span>
+              {insights.length === 0 ? (
+                <p className="text-muted fs-sm text-center py-3 mb-0">Not enough sales in this period yet to surface insights.</p>
+              ) : (
+                <div className="row g-3">
+                  {insights.map((ins) => (
+                    <div className="col-12 col-md-4" key={ins.type}>
+                      <div className="sh-ai-insight-item">
+                        <h6 className="fw-bold fs-xs text-dark mb-1">{ins.title}</h6>
+                        <p className="fs-xxs text-muted mb-0 leading-relaxed">{ins.detail}</p>
+                      </div>
                     </div>
-                    <h6 className="fw-bold fs-xs text-dark mb-1">Kings Pure Vegetable Oil (5L)</h6>
-                    <p className="fs-xxs text-muted mb-0 leading-relaxed">
-                      Demand is <strong className="text-dark">35% higher</strong> than average {timeframeMultiplier.label}. Estimated stockout in 3.5 hrs without restock.
-                    </p>
-                  </div>
+                  ))}
                 </div>
-
-                <div className="col-12 col-md-4">
-                  <div className="sh-ai-insight-item">
-                    <div className="d-flex align-items-center justify-content-between mb-1.5">
-                      <span className="badge bg-success-subtle text-success border border-success-subtle fw-bold fs-xxs">Peak Footfall</span>
-                      <span className="text-muted fs-xxs">11:30 AM – 3:30 PM</span>
-                    </div>
-                    <h6 className="fw-bold fs-xs text-dark mb-1">Register Throughput Optimal</h6>
-                    <p className="fs-xxs text-muted mb-0 leading-relaxed">
-                      Highest transaction volume during lunch rush. Cashier checkout speed averaged <strong className="text-dark">42s / customer</strong>.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="col-12 col-md-4">
-                  <div className="sh-ai-insight-item">
-                    <div className="d-flex align-items-center justify-content-between mb-1.5">
-                      <span className="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold fs-xxs">Basket Attach</span>
-                      <span className="text-muted fs-xxs">+68% Uplift</span>
-                    </div>
-                    <h6 className="fw-bold fs-xs text-dark mb-1">Produce Bundle Cross-Sell</h6>
-                    <p className="fs-xxs text-muted mb-0 leading-relaxed">
-                      Recommending Seasoning Cubes with Grains lifted average ticket size by <strong className="text-dark">+₦1,450</strong> across active tickets.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* ── DEEP VISUAL ANALYTICS STUDIO ROW ── */}
             <div className="row g-4 mb-4">
-              
+
               {/* Hourly Flow Bars */}
               <div className="col-12 col-lg-8">
                 <div className="sh-card h-100">
                   <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
                     <div>
                       <h6 className="fw-bold mb-0 font-display">Hourly Sales Velocity &amp; Peak Rush Flow</h6>
-                      <p className="text-muted fs-xs mb-0">Showing dynamic transaction flow across {timeframeMultiplier.label}</p>
+                      <p className="text-muted fs-xs mb-0">Showing transaction flow across {TIMEFRAME_LABELS[timeframe]}</p>
                     </div>
-                    <span className="badge bg-success-subtle text-success fs-xs fw-bold">Peak Rush: 4:00 PM</span>
+                    {hourly.length > 0 && (
+                      <span className="badge bg-success-subtle text-success fs-xs fw-bold">
+                        Peak: {[...hourly].sort((a, b) => b.amount - a.amount)[0]?.label}
+                      </span>
+                    )}
                   </div>
 
-                  <div className="d-flex align-items-end justify-content-between gap-2 pt-3 pb-2" style={{ minHeight: 180 }}>
-                    {analytics.hourlyData.map((h) => (
-                      <div key={h.hour} className="sh-bar-col">
-                        <span className="text-dark fs-xxs fw-bold">{fmt(h.amount)}</span>
-                        <div className="sh-bar-track">
-                          <div className="sh-bar-fill" style={{ height: `${h.pct}%` }}></div>
-                        </div>
-                        <span className="text-muted fs-xxs mt-1 fw-semibold">{h.hour}</span>
-                        <span className="badge bg-light text-muted fs-xxs py-0 px-1">{h.traffic}</span>
-                      </div>
-                    ))}
-                  </div>
+                  {hourly.length === 0 ? (
+                    <p className="text-muted text-center py-4 fs-sm mb-0">No sales recorded in this period.</p>
+                  ) : (
+                    <div className="d-flex align-items-end justify-content-between gap-2 pt-3 pb-2" style={{ minHeight: 180 }}>
+                      {hourly.map((h) => {
+                        const pct = Math.round((h.amount / maxHourlyAmount) * 100)
+                        return (
+                          <div key={h.hour} className="sh-bar-col">
+                            <span className="text-dark fs-xxs fw-bold">{fmt(h.amount)}</span>
+                            <div className="sh-bar-track">
+                              <div className="sh-bar-fill" style={{ height: `${pct}%` }}></div>
+                            </div>
+                            <span className="text-muted fs-xxs mt-1 fw-semibold">{h.label}</span>
+                            <span className="badge bg-light text-muted fs-xxs py-0 px-1">{trafficLabel(pct)}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -798,40 +792,29 @@ export default function SalesHub({
                         <h6 className="fw-bold mb-0 font-display">Tender &amp; Gateway Split</h6>
                         <p className="text-muted fs-xs mb-0">Settlement distribution</p>
                       </div>
-                      <span className="badge bg-success-subtle text-success fs-xxs fw-bold">100% Balanced</span>
                     </div>
 
-                    <div className="vstack gap-3 mt-3">
-                      <div>
-                        <div className="d-flex justify-content-between fs-xs fw-semibold mb-1">
-                          <span className="d-flex align-items-center gap-1.5"><i className="ri-money-dollar-circle-fill text-success"></i> Cash in Drawer</span>
-                          <strong className="text-dark">{fmt(analytics.cashSales)} (73%)</strong>
-                        </div>
-                        <div className="progress" style={{ height: 7, borderRadius: 4 }}>
-                          <div className="progress-bar bg-success" style={{ width: '73%' }}></div>
-                        </div>
+                    {tenderBreakdown.length === 0 ? (
+                      <p className="text-muted fs-sm text-center py-3 mb-0">No payments recorded in this period.</p>
+                    ) : (
+                      <div className="vstack gap-3 mt-3">
+                        {tenderBreakdown.map((t) => {
+                          const style = tenderStyle(t.method)
+                          const share = tenderTotal > 0 ? Math.round((t.amount / tenderTotal) * 100) : 0
+                          return (
+                            <div key={t.method}>
+                              <div className="d-flex justify-content-between fs-xs fw-semibold mb-1">
+                                <span className="d-flex align-items-center gap-1.5"><i className={style.icon} style={{ color: style.color }}></i> {style.label}</span>
+                                <strong className="text-dark">{fmt(t.amount)} ({share}%)</strong>
+                              </div>
+                              <div className="progress" style={{ height: 7, borderRadius: 4 }}>
+                                <div className="progress-bar" style={{ width: `${share}%`, backgroundColor: style.color }}></div>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
-
-                      <div>
-                        <div className="d-flex justify-content-between fs-xs fw-semibold mb-1">
-                          <span className="d-flex align-items-center gap-1.5"><i className="ri-bank-card-fill text-primary"></i> Debit Card / POS</span>
-                          <strong className="text-dark">{fmt(analytics.cardSales)} (27%)</strong>
-                        </div>
-                        <div className="progress" style={{ height: 7, borderRadius: 4 }}>
-                          <div className="progress-bar bg-primary" style={{ width: '27%' }}></div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="d-flex justify-content-between fs-xs fw-semibold mb-1">
-                          <span className="d-flex align-items-center gap-1.5"><i className="ri-qr-code-line text-warning"></i> Bank Transfer / QR</span>
-                          <strong className="text-dark">{fmt(analytics.transferSales)} (0%)</strong>
-                        </div>
-                        <div className="progress" style={{ height: 7, borderRadius: 4 }}>
-                          <div className="progress-bar bg-warning" style={{ width: '0%' }}></div>
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   <div className="mt-4 pt-3 border-top d-flex align-items-center justify-content-between">
@@ -935,37 +918,45 @@ export default function SalesHub({
         {mainAnalyticsTab === 'products' && (
           <div>
             {/* Category Cards Overview */}
-            <div className="row g-3 mb-4">
-              {analytics.categoryData.map((cat) => (
-                <div key={cat.name} className="col-12 col-sm-6 col-xl">
-                  <div className="sh-card h-100">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <span className="fs-22">{cat.icon}</span>
-                      <span className="badge rounded-pill fw-bold fs-xxs px-2 py-0.5" style={{ backgroundColor: `${cat.color}15`, color: cat.color }}>
-                        {cat.share}% of Sales
-                      </span>
+            {categoryBreakdown.length === 0 ? (
+              <div className="sh-card text-center py-4 mb-4">
+                <p className="text-muted fs-sm mb-0">No product sales in this period yet.</p>
+              </div>
+            ) : (
+              <div className="row g-3 mb-4">
+                {categoryBreakdown.map((cat) => {
+                  const style = categoryStyle(cat.category)
+                  return (
+                    <div key={cat.category} className="col-12 col-sm-6 col-xl">
+                      <div className="sh-card h-100">
+                        <div className="d-flex align-items-center justify-content-between mb-2">
+                          <span className="fs-22">{style.icon}</span>
+                          <span className="badge rounded-pill fw-bold fs-xxs px-2 py-0.5" style={{ backgroundColor: `${style.color}15`, color: style.color }}>
+                            {cat.share.toFixed(0)}% of Sales
+                          </span>
+                        </div>
+                        <div className="fw-bold fs-xs text-muted text-truncate">{cat.category}</div>
+                        <div className="sh-metric-val" style={{ fontSize: '1.35rem' }}>{fmt(cat.revenue)}</div>
+                        <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
+                          <span>{cat.qty} Units Sold</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="fw-bold fs-xs text-muted text-truncate">{cat.name}</div>
-                    <div className="sh-metric-val" style={{ fontSize: '1.35rem' }}>{fmt(cat.revenue)}</div>
-                    <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                      <span>{cat.itemsSold} Units Sold</span>
-                      <span className="text-success fw-semibold">High Demand</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  )
+                })}
+              </div>
+            )}
 
             {/* Deep Produce Margins Table */}
             <div className="sh-card mb-4">
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
                 <div>
                   <h6 className="fw-bold mb-0 font-display">Produce Margin &amp; Inventory Velocity Ledger</h6>
-                  <p className="text-muted fs-xs mb-0">High-margin items, real-time stock levels, and revenue performance</p>
+                  <p className="text-muted fs-xs mb-0">Cost vs. selling price, real-time stock, and revenue performance</p>
                 </div>
                 <div className="d-flex align-items-center gap-2">
                   <span className="badge bg-success-subtle text-success fs-xs fw-bold px-3 py-1.5 rounded-pill">
-                    Avg Gross Margin: {analytics.grossMarginPct}%
+                    Avg Gross Margin: {(kpis.gross_margin_pct ?? 0).toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -978,86 +969,49 @@ export default function SalesHub({
                       <th>Units Sold</th>
                       <th>Gross Margin %</th>
                       <th>Inventory Remaining</th>
-                      <th>Stock Velocity Risk</th>
+                      <th>Stock Status</th>
                       <th className="text-end">Total Revenue Contribution</th>
                     </tr>
                   </thead>
                   <tbody className="fs-sm">
-                    {analytics.topMovingProducts.map((p) => (
-                      <tr key={p.sku}>
-                        <td>
-                          <div className="d-flex align-items-center gap-2.5">
-                            <span className="fs-20">{p.icon}</span>
-                            <div>
-                              <span className="fw-bold text-dark fs-xs d-block">{p.name}</span>
-                              <span className="text-muted fs-xxs font-monospace">SKU: {p.sku}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span className="badge bg-success-subtle text-success font-semibold px-2 py-1">{p.qty} units</span>
-                        </td>
-                        <td>
-                          <strong className="text-dark fs-sm">{p.margin}</strong>
-                        </td>
-                        <td>
-                          <span className={`badge ${p.stock <= 20 ? 'bg-danger-subtle text-danger' : 'bg-light text-dark border'}`}>
-                            {p.stock} units left
-                          </span>
-                        </td>
-                        <td>
-                          {p.stock <= 20 ? (
-                            <span className="badge bg-danger text-white fs-xxs px-2 py-0.5 rounded-pill">
-                              <i className="ri-alarm-warning-line me-1"></i>Restock Required
+                    {topProducts.length === 0 ? (
+                      <tr><td colSpan={6} className="text-center py-4 text-muted">No product sales in this period.</td></tr>
+                    ) : topProducts.map((p) => {
+                      const low = p.stock <= p.low_stock_threshold
+                      return (
+                        <tr key={p.sku}>
+                          <td>
+                            <span className="fw-bold text-dark fs-xs d-block">{p.name}</span>
+                            <span className="text-muted fs-xxs font-monospace">SKU: {p.sku}</span>
+                          </td>
+                          <td>
+                            <span className="badge bg-success-subtle text-success font-semibold px-2 py-1">{p.units_sold} units</span>
+                          </td>
+                          <td>
+                            <strong className="text-dark fs-sm">{p.margin_pct.toFixed(1)}%</strong>
+                          </td>
+                          <td>
+                            <span className={`badge ${low ? 'bg-danger-subtle text-danger' : 'bg-light text-dark border'}`}>
+                              {p.stock} units left
                             </span>
-                          ) : (
-                            <span className="badge bg-success-subtle text-success fs-xxs px-2 py-0.5 rounded-pill">
-                              <i className="ri-check-line me-1"></i>Healthy Velocity
-                            </span>
-                          )}
-                        </td>
-                        <td className="text-end fw-bold text-dark fs-sm">{fmt(p.revenue)}</td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td>
+                            {low ? (
+                              <span className="badge bg-danger text-white fs-xxs px-2 py-0.5 rounded-pill">
+                                <i className="ri-alarm-warning-line me-1"></i>Restock Required
+                              </span>
+                            ) : (
+                              <span className="badge bg-success-subtle text-success fs-xxs px-2 py-0.5 rounded-pill">
+                                <i className="ri-check-line me-1"></i>Healthy Stock
+                              </span>
+                            )}
+                          </td>
+                          <td className="text-end fw-bold text-dark fs-sm">{fmt(p.revenue)}</td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
-              </div>
-            </div>
-
-            {/* Grocery Staple & Produce Combo Attach Intelligence */}
-            <div className="sh-card">
-              <div className="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom">
-                <i className="ri-magic-line text-primary fs-18"></i>
-                <h6 className="fw-bold mb-0 font-display">Basket Cross-Sell &amp; Staple Combo Attach Analysis</h6>
-              </div>
-              <div className="row g-3">
-                <div className="col-12 col-md-4">
-                  <div className="p-3 rounded-3 border bg-light">
-                    <div className="d-flex justify-content-between mb-1">
-                      <strong className="fs-xs text-dark">🌾 Mama Gold Rice + 🫒 Vegetable Oil</strong>
-                      <span className="badge bg-success text-white fs-xxs">74% Attach</span>
-                    </div>
-                    <p className="text-muted fs-xxs mb-0">Customers buying 25kg/50kg rice purchase 5L cooking oil in 3 out of 4 register transactions.</p>
-                  </div>
-                </div>
-                <div className="col-12 col-md-4">
-                  <div className="p-3 rounded-3 border bg-light">
-                    <div className="d-flex justify-content-between mb-1">
-                      <strong className="fs-xs text-dark">🍗 Broiler Chicken + 🧂 Knorr Seasoning</strong>
-                      <span className="badge bg-primary text-white fs-xxs">68% Attach</span>
-                    </div>
-                    <p className="text-muted fs-xxs mb-0">Poultry purchases attach seasoning cubes and spices when prompted at checkout cashier terminal.</p>
-                  </div>
-                </div>
-                <div className="col-12 col-md-4">
-                  <div className="p-3 rounded-3 border bg-light">
-                    <div className="d-flex justify-content-between mb-1">
-                      <strong className="fs-xs text-dark">🥚 Jumbo Eggs + 🥛 Peak Milk Powder</strong>
-                      <span className="badge bg-warning text-dark fs-xxs">59% Attach</span>
-                    </div>
-                    <p className="text-muted fs-xxs mb-0">Breakfast staple synergy increases morning checkout ticket value by +₦3,400 on average.</p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -1086,28 +1040,35 @@ export default function SalesHub({
                     </button>
                   </div>
 
-                  <div className="vstack gap-2.5">
-                    <div className="d-flex justify-content-between align-items-center p-2.5 rounded-3 bg-light fs-xs">
-                      <span className="text-muted">Opening Shift Cash Float:</span>
-                      <strong className="text-dark">{fmt(analytics.startingFloat)}</strong>
+                  {timeframe !== 'shift' || !session ? (
+                    <p className="text-muted fs-sm text-center py-3 mb-0">
+                      {timeframe !== 'shift' ? 'Switch to "Active Shift" to reconcile the current drawer.' : 'No open shift to reconcile.'}
+                    </p>
+                  ) : (
+                    <div className="vstack gap-2.5">
+                      <div className="d-flex justify-content-between align-items-center p-2.5 rounded-3 bg-light fs-xs">
+                        <span className="text-muted">Opening Shift Cash Float:</span>
+                        <strong className="text-dark">{fmt(kpis.starting_float)}</strong>
+                      </div>
+                      <div className="d-flex justify-content-between align-items-center p-2.5 rounded-3 bg-light fs-xs">
+                        <span className="text-muted">Cash Collected From Sales:</span>
+                        <strong className="text-success">+{fmt(cashSales)}</strong>
+                      </div>
+                      {tenderBreakdown.filter((t) => t.method !== 'cash').map((t) => {
+                        const style = tenderStyle(t.method)
+                        return (
+                          <div key={t.method} className="d-flex justify-content-between align-items-center p-2.5 rounded-3 bg-light fs-xs">
+                            <span className="text-muted">{style.label}:</span>
+                            <strong style={{ color: style.color }}>{fmt(t.amount)}</strong>
+                          </div>
+                        )
+                      })}
+                      <div className="d-flex justify-content-between align-items-center p-3 rounded-3 bg-success-subtle border border-success border-opacity-25 mt-1">
+                        <span className="fw-bold text-dark fs-sm">Expected Physical Cash in Drawer:</span>
+                        <strong className="fs-5 text-success">{fmt(kpis.expected_drawer_cash)}</strong>
+                      </div>
                     </div>
-                    <div className="d-flex justify-content-between align-items-center p-2.5 rounded-3 bg-light fs-xs">
-                      <span className="text-muted">Cash Collected From Sales:</span>
-                      <strong className="text-success">+{fmt(analytics.cashSales)}</strong>
-                    </div>
-                    <div className="d-flex justify-content-between align-items-center p-2.5 rounded-3 bg-light fs-xs">
-                      <span className="text-muted">Card Payments (POS Terminal):</span>
-                      <strong className="text-primary">{fmt(analytics.cardSales)}</strong>
-                    </div>
-                    <div className="d-flex justify-content-between align-items-center p-2.5 rounded-3 bg-light fs-xs">
-                      <span className="text-muted">Direct Bank Transfers / QR:</span>
-                      <strong className="text-dark">{fmt(analytics.transferSales)}</strong>
-                    </div>
-                    <div className="d-flex justify-content-between align-items-center p-3 rounded-3 bg-success-subtle border border-success border-opacity-25 mt-1">
-                      <span className="fw-bold text-dark fs-sm">Expected Physical Cash in Drawer:</span>
-                      <strong className="fs-5 text-success">{fmt(analytics.expectedDrawerCash)}</strong>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -1117,25 +1078,24 @@ export default function SalesHub({
                   <div>
                     <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
                       <div>
-                        <h6 className="fw-bold mb-0 font-display">Terminal Operational &amp; Audit Health</h6>
-                        <p className="text-muted fs-xs mb-0">POS Terminal 01 Integrity Report</p>
+                        <h6 className="fw-bold mb-0 font-display">Terminal Audit Summary</h6>
+                        <p className="text-muted fs-xs mb-0">{TIMEFRAME_LABELS[timeframe]}</p>
                       </div>
-                      <span className="badge bg-success text-white fs-xxs fw-bold">Audit Passed</span>
                     </div>
 
                     <div className="row g-3 mb-3">
                       <div className="col-6">
                         <div className="p-3 rounded-3 bg-light text-center">
-                          <span className="text-muted fs-xxs d-block text-uppercase">Average Checkout</span>
-                          <strong className="fs-5 text-dark font-display">42 sec</strong>
-                          <span className="text-muted fs-xxs d-block">Per customer ticket</span>
+                          <span className="text-muted fs-xxs d-block text-uppercase">Discounts Authorized</span>
+                          <strong className="fs-5 text-dark font-display">{fmt(kpis.discount_total)}</strong>
+                          <span className="text-muted fs-xxs d-block">This period</span>
                         </div>
                       </div>
                       <div className="col-6">
                         <div className="p-3 rounded-3 bg-light text-center">
-                          <span className="text-muted fs-xxs d-block text-uppercase">Refund / Void Rate</span>
-                          <strong className="fs-5 text-success font-display">0.0%</strong>
-                          <span className="text-muted fs-xxs d-block">Zero transaction errors</span>
+                          <span className="text-muted fs-xxs d-block text-uppercase">Return Rate</span>
+                          <strong className={`fs-5 font-display ${(kpis.return_rate_pct ?? 0) > 5 ? 'text-danger' : 'text-success'}`}>{(kpis.return_rate_pct ?? 0).toFixed(1)}%</strong>
+                          <span className="text-muted fs-xxs d-block">{kpis.returns_count ?? 0} returns logged</span>
                         </div>
                       </div>
                     </div>
@@ -1143,15 +1103,11 @@ export default function SalesHub({
                     <div className="p-3 rounded-3 border bg-light fs-xs">
                       <div className="d-flex justify-content-between mb-1">
                         <span className="text-muted">Shift Cashier:</span>
-                        <strong className="text-dark">{user?.first_name || 'Staff Member'} {user?.last_name || ''}</strong>
-                      </div>
-                      <div className="d-flex justify-content-between mb-1">
-                        <span className="text-muted">Total Tickets Ringed:</span>
-                        <strong className="text-dark">{analytics.txnCount} tickets</strong>
+                        <strong className="text-dark">{user?.first_name || user?.name || 'Staff Member'} {user?.last_name || ''}</strong>
                       </div>
                       <div className="d-flex justify-content-between">
-                        <span className="text-muted">Discounts Authorized:</span>
-                        <strong className="text-dark">₦0.00</strong>
+                        <span className="text-muted">Total Tickets Ringed:</span>
+                        <strong className="text-dark">{kpis.txn_count ?? 0} tickets</strong>
                       </div>
                     </div>
                   </div>
@@ -1177,26 +1133,38 @@ export default function SalesHub({
         {mainAnalyticsTab === 'channels' && (
           <div>
             {/* Channel Metrics Row */}
-            <div className="row g-3 mb-4">
-              {analytics.channelData.map((ch) => (
-                <div key={ch.name} className="col-12 col-md-4">
-                  <div className="sh-card h-100">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
-                      <i className={`${ch.icon} fs-24`} style={{ color: ch.color }}></i>
-                      <span className="badge rounded-pill fw-bold fs-xxs px-2.5 py-1" style={{ backgroundColor: `${ch.color}15`, color: ch.color }}>
-                        {ch.share}% Volume Share
-                      </span>
+            {timeframe === 'shift' ? (
+              <div className="sh-card text-center py-4 mb-4">
+                <p className="text-muted fs-sm mb-0">Switch to a calendar period (Today, Week, Month…) to see the cross-channel revenue mix.</p>
+              </div>
+            ) : channelBreakdown.length === 0 ? (
+              <div className="sh-card text-center py-4 mb-4">
+                <p className="text-muted fs-sm mb-0">No orders in this period yet.</p>
+              </div>
+            ) : (
+              <div className="row g-3 mb-4">
+                {channelBreakdown.map((ch) => {
+                  const style = channelStyle(ch.source)
+                  return (
+                    <div key={ch.source} className="col-12 col-md-4">
+                      <div className="sh-card h-100">
+                        <div className="d-flex align-items-center justify-content-between mb-2">
+                          <i className={`${style.icon} fs-24`} style={{ color: style.color }}></i>
+                          <span className="badge rounded-pill fw-bold fs-xxs px-2.5 py-1" style={{ backgroundColor: `${style.color}15`, color: style.color }}>
+                            {ch.share.toFixed(0)}% Volume Share
+                          </span>
+                        </div>
+                        <div className="fw-bold fs-sm text-dark">{ch.source}</div>
+                        <div className="sh-metric-val" style={{ fontSize: '1.5rem' }}>{fmt(ch.revenue)}</div>
+                        <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
+                          <span>{ch.count} Completed Orders</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="fw-bold fs-sm text-dark">{ch.name}</div>
-                    <div className="sh-metric-val" style={{ fontSize: '1.5rem' }}>{fmt(ch.revenue)}</div>
-                    <div className="d-flex align-items-center justify-content-between text-muted fs-xxs mt-1">
-                      <span>{ch.count} Completed Orders</span>
-                      <span className="text-success fw-semibold">Instant Fulfillment</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  )
+                })}
+              </div>
+            )}
 
             {/* Live Incoming Online & WhatsApp Orders */}
             <div className="sh-card mb-4">
@@ -1225,7 +1193,9 @@ export default function SalesHub({
                     </tr>
                   </thead>
                   <tbody className="fs-sm">
-                    {onlineOrders.map((ord) => (
+                    {onlineOrders.length === 0 ? (
+                      <tr><td colSpan={8} className="text-center py-4 text-muted">No pending online orders.</td></tr>
+                    ) : onlineOrders.map((ord) => (
                       <tr key={ord.id}>
                         <td>
                           <span className="fw-bold text-dark font-monospace fs-xs">{ord.id}</span>
@@ -1269,49 +1239,50 @@ export default function SalesHub({
         {/* ═════════════════════════════════════════════════════════════════ */}
         {mainAnalyticsTab === 'customers' && (
           <div>
-            {/* VIP Tier Cards */}
-            <div className="row g-3 mb-4">
-              <div className="col-12 col-md-4">
-                <div className="sh-card h-100 border-start border-4 border-purple" style={{ borderLeftColor: '#7C3AED !important' }}>
-                  <div className="d-flex align-items-center justify-content-between mb-2">
-                    <span className="badge bg-purple-subtle text-purple fw-bold fs-xxs">Platinum Tier (VIP)</span>
-                    <i className="ri-vip-crown-fill text-purple fs-18"></i>
+            {/* Loyalty Tier Cards — real revenue contribution per points-based tier */}
+            {tierBreakdown.length === 0 ? (
+              <div className="sh-card text-center py-4 mb-4">
+                <p className="text-muted fs-sm mb-0">No customer purchases in this period yet.</p>
+              </div>
+            ) : (
+              <div className="row g-3 mb-4">
+                {tierBreakdown.map((t) => {
+                  const style = TIER_STYLE[t.tier] || TIER_STYLE.Bronze
+                  return (
+                    <div key={t.tier} className="col-12 col-md-3">
+                      <div className="sh-card h-100" style={{ borderLeft: `4px solid ${style.border}` }}>
+                        <div className="d-flex align-items-center justify-content-between mb-2">
+                          <span className={`badge fw-bold fs-xxs ${style.badgeClass}`}>{t.tier} Tier</span>
+                          <i className={`${style.icon} fs-18`} style={{ color: style.border }}></i>
+                        </div>
+                        <div className="sh-metric-val" style={{ fontSize: '1.35rem' }}>{fmt(t.revenue)}</div>
+                        <p className="text-muted fs-xs mb-0">{t.customers} customer{t.customers === 1 ? '' : 's'}, {t.orders} order{t.orders === 1 ? '' : 's'}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+                <div className="col-12 col-md-3">
+                  <div className="sh-card h-100 border-start border-4 border-success">
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <span className="badge bg-success-subtle text-success fw-bold fs-xxs">Repeat Customer Rate</span>
+                      <i className="ri-user-heart-line text-success fs-18"></i>
+                    </div>
+                    <div className="sh-metric-val text-success" style={{ fontSize: '1.45rem' }}>{(kpis.repeat_customer_rate_pct ?? 0).toFixed(1)}%</div>
+                    <p className="text-muted fs-xs mb-0">Of customers with an order this period, this % ordered more than once.</p>
                   </div>
-                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(327000 * timeframeMultiplier.mult * 0.4)}</div>
-                  <p className="text-muted fs-xs mb-0">Contributes 48% of gross repeat grocery basket volume.</p>
                 </div>
               </div>
-              <div className="col-12 col-md-4">
-                <div className="sh-card h-100 border-start border-4 border-warning">
-                  <div className="d-flex align-items-center justify-content-between mb-2">
-                    <span className="badge bg-warning-subtle text-warning fw-bold fs-xxs">Gold Tier</span>
-                    <i className="ri-medal-fill text-warning fs-18"></i>
-                  </div>
-                  <div className="sh-metric-val" style={{ fontSize: '1.45rem' }}>{fmt(170700 * timeframeMultiplier.mult * 0.35)}</div>
-                  <p className="text-muted fs-xs mb-0">Bi-weekly shoppers purchasing bulk grains, eggs, and cooking oils.</p>
-                </div>
-              </div>
-              <div className="col-12 col-md-4">
-                <div className="sh-card h-100 border-start border-4 border-success">
-                  <div className="d-flex align-items-center justify-content-between mb-2">
-                    <span className="badge bg-success-subtle text-success fw-bold fs-xxs">Customer Retention</span>
-                    <i className="ri-user-heart-line text-success fs-18"></i>
-                  </div>
-                  <div className="sh-metric-val text-success" style={{ fontSize: '1.45rem' }}>78.4%</div>
-                  <p className="text-muted fs-xs mb-0">Repeat visit cycle averages every 4.2 days per active family account.</p>
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Customer Spenders Table */}
             <div className="sh-card mb-4">
               <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-2 border-bottom">
                 <div>
-                  <h6 className="fw-bold mb-0 font-display">Top VIP Customers, Wallet Balances &amp; Loyalty Points</h6>
-                  <p className="text-muted fs-xs mb-0">Highest spending farm patrons and points redemption ledger</p>
+                  <h6 className="fw-bold mb-0 font-display">Top VIP Customers, Points &amp; Spend</h6>
+                  <p className="text-muted fs-xs mb-0">Highest spending customers this period</p>
                 </div>
                 <span className="badge bg-primary-subtle text-primary fs-xs fw-bold px-3 py-1.5 rounded-pill">
-                  {analytics.topCustomers.length} Top Registered Patrons
+                  {topCustomers.length} Top Customers
                 </span>
               </div>
 
@@ -1321,34 +1292,30 @@ export default function SalesHub({
                     <tr>
                       <th>Customer Name</th>
                       <th>Contact Phone</th>
-                      <th>Loyalty Tier</th>
                       <th>Total Orders</th>
-                      <th>Accumulated Points</th>
-                      <th className="text-end">Total Lifetime Spend</th>
+                      <th>Loyalty Points</th>
+                      <th className="text-end">Total Spend (This Period)</th>
                     </tr>
                   </thead>
                   <tbody className="fs-sm">
-                    {analytics.topCustomers.map((c) => (
-                      <tr key={c.phone}>
+                    {topCustomers.length === 0 ? (
+                      <tr><td colSpan={5} className="text-center py-4 text-muted">No customer purchases in this period.</td></tr>
+                    ) : topCustomers.map((c) => (
+                      <tr key={c.id}>
                         <td>
                           <div className="d-flex align-items-center gap-2">
                             <span className="avatar size-7 rounded-circle bg-light text-dark fw-bold d-flex align-items-center justify-content-center fs-xs">
-                              {c.name.charAt(0)}
+                              {(c.name || '?').charAt(0)}
                             </span>
                             <span className="fw-bold text-dark fs-xs">{c.name}</span>
                           </div>
                         </td>
                         <td className="text-muted fs-xs font-monospace">{c.phone}</td>
-                        <td>
-                          <span className={`badge ${c.tier === 'Platinum' ? 'bg-purple-subtle text-purple border' : 'bg-warning-subtle text-warning border'} px-2 py-0.5`}>
-                            {c.tier}
-                          </span>
-                        </td>
                         <td>{c.orders} orders</td>
                         <td>
-                          <span className="fw-bold text-primary font-monospace">{c.loyaltyPts} pts</span>
+                          <span className="fw-bold text-primary font-monospace">{c.loyalty_points} pts</span>
                         </td>
-                        <td className="text-end fw-bold text-success fs-sm">{fmt(c.totalSpent)}</td>
+                        <td className="text-end fw-bold text-success fs-sm">{fmt(c.total_spent)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1356,6 +1323,8 @@ export default function SalesHub({
               </div>
             </div>
           </div>
+        )}
+        </>
         )}
       </main>
 
@@ -1375,11 +1344,11 @@ export default function SalesHub({
                 <div className="d-flex align-items-center justify-content-between p-3 rounded-3 mb-3" style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0' }}>
                   <div>
                     <span className="text-muted fs-xs d-block">Expected Cash in Drawer</span>
-                    <strong className="fs-5 text-dark">{fmt(analytics.expectedDrawerCash)}</strong>
+                    <strong className="fs-5 text-dark">{kpis.expected_drawer_cash != null ? fmt(kpis.expected_drawer_cash) : '—'}</strong>
                   </div>
                   <div className="text-end">
                     <span className="text-muted fs-xs d-block">Starting Float</span>
-                    <strong className="fs-6 text-muted">{fmt(analytics.startingFloat)}</strong>
+                    <strong className="fs-6 text-muted">{kpis.starting_float != null ? fmt(kpis.starting_float) : '—'}</strong>
                   </div>
                 </div>
 
@@ -1405,24 +1374,24 @@ export default function SalesHub({
                 </div>
 
                 {/* Variance Calculation */}
-                {analytics.countedCash > 0 && (
+                {countedCash > 0 && (
                   <div
                     className={`p-3 rounded-3 mb-3 border ${
-                      analytics.drawerVariance === 0
+                      drawerVariance === 0
                         ? 'bg-success-subtle text-success border-success'
-                        : analytics.drawerVariance > 0
+                        : drawerVariance > 0
                         ? 'bg-info-subtle text-info border-info'
                         : 'bg-danger-subtle text-danger border-danger'
                     }`}
                   >
                     <div className="d-flex justify-content-between align-items-center">
                       <span className="fw-bold fs-sm">Total Counted Cash:</span>
-                      <strong className="fs-5">{fmt(analytics.countedCash)}</strong>
+                      <strong className="fs-5">{fmt(countedCash)}</strong>
                     </div>
                     <div className="d-flex justify-content-between align-items-center mt-1 pt-1 border-top border-secondary border-opacity-25 fs-xs">
                       <span>Variance (Difference):</span>
                       <strong className="fw-bold">
-                        {analytics.drawerVariance >= 0 ? `+${fmt(analytics.drawerVariance)}` : fmt(analytics.drawerVariance)}
+                        {drawerVariance >= 0 ? `+${fmt(drawerVariance)}` : fmt(drawerVariance)}
                       </strong>
                     </div>
                   </div>
@@ -1474,52 +1443,46 @@ export default function SalesHub({
               <div className="modal-body p-4 fs-sm font-monospace">
                 <div className="text-center mb-3">
                   <h6 className="fw-bold font-display mb-0">BEMS FARMS NIGERIA LIMITED</h6>
-                  <p className="text-muted fs-xxs mb-0">Official POS Terminal 01 Shift Audit</p>
+                  <p className="text-muted fs-xxs mb-0">{session?.terminal_id ? `POS Terminal ${session.terminal_id}` : 'POS Register'} Shift Audit</p>
                   <p className="text-muted fs-xxs">{todayStr}</p>
                 </div>
 
                 <div className="border-top border-bottom py-2 my-2">
                   <div className="d-flex justify-content-between py-1">
                     <span>TOTAL GROSS SALES:</span>
-                    <strong>{fmt(analytics.totalSales)}</strong>
+                    <strong>{fmt(kpis.gross_sales)}</strong>
                   </div>
                   <div className="d-flex justify-content-between py-1">
                     <span>TRANSACTIONS COUNT:</span>
-                    <strong>{analytics.txnCount} tickets</strong>
+                    <strong>{kpis.txn_count ?? 0} tickets</strong>
                   </div>
                   <div className="d-flex justify-content-between py-1">
                     <span>AVG TICKET (AOV):</span>
-                    <strong>{fmt(analytics.aov)}</strong>
+                    <strong>{fmt(kpis.aov)}</strong>
                   </div>
                   <div className="d-flex justify-content-between py-1">
                     <span>EST. GROSS MARGIN:</span>
-                    <strong className="text-success">{analytics.grossMarginPct}%</strong>
+                    <strong className="text-success">{(kpis.gross_margin_pct ?? 0).toFixed(1)}%</strong>
                   </div>
                 </div>
 
                 <div className="border-bottom py-2 my-2">
                   <div className="d-flex justify-content-between py-1">
                     <span>STARTING FLOAT:</span>
-                    <span>{fmt(analytics.startingFloat)}</span>
+                    <span>{kpis.starting_float != null ? fmt(kpis.starting_float) : '—'}</span>
                   </div>
-                  <div className="d-flex justify-content-between py-1">
-                    <span>CASH SALES:</span>
-                    <span>{fmt(analytics.cashSales)}</span>
-                  </div>
-                  <div className="d-flex justify-content-between py-1">
-                    <span>CARD (POS TERMINAL):</span>
-                    <span>{fmt(analytics.cardSales)}</span>
-                  </div>
-                  <div className="d-flex justify-content-between py-1">
-                    <span>BANK TRANSFER:</span>
-                    <span>{fmt(analytics.transferSales)}</span>
-                  </div>
+                  {tenderBreakdown.map((t) => (
+                    <div className="d-flex justify-content-between py-1" key={t.method}>
+                      <span>{tenderStyle(t.method).label.toUpperCase()}:</span>
+                      <span>{fmt(t.amount)}</span>
+                    </div>
+                  ))}
                 </div>
 
                 <div className="py-2">
                   <div className="d-flex justify-content-between py-1 fw-bold fs-6">
                     <span>EXPECTED DRAWER CASH:</span>
-                    <span>{fmt(analytics.expectedDrawerCash)}</span>
+                    <span>{kpis.expected_drawer_cash != null ? fmt(kpis.expected_drawer_cash) : '—'}</span>
                   </div>
                 </div>
               </div>
