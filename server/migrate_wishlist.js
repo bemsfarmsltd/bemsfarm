@@ -1,4 +1,6 @@
 require('dotenv').config();
+// Supabase databases are now IPv6. Force Node to prefer IPv6 resolution.
+require('dns').setDefaultResultOrder('ipv6first');
 const { Pool } = require('pg');
 
 const pool = new Pool({
