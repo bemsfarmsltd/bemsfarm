@@ -382,37 +382,40 @@ export default function SalesHub({
             <div className="vr d-none d-sm-block text-muted opacity-25" style={{ height: 32 }}></div>
 
             <div className="d-flex flex-column justify-content-center">
-              <div className="d-flex align-items-center gap-2.5 flex-wrap">
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <span className="fw-bold text-dark font-display" style={{ fontSize: '0.98rem', letterSpacing: '-0.01em' }}>
+                  POS Terminal 01
+                </span>
+                <span className="text-muted opacity-40" style={{ fontSize: '0.85rem' }}>•</span>
+                <span className="text-muted fw-semibold" style={{ fontSize: '0.85rem' }}>
+                  Bems Farms HQ
+                </span>
                 <span
-                  className="badge d-inline-flex align-items-center gap-1.5"
+                  className="badge d-inline-flex align-items-center gap-1.5 ms-1"
                   style={{
                     backgroundColor: '#ECFDF5',
                     color: '#047857',
                     border: '1px solid #A7F3D0',
-                    fontSize: '10px',
+                    fontSize: '9.5px',
                     fontWeight: 800,
-                    padding: '3px 8px',
-                    borderRadius: '20px',
+                    padding: '2.5px 8px',
+                    borderRadius: '12px',
                     letterSpacing: '0.04em'
                   }}
                 >
                   <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#10B981', display: 'inline-block', boxShadow: '0 0 0 2px #A7F3D0' }}></span>
                   SHIFT ACTIVE
                 </span>
-
-                <span className="fw-bold text-dark fs-sm" style={{ letterSpacing: '-0.01em' }}>
-                  POS Terminal 01 <span className="text-muted fw-normal">·</span> Bems Farms HQ
-                </span>
               </div>
 
-              <div className="d-flex align-items-center gap-2 text-muted mt-0.5" style={{ fontSize: '11.5px' }}>
+              <div className="d-flex align-items-center gap-2 text-muted mt-0.5 flex-wrap" style={{ fontSize: '11.5px' }}>
                 <span className="d-inline-flex align-items-center gap-1">
-                  <span>Cashier:</span>
-                  <strong className="text-dark font-semibold">
+                  <span className="text-muted">Cashier:</span>
+                  <strong className="text-dark fw-bold">
                     {user?.first_name || 'Staff Member'} {user?.last_name || ''}
                   </strong>
                 </span>
-                <span className="text-muted opacity-40">·</span>
+                <span className="text-muted opacity-30">•</span>
                 <span className="text-muted">{todayStr}</span>
               </div>
             </div>
