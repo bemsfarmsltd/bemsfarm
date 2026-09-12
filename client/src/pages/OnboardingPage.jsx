@@ -18,43 +18,43 @@ const STEP_IMAGES = [
 const FAMILY_SIZES = [
   {
     value: "solo",
-    label: "Just me",
-    desc: "1 person",
+    label: "Individual",
+    desc: "Single-person supply (1 person)",
     emoji: "",
     img: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&q=80",
   },
   {
     value: "couple",
-    label: "Couple",
-    desc: "2 people",
+    label: "Couple / Duo",
+    desc: "Two-person portions (2 people)",
     emoji: "",
     img: "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=300&q=80",
   },
   {
     value: "small",
-    label: "Small family",
-    desc: "3–4 people",
+    label: "Standard Household",
+    desc: "Family bundle packs (3–4 people)",
     emoji: "",
     img: "https://images.unsplash.com/photo-1424847651672-bf20a4b0982b?w=300&q=80",
   },
   {
     value: "large",
-    label: "Large household",
-    desc: "5+ people",
+    label: "Large Household",
+    desc: "Bulk family supply (5+ people)",
     emoji: "",
     img: "https://images.unsplash.com/photo-1544025162-d76694265947?w=300&q=80",
   },
   {
     value: "gathering",
-    label: "Small gathering",
-    desc: "6–15 guests",
+    label: "Event / Gathering",
+    desc: "Entertaining & dinners (6–15 guests)",
     emoji: "",
     img: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=500&q=80",
   },
   {
     value: "party",
-    label: "Party or event",
-    desc: "16+ guests",
+    label: "Commercial / Catering",
+    desc: "Wholesale & catering (16+ guests)",
     emoji: "",
     img: "https://images.unsplash.com/photo-1507501336603-6e31db2be093?w=500&q=80",
   },
@@ -64,42 +64,42 @@ const BUDGETS = [
   {
     value: 5000,
     label: "₦5,000",
-    desc: "Budget-friendly",
+    desc: "Essential Pantry",
     gradient: "linear-gradient(135deg, #EAF7EC, #CFEBD3)",
     textColor: "#1B4332",
   },
   {
     value: 10000,
     label: "₦10,000",
-    desc: "Moderate",
+    desc: "Standard Weekly",
     gradient: "linear-gradient(135deg, #FFF6E0, #FCE7B0)",
     textColor: "#7B5800",
   },
   {
     value: 25000,
     label: "₦25,000",
-    desc: "Comfortable",
+    desc: "Comfortable Pantry",
     gradient: "linear-gradient(135deg, #FFEEE3, #FFD5BC)",
     textColor: "#9A3E12",
   },
   {
     value: 50000,
     label: "₦50,000+",
-    desc: "Premium",
+    desc: "Full Premium Supply",
     gradient: "linear-gradient(135deg, #1B4332, #2F6B4F)",
     textColor: "#FFFFFF",
   },
 ];
 
 const HEALTH_GOALS = [
-  { value: "general", label: "General health", emoji: "" },
-  { value: "weight_loss", label: "Weight management", emoji: "" },
-  { value: "diabetes", label: "Diabetes-friendly", emoji: "" },
-  { value: "heart_health", label: "Heart health", emoji: "" },
-  { value: "pregnancy", label: "Pregnancy / nursing", emoji: "" },
-  { value: "muscle_gain", label: "Muscle & fitness", emoji: "" },
-  { value: "children", label: "Kids & family", emoji: "" },
-  { value: "hypertension", label: "Low sodium", emoji: "" },
+  { value: "general", label: "Balanced & Natural Living", emoji: "" },
+  { value: "weight_loss", label: "Weight Management Focus", emoji: "" },
+  { value: "diabetes", label: "Diabetes-Friendly / Low Sugar", emoji: "" },
+  { value: "heart_health", label: "Heart & Cardio Wellness", emoji: "" },
+  { value: "pregnancy", label: "Maternal & Nursing Nutrition", emoji: "" },
+  { value: "muscle_gain", label: "High Protein & Fitness", emoji: "" },
+  { value: "children", label: "Kids & Family Nutrition", emoji: "" },
+  { value: "hypertension", label: "Low Sodium & Blood Pressure", emoji: "" },
 ];
 
 const FEATURE_CARDS = [
@@ -131,24 +131,24 @@ const FEATURE_CARDS = [
 
 const STEPS_META = [
   {
-    eyebrow: "Welcome",
-    headline: "Your easier grocery shop\nstarts here",
-    sub: "Tell us what fits your household so BemsFarms and Chef Bems can make shopping more useful from your first visit.",
+    eyebrow: "Profile Setup",
+    headline: "Shopping profile\nconfiguration",
+    sub: "Configure your household sizing, spending target, and dietary focus to unlock tailored quantities, seasonal pricing, and smart chef assistance.",
   },
   {
-    eyebrow: "Shopping size",
-    headline: "Who are you\nshopping for?",
-    sub: "Tell us whether this shop is for your household, a gathering or a larger event.",
+    eyebrow: "Household Scale",
+    headline: "Household &\nsupply scale",
+    sub: "Specifies your typical household size to automatically size produce bundles, cuts, and portion guides.",
   },
   {
-    eyebrow: "Budget",
-    headline: "What's your weekly\nfood budget?",
-    sub: "We'll highlight the best value options and alert you to deals in your range.",
+    eyebrow: "Budget Target",
+    headline: "Weekly spending\ntarget",
+    sub: "Directs seasonal price alerts, bundle discounts, and value recommendations matched to your budget.",
   },
   {
-    eyebrow: "Health",
-    headline: "Any health goals?\n(optional)",
-    sub: "Pick as many as you like. Our AI will prioritise products that support your goals.",
+    eyebrow: "Nutritional Focus",
+    headline: "Dietary &\nnutritional focus",
+    sub: "Enables Chef Bems to highlight matching produce, allergy-safe staples, and curated recipe pairings.",
   },
 ];
 
@@ -657,7 +657,7 @@ export default function OnboardingPage() {
               {/* STEP 0: WELCOME */}
               {step === 0 && (
                 <div>
-                  <Chip>Welcome</Chip>
+                  <Chip>Profile Setup</Chip>
                   <h1
                     style={{
                       fontFamily: "var(--heading-font)",
@@ -680,7 +680,7 @@ export default function OnboardingPage() {
                       maxWidth: "480px",
                     }}
                   >
-                    Your account is ready. Answer three quick questions for better quantities, value picks and meal ideas.
+                    Your account is active. Configure your household and dietary specifications below to enable automatic portion sizing, budget tracking, and curated farm produce.
                   </p>
                   <div className="ob-bento" aria-label="What your account includes">
                     {FEATURE_CARDS.map((card, i) => (
@@ -729,7 +729,7 @@ export default function OnboardingPage() {
               {/* STEP 1: FAMILY SIZE */}
               {step === 1 && (
                 <div>
-                  <Chip>Shopping size</Chip>
+                  <Chip>Household Scale</Chip>
                   <h1
                     style={{
                       fontFamily: "var(--heading-font)",
@@ -740,7 +740,7 @@ export default function OnboardingPage() {
                       margin: "14px 0 8px",
                     }}
                   >
-                    Who are you shopping for?
+                    Household & portion scale
                   </h1>
                   <p
                     style={{
@@ -749,7 +749,7 @@ export default function OnboardingPage() {
                       marginBottom: "28px",
                     }}
                   >
-                    We'll tailor quantities for your household, gathering or event.
+                    Establishes bundle packaging, portion guides, and family meal quantities.
                   </p>
                   <div
                     className="ob-choice-grid"
@@ -873,7 +873,7 @@ export default function OnboardingPage() {
               {/* STEP 2: BUDGET */}
               {step === 2 && (
                 <div>
-                  <Chip>Budget</Chip>
+                  <Chip>Budget Target</Chip>
                   <h1
                     style={{
                       fontFamily: "var(--heading-font)",
@@ -884,7 +884,7 @@ export default function OnboardingPage() {
                       margin: "14px 0 8px",
                     }}
                   >
-                    Weekly food budget?
+                    Weekly spending target
                   </h1>
                   <p
                     style={{
@@ -893,7 +893,7 @@ export default function OnboardingPage() {
                       marginBottom: "28px",
                     }}
                   >
-                    We'll highlight the best value options in your range.
+                    Curates real-time value deals, pantry bundles, and seasonal discounts within your range.
                   </p>
                   <div
                     style={{
@@ -985,7 +985,7 @@ export default function OnboardingPage() {
               {/* STEP 3: HEALTH GOALS */}
               {step === 3 && (
                 <div>
-                  <Chip>Health</Chip>
+                  <Chip>Nutritional Focus</Chip>
                   <h1
                     style={{
                       fontFamily: "var(--heading-font)",
@@ -996,7 +996,7 @@ export default function OnboardingPage() {
                       margin: "14px 0 8px",
                     }}
                   >
-                    Any health goals?
+                    Dietary & nutritional focus
                   </h1>
                   <p
                     style={{
@@ -1005,7 +1005,7 @@ export default function OnboardingPage() {
                       marginBottom: "28px",
                     }}
                   >
-                    Pick as many as you like — optional.
+                    Select relevant dietary and health priorities. Chef Bems will align ingredient suggestions accordingly.
                   </p>
                   <div
                     style={{
@@ -1093,7 +1093,7 @@ export default function OnboardingPage() {
                       marginTop: "18px",
                     }}
                   >
-                    You can update these anytime in your profile
+                    Preferences can be updated anytime in your profile settings
                   </p>
                 </div>
               )}
@@ -1157,12 +1157,12 @@ export default function OnboardingPage() {
               }}
             >
               {saving
-                ? "Saving your preferences…"
+                ? "Saving your profile…"
                 : step === 0
-                  ? "Personalise my shopping →"
+                  ? "Configure shopping profile →"
                   : step === TOTAL_STEPS - 1
-                    ? (destination === "/checkout" ? "Continue to checkout →" : "Enter BemsFarms →")
-                    : "Continue →"}
+                    ? (destination === "/checkout" ? "Complete & continue to checkout →" : "Save & enter BemsFarms →")
+                    : "Save & continue →"}
             </motion.button>
           </div>
         </div>
