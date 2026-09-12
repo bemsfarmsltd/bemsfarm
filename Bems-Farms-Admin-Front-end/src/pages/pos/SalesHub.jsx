@@ -222,34 +222,60 @@ export default function SalesHub({
           {/* Left: Brand & Terminal status */}
           <div className="d-flex align-items-center gap-3">
             <Link to="/dashboard" className="d-flex align-items-center text-decoration-none">
-              <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height: 36, objectFit: 'contain' }} />
+              <img src="/bemsfarms_logo_compact.png" alt="Bems Farms" style={{ height: 38, objectFit: 'contain' }} />
             </Link>
-            <div className="vr d-none d-sm-block my-1 text-muted opacity-25"></div>
+            <div className="vr d-none d-sm-block my-1 text-muted opacity-25" style={{ height: 30 }}></div>
             <div>
               <div className="d-flex align-items-center gap-2">
-                <span className="badge" style={{ backgroundColor: '#DCFCE7', color: '#166534', fontSize: 10, fontWeight: 800 }}>
-                  ● SHIFT ACTIVE
+                <span
+                  className="badge d-inline-flex align-items-center gap-1.5"
+                  style={{
+                    backgroundColor: '#DCFCE7',
+                    color: '#166534',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    padding: '4px 9px',
+                    borderRadius: '20px',
+                    letterSpacing: '0.04em'
+                  }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#16A34A', display: 'inline-block' }}></span>
+                  SHIFT ACTIVE
                 </span>
-                <span className="fw-bold text-dark fs-sm">Terminal 01 · Bems Farms HQ</span>
+                <span className="fw-bold text-dark fs-sm" style={{ letterSpacing: '-0.01em' }}>
+                  POS Terminal 01 · Bems Farms HQ
+                </span>
               </div>
-              <p className="text-muted mb-0" style={{ fontSize: 11 }}>
-                Cashier: <strong className="text-dark">{user?.first_name || 'Staff Member'} {user?.last_name || ''}</strong> · {todayStr}
+              <p className="text-muted mb-0 mt-0.5" style={{ fontSize: '11.5px' }}>
+                Cashier: <strong className="text-dark font-semibold">{user?.first_name || 'Staff Member'} {user?.last_name || ''}</strong> · {todayStr}
               </p>
             </div>
           </div>
 
           {/* Right: Register Launcher + Quick Actions */}
-          <div className="d-flex align-items-center gap-2">
-            {/* BIG PRIMARY CTA: Open Register */}
+          <div className="d-flex align-items-center gap-2.5">
+            {/* BIG PRIMARY CTA: Launch POS Terminal */}
             <button
               type="button"
               className="sh-primary-btn"
               onClick={onOpenRegister}
-              title="Launch POS Barcode Scanner & Ringing Screen (F1)"
+              title="Open Barcode Scanner & Ringing Register (F1)"
             >
-              <i className="ri-barcode-box-line fs-18"></i>
-              <span>Open Register / Start Ringing</span>
-              <span className="badge" style={{ backgroundColor: '#FEF3C7', color: '#92400E', fontSize: 9 }}>F1</span>
+              <i className="ri-barcode-box-line" style={{ fontSize: '19px' }}></i>
+              <span>Open POS Register</span>
+              <span
+                style={{
+                  backgroundColor: '#FEF3C7',
+                  color: '#92400E',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  padding: '2px 7px',
+                  borderRadius: '6px',
+                  marginLeft: '2px'
+                }}
+              >
+                F1
+              </span>
             </button>
 
             {/* Reconcile Drawer Button */}
@@ -257,27 +283,27 @@ export default function SalesHub({
               type="button"
               className="sh-secondary-btn d-none d-md-inline-flex"
               onClick={() => setShowDrawerModal(true)}
-              title="Count Physical Cash & Reconcile Shift"
+              title="Count Physical Cash & Reconcile Float"
             >
-              <i className="ri-safe-2-line text-amber"></i>
-              <span>Drawer Count</span>
+              <i className="ri-safe-2-line text-warning" style={{ fontSize: '15px' }}></i>
+              <span>Cash Drawer &amp; Float</span>
             </button>
 
             {/* Admin Switcher / Logout */}
             {isManager ? (
               <Link to="/dashboard" className="sh-secondary-btn" title="Back to Admin Dashboard">
-                <i className="ri-dashboard-2-line"></i>
-                <span className="d-none d-sm-inline">Admin Hub</span>
+                <i className="ri-dashboard-2-line" style={{ fontSize: '15px' }}></i>
+                <span className="d-none d-sm-inline">Admin Dashboard</span>
               </Link>
             ) : (
               <button
                 type="button"
                 className="sh-secondary-btn text-danger"
                 onClick={logout}
-                title="End Shift & Logout"
+                title="End Shift & Sign Out"
               >
-                <i className="ri-logout-box-r-line"></i>
-                <span className="d-none d-sm-inline">Sign Out</span>
+                <i className="ri-logout-box-r-line" style={{ fontSize: '15px' }}></i>
+                <span className="d-none d-sm-inline">End Shift</span>
               </button>
             )}
           </div>
@@ -294,8 +320,8 @@ export default function SalesHub({
               <i className="ri-store-3-line fs-20"></i>
             </div>
             <div>
-              <h5 className="fw-bold mb-0 font-display">Sales &amp; Cashier Portal</h5>
-              <p className="text-muted fs-xs mb-0">Review today's receipts, reconcile cash, or launch the high-speed ringing register.</p>
+              <h5 className="fw-bold mb-0 font-display">POS Cashier &amp; Shift Hub</h5>
+              <p className="text-muted fs-xs mb-0">Review active register sales, count cash float, or start ringing customer items.</p>
             </div>
           </div>
           <div className="d-flex align-items-center gap-2 mt-2 mt-sm-0">
@@ -314,7 +340,7 @@ export default function SalesHub({
               className="btn btn-sm btn-primary-bf rounded-pill px-3 fw-bold"
               onClick={onOpenRegister}
             >
-              <i className="ri-add-line me-1"></i>New Sale (F1)
+              <i className="ri-barcode-box-line me-1"></i>Start Sale (F1)
             </button>
           </div>
         </div>
