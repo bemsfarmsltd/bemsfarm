@@ -28,43 +28,8 @@ export default function Topbar({ onToggleSidebar }) {
 
   return (
     <header className="main-topbar" id="main-topbar">
-      {/* ── Left Zone: Active Branch Indicator + Add New Action + POS ── */}
+      {/* ── Left Zone: Add New Action + POS ── */}
       <div className="d-flex align-items-center gap-2">
-        {/* Branch / Store Selector Pill */}
-        <div className="dropdown d-none d-lg-block">
-          <button
-            className="btn topbar-branch-pill d-flex align-items-center gap-2"
-            type="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-            title="Active Store Branch"
-          >
-            <span className="live-status-dot"></span>
-            <i className="ri-store-2-line text-success"></i>
-            <span className="fw-bold fs-xs text-dark">Bems Farms HQ</span>
-            <i className="ri-arrow-down-s-line text-muted" style={{ fontSize: 13 }}></i>
-          </button>
-          <ul className="dropdown-menu shadow-lg border-0 p-2" style={{ borderRadius: '0.75rem', minWidth: 210 }}>
-            <li><span className="dropdown-header text-uppercase fs-xxs fw-bold text-muted">Active Branch</span></li>
-            <li>
-              <button className="dropdown-item active rounded-2 fs-sm fw-semibold d-flex align-items-center justify-content-between py-1.5 px-2.5">
-                <span className="d-flex align-items-center gap-2">
-                  <span className="live-status-dot"></span>
-                  Bems Farms HQ
-                </span>
-                <i className="ri-check-line"></i>
-              </button>
-            </li>
-            <li><hr className="dropdown-divider my-1" /></li>
-            <li>
-              <Link to="/stores" className="dropdown-item rounded-2 fs-sm text-muted d-flex align-items-center gap-2 py-1.5 px-2.5">
-                <i className="ri-store-3-line"></i>
-                <span>Manage Stores</span>
-              </Link>
-            </li>
-          </ul>
-        </div>
-
         {/* Add New Quick Actions Dropdown */}
         <div className="dropdown">
           <button

@@ -382,7 +382,7 @@ export default function SalesHub({
 
             <div className="vr d-none d-sm-block text-muted opacity-25" style={{ height: 28 }}></div>
 
-            {/* Store & Terminal Pill */}
+            {/* Terminal Pill */}
             <div
               className="d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill"
               style={{
@@ -393,11 +393,7 @@ export default function SalesHub({
             >
               <i className="ri-store-2-line text-success" style={{ fontSize: 15 }}></i>
               <span className="fw-bold text-dark" style={{ fontSize: '0.84rem' }}>
-                Bems Farms HQ
-              </span>
-              <span className="text-muted opacity-40">•</span>
-              <span className="text-muted fw-semibold" style={{ fontSize: '0.82rem' }}>
-                Terminal 01
+                POS Terminal 01
               </span>
               <span
                 className="badge d-inline-flex align-items-center gap-1.5 ms-1"
