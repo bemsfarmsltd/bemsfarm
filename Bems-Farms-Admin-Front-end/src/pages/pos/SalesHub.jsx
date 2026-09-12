@@ -145,7 +145,7 @@ export default function SalesHub({
       { name: 'Grains, Tubers & Flours', revenue: Math.round(totalSales * 0.28), share: 28, icon: '🌾', color: '#B45309', itemsSold: Math.round(26 * timeframeMultiplier.mult) },
       { name: 'Poultry, Meat & Eggs', revenue: Math.round(totalSales * 0.18), share: 18, icon: '🍗', color: '#E11D48', itemsSold: Math.round(22 * timeframeMultiplier.mult) },
       { name: 'Fresh Produce & Veggies', revenue: Math.round(totalSales * 0.11), share: 11, icon: '🥬', color: '#059669', itemsSold: Math.round(35 * timeframeMultiplier.mult) },
-      { name: 'Chef Bems AI Meal Combos', revenue: Math.round(totalSales * 0.09), share: 9, icon: '🍲', color: '#7C3AED', itemsSold: Math.round(14 * timeframeMultiplier.mult) },
+      { name: 'Cooked Meals & Delicacies', revenue: Math.round(totalSales * 0.09), share: 9, icon: '🍲', color: '#7C3AED', itemsSold: Math.round(14 * timeframeMultiplier.mult) },
     ]
 
     // Channel Distribution Data
@@ -160,7 +160,7 @@ export default function SalesHub({
       { name: 'Kings Pure Vegetable Oil (5L)', sku: 'OIL-5L', qty: Math.round(12 * timeframeMultiplier.mult), revenue: Math.round(162000 * timeframeMultiplier.mult), margin: '28%', stock: 33, status: 'In Stock', icon: '🫒' },
       { name: 'Fresh Jumbo Organic Eggs (Crate of 30)', sku: 'EGG-CRT', qty: Math.round(18 * timeframeMultiplier.mult), revenue: Math.round(75600 * timeframeMultiplier.mult), margin: '34%', stock: 92, status: 'In Stock', icon: '🥚' },
       { name: 'Mama Gold Rice (25kg Bag)', sku: 'RICE-25KG', qty: Math.round(6 * timeframeMultiplier.mult), revenue: Math.round(219000 * timeframeMultiplier.mult), margin: '22%', stock: 18, status: 'Low Stock', icon: '🌾' },
-      { name: 'Chef Bems Signature Jollof Combo', sku: 'JOL-CMB', qty: Math.round(14 * timeframeMultiplier.mult), revenue: Math.round(67200 * timeframeMultiplier.mult), margin: '48%', stock: 36, status: 'In Stock', icon: '🍲' },
+      { name: 'Party Jollof Rice & Smoked Chicken Combo', sku: 'JOL-CMB', qty: Math.round(14 * timeframeMultiplier.mult), revenue: Math.round(67200 * timeframeMultiplier.mult), margin: '48%', stock: 36, status: 'In Stock', icon: '🍲' },
       { name: 'Ijebu Crisp White Garri (Paint Rubber)', sku: 'GARI-PNT', qty: Math.round(15 * timeframeMultiplier.mult), revenue: Math.round(48000 * timeframeMultiplier.mult), margin: '38%', stock: 70, status: 'In Stock', icon: '🌾' },
       { name: 'Whole Broiler Farm Chicken (2.5kg)', sku: 'CHK-WHL', qty: Math.round(9 * timeframeMultiplier.mult), revenue: Math.round(67500 * timeframeMultiplier.mult), margin: '30%', stock: 19, status: 'In Stock', icon: '🍗' },
     ]
@@ -715,7 +715,7 @@ export default function SalesHub({
                       <span className="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold fs-xxs">Basket Attach</span>
                       <span className="text-muted fs-xxs">+68% Uplift</span>
                     </div>
-                    <h6 className="fw-bold fs-xs text-dark mb-1">Chef Bems Combo Suggestion</h6>
+                    <h6 className="fw-bold fs-xs text-dark mb-1">Produce Bundle Cross-Sell</h6>
                     <p className="fs-xxs text-muted mb-0 leading-relaxed">
                       Recommending Seasoning Cubes with Grains lifted average ticket size by <strong className="text-dark">+₦1,450</strong> across active tickets.
                     </p>
@@ -988,11 +988,11 @@ export default function SalesHub({
               </div>
             </div>
 
-            {/* Chef Bems Combo Attach Intelligence */}
+            {/* Grocery Staple & Produce Combo Attach Intelligence */}
             <div className="sh-card">
               <div className="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom">
                 <i className="ri-magic-line text-primary fs-18"></i>
-                <h6 className="fw-bold mb-0 font-display">Chef Bems Cross-Sell Attach Rate Analysis</h6>
+                <h6 className="fw-bold mb-0 font-display">Basket Cross-Sell &amp; Staple Combo Attach Analysis</h6>
               </div>
               <div className="row g-3">
                 <div className="col-12 col-md-4">
