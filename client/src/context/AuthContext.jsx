@@ -106,9 +106,11 @@ export function AuthProvider({ children }) {
           setUser(freshUser);
           localStorage.setItem("user", JSON.stringify(freshUser));
         })
-        .catch(() => {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
+        .catch((err) => {
+          if (err?.response?.status === 401) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+          }
         })
         .finally(() => setLoading(false));
     } catch {
@@ -146,9 +148,11 @@ export function AuthProvider({ children }) {
             localStorage.removeItem("admin_user");
           }
         })
-        .catch(() => {
-          localStorage.removeItem("admin_token");
-          localStorage.removeItem("admin_user");
+        .catch((err) => {
+          if (err?.response?.status === 401) {
+            localStorage.removeItem("admin_token");
+            localStorage.removeItem("admin_user");
+          }
         });
     } catch {
       localStorage.removeItem("admin_token");

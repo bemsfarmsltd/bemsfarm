@@ -58,37 +58,68 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+const getClientIp = (req) => {
+  return (
+    req.headers["cf-connecting-ip"] ||
+    req.headers["x-real-ip"] ||
+    (req.headers["x-forwarded-for"]
+      ? req.headers["x-forwarded-for"].split(",")[0].trim()
+      : null) ||
+    req.ip ||
+    "127.0.0.1"
+  );
+};
+
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 3000, // Generous ceiling for dynamic SPA browsing
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many requests, please try again after 15 minutes." },
-  skip: (req) => req.path === "/health" || req.path === "/test",
+  keyGenerator: getClientIp,
+  validate: { trustProxy: false, xForwardedForHeader: false },
+  message: { message: "Too many requests, please try again after a few minutes." },
+  skip: (req) => {
+    // Never rate limit internal probes
+    if (req.path === "/health" || req.path === "/test" || req.path === "/api") return true;
+    // Don't rate limit authenticated users or staff dashboard calls
+    if (req.headers.authorization) return true;
+    if (req.path.startsWith("/api/admin") || req.path.startsWith("/api/dashboard")) return true;
+    // Auth login/register has its own dedicated authLimiter
+    if (req.path.startsWith("/api/auth")) return true;
+    return false;
+  },
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 50,
+  max: 120, // 120 attempts per 15 minutes per true client IP
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many auth attempts, please try again in 15 minutes." },
+  keyGenerator: getClientIp,
+  validate: { trustProxy: false, xForwardedForHeader: false },
+  message: { message: "Too many login attempts. Please try again in a few minutes." },
+  // Do not rate-limit token verification or refresh calls
+  skip: (req) => req.path === "/me" || req.path === "/refresh",
 });
 
 const aiLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 20,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "AI request limit reached. Please try again in an hour." },
+  keyGenerator: getClientIp,
+  validate: { trustProxy: false, xForwardedForHeader: false },
+  message: { message: "AI request limit reached. Please try again in an hour." },
 });
 
 const paymentLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many payment requests. Please slow down." },
+  keyGenerator: getClientIp,
+  validate: { trustProxy: false, xForwardedForHeader: false },
+  message: { message: "Too many payment requests. Please slow down." },
 });
 
 app.use(generalLimiter);

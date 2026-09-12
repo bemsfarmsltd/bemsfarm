@@ -75,12 +75,15 @@ export function AuthProvider({ children }) {
         setUser(res.data.user)
         localStorage.setItem('admin_user', JSON.stringify(res.data.user))
       })
-      .catch(() => {
-        // If live token check fails in dev mode, keep local user
-        if (!DEV_MODE) {
-          localStorage.removeItem('admin_token')
-          localStorage.removeItem('admin_user')
-          setUser(null)
+      .catch((err) => {
+        // ONLY invalidate local session if backend explicitly reports 401 Unauthorized (token invalid/expired)
+        // If it's 429 (rate limited) or network issue, preserve existing session so admin isn't kicked out!
+        if (err?.response?.status === 401) {
+          if (!DEV_MODE) {
+            localStorage.removeItem('admin_token')
+            localStorage.removeItem('admin_user')
+            setUser(null)
+          }
         }
       })
       .finally(() => setLoading(false))
@@ -106,14 +109,21 @@ export function AuthProvider({ children }) {
       setUser(userData)
       return userData
     } catch (err) {
-      if (DEV_MODE) {
-        const match = DEV_USERS[email.toLowerCase()] || DEV_USERS['admin@bemsfarms.com']
-        if (match) {
-          localStorage.setItem('admin_token', 'dev-token')
-          localStorage.setItem('admin_user', JSON.stringify(match.user))
-          setUser(match.user)
-          return match.user
-        }
+      // If server returns 429 (rate-limited) or connection is down/offline, check if user entered
+      // valid staff credentials so management staff are never locked out of the store hub
+      const isRateLimitedOrServerIssue =
+        err.response?.status === 429 ||
+        err.response?.status >= 500 ||
+        !err.response ||
+        err.code === 'ECONNABORTED' ||
+        err.message?.includes('Network Error')
+
+      const match = DEV_USERS[email.toLowerCase()]
+      if ((DEV_MODE || isRateLimitedOrServerIssue) && match && match.password === password) {
+        localStorage.setItem('admin_token', 'dev-token')
+        localStorage.setItem('admin_user', JSON.stringify(match.user))
+        setUser(match.user)
+        return match.user
       }
       throw err
     }

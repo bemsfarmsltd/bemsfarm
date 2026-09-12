@@ -39,7 +39,13 @@ export default function Login() {
       await login(targetEmail, targetPassword);
       toast.success("Welcome back!");
     } catch (err) {
-      const serverMessage = err.response?.data?.message || err.message;
+      const serverMessage =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        (err.response?.status === 429
+          ? "Too many requests. Please wait a moment and try again."
+          : null) ||
+        err.message;
       const msg = serverMessage || "Invalid staff credentials. Please try again.";
       setError(msg);
       toast.error(msg);
