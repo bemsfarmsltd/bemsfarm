@@ -260,6 +260,8 @@ export default function ChefBemsPage() {
       cartItems: payload.cartItems,
       userPreferences: payload.userPreferences,
       session_id: sessionId,
+      userId: user?.id || null,
+      email: user?.email || null,
     });
     return res.data;
   };

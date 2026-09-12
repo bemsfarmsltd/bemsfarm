@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 import chefBemsAvatar from "../assets/chef_bems_avatar.png";
 import { escapeHtml } from "../utils/sanitize";
 
@@ -40,6 +41,7 @@ const QUICK_QUESTIONS = [
 ];
 
 export default function AIChatbot() {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState([
@@ -90,6 +92,8 @@ export default function AIChatbot() {
         message: content,
         history: conversationHistory,
         cartItems: [],
+        userId: user?.id || null,
+        email: user?.email || null,
       });
 
       const reply =

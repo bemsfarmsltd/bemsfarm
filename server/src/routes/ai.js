@@ -692,7 +692,17 @@ Which of these catalog products, if any, does the reply recommend or suggest the
 
 router.post("/chef-chat", async (req, res, next) => {
   try {
-    const { message, history = [], cartItems = [], session_id, userPreferences = {} } = req.body;
+    const {
+      message,
+      history = [],
+      cartItems = [],
+      session_id,
+      userPreferences = {},
+      email: bodyEmail,
+      userId: bodyUserId,
+      customerId: bodyCustomerId,
+      customerEmail: bodyCustomerEmail,
+    } = req.body;
 
     if (!message || typeof message !== "string") {
       return res.status(400).json({ message: "message string required" });
@@ -702,6 +712,9 @@ router.post("/chef-chat", async (req, res, next) => {
     const user = await resolveUser(req);
     let contextBlock = null;
     let conversationId = null;
+
+    const customerId = user?.id || bodyUserId || bodyCustomerId || null;
+    const customerEmail = user?.email || bodyEmail || bodyCustomerEmail || null;
 
     if (user) {
       [contextBlock, conversationId] = await Promise.all([
@@ -715,19 +728,26 @@ router.post("/chef-chat", async (req, res, next) => {
     const N8N_WEBHOOK = process.env.N8N_WEBHOOK || "https://bems333.app.n8n.cloud/webhook/chef-bems";
     try {
       console.log("➡️ Forwarding Chef Bems request to n8n webhook...");
+      const sessionId = session_id || (customerId ? `user-${customerId}` : (customerEmail ? `guest-${customerEmail}` : `session-${Date.now()}`));
+
       const n8nRes = await fetch(N8N_WEBHOOK, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chatInput: message,
-          sessionId: session_id || (user?.id ? `user-${user.id}` : `session-${Date.now()}`),
           message,
+          sessionId,
+          session_id: sessionId,
+          userId: customerId,
+          customerId,
+          customer_id: customerId,
+          id: customerId,
+          email: customerEmail,
+          customerEmail,
+          customer_email: customerEmail,
           conversationHistory: history,
           cartItems,
           userPreferences,
-          userId: user?.id || null,
-          email: user?.email || null,
-          session_id: session_id || null,
         }),
         signal: AbortSignal.timeout(120000), // Timeout after 2 minutes
       });
