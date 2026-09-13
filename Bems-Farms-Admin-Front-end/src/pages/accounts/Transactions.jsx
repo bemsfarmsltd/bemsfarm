@@ -1,36 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../../lib/api'
 
-const fmt = n => `₦${Number(n).toLocaleString()}`
-
-const ALL_TXN = [
-  // Income / Orders
-  { id:'TXN-001', ref:'ORD-2026-0141', date:'2026-06-27', time:'14:32', type:'income',     category:'Online Order',       desc:'Paystack settlement — online orders batch',           account:'GTBank Operations',  amount:+312_000, status:'completed' },
-  { id:'TXN-002', ref:'ORD-2026-0140', date:'2026-06-27', time:'11:14', type:'income',     category:'Online Order',       desc:'Paystack settlement — Adaeze Nwosu (x3 items)',       account:'GTBank Operations',  amount:+48_500,  status:'completed' },
-  { id:'TXN-003', ref:'WLT-0234',      date:'2026-06-27', time:'09:21', type:'income',     category:'Wallet Top-up',      desc:'Wallet top-up — Seun Adesanya',                       account:'GTBank Operations',  amount:+20_000,  status:'completed' },
-  { id:'TXN-004', ref:'EXP-0041',      date:'2026-06-27', time:'10:15', type:'expense',    category:'Staff Salary',       desc:'Monthly salary disbursement — June 2026 (all staff)', account:'Access Payroll',     amount:-920_000, status:'completed' },
-  { id:'TXN-005', ref:'COM-0089',      date:'2026-06-27', time:'09:40', type:'commission', category:'Driver Commission',  desc:'Driver commission — Emeka Okafor (8 deliveries)',     account:'GTBank Operations',  amount:-18_400,  status:'completed' },
-  { id:'TXN-006', ref:'TXF-0031',      date:'2026-06-26', time:'16:00', type:'transfer',   category:'Internal Transfer',  desc:'Transfer: GTBank Ops → Access Payroll (salary prep)', account:'GTBank Operations',  amount:-1_200_000,status:'completed' },
-  { id:'TXN-007', ref:'CORP-0018',     date:'2026-06-26', time:'13:42', type:'income',     category:'Corporate Supply',   desc:'Corporate supply — Mama Cass Restaurants (weekly)',   account:'GTBank Operations',  amount:+240_000, status:'completed' },
-  { id:'TXN-008', ref:'POS-0094',      date:'2026-06-26', time:'11:05', type:'income',     category:'POS Sale',           desc:'POS walk-in — multiple customers',                    account:'Zenith POS',         amount:+38_200,  status:'completed' },
-  { id:'TXN-009', ref:'EXP-0040',      date:'2026-06-25', time:'08:30', type:'expense',    category:'Fuel & Transport',   desc:'Weekly fuel allowance — 3 delivery drivers',          account:'GTBank Operations',  amount:-48_000,  status:'completed' },
-  { id:'TXN-010', ref:'RFC-0048',      date:'2026-06-25', time:'14:20', type:'refund',     category:'Refund',             desc:'Order refund — Chukwuemeka Eze (cancelled delivery)', account:'GTBank Operations',  amount:-14_200,  status:'completed' },
-  { id:'TXN-011', ref:'COM-0088',      date:'2026-06-24', time:'17:00', type:'commission', category:'Driver Commission',  desc:'Driver commission — Bola Akinwale (5 deliveries)',    account:'GTBank Operations',  amount:-11_500,  status:'completed' },
-  { id:'TXN-012', ref:'ORD-2026-0138', date:'2026-06-23', time:'15:11', type:'income',     category:'Online Order',       desc:'Paystack settlement — online orders batch',           account:'GTBank Operations',  amount:+276_500, status:'completed' },
-  { id:'TXN-013', ref:'EXP-0039',      date:'2026-06-23', time:'09:00', type:'expense',    category:'Produce Purchase',   desc:'Produce purchase — Bodija Market (tomato, pepper, leafy veg)', account:'GTBank Operations', amount:-120_000, status:'completed' },
-  { id:'TXN-014', ref:'EXP-0038',      date:'2026-06-22', time:'10:45', type:'expense',    category:'Utilities',          desc:'IKEDC electricity bill — June 2026',                  account:'GTBank Operations',  amount:-28_500,  status:'completed' },
-  { id:'TXN-015', ref:'TXF-0030',      date:'2026-06-22', time:'11:30', type:'transfer',   category:'Internal Transfer',  desc:'Transfer: First Bank Tax → GTBank Ops (reserves)',    account:'First Bank Tax',     amount:-400_000, status:'completed' },
-  { id:'TXN-016', ref:'CORP-0017',     date:'2026-06-21', time:'13:00', type:'income',     category:'Corporate Supply',   desc:'Corporate supply — Lagos Island Hotels Group',        account:'GTBank Operations',  amount:+180_000, status:'completed' },
-  { id:'TXN-017', ref:'EXP-0037',      date:'2026-06-20', time:'16:00', type:'expense',    category:'Marketing',          desc:'Meta Ads spend — June campaign (fresh produce)',      account:'GTBank Operations',  amount:-50_000,  status:'completed' },
-  { id:'TXN-018', ref:'WLT-0233',      date:'2026-06-20', time:'10:22', type:'income',     category:'Wallet Top-up',      desc:'Wallet top-up — Funke Oladele',                       account:'GTBank Operations',  amount:+15_000,  status:'completed' },
-  { id:'TXN-019', ref:'COM-0087',      date:'2026-06-20', time:'17:30', type:'commission', category:'Driver Commission',  desc:'Driver commission — Damilola Fashola (6 deliveries)', account:'GTBank Operations',  amount:-13_800,  status:'completed' },
-  { id:'TXN-020', ref:'EXP-0036',      date:'2026-06-19', time:'09:15', type:'expense',    category:'Packaging Materials',desc:'Packaging restock — cartons, biodegradable bags',     account:'GTBank Operations',  amount:-32_000,  status:'completed' },
-  { id:'TXN-021', ref:'ORD-2026-0132', date:'2026-06-19', time:'14:55', type:'income',     category:'Online Order',       desc:'Paystack settlement — online orders batch',           account:'GTBank Operations',  amount:+198_000, status:'completed' },
-  { id:'TXN-022', ref:'EXP-0035',      date:'2026-06-18', time:'11:00', type:'expense',    category:'Cold Storage',       desc:'Cold storage maintenance — compressor servicing',     account:'GTBank Operations',  amount:-85_000,  status:'pending'   },
-  { id:'TXN-023', ref:'POS-0093',      date:'2026-06-17', time:'12:30', type:'income',     category:'POS Sale',           desc:'POS walk-in sales — weekend batch',                   account:'Zenith POS',         amount:+62_400,  status:'completed' },
-  { id:'TXN-024', ref:'EXP-0034',      date:'2026-06-16', time:'09:30', type:'expense',    category:'Office Rent',        desc:'Office & warehouse rent — June 2026',                 account:'Access Payroll',     amount:-180_000, status:'completed' },
-  { id:'TXN-025', ref:'RFC-0047',      date:'2026-06-15', time:'13:00', type:'refund',     category:'Refund',             desc:'Refund — Tolulope Badmus (quality complaint)',        account:'GTBank Operations',  amount:-8_500,   status:'completed' },
-]
+const fmt = n => `₦${Number(n || 0).toLocaleString()}`
 
 const TYPE_CFG = {
   income:     { label:'Income',     cls:'success', icon:'ri-arrow-up-circle-line'     },
@@ -50,7 +22,26 @@ const PURPLE = { bg:'#f5f3ff', color:'#7c3aed', border:'#ddd6fe' }
 
 const TYPES = ['income','expense','commission','transfer','refund']
 
+// Maps the real `transactions` row (GET /api/admin/accounts/transactions) to this page's UI shape.
+function mapTxn(t) {
+  return {
+    id: t.id,
+    ref: t.reference,
+    date: t.date,
+    time: t.time || '',
+    type: t.type,
+    category: t.sub_type || TYPE_CFG[t.type]?.label || t.type,
+    desc: t.description || '',
+    account: t.bank_account ? `${t.bank_name} — ${t.bank_account}` : (t.bank_name || '—'),
+    amount: Number(t.amount || 0),
+    status: t.status || 'completed',
+  }
+}
+
 export default function Transactions() {
+  const [records, setRecords]   = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState(false)
   const [search, setSearch]     = useState('')
   const [filterType, setType]   = useState('all')
   const [filterSt, setFilterSt] = useState('all')
@@ -58,28 +49,45 @@ export default function Transactions() {
   const [dateTo, setDateTo]     = useState('')
   const [selected, setSelected] = useState(null)
 
+  const load = useCallback(async () => {
+    setLoading(true); setError(false)
+    try {
+      const res = await api.get('/admin/accounts/transactions', {
+        params: {
+          limit: 200,
+          type: filterType === 'all' ? undefined : filterType,
+          from: dateFrom || undefined,
+          to: dateTo || undefined,
+        },
+      })
+      setRecords((res.data?.transactions || []).map(mapTxn))
+    } catch {
+      setError(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [filterType, dateFrom, dateTo])
+  useEffect(() => { load() }, [load])
+
   const filtered = useMemo(() => {
-    return ALL_TXN.filter(t => {
-      if (filterType !== 'all' && t.type !== filterType) return false
-      if (filterSt   !== 'all' && t.status !== filterSt)  return false
-      if (dateFrom && t.date < dateFrom) return false
-      if (dateTo   && t.date > dateTo)   return false
+    return records.filter(t => {
+      if (filterSt !== 'all' && t.status !== filterSt) return false
       if (search) {
         const q = search.toLowerCase()
         if (!t.desc.toLowerCase().includes(q) && !t.ref.toLowerCase().includes(q) && !t.account.toLowerCase().includes(q)) return false
       }
       return true
     })
-  }, [search, filterType, filterSt, dateFrom, dateTo])
+  }, [records, search, filterSt])
 
   const totalIn  = filtered.filter(t => t.amount > 0).reduce((s,t)=>s+t.amount,0)
   const totalOut = filtered.filter(t => t.amount < 0).reduce((s,t)=>s+Math.abs(t.amount),0)
   const netFlow  = totalIn - totalOut
 
-  // KPIs (all data)
-  const allIn    = ALL_TXN.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0)
-  const allOut   = ALL_TXN.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0)
-  const pending  = ALL_TXN.filter(t=>t.status==='pending').length
+  // KPIs over the loaded page (server doesn't return ledger-wide aggregates for this endpoint)
+  const allIn    = records.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0)
+  const allOut   = records.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0)
+  const pending  = records.filter(t=>t.status==='pending').length
 
   return (
     <div className="container-fluid">
@@ -95,13 +103,24 @@ export default function Transactions() {
         </ul>
       </div>
 
+      {error && (
+        <div className="alert alert-warning d-flex align-items-center gap-3 rounded-3 mb-3">
+          <i className="ri-wifi-off-line fs-4" />
+          <div className="flex-grow-1">
+            <strong>Could not load transactions.</strong>
+            <span className="text-muted ms-2 fs-sm">Check your connection or server status.</span>
+          </div>
+          <button className="btn btn-sm btn-outline-warning" onClick={load}>Retry</button>
+        </div>
+      )}
+
       {/* KPI strip */}
       <div className="row g-3 mb-4">
         {[
-          { label:'Total Inflow',   val:fmt(allIn),              color:'#22c55e', bg:'#f0fdf4', icon:'ri-arrow-up-circle-line' },
-          { label:'Total Outflow',  val:fmt(allOut),             color:'#ef4444', bg:'#fef2f2', icon:'ri-arrow-down-circle-line' },
-          { label:'Net Flow',       val:fmt(allIn-allOut),       color:'#3b82f6', bg:'#eff6ff', icon:'ri-line-chart-line' },
-          { label:'Total Records',  val:ALL_TXN.length,          color:'#8b5cf6', bg:'#f5f3ff', icon:'ri-list-check-3' },
+          { label:'Total Inflow (loaded)',   val:fmt(allIn),              color:'#22c55e', bg:'#f0fdf4', icon:'ri-arrow-up-circle-line' },
+          { label:'Total Outflow (loaded)',  val:fmt(allOut),             color:'#ef4444', bg:'#fef2f2', icon:'ri-arrow-down-circle-line' },
+          { label:'Net Flow (loaded)',       val:fmt(allIn-allOut),       color:'#3b82f6', bg:'#eff6ff', icon:'ri-line-chart-line' },
+          { label:'Records Loaded',  val:records.length,          color:'#8b5cf6', bg:'#f5f3ff', icon:'ri-list-check-3' },
           { label:'Pending',        val:pending,                 color:'#d97706', bg:'#fffbeb', icon:'ri-time-line' },
         ].map((k,i) => (
           <div key={i} className="col-6 col-md-4 col-xl">
@@ -168,7 +187,7 @@ export default function Transactions() {
       <div className="d-flex gap-2 flex-wrap mb-3">
         {['all',...TYPES].map(t => {
           const cfg = t === 'all' ? null : TYPE_CFG[t]
-          const count = t === 'all' ? ALL_TXN.length : ALL_TXN.filter(x=>x.type===t).length
+          const count = t === 'all' ? records.length : records.filter(x=>x.type===t).length
           const active = filterType === t
           return (
             <button key={t} onClick={()=>setType(t)}
@@ -209,11 +228,16 @@ export default function Transactions() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && (
+              {loading ? (
+                <tr><td colSpan={7} className="text-center py-5 text-muted">
+                  <div className="spinner-border spinner-border-sm text-success me-2" role="status" />
+                  Loading transactions…
+                </td></tr>
+              ) : filtered.length === 0 && (
                 <tr><td colSpan={7} className="text-center py-5 text-muted">No transactions match your filters.</td></tr>
               )}
-              {filtered.map(t => {
-                const tc  = TYPE_CFG[t.type]
+              {!loading && filtered.map(t => {
+                const tc  = TYPE_CFG[t.type] || TYPE_CFG.income
                 const sc  = STATUS_CFG[t.status] || STATUS_CFG.completed
                 const badgeStyle = t.type==='commission' ? PURPLE : null
                 return (
@@ -259,11 +283,11 @@ export default function Transactions() {
                 )
               })}
             </tbody>
-            {filtered.length > 0 && (
+            {!loading && filtered.length > 0 && (
               <tfoot style={{ background:'#f8fafc', borderTop:'2px solid #e2e8f0' }}>
                 <tr>
                   <td colSpan={5} className="px-3 py-2 fw-medium" style={{ fontSize:12 }}>
-                    Showing {filtered.length} of {ALL_TXN.length} transactions
+                    Showing {filtered.length} of {records.length} loaded transactions
                   </td>
                   <td className="px-3 py-2 text-end fw-bold" style={{ fontSize:13, color: netFlow>=0?'#22c55e':'#ef4444' }}>
                     {netFlow>=0?'+':'-'}{fmt(Math.abs(netFlow))}
@@ -296,7 +320,7 @@ export default function Transactions() {
                   background: selected.amount>0?'#f0fdf4':'#fef2f2',
                   display:'flex', alignItems:'center', justifyContent:'center',
                 }}>
-                  <i className={TYPE_CFG[selected.type].icon} style={{ fontSize:28, color: selected.amount>0?'#22c55e':'#ef4444' }}/>
+                  <i className={(TYPE_CFG[selected.type] || TYPE_CFG.income).icon} style={{ fontSize:28, color: selected.amount>0?'#22c55e':'#ef4444' }}/>
                 </div>
                 <div style={{ fontSize:28, fontWeight:700, color: selected.amount>0?'#22c55e':'#ef4444' }}>
                   {selected.amount>0?'+':'-'}{fmt(Math.abs(selected.amount))}
@@ -308,8 +332,8 @@ export default function Transactions() {
               {[
                 { label:'Reference',   val:selected.ref       },
                 { label:'Transaction', val:selected.id        },
-                { label:'Date & Time', val:`${selected.date} at ${selected.time}` },
-                { label:'Type',        val:TYPE_CFG[selected.type].label },
+                { label:'Date & Time', val:`${selected.date}${selected.time ? ' at ' + selected.time : ''}` },
+                { label:'Type',        val:(TYPE_CFG[selected.type] || TYPE_CFG.income).label },
                 { label:'Category',    val:selected.category  },
                 { label:'Account',     val:selected.account   },
                 { label:'Status',      val:selected.status    },
