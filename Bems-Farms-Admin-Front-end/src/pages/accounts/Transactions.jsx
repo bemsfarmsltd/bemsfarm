@@ -98,7 +98,7 @@ export default function Transactions() {
           <p className="text-muted mb-0" style={{ fontSize:12 }}>Unified financial ledger — every movement across all accounts</p>
         </div>
         <ul className="breadcrumb mb-0">
-          <li className="breadcrumb-item"><Link to="/accounts/overview">Accounts</Link></li>
+          <li className="breadcrumb-item"><Link to="/accounts/overview">Finance</Link></li>
           <li className="breadcrumb-item active">Transactions</li>
         </ul>
       </div>

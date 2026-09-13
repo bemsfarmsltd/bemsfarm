@@ -197,7 +197,7 @@ export default function Expenses() {
       <div className="page-heading d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <h6 className="mb-0">Expenses</h6>
         <ul className="breadcrumb mb-0">
-          <li className="breadcrumb-item"><Link to="/accounts/overview">Accounts</Link></li>
+          <li className="breadcrumb-item"><Link to="/accounts/overview">Finance</Link></li>
           <li className="breadcrumb-item active">Expenses</li>
         </ul>
       </div>

@@ -479,10 +479,10 @@ export default function Sidebar() {
                 type="button"
                 className={`rail-btn ${activeTab === 'finance' ? 'active' : ''}`}
                 onClick={() => handleCategoryClick('finance')}
-                title="Finance & Accounts"
+                title="Finance"
               >
                 <i className="ri-bank-card-line rail-icon"></i>
-                <span className="rail-label">Accounts</span>
+                <span className="rail-label">Finance</span>
               </button>
             )}
 
@@ -553,7 +553,7 @@ export default function Sidebar() {
               {activeTab === 'deliveries' && 'Operations & Dispatch'}
               {activeTab === 'customers' && 'Customer CRM'}
               {activeTab === 'staff' && 'Staff Accounts & Roles'}
-              {activeTab === 'finance' && 'Accounts & Finance'}
+              {activeTab === 'finance' && 'Finance'}
               {activeTab === 'reports' && 'Analytics & Reports'}
               {activeTab === 'chef' && 'Chef Bems AI'}
               {activeTab === 'stores' && 'Multi-Store Network'}

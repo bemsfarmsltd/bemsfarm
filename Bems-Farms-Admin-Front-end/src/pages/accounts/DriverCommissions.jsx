@@ -158,7 +158,7 @@ export default function DriverCommissions() {
           <p className="text-muted mb-0" style={{ fontSize:12 }}>Generate, approve and pay driver commissions per period</p>
         </div>
         <ul className="breadcrumb mb-0">
-          <li className="breadcrumb-item"><Link to="/accounts/overview">Accounts</Link></li>
+          <li className="breadcrumb-item"><Link to="/accounts/overview">Finance</Link></li>
           <li className="breadcrumb-item active">Commissions</li>
         </ul>
       </div>
