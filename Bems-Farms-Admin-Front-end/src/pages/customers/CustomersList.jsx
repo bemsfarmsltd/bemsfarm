@@ -7,6 +7,19 @@ const fmt    = n => `₦${Number(n || 0).toLocaleString()}`
 const ini    = name => (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 const fmtPts = n => Number(n || 0).toLocaleString() + ' pts'
 const fmtDate = d => d ? new Date(d).toISOString().slice(0, 10) : '—'
+const fmtLogin = d => {
+  if (!d) return 'Never'
+  const date = new Date(d)
+  const diffMs = Date.now() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 7) return `${diffDays}d ago`
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
 
 const TIER_CFG = {
   Platinum:{ bg:'#f5f3ff', color:'#7c3aed', border:'#ddd6fe', icon:'ri-vip-crown-2-fill'  },
@@ -189,18 +202,18 @@ export default function CustomersList() {
           <table className="table table-hover align-middle mb-0" style={{fontSize:13}}>
             <thead style={{background:'#f8fafc'}}>
               <tr>
-                {['CUSTOMER','CONTACT','ZONE','TIER','ORDERS','TOTAL SPENT','POINTS','LAST ORDER','STATUS',''].map(h=>(
-                  <th key={h} className="px-3 py-2 fw-medium text-muted" style={{fontSize:11}}>{h}</th>
+                {['CUSTOMER','CONTACT','ZONE','TIER','ORDERS','TOTAL SPENT','LAST LOGIN','STATUS','ACTIONS'].map(h=>(
+                  <th key={h} className="px-3 py-2 fw-medium text-muted text-nowrap" style={{fontSize:11}}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={10} className="text-center py-5 text-muted">Loading customers…</td></tr>
+                <tr><td colSpan={9} className="text-center py-5 text-muted">Loading customers…</td></tr>
               )}
               {!loading && customers.length===0 && (
                 <tr>
-                  <td colSpan={10} className="text-center py-5 text-muted">
+                  <td colSpan={9} className="text-center py-5 text-muted">
                     <i className="ri-user-search-line d-block mb-2" style={{fontSize:28}}/>
                     No customers match your search.
                   </td>
@@ -209,19 +222,23 @@ export default function CustomersList() {
               {!loading && customers.map((c,i) => {
                 const tc = TIER_CFG[c.tier] || TIER_CFG.Bronze
                 const sc = STATUS_CFG[c.status] || STATUS_CFG.active
+                const profileUrl = `/customers/${c.customer_code || c.id}`
                 return (
                   <tr key={c.id}>
                     <td className="px-3 py-2">
                       <div className="d-flex align-items-center gap-3">
-                        <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
+                        <Link to={profileUrl} className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0 text-decoration-none"
                           style={{width:38,height:38,background:AVATAR_COLORS[i%AVATAR_COLORS.length],fontSize:13}}>
                           {ini(c.name)}
-                        </div>
+                        </Link>
                         <div>
-                          <Link to={`/customers/${c.customer_code || c.id}`} style={{fontWeight:600,color:'#1e293b',textDecoration:'none'}}>
+                          <Link to={profileUrl} className="fw-bold text-dark text-decoration-none d-block hover-underline">
                             {c.name}
                           </Link>
-                          <div className="text-muted" style={{fontSize:10}}>{c.customer_code || ('CUS-' + String(c.id).padStart(4, '0'))} · Joined {fmtDate(c.joined_at)}</div>
+                          <div className="text-muted" style={{fontSize:10}}>
+                            <span className="font-monospace text-primary">{c.customer_code || ('CUS-' + String(c.id).padStart(4, '0'))}</span>
+                            <span> · Joined {fmtDate(c.joined_at)}</span>
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -241,18 +258,25 @@ export default function CustomersList() {
                         <i className={tc.icon}/>{c.tier}
                       </span>
                     </td>
-                    <td className="px-3 py-2 fw-semibold">{c.total_orders || 0}</td>
-                    <td className="px-3 py-2 fw-medium">{fmt(c.total_spent)}</td>
-                    <td className="px-3 py-2">
-                      <span style={{fontSize:12,color:'#8b5cf6',fontWeight:500}}>{fmtPts(c.points)}</span>
+                    <td className="px-3 py-2 fw-semibold text-center">{c.total_orders || 0}</td>
+                    <td className="px-3 py-2 fw-bold text-success">{fmt(c.total_spent)}</td>
+                    <td className="px-3 py-2 text-nowrap">
+                      <div className="d-flex align-items-center gap-1" style={{fontSize:12, fontWeight:500, color: c.last_login ? '#0f172a' : '#94a3b8'}}>
+                        <i className={`ri-time-line ${c.last_login ? 'text-primary' : 'text-muted'}`} style={{fontSize:13}}/>
+                        <span>{fmtLogin(c.last_login)}</span>
+                      </div>
+                      {c.last_login && (
+                        <div className="text-muted" style={{fontSize:10, paddingLeft:17}}>
+                          {new Date(c.last_login).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-3 py-2 text-muted" style={{fontSize:12}}>{fmtDate(c.last_order_at)}</td>
                     <td className="px-3 py-2">
                       <div className="d-flex align-items-center gap-2">
                         <div className="form-check form-switch mb-0">
                           <input className="form-check-input" type="checkbox" role="switch"
                             checked={c.status==='active'} onChange={()=>toggleStatus(c)}
-                            style={{width:34,height:18,cursor:'pointer'}}/>
+                            style={{width:34,height:18,cursor:'pointer'}} title="Toggle Customer Active Status"/>
                         </div>
                         <span className="badge" style={{fontSize:10,background:sc.bg,color:sc.color,border:`1px solid ${sc.border}`}}>
                           {sc.label}
@@ -260,11 +284,11 @@ export default function CustomersList() {
                       </div>
                     </td>
                     <td className="px-3 py-2">
-                      <div className="d-flex gap-1">
-                        <Link to={`/customers/${c.customer_code || c.id}`}
+                      <div className="d-flex gap-1 align-items-center">
+                        <Link to={profileUrl}
                           className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
-                          style={{width:30,height:30,padding:0,borderRadius:'50%'}} title="View Profile">
-                          <i className="ri-eye-line" style={{fontSize:13}}/>
+                          style={{width:30,height:30,padding:0,borderRadius:'50%'}} title="View Deep Customer Information">
+                          <i className="ri-arrow-right-line" style={{fontSize:14}}/>
                         </Link>
                         <button
                           className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center"

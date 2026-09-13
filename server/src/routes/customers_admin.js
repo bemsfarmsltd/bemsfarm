@@ -65,7 +65,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
         COALESCE(c.customer_code, 'CUS-' || LPAD(c.id::text, 4, '0')) AS customer_code,
         c.name, c.phone, c.email,
         c.address AS zone, c.status, c.total_orders, c.total_spent,
-        c.joined_at, c.last_order_at,
+        c.joined_at, c.last_order_at, c.last_login,
         COALESCE(cl.points_balance, 0) AS points,
         COALESCE(cl.lifetime_points, 0) AS lifetime_points,
         cl.last_earned_at,
@@ -448,13 +448,14 @@ router.get("/site-activity", requireRole("superadmin", "manager"), async (req, r
 // ── GET /api/admin/customers/:id ──────────────────────────────────
 router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "cashier"), async (req, res, next) => {
   try {
-    const isCode = req.params.id.startsWith("CUS-");
-    const whereCol = isCode ? "c.customer_code" : "c.id";
+    const target = req.params.id;
+    const isNum = !isNaN(Number(target));
 
     const result = await pool.query(
       `
       SELECT
         c.*,
+        COALESCE(c.customer_code, 'CUS-' || LPAD(c.id::text, 4, '0')) AS customer_code,
         COALESCE(cl.points_balance, 0)  AS points,
         COALESCE(cl.lifetime_points, 0) AS lifetime_points,
         COALESCE(lt.name, 'Bronze')     AS tier,
@@ -466,9 +467,9 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "
       LEFT JOIN customer_loyalty cl ON c.id = cl.customer_id
       LEFT JOIN loyalty_tiers lt ON cl.tier_id = lt.id
       LEFT JOIN customer_wallets cw ON c.id = cw.customer_id
-      WHERE ${whereCol} = $1
+      WHERE ${isNum ? "(c.id = $1 OR c.customer_code = $2)" : "(c.customer_code = $1 OR LOWER(c.email) = LOWER($1))"}
     `,
-      [req.params.id],
+      isNum ? [Number(target), target] : [target],
     );
 
     if (!result.rows.length)
@@ -476,20 +477,21 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "
 
     const customer = result.rows[0];
 
-    // Orders
+    // Orders with items summary, payment method, delivery status
     const orders = await pool.query(
       `
-      SELECT id, total, status, created_at,
+      SELECT id, total, status, delivery_status, payment_method, created_at,
         (SELECT STRING_AGG(COALESCE(oi.product_name, p.name) || ' ×' || oi.quantity, ', ')
          FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id
-         WHERE oi.order_id = o.id) AS items_summary
+         WHERE oi.order_id = o.id) AS items_summary,
+        (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) AS items_count
       FROM orders o
       WHERE customer_id = $1
       ORDER BY created_at DESC
-      LIMIT 10
+      LIMIT 25
     `,
       [customer.id],
-    );
+    ).catch(() => ({ rows: [] }));
 
     // Loyalty transactions
     const loyalty = await pool.query(
@@ -498,27 +500,34 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "
       FROM loyalty_transactions
       WHERE customer_id = $1
       ORDER BY created_at DESC
-      LIMIT 20
+      LIMIT 25
     `,
       [customer.id],
-    );
+    ).catch(() => ({ rows: [] }));
 
-    // Addresses
+    // Addresses from user_addresses
     const addresses = await pool.query(
-      `
-      SELECT * FROM customer_addresses WHERE customer_id = $1 ORDER BY is_default DESC
-    `,
+      `SELECT * FROM user_addresses WHERE user_id = $1 ORDER BY is_default DESC, created_at DESC`,
       [customer.id],
-    );
+    ).catch(() => ({ rows: [] }));
 
-    // Activity log
+    // Activity log from ai_user_activity
     const activity = await pool.query(
-      `
-      SELECT * FROM customer_activity_log WHERE customer_id = $1
-      ORDER BY created_at DESC LIMIT 20
-    `,
+      `SELECT id, type, entity_type, entity_id, metadata, ip_address, created_at FROM ai_user_activity WHERE user_id = $1 ORDER BY created_at DESC LIMIT 35`,
       [customer.id],
-    );
+    ).catch(() => ({ rows: [] }));
+
+    // Wallet activity ledger
+    const wallet = await pool.query(
+      `SELECT id, type, amount, balance_after, note, created_at FROM customer_wallet_transactions WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 20`,
+      [customer.id],
+    ).catch(() => ({ rows: [] }));
+
+    // AI context and preferences
+    const aiContext = await pool.query(
+      `SELECT * FROM ai_user_context WHERE user_id = $1`,
+      [customer.id],
+    ).catch(() => ({ rows: [] }));
 
     res.json({
       ...customer,
@@ -526,6 +535,8 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "
       loyalty: loyalty.rows,
       addresses: addresses.rows,
       activity: activity.rows,
+      wallet_transactions: wallet.rows,
+      ai_context: aiContext.rows[0] || null,
     });
   } catch (err) {
     next(err);
@@ -703,6 +714,43 @@ router.patch(
       }
 
       res.json({ message: `Customer status updated to ${status}`, user: result.rows[0] });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ── PATCH /api/admin/customers/:id/notes ─────────────────────────
+router.patch(
+  "/:id/notes",
+  requireRole("superadmin", "manager", "admin"),
+  async (req, res, next) => {
+    try {
+      const { notes } = req.body;
+      const target = String(req.params.id || "").trim();
+      if (!target || target === "undefined" || target === "null") {
+        return res.status(400).json({ message: "Valid customer identifier required" });
+      }
+
+      await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS notes TEXT").catch(() => {});
+
+      let result;
+      if (!isNaN(Number(target))) {
+        result = await pool.query(
+          `UPDATE users SET notes=$1, updated_at=NOW() WHERE id=$2 OR customer_code=$3 RETURNING id, notes`,
+          [notes, Number(target), target]
+        );
+      } else {
+        result = await pool.query(
+          `UPDATE users SET notes=$1, updated_at=NOW() WHERE customer_code=$2 OR LOWER(email)=LOWER($2) RETURNING id, notes`,
+          [notes, target]
+        );
+      }
+
+      if (!result.rowCount) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+      res.json({ message: "Customer notes updated", notes: result.rows[0].notes });
     } catch (err) {
       next(err);
     }
