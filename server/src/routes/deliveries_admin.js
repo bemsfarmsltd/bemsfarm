@@ -46,6 +46,7 @@ router.get("/active", requireRole("superadmin", "manager", "admin", "delivery_ma
         d.eta_minutes, d.assigned_at, d.dispatched_at,
         d.delivery_address,
         o.id AS order_id, o.total AS order_total, o.notes,
+        o.latitude AS customer_lat, o.longitude AS customer_lng,
         COALESCE(o.customer_name, c.name, 'Walk-in') AS customer_name,
         COALESCE(o.customer_phone, c.phone, '')       AS customer_phone,
         dr.id AS driver_id, dr.name AS driver_name,

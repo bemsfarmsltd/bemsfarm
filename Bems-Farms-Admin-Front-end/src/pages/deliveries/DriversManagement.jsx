@@ -1,119 +1,39 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-
-// ─── Config ───────────────────────────────────────────────────────────────────
+import toast from 'react-hot-toast'
+import api from '../../lib/api'
 
 const STATUS_CFG = {
-  active:    { label: 'Active',    color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'  },
-  on_delivery:{ label: 'On Delivery', color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'         },
-  off_duty:  { label: 'Off Duty',  color: '#6b7280', bg: '#f3f4f6', icon: 'ri-moon-line'             },
-  suspended: { label: 'Suspended', color: '#ef4444', bg: '#fee2e2', icon: 'ri-forbid-line'           },
+  active:      { label: 'Active',      color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'  },
+  on_delivery: { label: 'On Delivery', color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'         },
+  off_duty:    { label: 'Off Duty',    color: '#6b7280', bg: '#f3f4f6', icon: 'ri-moon-line'             },
+  suspended:   { label: 'Suspended',   color: '#ef4444', bg: '#fee2e2', icon: 'ri-forbid-line'           },
 }
 
-const ZONES = ['Victoria Island', 'Lekki Phase 1', 'Lekki Phase 2', 'Ikeja / GRA', 'Surulere', 'Yaba / Mainland', 'Maryland / Gbagada', 'Ikorodu', 'Isolo / Oshodi']
 const VEHICLE_TYPES = ['Motorcycle', 'Bicycle', 'Car', 'Van']
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const DRIVERS_INIT = [
-  {
-    id: 1, name: 'Tunde Adeyemi', phone: '08031234567', email: 'tunde.a@bemsfarms.com',
-    bike: 'LAG-234-AB', vehicleType: 'Motorcycle', zone: 'Ikeja / GRA',
-    status: 'on_delivery', joinDate: '2025-03-10',
-    deliveries: 142, rating: 4.8, successRate: 97, earnings: 284000,
-    currentOrder: 'ORD-2026-0139',
-    history: [
-      { date: '2026-06-27', orders: 3, earnings: 6000 },
-      { date: '2026-06-26', orders: 5, earnings: 9500 },
-      { date: '2026-06-25', orders: 4, earnings: 8000 },
-    ],
-    notes: '',
-  },
-  {
-    id: 2, name: 'Emeka Okafor', phone: '08045678901', email: 'emeka.o@bemsfarms.com',
-    bike: 'LAG-567-CD', vehicleType: 'Motorcycle', zone: 'Victoria Island',
-    status: 'on_delivery', joinDate: '2025-01-15',
-    deliveries: 201, rating: 4.9, successRate: 99, earnings: 402000,
-    currentOrder: 'ORD-2026-0138',
-    history: [
-      { date: '2026-06-27', orders: 4, earnings: 7500 },
-      { date: '2026-06-26', orders: 6, earnings: 11000 },
-      { date: '2026-06-25', orders: 5, earnings: 9000 },
-    ],
-    notes: '',
-  },
-  {
-    id: 3, name: 'Bola Akinwale', phone: '08056789012', email: 'bola.a@bemsfarms.com',
-    bike: 'LAG-890-EF', vehicleType: 'Motorcycle', zone: 'Surulere',
-    status: 'on_delivery', joinDate: '2025-05-20',
-    deliveries: 88, rating: 4.5, successRate: 94, earnings: 176000,
-    currentOrder: 'ORD-2026-0137',
-    history: [
-      { date: '2026-06-27', orders: 2, earnings: 3500 },
-      { date: '2026-06-26', orders: 3, earnings: 6000 },
-      { date: '2026-06-25', orders: 4, earnings: 7500 },
-    ],
-    notes: 'Had 1 failed delivery attempt today.',
-  },
-  {
-    id: 4, name: 'Chidi Eze', phone: '08067890123', email: 'chidi.e@bemsfarms.com',
-    bike: 'LAG-123-GH', vehicleType: 'Bicycle', zone: 'Yaba / Mainland',
-    status: 'off_duty', joinDate: '2025-07-01',
-    deliveries: 56, rating: 4.4, successRate: 92, earnings: 112000,
-    currentOrder: null,
-    history: [
-      { date: '2026-06-26', orders: 2, earnings: 4000 },
-      { date: '2026-06-25', orders: 3, earnings: 5500 },
-    ],
-    notes: '',
-  },
-  {
-    id: 5, name: 'Femi Adeleye', phone: '08078901234', email: 'femi.a@bemsfarms.com',
-    bike: 'LAG-456-IJ', vehicleType: 'Motorcycle', zone: 'Maryland / Gbagada',
-    status: 'on_delivery', joinDate: '2025-02-28',
-    deliveries: 175, rating: 4.7, successRate: 96, earnings: 350000,
-    currentOrder: 'ORD-2026-0141',
-    history: [
-      { date: '2026-06-27', orders: 3, earnings: 6500 },
-      { date: '2026-06-26', orders: 5, earnings: 10000 },
-      { date: '2026-06-25', orders: 6, earnings: 12000 },
-    ],
-    notes: '',
-  },
-  {
-    id: 6, name: 'Yemi Oladapo', phone: '08089012345', email: 'yemi.o@bemsfarms.com',
-    bike: 'LAG-789-KL', vehicleType: 'Motorcycle', zone: 'Lekki Phase 1',
-    status: 'suspended', joinDate: '2025-04-10',
-    deliveries: 34, rating: 3.8, successRate: 82, earnings: 68000,
-    currentOrder: null,
-    history: [
-      { date: '2026-06-20', orders: 2, earnings: 4000 },
-    ],
-    notes: 'Suspended: multiple customer complaints about late deliveries and rude behaviour. Under review.',
-  },
-]
-
 const BLANK_FORM = {
-  name: '', phone: '', email: '', vehicleType: 'Motorcycle', bike: '', zone: ZONES[0], notes: '',
+  name: '', phone: '', email: '', vehicle_type: 'Motorcycle', vehicle_plate: '', zone_id: '', notes: '',
 }
 
-const fmt = (n) => `₦${Number(n).toLocaleString()}`
+const fmt = (n) => `₦${Number(n || 0).toLocaleString()}`
 
 function StarRating({ rating }) {
+  const r = Number(rating || 0)
   return (
     <span>
       {[1,2,3,4,5].map(i => (
-        <i key={i} className={i <= Math.round(rating) ? 'ri-star-fill text-warning' : 'ri-star-line text-muted'} style={{ fontSize: 12 }} />
+        <i key={i} className={i <= Math.round(r) ? 'ri-star-fill text-warning' : 'ri-star-line text-muted'} style={{ fontSize: 12 }} />
       ))}
-      <span className="ms-1 small fw-medium">{rating}</span>
+      <span className="ms-1 small fw-medium">{r.toFixed(1)}</span>
     </span>
   )
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function DriversManagement() {
-  const [drivers, setDrivers]           = useState(DRIVERS_INIT)
+  const [drivers, setDrivers] = useState([])
+  const [zones, setZones] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch]             = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [activeModal, setActiveModal]   = useState(null)
@@ -121,71 +41,88 @@ export default function DriversManagement() {
   const [form, setForm]                 = useState(BLANK_FORM)
   const [suspendNote, setSuspendNote]   = useState('')
   const [isEditing, setIsEditing]       = useState(false)
+  const [saving, setSaving]             = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [drvRes, zoneRes] = await Promise.all([
+        api.get('/admin/deliveries/drivers', { params: { search: search || undefined, status: filterStatus !== 'all' ? filterStatus : undefined } }),
+        api.get('/admin/deliveries/zones').catch(() => ({ data: { zones: [] } })),
+      ])
+      setDrivers(drvRes.data.drivers || [])
+      setZones(zoneRes.data.zones || [])
+    } catch {
+      toast.error('Failed to load drivers')
+    } finally {
+      setLoading(false)
+    }
+  }, [search, filterStatus])
+
+  useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t) }, [load])
 
   const openModal = (type, driver = null) => {
     setSelected(driver)
     setActiveModal(type)
     setSuspendNote('')
     if (type === 'add') { setForm(BLANK_FORM); setIsEditing(false) }
-    if (type === 'edit' && driver) { setForm({ ...driver }); setIsEditing(true) }
+    if (type === 'edit' && driver) {
+      setForm({ name: driver.name, phone: driver.phone, email: driver.email || '', vehicle_type: driver.vehicle_type || 'Motorcycle', vehicle_plate: driver.vehicle_plate || '', zone_id: driver.zone_id || '', notes: driver.notes || '' })
+      setIsEditing(true)
+    }
   }
   const closeModal = () => { setActiveModal(null); setSelected(null) }
   const setField   = (f, v) => setForm(p => ({ ...p, [f]: v }))
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
     total:       drivers.length,
     active:      drivers.filter(d => d.status === 'active').length,
     onDelivery:  drivers.filter(d => d.status === 'on_delivery').length,
     offDuty:     drivers.filter(d => d.status === 'off_duty').length,
     suspended:   drivers.filter(d => d.status === 'suspended').length,
-    totalDeliveries: drivers.reduce((s, d) => s + d.deliveries, 0),
+    totalDeliveries: drivers.reduce((s, d) => s + Number(d.total_deliveries || 0), 0),
   }), [drivers])
 
-  // ── Filtered ───────────────────────────────────────────────────────────────
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase()
-    return drivers.filter(d => {
-      const okStatus = filterStatus === 'all' || d.status === filterStatus
-      const okSearch = !q || d.name.toLowerCase().includes(q) || d.phone.includes(q) || d.zone.toLowerCase().includes(q)
-      return okStatus && okSearch
-    })
-  }, [drivers, search, filterStatus])
-
-  // ── Actions ────────────────────────────────────────────────────────────────
-  const saveDriver = () => {
+  async function saveDriver() {
     if (!form.name || !form.phone) return
-    if (isEditing) {
-      setDrivers(prev => prev.map(d => d.id !== selected.id ? d : { ...d, ...form }))
-    } else {
-      const newDriver = {
-        ...form, id: Date.now(), status: 'active', joinDate: new Date().toISOString().slice(0, 10),
-        deliveries: 0, rating: 0, successRate: 0, earnings: 0, currentOrder: null, history: [],
+    setSaving(true)
+    try {
+      if (isEditing) {
+        await api.patch(`/admin/deliveries/drivers/${selected.id}`, form)
+        toast.success('Driver updated')
+      } else {
+        await api.post('/admin/deliveries/drivers', form)
+        toast.success('Driver added')
       }
-      setDrivers(prev => [newDriver, ...prev])
+      closeModal()
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save driver')
+    } finally {
+      setSaving(false)
     }
-    closeModal()
   }
 
-  const suspendDriver = () => {
-    setDrivers(prev => prev.map(d =>
-      d.id !== selected.id ? d : { ...d, status: 'suspended', notes: suspendNote }
-    ))
-    closeModal()
+  async function suspendDriver() {
+    try {
+      await api.patch(`/admin/deliveries/drivers/${selected.id}/suspend`, { reason: suspendNote })
+      toast.success('Driver suspended')
+      closeModal()
+      load()
+    } catch {
+      toast.error('Failed to suspend driver')
+    }
   }
 
-  const activateDriver = (driver) => {
-    setDrivers(prev => prev.map(d => d.id !== driver.id ? d : { ...d, status: 'active', notes: '' }))
+  async function activateDriver(driver) {
+    try {
+      await api.patch(`/admin/deliveries/drivers/${driver.id}/activate`)
+      toast.success('Driver reinstated')
+      load()
+    } catch {
+      toast.error('Failed to reinstate driver')
+    }
   }
-
-  const deleteDriver = () => {
-    setDrivers(prev => prev.filter(d => d.id !== selected.id))
-    closeModal()
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="container-fluid">
@@ -241,7 +178,7 @@ export default function DriversManagement() {
             </button>
           )}
           <div className="ms-auto d-flex gap-2 align-items-center">
-            <span className="text-muted small">{filtered.length} driver{filtered.length !== 1 ? 's' : ''}</span>
+            <span className="text-muted small">{drivers.length} driver{drivers.length !== 1 ? 's' : ''}</span>
             <button className="btn btn-sm btn-primary" onClick={() => openModal('add')}>
               <i className="ri-add-line me-1" />Add Driver
             </button>
@@ -275,11 +212,15 @@ export default function DriversManagement() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && (
+              {loading && (
+                <tr><td colSpan={10} className="text-center text-muted py-5">Loading drivers…</td></tr>
+              )}
+              {!loading && drivers.length === 0 && (
                 <tr><td colSpan={10} className="text-center text-muted py-5">No drivers found</td></tr>
               )}
-              {filtered.map(driver => {
-                const cfg = STATUS_CFG[driver.status]
+              {!loading && drivers.map(driver => {
+                const cfg = STATUS_CFG[driver.status] || STATUS_CFG.active
+                const successRate = Number(driver.success_rate || 0)
                 return (
                   <tr key={driver.id}>
                     <td>
@@ -290,24 +231,24 @@ export default function DriversManagement() {
                         </div>
                         <div>
                           <div className="fw-medium">{driver.name}</div>
-                          <div className="text-muted" style={{ fontSize: 11 }}>Since {driver.joinDate}</div>
+                          <div className="text-muted" style={{ fontSize: 11 }}>Since {driver.joined_date ? driver.joined_date.slice(0,10) : '—'}</div>
                         </div>
                       </div>
                     </td>
                     <td>
                       <div style={{ fontSize: 13 }}>{driver.phone}</div>
-                      <div className="text-muted" style={{ fontSize: 11 }}>{driver.email}</div>
+                      <div className="text-muted" style={{ fontSize: 11 }}>{driver.email || '—'}</div>
                     </td>
-                    <td style={{ fontSize: 13 }}>{driver.zone}</td>
+                    <td style={{ fontSize: 13 }}>{driver.zone || '—'}</td>
                     <td>
-                      <div style={{ fontSize: 13 }}>{driver.vehicleType}</div>
-                      <div className="text-muted" style={{ fontSize: 11 }}>{driver.bike}</div>
+                      <div style={{ fontSize: 13 }}>{driver.vehicle_type || '—'}</div>
+                      <div className="text-muted" style={{ fontSize: 11 }}>{driver.vehicle_plate || '—'}</div>
                     </td>
-                    <td className="fw-medium">{driver.deliveries}</td>
+                    <td className="fw-medium">{driver.total_deliveries || 0}</td>
                     <td><StarRating rating={driver.rating} /></td>
                     <td>
-                      <div className="fw-medium" style={{ color: driver.successRate >= 95 ? '#22c55e' : driver.successRate >= 85 ? '#f59e0b' : '#ef4444' }}>
-                        {driver.successRate}%
+                      <div className="fw-medium" style={{ color: successRate >= 95 ? '#22c55e' : successRate >= 85 ? '#f59e0b' : '#ef4444' }}>
+                        {successRate}%
                       </div>
                     </td>
                     <td className="fw-medium">{fmt(driver.earnings)}</td>
@@ -315,8 +256,8 @@ export default function DriversManagement() {
                       <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: 11 }}>
                         <i className={`${cfg.icon} me-1`} />{cfg.label}
                       </span>
-                      {driver.currentOrder && (
-                        <div className="text-muted" style={{ fontSize: 10 }}>{driver.currentOrder}</div>
+                      {driver.current_order && (
+                        <div className="text-muted" style={{ fontSize: 10 }}>Order #{driver.current_order}</div>
                       )}
                     </td>
                     <td>
@@ -356,98 +297,85 @@ export default function DriversManagement() {
           onClick={e => e.target === e.currentTarget && closeModal()}>
 
           {/* ── DRIVER PROFILE ────────────────────────── */}
-          {activeModal === 'profile' && selected && (
-            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }}>
-              {/* Header band */}
-              <div style={{ background: '#1e293b', borderRadius: '12px 12px 0 0', padding: '24px 28px', color: '#fff' }}>
-                <div className="d-flex align-items-center gap-3">
-                  <div className="rounded-circle d-flex align-items-center justify-content-center"
-                    style={{ width: 56, height: 56, background: STATUS_CFG[selected.status].color + '30',
-                      border: `2px solid ${STATUS_CFG[selected.status].color}`, fontSize: 18, fontWeight: 700, color: STATUS_CFG[selected.status].color }}>
-                    {selected.name.split(' ').map(n => n[0]).join('')}
-                  </div>
-                  <div className="flex-grow-1">
-                    <div className="fw-bold fs-16">{selected.name}</div>
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>{selected.phone} · {selected.zone}</div>
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>{selected.vehicleType} · {selected.bike}</div>
-                  </div>
-                  <div>
-                    <span className="badge" style={{ background: STATUS_CFG[selected.status].bg, color: STATUS_CFG[selected.status].color, fontSize: 11 }}>
-                      <i className={`${STATUS_CFG[selected.status].icon} me-1`} />{STATUS_CFG[selected.status].label}
-                    </span>
-                    {selected.currentOrder && (
-                      <div className="small mt-1" style={{ opacity: 0.7 }}>Active: {selected.currentOrder}</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4">
-                {/* KPI row */}
-                <div className="row g-3 mb-4">
-                  {[
-                    { label: 'Total Deliveries', value: selected.deliveries, color: '#6366f1' },
-                    { label: 'Success Rate',     value: `${selected.successRate}%`, color: selected.successRate >= 95 ? '#22c55e' : selected.successRate >= 85 ? '#f59e0b' : '#ef4444' },
-                    { label: 'Total Earnings',   value: fmt(selected.earnings), color: '#10b981' },
-                  ].map(k => (
-                    <div key={k.label} className="col-4">
-                      <div className="border rounded p-3 text-center">
-                        <div className="fw-bold fs-18" style={{ color: k.color }}>{k.value}</div>
-                        <div className="text-muted" style={{ fontSize: 11 }}>{k.label}</div>
-                      </div>
+          {activeModal === 'profile' && selected && (() => {
+            const cfg = STATUS_CFG[selected.status] || STATUS_CFG.active
+            const successRate = Number(selected.success_rate || 0)
+            return (
+              <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }}>
+                {/* Header band */}
+                <div style={{ background: '#1e293b', borderRadius: '12px 12px 0 0', padding: '24px 28px', color: '#fff' }}>
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="rounded-circle d-flex align-items-center justify-content-center"
+                      style={{ width: 56, height: 56, background: cfg.color + '30',
+                        border: `2px solid ${cfg.color}`, fontSize: 18, fontWeight: 700, color: cfg.color }}>
+                      {selected.name.split(' ').map(n => n[0]).join('')}
                     </div>
-                  ))}
-                </div>
-
-                {/* Rating */}
-                <div className="d-flex align-items-center gap-2 mb-4">
-                  <StarRating rating={selected.rating} />
-                  <span className="text-muted small">({selected.deliveries} deliveries)</span>
-                </div>
-
-                {/* Recent history */}
-                <div className="mb-4">
-                  <div className="fw-medium small mb-2">Recent Activity</div>
-                  <table className="table table-sm border">
-                    <thead className="table-light"><tr><th>Date</th><th>Orders</th><th>Earnings</th></tr></thead>
-                    <tbody>
-                      {selected.history.map((h, i) => (
-                        <tr key={i}>
-                          <td style={{ fontSize: 13 }}>{h.date}</td>
-                          <td style={{ fontSize: 13 }}>{h.orders}</td>
-                          <td style={{ fontSize: 13 }} className="fw-medium">{fmt(h.earnings)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Notes */}
-                {selected.notes && (
-                  <div className="alert alert-warning small p-3 mb-3">
-                    <i className="ri-information-line me-1" />{selected.notes}
+                    <div className="flex-grow-1">
+                      <div className="fw-bold fs-16">{selected.name}</div>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>{selected.phone} · {selected.zone || 'No zone assigned'}</div>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>{selected.vehicle_type || '—'} · {selected.vehicle_plate || '—'}</div>
+                    </div>
+                    <div>
+                      <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: 11 }}>
+                        <i className={`${cfg.icon} me-1`} />{cfg.label}
+                      </span>
+                      {selected.current_order && (
+                        <div className="small mt-1" style={{ opacity: 0.7 }}>Active: Order #{selected.current_order}</div>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
 
-                <div className="d-flex gap-2">
-                  <button className="btn btn-outline-primary btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('edit', selected), 100) }}>
-                    <i className="ri-edit-line me-1" />Edit
-                  </button>
-                  {selected.status !== 'suspended' && selected.status !== 'on_delivery' && (
-                    <button className="btn btn-outline-danger btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('suspend', selected), 100) }}>
-                      <i className="ri-forbid-line me-1" />Suspend
-                    </button>
+                <div className="p-4">
+                  {/* KPI row */}
+                  <div className="row g-3 mb-4">
+                    {[
+                      { label: 'Total Deliveries', value: selected.total_deliveries || 0, color: '#6366f1' },
+                      { label: 'Success Rate',     value: `${successRate}%`, color: successRate >= 95 ? '#22c55e' : successRate >= 85 ? '#f59e0b' : '#ef4444' },
+                      { label: 'Total Earnings',   value: fmt(selected.earnings), color: '#10b981' },
+                    ].map(k => (
+                      <div key={k.label} className="col-4">
+                        <div className="border rounded p-3 text-center">
+                          <div className="fw-bold fs-18" style={{ color: k.color }}>{k.value}</div>
+                          <div className="text-muted" style={{ fontSize: 11 }}>{k.label}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Rating */}
+                  <div className="d-flex align-items-center gap-2 mb-4">
+                    <StarRating rating={selected.rating} />
+                    <span className="text-muted small">({selected.total_deliveries || 0} deliveries)</span>
+                  </div>
+
+                  {/* Notes */}
+                  {selected.notes && (
+                    <div className="alert alert-warning small p-3 mb-3">
+                      <i className="ri-information-line me-1" />{selected.notes}
+                    </div>
                   )}
-                  {selected.status === 'suspended' && (
-                    <button className="btn btn-outline-success btn-sm" onClick={() => { activateDriver(selected); closeModal() }}>
-                      <i className="ri-checkbox-circle-line me-1" />Reinstate
+
+                  <div className="d-flex gap-2">
+                    <button className="btn btn-outline-primary btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('edit', selected), 100) }}>
+                      <i className="ri-edit-line me-1" />Edit
                     </button>
-                  )}
-                  <button className="btn btn-outline-secondary btn-sm ms-auto" onClick={closeModal}>Close</button>
+                    {selected.status !== 'suspended' && selected.status !== 'on_delivery' && (
+                      <button className="btn btn-outline-danger btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('suspend', selected), 100) }}>
+                        <i className="ri-forbid-line me-1" />Suspend
+                      </button>
+                    )}
+                    {selected.status === 'suspended' && (
+                      <button className="btn btn-outline-success btn-sm" onClick={() => { activateDriver(selected); closeModal() }}>
+                        <i className="ri-checkbox-circle-line me-1" />Reinstate
+                      </button>
+                    )}
+                    <button className="btn btn-outline-secondary btn-sm ms-auto" onClick={closeModal}>Close</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* ── ADD / EDIT DRIVER ─────────────────────── */}
           {(activeModal === 'add' || activeModal === 'edit') && (
@@ -475,19 +403,20 @@ export default function DriversManagement() {
                   </div>
                   <div className="col-6">
                     <label className="form-label fw-medium small">Vehicle Type</label>
-                    <select className="form-select" value={form.vehicleType} onChange={e => setField('vehicleType', e.target.value)}>
+                    <select className="form-select" value={form.vehicle_type} onChange={e => setField('vehicle_type', e.target.value)}>
                       {VEHICLE_TYPES.map(v => <option key={v}>{v}</option>)}
                     </select>
                   </div>
                   <div className="col-6">
                     <label className="form-label fw-medium small">Plate Number</label>
                     <input className="form-control" placeholder="e.g. LAG-234-AB"
-                      value={form.bike} onChange={e => setField('bike', e.target.value)} />
+                      value={form.vehicle_plate} onChange={e => setField('vehicle_plate', e.target.value)} />
                   </div>
                   <div className="col-12">
                     <label className="form-label fw-medium small">Primary Delivery Zone</label>
-                    <select className="form-select" value={form.zone} onChange={e => setField('zone', e.target.value)}>
-                      {ZONES.map(z => <option key={z}>{z}</option>)}
+                    <select className="form-select" value={form.zone_id} onChange={e => setField('zone_id', e.target.value)}>
+                      <option value="">— No zone —</option>
+                      {zones.map(z => <option key={z.zone_id} value={z.zone_id}>{z.zone_name}</option>)}
                     </select>
                   </div>
                   <div className="col-12">
@@ -498,9 +427,9 @@ export default function DriversManagement() {
                 </div>
                 <div className="d-flex gap-2 mt-4">
                   <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
-                  <button className="btn btn-primary flex-fill" onClick={saveDriver} disabled={!form.name || !form.phone}>
+                  <button className="btn btn-primary flex-fill" onClick={saveDriver} disabled={!form.name || !form.phone || saving}>
                     <i className={`${isEditing ? 'ri-save-line' : 'ri-add-line'} me-1`} />
-                    {isEditing ? 'Save Changes' : 'Add Driver'}
+                    {saving ? 'Saving…' : (isEditing ? 'Save Changes' : 'Add Driver')}
                   </button>
                 </div>
               </div>

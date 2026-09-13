@@ -1,18 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import api from '../../lib/api'
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-
-const fmt  = (n) => `₦${Number(n).toLocaleString()}`
+const fmt  = (n) => `₦${Number(n || 0).toLocaleString()}`
 const ETA_OPTIONS = ['15–30 mins', '30–45 mins', '45–60 mins', '60–90 mins', '1–2 hours', '2–3 hours']
-
-const DRIVERS_ALL = [
-  { id: 1, name: 'Tunde Adeyemi',  status: 'on_delivery' },
-  { id: 2, name: 'Emeka Okafor',   status: 'on_delivery' },
-  { id: 3, name: 'Bola Akinwale',  status: 'on_delivery' },
-  { id: 4, name: 'Chidi Eze',      status: 'off_duty'    },
-  { id: 5, name: 'Femi Adeleye',   status: 'on_delivery' },
-]
 
 const DRIVER_STATUS_COLOR = {
   on_delivery: '#3b82f6',
@@ -21,92 +13,15 @@ const DRIVER_STATUS_COLOR = {
   suspended:   '#ef4444',
 }
 
-// ─── Mock Zones ───────────────────────────────────────────────────────────────
-
-const ZONES_INIT = [
-  {
-    id: 1, name: 'Victoria Island',
-    eta: '30–45 mins', fee: 1500, minOrder: 5000, active: true,
-    driverIds: [2],
-    areas: ['VI', 'Onikan', 'Bar Beach', 'Falomo', 'Eko Atlantic'],
-    notes: 'Premium zone. High demand during lunch hours.',
-    deliveries: 48, revenue: 72000,
-  },
-  {
-    id: 2, name: 'Lekki Phase 1',
-    eta: '30–45 mins', fee: 1200, minOrder: 4000, active: true,
-    driverIds: [1, 2],
-    areas: ['Lekki Phase 1', 'Ikate', 'Eleganza', 'Chevron Drive'],
-    notes: 'High-density residential and office area.',
-    deliveries: 62, revenue: 74400,
-  },
-  {
-    id: 3, name: 'Lekki Phase 2',
-    eta: '45–60 mins', fee: 1500, minOrder: 4000, active: true,
-    driverIds: [2],
-    areas: ['Lekki Phase 2', 'Ajah', 'Abraham Adesanya'],
-    notes: 'Further distance — factor extra traffic on weekends.',
-    deliveries: 27, revenue: 40500,
-  },
-  {
-    id: 4, name: 'Ikeja / GRA',
-    eta: '45–60 mins', fee: 1200, minOrder: 3500, active: true,
-    driverIds: [1],
-    areas: ['Ikeja GRA', 'Allen Avenue', 'Oregun', 'Omole Phase 1'],
-    notes: 'Government and commercial hub.',
-    deliveries: 39, revenue: 46800,
-  },
-  {
-    id: 5, name: 'Surulere',
-    eta: '30–45 mins', fee: 1000, minOrder: 3000, active: true,
-    driverIds: [3],
-    areas: ['Surulere', 'Aguda', 'Ojuelegba', 'Bode Thomas'],
-    notes: '',
-    deliveries: 31, revenue: 31000,
-  },
-  {
-    id: 6, name: 'Yaba / Mainland',
-    eta: '30–45 mins', fee: 900, minOrder: 2500, active: true,
-    driverIds: [4],
-    areas: ['Yaba', 'Sabo', 'Herbert Macaulay', 'Jibowu'],
-    notes: 'Student community — lots of bulk orders from chefs.',
-    deliveries: 22, revenue: 19800,
-  },
-  {
-    id: 7, name: 'Maryland / Gbagada',
-    eta: '45–60 mins', fee: 1100, minOrder: 3000, active: true,
-    driverIds: [5],
-    areas: ['Maryland', 'Gbagada Phase 1', 'Gbagada Phase 2', 'Anthony'],
-    notes: '',
-    deliveries: 29, revenue: 31900,
-  },
-  {
-    id: 8, name: 'Ikorodu',
-    eta: '1–2 hours', fee: 2000, minOrder: 6000, active: false,
-    driverIds: [],
-    areas: ['Ikorodu Town', 'Ijede', 'Imota'],
-    notes: 'Currently inactive — no driver coverage. Reactivate when a driver is assigned.',
-    deliveries: 5, revenue: 10000,
-  },
-  {
-    id: 9, name: 'Isolo / Oshodi',
-    eta: '45–60 mins', fee: 1100, minOrder: 3000, active: true,
-    driverIds: [3],
-    areas: ['Isolo', 'Oshodi', 'Mafoluku', 'Airport Road'],
-    notes: '',
-    deliveries: 18, revenue: 19800,
-  },
-]
-
 const BLANK_FORM = {
   name: '', eta: ETA_OPTIONS[1], fee: '', minOrder: '', active: true,
   driverIds: [], areas: '', notes: '',
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function DeliveryZones() {
-  const [zones, setZones]               = useState(ZONES_INIT)
+  const [zones, setZones] = useState([])
+  const [drivers, setDrivers] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch]             = useState('')
   const [filterActive, setFilterActive] = useState('all')
   const [activeModal, setActiveModal]   = useState(null)
@@ -114,6 +29,28 @@ export default function DeliveryZones() {
   const [form, setForm]                 = useState(BLANK_FORM)
   const [isEditing, setIsEditing]       = useState(false)
   const [areasInput, setAreasInput]     = useState('')
+  const [saving, setSaving]             = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/deliveries/zones')
+      setZones((res.data.zones || []).map(z => ({
+        id: z.id, name: z.zone_name, eta: z.estimated_eta || ETA_OPTIONS[1],
+        fee: Number(z.delivery_fee || 0), minOrder: Number(z.min_order_amount || 0),
+        active: !!z.is_active, driverIds: z.driver_ids || [],
+        areas: Array.isArray(z.coverage_areas) ? z.coverage_areas : (z.coverage_areas ? JSON.parse(z.coverage_areas) : []),
+        notes: z.notes || '', deliveries: Number(z.deliveries || 0), revenue: Number(z.revenue || 0),
+      })))
+      setDrivers(res.data.drivers || [])
+    } catch {
+      toast.error('Failed to load delivery zones')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
 
   const openModal = (type, zone = null) => {
     setSelected(zone)
@@ -139,17 +76,15 @@ export default function DeliveryZones() {
     }))
   }
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
     total:           zones.length,
     active:          zones.filter(z => z.active).length,
     inactive:        zones.filter(z => !z.active).length,
     totalDeliveries: zones.reduce((s, z) => s + z.deliveries, 0),
     totalRevenue:    zones.reduce((s, z) => s + z.revenue, 0),
-    avgFee:          Math.round(zones.reduce((s, z) => s + z.fee, 0) / zones.length),
+    avgFee:          zones.length ? Math.round(zones.reduce((s, z) => s + z.fee, 0) / zones.length) : 0,
   }), [zones])
 
-  // ── Filtered ───────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     return zones.filter(z => {
@@ -159,30 +94,50 @@ export default function DeliveryZones() {
     })
   }, [zones, search, filterActive])
 
-  // ── Actions ────────────────────────────────────────────────────────────────
-  const saveZone = () => {
+  async function saveZone() {
     const areas = areasInput.split(',').map(a => a.trim()).filter(Boolean)
-    const payload = { ...form, areas, fee: Number(form.fee), minOrder: Number(form.minOrder) }
-    if (isEditing) {
-      setZones(prev => prev.map(z => z.id !== selected.id ? z : { ...z, ...payload }))
-    } else {
-      setZones(prev => [...prev, { ...payload, id: Date.now(), deliveries: 0, revenue: 0 }])
+    setSaving(true)
+    try {
+      const payload = {
+        zone_name: form.name, delivery_fee: Number(form.fee), min_order_amount: Number(form.minOrder),
+        estimated_eta: form.eta, coverage_areas: areas, driver_ids: form.driverIds,
+        notes: form.notes || undefined, is_active: form.active,
+      }
+      if (isEditing) {
+        await api.patch(`/admin/deliveries/zones/${selected.id}`, payload)
+        toast.success('Zone updated')
+      } else {
+        await api.post('/admin/deliveries/zones', payload)
+        toast.success('Zone created')
+      }
+      closeModal()
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save zone')
+    } finally {
+      setSaving(false)
     }
-    closeModal()
   }
 
-  const toggleActive = (zone) => {
-    setZones(prev => prev.map(z => z.id !== zone.id ? z : { ...z, active: !z.active }))
+  async function toggleActive(zone) {
+    try {
+      await api.patch(`/admin/deliveries/zones/${zone.id}`, { is_active: !zone.active })
+      load()
+    } catch {
+      toast.error('Failed to update zone status')
+    }
   }
 
-  const deleteZone = () => {
-    setZones(prev => prev.filter(z => z.id !== selected.id))
-    closeModal()
+  async function deleteZone() {
+    try {
+      await api.delete(`/admin/deliveries/zones/${selected.id}`)
+      toast.success('Zone deleted')
+      closeModal()
+      load()
+    } catch {
+      toast.error('Failed to delete zone')
+    }
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="container-fluid">
@@ -248,13 +203,16 @@ export default function DeliveryZones() {
 
       {/* Zone Cards Grid */}
       <div className="row g-3">
-        {filtered.length === 0 && (
+        {loading && (
+          <div className="col-12"><div className="card p-5 text-center text-muted">Loading zones…</div></div>
+        )}
+        {!loading && filtered.length === 0 && (
           <div className="col-12">
             <div className="card p-5 text-center text-muted">No zones found</div>
           </div>
         )}
-        {filtered.map(zone => {
-          const assignedDrivers = DRIVERS_ALL.filter(d => zone.driverIds.includes(d.id))
+        {!loading && filtered.map(zone => {
+          const assignedDrivers = drivers.filter(d => zone.driverIds.includes(d.id))
           return (
             <div key={zone.id} className="col-12 col-md-6 col-xl-4">
               <div className="card h-100" style={{ borderTop: `3px solid ${zone.active ? '#22c55e' : '#ef4444'}` }}>
@@ -334,9 +292,9 @@ export default function DeliveryZones() {
                         <div className="d-flex flex-wrap gap-1">
                           {assignedDrivers.map(d => (
                             <div key={d.id} className="d-flex align-items-center gap-1 border rounded px-2 py-1"
-                              style={{ background: DRIVER_STATUS_COLOR[d.status] + '10', fontSize: 11 }}>
+                              style={{ background: (DRIVER_STATUS_COLOR[d.status] || '#6b7280') + '10', fontSize: 11 }}>
                               <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                                style={{ width: 18, height: 18, background: DRIVER_STATUS_COLOR[d.status] + '30', color: DRIVER_STATUS_COLOR[d.status], fontSize: 8, fontWeight: 700 }}>
+                                style={{ width: 18, height: 18, background: (DRIVER_STATUS_COLOR[d.status] || '#6b7280') + '30', color: DRIVER_STATUS_COLOR[d.status] || '#6b7280', fontSize: 8, fontWeight: 700 }}>
                                 {d.name.split(' ').map(n => n[0]).join('')}
                               </div>
                               {d.name.split(' ')[0]}
@@ -386,7 +344,7 @@ export default function DeliveryZones() {
 
           {/* ── VIEW ZONE DETAILS ─────────────────────── */}
           {activeModal === 'view' && selected && (() => {
-            const assignedDrivers = DRIVERS_ALL.filter(d => selected.driverIds.includes(d.id))
+            const assignedDrivers = drivers.filter(d => selected.driverIds.includes(d.id))
             return (
               <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
                 <div style={{ background: '#1e293b', borderRadius: '12px 12px 0 0', padding: '24px 28px', color: '#fff' }}>
@@ -437,12 +395,12 @@ export default function DeliveryZones() {
                       : assignedDrivers.map(d => (
                         <div key={d.id} className="d-flex align-items-center gap-2 border rounded p-2 mb-2">
                           <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                            style={{ width: 32, height: 32, background: DRIVER_STATUS_COLOR[d.status] + '20', color: DRIVER_STATUS_COLOR[d.status], fontSize: 11, fontWeight: 700 }}>
+                            style={{ width: 32, height: 32, background: (DRIVER_STATUS_COLOR[d.status] || '#6b7280') + '20', color: DRIVER_STATUS_COLOR[d.status] || '#6b7280', fontSize: 11, fontWeight: 700 }}>
                             {d.name.split(' ').map(n => n[0]).join('')}
                           </div>
                           <div className="flex-grow-1 fw-medium small">{d.name}</div>
-                          <span className="badge" style={{ background: DRIVER_STATUS_COLOR[d.status] + '20', color: DRIVER_STATUS_COLOR[d.status], fontSize: 10 }}>
-                            {d.status.replace('_', ' ')}
+                          <span className="badge" style={{ background: (DRIVER_STATUS_COLOR[d.status] || '#6b7280') + '20', color: DRIVER_STATUS_COLOR[d.status] || '#6b7280', fontSize: 10 }}>
+                            {(d.status || '').replace('_', ' ')}
                           </span>
                         </div>
                       ))
@@ -517,14 +475,15 @@ export default function DeliveryZones() {
                   <div className="col-12">
                     <label className="form-label fw-medium small">Assign Drivers</label>
                     <div className="border rounded p-3">
-                      {DRIVERS_ALL.map(d => (
+                      {drivers.length === 0 && <div className="text-muted small">No drivers available yet.</div>}
+                      {drivers.map(d => (
                         <div key={d.id} className="form-check mb-1">
                           <input className="form-check-input" type="checkbox" id={`drv-${d.id}`}
                             checked={form.driverIds.includes(d.id)} onChange={() => toggleDriver(d.id)} />
                           <label className="form-check-label small" htmlFor={`drv-${d.id}`}>
                             {d.name}
-                            <span className="ms-2 badge" style={{ background: DRIVER_STATUS_COLOR[d.status] + '20', color: DRIVER_STATUS_COLOR[d.status], fontSize: 10 }}>
-                              {d.status.replace('_', ' ')}
+                            <span className="ms-2 badge" style={{ background: (DRIVER_STATUS_COLOR[d.status] || '#6b7280') + '20', color: DRIVER_STATUS_COLOR[d.status] || '#6b7280', fontSize: 10 }}>
+                              {(d.status || '').replace('_', ' ')}
                             </span>
                           </label>
                         </div>
@@ -541,9 +500,9 @@ export default function DeliveryZones() {
                 <div className="d-flex gap-2 mt-4">
                   <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
                   <button className="btn btn-primary flex-fill" onClick={saveZone}
-                    disabled={!form.name || !form.fee || !form.minOrder}>
+                    disabled={!form.name || !form.fee || !form.minOrder || saving}>
                     <i className={`${isEditing ? 'ri-save-line' : 'ri-add-line'} me-1`} />
-                    {isEditing ? 'Save Changes' : 'Create Zone'}
+                    {saving ? 'Saving…' : (isEditing ? 'Save Changes' : 'Create Zone')}
                   </button>
                 </div>
               </div>

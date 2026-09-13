@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import toast from 'react-hot-toast'
+import api from '../../lib/api'
 
 // ─── Fix Leaflet default marker icons in Vite ─────────────────────────────────
 delete L.Icon.Default.prototype._getIconUrl
@@ -12,67 +14,26 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
-// ─── Lagos coordinates ─────────────────────────────────────────────────────────
-const STORE_POS   = [6.4553, 3.3862]  // Bems Farms warehouse (Lagos Island)
-
-// ─── Delivery mock data with GPS positions ────────────────────────────────────
-const DELIVERIES = [
-  {
-    id: 'DEL-2026-0042', orderId: 'ORD-2026-0138', status: 'shipped',
-    driver: { name: 'Emeka Okafor', phone: '08045678901', bike: 'LAG-567-CD', color: '#3b82f6' },
-    customer: { name: 'Kemi Balogun', phone: '08167891234', address: '18 Surulere, Lagos' },
-    driverPos:   [6.4920, 3.3600],   // en route — halfway between store & customer
-    customerPos: [6.5048, 3.3543],   // Surulere
-    zone: 'Surulere / Yaba',
-    eta: '~18 min', total: 16100, attempts: 0,
-    items: 'Fresh Tomatoes ×3kg, Red Bell Pepper ×2kg',
-  },
-  {
-    id: 'DEL-2026-0041', orderId: 'ORD-2026-0139', status: 'assigned',
-    driver: { name: 'Tunde Adeyemi', phone: '08031234567', bike: 'LAG-234-AB', color: '#06b6d4' },
-    customer: { name: 'Seun Adesanya', phone: '09012341234', address: '5 Ikeja GRA, Lagos' },
-    driverPos:   [6.4553, 3.3862],   // still at store — awaiting pickup
-    customerPos: [6.5944, 3.3478],   // Ikeja GRA
-    zone: 'Ikeja / GRA',
-    eta: '—', total: 14200, attempts: 0,
-    items: 'Ginger ×1kg, Garlic ×1kg, Sweet Corn ×6 cobs',
-  },
-  {
-    id: 'DEL-2026-0040', orderId: 'ORD-2026-0137', status: 'delivery_attempted',
-    driver: { name: 'Bola Akinwale', phone: '08056789012', bike: 'LAG-890-EF', color: '#f97316' },
-    customer: { name: 'Tobi Adekunle', phone: '07056781234', address: '3 Ojota Estate, Lagos' },
-    driverPos:   [6.5730, 3.3930],   // near customer — attempted
-    customerPos: [6.5810, 3.3950],   // Ojota
-    zone: 'Maryland / Gbagada',
-    eta: '—', total: 12400, attempts: 1,
-    items: 'Plantain ×4 hands, Ugwu ×3 bunches',
-  },
-  {
-    id: 'DEL-2026-0039', orderId: 'ORD-2026-0141', status: 'assigned',
-    driver: { name: 'Femi Adeleye', phone: '08078901234', bike: 'LAG-456-IJ', color: '#8b5cf6' },
-    customer: { name: 'Adaeze Nwosu', phone: '07098765432', address: '7 Lekki Phase 1, Lagos' },
-    driverPos:   [6.4553, 3.3862],   // still at store — awaiting pickup
-    customerPos: [6.4677, 3.5215],   // Lekki Phase 1
-    zone: 'Lekki Phase 1',
-    eta: '—', total: 48100, attempts: 0,
-    items: 'Fresh Tomatoes ×8kg, Red Bell Pepper ×4kg +2 more',
-  },
-]
+// Bems Farms warehouse — dispatch origin (Lagos Island)
+const STORE_POS = [6.4553, 3.3862]
 
 const STATUS_CFG = {
-  assigned:           { label: 'Awaiting Pickup', color: '#06b6d4', bg: '#cffafe', pulse: false },
-  shipped:            { label: 'En Route',        color: '#3b82f6', bg: '#dbeafe', pulse: true  },
-  delivery_attempted: { label: 'Attempted',       color: '#f97316', bg: '#ffedd5', pulse: false },
+  assigned:           { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', pulse: false },
+  awaiting_pickup:     { label: 'Awaiting Pickup',   color: '#06b6d4', bg: '#cffafe', pulse: false },
+  en_route:            { label: 'En Route',          color: '#3b82f6', bg: '#dbeafe', pulse: true  },
+  delivery_attempted:  { label: 'Attempted',         color: '#f97316', bg: '#ffedd5', pulse: false },
 }
+const DEFAULT_STATUS_CFG = { label: 'Active', color: '#6366f1', bg: '#e0e7ff', pulse: false }
 
-const fmt = (n) => `₦${Number(n).toLocaleString()}`
+const DRIVER_COLORS = ['#3b82f6', '#06b6d4', '#f97316', '#8b5cf6', '#22c55e', '#ec4899', '#f59e0b']
+const colorFor = (id) => DRIVER_COLORS[Math.abs(Number(id) || 0) % DRIVER_COLORS.length]
 
-// ─── Custom div icons ──────────────────────────────────────────────────────────
-function driverIcon(driver, status) {
-  const cfg     = STATUS_CFG[status]
-  const initials = driver.name.split(' ').map(n => n[0]).join('')
-  const pulse    = cfg.pulse
-    ? `<span style="position:absolute;inset:-4px;border-radius:50%;border:2px solid ${driver.color};animation:pulse-ring 1.5s ease-out infinite;opacity:0.6;"></span>` : ''
+const fmt = (n) => `₦${Number(n || 0).toLocaleString()}`
+
+function driverIcon(name, color, pulse) {
+  const initials = (name || '?').split(' ').map(n => n[0]).join('')
+  const pulseHtml = pulse
+    ? `<span style="position:absolute;inset:-4px;border-radius:50%;border:2px solid ${color};animation:pulse-ring 1.5s ease-out infinite;opacity:0.6;"></span>` : ''
   return L.divIcon({
     className: '',
     iconSize: [40, 40],
@@ -80,10 +41,10 @@ function driverIcon(driver, status) {
     popupAnchor: [0, -22],
     html: `
       <div style="position:relative;width:40px;height:40px;">
-        ${pulse}
+        ${pulseHtml}
         <div style="
           width:40px;height:40px;border-radius:50%;
-          background:${driver.color};color:#fff;
+          background:${color};color:#fff;
           display:flex;align-items:center;justify-content:center;
           font-size:12px;font-weight:700;
           box-shadow:0 2px 8px rgba(0,0,0,0.35);
@@ -92,10 +53,10 @@ function driverIcon(driver, status) {
         ">${initials}</div>
         <div style="
           position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);
-          background:${driver.color};color:#fff;font-size:9px;font-weight:600;
+          background:${color};color:#fff;font-size:9px;font-weight:600;
           padding:1px 5px;border-radius:4px;white-space:nowrap;
           box-shadow:0 1px 4px rgba(0,0,0,0.2);
-        ">${driver.name.split(' ')[0]}</div>
+        ">${(name || 'Driver').split(' ')[0]}</div>
       </div>`,
   })
 }
@@ -145,7 +106,6 @@ function storeIcon() {
   })
 }
 
-// ─── FlyTo helper ─────────────────────────────────────────────────────────────
 function FlyToDriver({ pos }) {
   const map = useMap()
   useEffect(() => {
@@ -154,31 +114,34 @@ function FlyToDriver({ pos }) {
   return null
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
 export default function DeliveryMap() {
+  const [deliveries, setDeliveries] = useState([])
+  const [loading, setLoading] = useState(true)
   const [selected, setSelected]   = useState(null)
   const [flyTarget, setFlyTarget] = useState(null)
-  const [tick, setTick]           = useState(0) // simulate movement
 
-  // Simulate driver positions updating every 8s
-  useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 8000)
-    return () => clearInterval(id)
+  const load = useCallback(async () => {
+    try {
+      const res = await api.get('/admin/deliveries/active')
+      setDeliveries(res.data.deliveries || [])
+    } catch {
+      toast.error('Failed to load active deliveries')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
-  // Slightly move "en route" driver positions each tick to simulate GPS updates
-  const deliveries = DELIVERIES.map(d => {
-    if (d.status !== 'shipped') return d
-    const jitter = tick * 0.0003
-    return {
-      ...d,
-      driverPos: [d.driverPos[0] + jitter, d.driverPos[1] + jitter * 0.5],
-    }
-  })
+  useEffect(() => {
+    load()
+    const id = setInterval(load, 20000)
+    return () => clearInterval(id)
+  }, [load])
+
+  const withGps = deliveries.filter(d => d.driver_lat != null && d.driver_lng != null)
 
   const handleSelect = (del) => {
     setSelected(del)
-    setFlyTarget(del.driverPos)
+    if (del.driver_lat != null && del.driver_lng != null) setFlyTarget([del.driver_lat, del.driver_lng])
   }
 
   return (
@@ -204,10 +167,10 @@ export default function DeliveryMap() {
       {/* Stat strip */}
       <div className="row g-2 mb-3 flex-shrink-0">
         {[
-          { label: 'En Route',        count: deliveries.filter(d => d.status === 'shipped').length,            color: '#3b82f6', icon: 'ri-truck-line'         },
-          { label: 'Awaiting Pickup', count: deliveries.filter(d => d.status === 'assigned').length,           color: '#06b6d4', icon: 'ri-user-location-line' },
-          { label: 'Attempted',       count: deliveries.filter(d => d.status === 'delivery_attempted').length, color: '#f97316', icon: 'ri-route-line'          },
-          { label: 'Total Active',    count: deliveries.length,                                                 color: '#6366f1', icon: 'ri-map-pin-line'        },
+          { label: 'En Route',        count: deliveries.filter(d => STATUS_CFG[d.status]?.label === 'En Route').length,            color: '#3b82f6', icon: 'ri-truck-line'         },
+          { label: 'Awaiting Pickup', count: deliveries.filter(d => STATUS_CFG[d.status]?.label === 'Awaiting Pickup').length,      color: '#06b6d4', icon: 'ri-user-location-line' },
+          { label: 'Attempted',       count: deliveries.filter(d => d.status === 'delivery_attempted').length,                      color: '#f97316', icon: 'ri-route-line'          },
+          { label: 'Total Active',    count: deliveries.length,                                                                     color: '#6366f1', icon: 'ri-map-pin-line'        },
         ].map(s => (
           <div key={s.label} className="col-6 col-md-3">
             <div className="card p-2 d-flex flex-row align-items-center gap-2" style={{ borderLeft: `3px solid ${s.color}` }}>
@@ -235,29 +198,38 @@ export default function DeliveryMap() {
             <span className="badge rounded-pill bg-primary ms-auto">{deliveries.length}</span>
           </div>
 
+          {loading && <div className="p-4 text-center text-muted small">Loading…</div>}
+          {!loading && deliveries.length === 0 && (
+            <div className="p-4 text-center text-muted small">
+              <i className="ri-truck-line fs-2 d-block mb-2" />No active deliveries right now.
+            </div>
+          )}
+
           {deliveries.map(del => {
-            const cfg      = STATUS_CFG[del.status]
+            const cfg      = STATUS_CFG[del.status] || DEFAULT_STATUS_CFG
+            const color    = colorFor(del.driver_id)
             const isActive = selected?.id === del.id
+            const hasGps   = del.driver_lat != null && del.driver_lng != null
             return (
               <div key={del.id}
                 className="p-3 border-bottom"
                 style={{
-                  cursor: 'pointer',
-                  background: isActive ? del.driver.color + '12' : '#fff',
-                  borderLeft: isActive ? `3px solid ${del.driver.color}` : '3px solid transparent',
+                  cursor: hasGps ? 'pointer' : 'default',
+                  background: isActive ? color + '12' : '#fff',
+                  borderLeft: isActive ? `3px solid ${color}` : '3px solid transparent',
                   transition: 'all 0.15s',
                 }}
-                onClick={() => handleSelect(del)}>
+                onClick={() => hasGps && handleSelect(del)}>
 
                 {/* Top row */}
                 <div className="d-flex align-items-center gap-2 mb-2">
                   <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{ width: 32, height: 32, background: del.driver.color + '20', color: del.driver.color, fontSize: 11, fontWeight: 700 }}>
-                    {del.driver.name.split(' ').map(n => n[0]).join('')}
+                    style={{ width: 32, height: 32, background: color + '20', color, fontSize: 11, fontWeight: 700 }}>
+                    {(del.driver_name || '?').split(' ').map(n => n[0]).join('')}
                   </div>
                   <div className="flex-grow-1 min-w-0">
-                    <div className="fw-medium small text-truncate">{del.driver.name}</div>
-                    <div className="text-muted" style={{ fontSize: 10 }}>{del.driver.bike}</div>
+                    <div className="fw-medium small text-truncate">{del.driver_name || 'Unassigned'}</div>
+                    <div className="text-muted" style={{ fontSize: 10 }}>{del.driver_plate || '—'}</div>
                   </div>
                   <span className="badge flex-shrink-0" style={{ background: cfg.bg, color: cfg.color, fontSize: 9 }}>
                     {cfg.label}
@@ -267,19 +239,19 @@ export default function DeliveryMap() {
                 {/* Customer */}
                 <div className="d-flex align-items-start gap-1 mb-1">
                   <i className="ri-user-line text-muted mt-1 flex-shrink-0" style={{ fontSize: 11 }} />
-                  <div style={{ fontSize: 12 }}>{del.customer.name}</div>
+                  <div style={{ fontSize: 12 }}>{del.customer_name}</div>
                 </div>
                 <div className="d-flex align-items-start gap-1 mb-2">
                   <i className="ri-map-pin-line text-muted mt-1 flex-shrink-0" style={{ fontSize: 11 }} />
-                  <div className="text-muted" style={{ fontSize: 11 }}>{del.customer.address}</div>
+                  <div className="text-muted" style={{ fontSize: 11 }}>{del.delivery_address || '—'}</div>
                 </div>
 
                 {/* Footer */}
                 <div className="d-flex align-items-center gap-2">
-                  <span className="small fw-medium">{fmt(del.total)}</span>
-                  {del.eta !== '—' && (
+                  <span className="small fw-medium">{fmt(del.order_total)}</span>
+                  {del.eta_minutes != null && (
                     <span className="text-muted small ms-auto">
-                      <i className="ri-time-line me-1" />{del.eta}
+                      <i className="ri-time-line me-1" />~{del.eta_minutes} min
                     </span>
                   )}
                   {del.attempts > 0 && (
@@ -289,10 +261,16 @@ export default function DeliveryMap() {
                   )}
                 </div>
 
-                <button className="btn btn-sm w-100 mt-2"
-                  style={{ background: del.driver.color + '15', color: del.driver.color, border: `1px solid ${del.driver.color}40`, fontSize: 11 }}>
-                  <i className="ri-focus-3-line me-1" />Focus on Map
-                </button>
+                {hasGps ? (
+                  <button className="btn btn-sm w-100 mt-2"
+                    style={{ background: color + '15', color, border: `1px solid ${color}40`, fontSize: 11 }}>
+                    <i className="ri-focus-3-line me-1" />Focus on Map
+                  </button>
+                ) : (
+                  <div className="text-muted mt-2 text-center" style={{ fontSize: 10 }}>
+                    <i className="ri-map-pin-off-line me-1" />No live GPS signal yet
+                  </div>
+                )}
               </div>
             )
           })}
@@ -312,10 +290,6 @@ export default function DeliveryMap() {
               <div className="d-flex align-items-center gap-2" style={{ fontSize: 11 }}>
                 <div className="rounded-circle flex-shrink-0" style={{ width: 12, height: 12, background: '#06b6d4' }} />
                 Driver (Awaiting Pickup)
-              </div>
-              <div className="d-flex align-items-center gap-2" style={{ fontSize: 11 }}>
-                <div className="rounded-circle flex-shrink-0" style={{ width: 12, height: 12, background: '#f97316' }} />
-                Driver (Delivery Attempted)
               </div>
               <div className="d-flex align-items-center gap-2" style={{ fontSize: 11 }}>
                 <div className="rounded-circle flex-shrink-0" style={{ width: 12, height: 12, background: '#fff', border: '2px solid #888' }} />
@@ -349,7 +323,7 @@ export default function DeliveryMap() {
           `}</style>
 
           <MapContainer
-            center={[6.5244, 3.3792]}
+            center={STORE_POS}
             zoom={12}
             style={{ width: '100%', height: '100%' }}
             zoomControl={true}>
@@ -359,10 +333,8 @@ export default function DeliveryMap() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
-            {/* FlyTo when user clicks a delivery */}
             {flyTarget && <FlyToDriver pos={flyTarget} />}
 
-            {/* Bems Farms Store marker */}
             <Marker position={STORE_POS} icon={storeIcon()}>
               <Popup>
                 <div style={{ padding: '12px 14px', minWidth: 200 }}>
@@ -373,129 +345,120 @@ export default function DeliveryMap() {
               </Popup>
             </Marker>
 
-            {deliveries.map(del => {
-              const cfg = STATUS_CFG[del.status]
+            {withGps.map(del => {
+              const cfg = STATUS_CFG[del.status] || DEFAULT_STATUS_CFG
+              const color = colorFor(del.driver_id)
+              const driverPos = [del.driver_lat, del.driver_lng]
+              const hasCustomerPos = del.customer_lat != null && del.customer_lng != null
+              const customerPos = hasCustomerPos ? [del.customer_lat, del.customer_lng] : null
               return (
                 <div key={del.id}>
-                  {/* Dashed route line */}
-                  <Polyline
-                    positions={[del.driverPos, del.customerPos]}
-                    pathOptions={{
-                      color: del.driver.color,
-                      weight: 2.5,
-                      dashArray: del.status === 'shipped' ? '' : '6,6',
-                      opacity: 0.7,
-                    }}
-                  />
+                  {customerPos && (
+                    <Polyline
+                      positions={[driverPos, customerPos]}
+                      pathOptions={{ color, weight: 2.5, dashArray: cfg.pulse ? '' : '6,6', opacity: 0.7 }}
+                    />
+                  )}
 
-                  {/* Driver marker */}
-                  <Marker
-                    position={del.driverPos}
-                    icon={driverIcon(del.driver, del.status)}>
+                  <Marker position={driverPos} icon={driverIcon(del.driver_name, color, cfg.pulse)}>
                     <Popup>
                       <div style={{ minWidth: 240, fontFamily: 'inherit' }}>
-                        {/* Header */}
-                        <div style={{ background: del.driver.color, padding: '10px 14px', color: '#fff' }}>
-                          <div className="fw-bold" style={{ fontSize: 13 }}>{del.driver.name}</div>
-                          <div style={{ fontSize: 11, opacity: 0.85 }}>{del.driver.bike} · {del.driver.phone}</div>
+                        <div style={{ background: color, padding: '10px 14px', color: '#fff' }}>
+                          <div className="fw-bold" style={{ fontSize: 13 }}>{del.driver_name}</div>
+                          <div style={{ fontSize: 11, opacity: 0.85 }}>{del.driver_plate || '—'} · {del.driver_phone || '—'}</div>
                           <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.25)', borderRadius: 4, padding: '2px 6px', display:'inline-block', marginTop: 4 }}>
                             {cfg.label}
                           </span>
                         </div>
-                        {/* Body */}
                         <div style={{ padding: '10px 14px' }}>
-                          <div className="small fw-medium mb-1">{del.orderId}</div>
+                          <div className="small fw-medium mb-1">Order #{del.order_id}</div>
                           <div className="d-flex align-items-center gap-1 mb-1">
                             <i className="ri-user-line text-muted" style={{ fontSize: 11 }} />
-                            <span style={{ fontSize: 12 }}>{del.customer.name}</span>
+                            <span style={{ fontSize: 12 }}>{del.customer_name}</span>
                           </div>
                           <div className="d-flex align-items-start gap-1 mb-2">
                             <i className="ri-map-pin-line text-muted mt-1 flex-shrink-0" style={{ fontSize: 11 }} />
-                            <span className="text-muted" style={{ fontSize: 11 }}>{del.customer.address}</span>
+                            <span className="text-muted" style={{ fontSize: 11 }}>{del.delivery_address || '—'}</span>
                           </div>
                           <div className="d-flex justify-content-between align-items-center">
-                            <span className="fw-bold small">{fmt(del.total)}</span>
-                            {del.eta !== '—' && <span className="small text-muted"><i className="ri-time-line me-1"/>{del.eta}</span>}
+                            <span className="fw-bold small">{fmt(del.order_total)}</span>
+                            {del.eta_minutes != null && <span className="small text-muted"><i className="ri-time-line me-1"/>~{del.eta_minutes} min</span>}
                             {del.attempts > 0 && <span className="badge" style={{ background: '#ffedd5', color: '#f97316', fontSize: 9 }}>Attempt {del.attempts}/2</span>}
                           </div>
-                          <div className="text-muted mt-2" style={{ fontSize: 11 }}>
-                            <i className="ri-shopping-bag-line me-1" />{del.items}
-                          </div>
-                          {del.status === 'shipped' && (
-                            <div className="mt-2 d-flex align-items-center gap-1 small" style={{ color: '#3b82f6' }}>
-                              <i className="ri-navigation-line" />
-                              <span>GPS updating live from Driver App</span>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </Popup>
                   </Marker>
 
-                  {/* Customer / Destination marker */}
-                  <Marker
-                    position={del.customerPos}
-                    icon={customerIcon(del.driver.color)}>
-                    <Popup>
-                      <div style={{ padding: '12px 14px', minWidth: 200 }}>
-                        <div className="d-flex align-items-center gap-2 mb-2">
-                          <div className="rounded-circle d-flex align-items-center justify-content-center"
-                            style={{ width: 28, height: 28, background: del.driver.color + '20', color: del.driver.color, fontSize: 10, fontWeight: 700 }}>
-                            {del.customer.name.split(' ').map(n => n[0]).join('')}
+                  {customerPos && (
+                    <Marker position={customerPos} icon={customerIcon(color)}>
+                      <Popup>
+                        <div style={{ padding: '12px 14px', minWidth: 200 }}>
+                          <div className="d-flex align-items-center gap-2 mb-2">
+                            <div className="rounded-circle d-flex align-items-center justify-content-center"
+                              style={{ width: 28, height: 28, background: color + '20', color, fontSize: 10, fontWeight: 700 }}>
+                              {(del.customer_name || '?').split(' ').map(n => n[0]).join('')}
+                            </div>
+                            <div>
+                              <div className="fw-medium small">{del.customer_name}</div>
+                              <div className="text-muted" style={{ fontSize: 10 }}>{del.customer_phone || '—'}</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="fw-medium small">{del.customer.name}</div>
-                            <div className="text-muted" style={{ fontSize: 10 }}>{del.customer.phone}</div>
+                          <div className="d-flex align-items-start gap-1 mb-1">
+                            <i className="ri-map-pin-fill flex-shrink-0 mt-1" style={{ color, fontSize: 11 }} />
+                            <span className="small">{del.delivery_address || '—'}</span>
+                          </div>
+                          <div className="border-top pt-2 mt-2 d-flex justify-content-between">
+                            <span className="small text-muted">Order #{del.order_id}</span>
+                            <span className="small fw-bold">{fmt(del.order_total)}</span>
                           </div>
                         </div>
-                        <div className="d-flex align-items-start gap-1 mb-1">
-                          <i className="ri-map-pin-fill flex-shrink-0 mt-1" style={{ color: del.driver.color, fontSize: 11 }} />
-                          <span className="small">{del.customer.address}</span>
-                        </div>
-                        <div className="border-top pt-2 mt-2 d-flex justify-content-between">
-                          <span className="small text-muted">{del.orderId}</span>
-                          <span className="small fw-bold">{fmt(del.total)}</span>
-                        </div>
-                      </div>
-                    </Popup>
-                  </Marker>
+                      </Popup>
+                    </Marker>
+                  )}
                 </div>
               )
             })}
           </MapContainer>
 
           {/* Floating info overlay — selected delivery */}
-          {selected && (
-            <div style={{
-              position: 'absolute', bottom: 20, right: 16, zIndex: 1000,
-              background: '#fff', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-              padding: '12px 16px', maxWidth: 280, borderLeft: `4px solid ${selected.driver.color}`,
-            }}>
-              <div className="d-flex align-items-center gap-2 mb-2">
-                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width: 30, height: 30, background: selected.driver.color, color: '#fff', fontSize: 10, fontWeight: 700 }}>
-                  {selected.driver.name.split(' ').map(n => n[0]).join('')}
+          {selected && (() => {
+            const color = colorFor(selected.driver_id)
+            const cfg = STATUS_CFG[selected.status] || DEFAULT_STATUS_CFG
+            return (
+              <div style={{
+                position: 'absolute', bottom: 20, right: 16, zIndex: 1000,
+                background: '#fff', borderRadius: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                padding: '12px 16px', maxWidth: 280, borderLeft: `4px solid ${color}`,
+              }}>
+                <div className="d-flex align-items-center gap-2 mb-2">
+                  <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                    style={{ width: 30, height: 30, background: color, color: '#fff', fontSize: 10, fontWeight: 700 }}>
+                    {(selected.driver_name || '?').split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <div className="flex-grow-1">
+                    <div className="fw-medium small">{selected.driver_name}</div>
+                    <div className="text-muted" style={{ fontSize: 10 }}>{cfg.label}</div>
+                  </div>
+                  <button className="btn btn-sm btn-outline-secondary p-1" style={{ lineHeight: 1 }}
+                    onClick={() => { setSelected(null); setFlyTarget(null) }}>
+                    <i className="ri-close-line" style={{ fontSize: 12 }} />
+                  </button>
                 </div>
-                <div className="flex-grow-1">
-                  <div className="fw-medium small">{selected.driver.name}</div>
-                  <div className="text-muted" style={{ fontSize: 10 }}>{STATUS_CFG[selected.status].label}</div>
+                <div style={{ fontSize: 12 }}>
+                  <div><strong>Order:</strong> #{selected.order_id}</div>
+                  <div><strong>Customer:</strong> {selected.customer_name}</div>
+                  <div className="text-muted">{selected.delivery_address}</div>
+                  {selected.eta_minutes != null && <div className="mt-1 text-primary"><i className="ri-time-line me-1" />~{selected.eta_minutes} min remaining</div>}
                 </div>
-                <button className="btn btn-sm btn-outline-secondary p-1" style={{ lineHeight: 1 }}
-                  onClick={() => { setSelected(null); setFlyTarget(null) }}>
-                  <i className="ri-close-line" style={{ fontSize: 12 }} />
-                </button>
+                {selected.driver_phone && (
+                  <a href={`tel:${selected.driver_phone}`} className="btn btn-sm btn-success w-100 mt-2" style={{ fontSize: 11 }}>
+                    <i className="ri-phone-line me-1" />Call {selected.driver_name?.split(' ')[0]}
+                  </a>
+                )}
               </div>
-              <div style={{ fontSize: 12 }}>
-                <div><strong>Order:</strong> {selected.orderId}</div>
-                <div><strong>Customer:</strong> {selected.customer.name}</div>
-                <div className="text-muted">{selected.customer.address}</div>
-                {selected.eta !== '—' && <div className="mt-1 text-primary"><i className="ri-time-line me-1" />{selected.eta} remaining</div>}
-              </div>
-              <a href={`tel:${selected.driver.phone}`} className="btn btn-sm btn-success w-100 mt-2" style={{ fontSize: 11 }}>
-                <i className="ri-phone-line me-1" />Call {selected.driver.name.split(' ')[0]}
-              </a>
-            </div>
-          )}
+            )
+          })()}
 
           {/* GPS update indicator */}
           <div style={{
@@ -506,7 +469,7 @@ export default function DeliveryMap() {
           }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block',
               animation: 'pulse-ring 1.5s ease-out infinite' }} />
-            GPS positions updating every 8s
+            GPS positions refresh every 20s
           </div>
         </div>
       </div>
