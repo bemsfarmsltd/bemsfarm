@@ -127,7 +127,7 @@ export default function Schedule() {
                                       </div>
                                   </div>
                                   <p className="text-muted fs-sm mb-1">Notes:</p>
-                                  <p className="mb-0 min-h-11 line-clamp-2">Verify invoices and daily expense entries.</p>
+                                  <p className="mb-0 min-h-11 line-clamp-2">Verify invoices and daily accounting entries.</p>
                               </div>
                           </div>
                       </div>

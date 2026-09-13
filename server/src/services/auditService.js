@@ -147,7 +147,7 @@ function extractLocation(req, ip) {
     return { city: null, country: 'System / Cloud', country_code: 'SYS', flag: '☁️', display: 'System Engine' };
   }
 
-  return { city: null, country: null, country_code: null, flag: '📍', display: cleanIp };
+  return { city: null, country: null, country_code: null, flag: '📍', display: 'Detecting Location…' };
 }
 
 function prefetchIpGeo(ip) {
@@ -158,7 +158,7 @@ function prefetchIpGeo(ip) {
 
   try {
     const axios = require('axios');
-    axios.get(`http://ip-api.com/json/${cleanIp}?fields=status,country,countryCode,city,regionName`, { timeout: 1200 })
+    axios.get(`http://ip-api.com/json/${cleanIp}?fields=status,country,countryCode,city,regionName`, { timeout: 2000 })
       .then(res => {
         if (res.data && res.data.status === 'success') {
           const cc = (res.data.countryCode || '').toUpperCase();
@@ -170,6 +170,14 @@ function prefetchIpGeo(ip) {
             display: `${res.data.city ? res.data.city + ', ' : ''}${res.data.country || cc}`,
           };
           geoCache.set(cleanIp, loc);
+
+          // Retroactively update recent audit events that had this IP but raw or missing location
+          pool.query(
+            `UPDATE system_audit_events
+             SET location = $1, details = jsonb_set(COALESCE(details, '{}'::jsonb), '{location}', $2::jsonb)
+             WHERE ip_address = $3 AND (location IS NULL OR location = 'Detecting Location…' OR location LIKE '%:%' OR location = $3)`,
+            [loc.display, JSON.stringify(loc), cleanIp]
+          ).catch(() => {});
         }
       })
       .catch(() => {});
@@ -304,18 +312,56 @@ function auditRequests(req, res, next) {
   const category   = detectCategory(req.path);
 
   res.once('finish', () => {
-    const route    = req.route?.path;
-    const resource = route ? `${req.baseUrl || ''}${route}` : 'unmatched-api-route';
+    const fullPath = (req.originalUrl || req.path || '').split('?')[0];
+    const resource = fullPath || req.baseUrl || 'api-route';
     const severity = detectSeverity(req.method, res.statusCode, category);
 
     const user = req.user || req.auditActor;
+    const actorEmail = user?.email || req.body?.email || null;
     const actorName = user?.name
       ? (user.email && user.name !== user.email ? `${user.name} (${user.email})` : user.name)
-      : (user?.email || (req.body?.email ? `Visitor (${req.body.email})` : null));
+      : (actorEmail ? (user ? actorEmail : `Visitor (${actorEmail})`) : null);
+
+    // Extract entity from URL path, e.g. /api/admin/staff/102 -> entity_type: 'staff', entity_id: '102'
+    const segments = fullPath.split('/').filter(Boolean);
+    let entityType = null;
+    let entityId = null;
+    for (let i = 0; i < segments.length; i++) {
+      if (/^\d+$/.test(segments[i])) {
+        entityId = segments[i];
+        entityType = segments[i - 1] || null;
+        break;
+      }
+    }
+    if (!entityType && segments.length >= 3) {
+      entityType = segments[2]; // e.g. staff, customers, orders, products
+    }
+
+    // Sanitize request body to remove sensitive keys (password, token, etc.)
+    let sanitizedBody = null;
+    if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+      sanitizedBody = {};
+      const sensitiveKeys = new Set(['password', 'currentpassword', 'newpassword', 'token', 'secret', 'pin', 'cvv', 'credit_card']);
+      for (const [k, v] of Object.entries(req.body)) {
+        if (sensitiveKeys.has(k.toLowerCase())) {
+          sanitizedBody[k] = '••••••••';
+        } else if (typeof v === 'string' && v.length > 300) {
+          sanitizedBody[k] = v.slice(0, 300) + '…';
+        } else {
+          sanitizedBody[k] = v;
+        }
+      }
+    }
+
+    // Re-check location at finish time in case prefetch resolved
+    const freshLocation = extractLocation(req, ip) || location;
+
+    // Action format: "METHOD /path" e.g. "PATCH /api/admin/staff/102"
+    const actionLabel = `${req.method} ${fullPath}`;
 
     recordAudit({
       source:      'api',
-      action:      req.method,
+      action:      actionLabel,
       actor_id:    user?.id   || null,
       actor_role:  user?.role || null,
       actor_name:  actorName,
@@ -324,17 +370,26 @@ function auditRequests(req, res, next) {
       outcome:     res.statusCode < 400 ? 'success' : 'failure',
       category,
       severity,
-      entity_type: null,
-      entity_id:   /^[a-zA-Z0-9_-]{1,80}$/.test(req.params?.id || '') ? req.params.id : null,
+      entity_type: entityType,
+      entity_id:   entityId,
       ip_address:  ip,
       user_agent:  userAgent,
       session_id:  sessionId,
-      location:    location?.display || null,
+      location:    freshLocation?.display || null,
       details: {
         status:      res.statusCode,
+        status_code: res.statusCode,
         duration_ms: Date.now() - started,
         method:      req.method,
-        location,
+        path:        fullPath,
+        url:         req.originalUrl || req.url,
+        query:       Object.keys(req.query || {}).length > 0 ? req.query : undefined,
+        body:        sanitizedBody,
+        entity_type: entityType,
+        entity_id:   entityId,
+        user_email:  actorEmail,
+        user_name:   user?.name || null,
+        location:    freshLocation,
       },
     }).catch(() => {
       lastFailure = new Date().toISOString();

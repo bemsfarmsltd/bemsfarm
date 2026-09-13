@@ -788,6 +788,59 @@ router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════
+// HARD DELETE  ──  DELETE /api/admin/staff/:id/permanent
+// Permanently erases the staff record (attendance/payroll history cascade
+// with it) and their login account — unlike the soft-delete above, this
+// can't be undone by re-activating. Reserved for onboarded staff an admin
+// wants gone entirely (e.g. mis-invited or test accounts), not for staff
+// with real history someone might need to look back on later.
+// ════════════════════════════════════════════════════════════════════════════
+router.delete("/:id/permanent", requireRole("superadmin"), async (req, res, next) => {
+  if (!/^\d+$/.test(req.params.id)) return next();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const cur = await client.query(
+      "SELECT user_id, role FROM staff WHERE id=$1",
+      [req.params.id],
+    );
+    if (!cur.rows.length) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Staff member not found" });
+    }
+    const { user_id, role } = cur.rows[0];
+
+    if (user_id === req.user.id) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "You cannot delete your own account" });
+    }
+
+    if (role === "superadmin") {
+      const others = await client.query(
+        "SELECT COUNT(*)::int AS n FROM staff WHERE role='superadmin' AND status='active' AND id != $1",
+        [req.params.id],
+      );
+      if (!others.rows[0].n) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Cannot delete the last active Super Admin" });
+      }
+    }
+
+    await client.query("DELETE FROM staff WHERE id=$1", [req.params.id]);
+    if (user_id) {
+      await client.query("DELETE FROM users WHERE id=$1", [user_id]);
+    }
+    await client.query("COMMIT");
+    res.json({ message: "Staff member permanently deleted" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
 // ATTENDANCE  ──  GET /api/admin/staff/attendance
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/attendance", requireRole("superadmin", "manager"), async (req, res, next) => {

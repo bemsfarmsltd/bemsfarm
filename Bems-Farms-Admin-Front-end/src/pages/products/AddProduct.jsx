@@ -52,10 +52,9 @@ const PRODUCT_IMPORT_FIELDS = [
   { key: 'name', label: 'Product Name', required: true, section: 'Product Info' },
   { key: 'description', label: 'Description', required: false, section: 'Product Info' },
   { key: 'category', label: 'Category', required: true, section: 'Product Info' },
-  { key: 'sub_category', label: 'Sub-Category', required: false, section: 'Product Info' },
   { key: 'brand', label: 'Brand', required: false, section: 'Product Info' },
   { key: 'unit', label: 'Unit of Measure', required: true, section: 'Product Info' },
-  { key: 'model', label: 'Model / Variant', required: false, section: 'Product Info' },
+  { key: 'model_variant', label: 'Model / Variant', required: false, section: 'Product Info' },
   { key: 'tags', label: 'Tags', required: false, section: 'Product Info' },
   { key: 'unit_price', label: 'Unit Price (₦)', required: true, section: 'Pricing & Stock' },
   { key: 'cost_price', label: 'Cost Price (₦)', required: true, section: 'Pricing & Stock' },
@@ -313,10 +312,18 @@ export default function AddProduct() {
     }
   }
 
-  function handleImport(rows) {
-    setImportedCount(rows.length)
+  async function handleImport(rows) {
+    const res = await api.post('/admin/products/bulk-import', {
+      type: 'products',
+      rows,
+      update_existing: true,
+      auto_create_categories: true,
+    })
+    const data = res.data
+    setImportedCount((data.imported || 0) + (data.updated || 0))
     setImportDone(true)
     setMode('single')
+    return data
   }
 
   if (fetchingData) {

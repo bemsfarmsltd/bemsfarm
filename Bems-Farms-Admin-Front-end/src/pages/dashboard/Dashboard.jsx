@@ -794,7 +794,7 @@ function FinanceTab() {
     grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
     legend: { position: 'top' },
     tooltip: { y: { formatter: (v) => `₦${v.toLocaleString()}` } },
-  }), [incomeM.join()])
+  }), [incomeM.join(), expensesM.join()])
 
   useApexChart(profitRef, () => ({
     chart: { type: 'bar', height: 220, toolbar: { show: false } },
@@ -833,10 +833,11 @@ function FinanceTab() {
     title: 'Supplier Payments Due', subtitle: 'Pending produce-purchase invoices',
     icon: 'ri-truck-line',
     columns: [
-      { key: 'name', label: 'Supplier', render: (r) => r.name || r.supplier },
+      { key: 'supplier', label: 'Supplier', render: (r) => r.supplier_name || r.supplier },
+      { key: 'invoice_no', label: 'Invoice #', render: (r) => r.invoice_number || r.invoice_no },
+      { key: 'due_date', label: 'Due Date', render: (r) => fmtDate(r.due_date) },
       { key: 'amount', label: 'Amount', align: 'right', render: (r) => fmtNaira(r.amount) },
-      { key: 'due_date', label: 'Due', render: (r) => r.due_date || r.due || '—' },
-      { key: 'status', label: 'Status', render: (r) => <Badge label={(r.status || '').replace('-', ' ')} color={r.status === 'overdue' ? 'red' : 'blue'} /> },
+      { key: 'status', label: 'Status', render: (r) => <Badge label={r.status || 'pending'} color="amber" /> },
     ],
     rows: dues,
   })

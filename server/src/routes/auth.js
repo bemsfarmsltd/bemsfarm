@@ -772,7 +772,7 @@ router.post("/forgot-password", validate(authSchemas.forgotPassword), async (req
     const { email } = req.body;
 
     const result = await pool.query(
-      "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
+      "SELECT id, role FROM users WHERE LOWER(email) = LOWER($1)",
       [email],
     );
 
@@ -792,7 +792,12 @@ router.post("/forgot-password", validate(authSchemas.forgotPassword), async (req
       [token, expires, result.rows[0].id],
     );
 
-    const domain = process.env.FRONTEND_URL || "https://bemsfarms.com";
+    // Staff/admin accounts reset from the admin hub, not the storefront —
+    // send them to ADMIN_URL so the link actually lands on a page that exists.
+    const isStaff = result.rows[0].role && result.rows[0].role !== "user";
+    const domain = isStaff
+      ? process.env.ADMIN_URL || process.env.FRONTEND_URL || "https://bemsfarms.com"
+      : process.env.FRONTEND_URL || "https://bemsfarms.com";
     const resetUrl = `${domain}/reset-password?token=${token}`;
     sendPasswordResetEmail({ email }, resetUrl).catch((err) =>
       console.error(`Password reset email failed for ${email}:`, err.message),

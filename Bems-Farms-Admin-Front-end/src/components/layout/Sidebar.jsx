@@ -17,7 +17,7 @@ export default function Sidebar() {
     deliveries: '/deliveries/active',
     customers: '/customers',
     onboarding: '/onboarding',
-    finance: '/accounts/overview',
+    finance: '/accounts/transactions',
     reports: '/reports/sales',
     chef: '/chef-bems/conversations',
     stores: '/stores',
@@ -868,9 +868,6 @@ export default function Sidebar() {
             {/* 8. FINANCE */}
             {activeTab === 'finance' && (
               <>
-                <NavLink to="/accounts/overview" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Overview</span>
-                </NavLink>
                 <NavLink to="/accounts/transactions" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>All Transactions</span>
                 </NavLink>
@@ -901,9 +898,6 @@ export default function Sidebar() {
                     <span>Customer Report</span>
                   </NavLink>
                 )}
-                <NavLink to="/reports/expenses" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Expense Report</span>
-                </NavLink>
                 <NavLink to="/reports/finance" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Finance &amp; P&amp;L</span>
                 </NavLink>

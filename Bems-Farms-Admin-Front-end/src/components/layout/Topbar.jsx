@@ -144,11 +144,11 @@ export default function Topbar({ onToggleSidebar }) {
                 </Link>
               </div>
               <div className="col-6">
-                <Link to="/accounts/expenses" className="d-flex align-items-center gap-2 p-2 rounded-3 text-decoration-none text-dark bg-light hover-bg">
-                  <div className="avatar size-7 rounded-circle bg-danger-subtle text-danger d-flex align-items-center justify-content-center flex-shrink-0">
-                    <i className="ri-receipt-line"></i>
+                <Link to="/onboarding?tab=onboarding" className="d-flex align-items-center gap-2 p-2 rounded-3 text-decoration-none text-dark bg-light hover-bg">
+                  <div className="avatar size-7 rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0">
+                    <i className="ri-user-add-line"></i>
                   </div>
-                  <span className="fw-semibold fs-xs">New Expense</span>
+                  <span className="fw-semibold fs-xs">Invite Staff</span>
                 </Link>
               </div>
             </div>
@@ -398,7 +398,7 @@ export default function Topbar({ onToggleSidebar }) {
               </div>
             </div>
             <div className="p-2">
-              <Link className="dropdown-item rounded-3 py-2 fw-semibold fs-sm" to="/settings/general">
+              <Link className="dropdown-item rounded-3 py-2 fw-semibold fs-sm" to="/settings/profile">
                 <i className="ri-user-line me-2 text-muted"></i>My Profile
               </Link>
               <Link className="dropdown-item rounded-3 py-2 fw-semibold fs-sm" to="/staff">

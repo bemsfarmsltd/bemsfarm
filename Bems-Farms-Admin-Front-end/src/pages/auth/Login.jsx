@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { isStaffRole, STAFF_HOME } from "../../lib/roles";
 import toast from "react-hot-toast";
+import api from "../../lib/api";
 import "./Login.css";
 
 export default function Login() {
@@ -13,6 +14,12 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login, user, loading: authLoading } = useAuth();
+
+  // Forgot-password mini-flow
+  const [mode, setMode] = useState("login"); // 'login' | 'forgot'
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,6 +58,20 @@ export default function Login() {
       toast.error(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) return;
+    setForgotLoading(true);
+    try {
+      await api.post("/auth/forgot-password", { email: forgotEmail.trim() });
+      setForgotSent(true);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to send reset link. Please try again.");
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -157,15 +178,17 @@ export default function Login() {
                 <span>Staff Portal</span>
               </div>
               <h2 className="login-form-title">
-                Staff Sign In
+                {mode === "forgot" ? "Reset Your Password" : "Staff Sign In"}
               </h2>
               <p className="login-form-subtitle">
-                Sign in with your authorized Bems Farms administrator or staff account.
+                {mode === "forgot"
+                  ? "Enter your staff email and we'll send you a link to reset your password."
+                  : "Sign in with your authorized Bems Farms administrator or staff account."}
               </p>
             </div>
 
             {/* Error Banner */}
-            {error && (
+            {error && mode === "login" && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -180,6 +203,7 @@ export default function Login() {
             )}
 
             {/* Form */}
+            {mode === "login" && (
             <form onSubmit={handleSubmit}>
               <div className="login-field-group">
                 <label className="login-field-label" htmlFor="admin-email">
@@ -244,6 +268,16 @@ export default function Login() {
                 </div>
               </div>
 
+              <div style={{ textAlign: "right", marginTop: "-0.5rem", marginBottom: "1rem" }}>
+                <button
+                  type="button"
+                  onClick={() => { setMode("forgot"); setError(""); }}
+                  style={{ background: "none", border: "none", padding: 0, fontSize: "0.8125rem", fontWeight: 600, color: "#0f766e", cursor: "pointer" }}
+                >
+                  Forgot password?
+                </button>
+              </div>
+
               <button
                 type="submit"
                 disabled={loading}
@@ -297,6 +331,83 @@ export default function Login() {
                 </div>
               )}
             </form>
+            )}
+
+            {/* Forgot Password Mini-Flow */}
+            {mode === "forgot" && (
+              forgotSent ? (
+                <div style={{ textAlign: "center", padding: "1rem 0" }}>
+                  <div style={{ width: "3rem", height: "3rem", borderRadius: "9999px", background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
+                    <svg style={{ width: "1.5rem", height: "1.5rem", color: "#16a34a" }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  </div>
+                  <p style={{ fontSize: "0.875rem", color: "#334155", marginBottom: "1.25rem" }}>
+                    If <strong>{forgotEmail}</strong> is a registered staff account, a password reset link is on its way. Check your inbox.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setMode("login"); setForgotSent(false); setForgotEmail(""); }}
+                    className="login-submit-btn"
+                  >
+                    <span>Back to Sign In</span>
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleForgotSubmit}>
+                  <div className="login-field-group">
+                    <label className="login-field-label" htmlFor="forgot-email">
+                      Staff Email Address
+                    </label>
+                    <div className="login-input-wrap">
+                      <div className="login-input-icon">
+                        <svg style={{ width: "1rem", height: "1rem" }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                        </svg>
+                      </div>
+                      <input
+                        id="forgot-email"
+                        type="email"
+                        required
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="admin@bemsfarms.com"
+                        autoComplete="username"
+                        className="login-text-input"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="login-submit-btn"
+                  >
+                    {forgotLoading ? (
+                      <>
+                        <svg style={{ width: "1rem", height: "1rem", animation: "spin 1s linear infinite" }} fill="none" viewBox="0 0 24 24">
+                          <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                        </svg>
+                        <span>Sending Reset Link...</span>
+                      </>
+                    ) : (
+                      <span>Send Reset Link</span>
+                    )}
+                  </button>
+
+                  <div style={{ textAlign: "center", marginTop: "1rem" }}>
+                    <button
+                      type="button"
+                      onClick={() => { setMode("login"); setError(""); }}
+                      style={{ background: "none", border: "none", padding: 0, fontSize: "0.8125rem", fontWeight: 600, color: "#0f766e", cursor: "pointer" }}
+                    >
+                      &larr; Back to Sign In
+                    </button>
+                  </div>
+                </form>
+              )
+            )}
 
             {/* Security Footer */}
             <div className="login-security-footer">

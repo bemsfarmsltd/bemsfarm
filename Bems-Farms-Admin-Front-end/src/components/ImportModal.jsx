@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import toast from 'react-hot-toast'
 
 // ── CSV parser (handles basic quoting) ────────────────────────────────────────
 function parseCSV(text) {
@@ -25,30 +26,20 @@ function parseCSV(text) {
   return { headers, rows }
 }
 
-// ── Mock URL fetch responses ──────────────────────────────────────────────────
-function mockURLData(entityName) {
-  const map = {
-    Categories:      'Name,Status\nDairy Products,active\nFresh Produce,active\nBaked Goods,active\nSnacks & Confectionery,active',
-    'Sub-Categories':'Name,Parent Category,Status\nWhole Milk,Dairy & Eggs,active\nFree-range Eggs,Dairy & Eggs,active\nLeafy Greens,Vegetables,active\nRoot Vegetables,Vegetables,active',
-    Products:        'Name,SKU,Category,Price,Cost,Unit,Stock,Status\nRice (5kg),GRN-RIC-002,Grains & Carbs,6500,4800,bag,50,active\nTomatoes,VEG-TOM-002,Vegetables,1200,800,kg,20,active',
-  }
-  return map[entityName] || `Name,Status\nSample Item,active`
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 export default function ImportModal({ entityName, fields, onImport, onClose }) {
   const [step, setStep]         = useState('source')   // source | mapping | review | done
-  const [tab, setTab]           = useState('file')      // file | url | paste
+  const [tab, setTab]           = useState('file')      // file | paste
   const [rawCSV, setRawCSV]     = useState('')
   const [fileName, setFileName] = useState('')
-  const [urlVal, setUrlVal]     = useState('')
   const [pasteVal, setPasteVal] = useState('')
   const [isDrag, setIsDrag]     = useState(false)
-  const [urlLoading, setUrlLoading] = useState(false)
   const [headers, setHeaders]   = useState([])
   const [mapping, setMapping]   = useState({})          // fieldKey → csvHeader
   const [results, setResults]   = useState(null)        // { valid, invalid }
   const [importMode, setImportMode] = useState('valid') // valid | all
+  const [submitting, setSubmitting] = useState(false)
+  const [importSummary, setImportSummary] = useState(null)
   const fileRef = useRef()
 
   const UNMAP = '— skip —'
@@ -59,14 +50,6 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
     const reader = new FileReader()
     reader.onload = e => setRawCSV(e.target.result)
     reader.readAsText(file)
-  }
-
-  async function fetchURL() {
-    setUrlLoading(true)
-    await new Promise(r => setTimeout(r, 900))   // simulate network
-    const csv = mockURLData(entityName)
-    setRawCSV(csv)
-    setUrlLoading(false)
   }
 
   function continueFromSource() {
@@ -109,18 +92,24 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
     setStep('review')
   }
 
-  function confirmImport() {
+  async function confirmImport() {
     const rows = importMode === 'all'
       ? [...results.valid, ...results.invalid].map(r => r.data)
       : results.valid.map(r => r.data)
-    onImport(rows)
-    setStep('done')
+    setSubmitting(true)
+    try {
+      const summary = await onImport(rows)
+      setImportSummary(summary || null)
+      setStep('done')
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err.message || `Failed to import ${entityName.toLowerCase()}`)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   // ── Derived ──────────────────────────────────────────────────────────────
-  const sourceReady = tab === 'paste' ? pasteVal.trim().length > 0
-                    : tab === 'url'   ? rawCSV.trim().length > 0
-                    : rawCSV.trim().length > 0
+  const sourceReady = tab === 'paste' ? pasteVal.trim().length > 0 : rawCSV.trim().length > 0
 
   const requiredMapped = fields.filter(f => f.required).every(f => mapping[f.key] && mapping[f.key] !== UNMAP)
 
@@ -195,7 +184,6 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
                   <div className="d-flex gap-2 mb-4">
                     {[
                       { id:'file', icon:'ri-file-upload-line',  label:'Upload File'   },
-                      { id:'url',  icon:'ri-links-line',         label:'From URL'      },
                       { id:'paste',icon:'ri-clipboard-line',     label:'Paste CSV'     },
                     ].map(t => (
                       <button key={t.id}
@@ -234,30 +222,6 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
                         <span className="ms-1 text-muted">
                           Expected columns: {fields.map(f => f.label + (f.required ? '*' : '')).join(', ')}
                         </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* URL */}
-                  {tab === 'url' && (
-                    <div>
-                      <label className="form-label fw-medium">Data Source URL</label>
-                      <div className="input-group mb-3">
-                        <input className="form-control" placeholder="https://example.com/data.csv"
-                          value={urlVal} onChange={e => setUrlVal(e.target.value)} />
-                        <button className="btn btn-primary d-flex align-items-center gap-1" onClick={fetchURL} disabled={urlLoading || !urlVal.trim()}>
-                          {urlLoading ? <><span className="spinner-border spinner-border-sm"></span> Fetching…</> : <><i className="ri-cloud-download-line"></i> Fetch</>}
-                        </button>
-                      </div>
-                      {rawCSV && !urlLoading && (
-                        <div className="p-3 rounded bg-success-subtle">
-                          <i className="ri-checkbox-circle-line text-success me-1"></i>
-                          <strong>{parseCSV(rawCSV).rows.length} rows</strong> fetched successfully.
-                        </div>
-                      )}
-                      <div className="mt-3 text-muted" style={{ fontSize:12 }}>
-                        <i className="ri-information-line me-1"></i>
-                        The URL must return a plain CSV with headers. Authentication not supported.
                       </div>
                     </div>
                   )}
@@ -433,13 +397,34 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
                     </div>
                   </div>
                   <h5 className="fw-bold mb-2">Import Complete!</h5>
-                  <p className="text-muted mb-4">
-                    {importMode === 'valid' ? results?.valid.length : (results?.valid.length + results?.invalid.length)} {entityName.toLowerCase()} have been imported successfully.
+                  <p className="text-muted mb-1">
+                    {importSummary?.message
+                      ? importSummary.message
+                      : `${importMode === 'valid' ? results?.valid.length : (results?.valid.length + results?.invalid.length)} ${entityName.toLowerCase()} sent to the server.`}
                   </p>
-                  <div className="d-flex justify-content-center gap-2">
+                  {importSummary && (importSummary.imported > 0 || importSummary.updated > 0) && (
+                    <p className="text-success fw-semibold mb-1" style={{ fontSize:13 }}>
+                      {importSummary.imported > 0 && <>{importSummary.imported} created</>}
+                      {importSummary.imported > 0 && importSummary.updated > 0 && ' · '}
+                      {importSummary.updated > 0 && <>{importSummary.updated} updated</>}
+                    </p>
+                  )}
+                  {importSummary?.errors?.length > 0 && (
+                    <div className="text-start mt-3 mb-2 p-3 rounded bg-danger-subtle" style={{ maxHeight:160, overflowY:'auto' }}>
+                      <div className="fw-bold text-danger mb-1" style={{ fontSize:13 }}>
+                        {importSummary.failed} row{importSummary.failed > 1 ? 's' : ''} failed:
+                      </div>
+                      <ul className="mb-0 ps-3 text-danger" style={{ fontSize:12 }}>
+                        {importSummary.errors.map((e, i) => (
+                          <li key={i}>Row {e.row}: {e.message}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div className="d-flex justify-content-center gap-2 mt-3">
                     <button className="btn btn-light" onClick={onClose}>Close</button>
                     <button className="btn btn-primary" onClick={() => {
-                      setStep('source'); setRawCSV(''); setFileName(''); setUrlVal(''); setPasteVal(''); setResults(null)
+                      setStep('source'); setRawCSV(''); setFileName(''); setPasteVal(''); setResults(null); setImportSummary(null)
                     }}>
                       <i className="ri-upload-cloud-2-line me-1"></i>Import More
                     </button>
@@ -452,11 +437,11 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
             {step !== 'done' && (
               <div className="modal-footer">
                 {step !== 'source' && (
-                  <button className="btn btn-light me-auto" onClick={() => setStep(step === 'review' ? 'mapping' : 'source')}>
+                  <button className="btn btn-light me-auto" onClick={() => setStep(step === 'review' ? 'mapping' : 'source')} disabled={submitting}>
                     <i className="ri-arrow-left-line me-1"></i>Back
                   </button>
                 )}
-                <button className="btn btn-light" onClick={onClose}>Cancel</button>
+                <button className="btn btn-light" onClick={onClose} disabled={submitting}>Cancel</button>
                 {step === 'source' && (
                   <button className="btn btn-primary d-flex align-items-center gap-1" onClick={continueFromSource} disabled={!sourceReady}>
                     Map Columns <i className="ri-arrow-right-line"></i>
@@ -470,9 +455,15 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
                 {step === 'review' && (
                   <button className="btn btn-success d-flex align-items-center gap-1"
                     onClick={confirmImport}
-                    disabled={importMode === 'valid' && results?.valid.length === 0}>
-                    <i className="ri-upload-cloud-line"></i>
-                    Confirm Import ({importMode === 'valid' ? results?.valid.length : (results?.valid.length + results?.invalid.length)} rows)
+                    disabled={submitting || (importMode === 'valid' && results?.valid.length === 0)}>
+                    {submitting ? (
+                      <><span className="spinner-border spinner-border-sm"></span> Importing…</>
+                    ) : (
+                      <>
+                        <i className="ri-upload-cloud-line"></i>
+                        Confirm Import ({importMode === 'valid' ? results?.valid.length : (results?.valid.length + results?.invalid.length)} rows)
+                      </>
+                    )}
                   </button>
                 )}
               </div>

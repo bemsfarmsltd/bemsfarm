@@ -154,8 +154,21 @@ export function AuthProvider({ children }) {
     setUser(userData)
   }, [])
 
+  /** Merge partial user fields (e.g. after saving profile/avatar) into the cached session */
+  const updateUser = useCallback((partial) => {
+    setUser((prev) => {
+      const next = { ...(prev || {}), ...partial }
+      try {
+        localStorage.setItem('admin_user', JSON.stringify(next))
+      } catch {
+        // ignore storage errors
+      }
+      return next
+    })
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, setSession, hasRole, canAccess }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, setSession, updateUser, hasRole, canAccess }}>
       {children}
     </AuthContext.Provider>
   )

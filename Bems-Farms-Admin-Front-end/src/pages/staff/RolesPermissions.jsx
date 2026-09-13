@@ -12,7 +12,7 @@ const AVAILABLE_PERMISSIONS = [
   { id: 'products', label: 'Products & Pricing', desc: 'Create, edit, pricing, and category configuration' },
   { id: 'deliveries', label: 'Dispatch & Deliveries', desc: 'Assign riders, track live shipments, and record handover status' },
   { id: 'kitchen', label: 'Chef Bems Kitchen', desc: 'View and manage ready-to-eat and custom processed orders' },
-  { id: 'reports', label: 'Financial & Sales Reports', desc: 'Access sales, profit margins, expense, and tax reporting' },
+  { id: 'reports', label: 'Financial & Sales Reports', desc: 'Access sales, profit margins, revenue, and tax reporting' },
   { id: 'staff', label: 'Staff & User Accounts', desc: 'Create employee profiles, credentials, and manage system roles' },
   { id: 'customers', label: 'Customer Directory', desc: 'View customer accounts, purchase history, and store credits' },
   { id: 'settings', label: 'System Configuration', desc: 'Manage payment gateways, store settings, and tax policies' },

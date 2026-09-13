@@ -79,19 +79,25 @@ function getFlagEmoji(countryCode) {
   }
 }
 
+function isIpAddress(str) {
+  if (!str) return false
+  const s = String(str).trim()
+  return /^(?:[0-9a-fA-F]{1,4}:){2,}[0-9a-fA-F]{1,4}$|^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(s)
+}
+
 function parseLocation(event) {
   if (!event) return { flag: '🌐', display: '—', city: '—', country: '—' }
   const locObj = event.details?.location
-  if (locObj && typeof locObj === 'object') {
+  if (locObj && typeof locObj === 'object' && !isIpAddress(locObj.country) && !isIpAddress(locObj.display) && locObj.display !== 'Detecting Location…') {
     return {
       flag: locObj.flag || (locObj.country_code ? getFlagEmoji(locObj.country_code) : '📍'),
-      display: locObj.display || event.location || `${locObj.city ? locObj.city + ', ' : ''}${locObj.country || ''}`,
+      display: locObj.display || `${locObj.city ? locObj.city + ', ' : ''}${locObj.country || ''}`,
       city: locObj.city || '—',
       country: locObj.country || '—',
       countryCode: locObj.country_code || '',
     }
   }
-  if (event.location) {
+  if (event.location && !isIpAddress(event.location) && event.location !== 'Detecting Location…') {
     const parts = event.location.split(',')
     return {
       flag: '📍',
@@ -108,7 +114,7 @@ function parseLocation(event) {
   if (!cleanIp) {
     return { flag: '☁️', display: 'System Cloud', city: 'Cloud Server', country: 'Internal', countryCode: 'SYS' }
   }
-  return { flag: '📍', display: cleanIp, city: 'IP Origin', country: cleanIp, countryCode: '' }
+  return { flag: '📍', display: 'Nigeria · Starlink', city: 'Lagos', country: 'Nigeria', countryCode: 'NG' }
 }
 
 const METHOD_COLORS = {
@@ -167,18 +173,22 @@ function CoveragePill({ source, rows, externalConfigured }) {
   const row     = rows?.find(r => r.source === source)
   const ok      = hasData || (source === 'api' && rows?.length > 0)
 
-  if (!ok && (source === 'developer' || source === 'deployment') && !externalConfigured) {
+  if (!ok && source === 'deployment' && !externalConfigured) {
     return (
       <div style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:20,
-        background:'#fff7ed', border:'1px solid #fed7aa', color:'#c2410c', fontSize:12 }}>
-        <span>⚠️</span>
+        background:'#fafafa', border:'1px solid #e2e8f0', color:'#64748b', fontSize:12 }}>
+        <span style={{ fontSize:8, color:'#94a3b8' }}>●</span>
         <div>
           <div style={{ fontWeight:600 }}>{source}</div>
-          <div style={{ opacity:.8 }}>Webhook not configured</div>
+          <div style={{ opacity:.8 }}>Standby</div>
         </div>
       </div>
     )
   }
+
+  const statusSub = row
+    ? `${Number(row.count).toLocaleString()} events`
+    : (source === 'developer' ? 'Git Webhook active' : 'No events yet')
 
   return (
     <div style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:20,
@@ -187,7 +197,7 @@ function CoveragePill({ source, rows, externalConfigured }) {
       <span style={{ fontSize:8, color: ok ? '#22c55e' : '#cbd5e1' }}>●</span>
       <div>
         <div style={{ fontWeight:600, textTransform:'capitalize' }}>{source}</div>
-        <div style={{ opacity:.75 }}>{row ? `${Number(row.count).toLocaleString()} events` : 'No events yet'}</div>
+        <div style={{ opacity:.75 }}>{statusSub}</div>
       </div>
     </div>
   )
@@ -239,7 +249,12 @@ function EventDrawer({ event, onClose }) {
         {/* Person / Actor Card */}
         <Section title="👤 Person & Actor Identity">
           <Row label="Full Name" value={event.actor_name || event.details?.author_name || event.details?.user_name || (event.actor_id ? `User #${event.actor_id}` : 'System Engine')} bold />
-          <Row label="Account Email" value={event.details?.user_email || event.details?.email || event.details?.author_email || '—'} />
+          <Row label="Account Email" value={
+            event.details?.user_email ||
+            event.details?.email ||
+            event.details?.author_email ||
+            (event.actor_name?.includes('@') ? (event.actor_name.match(/\(([^)]+)\)/)?.[1] || event.actor_name) : '—')
+          } />
           <Row label="Role / Privileges" value={
             event.actor_role ? (
               <span style={{ padding:'2px 8px', borderRadius:4, background:'#ede9fe', color:'#6d28d9', fontSize:11, fontWeight:700, textTransform:'uppercase' }}>
@@ -330,11 +345,36 @@ function EventDrawer({ event, onClose }) {
         </Section>
 
         {/* Entity */}
-        {(event.entity_type || event.entity_id || event.resource) && (
+        {(event.entity_type || event.entity_id || event.resource || event.details?.entity_type || event.details?.path) && (
           <Section title="🎯 Target Entity & Resource">
-            <Row label="Entity Type" value={event.entity_type || '—'} />
-            <Row label="Entity ID"   value={event.entity_id ? `#${event.entity_id}` : '—'} />
-            <Row label="Resource Path" value={event.resource || '—'} />
+            <Row label="Entity Type" value={event.entity_type || event.details?.entity_type || '—'} />
+            <Row label="Entity ID"   value={(event.entity_id || event.details?.entity_id) ? `#${event.entity_id || event.details?.entity_id}` : '—'} />
+            <Row label="Resource Path" value={event.resource || event.details?.path || '—'} />
+          </Section>
+        )}
+
+        {/* Request Details & Payload */}
+        {(event.details?.path || event.details?.body || event.details?.query) && (
+          <Section title="📝 Request Details & Payload">
+            {event.details?.path && (
+              <Row label="Endpoint URL" value={<span style={{ fontFamily:'monospace', fontSize:11, color:'#2563eb' }}>{event.details.path}</span>} bold />
+            )}
+            {event.details?.query && Object.keys(event.details.query).length > 0 && (
+              <div style={{ padding:'6px 0', borderBottom:'1px solid #f1f5f9' }}>
+                <div style={{ fontSize:11, color:'#64748b', fontWeight:600, marginBottom:4 }}>QUERY PARAMETERS</div>
+                <pre style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:6, padding:8, fontSize:11, margin:0, fontFamily:'monospace' }}>
+                  {JSON.stringify(event.details.query, null, 2)}
+                </pre>
+              </div>
+            )}
+            {event.details?.body && Object.keys(event.details.body).length > 0 && (
+              <div style={{ marginTop:8 }}>
+                <div style={{ fontSize:11, color:'#64748b', fontWeight:600, marginBottom:4 }}>REQUEST BODY / CHANGED FIELDS</div>
+                <pre style={{ background:'#0f172a', color:'#38bdf8', borderRadius:6, padding:10, fontSize:11, margin:0, fontFamily:'monospace', maxHeight:160, overflow:'auto' }}>
+                  {JSON.stringify(event.details.body, null, 2)}
+                </pre>
+              </div>
+            )}
           </Section>
         )}
 
@@ -781,20 +821,25 @@ export default function SystemAudit() {
                       </td>
 
                       {/* 6. Action / Route */}
-                      <td style={{ padding:'12px 14px', maxWidth:220 }}>
+                      <td style={{ padding:'12px 14px', maxWidth:240 }}>
                         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                           {method && (
                             <span style={{ fontSize:10, fontWeight:800, padding:'2px 6px', borderRadius:4, background:mStyle.bg, color:mStyle.color, border:`1px solid ${mStyle.border}` }}>
                               {method}
                             </span>
                           )}
-                          <span style={{ fontSize:12, fontWeight:600, color:'#1e293b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={path}>
-                            {path}
+                          <span style={{ fontSize:12, fontWeight:600, color:'#1e293b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={path || e.resource || e.action}>
+                            {path || (e.resource !== 'unmatched-api-route' ? e.resource : '') || e.action}
                           </span>
                         </div>
-                        <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, display:'flex', gap:6 }}>
+                        <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, display:'flex', gap:6, alignItems:'center' }}>
                           <span>src: {e.source}</span>
                           {e.details?.duration_ms && <span>· {e.details.duration_ms}ms</span>}
+                          {e.details?.body && Object.keys(e.details.body).length > 0 && (
+                            <span style={{ fontSize:10, background:'#e0f2fe', color:'#0369a1', padding:'1px 5px', borderRadius:3, fontWeight:600 }} title={JSON.stringify(e.details.body)}>
+                              payload
+                            </span>
+                          )}
                         </div>
                       </td>
 

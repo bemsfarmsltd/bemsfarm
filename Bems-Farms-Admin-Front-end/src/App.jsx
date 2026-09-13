@@ -15,6 +15,7 @@ import {
 
 // Auth & Errors
 import Login from './pages/auth/Login'
+import ResetPassword from './pages/auth/ResetPassword'
 import Onboard from './pages/auth/Onboard'
 import Unauthorized from './pages/errors/Unauthorized'
 
@@ -78,10 +79,8 @@ import Holidays         from './pages/staff/Holidays'
 import Payroll          from './pages/staff/Payroll'
 
 // Accounts
-import FinancialOverview from './pages/accounts/FinancialOverview'
 import BankAccounts      from './pages/accounts/BankAccounts'
 import Income            from './pages/accounts/Income'
-import Expenses          from './pages/accounts/Expenses'
 import MoneyTransfer     from './pages/accounts/MoneyTransfer'
 import Transactions      from './pages/accounts/Transactions'
 import DriverCommissions from './pages/accounts/DriverCommissions'
@@ -101,7 +100,6 @@ import InventoryReport from './pages/reports/InventoryReport'
 import CustomerReport  from './pages/reports/CustomerReport'
 import PurchaseReport  from './pages/reports/PurchaseReport'
 import SupplierReport  from './pages/reports/SupplierReport'
-import ExpenseReport   from './pages/reports/ExpenseReport'
 import FinanceReport   from './pages/reports/FinanceReport'
 
 // Settings
@@ -116,6 +114,7 @@ import CurrencySettings     from './pages/settings/CurrencySettings'
 import InvoiceSettings      from './pages/settings/InvoiceSettings'
 import ManagerSettings      from './pages/settings/ManagerSettings'
 import TeamOnboarding        from './pages/settings/TeamOnboarding'
+import Profile               from './pages/settings/Profile'
 
 function App() {
   return (
@@ -124,6 +123,7 @@ function App() {
         <Routes>
           {/* ── Public Auth Routes ── */}
           <Route path="/login" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/onboard" element={<Onboard />} />
           <Route path="/accept-invite" element={<Onboard />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
@@ -141,6 +141,8 @@ function App() {
             <Route element={<Layout />}>
               {/* Dashboard — everyone */}
               <Route path="/dashboard" element={<Dashboard />} />
+              {/* My Profile — every signed-in staff member manages their own account */}
+              <Route path="/settings/profile" element={<Profile />} />
 
               {/* ── Products & Inventory ── */}
               <Route element={<ProtectedRoute allowedRoles={PRODUCT_ROLES} />}>
@@ -222,10 +224,10 @@ function App() {
 
               {/* ── Accounts / Finance ── */}
               <Route element={<ProtectedRoute allowedRoles={FINANCE_ROLES} />}>
-                <Route path="/accounts/overview"     element={<FinancialOverview />} />
+                <Route path="/accounts/overview"     element={<Navigate to="/accounts/transactions" replace />} />
                 <Route path="/accounts/bank"         element={<BankAccounts />} />
                 <Route path="/accounts/income"       element={<Income />} />
-                <Route path="/accounts/expenses"     element={<Expenses />} />
+                <Route path="/accounts/expenses"     element={<Navigate to="/accounts/transactions" replace />} />
                 <Route path="/accounts/transfer"     element={<MoneyTransfer />} />
                 <Route path="/accounts/transactions" element={<Transactions />} />
                 <Route path="/accounts/commissions"  element={<DriverCommissions />} />
@@ -251,7 +253,7 @@ function App() {
                 <Route path="/reports/customers"  element={<CustomerReport />} />
                 <Route path="/reports/purchases"  element={<PurchaseReport />} />
                 <Route path="/reports/suppliers"  element={<SupplierReport />} />
-                <Route path="/reports/expenses"   element={<ExpenseReport />} />
+                <Route path="/reports/expenses"   element={<Navigate to="/reports/finance" replace />} />
                 <Route path="/reports/finance"    element={<FinanceReport />} />
               </Route>
 

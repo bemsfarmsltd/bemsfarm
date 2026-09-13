@@ -13,7 +13,7 @@ const AVAILABLE_PERMISSIONS = [
   { id: 'products', label: 'Products & Pricing', desc: 'Create, edit, pricing, and category configuration' },
   { id: 'deliveries', label: 'Dispatch & Deliveries', desc: 'Assign riders, track live shipments, and record handover status' },
   { id: 'kitchen', label: 'Chef Bems Kitchen', desc: 'View and manage ready-to-eat and custom processed orders' },
-  { id: 'reports', label: 'Financial & Sales Reports', desc: 'Access sales, profit margins, expense, and tax reporting' },
+  { id: 'reports', label: 'Financial & Sales Reports', desc: 'Access sales, profit margins, revenue, and tax reporting' },
   { id: 'staff', label: 'Staff & User Accounts', desc: 'Create employee profiles, credentials, and manage system roles' },
   { id: 'customers', label: 'Customer Directory', desc: 'View customer accounts, purchase history, and store credits' },
   { id: 'settings', label: 'System Configuration', desc: 'Manage payment gateways, store settings, and tax policies' },
@@ -109,6 +109,8 @@ export default function TeamOnboarding({ initialTab }) {
   // Deactivate Staff Modal
   const [deactivatingStaff, setDeactivatingStaff] = useState(null)
   const [processingDeactivate, setProcessingDeactivate] = useState(false)
+  const [deletingStaff, setDeletingStaff] = useState(null)
+  const [processingDelete, setProcessingDelete] = useState(false)
 
   // ── 3. ROLES & PERMISSIONS STATE ──────────────────────────────────────────
   const [roles, setRoles] = useState(DEFAULT_SYSTEM_ROLES)
@@ -289,6 +291,21 @@ export default function TeamOnboarding({ initialTab }) {
       toast.error(err.response?.data?.message || 'Failed to deactivate staff')
     } finally {
       setProcessingDeactivate(false)
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deletingStaff) return
+    setProcessingDelete(true)
+    try {
+      await api.delete(`/admin/staff/${deletingStaff.id}/permanent`)
+      toast.success('Staff member permanently deleted')
+      setDeletingStaff(null)
+      fetchAllData()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete staff member')
+    } finally {
+      setProcessingDelete(false)
     }
   }
 
@@ -1107,6 +1124,16 @@ export default function TeamOnboarding({ initialTab }) {
                                   <i className="ri-user-unfollow-line"></i>
                                 </button>
                               )}
+                              {user?.role === 'superadmin' && member.user_id !== user.id && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-danger"
+                                  onClick={() => setDeletingStaff(member)}
+                                  title="Permanently delete staff member"
+                                >
+                                  <i className="ri-delete-bin-line"></i>
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1501,6 +1528,65 @@ export default function TeamOnboarding({ initialTab }) {
                   onClick={handleConfirmDeactivate}
                 >
                   {processingDeactivate ? 'Deactivating…' : 'Yes, Deactivate Account'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL 2b: PERMANENTLY DELETE STAFF CONFIRMATION ──────────────────── */}
+      {deletingStaff && (
+        <div
+          className="modal d-block"
+          style={{ background: 'rgba(15,23,42,0.6)', zIndex: 1060 }}
+          onClick={() => setDeletingStaff(null)}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+              <div className="modal-header bg-danger-subtle border-bottom border-danger-subtle p-3.5">
+                <div className="d-flex align-items-center gap-2">
+                  <div className="bg-danger text-white p-2 rounded-3">
+                    <i className="ri-delete-bin-line fs-5"></i>
+                  </div>
+                  <div>
+                    <h6 className="fw-bold text-danger mb-0">Permanently Delete Staff Member</h6>
+                    <small className="text-muted">{deletingStaff.name || deletingStaff.email}</small>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setDeletingStaff(null)}
+                ></button>
+              </div>
+
+              <div className="modal-body p-4 bg-white">
+                <p className="text-muted fs-sm mb-0">
+                  This permanently erases <strong>{deletingStaff.name || deletingStaff.email}</strong>'s staff record,
+                  login account, and attendance/payroll history. This cannot be undone — if you only want to revoke
+                  their access, use <strong>Deactivate</strong> instead.
+                </p>
+              </div>
+
+              <div className="modal-footer bg-light border-top p-3 d-flex justify-content-between">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm"
+                  onClick={() => setDeletingStaff(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger btn-sm px-4 shadow-sm"
+                  disabled={processingDelete}
+                  onClick={handleConfirmDelete}
+                >
+                  {processingDelete ? 'Deleting…' : 'Yes, Delete Permanently'}
                 </button>
               </div>
             </div>

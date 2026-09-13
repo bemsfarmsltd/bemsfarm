@@ -163,6 +163,217 @@ router.get("/form-data", requireRole("superadmin", "manager", "admin", "kitchen_
   }
 });
 
+// ── VARIANTS ──────────────────────────────────────────────────────
+// GET /api/admin/products/variants ── list all variants (optionally scoped
+// to one product or filtered by a search term across variant/SKU/product name)
+router.get(
+  "/variants",
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      const { product_id, search } = req.query;
+      const params = [];
+      const where = [];
+      if (product_id) {
+        params.push(product_id);
+        where.push(`v.product_id = $${params.length}`);
+      }
+      if (search) {
+        params.push(`%${search}%`);
+        where.push(
+          `(v.name ILIKE $${params.length} OR v.sku ILIKE $${params.length} OR p.name ILIKE $${params.length})`,
+        );
+      }
+      const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+      const result = await pool.query(
+        `SELECT v.*, p.name AS product_name, p.sku AS product_sku
+         FROM product_variants v
+         JOIN products p ON p.id = v.product_id
+         ${whereClause}
+         ORDER BY v.created_at DESC`,
+        params,
+      );
+      res.json({ variants: result.rows });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.post(
+  "/variants",
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      const { product_id, name, sku, price_adjustment, stock_count, is_active } = req.body;
+      if (!product_id) return res.status(400).json({ message: "Product is required" });
+      if (!name?.trim()) return res.status(400).json({ message: "Variant name is required" });
+
+      const prod = await pool.query("SELECT id FROM products WHERE id=$1", [product_id]);
+      if (!prod.rows.length) return res.status(400).json({ message: "Selected product does not exist" });
+
+      if (sku?.trim()) {
+        const dup = await pool.query("SELECT id FROM product_variants WHERE sku=$1", [sku.trim()]);
+        if (dup.rows.length) {
+          return res.status(400).json({ message: `SKU "${sku.trim()}" is already used by another variant` });
+        }
+      }
+
+      const result = await pool.query(
+        `INSERT INTO product_variants (product_id, name, sku, price_adjustment, stock_count, is_active, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *`,
+        [
+          product_id,
+          name.trim(),
+          sku?.trim() || null,
+          price_adjustment !== undefined && price_adjustment !== "" ? parseFloat(price_adjustment) : 0,
+          stock_count !== undefined && stock_count !== "" ? parseInt(stock_count) : 0,
+          is_active !== false,
+        ],
+      );
+      res.status(201).json(result.rows[0]);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.put(
+  "/variants/:id",
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      const { product_id, name, sku, price_adjustment, stock_count, is_active } = req.body;
+      if (!name?.trim()) return res.status(400).json({ message: "Variant name is required" });
+
+      if (sku?.trim()) {
+        const dup = await pool.query(
+          "SELECT id FROM product_variants WHERE sku=$1 AND id != $2",
+          [sku.trim(), req.params.id],
+        );
+        if (dup.rows.length) {
+          return res.status(400).json({ message: `SKU "${sku.trim()}" is already used by another variant` });
+        }
+      }
+
+      const result = await pool.query(
+        `UPDATE product_variants
+         SET product_id = COALESCE($1, product_id),
+             name = $2,
+             sku = $3,
+             price_adjustment = $4,
+             stock_count = $5,
+             is_active = $6
+         WHERE id = $7
+         RETURNING *`,
+        [
+          product_id || null,
+          name.trim(),
+          sku?.trim() || null,
+          price_adjustment !== undefined && price_adjustment !== "" ? parseFloat(price_adjustment) : 0,
+          stock_count !== undefined && stock_count !== "" ? parseInt(stock_count) : 0,
+          is_active !== false,
+          req.params.id,
+        ],
+      );
+      if (!result.rows.length) return res.status(404).json({ message: "Variant not found" });
+      res.json(result.rows[0]);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.delete(
+  "/variants/:id",
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      const result = await pool.query("DELETE FROM product_variants WHERE id=$1 RETURNING id", [req.params.id]);
+      if (!result.rows.length) return res.status(404).json({ message: "Variant not found" });
+      res.json({ success: true });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ── REVIEWS (moderation) ──────────────────────────────────────────
+// GET /api/admin/products/reviews ── list all reviews, optionally filtered
+// by status ('approved' | 'pending' | 'rejected') and/or a search term
+router.get(
+  "/reviews",
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      const { status, search } = req.query;
+      const params = [];
+      const where = [];
+      if (status && status !== "all") {
+        params.push(status);
+        where.push(`r.status = $${params.length}`);
+      }
+      if (search) {
+        params.push(`%${search}%`);
+        where.push(
+          `(p.name ILIKE $${params.length} OR COALESCE(u.name, c.name) ILIKE $${params.length} OR r.body ILIKE $${params.length})`,
+        );
+      }
+      const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+      const result = await pool.query(
+        `SELECT r.*, p.name AS product_name, p.image_url AS product_image,
+                COALESCE(u.name, c.name) AS customer_name,
+                COALESCE(u.email, c.email) AS customer_email
+         FROM product_reviews r
+         JOIN products p ON p.id = r.product_id
+         LEFT JOIN users u ON u.id = r.user_id
+         LEFT JOIN customers c ON c.id = r.customer_id
+         ${whereClause}
+         ORDER BY r.created_at DESC`,
+        params,
+      );
+      res.json({ reviews: result.rows });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.patch(
+  "/reviews/:id",
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      const { status } = req.body;
+      if (!["approved", "pending", "rejected"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+      const result = await pool.query(
+        "UPDATE product_reviews SET status=$1 WHERE id=$2 RETURNING *",
+        [status, req.params.id],
+      );
+      if (!result.rows.length) return res.status(404).json({ message: "Review not found" });
+      res.json(result.rows[0]);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.delete(
+  "/reviews/:id",
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      const result = await pool.query("DELETE FROM product_reviews WHERE id=$1 RETURNING id", [req.params.id]);
+      if (!result.rows.length) return res.status(404).json({ message: "Review not found" });
+      res.json({ success: true });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 // ── GET /api/admin/products/:id ───────────────────────────────────
 router.get("/:id", requireRole("superadmin", "manager", "admin", "kitchen_staff"), async (req, res, next) => {
   try {
@@ -524,7 +735,26 @@ router.post(
 
           const costPrice = row.cost_price ? parseFloat(String(row.cost_price).replace(/[^0-9.]/g, "")) : null;
           const lowStockAlert = row.low_stock_alert ? parseInt(String(row.low_stock_alert).replace(/[^0-9]/g, "")) : 10;
-          const taxRate = row.tax_percent ? parseFloat(String(row.tax_percent).replace(/[^0-9.]/g, "")) : 7.5;
+          // Some CSV templates (the richer "Add Product" bulk import schema)
+          // use `tax`, the standalone Bulk Import page uses `tax_percent` —
+          // accept either so one endpoint serves both flows.
+          const taxInput = row.tax_percent ?? row.tax;
+          const taxRate = taxInput ? parseFloat(String(taxInput).replace(/[^0-9.]/g, "")) : 7.5;
+
+          const parseYesNo = (val, fallback) => {
+            if (val === undefined || val === null || val === "") return fallback;
+            const v = String(val).trim().toLowerCase();
+            if (["no", "false", "0"].includes(v)) return false;
+            if (["yes", "true", "1"].includes(v)) return true;
+            return fallback;
+          };
+          const availableForSale = parseYesNo(row.available_for_sale, true);
+          const trackInventory = parseYesNo(row.track_inventory, true);
+          const tagsArr = row.tags
+            ? String(row.tags).split(",").map((t) => t.trim()).filter(Boolean)
+            : null;
+          const imageUrl = row.main_image_url?.trim() || row.image_url?.trim() || null;
+          const expiryDate = row.expiry_date?.trim() || null;
 
           // Resolve category (by ID or by name)
           let categoryId = null;
@@ -560,7 +790,16 @@ router.post(
                      stock = $6, stock_quantity = $6, unit = COALESCE($7, unit),
                      low_stock_threshold = COALESCE($8, low_stock_threshold),
                      tax_rate = COALESCE($9, tax_rate), description = COALESCE($10, description),
-                     status = COALESCE($11, status), updated_at = NOW()
+                     status = COALESCE($11, status),
+                     available_for_sale = $13, track_inventory = $14,
+                     model_variant = COALESCE($15, model_variant),
+                     tags = COALESCE($16, tags),
+                     image_url = COALESCE($17, image_url),
+                     video_url = COALESCE($18, video_url),
+                     hsn_code = COALESCE($19, hsn_code),
+                     return_policy = COALESCE($20, return_policy),
+                     expiry_date = COALESCE($21, expiry_date),
+                     updated_at = NOW()
                  WHERE sku = $12`,
                 [
                   row.name.trim(),
@@ -575,6 +814,15 @@ router.post(
                   row.description?.trim() || null,
                   row.status?.trim() || "active",
                   row.sku.trim(),
+                  availableForSale,
+                  trackInventory,
+                  row.model_variant?.trim() || null,
+                  tagsArr ? JSON.stringify(tagsArr) : null,
+                  imageUrl,
+                  row.video_url?.trim() || null,
+                  row.hsn_code?.trim() || null,
+                  row.return_policy?.trim() || null,
+                  expiryDate,
                 ]
               );
               updated++;
@@ -588,8 +836,10 @@ router.post(
             `INSERT INTO products
                (name, sku, barcode, category_id, sub_category_id, unit_price, price, cost_price,
                 stock, stock_quantity, unit, low_stock_threshold, tax_rate, description, status,
-                available_for_sale, track_inventory, created_by, created_at, updated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$6,$7,$8,$8,$9,$10,$11,$12,$13,true,true,$14,NOW(),NOW())`,
+                available_for_sale, track_inventory, model_variant, tags, image_url, video_url,
+                hsn_code, return_policy, expiry_date, created_by, created_at, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$6,$7,$8,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
+                     $20,$21,$22,$23,NOW(),NOW())`,
             [
               row.name.trim(),
               row.sku.trim(),
@@ -604,6 +854,15 @@ router.post(
               taxRate,
               row.description?.trim() || null,
               row.status?.trim() || "active",
+              availableForSale,
+              trackInventory,
+              row.model_variant?.trim() || null,
+              tagsArr ? JSON.stringify(tagsArr) : null,
+              imageUrl,
+              row.video_url?.trim() || null,
+              row.hsn_code?.trim() || null,
+              row.return_policy?.trim() || null,
+              expiryDate,
               req.user.id,
             ],
           );

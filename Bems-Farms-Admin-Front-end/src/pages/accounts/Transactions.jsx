@@ -6,7 +6,7 @@ const fmt = n => `₦${Number(n || 0).toLocaleString()}`
 
 const TYPE_CFG = {
   income:     { label:'Income',     cls:'success', icon:'ri-arrow-up-circle-line'     },
-  expense:    { label:'Expense',    cls:'danger',  icon:'ri-arrow-down-circle-line'   },
+  expense:    { label:'Disbursement', cls:'danger', icon:'ri-arrow-down-circle-line' },
   commission: { label:'Commission', cls:'purple',  icon:'ri-user-star-line'           },
   transfer:   { label:'Transfer',   cls:'primary', icon:'ri-exchange-funds-line'      },
   refund:     { label:'Refund',     cls:'warning', icon:'ri-refund-2-line'            },
@@ -20,7 +20,7 @@ const STATUS_CFG = {
 
 const PURPLE = { bg:'#f5f3ff', color:'#7c3aed', border:'#ddd6fe' }
 
-const TYPES = ['income','expense','commission','transfer','refund']
+const TYPES = ['income','commission','transfer','refund']
 
 // Maps the real `transactions` row (GET /api/admin/accounts/transactions) to this page's UI shape.
 function mapTxn(t) {
