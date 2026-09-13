@@ -69,6 +69,48 @@ function formatIp(ip) {
   return ip.replace('::ffff:', '')
 }
 
+function getFlagEmoji(countryCode) {
+  if (!countryCode || countryCode.length !== 2) return '🌐'
+  try {
+    const codePoints = countryCode.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0))
+    return String.fromCodePoint(...codePoints)
+  } catch (_) {
+    return '🌐'
+  }
+}
+
+function parseLocation(event) {
+  if (!event) return { flag: '🌐', display: '—', city: '—', country: '—' }
+  const locObj = event.details?.location
+  if (locObj && typeof locObj === 'object') {
+    return {
+      flag: locObj.flag || (locObj.country_code ? getFlagEmoji(locObj.country_code) : '📍'),
+      display: locObj.display || event.location || `${locObj.city ? locObj.city + ', ' : ''}${locObj.country || ''}`,
+      city: locObj.city || '—',
+      country: locObj.country || '—',
+      countryCode: locObj.country_code || '',
+    }
+  }
+  if (event.location) {
+    const parts = event.location.split(',')
+    return {
+      flag: '📍',
+      display: event.location,
+      city: parts[0]?.trim() || event.location,
+      country: parts[1]?.trim() || '—',
+      countryCode: '',
+    }
+  }
+  const cleanIp = (event.ip_address || '').replace('::ffff:', '').trim()
+  if (cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp.startsWith('192.168.') || cleanIp.startsWith('10.') || cleanIp.startsWith('172.16.')) {
+    return { flag: '🏠', display: 'Localhost (Dev)', city: 'Localhost', country: 'Internal Network', countryCode: 'LOCAL' }
+  }
+  if (!cleanIp) {
+    return { flag: '☁️', display: 'System Cloud', city: 'Cloud Server', country: 'Internal', countryCode: 'SYS' }
+  }
+  return { flag: '📍', display: cleanIp, city: 'IP Origin', country: cleanIp, countryCode: '' }
+}
+
 const METHOD_COLORS = {
   GET:    { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
   POST:   { bg: '#ecfdf5', color: '#059669', border: '#a7f3d0' },
@@ -209,6 +251,30 @@ function EventDrawer({ event, onClose }) {
           {event.session_id && <Row label="Session Token" value={<span style={{ fontFamily:'monospace', fontSize:11 }}>{event.session_id}</span>} />}
         </Section>
 
+        {/* Geographic Origin & Location Card */}
+        {(() => {
+          const loc = parseLocation(event)
+          return (
+            <Section title="📍 Geographic Origin & Location">
+              <Row label="Detected Location" value={<span>{loc.flag} {loc.display}</span>} bold />
+              <Row label="Country" value={loc.country || '—'} />
+              <Row label="City / Area" value={loc.city || '—'} />
+              <Row label="IP Address" value={
+                <div style={{ display:'flex', alignItems:'center', gap:8, justifyContent:'flex-end' }}>
+                  <span style={{ fontFamily:'monospace', background:'#e2e8f0', padding:'2px 6px', borderRadius:4, fontSize:12, color:'#0f172a' }}>
+                    {formatIp(event.ip_address)}
+                  </span>
+                  {event.ip_address && (
+                    <button onClick={copyIp} style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, color:'#3b82f6', padding:0 }}>
+                      {copiedIp ? '✓ Copied' : '📋 Copy'}
+                    </button>
+                  )}
+                </div>
+              } />
+            </Section>
+          )
+        })()}
+
         {/* Device & Client Card */}
         <Section title="💻 Device & Client Environment">
           <Row label="Operating System" value={<span>{dev.icon} {dev.os}</span>} bold />
@@ -335,7 +401,7 @@ export default function SystemAudit() {
   const [searchParams] = useSearchParams()
   const urlCategory    = searchParams.get('category')
 
-  const [filters, setFilters]     = useState({ search:'', source:'', category:'', severity:'', entity_type:'', actor_name:'', from:'', to:'' })
+  const [filters, setFilters]     = useState({ search:'', source:'', category:'', severity:'', entity_type:'', actor_name:'', location:'', from:'', to:'' })
   const [activeTab, setActiveTab] = useState(CATEGORIES.includes(urlCategory) ? urlCategory : 'all')
   const [page, setPage]           = useState(1)
   const [data, setData]           = useState(null)
@@ -558,9 +624,10 @@ export default function SystemAudit() {
           <div style={{ fontSize:12, fontWeight:700, color:'#64748b', letterSpacing:'.06em', textTransform:'uppercase', marginBottom:14 }}>
             🔍 Filter Events
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:12 }}>
             <FilterInput name="search"      label="Search (action, actor, resource)" value={filters.search}      onChange={setFilter} />
             <FilterInput name="actor_name"  label="Actor Name / Email"               value={filters.actor_name}  onChange={setFilter} />
+            <FilterInput name="location"    label="Location (City, Country)"         value={filters.location}    onChange={setFilter} />
             <FilterInput name="entity_type" label="Entity Type (e.g. customer)"      value={filters.entity_type} onChange={setFilter} />
             <FilterInput name="from"        label="From Date"    value={filters.from} onChange={setFilter} type="date" />
           </div>
@@ -568,7 +635,7 @@ export default function SystemAudit() {
             <FilterSelect name="source"   label="Source"   value={filters.source}   onChange={setFilter} options={SOURCES}    />
             <FilterSelect name="severity" label="Severity" value={filters.severity} onChange={setFilter} options={SEVERITIES} />
             <FilterInput  name="to"       label="To Date"  value={filters.to}       onChange={setFilter} type="date" />
-            <button onClick={() => { setFilters({ search:'', source:'', category:'', severity:'', entity_type:'', actor_name:'', from:'', to:'' }); setActiveTab('all'); setPage(1) }}
+            <button onClick={() => { setFilters({ search:'', source:'', category:'', severity:'', entity_type:'', actor_name:'', location:'', from:'', to:'' }); setActiveTab('all'); setPage(1) }}
               style={{ background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:8, color:'#64748b',
                 cursor:'pointer', fontSize:13, fontWeight:500, alignSelf:'flex-end', padding:'8px 0' }}>
               ✕ Clear Filters
@@ -601,14 +668,14 @@ export default function SystemAudit() {
           </div>
         )}
 
-        {/* ── Events Table (9 Rich Columns) ── */}
+        {/* ── Events Table (10 Comprehensive Columns) ── */}
         <div style={{ background:'#fff', borderRadius:12, overflow:'hidden',
           boxShadow:'0 1px 3px rgba(0,0,0,.06)', border:'1px solid #f1f5f9' }}>
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
               <thead>
                 <tr style={{ background:'#f8fafc', borderBottom:'2px solid #f1f5f9' }}>
-                  {['Time', 'Actor / Person', 'Device & Browser', 'IP & Network', 'Action / Route', 'Category', 'Severity', 'Outcome', 'Details'].map(h => (
+                  {['Time', 'Actor / Person', 'Location', 'Device & Browser', 'IP & Network', 'Action / Route', 'Category', 'Severity', 'Outcome', 'Details'].map(h => (
                     <th key={h} style={{ padding:'12px 14px', textAlign:'left', fontWeight:600,
                       fontSize:11, color:'#64748b', letterSpacing:'.04em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
                       {h}
@@ -618,7 +685,7 @@ export default function SystemAudit() {
               </thead>
               <tbody>
                 {loading && !data && (
-                  <tr><td colSpan={9} style={{ padding:40, textAlign:'center', color:'#94a3b8' }}>
+                  <tr><td colSpan={10} style={{ padding:40, textAlign:'center', color:'#94a3b8' }}>
                     Loading God Eye records…
                   </td></tr>
                 )}
@@ -626,6 +693,7 @@ export default function SystemAudit() {
                   const sev = SEV_COLORS[e.severity] || SEV_COLORS.info
                   const cat = CAT_COLORS[e.category] || CAT_COLORS.all
                   const dev = parseDevice(e.user_agent)
+                  const loc = parseLocation(e)
 
                   const isHttp = /^(GET|POST|PUT|PATCH|DELETE)\b/i.test(e.action)
                   const method = isHttp ? e.action.split(' ')[0].toUpperCase() : null
@@ -673,7 +741,22 @@ export default function SystemAudit() {
                         </div>
                       </td>
 
-                      {/* 3. Device & Browser */}
+                      {/* 3. Location */}
+                      <td style={{ padding:'12px 14px', minWidth:145 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                          <span style={{ fontSize:17 }}>{loc.flag}</span>
+                          <div style={{ minWidth:0 }}>
+                            <div style={{ fontSize:12, fontWeight:600, color:'#0f172a', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:135 }} title={loc.display}>
+                              {loc.display}
+                            </div>
+                            <div style={{ fontSize:11, color:'#64748b', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:135 }}>
+                              {loc.country || 'Detected Origin'}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 4. Device & Browser */}
                       <td style={{ padding:'12px 14px', minWidth:140 }}>
                         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                           <span style={{ fontSize:15 }}>{dev.icon}</span>
@@ -684,7 +767,7 @@ export default function SystemAudit() {
                         </div>
                       </td>
 
-                      {/* 4. IP & Network */}
+                      {/* 5. IP & Network */}
                       <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
                         <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 8px', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:6, fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace', fontSize:11, color:'#334155' }}>
                           <span style={{ width:5, height:5, borderRadius:'50%', background: e.ip_address ? '#10b981' : '#cbd5e1' }} />
@@ -697,7 +780,7 @@ export default function SystemAudit() {
                         )}
                       </td>
 
-                      {/* 5. Action / Route */}
+                      {/* 6. Action / Route */}
                       <td style={{ padding:'12px 14px', maxWidth:220 }}>
                         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                           {method && (
@@ -715,7 +798,7 @@ export default function SystemAudit() {
                         </div>
                       </td>
 
-                      {/* 6. Category */}
+                      {/* 7. Category */}
                       <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
                         <span style={{ padding:'3px 9px', borderRadius:20, fontSize:11, fontWeight:600,
                           background:cat.bg, color:cat.color }}>
@@ -723,7 +806,7 @@ export default function SystemAudit() {
                         </span>
                       </td>
 
-                      {/* 7. Severity */}
+                      {/* 8. Severity */}
                       <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
                         <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 9px',
                           borderRadius:20, fontSize:11, fontWeight:700, background:sev.bg, color:sev.color }}>
@@ -732,7 +815,7 @@ export default function SystemAudit() {
                         </span>
                       </td>
 
-                      {/* 8. Outcome */}
+                      {/* 9. Outcome */}
                       <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
                         <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 8px', borderRadius:6, fontSize:11, fontWeight:700,
                           background: isSuccess ? '#f0fdf4' : '#fef2f2',
@@ -743,7 +826,7 @@ export default function SystemAudit() {
                         </div>
                       </td>
 
-                      {/* 9. Details */}
+                      {/* 10. Details */}
                       <td style={{ padding:'12px 14px', textAlign:'right' }}>
                         <button onClick={() => setSelectedEvent(e)}
                           style={{ background:'#f1f5f9', border:'1px solid #e2e8f0', borderRadius:6, padding:'6px 12px',
@@ -757,7 +840,7 @@ export default function SystemAudit() {
                   )
                 })}
                 {data && !data.events.length && (
-                  <tr><td colSpan={9} style={{ padding:48, textAlign:'center', color:'#94a3b8', fontSize:13 }}>
+                  <tr><td colSpan={10} style={{ padding:48, textAlign:'center', color:'#94a3b8', fontSize:13 }}>
                     <div style={{ fontSize:32, marginBottom:8 }}>🔍</div>
                     <div>No events match the current filters.</div>
                     <div style={{ fontSize:12, marginTop:4 }}>Try adjusting or clearing the filters above.</div>

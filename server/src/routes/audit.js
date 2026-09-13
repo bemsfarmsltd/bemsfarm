@@ -137,13 +137,15 @@ async function ensureAuditTable() {
         ADD COLUMN IF NOT EXISTS ip_address  TEXT,
         ADD COLUMN IF NOT EXISTS user_agent  TEXT,
         ADD COLUMN IF NOT EXISTS session_id  TEXT,
-        ADD COLUMN IF NOT EXISTS actor_name  TEXT;
+        ADD COLUMN IF NOT EXISTS actor_name  TEXT,
+        ADD COLUMN IF NOT EXISTS location    TEXT;
 
       CREATE INDEX IF NOT EXISTS system_audit_time ON system_audit_events(occurred_at DESC, id DESC);
       CREATE INDEX IF NOT EXISTS system_audit_actor ON system_audit_events(actor_id, occurred_at DESC);
       CREATE INDEX IF NOT EXISTS system_audit_source ON system_audit_events(source, occurred_at DESC);
       CREATE INDEX IF NOT EXISTS audit_category ON system_audit_events(category, occurred_at DESC);
       CREATE INDEX IF NOT EXISTS audit_severity ON system_audit_events(severity, occurred_at DESC);
+      CREATE INDEX IF NOT EXISTS audit_location ON system_audit_events(location, occurred_at DESC);
     `);
     auditTableReady = true;
   } catch (err) {
@@ -182,12 +184,18 @@ function buildWhere(query) {
     where.push(`actor_name ILIKE $${args.length}`);
   }
 
-  // Full text search on action, resource, actor_name
+  // location search
+  if (query.location) {
+    args.push(`%${String(query.location).slice(0, 100)}%`);
+    where.push(`(location ILIKE $${args.length} OR details->'location'->>'city' ILIKE $${args.length} OR details->'location'->>'country' ILIKE $${args.length})`);
+  }
+
+  // Full text search on action, resource, actor_name, location
   if (query.search) {
     const s = String(query.search).slice(0, 200);
     args.push(`%${s}%`);
     const idx = args.length;
-    where.push(`(action ILIKE $${idx} OR resource ILIKE $${idx} OR actor_name ILIKE $${idx} OR entity_type ILIKE $${idx} OR entity_id ILIKE $${idx})`);
+    where.push(`(action ILIKE $${idx} OR resource ILIKE $${idx} OR actor_name ILIKE $${idx} OR entity_type ILIKE $${idx} OR entity_id ILIKE $${idx} OR location ILIKE $${idx})`);
   }
 
   // Date range
@@ -353,6 +361,7 @@ router.post('/simulate-developer', requireRole('superadmin', 'admin'), async (re
       actor_name: pick.author,
       actor_role: 'developer',
       external_id: `test:${fakeCommit}`,
+      location: 'Lagos, Nigeria',
       details: {
         commit: fakeCommit,
         branch: 'main',
@@ -360,6 +369,13 @@ router.post('/simulate-developer', requireRole('superadmin', 'admin'), async (re
         environment: 'production',
         author: pick.author,
         simulated: true,
+        location: {
+          city: 'Lagos',
+          country: 'Nigeria',
+          country_code: 'NG',
+          flag: '🇳🇬',
+          display: 'Lagos, Nigeria'
+        }
       },
     });
 

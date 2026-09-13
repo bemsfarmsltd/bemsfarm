@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS system_audit_events (
   user_agent TEXT,
   session_id TEXT,
   details JSONB NOT NULL DEFAULT '{}'::jsonb,
-  external_id TEXT UNIQUE
+  external_id TEXT UNIQUE,
+  location TEXT
 );
 
 -- Expand system_audit_events with God Eye columns (in case table was previously created with fewer columns)
@@ -40,7 +41,8 @@ ALTER TABLE system_audit_events
   ADD COLUMN IF NOT EXISTS ip_address  TEXT,
   ADD COLUMN IF NOT EXISTS user_agent  TEXT,
   ADD COLUMN IF NOT EXISTS session_id  TEXT,
-  ADD COLUMN IF NOT EXISTS actor_name  TEXT;
+  ADD COLUMN IF NOT EXISTS actor_name  TEXT,
+  ADD COLUMN IF NOT EXISTS location    TEXT;
 
 -- Indexes for God Eye filter performance
 CREATE INDEX IF NOT EXISTS audit_category    ON system_audit_events(category, occurred_at DESC);

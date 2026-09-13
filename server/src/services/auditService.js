@@ -77,6 +77,106 @@ function detectSeverity(method, statusCode, category) {
 }
 
 // ────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────
+// Country Names & Geo Helpers
+// ────────────────────────────────────────────────────────────
+const COUNTRY_NAMES = {
+  NG: 'Nigeria',
+  US: 'United States',
+  GB: 'United Kingdom',
+  CA: 'Canada',
+  GH: 'Ghana',
+  ZA: 'South Africa',
+  KE: 'Kenya',
+  DE: 'Germany',
+  FR: 'France',
+  NL: 'Netherlands',
+  IE: 'Ireland',
+  IN: 'India',
+  AE: 'United Arab Emirates',
+  CN: 'China',
+  JP: 'Japan',
+  AU: 'Australia',
+  BR: 'Brazil',
+};
+
+function getFlagEmoji(countryCode) {
+  if (!countryCode || countryCode.length !== 2) return '🌐';
+  const upper = countryCode.toUpperCase();
+  try {
+    const codePoints = upper.split('').map(c => 127397 + c.charCodeAt(0));
+    return String.fromCodePoint(...codePoints);
+  } catch (_) {
+    return '🌐';
+  }
+}
+
+const geoCache = new Map();
+
+function extractLocation(req, ip) {
+  if (!req) return null;
+  // 1. Direct proxy / CDN geo headers (Cloudflare, Vercel, AWS, etc.)
+  const countryCode = req.headers['cf-ipcountry'] || req.headers['x-vercel-ip-country'] || req.headers['x-country-code'] || req.headers['x-appengine-country'];
+  const rawCity = req.headers['cf-ipcity'] || req.headers['x-vercel-ip-city'] || req.headers['x-city'] || req.headers['x-appengine-city'];
+  const region = req.headers['cf-region'] || req.headers['x-vercel-ip-country-region'];
+
+  if (countryCode && countryCode !== 'XX' && countryCode !== 'T1') {
+    const cc = countryCode.toUpperCase();
+    const country = COUNTRY_NAMES[cc] || cc;
+    let city = null;
+    if (rawCity) {
+      try { city = decodeURIComponent(rawCity); } catch (_) { city = rawCity; }
+    }
+    const flag = getFlagEmoji(cc);
+    const display = city ? `${city}, ${country}` : country;
+    return { city, country, country_code: cc, region, flag, display };
+  }
+
+  // 2. Loopback / local development IP
+  const cleanIp = (ip || '').replace('::ffff:', '').trim();
+  if (cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp.startsWith('192.168.') || cleanIp.startsWith('10.') || cleanIp.startsWith('172.16.')) {
+    return { city: 'Localhost', country: 'Internal Network', country_code: 'LOCAL', flag: '🏠', display: 'Localhost · Internal' };
+  }
+
+  // 3. In-memory cache hit
+  if (cleanIp && geoCache.has(cleanIp)) {
+    return geoCache.get(cleanIp);
+  }
+
+  if (!cleanIp) {
+    return { city: null, country: 'System / Cloud', country_code: 'SYS', flag: '☁️', display: 'System Engine' };
+  }
+
+  return { city: null, country: null, country_code: null, flag: '📍', display: cleanIp };
+}
+
+function prefetchIpGeo(ip) {
+  if (!ip) return;
+  const cleanIp = ip.replace('::ffff:', '').trim();
+  if (cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp.startsWith('192.168.') || cleanIp.startsWith('10.') || cleanIp.startsWith('172.16.')) return;
+  if (geoCache.has(cleanIp)) return;
+
+  try {
+    const axios = require('axios');
+    axios.get(`http://ip-api.com/json/${cleanIp}?fields=status,country,countryCode,city,regionName`, { timeout: 1200 })
+      .then(res => {
+        if (res.data && res.data.status === 'success') {
+          const cc = (res.data.countryCode || '').toUpperCase();
+          const loc = {
+            city: res.data.city || res.data.regionName || null,
+            country: res.data.country || COUNTRY_NAMES[cc] || cc,
+            country_code: cc,
+            flag: getFlagEmoji(cc),
+            display: `${res.data.city ? res.data.city + ', ' : ''}${res.data.country || cc}`,
+          };
+          geoCache.set(cleanIp, loc);
+        }
+      })
+      .catch(() => {});
+  } catch (_) {}
+}
+
+// ────────────────────────────────────────────────────────────
 // IP extraction
 // ────────────────────────────────────────────────────────────
 function extractIp(req) {
@@ -105,37 +205,58 @@ function extractSessionId(req) {
 // Core write — lightweight (original interface)
 // ────────────────────────────────────────────────────────────
 async function recordAudit(event, db = pool) {
+  const location = event.location ||
+    (event.details?.location?.display ? event.details.location.display : (typeof event.details?.location === 'string' ? event.details.location : null));
+
+  const params = [
+    event.source,
+    event.action,
+    event.actor_id   || null,
+    event.actor_role || null,
+    event.actor_name || null,
+    event.request_id || null,
+    event.resource   || null,
+    event.outcome,
+    event.category   || 'system',
+    event.severity   || 'info',
+    event.entity_type || null,
+    event.entity_id   || null,
+    event.old_value   ? JSON.stringify(event.old_value) : null,
+    event.new_value   ? JSON.stringify(event.new_value) : null,
+    event.ip_address  || null,
+    event.user_agent  || null,
+    event.session_id  || null,
+    JSON.stringify(event.details || {}),
+    event.external_id || null,
+    location || null,
+  ];
+
   try {
     const q = `
       INSERT INTO system_audit_events
         (source,action,actor_id,actor_role,actor_name,request_id,resource,outcome,
          category,severity,entity_type,entity_id,old_value,new_value,
-         ip_address,user_agent,session_id,details,external_id)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+         ip_address,user_agent,session_id,details,external_id,location)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
       ON CONFLICT(external_id) DO NOTHING`;
-    await db.query(q, [
-      event.source,
-      event.action,
-      event.actor_id   || null,
-      event.actor_role || null,
-      event.actor_name || null,
-      event.request_id || null,
-      event.resource   || null,
-      event.outcome,
-      event.category   || 'system',
-      event.severity   || 'info',
-      event.entity_type || null,
-      event.entity_id   || null,
-      event.old_value   ? JSON.stringify(event.old_value) : null,
-      event.new_value   ? JSON.stringify(event.new_value) : null,
-      event.ip_address  || null,
-      event.user_agent  || null,
-      event.session_id  || null,
-      JSON.stringify(event.details || {}),
-      event.external_id || null,
-    ]);
+    await db.query(q, params);
     lastFailure = null;
   } catch (err) {
+    if (err.message && err.message.includes('column "location" of relation "system_audit_events" does not exist')) {
+      try {
+        await db.query('ALTER TABLE system_audit_events ADD COLUMN IF NOT EXISTS location TEXT;');
+        const q = `
+          INSERT INTO system_audit_events
+            (source,action,actor_id,actor_role,actor_name,request_id,resource,outcome,
+             category,severity,entity_type,entity_id,old_value,new_value,
+             ip_address,user_agent,session_id,details,external_id,location)
+          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+          ON CONFLICT(external_id) DO NOTHING`;
+        await db.query(q, params);
+        lastFailure = null;
+        return;
+      } catch (_) {}
+    }
     lastFailure = new Date().toISOString();
     throw err;
   }
@@ -176,6 +297,8 @@ function auditRequests(req, res, next) {
 
   const started    = Date.now();
   const ip         = extractIp(req);
+  const location   = extractLocation(req, ip);
+  prefetchIpGeo(ip);
   const userAgent  = (req.headers['user-agent'] || '').slice(0, 300);
   const sessionId  = extractSessionId(req);
   const category   = detectCategory(req.path);
@@ -206,10 +329,12 @@ function auditRequests(req, res, next) {
       ip_address:  ip,
       user_agent:  userAgent,
       session_id:  sessionId,
+      location:    location?.display || null,
       details: {
         status:      res.statusCode,
         duration_ms: Date.now() - started,
         method:      req.method,
+        location,
       },
     }).catch(() => {
       lastFailure = new Date().toISOString();
@@ -225,6 +350,8 @@ function auditRequests(req, res, next) {
 // ────────────────────────────────────────────────────────────
 function recordSecurityEvent(req, action, details = {}) {
   const ip        = extractIp(req);
+  const location  = extractLocation(req, ip);
+  prefetchIpGeo(ip);
   const userAgent = (req.headers['user-agent'] || '').slice(0, 300);
   return recordAudit({
     source:     'api',
@@ -239,7 +366,11 @@ function recordSecurityEvent(req, action, details = {}) {
     severity:   'warning',
     ip_address: ip,
     user_agent: userAgent,
-    details,
+    location:   location?.display || null,
+    details: {
+      ...details,
+      location,
+    },
   }).catch(() => { lastFailure = new Date().toISOString(); });
 }
 
@@ -276,6 +407,7 @@ async function recordDeploymentEvent() {
       actor_name: author,
       actor_role: 'developer',
       external_id: externalId,
+      location: 'Render Cloud (Production)',
       details: {
         commit: commitHash,
         branch,
@@ -283,6 +415,13 @@ async function recordDeploymentEvent() {
         environment: process.env.NODE_ENV || 'production',
         node_version: process.version,
         service: process.env.RENDER_SERVICE_NAME || 'bems-api',
+        location: {
+          city: 'Cloud Service',
+          country: 'Render Cloud',
+          country_code: 'CLOUD',
+          flag: '☁️',
+          display: 'Render Cloud (Production)'
+        },
       },
     });
     console.log('[god-eye] Recorded deployment audit event for commit:', commitHash.slice(0, 7));
