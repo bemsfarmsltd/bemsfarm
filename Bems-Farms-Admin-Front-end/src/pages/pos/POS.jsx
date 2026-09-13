@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../lib/api'
 import SalesHub from './SalesHub'
+import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
 
 // ── Categories & Definitions ────────────────────────────────────────────────
 const CATEGORY_DEFINITIONS = [
@@ -2135,7 +2136,7 @@ export default function POS() {
       {/* ─── Payment Success Modal ──────────────────────────────────────── */}
       {activeModal === 'success' && successData && (
         <div className="pos-success-screen-overlay">
-          <div className="pos-success-hero-card">
+          <div className="pos-success-hero-card pos-success-hero-card--receipt">
             <div className="pos-success-check-ring">
               ✓
             </div>
@@ -2143,29 +2144,27 @@ export default function POS() {
             <h5 className="pos-success-headline">Sale Completed!</h5>
             <div className="pos-success-bill-ref">Receipt ID: {successData.orderId}</div>
 
-            <div className="pos-success-summary-box">
-              <div className="d-flex justify-content-between mb-2">
-                <span className="text-muted">Customer</span>
-                <strong className="pos-entry-item-title">{successData.customer?.name || 'Walk-in Customer'}</strong>
-              </div>
-              <div className="d-flex justify-content-between mb-2">
-                <span className="text-muted">Payment Method</span>
-                <strong className="text-emerald">{successData.method}</strong>
-              </div>
-              <div className="d-flex justify-content-between mb-2">
-                <span className="text-muted">Total Charged</span>
-                <strong className="fs-16 pos-entry-item-title">{fmt(successData.total)}</strong>
-              </div>
-              {successData.method === 'Cash' && successData.change > 0 && (
-                <div className="d-flex justify-content-between pt-2 border-top">
-                  <span className="text-amber fw-bold">Change Returned</span>
-                  <strong className="text-amber fs-16">{fmt(successData.change)}</strong>
-                </div>
-              )}
+            <div className="thermal-receipt-preview thermal-receipt-preview--pos">
+              <ThermalReceipt
+                receiptNumber={successData.orderId}
+                date={`${successData.date} · ${successData.time}`}
+                customer={successData.customer?.name}
+                customerPhone={successData.customer?.phone}
+                channel="POS Terminal"
+                items={successData.cart}
+                subtotal={successData.subtotal}
+                discount={successData.discountAmt}
+                tax={successData.vat}
+                total={successData.total}
+                paymentMethod={successData.method}
+                amountTendered={successData.method === 'Cash' ? successData.cashReceived : undefined}
+                change={successData.change}
+                note={successData.orderNote}
+              />
             </div>
 
             <div className="d-flex gap-2 mb-3">
-              <button className="btn btn-outline-secondary flex-fill py-2 fw-bold" onClick={() => window.print()}>
+              <button className="btn btn-outline-secondary flex-fill py-2 fw-bold" onClick={printThermalReceipt}>
                 <i className="ri-printer-line me-1"></i> Print Receipt
               </button>
             </div>
