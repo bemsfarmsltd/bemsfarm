@@ -96,7 +96,7 @@ router.post("/", requireRole("superadmin", "manager"), validate(storeAdminSchema
 
     const {
       name, code, address, city, state, country,
-      phone, email, manager_id, opening_hours, notes, status,
+      phone, email, manager_id, opening_hours, notes, status, store_type,
     } = req.body;
 
     const dupCode = await client.query("SELECT id FROM stores WHERE store_code=$1", [code.trim().toUpperCase()]);
@@ -117,12 +117,12 @@ router.post("/", requireRole("superadmin", "manager"), validate(storeAdminSchema
     const result = await client.query(
       `INSERT INTO stores
          (store_code, store_name, address, city, state, country, phone, email, manager_id,
-          opening_hours, notes, status, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW(),NOW())
+          opening_hours, notes, status, store_type, created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
        RETURNING *, store_name AS name, store_code AS code`,
       [code.trim().toUpperCase(), name.trim(), address || null, city || null, state || null, country,
        phone || null, email || null, manager_id || null,
-       opening_hours || null, notes || null, status]
+       opening_hours || null, notes || null, status, store_type]
     );
 
     await client.query("COMMIT");
@@ -154,7 +154,7 @@ router.patch("/:id", requireRole("superadmin", "manager"), validate(storeAdminSc
     const allowed = { name: "store_name", code: "store_code", address: "address", city: "city",
       state: "state", country: "country", phone: "phone", email: "email",
       manager_id: "manager_id", opening_hours: "opening_hours",
-      notes: "notes", status: "status" };
+      notes: "notes", status: "status", store_type: "store_type" };
     const sets   = [];
     const params = [];
 

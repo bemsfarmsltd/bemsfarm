@@ -2,6 +2,8 @@ const { z } = require("zod");
 
 // status matches stores_status_check (open | closed | inactive).
 const STORE_STATUSES = ["open", "closed", "inactive"];
+// store_type matches stores_store_type_check.
+const STORE_TYPES = ["retail", "franchise", "warehouse", "farm_outlet"];
 
 const createStore = z.object({
   name: z.string().trim().min(1, "Store name is required").max(255),
@@ -16,6 +18,7 @@ const createStore = z.object({
   opening_hours: z.string().trim().max(255).optional(),
   notes: z.string().trim().max(2000).optional(),
   status: z.enum(STORE_STATUSES, { error: `status must be one of: ${STORE_STATUSES.join(", ")}` }).default("open"),
+  store_type: z.enum(STORE_TYPES, { error: `store_type must be one of: ${STORE_TYPES.join(", ")}` }).default("retail"),
 });
 
 const updateStore = z.object({
@@ -31,6 +34,7 @@ const updateStore = z.object({
   opening_hours: z.string().trim().max(255).optional(),
   notes: z.string().trim().max(2000).optional(),
   status: z.enum(STORE_STATUSES, { error: `status must be one of: ${STORE_STATUSES.join(", ")}` }).optional(),
+  store_type: z.enum(STORE_TYPES, { error: `store_type must be one of: ${STORE_TYPES.join(", ")}` }).optional(),
 });
 
 const assignManager = z.object({
