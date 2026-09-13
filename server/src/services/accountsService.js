@@ -142,40 +142,34 @@ class AccountsService {
         created_by: userId
       }, client);
 
-      // 5. Debit source account & write transaction log
+      // 5. Debit source account & write transaction log. transactions.amount
+      // is signed (positive = in, negative = out) and transactions.type has
+      // no credit/debit value — verified against the live schema.
       await accountsRepository.updateBalance(from_account_id, -totalRequired, client);
-      const updatedFromAcc = await accountsRepository.getBankAccountById(from_account_id, client);
-      
+
       await accountsRepository.insertTransaction({
         reference: `TXN-${Date.now()}-DR`,
-        type: 'debit',
-        source_type: 'transfer',
-        source_id: transfer.id,
+        type: 'transfer',
+        sub_type: 'transfer_out',
+        related_ref: reference,
         bank_account_id: from_account_id,
-        amount: totalRequired,
-        balance_after: parseFloat(updatedFromAcc.balance),
+        amount: -totalRequired,
         description: `Transfer out → ${description || reference}`,
-        payment_method: 'Bank Transfer',
         date: txDate,
-        created_by: userId
       }, client);
 
       // 6. Credit destination account & write transaction log
       await accountsRepository.updateBalance(to_account_id, amountVal, client);
-      const updatedToAcc = await accountsRepository.getBankAccountById(to_account_id, client);
 
       await accountsRepository.insertTransaction({
         reference: `TXN-${Date.now()}-CR`,
-        type: 'credit',
-        source_type: 'transfer',
-        source_id: transfer.id,
+        type: 'transfer',
+        sub_type: 'transfer_in',
+        related_ref: reference,
         bank_account_id: to_account_id,
         amount: amountVal,
-        balance_after: parseFloat(updatedToAcc.balance),
         description: `Transfer in ← ${description || reference}`,
-        payment_method: 'Bank Transfer',
         date: txDate,
-        created_by: userId
       }, client);
 
       await client.query("COMMIT");

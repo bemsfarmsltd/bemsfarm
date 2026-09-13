@@ -152,34 +152,38 @@ async function nextRef(client, prefix, table, refCol = "reference") {
   return `${prefix}-${String(n).padStart(4, "0")}`;
 }
 
-async function postTransaction(client, { bankAccountId, type, sourceType, sourceId, amount, description, paymentMethod, date, userId }) {
+// `transactions` only has columns (reference, date, type, sub_type, description,
+// bank_account_id, amount, status, related_ref, created_at) — no source_type,
+// source_id, balance_after, payment_method or created_by, and `type` is
+// constrained to income|expense|commission|transfer|refund (not credit/debit).
+// Verified directly against the live schema — a prior version of this
+// function assumed columns that don't exist, so every call with a real
+// bankAccountId (income marked completed, an expense/commission marked
+// paid) was throwing and rolling back the whole parent operation.
+async function postTransaction(client, { bankAccountId, direction, type, subType, reference, amount, description, date }) {
   if (!bankAccountId) return;
 
-  const sign = type === "credit" ? 1 : -1;
+  const sign = direction === "credit" ? 1 : -1;
+  const signedAmount = sign * parseFloat(amount);
 
   await client.query(
-    "UPDATE bank_accounts SET balance = balance + $1, updated_at=NOW() WHERE id=$2",
-    [sign * parseFloat(amount), bankAccountId]
+    "UPDATE bank_accounts SET balance = balance + $1, last_transaction_at = NOW(), updated_at = NOW() WHERE id = $2",
+    [signedAmount, bankAccountId]
   );
-
-  const bal = await client.query("SELECT balance FROM bank_accounts WHERE id=$1", [bankAccountId]);
 
   await client.query(
     `INSERT INTO transactions
-       (reference, type, source_type, source_id, bank_account_id, amount, balance_after, description, payment_method, date, status, created_by, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'completed',$11,NOW())`,
+       (reference, date, type, sub_type, description, bank_account_id, amount, status, related_ref, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,'completed',$8,NOW())`,
     [
       `TXN-${Date.now()}`,
-      type,
-      sourceType || null,
-      sourceId || null,
-      bankAccountId,
-      parseFloat(amount),
-      parseFloat(bal.rows[0]?.balance || 0),
-      description || null,
-      paymentMethod || null,
       date || new Date().toISOString().slice(0, 10),
-      userId || null,
+      type,
+      subType || null,
+      description || null,
+      bankAccountId,
+      signedAmount,
+      reference || null,
     ]
   );
 }
@@ -382,7 +386,7 @@ router.post("/income", requireRole("superadmin", "manager"), validate(accountsAd
     );
 
     if (status === "completed" && bank_account_id) {
-      await postTransaction(client, { bankAccountId: parseInt(bank_account_id), type: "credit", sourceType: "income", sourceId: result.rows[0].id, amount, description: description || source, paymentMethod: payment_method, date, userId: req.user.id });
+      await postTransaction(client, { bankAccountId: parseInt(bank_account_id), direction: "credit", type: "income", subType: source_type, reference: ref, amount, description: description || source, date });
     }
 
     await client.query("COMMIT");
@@ -539,7 +543,7 @@ router.patch("/expenses/:id", requireRole("superadmin", "manager"), validate(acc
     const updatedAmount = parseFloat(amount || prev.amount);
     const accountId     = parseInt(bank_account_id || prev.bank_account_id);
     if (status === "paid" && prev.status !== "paid" && accountId) {
-      await postTransaction(client, { bankAccountId: accountId, type: "debit", sourceType: "expense", sourceId: parseInt(req.params.id), amount: updatedAmount, description: description || prev.description, paymentMethod: prev.payment_method, date: prev.date, userId: req.user.id });
+      await postTransaction(client, { bankAccountId: accountId, direction: "debit", type: "expense", subType: category || prev.category, reference: prev.reference, amount: updatedAmount, description: description || prev.description, date: prev.date });
     }
 
     await client.query("COMMIT");
@@ -583,14 +587,15 @@ router.get("/transactions", requireRole("superadmin", "manager", "accountant"), 
     params.push(parseInt(limit));
     params.push(offset);
 
+    // No created_by column on transactions (verified against the live schema),
+    // so there's no user to join here — the prior version referenced one and
+    // failed on every call with "column t.created_by does not exist".
     const rows = await pool.query(`
       SELECT
         t.*,
-        ba.bank_name, ba.account_name AS bank_account,
-        u.name AS created_by_name
+        ba.bank_name, ba.account_name AS bank_account
       FROM transactions t
       LEFT JOIN bank_accounts ba ON t.bank_account_id = ba.id
-      LEFT JOIN users u ON t.created_by = u.id
       ${whereClause}
       ORDER BY t.created_at DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
@@ -757,7 +762,7 @@ router.patch("/commissions/:id", requireRole("superadmin", "manager"), async (re
 
     // If marking as paid, record the debit
     if (status === "paid" && prev.status !== "paid" && bank_account_id) {
-      await postTransaction(client, { bankAccountId: parseInt(bank_account_id), type: "debit", sourceType: "commission", sourceId: parseInt(req.params.id), amount: newNet, description: `Driver commission payout`, userId: req.user.id });
+      await postTransaction(client, { bankAccountId: parseInt(bank_account_id), direction: "debit", type: "commission", subType: "driver_commission", reference: payment_ref || prev.payment_ref || `COM-${req.params.id}`, amount: newNet, description: "Driver commission payout" });
     }
 
     await client.query("COMMIT");

@@ -2,12 +2,16 @@ const pool = require("../db/pool");
 
 class AccountsRepository {
   async getBankAccounts(client = pool) {
+    // transactions.amount is signed (positive = in, negative = out) and
+    // transactions.type has no 'credit'/'debit' value (it's
+    // income|expense|commission|transfer|refund) — direction comes from the
+    // sign of amount, not from type.
     const res = await client.query(`
       SELECT
         ba.*,
         (SELECT COUNT(*) FROM transactions t WHERE t.bank_account_id = ba.id) AS transaction_count,
-        (SELECT COALESCE(SUM(amount),0) FROM transactions t WHERE t.bank_account_id=ba.id AND t.type='credit' AND DATE_TRUNC('month',t.date)=DATE_TRUNC('month',NOW())) AS month_credits,
-        (SELECT COALESCE(SUM(amount),0) FROM transactions t WHERE t.bank_account_id=ba.id AND t.type='debit'  AND DATE_TRUNC('month',t.date)=DATE_TRUNC('month',NOW())) AS month_debits
+        (SELECT COALESCE(SUM(amount),0) FROM transactions t WHERE t.bank_account_id=ba.id AND amount > 0 AND DATE_TRUNC('month',t.date)=DATE_TRUNC('month',NOW())) AS month_credits,
+        (SELECT COALESCE(SUM(ABS(amount)),0) FROM transactions t WHERE t.bank_account_id=ba.id AND amount < 0 AND DATE_TRUNC('month',t.date)=DATE_TRUNC('month',NOW())) AS month_debits
       FROM bank_accounts ba
       ORDER BY ba.is_primary DESC, ba.balance DESC
     `);
@@ -116,13 +120,19 @@ class AccountsRepository {
     );
   }
 
+  // `transactions` has no source_type/source_id/balance_after/payment_method/
+  // created_by columns, and `type` is constrained to
+  // income|expense|commission|transfer|refund — verified against the live
+  // schema. The previous version of this insert referenced columns that
+  // don't exist, so it threw on every call (both legs of every money
+  // transfer), rolling back the whole transfer including the balance update.
   async insertTransaction(data, client = pool) {
-    const { reference, type, source_type, source_id, bank_account_id, amount, balance_after, description, payment_method, date, created_by } = data;
+    const { reference, type, sub_type, related_ref, bank_account_id, amount, description, date } = data;
     await client.query(
       `INSERT INTO transactions
-         (reference, type, source_type, source_id, bank_account_id, amount, balance_after, description, payment_method, date, status, created_by, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'completed',$11,NOW())`,
-      [reference, type, source_type, source_id, bank_account_id, amount, balance_after, description, payment_method, date, created_by]
+         (reference, date, type, sub_type, description, bank_account_id, amount, status, related_ref, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'completed',$8,NOW())`,
+      [reference, date, type, sub_type || null, description || null, bank_account_id, amount, related_ref || null]
     );
   }
 }
