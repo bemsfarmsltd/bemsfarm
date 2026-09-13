@@ -295,7 +295,7 @@ router.get("/invoices", requireRole("superadmin", "manager", "admin", "delivery_
     const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
-    const where = ["c.role = 'user'"];
+    const where = [];
 
     if (search) {
       params.push(`%${search}%`);
@@ -469,6 +469,26 @@ router.patch("/invoices/:id/status", requireRole("superadmin", "manager", "admin
   }
 });
 
+// ── DELETE /api/admin/orders/invoices/:id ───────────────────────────
+router.delete("/invoices/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+  try {
+    const existing = await pool.query(
+      `SELECT status FROM invoices WHERE id::text = $1 OR invoice_ref = $1::text`,
+      [String(req.params.id)]
+    );
+    if (!existing.rows.length) {
+      return res.status(404).json({ message: "Invoice not found" });
+    }
+    if (existing.rows[0].status === "paid") {
+      return res.status(400).json({ message: "Cannot delete a paid invoice. Cancel it instead or issue a refund." });
+    }
+    await pool.query(`DELETE FROM invoices WHERE id::text = $1 OR invoice_ref = $1::text`, [String(req.params.id)]);
+    res.json({ message: "Invoice deleted" });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── POST /api/admin/orders/returns ─────────────────────────────────────────
 router.post("/returns", requireRole("superadmin", "manager", "admin"), validate(orderAdminSchemas.createReturn), async (req, res, next) => {
   const client = await pool.connect();
@@ -564,7 +584,7 @@ router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req
     const limit = clampLimit(limitRaw, 20);
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
-    const where = ["c.role = 'user'"];
+    const where = ["(c.role IS NULL OR c.role IN ('user', 'customer'))"];
 
     if (search) {
       params.push(`%${search}%`);
@@ -582,9 +602,13 @@ router.get("/returns", requireRole("superadmin", "manager", "admin"), async (req
     params.push(offset);
 
     const rows = await pool.query(`
-      SELECT r.*, c.name as customer_name, c.email as customer_email, c.phone as customer_phone
+      SELECT r.*, c.name as customer_name, c.email as customer_email, c.phone as customer_phone,
+             p.name as product_name, p.unit as product_unit, COALESCE(p.unit_price, p.price, 0) as product_price,
+             staff.name as processed_by_name
       FROM returns r
       LEFT JOIN users c ON r.customer_id = c.id
+      LEFT JOIN products p ON r.product_id = p.id
+      LEFT JOIN users staff ON r.processed_by = staff.id
       ${whereClause}
       ORDER BY r.created_at DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}

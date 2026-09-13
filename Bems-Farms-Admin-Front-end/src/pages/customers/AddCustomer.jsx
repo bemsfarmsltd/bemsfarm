@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import api from '../../lib/api'
+import toast from 'react-hot-toast'
 
 const ZONES = ['Lekki Phase 1','Lekki Phase 2','Victoria Island','Ikoyi','Ajah','Sangotedo','Ikeja GRA','Maryland','Gbagada','Surulere','Yaba','Ogba','Oshodi','Anthony Village','Ikorodu','Opebi','Oworonshoki','Festac','Amuwo Odofin','Isolo','Mushin','Ketu','Mile 12','Agege']
 const REFS = ['Friend/Family Referral','Social Media (Instagram)','Social Media (Facebook)','Google Search','WhatsApp','Flyer/Poster','Walk-in / Market','TV/Radio','Other']
@@ -14,15 +16,37 @@ export default function AddCustomer() {
   })
   const [submitted, setSubmitted] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const fld = (k,v) => setForm(f => ({ ...f, [k]:v }))
   const valid = form.firstName.trim() && form.lastName.trim() && form.phone.trim().length >= 11
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     setSubmitted(true)
     if (!valid) return
-    setSaved(true)
+    setSaving(true)
+    try {
+      await api.post('/admin/customers', {
+        first_name: form.firstName,
+        last_name: form.lastName,
+        phone: form.phone,
+        email: form.email || undefined,
+        zone: form.zone,
+        address: form.address || undefined,
+        landmark: form.landmark || undefined,
+        tier: form.tier,
+        status: form.status,
+        referral: form.referral || undefined,
+        notes: form.notes || undefined,
+        sms_alerts: form.smsAlerts,
+      })
+      setSaved(true)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to register customer')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (saved) return (
@@ -247,8 +271,8 @@ export default function AddCustomer() {
 
             {/* Action buttons */}
             <div className="d-flex flex-column gap-2">
-              <button type="submit" className="btn btn-primary">
-                <i className="ri-user-add-line me-1"/>Register Customer
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                <i className="ri-user-add-line me-1"/>{saving ? 'Registering…' : 'Register Customer'}
               </button>
               <Link to="/customers" className="btn btn-outline-secondary">Cancel</Link>
             </div>
