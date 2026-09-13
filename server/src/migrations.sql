@@ -1049,3 +1049,49 @@ CREATE TABLE IF NOT EXISTS product_demand_telemetry (
 CREATE INDEX IF NOT EXISTS idx_product_demand_prod ON product_demand_telemetry(product_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_product_demand_user ON product_demand_telemetry(user_id, created_at DESC);
 
+
+-- ── 28. UNITS OF MEASURE — seed defaults + repoint products FK ───
+-- The Add Product form's "Unit of Measure" dropdown queried
+-- units_of_measure, a completely empty, disconnected table — nothing
+-- ever wrote to it, so every load silently fell back to a hardcoded
+-- list baked into the frontend and looked "mocked" no matter what the
+-- Units of Measure admin page (which manages the separate `units`
+-- table) had configured. The actual submitted product field is the
+-- plain-text `unit` column anyway (e.g. "kg") — `unit_of_measure_id`
+-- was always sent as null since no input ever set it — so repointing
+-- the dropdown's source at `units` (the table admins can actually
+-- edit) and seeding it is a safe, non-destructive fix: one single
+-- source of truth for units instead of two disconnected tables.
+ALTER TABLE units ADD COLUMN IF NOT EXISTS short VARCHAR(20);
+DO $$ BEGIN
+  ALTER TABLE units ADD CONSTRAINT units_short_key UNIQUE (short);
+EXCEPTION WHEN duplicate_table OR duplicate_object THEN NULL;
+END $$;
+
+INSERT INTO units (name, short, type, step, status) VALUES
+  ('Kilogram', 'kg', 'Weight', 0.1, 'active'),
+  ('Gram', 'g', 'Weight', 1, 'active'),
+  ('Litre', 'litre', 'Volume', 0.1, 'active'),
+  ('Millilitre', 'ml', 'Volume', 1, 'active'),
+  ('Pack', 'pack', 'Packaging', 1, 'active'),
+  ('Piece', 'piece', 'Count / Piece', 1, 'active'),
+  ('Bunch', 'bunch', 'Count / Piece', 1, 'active'),
+  ('Bag', 'bag', 'Packaging', 1, 'active'),
+  ('Crate', 'crate', 'Packaging', 1, 'active'),
+  ('Tuber', 'tuber', 'Count / Piece', 1, 'active'),
+  ('Pot', 'pot', 'Count / Piece', 1, 'active'),
+  ('Plate', 'plate', 'Count / Piece', 1, 'active'),
+  ('Bowl', 'bowl', 'Count / Piece', 1, 'active'),
+  ('Bottle', 'bottle', 'Packaging', 1, 'active'),
+  ('Dozen', 'dozen', 'Count / Piece', 1, 'active'),
+  ('Carton', 'carton', 'Packaging', 1, 'active')
+ON CONFLICT (short) DO NOTHING;
+
+-- products.unit_of_measure_id previously pointed at units_of_measure —
+-- always null in practice (see above), so repointing is safe.
+ALTER TABLE products DROP CONSTRAINT IF EXISTS products_unit_of_measure_id_fkey;
+DO $$ BEGIN
+  ALTER TABLE products ADD CONSTRAINT products_unit_of_measure_id_fkey
+    FOREIGN KEY (unit_of_measure_id) REFERENCES units(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_table OR duplicate_object THEN NULL;
+END $$;

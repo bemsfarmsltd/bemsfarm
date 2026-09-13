@@ -149,7 +149,7 @@ router.get("/form-data", requireRole("superadmin", "manager", "admin", "kitchen_
         "SELECT id, name, category_id FROM sub_categories WHERE status='active' ORDER BY name",
       ),
       pool.query(
-        "SELECT id, name, abbreviation, type FROM units_of_measure ORDER BY type, name",
+        "SELECT id, name, short AS abbreviation, type FROM units WHERE status='active' ORDER BY type, name",
       ),
     ]);
 
@@ -383,11 +383,11 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "kitchen_staff"
         p.*,
         cat.name AS category_name,
         sub.name AS sub_category_name,
-        u.name   AS unit_name, u.abbreviation AS unit_abbr
+        u.name   AS unit_name, u.short AS unit_abbr
       FROM products p
       LEFT JOIN categories cat ON p.category_id = cat.id
       LEFT JOIN sub_categories sub ON p.sub_category_id = sub.id
-      LEFT JOIN units_of_measure u ON p.unit_of_measure_id = u.id
+      LEFT JOIN units u ON p.unit_of_measure_id = u.id
       WHERE p.id = $1
     `,
       [req.params.id],

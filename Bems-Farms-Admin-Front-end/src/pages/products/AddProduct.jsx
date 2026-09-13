@@ -119,6 +119,7 @@ export default function AddProduct() {
   const [categories, setCategories] = useState(FALLBACK_CATEGORIES)
   const [subCategories, setSubCategories] = useState([])
   const [units, setUnits] = useState(FALLBACK_UNITS)
+  const [unitsAreReal, setUnitsAreReal] = useState(false)
 
   // Form State
   const [formData, setFormData] = useState({
@@ -170,6 +171,7 @@ export default function AddProduct() {
                 label: `${u.name} (${u.abbreviation || u.short || u.name})`,
               }))
             )
+            setUnitsAreReal(true)
           }
         }
       } catch (err) {
@@ -566,7 +568,13 @@ export default function AddProduct() {
                         id="unitSelect"
                         className="form-select"
                         value={formData.unit}
-                        onChange={(e) => handleChange('unit', e.target.value)}
+                        onChange={(e) => {
+                          handleChange('unit', e.target.value)
+                          if (unitsAreReal) {
+                            const picked = units.find((u) => u.name === e.target.value)
+                            handleChange('unit_of_measure_id', picked?.id ? String(picked.id) : '')
+                          }
+                        }}
                         required>
                         {units.map((u) => (
                           <option key={u.id} value={u.name}>{u.label || u.name}</option>
