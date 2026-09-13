@@ -33,7 +33,6 @@ export default function Sidebar() {
   const showCustomers = is('superadmin', 'admin', 'manager', 'cashier')
   const showStaff     = is('superadmin', 'admin', 'manager')
   const showFinance   = is('superadmin', 'admin', 'manager', 'accountant')
-  const showReports   = is('superadmin', 'admin', 'manager', 'accountant')
   const showChefAI    = is('superadmin', 'admin', 'manager', 'kitchen_staff')
   const showStores    = is('superadmin', 'admin')
   const showSettings  = is('superadmin', 'admin', 'manager')
@@ -487,19 +486,6 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* Reports */}
-            {showReports && (
-              <button
-                type="button"
-                className={`rail-btn ${activeTab === 'reports' ? 'active' : ''}`}
-                onClick={() => handleCategoryClick('reports')}
-                title="Reports & Analytics"
-              >
-                <i className="ri-bar-chart-grouped-line rail-icon"></i>
-                <span className="rail-label">Reports</span>
-              </button>
-            )}
-
             {/* Chef AI */}
             {showChefAI && (
               <button
@@ -811,22 +797,9 @@ export default function Sidebar() {
                 <NavLink to="/accounts/income" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Income &amp; Revenue</span>
                 </NavLink>
-                <NavLink to="/accounts/expenses" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Expenses</span>
-                </NavLink>
                 {is('superadmin', 'admin', 'manager') && (
                   <NavLink to="/accounts/commissions" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                     <span>Driver Commissions</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/accounts/bank" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Bank Accounts</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/accounts/transfer" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Money Transfer</span>
                   </NavLink>
                 )}
               </>

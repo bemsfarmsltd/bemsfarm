@@ -367,7 +367,6 @@ function OverviewTab() {
                 <i className="ri-fire-line text-danger" style={{ fontSize: 16 }} />
                 <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Top Selling Produce</h6>
               </div>
-              <Link to="/reports/sales" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Sales Report →</Link>
             </div>
             <div className="card-body p-0">
               {topProducts.length === 0 ? (
@@ -686,7 +685,6 @@ function SalesTab() {
           <div className="card mb-0 h-100">
             <div className="card-header d-flex align-items-center justify-content-between">
               <h6 className="fw-semibold mb-0">Top Selling Products</h6>
-              <Link to="/reports/sales" className="link link-custom fs-sm">Full report →</Link>
             </div>
             <div className="card-body p-0">
               <Table>
@@ -884,7 +882,6 @@ function FinanceTab() {
           <div className="card mb-0">
             <div className="card-header d-flex align-items-center justify-content-between">
               <h6 className="fw-semibold mb-0"><i className="ri-bank-line text-primary me-2" />Bank Accounts</h6>
-              <Link to="/accounts/bank" className="link link-custom fs-sm">Manage →</Link>
             </div>
             <div className="card-body p-0">
               <Table>
@@ -1278,7 +1275,6 @@ function OperationsTab() {
           <div className="card mb-0">
             <div className="card-header d-flex align-items-center justify-content-between">
               <h6 className="fw-semibold mb-0"><i className="ri-team-line text-primary me-2" />Staff Attendance Today</h6>
-              <Link to="/staff/attendance" className="link link-custom fs-sm">Full roster →</Link>
             </div>
             <div className="card-body p-0">
               <Table>
@@ -1705,9 +1701,6 @@ export default function Dashboard() {
         <button className="btn btn-sm btn-outline-success" onClick={() => window.location.reload()}>
           <i className="ri-refresh-line me-1" /> Refresh
         </button>
-        <Link to="/reports/sales" className="btn btn-sm btn-success ms-2">
-          <i className="ri-bar-chart-2-line me-1" /> Reports
-        </Link>
       </PageHeader>
 
       {/* Tab Bar */}

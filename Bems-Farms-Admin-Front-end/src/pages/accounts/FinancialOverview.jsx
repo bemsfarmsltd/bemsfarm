@@ -42,10 +42,7 @@ function useApexChart(ref, optionsFn, deps = []) {
 const QUICK_LINKS = [
   { to:'/accounts/transactions',  icon:'ri-exchange-line',        label:'All Transactions',     color:'#3b82f6' },
   { to:'/accounts/income',        icon:'ri-arrow-up-circle-line', label:'Income',               color:'#22c55e' },
-  { to:'/accounts/expenses',      icon:'ri-arrow-down-circle-line',label:'Expenses',            color:'#ef4444' },
   { to:'/accounts/commissions',   icon:'ri-user-star-line',       label:'Driver Commissions',   color:'#8b5cf6' },
-  { to:'/accounts/bank',          icon:'ri-bank-line',            label:'Bank Accounts',        color:'#f59e0b' },
-  { to:'/accounts/transfer',      icon:'ri-send-plane-line',      label:'Money Transfer',       color:'#0ea5e9' },
 ]
 
 export default function FinancialOverview() {
@@ -246,7 +243,6 @@ export default function FinancialOverview() {
                   <div className="fw-medium" style={{ fontSize:14 }}>Pending Expense Approvals</div>
                   <div className="text-muted" style={{ fontSize:11 }}>Awaiting approval, soonest due first</div>
                 </div>
-                <Link to="/accounts/expenses" className="btn btn-sm btn-outline-danger" style={{ fontSize:11 }}>Review →</Link>
               </div>
               {pendingExpenses.length === 0 ? (
                 <p className="text-muted text-center py-4 mb-0" style={{ fontSize:13 }}>Nothing pending — all caught up ✓</p>
