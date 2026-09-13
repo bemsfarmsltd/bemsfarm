@@ -753,9 +753,6 @@ export default function Sidebar() {
                 <NavLink to="/customers" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>All Customers</span>
                 </NavLink>
-                <NavLink to="/customers/add" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Add Customer</span>
-                </NavLink>
                 <NavLink to="/customers/loyalty" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Loyalty Rewards</span>
                 </NavLink>

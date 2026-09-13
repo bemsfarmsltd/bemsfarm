@@ -144,11 +144,11 @@ export default function Topbar({ onToggleSidebar }) {
                 </Link>
               </div>
               <div className="col-6">
-                <Link to="/customers/add" className="d-flex align-items-center gap-2 p-2 rounded-3 text-decoration-none text-dark bg-light hover-bg">
-                  <div className="avatar size-7 rounded-circle bg-info-subtle text-info d-flex align-items-center justify-content-center flex-shrink-0">
-                    <i className="ri-user-add-line"></i>
+                <Link to="/accounts/expenses" className="d-flex align-items-center gap-2 p-2 rounded-3 text-decoration-none text-dark bg-light hover-bg">
+                  <div className="avatar size-7 rounded-circle bg-danger-subtle text-danger d-flex align-items-center justify-content-center flex-shrink-0">
+                    <i className="ri-receipt-line"></i>
                   </div>
-                  <span className="fw-semibold fs-xs">New Customer</span>
+                  <span className="fw-semibold fs-xs">New Expense</span>
                 </Link>
               </div>
             </div>
