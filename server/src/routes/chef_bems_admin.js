@@ -16,13 +16,27 @@ router.get("/conversations", AI_ROLES, async (req, res, next) => {
     const { search = "", status, page = 1, limit: limitRaw = 20 } = req.query;
     const limit = clampLimit(limitRaw, 20);
     const params = []; const where = [];
-    if (search) { params.push(`%${search}%`); where.push(`(customer_name ILIKE $${params.length} OR user_message ILIKE $${params.length} OR session_id ILIKE $${params.length})`); }
-    if (status) { params.push(status); where.push(`status = $${params.length}`); }
+    // ai_conversations has no customer_name/user_message columns (that was
+    // the old assumed schema) — search the real ones instead: session_id,
+    // customer_phone, and the joined customer's name.
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(ac.session_id ILIKE $${params.length} OR ac.customer_phone ILIKE $${params.length} OR u.name ILIKE $${params.length})`);
+    }
+    if (status) { params.push(status); where.push(`ac.status = $${params.length}`); }
     const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
     const offset = (parseInt(page)-1)*parseInt(limit);
     const [rows, cnt] = await Promise.all([
-      pool.query(`SELECT * FROM ai_conversations ${clause} ORDER BY created_at DESC LIMIT $${params.length+1} OFFSET $${params.length+2}`, [...params, parseInt(limit), offset]),
-      pool.query(`SELECT COUNT(*) FROM ai_conversations ${clause}`, params),
+      pool.query(
+        `SELECT ac.*, u.name AS customer_name
+         FROM ai_conversations ac
+         LEFT JOIN users u ON u.id = ac.customer_id
+         ${clause}
+         ORDER BY ac.last_message_at DESC NULLS LAST, ac.started_at DESC
+         LIMIT $${params.length+1} OFFSET $${params.length+2}`,
+        [...params, parseInt(limit), offset]
+      ),
+      pool.query(`SELECT COUNT(*) FROM ai_conversations ac LEFT JOIN users u ON u.id = ac.customer_id ${clause}`, params),
     ]);
     res.json({ conversations: rows.rows, total: parseInt(cnt.rows[0].count), page: parseInt(page), pages: Math.ceil(parseInt(cnt.rows[0].count)/parseInt(limit)) });
   } catch (err) { next(err); }
@@ -31,8 +45,11 @@ router.get("/conversations", AI_ROLES, async (req, res, next) => {
 router.patch("/conversations/:id/status", requireRole("superadmin","manager"), async (req, res, next) => {
   try {
     const { status } = req.body;
-    const valid = ["pending","resolved","escalated"];
-    if (!valid.includes(status)) return res.status(400).json({ message: "Invalid status" });
+    // Matches the real ai_conversations_status_check constraint — the
+    // previous pending/resolved/escalated list doesn't exist in the DB and
+    // every call here would fail the CHECK constraint with a raw 500.
+    const valid = ["active","completed","escalated","abandoned"];
+    if (!valid.includes(status)) return res.status(400).json({ message: `status must be one of: ${valid.join(", ")}` });
     const result = await pool.query("UPDATE ai_conversations SET status=$1 WHERE id=$2 RETURNING *", [status, req.params.id]);
     if (!result.rows.length) return res.status(404).json({ message: "Not found" });
     res.json({ conversation: result.rows[0] });
@@ -102,12 +119,16 @@ router.delete("/dietary-rules/:id", requireRole("superadmin"), async (req, res, 
 });
 
 // ─── MEAL ASSOCIATIONS ────────────────────────────────────────────────────────
+// product_associations' real columns are product_a/product_b/association_strength
+// (an integer 1-5 co-occurrence score) — the product_name/associated_product_name/
+// strength/notes columns this route used to assume don't exist, so every
+// create/edit here previously failed with a raw "column does not exist" 500.
 router.get("/meal-associations", AI_ROLES, async (req, res, next) => {
   try {
     const { search = "", page = 1, limit: limitRaw = 50 } = req.query;
     const limit = clampLimit(limitRaw, 50);
     const params = []; const where = [];
-    if (search) { params.push(`%${search}%`); where.push(`(product_name ILIKE $${params.length} OR associated_product_name ILIKE $${params.length} OR association_type ILIKE $${params.length})`); }
+    if (search) { params.push(`%${search}%`); where.push(`(product_a ILIKE $${params.length} OR product_b ILIKE $${params.length} OR association_type ILIKE $${params.length})`); }
     const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
     const offset = (parseInt(page)-1)*parseInt(limit);
     const [rows, cnt] = await Promise.all([
@@ -120,12 +141,12 @@ router.get("/meal-associations", AI_ROLES, async (req, res, next) => {
 
 router.post("/meal-associations", requireRole("superadmin","manager","kitchen_staff"), async (req, res, next) => {
   try {
-    const { product_name, associated_product_name, association_type, strength, notes } = req.body;
-    if (!product_name?.trim()) return res.status(400).json({ message: "Product name is required" });
-    if (!associated_product_name?.trim()) return res.status(400).json({ message: "Associated product name is required" });
+    const { product_a, product_b, association_type, association_strength } = req.body;
+    if (!product_a?.trim()) return res.status(400).json({ message: "First product is required" });
+    if (!product_b?.trim()) return res.status(400).json({ message: "Second product is required" });
     const result = await pool.query(
-      "INSERT INTO product_associations (product_name, associated_product_name, association_type, strength, notes) VALUES ($1,$2,$3,$4,$5) RETURNING *",
-      [product_name.trim(), associated_product_name.trim(), association_type||"pairs_well_with", parseFloat(strength)||1.0, notes?.trim()||null]
+      "INSERT INTO product_associations (product_a, product_b, association_type, association_strength) VALUES ($1,$2,$3,$4) RETURNING *",
+      [product_a.trim(), product_b.trim(), association_type||"pairs_well_with", parseInt(association_strength)||1]
     );
     res.status(201).json({ association: result.rows[0] });
   } catch (err) { next(err); }
@@ -133,10 +154,10 @@ router.post("/meal-associations", requireRole("superadmin","manager","kitchen_st
 
 router.put("/meal-associations/:id", requireRole("superadmin","manager","kitchen_staff"), async (req, res, next) => {
   try {
-    const { product_name, associated_product_name, association_type, strength, notes } = req.body;
+    const { product_a, product_b, association_type, association_strength } = req.body;
     const result = await pool.query(
-      "UPDATE product_associations SET product_name=$1, associated_product_name=$2, association_type=$3, strength=$4, notes=$5, updated_at=NOW() WHERE id=$6 RETURNING *",
-      [product_name?.trim(), associated_product_name?.trim(), association_type||"pairs_well_with", parseFloat(strength)||1.0, notes?.trim()||null, req.params.id]
+      "UPDATE product_associations SET product_a=$1, product_b=$2, association_type=$3, association_strength=$4 WHERE id=$5 RETURNING *",
+      [product_a?.trim(), product_b?.trim(), association_type||"pairs_well_with", parseInt(association_strength)||1, req.params.id]
     );
     if (!result.rows.length) return res.status(404).json({ message: "Not found" });
     res.json({ association: result.rows[0] });
