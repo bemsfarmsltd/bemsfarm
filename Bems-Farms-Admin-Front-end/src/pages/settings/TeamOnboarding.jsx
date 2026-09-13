@@ -74,7 +74,8 @@ export default function TeamOnboarding({ initialTab }) {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
-
+  // Active view driven by sidebar sub-nav (URL ?tab= param)
+  const activeView = searchParams.get('tab') || initialTab || 'staff'
 
   // ── 1. ONBOARDING & INVITE STATE ──────────────────────────────────────────
   const [email, setEmail] = useState('')
@@ -562,7 +563,8 @@ export default function TeamOnboarding({ initialTab }) {
       {/* ═════════════════════════════════════════════════════════════════════════
           SECTION 1: TEAM ONBOARDING & QUICK INVITE
       ═════════════════════════════════════════════════════════════════════════ */}
-      <div className="mb-5" id="invite-section">
+      {activeView === 'onboarding' && (
+        <div className="mb-5" id="invite-section">
           {/* Quick Invite Card */}
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-4" id="invite-form-card">
             <div className="card-header bg-white border-bottom p-3.5 d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -853,12 +855,14 @@ export default function TeamOnboarding({ initialTab }) {
               </table>
             </div>
           </div>
-      </div>
+        </div>
+      )}
 
       {/* ═════════════════════════════════════════════════════════════════════════
           SECTION 2: STAFF DIRECTORY & USER ACCOUNTS
       ═════════════════════════════════════════════════════════════════════════ */}
-      <div className="mb-5" id="staff-section">
+      {activeView === 'staff' && (
+        <div className="mb-5" id="staff-section">
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
             <div className="card-header bg-white border-bottom p-3.5 d-flex justify-content-between align-items-center flex-wrap gap-2">
               <div className="d-flex align-items-center gap-2">
@@ -1123,13 +1127,15 @@ export default function TeamOnboarding({ initialTab }) {
               </div>
             )}
           </div>
-      </div>
+        </div>
+      )}
 
 
       {/* ═════════════════════════════════════════════════════════════════════════
           SECTION 3: ROLES & PERMISSIONS MATRIX
       ═════════════════════════════════════════════════════════════════════════ */}
-      <div className="mb-5" id="roles-section">
+      {activeView === 'roles' && (
+        <div className="mb-5" id="roles-section">
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
             <div className="card-header bg-white border-bottom p-3.5 d-flex justify-content-between align-items-center flex-wrap gap-2">
               <div className="d-flex align-items-center gap-2">
@@ -1270,7 +1276,8 @@ export default function TeamOnboarding({ initialTab }) {
               </table>
             </div>
           </div>
-      </div>
+        </div>
+      )}
 
 
       {/* ═════════════════════════════════════════════════════════════════════════

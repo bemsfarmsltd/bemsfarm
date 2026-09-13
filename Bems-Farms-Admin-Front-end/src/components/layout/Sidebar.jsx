@@ -502,19 +502,6 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* Onboarding */}
-            {showStaff && (
-              <button
-                type="button"
-                className={`rail-btn ${activeTab === 'onboarding' ? 'active' : ''}`}
-                onClick={() => handleCategoryClick('onboarding')}
-                title="Team Onboarding & Staff"
-              >
-                <i className="ri-user-add-line rail-icon"></i>
-                <span className="rail-label">Onboarding</span>
-              </button>
-            )}
-
             {/* Finance */}
             {showFinance && (
               <button
@@ -552,6 +539,19 @@ export default function Sidebar() {
                 <i className="ri-store-3-line rail-icon"></i>
                 <span className="rail-label">Multi-Store</span>
                 <span className="sub-badge" style={{ background: '#F1F5F9', color: '#64748B', marginLeft: 'auto' }}>Coming Soon</span>
+              </button>
+            )}
+
+            {/* Onboarding */}
+            {showStaff && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'onboarding' ? 'active' : ''}`}
+                onClick={() => handleCategoryClick('onboarding')}
+                title="Team Onboarding & Staff"
+              >
+                <i className="ri-user-add-line rail-icon"></i>
+                <span className="rail-label">Onboarding</span>
               </button>
             )}
 
