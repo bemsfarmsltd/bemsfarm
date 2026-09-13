@@ -1197,13 +1197,59 @@ router.post("/roles", requireRole("superadmin"), async (req, res, next) => {
   }
 });
 
-router.patch("/roles/:id", requireRole("superadmin"), async (req, res, next) => {
+router.patch("/roles/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
-    const { description, permissions } = req.body;
+    const { name, description, permissions } = req.body;
+    const target = req.params.id;
 
-    const cur = await pool.query("SELECT is_system FROM staff_roles WHERE id=$1", [req.params.id]);
-    if (!cur.rows.length) return res.status(404).json({ message: "Role not found" });
-    if (cur.rows[0].is_system) return res.status(403).json({ message: "System roles cannot be modified" });
+    // Ensure staff_roles table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS staff_roles (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) UNIQUE NOT NULL,
+        description TEXT,
+        permissions JSONB DEFAULT '[]',
+        is_system BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Search by numeric ID or by name
+    let cur = null;
+    if (!isNaN(Number(target))) {
+      const byId = await pool.query("SELECT * FROM staff_roles WHERE id=$1", [Number(target)]);
+      if (byId.rows.length) cur = byId.rows[0];
+    }
+    if (!cur && name) {
+      const byName = await pool.query("SELECT * FROM staff_roles WHERE name=$1", [name.toLowerCase().replace(/\s+/g, "_")]);
+      if (byName.rows.length) cur = byName.rows[0];
+    }
+    if (!cur && typeof target === "string") {
+      const byTargetName = await pool.query("SELECT * FROM staff_roles WHERE name=$1", [target.toLowerCase().replace(/\s+/g, "_")]);
+      if (byTargetName.rows.length) cur = byTargetName.rows[0];
+    }
+
+    let finalPerms = permissions;
+    if (cur && cur.name === "superadmin") {
+      finalPerms = ["*"];
+    }
+
+    if (!cur) {
+      // Upsert role if not found in database yet
+      const roleName = (name || target).toLowerCase().replace(/\s+/g, "_");
+      const inserted = await pool.query(
+        `INSERT INTO staff_roles (name, description, permissions, is_system, created_at, updated_at)
+         VALUES ($1, $2, $3, false, NOW(), NOW())
+         ON CONFLICT (name) DO UPDATE SET
+           description = COALESCE(EXCLUDED.description, staff_roles.description),
+           permissions = COALESCE(EXCLUDED.permissions, staff_roles.permissions),
+           updated_at  = NOW()
+         RETURNING *`,
+        [roleName, description || null, finalPerms ? JSON.stringify(finalPerms) : '[]']
+      );
+      return res.json({ role: inserted.rows[0] });
+    }
 
     const result = await pool.query(
       `UPDATE staff_roles SET
@@ -1211,8 +1257,9 @@ router.patch("/roles/:id", requireRole("superadmin"), async (req, res, next) => 
          permissions = COALESCE($2::JSONB, permissions),
          updated_at  = NOW()
        WHERE id = $3 RETURNING *`,
-      [description || null, permissions ? JSON.stringify(permissions) : null, req.params.id]
+      [description !== undefined ? description : null, finalPerms ? JSON.stringify(finalPerms) : null, cur.id]
     );
+
     res.json({ role: result.rows[0] });
   } catch (err) {
     next(err);

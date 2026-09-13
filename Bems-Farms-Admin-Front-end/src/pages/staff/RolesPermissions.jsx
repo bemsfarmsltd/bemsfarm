@@ -121,10 +121,13 @@ export default function RolesPermissions() {
     setModalMode('edit')
     setSelectedRole(role)
     const perms = Array.isArray(role.permissions) ? role.permissions : []
+    const initialPerms = perms.includes('*')
+      ? AVAILABLE_PERMISSIONS.map((p) => p.id)
+      : perms
     setRoleForm({
       name: role.name,
       description: role.description || '',
-      permissions: perms,
+      permissions: initialPerms,
     })
     setShowAddModal(true)
   }
@@ -152,11 +155,13 @@ export default function RolesPermissions() {
         await api.post('/admin/staff/roles', roleForm)
         toast.success('Custom role created successfully')
       } else {
-        await api.patch(`/admin/staff/roles/${selectedRole.id}`, {
+        const targetId = selectedRole?.id || selectedRole?.name
+        await api.patch(`/admin/staff/roles/${targetId}`, {
+          name: roleForm.name,
           description: roleForm.description,
           permissions: roleForm.permissions,
         })
-        toast.success('Role permissions updated successfully')
+        toast.success(`Permissions updated for ${selectedRole?.name?.replace(/_/g, ' ') || 'role'}`)
       }
       setShowAddModal(false)
       fetchRoles()
@@ -332,28 +337,27 @@ export default function RolesPermissions() {
                           )}
                         </td>
                         <td className="text-end pe-3">
-                          {role.is_system ? (
-                            <span className="text-muted fs-xs fst-italic">Protected</span>
-                          ) : (
-                            <div className="d-inline-flex gap-1">
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-sub-primary btn-icon"
-                                onClick={() => openEditModal(role)}
-                                title="Edit Permissions"
-                              >
-                                <i className="ri-pencil-line"></i>
-                              </button>
+                          <div className="d-inline-flex gap-1 align-items-center">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 px-2 py-1"
+                              onClick={() => openEditModal(role)}
+                              title="Edit Module Permissions"
+                            >
+                              <i className="ri-pencil-line"></i>
+                              <span>Edit Permissions</span>
+                            </button>
+                            {!role.is_system && (
                               <button
                                 type="button"
                                 className="btn btn-sm btn-sub-danger btn-icon"
                                 onClick={() => setDeletingRole(role)}
-                                title="Delete Role"
+                                title="Delete Custom Role"
                               >
                                 <i className="ri-delete-bin-line"></i>
                               </button>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )
@@ -371,9 +375,18 @@ export default function RolesPermissions() {
           <div className="modal-dialog modal-dialog-centered modal-lg">
             <div className="modal-content">
               <div className="modal-header border-bottom">
-                <h5 className="modal-title fw-bold">
-                  {modalMode === 'add' ? 'Create New Custom Role' : `Edit Permissions: ${selectedRole?.name}`}
-                </h5>
+                <div>
+                  <h5 className="modal-title fw-bold text-capitalize">
+                    {modalMode === 'add'
+                      ? 'Create New Custom Role'
+                      : `Edit Permissions — ${selectedRole?.name?.replace(/_/g, ' ')}`}
+                  </h5>
+                  <p className="text-muted fs-xs mb-0">
+                    {modalMode === 'add'
+                      ? 'Configure role details and specify granted dashboard modules.'
+                      : `Customize which dashboard modules this role is authorized to access.`}
+                  </p>
+                </div>
                 <button
                   type="button"
                   className="btn-close"
@@ -382,6 +395,13 @@ export default function RolesPermissions() {
               </div>
               <form onSubmit={handleSaveRole}>
                 <div className="modal-body">
+                  {selectedRole?.name === 'superadmin' && (
+                    <div className="alert alert-info py-2 px-3 fs-xs mb-3 d-flex align-items-center gap-2">
+                      <i className="ri-information-line fs-sm"></i>
+                      <span>Superadmin maintains root access (<code>*</code>) across all system modules by default.</span>
+                    </div>
+                  )}
+
                   <div className="row g-3 mb-4">
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">
@@ -389,11 +409,11 @@ export default function RolesPermissions() {
                       </label>
                       <input
                         type="text"
-                        className="form-control"
+                        className="form-control text-capitalize"
                         placeholder="e.g. Warehouse Supervisor"
                         value={roleForm.name}
                         onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
-                        disabled={modalMode === 'edit'}
+                        disabled={modalMode === 'edit' && selectedRole?.is_system}
                         required
                       />
                     </div>
@@ -410,9 +430,32 @@ export default function RolesPermissions() {
                   </div>
 
                   <div>
-                    <label className="form-label fw-bold mb-2">
-                      <i className="ri-shield-check-line me-1 text-primary"></i>Assign Module Permissions
-                    </label>
+                    <div className="d-flex align-items-center justify-content-between mb-2">
+                      <label className="form-label fw-bold mb-0">
+                        <i className="ri-shield-check-line me-1 text-primary"></i>Assign Module Permissions
+                      </label>
+                      <div className="d-flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-light border py-1 px-2 fs-xs"
+                          onClick={() =>
+                            setRoleForm((prev) => ({
+                              ...prev,
+                              permissions: AVAILABLE_PERMISSIONS.map((p) => p.id),
+                            }))
+                          }
+                        >
+                          <i className="ri-checkbox-multiple-line me-1"></i>Select All
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-light border py-1 px-2 fs-xs"
+                          onClick={() => setRoleForm((prev) => ({ ...prev, permissions: [] }))}
+                        >
+                          <i className="ri-close-circle-line me-1"></i>Clear All
+                        </button>
+                      </div>
+                    </div>
                     <div className="row g-2">
                       {AVAILABLE_PERMISSIONS.map((perm) => {
                         const checked = roleForm.permissions.includes(perm.id)
@@ -457,7 +500,7 @@ export default function RolesPermissions() {
                     Cancel
                   </button>
                   <button type="submit" className="btn btn-primary" disabled={submitting}>
-                    {submitting ? 'Saving...' : modalMode === 'add' ? 'Create Role' : 'Save Changes'}
+                    {submitting ? 'Saving...' : modalMode === 'add' ? 'Create Role' : 'Save Permissions'}
                   </button>
                 </div>
               </form>
