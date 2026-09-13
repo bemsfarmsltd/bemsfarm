@@ -46,10 +46,10 @@ const updateStaff = z.object({
   notes: z.string().trim().max(2000).optional(),
 });
 
-const staffStatus = z.object({
-  status: z.enum(STAFF_STATUSES, {
-    error: `status must be one of: ${STAFF_STATUSES.join(", ")}`,
-  }),
+const inviteStaff = z.object({
+  email: z.string().trim().email("Valid email address is required"),
+  system_role: z.enum(SYSTEM_ROLES, { error: `Role must be one of: ${SYSTEM_ROLES.join(", ")}` }),
+  department: z.string().trim().max(100).optional(),
 });
 
-module.exports = { createStaff, updateStaff, staffStatus };
+module.exports = { createStaff, updateStaff, staffStatus, inviteStaff };

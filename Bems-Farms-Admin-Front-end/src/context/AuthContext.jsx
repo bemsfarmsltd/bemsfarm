@@ -142,13 +142,15 @@ export function AuthProvider({ children }) {
   )
 
   /** Check if current user can access a section (pass an allowedRoles array). */
-  const canAccess = useCallback(
-    (allowedRoles) => user && (allowedRoles.includes(user.role) || (user.role === 'admin' && allowedRoles.includes('superadmin'))),
-    [user]
-  )
+  /** Set session directly after onboarding / token refresh */
+  const setSession = useCallback((userData, token) => {
+    localStorage.setItem('admin_token', token)
+    localStorage.setItem('admin_user', JSON.stringify(userData))
+    setUser(userData)
+  }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, hasRole, canAccess }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, setSession, hasRole, canAccess }}>
       {children}
     </AuthContext.Provider>
   )

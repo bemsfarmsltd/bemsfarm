@@ -112,12 +112,41 @@
 
 const express  = require("express");
 const router   = express.Router();
+const crypto   = require("crypto");
 const bcrypt   = require("bcryptjs");
 const pool     = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const staffAdminSchemas = require("../schemas/staffAdminSchemas");
 const { clampLimit } = require("../utils/pagination");
+const { sendStaffInvitationEmail } = require("../services/emailService");
+
+let invitationsTableReady = false;
+async function ensureStaffInvitationsTable() {
+  if (invitationsTableReady) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS staff_invitations (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        role VARCHAR(50) NOT NULL,
+        department VARCHAR(100),
+        token VARCHAR(128) NOT NULL UNIQUE,
+        invited_by INT REFERENCES users(id) ON DELETE SET NULL,
+        status VARCHAR(30) DEFAULT 'pending',
+        expires_at TIMESTAMP NOT NULL,
+        accepted_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_staff_invitations_token ON staff_invitations(token);
+      CREATE INDEX IF NOT EXISTS idx_staff_invitations_email ON staff_invitations(email);
+    `);
+    invitationsTableReady = true;
+  } catch (err) {
+    console.warn("Could not ensure staff_invitations table:", err.message);
+  }
+}
 
 router.use(protect);
 
@@ -262,6 +291,198 @@ router.get("/:id", requireRole("superadmin", "manager"), async (req, res, next) 
       upcoming_shifts: upcoming.rows,
       holidays: holidays.rows,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// INVITE STAFF MEMBER  ──  POST /api/admin/staff/invite
+// ════════════════════════════════════════════════════════════════════════════
+router.post(
+  "/invite",
+  requireRole("superadmin", "manager", "admin"),
+  validate(staffAdminSchemas.inviteStaff),
+  async (req, res, next) => {
+    try {
+      await ensureStaffInvitationsTable();
+      const { email, system_role, department } = req.body;
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Only superadmin can invite another superadmin
+      if (system_role === "superadmin" && req.user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only a superadmin can invite another superadmin account." });
+      }
+
+      // Check if email already belongs to an active staff member
+      const existingUser = await pool.query(
+        "SELECT id, role, status FROM users WHERE LOWER(email) = $1",
+        [normalizedEmail]
+      );
+      if (existingUser.rows.length > 0 && existingUser.rows[0].role !== "user") {
+        return res.status(400).json({
+          message: `A staff account with email "${normalizedEmail}" already exists with role "${existingUser.rows[0].role}".`,
+        });
+      }
+
+      // Generate secure token (64 hex characters) and 7-day expiration
+      const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      // Check if there is an existing pending invite for this email
+      const existingInvite = await pool.query(
+        "SELECT id FROM staff_invitations WHERE LOWER(email) = $1 AND status = 'pending'",
+        [normalizedEmail]
+      );
+
+      let inviteId;
+      if (existingInvite.rows.length > 0) {
+        const updateRes = await pool.query(
+          `UPDATE staff_invitations
+           SET role = $1, department = $2, token = $3, invited_by = $4,
+               status = 'pending', expires_at = $5, updated_at = NOW()
+           WHERE id = $6
+           RETURNING id`,
+          [system_role, department || null, token, req.user.id, expiresAt, existingInvite.rows[0].id]
+        );
+        inviteId = updateRes.rows[0].id;
+      } else {
+        const insertRes = await pool.query(
+          `INSERT INTO staff_invitations
+             (email, role, department, token, invited_by, status, expires_at, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, 'pending', $6, NOW(), NOW())
+           RETURNING id`,
+          [normalizedEmail, system_role, department || null, token, req.user.id, expiresAt]
+        );
+        inviteId = insertRes.rows[0].id;
+      }
+
+      // Build the onboarding link
+      const adminBaseUrl =
+        process.env.ADMIN_URL ||
+        (req.headers.origin && !req.headers.origin.includes("api")
+          ? req.headers.origin
+          : "https://bemsfarms.com/admin");
+
+      const inviteUrl = `${adminBaseUrl.replace(/\/$/, "")}/onboard?token=${token}`;
+
+      // Dispatch invitation email
+      sendStaffInvitationEmail({
+        email: normalizedEmail,
+        role: system_role,
+        department: department || null,
+        inviteUrl,
+        invitedByName: req.user.name || "Administrator",
+      }).catch((emailErr) => {
+        console.error(`Failed to send invitation email to ${normalizedEmail}:`, emailErr.message);
+      });
+
+      res.status(201).json({
+        message: `Invitation sent successfully to ${normalizedEmail}`,
+        invitation: {
+          id: inviteId,
+          email: normalizedEmail,
+          role: system_role,
+          department,
+          expires_at: expiresAt,
+          invite_url: inviteUrl,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ════════════════════════════════════════════════════════════════════════════
+// LIST INVITATIONS  ──  GET /api/admin/staff/invitations
+// ════════════════════════════════════════════════════════════════════════════
+router.get("/invitations", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+  try {
+    await ensureStaffInvitationsTable();
+    const rows = await pool.query(`
+      SELECT si.*, u.name as invited_by_name, u.email as invited_by_email,
+             CASE
+               WHEN si.status = 'pending' AND si.expires_at < NOW() THEN 'expired'
+               ELSE si.status
+             END AS effective_status
+      FROM staff_invitations si
+      LEFT JOIN users u ON si.invited_by = u.id
+      ORDER BY si.created_at DESC
+      LIMIT 100
+    `);
+
+    res.json({ invitations: rows.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// RESEND INVITATION  ──  POST /api/admin/staff/invitations/:id/resend
+// ════════════════════════════════════════════════════════════════════════════
+router.post("/invitations/:id/resend", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+  try {
+    await ensureStaffInvitationsTable();
+    const existing = await pool.query(
+      "SELECT * FROM staff_invitations WHERE id = $1",
+      [req.params.id]
+    );
+    if (!existing.rows.length) {
+      return res.status(404).json({ message: "Invitation not found" });
+    }
+    const inv = existing.rows[0];
+    if (inv.status === "accepted") {
+      return res.status(400).json({ message: "This invitation has already been accepted." });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await pool.query(
+      `UPDATE staff_invitations
+       SET token = $1, expires_at = $2, status = 'pending', updated_at = NOW()
+       WHERE id = $3`,
+      [token, expiresAt, inv.id]
+    );
+
+    const adminBaseUrl =
+      process.env.ADMIN_URL ||
+      (req.headers.origin && !req.headers.origin.includes("api")
+        ? req.headers.origin
+        : "https://bemsfarms.com/admin");
+    const inviteUrl = `${adminBaseUrl.replace(/\/$/, "")}/onboard?token=${token}`;
+
+    sendStaffInvitationEmail({
+      email: inv.email,
+      role: inv.role,
+      department: inv.department,
+      inviteUrl,
+      invitedByName: req.user.name || "Administrator",
+    }).catch((emailErr) => {
+      console.error(`Failed to resend invitation email to ${inv.email}:`, emailErr.message);
+    });
+
+    res.json({ message: `Invitation resent to ${inv.email}`, invite_url: inviteUrl });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// REVOKE INVITATION  ──  DELETE /api/admin/staff/invitations/:id
+// ════════════════════════════════════════════════════════════════════════════
+router.delete("/invitations/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+  try {
+    await ensureStaffInvitationsTable();
+    const result = await pool.query(
+      "UPDATE staff_invitations SET status = 'revoked', updated_at = NOW() WHERE id = $1 AND status != 'accepted'",
+      [req.params.id]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Invitation not found or already accepted." });
+    }
+    res.json({ message: "Invitation revoked successfully" });
   } catch (err) {
     next(err);
   }

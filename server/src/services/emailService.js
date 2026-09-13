@@ -312,6 +312,60 @@ async function sendLowStockAlertEmail(toEmail, items) {
   });
 }
 
+async function sendStaffInvitationEmail({ email, role, department, inviteUrl, invitedByName }) {
+  const roleLabels = {
+    superadmin:       "Super Administrator",
+    admin:            "System Administrator",
+    manager:          "Operations / Store Manager",
+    cashier:          "POS Cashier",
+    kitchen_staff:    "Kitchen & Prep Staff",
+    delivery_manager: "Logistics & Delivery Manager",
+    accountant:       "Finance & Accounts Officer",
+    storekeeper:      "Inventory & Storekeeper",
+  };
+  const roleTitle = roleLabels[role] || role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const inviterText = invitedByName ? ` by <strong>${invitedByName}</strong>` : "";
+
+  return sendMail({
+    to: email,
+    subject: `🌿 You've been invited to join BemsFarms as ${roleTitle}`,
+    html: `<div style="${emailStyles}">
+      ${header("Welcome to the BemsFarms Team! 🌿")}
+      <p style="color: #374151; font-size: 15px; line-height: 1.7;">
+        Hello,
+      </p>
+      <p style="color: #4B5563; line-height: 1.7;">
+        You have been invited${inviterText} to join the <strong>BemsFarms Authorized Management Portal</strong> as:
+      </p>
+      <div style="background: #F8FAF9; border: 1px solid #E5E7EB; border-left: 4px solid #1B4332; border-radius: 8px; padding: 18px 20px; margin: 20px 0;">
+        <div style="font-size: 12px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 1px;">Assigned Role</div>
+        <div style="font-size: 18px; font-weight: 800; color: #1B4332; margin-top: 4px;">${roleTitle}</div>
+        ${department ? `<div style="font-size: 13px; color: #4B5563; margin-top: 2px;">Department: <strong>${department}</strong></div>` : ""}
+      </div>
+      <p style="color: #4B5563; line-height: 1.7;">
+        To activate your account, complete your staff profile, and create your secure password, click the button below:
+      </p>
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${inviteUrl}" style="background: linear-gradient(135deg, #1B4332, #2D6A4F); color: #ffffff; padding: 16px 36px;
+          border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 16px;
+          display: inline-block; box-shadow: 0 4px 12px rgba(27, 67, 50, 0.25);">
+          Complete Setup &amp; Set Password →
+        </a>
+      </div>
+      <p style="color: #6B7280; font-size: 13px; line-height: 1.6;">
+        If the button above does not work, copy and paste this link into your browser:<br/>
+        <a href="${inviteUrl}" style="color: #1B4332; word-break: break-all;">${inviteUrl}</a>
+      </p>
+      <div style="background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 8px; padding: 12px 16px; margin: 24px 0;">
+        <p style="color: #92400E; font-size: 12px; margin: 0;">
+          ⏳ <strong>Security Notice:</strong> This onboarding link is personal and will expire in <strong>7 days</strong>. If you did not expect this invitation, you may disregard this email.
+        </p>
+      </div>
+      ${footer}
+    </div>`,
+  });
+}
+
 module.exports = {
   sendMail,
   sendWelcomeEmail,
@@ -321,4 +375,6 @@ module.exports = {
   sendPasswordResetEmail,
   sendReferralUpgradeEmail,
   sendLowStockAlertEmail,
+  sendStaffInvitationEmail,
 };
+

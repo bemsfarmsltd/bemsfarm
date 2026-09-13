@@ -232,6 +232,230 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
 });
 
 // ─────────────────────────────────────────────
+// VERIFY INVITATION TOKEN  ──  GET /api/auth/invitation/:token
+// ─────────────────────────────────────────────
+router.get("/invitation/:token", async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    if (!token || token.trim().length < 10) {
+      return res.status(400).json({ valid: false, message: "Invalid invitation link." });
+    }
+
+    const inviteRes = await pool.query(
+      `SELECT si.*, u.name as invited_by_name
+       FROM staff_invitations si
+       LEFT JOIN users u ON si.invited_by = u.id
+       WHERE si.token = $1`,
+      [token.trim()]
+    );
+
+    if (inviteRes.rows.length === 0) {
+      return res.status(404).json({ valid: false, message: "Invitation not found or link has expired." });
+    }
+
+    const inv = inviteRes.rows[0];
+
+    if (inv.status === "accepted") {
+      return res.status(400).json({
+        valid: false,
+        message: "This invitation has already been accepted. Please log in with your credentials.",
+        alreadyAccepted: true,
+      });
+    }
+
+    if (inv.status === "revoked") {
+      return res.status(400).json({
+        valid: false,
+        message: "This invitation has been revoked by an administrator.",
+      });
+    }
+
+    if (new Date(inv.expires_at) < new Date()) {
+      return res.status(400).json({
+        valid: false,
+        message: "This invitation has expired. Please contact an administrator to request a new link.",
+        expired: true,
+      });
+    }
+
+    res.json({
+      valid: true,
+      email: inv.email,
+      role: inv.role,
+      department: inv.department || "",
+      invited_by: inv.invited_by_name || "Bems Farms Admin",
+      expires_at: inv.expires_at,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─────────────────────────────────────────────
+// ACCEPT INVITATION & COMPLETE ONBOARDING  ──  POST /api/auth/accept-invite
+// ─────────────────────────────────────────────
+router.post("/accept-invite", validate(authSchemas.acceptInvite), async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { token, name, phone, password, address } = req.body;
+
+    const inviteRes = await client.query(
+      "SELECT * FROM staff_invitations WHERE token = $1 FOR UPDATE",
+      [token.trim()]
+    );
+
+    if (inviteRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Invalid or nonexistent invitation token." });
+    }
+
+    const inv = inviteRes.rows[0];
+
+    if (inv.status === "accepted") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "This invitation has already been accepted. Please log in." });
+    }
+
+    if (inv.status === "revoked") {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "This invitation has been revoked by an administrator." });
+    }
+
+    if (new Date(inv.expires_at) < new Date()) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ message: "This invitation link has expired. Please request a new one." });
+    }
+
+    // Hash user's chosen password
+    const hashedPw = await bcrypt.hash(password, 12);
+    const normalizedEmail = inv.email.toLowerCase().trim();
+
+    // Check if a user record already exists for this email
+    const existingUserRes = await client.query(
+      "SELECT id, role, status FROM users WHERE LOWER(email) = $1",
+      [normalizedEmail]
+    );
+
+    let user;
+    if (existingUserRes.rows.length > 0) {
+      // Existing user (e.g. was a customer or created earlier)
+      const existingUser = existingUserRes.rows[0];
+      const updateRes = await client.query(
+        `UPDATE users
+         SET name = $1, password = $2, phone = $3, role = $4, status = 'active', email_verified = true, updated_at = NOW()
+         WHERE id = $5
+         RETURNING id, name, email, phone, role, status, avatar_url, store_id`,
+        [name.trim(), hashedPw, phone.trim(), inv.role, existingUser.id]
+      );
+      user = updateRes.rows[0];
+    } else {
+      // Create fresh user account
+      const insertRes = await client.query(
+        `INSERT INTO users (name, email, password, phone, role, status, email_verified, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, 'active', true, NOW(), NOW())
+         RETURNING id, name, email, phone, role, status, avatar_url, store_id`,
+        [name.trim(), normalizedEmail, hashedPw, phone.trim(), inv.role]
+      );
+      user = insertRes.rows[0];
+    }
+
+    // Generate employee code and ensure staff record is present
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('staff_employee_code'))");
+    const codeRow = await client.query(
+      `SELECT MAX(CAST(SPLIT_PART(employee_code, '-', 2) AS INTEGER)) AS max_n
+       FROM staff WHERE employee_code LIKE 'EMP-%'`
+    );
+    const n = (codeRow.rows[0]?.max_n || 0) + 1;
+    const empCode = `EMP-${String(n).padStart(3, "0")}`;
+
+    const existingStaff = await client.query(
+      "SELECT id FROM staff WHERE user_id = $1 OR LOWER(email) = $2",
+      [user.id, normalizedEmail]
+    );
+
+    const department = inv.department || "Operations";
+    const roleTitle = inv.role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+    if (existingStaff.rows.length > 0) {
+      await client.query(
+        `UPDATE staff
+         SET name = $1, phone = $2, system_role = $3, department = $4, role = $5,
+             address = COALESCE($6, address), status = 'active', updated_at = NOW()
+         WHERE id = $7`,
+        [name.trim(), phone.trim(), inv.role, department, roleTitle, address || null, existingStaff.rows[0].id]
+      );
+    } else {
+      await client.query(
+        `INSERT INTO staff
+           (user_id, employee_id, employee_code, name, email, phone, system_role,
+            department, role, shift, address, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'morning', $10, 'active', NOW(), NOW())`,
+        [user.id, empCode, empCode, name.trim(), normalizedEmail, phone.trim(), inv.role, department, roleTitle, address || null]
+      );
+    }
+
+    // Mark invitation accepted
+    await client.query(
+      "UPDATE staff_invitations SET status = 'accepted', accepted_at = NOW(), updated_at = NOW() WHERE id = $1",
+      [inv.id]
+    );
+
+    await client.query("COMMIT");
+
+    // Generate authentication tokens
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user.id);
+
+    await pool.query(
+      "UPDATE users SET refresh_token=$1, last_login=NOW() WHERE id=$2",
+      [refreshToken, user.id]
+    );
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    const nameParts = (user.name || "").trim().split(" ");
+    const userPayload = {
+      id: user.id,
+      name: user.name,
+      first_name: nameParts[0] || "",
+      last_name: nameParts.slice(1).join(" ") || "",
+      email: user.email,
+      role: user.role,
+      avatar_url: user.avatar_url || null,
+      store_id: user.store_id || null,
+      status: user.status,
+    };
+
+    upsertContext(user.id, {
+      full_name:  user.name,
+      email:      user.email,
+      phone:      user.phone || null,
+      role:       user.role,
+      last_login: new Date().toISOString(),
+    });
+    trackActivity(user.id, "accepted_invite", { role: inv.role });
+
+    res.status(200).json({
+      message: "Account setup successful! Welcome to the Bems Farms team.",
+      token: accessToken,
+      user: userPayload,
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("accept-invite error:", err);
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+// ─────────────────────────────────────────────
 // ADMIN BYPASS (One-Click Staff / Admin Auth)
 // ─────────────────────────────────────────────
 router.post("/admin-bypass", async (req, res, next) => {

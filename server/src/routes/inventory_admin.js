@@ -566,6 +566,74 @@ router.post(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
+// STOCK OUT / DISPATCH  ──  POST /api/admin/inventory/stock-out
+// ════════════════════════════════════════════════════════════════════════════
+router.post(
+  "/stock-out",
+  requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const { product_id, warehouse_id, quantity, reason, reference, notes } = req.body;
+
+      const qty = parseInt(quantity);
+      if (!product_id || isNaN(qty) || qty <= 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "Valid product_id and quantity (> 0) required" });
+      }
+
+      const prodRes = await client.query(
+        "SELECT id, name, sku, stock, cost_price, unit_price FROM products WHERE id = $1 FOR UPDATE",
+        [parseInt(product_id)]
+      );
+      if (!prodRes.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      const prod = prodRes.rows[0];
+      const currentStock = parseInt(prod.stock) || 0;
+      if (currentStock < qty) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: `Insufficient stock. Only ${currentStock} available.` });
+      }
+
+      const ref = reference?.trim() || `SO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const cost = parseFloat(prod.cost_price || prod.unit_price || 0);
+
+      const stockChange = await applyStockChange(client, {
+        productId: parseInt(product_id),
+        warehouseId: warehouse_id ? parseInt(warehouse_id) : null,
+        type: "stock_out",
+        delta: -qty,
+        reference: ref,
+        reason: reason || "Dispatch",
+        notes: notes || null,
+        unitCost: cost,
+        userId: req.user.id,
+      });
+
+      await client.query("COMMIT");
+
+      res.status(201).json({
+        success: true,
+        message: `Stock dispatched: -${qty} units for "${prod.name}"`,
+        movement_id: stockChange.movement_id,
+        before_qty: stockChange.before_qty,
+        after_qty: stockChange.after_qty,
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
+
+// ════════════════════════════════════════════════════════════════════════════
 // STOCK ADJUSTMENT  ──  POST /api/admin/inventory/adjust
 // ════════════════════════════════════════════════════════════════════════════
 router.post(

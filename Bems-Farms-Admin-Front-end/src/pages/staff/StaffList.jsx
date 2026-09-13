@@ -2,8 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import { toast } from 'react-hot-toast'
+import { useAuth } from '../../context/AuthContext'
 
 export default function StaffList() {
+  const { user: currentUser } = useAuth()
+  const [activeTab, setActiveTab] = useState('staff') // 'staff' | 'invitations'
   const [staff, setStaff] = useState([])
   const [stats, setStats] = useState({ total: 0, active: 0, on_duty_today: 0, departments: 0 })
   const [loading, setLoading] = useState(true)
@@ -14,6 +17,19 @@ export default function StaffList() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
+
+  // Invitations State
+  const [invitations, setInvitations] = useState([])
+  const [invitationsLoading, setInvitationsLoading] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [sendingInvite, setSendingInvite] = useState(false)
+  const [actionLoadingId, setActionLoadingId] = useState(null)
+  const [inviteForm, setInviteForm] = useState({
+    email: '',
+    role: 'cashier',
+    department: 'Sales & POS',
+  })
+  const [newlyCreatedInvite, setNewlyCreatedInvite] = useState(null)
 
   // Edit Staff State
   const [selectedStaff, setSelectedStaff] = useState(null)
@@ -51,6 +67,83 @@ export default function StaffList() {
   useEffect(() => {
     fetchStaff()
   }, [fetchStaff])
+
+  const fetchInvitations = useCallback(async () => {
+    try {
+      setInvitationsLoading(true)
+      const res = await api.get('/admin/staff/invitations')
+      setInvitations(res.data.invitations || [])
+    } catch (err) {
+      console.error('Error fetching invitations:', err)
+    } finally {
+      setInvitationsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchInvitations()
+  }, [fetchInvitations])
+
+  const handleSendInvite = async (e) => {
+    e.preventDefault()
+    if (!inviteForm.email || !inviteForm.role) {
+      toast.error('Email and role are required')
+      return
+    }
+    try {
+      setSendingInvite(true)
+      const res = await api.post('/admin/staff/invite', inviteForm)
+      toast.success(res.data.message || 'Invitation sent successfully!')
+      if (res.data.invitation) {
+        setNewlyCreatedInvite(res.data.invitation)
+      } else {
+        setShowInviteModal(false)
+      }
+      setInviteForm({
+        email: '',
+        role: 'cashier',
+        department: 'Sales & POS',
+      })
+      fetchInvitations()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to send invitation')
+    } finally {
+      setSendingInvite(false)
+    }
+  }
+
+  const handleResendInvite = async (id) => {
+    try {
+      setActionLoadingId(id)
+      const res = await api.post(`/admin/staff/invitations/${id}/resend`)
+      toast.success(res.data.message || 'Invitation resent successfully!')
+      fetchInvitations()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to resend invitation')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleRevokeInvite = async (id) => {
+    if (!window.confirm('Are you sure you want to cancel and revoke this invitation?')) return
+    try {
+      setActionLoadingId(id)
+      await api.delete(`/admin/staff/invitations/${id}`)
+      toast.success('Invitation revoked')
+      fetchInvitations()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to revoke invitation')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const copyInviteLink = (inviteUrl) => {
+    if (!inviteUrl) return
+    navigator.clipboard.writeText(inviteUrl)
+    toast.success('Onboarding link copied to clipboard!')
+  }
 
   const handleStatusToggle = async (member) => {
     const nextStatus = member.status === 'active' ? 'inactive' : 'active'
@@ -155,6 +248,17 @@ export default function StaffList() {
           <p className="text-muted fs-sm mb-0">Manage employee accounts, system access levels, contact records, and active credentials.</p>
         </div>
         <div className="d-flex align-items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-success d-flex align-items-center gap-1 shadow-sm"
+            onClick={() => {
+              setNewlyCreatedInvite(null)
+              setShowInviteModal(true)
+            }}
+          >
+            <i className="ri-mail-send-line align-middle"></i>
+            <span>Invite Member</span>
+          </button>
           <Link to="/staff/add" className="btn btn-primary">
             <i className="ri-user-add-line me-1 align-middle"></i>Add Staff
           </Link>
@@ -220,8 +324,39 @@ export default function StaffList() {
         </div>
       </div>
 
-      {/* Main Table Card */}
-      <div className="card shadow-sm border-0">
+      {/* View Tabs */}
+      <ul className="nav nav-tabs border-bottom mb-3">
+        <li className="nav-item">
+          <button
+            type="button"
+            className={`nav-link fw-semibold px-4 py-2 ${activeTab === 'staff' ? 'active text-primary border-bottom-2' : 'text-muted'}`}
+            onClick={() => setActiveTab('staff')}
+          >
+            <i className="ri-team-line me-1"></i>Staff Directory ({stats.total || staff.length})
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            type="button"
+            className={`nav-link fw-semibold px-4 py-2 ${activeTab === 'invitations' ? 'active text-primary border-bottom-2' : 'text-muted'}`}
+            onClick={() => {
+              setActiveTab('invitations')
+              fetchInvitations()
+            }}
+          >
+            <i className="ri-mail-send-line me-1"></i>Onboarding Invitations
+            {invitations.filter((i) => i.status === 'pending').length > 0 && (
+              <span className="badge bg-warning text-dark ms-2 rounded-pill">
+                {invitations.filter((i) => i.status === 'pending').length}
+              </span>
+            )}
+          </button>
+        </li>
+      </ul>
+
+      {activeTab === 'staff' ? (
+        /* Main Table Card */
+        <div className="card shadow-sm border-0">
         <div className="card-header bg-transparent border-bottom">
           <div className="row g-2 align-items-center justify-content-between">
             <div className="col-md-4">
@@ -430,6 +565,178 @@ export default function StaffList() {
           </div>
         )}
       </div>
+      ) : (
+        /* Invitations Table Card */
+        <div className="card shadow-sm border-0">
+          <div className="card-header bg-transparent border-bottom py-3 d-flex flex-wrap gap-2 justify-content-between align-items-center">
+            <div>
+              <h6 className="mb-0 fw-bold">Team Member Onboarding Invitations</h6>
+              <p className="text-muted fs-xs mb-0">Track pending and accepted onboarding invitations sent to prospective team members.</p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-success d-flex align-items-center gap-1"
+              onClick={() => {
+                setNewlyCreatedInvite(null)
+                setShowInviteModal(true)
+              }}
+            >
+              <i className="ri-mail-send-line"></i>
+              <span>Invite Team Member</span>
+            </button>
+          </div>
+
+          <div className="card-body p-0">
+            <div className="table-responsive">
+              <table className="table align-middle table-hover mb-0 text-nowrap">
+                <thead className="table-light">
+                  <tr>
+                    <th className="ps-3">Recipient Email</th>
+                    <th>Assigned Role</th>
+                    <th>Department</th>
+                    <th>Invited By</th>
+                    <th>Sent At</th>
+                    <th>Status</th>
+                    <th className="text-end pe-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invitationsLoading ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-5 text-muted">
+                        <div className="spinner-border spinner-border-sm text-primary me-2"></div>
+                        Loading invitations...
+                      </td>
+                    </tr>
+                  ) : invitations.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-5 text-muted">
+                        <i className="ri-mail-line fs-3xl d-block mb-2 opacity-50"></i>
+                        No invitations sent yet. Click <strong>"Invite Team Member"</strong> to onboard staff.
+                      </td>
+                    </tr>
+                  ) : (
+                    invitations.map((inv) => {
+                      const isPending = inv.status === 'pending'
+                      const isAccepted = inv.status === 'accepted'
+                      const isExpired = inv.status === 'expired'
+                      return (
+                        <tr key={inv.id}>
+                          <td className="ps-3">
+                            <div className="d-flex align-items-center gap-2">
+                              <div className="size-9 rounded-circle bg-success bg-opacity-10 text-success fw-bold d-flex align-items-center justify-content-center flex-shrink-0">
+                                <i className="ri-mail-line"></i>
+                              </div>
+                              <div>
+                                <div className="fw-semibold text-dark">{inv.email}</div>
+                                {inv.invite_url && isPending && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-link p-0 fs-xs text-primary text-decoration-none"
+                                    onClick={() => copyInviteLink(inv.invite_url)}
+                                  >
+                                    <i className="ri-file-copy-line me-1"></i>Copy invite link
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`badge text-capitalize ${getRoleBadgeClass(inv.role)}`}>
+                              {(inv.role || 'staff').replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="text-muted fs-sm">{inv.department || 'General'}</span>
+                          </td>
+                          <td>
+                            <div className="fs-sm">{inv.invited_by_name || 'Administrator'}</div>
+                            <div className="text-muted fs-xs">{inv.invited_by_email}</div>
+                          </td>
+                          <td>
+                            <div className="fs-sm">
+                              {inv.created_at ? new Date(inv.created_at).toLocaleDateString() : '—'}
+                            </div>
+                            <div className="text-muted fs-xs">
+                              {inv.created_at ? new Date(inv.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </div>
+                          </td>
+                          <td>
+                            {isAccepted ? (
+                              <span className="badge bg-success-subtle text-success border border-success-subtle">
+                                <i className="ri-check-double-line me-1"></i>Accepted & Active
+                              </span>
+                            ) : isExpired ? (
+                              <span className="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                <i className="ri-time-line me-1"></i>Expired
+                              </span>
+                            ) : (
+                              <span className="badge bg-warning-subtle text-warning border border-warning-subtle">
+                                <i className="ri-hourglass-line me-1"></i>Pending
+                              </span>
+                            )}
+                          </td>
+                          <td className="text-end pe-3">
+                            <div className="d-inline-flex gap-1">
+                              {isPending && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-sub-primary btn-icon"
+                                    title="Copy Onboarding Link"
+                                    onClick={() => copyInviteLink(inv.invite_url)}
+                                  >
+                                    <i className="ri-file-copy-line"></i>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-sub-success btn-icon"
+                                    title="Resend Invitation Email"
+                                    disabled={actionLoadingId === inv.id}
+                                    onClick={() => handleResendInvite(inv.id)}
+                                  >
+                                    {actionLoadingId === inv.id ? (
+                                      <span className="spinner-border spinner-border-sm"></span>
+                                    ) : (
+                                      <i className="ri-send-plane-line"></i>
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-sub-danger btn-icon"
+                                    title="Revoke Invitation"
+                                    disabled={actionLoadingId === inv.id}
+                                    onClick={() => handleRevokeInvite(inv.id)}
+                                  >
+                                    <i className="ri-close-circle-line"></i>
+                                  </button>
+                                </>
+                              )}
+                              {isExpired && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-primary"
+                                  disabled={actionLoadingId === inv.id}
+                                  onClick={() => handleResendInvite(inv.id)}
+                                >
+                                  <i className="ri-refresh-line me-1"></i>Resend Invite
+                                </button>
+                              )}
+                              {isAccepted && (
+                                <span className="text-muted fs-xs">Active Employee</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Staff Modal */}
       {selectedStaff && (
@@ -601,6 +908,193 @@ export default function StaffList() {
                   {processingDelete ? 'Deactivating...' : 'Deactivate'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Team Member Modal */}
+      {showInviteModal && (
+        <div className="modal fade show d-block bg-dark bg-opacity-50" tabIndex="-1" role="dialog">
+          <div className="modal-dialog modal-dialog-centered modal-md">
+            <div className="modal-content border-0 shadow-lg">
+              <div className="modal-header border-bottom py-3">
+                <div className="d-flex align-items-center gap-2">
+                  <div className="size-9 rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center fs-lg">
+                    <i className="ri-mail-send-line"></i>
+                  </div>
+                  <div>
+                    <h5 className="modal-title fw-bold mb-0">Invite Team Member</h5>
+                    <p className="text-muted fs-xs mb-0">Send an onboarding email link to invite a staff colleague</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setShowInviteModal(false)
+                    setNewlyCreatedInvite(null)
+                  }}
+                ></button>
+              </div>
+
+              {newlyCreatedInvite ? (
+                <div className="modal-body p-4 text-center">
+                  <div className="size-16 rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center mx-auto mb-3 fs-3xl">
+                    <i className="ri-checkbox-circle-fill"></i>
+                  </div>
+                  <h5 className="fw-bold mb-1">Invitation Dispatched!</h5>
+                  <p className="text-muted fs-sm mb-3">
+                    We've emailed an onboarding link to <strong>{newlyCreatedInvite.email}</strong> as <strong>{(newlyCreatedInvite.role || '').replace('_', ' ')}</strong>.
+                  </p>
+
+                  <div className="bg-light p-3 rounded-3 text-start mb-3 border">
+                    <label className="form-label fs-xs fw-semibold text-muted text-uppercase mb-1">
+                      Direct Onboarding Link (Valid 7 Days)
+                    </label>
+                    <div className="input-group">
+                      <input
+                        type="text"
+                        className="form-control form-control-sm font-monospace bg-white"
+                        readOnly
+                        value={newlyCreatedInvite.invite_url || ''}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
+                        onClick={() => copyInviteLink(newlyCreatedInvite.invite_url)}
+                      >
+                        <i className="ri-file-copy-line me-1"></i>Copy
+                      </button>
+                    </div>
+                    <p className="text-muted fs-xs mt-1 mb-0">
+                      You can also copy this link and share it directly via WhatsApp, SMS, or Slack.
+                    </p>
+                  </div>
+
+                  <div className="d-flex gap-2 justify-content-end">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary"
+                      onClick={() => {
+                        setNewlyCreatedInvite(null)
+                      }}
+                    >
+                      Invite Another
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-success"
+                      onClick={() => {
+                        setShowInviteModal(false)
+                        setNewlyCreatedInvite(null)
+                        setActiveTab('invitations')
+                      }}
+                    >
+                      View All Invitations
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleSendInvite}>
+                  <div className="modal-body p-4">
+                    <div className="alert alert-info py-2 px-3 fs-xs mb-3 d-flex align-items-center gap-2">
+                      <i className="ri-information-line fs-base text-info flex-shrink-0"></i>
+                      <span>
+                        The recipient receives a secure link to complete their personal details (full name, phone, address) and choose their login password.
+                      </span>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold">
+                        Recipient Email Address <span className="text-danger">*</span>
+                      </label>
+                      <div className="input-group">
+                        <span className="input-group-text bg-light">
+                          <i className="ri-mail-line text-muted"></i>
+                        </span>
+                        <input
+                          type="email"
+                          className="form-control"
+                          placeholder="staff.member@bemsfarms.com"
+                          required
+                          value={inviteForm.email}
+                          onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold">
+                        System Access Role <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select"
+                        required
+                        value={inviteForm.role}
+                        onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+                      >
+                        <option value="cashier">Cashier — POS, Storefront Sales & Customers</option>
+                        <option value="manager">Manager — Operations, Inventory & Staff oversight</option>
+                        <option value="delivery_manager">Delivery Manager — Orders, Drivers & Delivery Routes</option>
+                        <option value="kitchen_staff">Kitchen Staff — Food Prep, Kitchen Orders & Chef Bems AI</option>
+                        <option value="accountant">Accountant — Finance, Expenses, Ledger & Reports</option>
+                        <option value="admin">Admin — Management, Products, Orders & System Settings</option>
+                        {currentUser?.role === 'superadmin' && (
+                          <option value="superadmin">Super Admin — Complete System & Database Access</option>
+                        )}
+                      </select>
+                      <p className="text-muted fs-xs mt-1 mb-0">
+                        Their dashboard, permissions, and available navigation links will be configured automatically based on this role.
+                      </p>
+                    </div>
+
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold">Department</label>
+                      <select
+                        className="form-select"
+                        value={inviteForm.department}
+                        onChange={(e) => setInviteForm({ ...inviteForm, department: e.target.value })}
+                      >
+                        <option value="Sales & POS">Sales & POS</option>
+                        <option value="Store Operations">Store Operations</option>
+                        <option value="Logistics / Dispatch">Logistics / Dispatch</option>
+                        <option value="Kitchen / Chef Bems">Kitchen / Chef Bems</option>
+                        <option value="Finance & Accounting">Finance & Accounting</option>
+                        <option value="Management">Management</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="modal-footer border-top py-3">
+                    <button
+                      type="button"
+                      className="btn btn-light"
+                      onClick={() => setShowInviteModal(false)}
+                      disabled={sendingInvite}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-success d-flex align-items-center gap-1"
+                      disabled={sendingInvite}
+                    >
+                      {sendingInvite ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-1"></span>
+                          Sending Invitation...
+                        </>
+                      ) : (
+                        <>
+                          <i className="ri-send-plane-fill"></i>
+                          Send Invitation Email
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>

@@ -60,6 +60,14 @@ const google = z.object({
   credential: z.string({ error: "Google credential required" }).min(1, "Google credential required"),
 });
 
+const acceptInvite = z.object({
+  token: z.string({ error: "Invitation token required" }).min(1, "Invitation token required"),
+  name: z.string({ error: "Full name is required" }).trim().min(2, "Full name must be at least 2 characters").max(255),
+  phone: z.string({ error: "Phone number is required" }).trim().min(5, "Phone number is required").max(30),
+  password: z.string({ error: "Password must be at least 6 characters" }).min(6, "Password must be at least 6 characters").max(100),
+  address: z.string().trim().max(1000).optional(),
+});
+
 module.exports = {
   register,
   login,
@@ -71,4 +79,5 @@ module.exports = {
   verifyEmail,
   resendVerification,
   google,
+  acceptInvite,
 };
