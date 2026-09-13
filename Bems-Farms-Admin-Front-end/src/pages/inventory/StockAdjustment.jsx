@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
+import PremiumModal from '../../components/ui/PremiumModal'
 
 const REASONS = [
   'Physical Count Correction',
@@ -270,20 +271,24 @@ export default function StockAdjustment() {
         </div>
       </div>
 
-      {/* Stock Adjustment Modal */}
-      {modalOpen && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow">
-              <div className="modal-header">
-                <h5 className="modal-title fw-bold">
-                  <i className="ri-scales-3-line me-2 text-primary"></i>
-                  New Stock Adjustment
-                </h5>
-                <button type="button" className="btn-close" onClick={() => setModalOpen(false)}></button>
-              </div>
-              <form onSubmit={handleSubmit}>
-                <div className="modal-body">
+      <PremiumModal
+        open={modalOpen}
+        onClose={() => !submitting && setModalOpen(false)}
+        title="New stock adjustment"
+        description="Reconcile recorded inventory with a verified physical count. Every change is added to the audit trail."
+        icon="ri-scales-3-line"
+        tone={delta < 0 ? 'danger' : 'brand'}
+        closeOnBackdrop={!submitting}
+        footer={(
+          <>
+            <button type="button" className="btn btn-light" onClick={() => setModalOpen(false)} disabled={submitting}>Cancel</button>
+            <button type="submit" form="stock-adjustment-form" className="btn btn-primary d-flex align-items-center gap-2" disabled={submitting}>
+              {submitting && <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>}
+              <i className="ri-check-line" aria-hidden="true"></i> Apply adjustment
+            </button>
+          </>
+        )}>
+        <form id="stock-adjustment-form" onSubmit={handleSubmit}>
                   <div className="mb-3">
                     <label className="form-label fw-semibold">Select Product <span className="text-danger">*</span></label>
                     <select
@@ -362,20 +367,8 @@ export default function StockAdjustment() {
                       onChange={(e) => setForm({ ...form, notes: e.target.value })}
                     ></textarea>
                   </div>
-                </div>
-
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-light" onClick={() => setModalOpen(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary d-flex align-items-center gap-2" disabled={submitting}>
-                    {submitting && <div className="spinner-border spinner-border-sm" role="status"></div>}
-                    <i className="ri-check-line"></i> Apply Stock Adjustment
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+        </form>
+      </PremiumModal>
     </div>
   )
 }
