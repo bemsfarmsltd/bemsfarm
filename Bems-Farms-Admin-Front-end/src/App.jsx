@@ -1,3 +1,7 @@
+import CustomerMessages from './pages/customers/CustomerMessages'
+import CustomerBroadcasts from './pages/customers/CustomerBroadcasts'
+import ProductDemand from './pages/customers/ProductDemand'
+import GodEye from './pages/system/SystemAudit'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/auth/ProtectedRoute'
@@ -189,7 +193,12 @@ function App() {
                 <Route path="/customers/loyalty"  element={<LoyaltyPoints />} />
                 <Route path="/customers/wallet"   element={<WalletBalance />} />
                 <Route path="/customers/activity" element={<ActivityLog />} />
-                <Route path="/customers/:id"      element={<CustomerDetail />} />
+                <Route element={<ProtectedRoute allowedRoles={['admin','superadmin','manager']} />}>
+                <Route path="/customers/messages" element={<CustomerMessages />} />
+                <Route path="/customers/broadcasts" element={<CustomerBroadcasts />} />
+                <Route path="/customers/demand" element={<ProductDemand />} />
+              </Route>
+              <Route path="/customers/:id"      element={<CustomerDetail />} />
               </Route>
 
               {/* ── Staff (Consolidated under Settings) ── */}
@@ -248,7 +257,11 @@ function App() {
                 <Route path="/settings/onboarding"    element={<TeamOnboarding />} />
                 <Route path="/settings/staff"         element={<StaffList />} />
                 <Route path="/settings/roles"         element={<RolesPermissions />} />
-                <Route path="/settings/general"       element={<GeneralSettings />} />
+                {/* Legacy audit redirect for superadmin */}
+                <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>
+                  <Route path="/settings/audit" element={<Navigate to="/god-eye" replace />} />
+                </Route>
+              <Route path="/settings/general"       element={<GeneralSettings />} />
                 <Route path="/settings/notifications" element={<NotificationSettings />} />
                 <Route path="/settings/payment"       element={<PaymentSettings />} />
                 <Route path="/settings/coupons"       element={<CouponSettings />} />
@@ -257,6 +270,11 @@ function App() {
                 <Route path="/settings/currencies"    element={<CurrencySettings />} />
                 <Route path="/settings/invoices"      element={<InvoiceSettings />} />
                 <Route path="/settings/manager"       element={<ManagerSettings />} />
+              </Route>
+
+              {/* ── God Eye Audit Log — superadmin only ── */}
+              <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>
+                <Route path="/god-eye" element={<GodEye />} />
               </Route>
             </Route>
           </Route>

@@ -63,12 +63,21 @@ export default function ProductDetail() {
     api
       .get(`/products/${id}`)
       .then((res) => {
-        setProduct(res.data.product);
+        const prod = res.data.product;
+        setProduct(prod);
         setRelated(res.data.related);
+        if (prod?.id && user?.id) {
+          api.post("/telemetry/product-click", {
+            productId: prod.id,
+            productName: prod.name,
+            category: prod.category_name || "Produce",
+            userId: user.id,
+          }).catch(() => {});
+        }
       })
       .finally(() => setLoading(false));
     window.scrollTo(0, 0);
-  }, [id]);
+  }, [id, user?.id]);
 
   const loadReviews = () => {
     setReviewsLoading(true);

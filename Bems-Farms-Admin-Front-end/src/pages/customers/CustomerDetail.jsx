@@ -1,3 +1,6 @@
+import CustomerIntelligence from './CustomerIntelligence'
+import {CustomerChat} from './CustomerMessages'
+import {useAuth} from '../../context/AuthContext'
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
@@ -46,6 +49,8 @@ const AVATAR_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#0ea5e9', '#
 
 export default function CustomerDetail() {
   const { id } = useParams()
+  const {user: currentStaff} = useAuth()
+  const canEngage = ['superadmin','admin','manager'].includes(currentStaff?.role)
   const navigate = useNavigate()
   const [customer, setCustomer] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -123,8 +128,7 @@ export default function CustomerDetail() {
     try {
       const target = (customer.id != null && String(customer.id) !== 'null') ? customer.id : (customer.customer_code && customer.customer_code !== 'null' ? customer.customer_code : customer.email)
       await api.delete(`/admin/customers/${target}`, {
-        data: { admin_password: adminPassword.trim() },
-        headers: { 'x-admin-password': adminPassword.trim() },
+        data: { admin_password: adminPassword },
       })
       toast.success(`Customer ${customer.name} deleted successfully`)
       navigate('/customers')
@@ -182,6 +186,7 @@ export default function CustomerDetail() {
   const isRecentLogin = customer.last_login && (Date.now() - new Date(customer.last_login).getTime() < 86400000)
 
   const TABS = [
+    ...(canEngage ? [{id:'intelligence',label:'Product interest',icon:'ri-bar-chart-line'},{id:'messages',label:'Support chat',icon:'ri-chat-3-line'}] : []),
     { id: 'orders',    label: 'Order History',       icon: 'ri-shopping-bag-3-line', count: orders.length },
     { id: 'addresses', label: 'Delivery Addresses',  icon: 'ri-map-pin-user-line',   count: addresses.length },
     { id: 'activity',  label: 'Logins & Activity',   icon: 'ri-pulse-line',          count: activity.length },
@@ -425,6 +430,8 @@ export default function CustomerDetail() {
             {/* Tab Contents */}
             <div className="card-body p-0">
               {/* ──────────────── TAB 1: ORDER HISTORY ──────────────── */}
+              {canEngage && activeTab === 'intelligence' && <CustomerIntelligence customerId={customer.id} />}
+              {canEngage && activeTab === 'messages' && <><Link className="btn btn-outline-primary mb-3" to={`/customers/broadcasts?customer=${customer.id}`}>Create personal announcement</Link><CustomerChat customerId={customer.id}/></>}
               {activeTab === 'orders' && (
                 <div>
                   <div className="p-3 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -648,17 +655,6 @@ export default function CustomerDetail() {
                                 <div className="text-muted" style={{ fontSize: 11 }}>
                                   <i className="ri-time-line me-1" />{fmtDateTime(act.created_at)} ({fmtRelative(act.created_at)})
                                 </div>
-                              </div>
-                              <div className="d-flex align-items-center justify-content-between mt-2 pt-2 border-top flex-wrap gap-2" style={{ fontSize: 11 }}>
-                                <div className="text-muted">
-                                  <i className="ri-computer-line me-1" />
-                                  IP Address: <span className="font-monospace text-dark fw-medium">{act.ip_address || '127.0.0.1'}</span>
-                                </div>
-                                {act.metadata && Object.keys(act.metadata).length > 0 && (
-                                  <div className="text-muted font-monospace">
-                                    {JSON.stringify(act.metadata).slice(0, 80)}
-                                  </div>
-                                )}
                               </div>
                             </div>
                           </div>

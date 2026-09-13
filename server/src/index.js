@@ -57,6 +57,23 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(require('./services/auditService').auditRequests);
+app.use('/api/audit', require('./routes/audit'));
+
+// Auto-run God Eye audit v2 schema migration on startup (idempotent — safe to run every time)
+(async () => {
+  try {
+    const fs   = require('fs');
+    const path = require('path');
+    const pool = require('./db/pool');
+    const sql  = fs.readFileSync(path.join(__dirname, 'db/audit_v2_migration.sql'), 'utf8');
+    await pool.query(sql);
+    console.log('✅ God Eye Audit v2 schema ready.');
+  } catch (e) {
+    console.warn('[god-eye] Audit v2 migration skipped (will retry next boot):', e.message?.slice(0,120));
+  }
+})();
+
 
 const getClientIp = (req) => {
   return (
@@ -156,6 +173,8 @@ const issuesRoutes = require("./routes/issues");
 const addressesRoutes = require("./routes/addresses");
 const wishlistRoutes = require("./routes/wishlist");
 const telemetryRoutes = require("./routes/telemetry");
+const customerChatRoutes = require("./routes/customer_chat");
+const broadcastsRoutes = require("./routes/broadcasts");
 
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/orders", paymentLimiter, ordersRoutes);
@@ -191,6 +210,8 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/addresses", addressesRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/telemetry", telemetryRoutes);
+app.use("/api/support", customerChatRoutes);
+app.use("/api/broadcasts", broadcastsRoutes);
 app.use("/api", miscRoutes);
 app.use("/api/advanced-ai", aiLimiter, advancedAiRoutes);
 

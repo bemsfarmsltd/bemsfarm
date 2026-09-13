@@ -1,0 +1,20 @@
+name: Record developer changes
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  report:
+    if: vars.AUDIT_EVENT_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Record pushed commit
+        env:
+          AUDIT_EVENT_URL: ${{ vars.AUDIT_EVENT_URL }}
+          AUDIT_INGEST_SECRET: ${{ secrets.AUDIT_INGEST_SECRET }}
+        run: node server/scripts/report-audit-event.js

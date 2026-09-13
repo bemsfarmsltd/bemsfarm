@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "node scripts/syntax-check.js && node scripts/authz-test.js && node scripts/smoke-test.js"
+    "test": "node scripts/syntax-check.js && node scripts/authz-test.js && node scripts/smoke-test.js",
+    "migrate:crm-audit": "node scripts/migrate-crm-audit.js"
   },
   "keywords": [],
   "author": "",

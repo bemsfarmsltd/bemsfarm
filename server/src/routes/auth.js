@@ -8,6 +8,7 @@ const { upsertContext, trackActivity } = require("../utils/aiContext");
 const { sendPasswordResetEmail, sendWelcomeEmail } = require("../services/emailService");
 const validate = require("../middleware/validate");
 const authSchemas = require("../schemas/authSchemas");
+const { recordAuditRich } = require('../services/auditService');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -63,6 +64,7 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
     );
 
     const user = result.rows[0];
+    if (user) req.auditActor = {id:user.id,role:user.role};
 
     // If permanent delivery address is provided, persist to addresses table
     if (address && address.trim()) {
@@ -136,7 +138,7 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
         .status(403)
         .json({ message: "Account suspended. Contact support." });
     }
-    if (userStatus === "inactive" || userStatus === "deactivated") {
+    if (userStatus === "inactive" || userStatus === "deactivated" || userStatus === "deleted") {
       return res
         .status(403)
         .json({ message: "Account inactive. Contact support." });
@@ -162,6 +164,17 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
           : "UPDATE users SET failed_login_attempts=$1, locked_until=NULL WHERE id=$2",
         [attempts, user.id],
       );
+      // God Eye — security: failed login attempt
+      recordAuditRich({
+        source: 'api', action: 'LOGIN_FAILED',
+        actor_id: user.id, actor_name: user.email, actor_role: user.role,
+        request_id: req.auditRequestId, resource: '/api/auth/login',
+        outcome: 'failure', category: 'security',
+        severity: attempts >= 5 ? 'critical' : 'warning',
+        entity_type: 'user', entity_id: String(user.id),
+        ip_address: clientIP, user_agent: (req.headers['user-agent'] || '').slice(0,300),
+        details: { attempts, locked: attempts >= 5, email: user.email },
+      }).catch(() => {});
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
@@ -224,6 +237,17 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
       last_login: new Date().toISOString(),
     });
     trackActivity(user.id, "login", { ip: clientIP, metadata: { origin } });
+
+    // God Eye — auth: successful login
+    recordAuditRich({
+      source: 'api', action: 'LOGIN_SUCCESS',
+      actor_id: user.id, actor_name: user.name, actor_role: user.role,
+      request_id: req.auditRequestId, resource: '/api/auth/login',
+      outcome: 'success', category: 'auth', severity: 'info',
+      entity_type: 'user', entity_id: String(user.id),
+      ip_address: clientIP, user_agent: (req.headers['user-agent'] || '').slice(0,300),
+      details: { origin, role: user.role },
+    }).catch(() => {});
 
     res.json({ token: accessToken, user: userPayload });
   } catch (err) {
@@ -550,7 +574,7 @@ router.get("/me", protect, async (req, res, next) => {
     // Mirror login's blocking rule — only suspended/inactive accounts are
     // rejected here, so a staff member marked "on_leave" doesn't get bounced
     // straight back out on the very next /me call after logging in.
-    if (user.status === "suspended" || user.status === "inactive") {
+    if (user.status === "suspended" || user.status === "inactive" || user.status === "deleted") {
       return res.status(403).json({ message: "Account is not active" });
     }
 
@@ -668,6 +692,17 @@ router.post("/change-password", protect, validate(authSchemas.changePassword), a
     );
 
     const accessToken = generateAccessToken(updated.rows[0]);
+    // God Eye — auth: password changed
+    recordAuditRich({
+      source: 'api', action: 'PASSWORD_CHANGED',
+      actor_id: req.user.id, actor_name: req.user.name, actor_role: req.user.role,
+      request_id: req.auditRequestId, resource: '/api/auth/change-password',
+      outcome: 'success', category: 'auth', severity: 'warning',
+      entity_type: 'user', entity_id: String(req.user.id),
+      ip_address: req.headers['cf-connecting-ip'] || req.ip,
+      user_agent: (req.headers['user-agent'] || '').slice(0, 300),
+      details: { self_service: true },
+    }).catch(() => {});
     res.json({ message: "Password updated successfully", token: accessToken });
   } catch (err) {
     next(err);
@@ -958,7 +993,7 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
           .status(403)
           .json({ message: "Account suspended. Contact support." });
       }
-      if (userStatus === "inactive" || userStatus === "deactivated") {
+      if (userStatus === "inactive" || userStatus === "deactivated" || userStatus === "deleted") {
         return res
           .status(403)
           .json({ message: "Account inactive. Contact support." });

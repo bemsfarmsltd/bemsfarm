@@ -102,8 +102,7 @@ export default function CustomersList() {
     try {
       const target = (selected.id != null && String(selected.id) !== 'null') ? selected.id : (selected.customer_code && selected.customer_code !== 'null' ? selected.customer_code : selected.email)
       await api.delete(`/admin/customers/${target}`, {
-        data: { admin_password: adminPassword.trim() },
-        headers: { 'x-admin-password': adminPassword.trim() },
+        data: { admin_password: adminPassword },
       })
       setCustomers(prev => prev.filter(c => c.id !== selected.id))
       toast.success(`Customer ${selected.name} deleted successfully`)

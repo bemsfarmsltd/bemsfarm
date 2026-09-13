@@ -21,6 +21,7 @@ export default function Sidebar() {
     chef: '/chef-bems/conversations',
     stores: '/stores',
     settings: '/settings/team',
+    godeye: '/god-eye',
   }
 
   // Role helpers
@@ -36,6 +37,7 @@ export default function Sidebar() {
   const showStores    = is('superadmin', 'admin')
   const showSettings  = is('superadmin', 'admin', 'manager')
   const showPOS       = is('superadmin', 'admin', 'manager', 'cashier')
+  const showGodEye    = is('superadmin')
 
   // Auto-detect active category based on current pathname
   const getActiveCategoryFromPath = (path) => {
@@ -51,6 +53,7 @@ export default function Sidebar() {
     if (path.startsWith('/chef-bems')) return 'chef'
     if (path.startsWith('/stores')) return 'stores'
     if (path.startsWith('/settings')) return 'settings'
+    if (path.startsWith('/god-eye')) return 'godeye'
     if (path.startsWith('/pos')) return 'pos'
     return 'dashboards'
   }
@@ -510,6 +513,20 @@ export default function Sidebar() {
                 <span className="rail-label">Settings</span>
               </button>
             )}
+
+            {/* God Eye Audit — superadmin only */}
+            {showGodEye && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'godeye' ? 'active' : ''}`}
+                onClick={() => handleCategoryClick('godeye')}
+                title="God Eye — System Audit"
+                style={activeTab === 'godeye' ? { background: 'linear-gradient(135deg,#1e293b,#0f172a)', color: '#f59e0b' } : {}}
+              >
+                <span className="rail-icon" style={{ fontSize: 18, lineHeight: 1 }}>👁️</span>
+                <span className="rail-label" style={{ fontWeight: activeTab === 'godeye' ? 700 : 500 }}>God Eye</span>
+              </button>
+            )}
           </div>
 
           {/* Bottom Logout */}
@@ -544,6 +561,7 @@ export default function Sidebar() {
               {activeTab === 'chef' && 'Chef Bems AI'}
               {activeTab === 'stores' && 'Multi-Store Network'}
               {activeTab === 'settings' && 'System Settings'}
+              {activeTab === 'godeye' && '👁️ God Eye — Audit'}
             </div>
           </div>
 
@@ -759,6 +777,11 @@ export default function Sidebar() {
                 <NavLink to="/customers/wallet" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Wallet Balances</span>
                 </NavLink>
+                {['superadmin','admin','manager'].includes(user?.role) && <>
+                  <NavLink to="/customers/messages" className="dual-sub-link">Customer Messages</NavLink>
+                  <NavLink to="/customers/broadcasts" className="dual-sub-link">Announcements</NavLink>
+                  <NavLink to="/customers/demand" className="dual-sub-link">Product Demand</NavLink>
+                </>}
                 <NavLink to="/customers/activity" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Customer Activity</span>
                 </NavLink>
@@ -857,6 +880,7 @@ export default function Sidebar() {
                     <span>Roles &amp; Permissions</span>
                   </NavLink>
                 )}
+                {['superadmin'].includes(user?.role) && <NavLink to="/settings/audit" className="dual-sub-link">System Audit (Legacy)</NavLink>}
                 <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>General Store Info</span>
                 </NavLink>
@@ -901,9 +925,31 @@ export default function Sidebar() {
               </>
             )}
 
-          </div>
+            {/* 13. GOD EYE — superadmin only */}
+            {activeTab === 'godeye' && showGodEye && (
+              <>
+                <div className="sub-panel-section-label" style={{ padding: '12px 16px 6px', fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '.07em', textTransform: 'uppercase' }}>
+                  Omniscient Audit Log
+                </div>
+                <NavLink to="/god-eye" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>👁️ God Eye Dashboard</span>
+                  <span className="sub-badge" style={{ background: '#fef2f2', color: '#dc2626' }}>Live</span>
+                </NavLink>
+                <div className="sub-panel-section-label" style={{ padding: '12px 16px 4px', fontSize: 10, fontWeight: 600, color: '#cbd5e1', letterSpacing: '.06em', textTransform: 'uppercase' }}>
+                  Categories
+                </div>
+                <NavLink to="/god-eye?category=auth"      className="dual-sub-link"><span>🔐 Auth Events</span></NavLink>
+                <NavLink to="/god-eye?category=security"  className="dual-sub-link"><span>🛡️ Security</span></NavLink>
+                <NavLink to="/god-eye?category=customer"  className="dual-sub-link"><span>👤 Customer Actions</span></NavLink>
+                <NavLink to="/god-eye?category=admin"     className="dual-sub-link"><span>⚙️ Admin Actions</span></NavLink>
+                <NavLink to="/god-eye?category=financial" className="dual-sub-link"><span>💰 Financial</span></NavLink>
+                <NavLink to="/god-eye?category=developer" className="dual-sub-link"><span>👨‍💻 Developer Events</span></NavLink>
+              </>
+            )}
 
-        </div>
+          </div>{/* end sub-panel-nav */}
+
+        </div>{/* end sidebar-sub-panel */}
 
       </div>
     </div>

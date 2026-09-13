@@ -50,7 +50,7 @@ const protect = async (req, res, next) => {
     if (userStatus === "suspended") {
       return res.status(403).json({ message: "Account suspended" });
     }
-    if (userStatus === "inactive" || userStatus === "deactivated") {
+    if (userStatus === "inactive" || userStatus === "deactivated" || userStatus === "deleted") {
       return res.status(403).json({ message: "Account deactivated" });
     }
 

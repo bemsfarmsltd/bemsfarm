@@ -10,6 +10,8 @@ const { CUSTOMER_ROLE } = require("../config/roles");
 const validate = require("../middleware/validate");
 const customerAdminSchemas = require("../schemas/customerAdminSchemas");
 const { clampLimit } = require("../utils/pagination");
+const { initCrmTables } = require("../db/migrate_crm_chat_broadcast");
+const { recordAuditRich } = require('../services/auditService');
 
 router.use(protect);
 
@@ -405,63 +407,12 @@ Based on purchase history and a total spending of **₦${Number(customer.total_s
 // replaces ActivityLog.jsx's previously hardcoded fixture.
 // Must be registered before GET /:id or Express treats "site-activity"
 // as an :id value.
-let hasSyncedHistorical = false;
-async function ensureHistoricalActivity() {
-  if (hasSyncedHistorical) return;
-  try {
-    const check = await pool.query("SELECT COUNT(*) FROM ai_user_activity");
-    const count = parseInt(check.rows[0]?.count || "0", 10);
-    if (count < 10) {
-      // Backfill past orders if missing
-      await pool.query(`
-        INSERT INTO ai_user_activity (user_id, type, entity_type, entity_id, metadata, created_at)
-        SELECT o.user_id, 'order_created', 'order', o.id::text,
-               json_build_object('total', o.total, 'status', o.status)::jsonb,
-               COALESCE(o.created_at, NOW())
-        FROM orders o
-        WHERE o.id::text NOT IN (
-          SELECT COALESCE(entity_id, '') FROM ai_user_activity WHERE type = 'order_created'
-        )
-      `).catch(() => {});
-
-      // Backfill user registrations if missing
-      await pool.query(`
-        INSERT INTO ai_user_activity (user_id, type, entity_type, entity_id, metadata, created_at)
-        SELECT u.id, 'registered', 'user', u.id::text,
-               json_build_object('name', u.name, 'email', u.email)::jsonb,
-               COALESCE(u.created_at, NOW())
-        FROM users u
-        WHERE u.id::text NOT IN (
-          SELECT COALESCE(entity_id, '') FROM ai_user_activity WHERE type = 'registered'
-        )
-      `).catch(() => {});
-
-      // Backfill logins for users who have recorded last_login
-      await pool.query(`
-        INSERT INTO ai_user_activity (user_id, type, entity_type, entity_id, metadata, created_at)
-        SELECT u.id, 'login', 'user', u.id::text,
-               json_build_object('name', u.name, 'email', u.email)::jsonb,
-               COALESCE(u.last_login, u.updated_at, u.created_at, NOW())
-        FROM users u
-        WHERE u.last_login IS NOT NULL
-          AND NOT EXISTS (
-            SELECT 1 FROM ai_user_activity a WHERE a.user_id = u.id AND a.type = 'login'
-          )
-      `).catch(() => {});
-    }
-    hasSyncedHistorical = true;
-  } catch (err) {
-    console.warn("[customers_admin] ensureHistoricalActivity notice:", err.message);
-  }
-}
-
 router.get("/site-activity", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
-    await ensureHistoricalActivity();
     const { type = "", search = "", date_from = "", date_to = "", limit: limitRaw = 100 } = req.query;
     const limit = clampLimit(limitRaw, 100);
     const params = [];
-    const where = [];
+    const where = ["u.role = 'user'", "a.type IN ('login','registered','email_verified_login','order_created','product_viewed','onboarding_completed','profile_updated')"];
 
     if (type) {
       params.push(type);
@@ -485,7 +436,7 @@ router.get("/site-activity", requireRole("superadmin", "manager", "admin"), asyn
 
     const [result, countRow, typeCounts] = await Promise.all([
       pool.query(
-        `SELECT a.id, a.type, a.entity_type, a.entity_id, a.metadata, a.ip_address, a.created_at,
+        `SELECT a.id, a.type, a.entity_type, a.entity_id, a.metadata - 'ip_address' - 'user_agent' AS metadata, a.created_at,
                 u.id AS user_id, u.name AS user_name, u.email AS user_email
          FROM ai_user_activity a
          LEFT JOIN users u ON u.id = a.user_id
@@ -498,7 +449,7 @@ router.get("/site-activity", requireRole("superadmin", "manager", "admin"), asyn
         `SELECT COUNT(*) FROM ai_user_activity a LEFT JOIN users u ON u.id = a.user_id ${clause}`,
         params.slice(0, -1),
       ),
-      pool.query(`SELECT type, COUNT(*) FROM ai_user_activity GROUP BY type`),
+      pool.query(`SELECT a.type, COUNT(*) FROM ai_user_activity a JOIN users u ON u.id=a.user_id WHERE u.role='user' AND a.type IN ('login','registered','email_verified_login','order_created','product_viewed','onboarding_completed','profile_updated') GROUP BY a.type`),
     ]);
 
     res.json({
@@ -509,6 +460,202 @@ router.get("/site-activity", requireRole("superadmin", "manager", "admin"), asyn
   } catch (err) {
     next(err);
   }
+});
+
+// ── GET /api/admin/customers/conversations/inbox ───────────────────
+// Centralized Support Chat inbox for admin staff to see all customer inquiries
+router.get("/conversations/inbox", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+  try {
+    await initCrmTables();
+    const result = await pool.query(`
+      SELECT 
+        c.id AS conversation_id,
+        c.customer_id,
+        c.status,
+        c.last_message,
+        c.last_message_at,
+        u.name AS customer_name,
+        u.email AS customer_email,
+        u.phone AS customer_phone,
+        CASE
+          WHEN u.customer_code IS NOT NULL AND u.customer_code != 'null' AND u.customer_code != 'undefined' AND TRIM(u.customer_code) != ''
+          THEN u.customer_code
+          ELSE 'CUS-' || LPAD(u.id::text, 4, '0')
+        END AS customer_code,
+        COUNT(m.id) FILTER (WHERE m.sender_type = 'customer' AND m.is_read = FALSE) AS unread_count
+      FROM customer_conversations c
+      JOIN users u ON u.id = c.customer_id
+      LEFT JOIN customer_messages m ON m.conversation_id = c.id
+      GROUP BY c.id, c.customer_id, c.status, c.last_message, c.last_message_at, u.id, u.name, u.email, u.phone, u.customer_code
+      ORDER BY c.last_message_at DESC;
+    `);
+
+    res.json({ conversations: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /api/admin/customers/procurement/demand-ranking ────────────
+// Out-of-stock items clicked by customers for the procurement next-purchase list
+router.get("/procurement/demand-ranking", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+  try {
+    await initCrmTables();
+    const result = await pool.query(`
+      SELECT 
+        pdt.product_id,
+        pdt.product_name,
+        pdt.category,
+        COUNT(*) AS demand_clicks,
+        COUNT(DISTINCT COALESCE(pdt.user_id::text, pdt.user_email, pdt.id::text)) AS unique_customers,
+        MAX(pdt.created_at) AS last_demanded_at,
+        p.price,
+        p.stock,
+        p.image_url
+      FROM product_demand_telemetry pdt
+      LEFT JOIN products p ON p.id = pdt.product_id
+      GROUP BY pdt.product_id, pdt.product_name, pdt.category, p.price, p.stock, p.image_url
+      ORDER BY demand_clicks DESC
+      LIMIT 50
+    `);
+
+    res.json({ demands: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── GET /api/admin/customers/:id/goods-intelligence ───────────────
+// Most ordered goods, most clicked goods, saved wishlist, and out-of-stock demands
+router.get("/:id/goods-intelligence", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
+  try {
+    await initCrmTables();
+    const target = String(req.params.id || "").trim();
+    if (!target || target === "null" || target === "undefined") {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+    const isNum = !isNaN(Number(target));
+
+    const userRes = isNum
+      ? await pool.query("SELECT id, email, name FROM users WHERE role='user' AND status <> 'deleted' AND id = $1", [Number(target)])
+      : await pool.query("SELECT id, email, name FROM users WHERE role='user' AND status <> 'deleted' AND (customer_code = $1 OR email = $1)", [target]);
+
+    if (userRes.rowCount === 0) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+    const customer = userRes.rows[0];
+    const customerId = customer.id;
+    const customerEmail = customer.email;
+
+    // 1. Most Ordered Goods
+    const mostOrderedQuery = `
+      SELECT 
+        oi.product_id,
+        COALESCE(p.name, 'Product #' || oi.product_id) AS product_name,
+        p.image_url,
+        p.price AS current_price,
+        p.stock,
+        COUNT(DISTINCT o.id) AS times_ordered,
+        SUM(oi.quantity) AS total_quantity,
+        SUM(COALESCE(oi.subtotal, oi.quantity * COALESCE(oi.unit_price,oi.price))) AS total_spent,
+        MAX(o.created_at) AS last_ordered_at
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      LEFT JOIN products p ON p.id = oi.product_id
+      WHERE (o.customer_id = $1 OR o.user_id = $1) AND o.status NOT IN ('cancelled','refunded')
+      GROUP BY oi.product_id, p.name, p.image_url, p.price, p.stock
+      ORDER BY times_ordered DESC, total_quantity DESC
+      LIMIT 20;
+    `;
+
+    // 2. Most Clicked Goods (from ai_user_activity)
+    const mostClickedQuery = `
+      SELECT 
+        COALESCE(a.entity_id, '') AS product_id,
+        COALESCE(p.name, MAX(a.metadata->>'name'), 'Product #' || a.entity_id) AS product_name,
+        p.image_url,
+        p.price,
+        p.stock,
+        COUNT(*) AS click_count,
+        MAX(a.created_at) AS last_clicked_at
+      FROM ai_user_activity a
+      LEFT JOIN products p ON p.id::text = a.entity_id
+      WHERE a.user_id = $1 AND a.type = 'product_viewed'
+      GROUP BY a.entity_id, p.name, p.image_url, p.price, p.stock
+      ORDER BY click_count DESC, last_clicked_at DESC
+      LIMIT 20;
+    `;
+
+    // 3. Wishlist / Saved Items (from customer_saved_items)
+    const wishlistQuery = `
+      SELECT 
+        p.id AS product_id,
+        p.name AS product_name,
+        p.image_url,
+        p.price,
+        p.stock,
+        p.status,
+        CASE 
+          WHEN COALESCE(p.stock, 0) <= 0 OR p.available_for_sale = FALSE THEN FALSE 
+          ELSE TRUE 
+        END AS in_stock,
+        csi.created_at AS added_at
+      FROM customer_saved_items csi
+      JOIN products p ON p.id = csi.product_id
+      WHERE csi.user_id = $1
+      ORDER BY csi.created_at DESC
+      LIMIT 50;
+    `;
+
+    // 4. Out-of-Stock Demand Inquiries (from product_demand_telemetry)
+    const demandQuery = `
+      SELECT 
+        pdt.id,
+        pdt.product_id,
+        pdt.product_name,
+        pdt.category,
+        pdt.source,
+        pdt.created_at,
+        p.price,
+        p.image_url,
+        p.stock
+      FROM product_demand_telemetry pdt
+      LEFT JOIN products p ON p.id = pdt.product_id
+      WHERE pdt.user_id = $1 OR (pdt.user_email IS NOT NULL AND pdt.user_email = $2)
+      ORDER BY pdt.created_at DESC
+      LIMIT 50;
+    `;
+
+    const [orderedRes, clickedRes, wishlistRes, demandRes] = await Promise.all([
+      pool.query(mostOrderedQuery, [customerId]),
+      pool.query(mostClickedQuery, [customerId]),
+      pool.query(wishlistQuery, [customerId]),
+      pool.query(demandQuery, [customerId, customerEmail]),
+    ]);
+
+    res.json({
+      most_ordered: orderedRes.rows,
+      most_clicked: clickedRes.rows,
+      wishlist: wishlistRes.rows,
+      demands: demandRes.rows,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const support = require('../services/supportService');
+router.get('/:id/messages', requireRole('superadmin','manager','admin'),async(req,res,next)=>{
+  try {const c=await support.resolveCustomer(req.params.id);res.json(await support.getMessages(c.id));}
+  catch(e){if(e.status)return res.status(e.status).json({message:e.message});next(e);}
+});
+router.post('/:id/messages',requireRole('superadmin','manager','admin'),async(req,res,next)=>{
+  try {const c=await support.resolveCustomer(req.params.id);res.status(201).json(await support.sendMessage(c.id,req.body.message,req.user));}
+  catch(e){if(e.status)return res.status(e.status).json({message:e.message});next(e);}
+});
+router.post('/:id/messages/read',requireRole('superadmin','manager','admin'),async(req,res,next)=>{
+  try {const c=await support.resolveCustomer(req.params.id);await support.markRead(c.id,'customer');res.json({success:true});}
+  catch(e){if(e.status)return res.status(e.status).json({message:e.message});next(e);}
 });
 
 // ── GET /api/admin/customers/:id ──────────────────────────────────
@@ -765,6 +912,12 @@ router.patch(
         return res.status(400).json({ message: "Valid customer identifier required" });
       }
 
+      // Fetch before-state for audit
+      const before = !isNaN(Number(target))
+        ? await pool.query(`SELECT id, name, email, status FROM users WHERE id=$1 OR customer_code=$2`, [Number(target), target])
+        : await pool.query(`SELECT id, name, email, status FROM users WHERE customer_code=$1 OR LOWER(email)=LOWER($1)`, [target]);
+      const beforeRow = before.rows[0];
+
       let result;
       if (!isNaN(Number(target))) {
         result = await pool.query(
@@ -786,7 +939,29 @@ router.patch(
         return res.status(404).json({ message: "Customer not found" });
       }
 
-      res.json({ message: `Customer status updated to ${status}`, user: result.rows[0] });
+      const updated = result.rows[0];
+      // God Eye audit
+      recordAuditRich({
+        source:      'api',
+        action:      `CUSTOMER_STATUS_${status.toUpperCase()}`,
+        actor_id:    req.user?.id,
+        actor_role:  req.user?.role,
+        actor_name:  req.user?.name || req.user?.email,
+        request_id:  req.auditRequestId,
+        resource:    `/api/admin/customers/${target}/status`,
+        outcome:     'success',
+        category:    'customer',
+        severity:    status === 'inactive' || status === 'suspended' ? 'warning' : 'info',
+        entity_type: 'customer',
+        entity_id:   String(updated.id),
+        old_value:   beforeRow ? { status: beforeRow.status } : null,
+        new_value:   { status },
+        ip_address:  req.headers['cf-connecting-ip'] || req.headers['x-real-ip'] || req.ip,
+        user_agent:  (req.headers['user-agent'] || '').slice(0, 300),
+        details:     { customer_name: updated.name, customer_email: updated.email },
+      }).catch(() => {});
+
+      res.json({ message: `Customer status updated to ${status}`, user: updated });
     } catch (err) {
       next(err);
     }
@@ -830,103 +1005,47 @@ router.patch(
   },
 );
 
-// ── DELETE /api/admin/customers/:id ──────────────────────────────
-router.delete(
-  "/:id",
-  requireRole("superadmin", "manager", "admin"),
-  async (req, res, next) => {
-    try {
-      const adminPassword =
-        req.body?.admin_password ||
-        req.body?.password ||
-        req.headers["x-admin-password"];
+// Remove access atomically; retain financial and audit history.
+router.delete('/:id', requireRole('superadmin','manager','admin'), async(req,res,next)=>{
+  try {
+    const {removeCustomer}=require('../services/customerRemoval');
+    const customerId = String(req.params.id || '').trim();
 
-      if (!adminPassword || typeof adminPassword !== "string" || !adminPassword.trim()) {
-        return res.status(400).json({
-          message: "Admin password is required to delete a customer.",
-        });
-      }
+    // Snapshot customer before deletion for audit
+    const snap = !isNaN(Number(customerId))
+      ? await pool.query(`SELECT id, name, email, status, customer_code FROM users WHERE id=$1`, [Number(customerId)])
+      : await pool.query(`SELECT id, name, email, status, customer_code FROM users WHERE customer_code=$1`, [customerId]);
+    const customerSnap = snap.rows[0];
 
-      // Verify the authenticated admin user's credentials
-      const adminUser = await pool.query(
-        "SELECT id, password, role FROM users WHERE id = $1",
-        [req.user.id],
-      );
+    const result = await removeCustomer(pool, req.user, customerId, req.body?.admin_password, req.auditRequestId);
 
-      if (!adminUser.rows.length) {
-        return res.status(401).json({ message: "Administrator account not found." });
-      }
+    // God Eye — critical audit event
+    recordAuditRich({
+      source:      'api',
+      action:      'CUSTOMER_DELETED',
+      actor_id:    req.user?.id,
+      actor_role:  req.user?.role,
+      actor_name:  req.user?.name || req.user?.email,
+      request_id:  req.auditRequestId,
+      resource:    `/api/admin/customers/${customerId}`,
+      outcome:     'success',
+      category:    'customer',
+      severity:    'critical',
+      entity_type: 'customer',
+      entity_id:   String(customerSnap?.id || customerId),
+      old_value:   customerSnap ? { name: customerSnap.name, email: customerSnap.email, status: customerSnap.status, customer_code: customerSnap.customer_code } : null,
+      new_value:   { status: 'deleted' },
+      ip_address:  req.headers['cf-connecting-ip'] || req.headers['x-real-ip'] || req.ip,
+      user_agent:  (req.headers['user-agent'] || '').slice(0, 300),
+      details:     { admin_password_verified: true, customer_id: customerSnap?.id },
+    }).catch(() => {});
 
-      const isValidPassword = await bcrypt.compare(
-        adminPassword.trim(),
-        adminUser.rows[0].password || "",
-      );
-
-      if (!isValidPassword) {
-        return res.status(401).json({
-          message: "Incorrect admin password. Customer deletion was cancelled.",
-        });
-      }
-
-      const target = String(req.params.id || "").trim();
-      if (!target || target === "undefined" || target === "null") {
-        return res.status(400).json({ message: "Valid customer identifier required." });
-      }
-
-      // Find the customer record
-      let findQuery, findParams;
-      if (!isNaN(Number(target))) {
-        findQuery = "SELECT id, name, email FROM users WHERE id = $1 OR customer_code = $2";
-        findParams = [Number(target), target];
-      } else {
-        findQuery = "SELECT id, name, email FROM users WHERE customer_code = $1 OR LOWER(email) = LOWER($1)";
-        findParams = [target];
-      }
-
-      const custRes = await pool.query(findQuery, findParams);
-      if (!custRes.rows.length) {
-        return res.status(404).json({ message: "Customer not found." });
-      }
-
-      const customerId = custRes.rows[0].id;
-
-      // Clean up customer associations and unlink historical orders
-      await pool.query("UPDATE orders SET customer_id = NULL, user_id = NULL WHERE customer_id = $1 OR user_id = $1", [customerId]).catch(() => {});
-      await pool.query("DELETE FROM customer_wallet_transactions WHERE customer_id = $1", [customerId]).catch(() => {});
-      await pool.query("DELETE FROM customer_wallets WHERE customer_id = $1", [customerId]).catch(() => {});
-      await pool.query("DELETE FROM loyalty_transactions WHERE customer_id = $1", [customerId]).catch(() => {});
-      await pool.query("DELETE FROM customer_loyalty WHERE customer_id = $1", [customerId]).catch(() => {});
-      await pool.query("DELETE FROM user_addresses WHERE user_id = $1", [customerId]).catch(() => {});
-      await pool.query("DELETE FROM ai_user_activity WHERE user_id = $1", [customerId]).catch(() => {});
-      await pool.query("DELETE FROM ai_user_context WHERE user_id = $1", [customerId]).catch(() => {});
-      await pool.query("DELETE FROM ai_onboarding_data WHERE user_id = $1", [customerId]).catch(() => {});
-      await pool.query("DELETE FROM customer_carts WHERE customer_id = $1", [customerId]).catch(() => {});
-      await pool.query("DELETE FROM coupon_usages WHERE user_id = $1", [customerId]).catch(() => {});
-      await pool.query("DELETE FROM product_reviews WHERE user_id = $1", [customerId]).catch(() => {});
-
-      // Attempt hard delete; fallback to status='deleted' if any other DB constraint fires
-      try {
-        await pool.query("DELETE FROM users WHERE id = $1", [customerId]);
-      } catch (delErr) {
-        await pool.query(
-          `UPDATE users SET
-             name = 'Deleted Customer',
-             phone = 'deleted_' || id,
-             email = NULL,
-             status = 'deleted',
-             token_version = token_version + 1,
-             updated_at = NOW()
-           WHERE id = $1`,
-          [customerId],
-        );
-      }
-
-      res.json({ message: "Customer successfully deleted." });
-    } catch (err) {
-      next(err);
-    }
-  },
-);
+    res.json(result);
+  } catch(err) {
+    if(err.status) return res.status(err.status).json({message:err.message});
+    next(err);
+  }
+});
 
 // ── POST /api/admin/customers/:id/loyalty ────────────────────────
 // Manually award or deduct points

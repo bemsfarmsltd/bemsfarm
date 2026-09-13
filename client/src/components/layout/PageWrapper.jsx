@@ -3,6 +3,8 @@ import Navbar from "./Navbar";
 import Footer from "./Footer";
 import AIChatbot from "../AIChatbot";
 import CartDrawer from "../ui/CartDrawer";
+import BroadcastPopup from "../ui/BroadcastPopup";
+import CustomerSupportChat from "../ui/CustomerSupportChat";
 
 /*
   FIX: AIChatbot floating icon now hidden on /chef-chat.
@@ -34,6 +36,8 @@ export default function PageWrapper({ children, noFooter = false }) {
       </main>
       {!noFooter && <Footer />}
       {showChatbot && <AIChatbot />}
+      <CustomerSupportChat />
+      <BroadcastPopup />
       <CartDrawer />
     </div>
   );
