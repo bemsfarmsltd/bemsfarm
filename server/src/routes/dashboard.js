@@ -128,9 +128,14 @@ router.get("/overview", async (req, res, next) => {
 
       // Recent orders (last 10)
       q(`SELECT
-           o.id, o.total, o.status, o.created_at,
+           o.id, o.order_ref, o.total, o.status, o.created_at,
            COALESCE(o.customer_name, c.name, 'Walk-in') AS customer,
-           (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS items
+           GREATEST(
+             COALESCE((SELECT SUM(oi.quantity) FROM order_items oi WHERE oi.order_id = o.id),
+                      (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id),
+                      0),
+             CASE WHEN o.total > 0 THEN 1 ELSE 0 END
+           ) AS items
          FROM orders o
          LEFT JOIN users c ON o.customer_id = c.id
          ORDER BY o.created_at DESC

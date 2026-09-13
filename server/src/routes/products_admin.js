@@ -171,9 +171,11 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "kitchen_staff"
       SELECT
         p.*,
         cat.name AS category_name,
+        sub.name AS sub_category_name,
         u.name   AS unit_name, u.abbreviation AS unit_abbr
       FROM products p
       LEFT JOIN categories cat ON p.category_id = cat.id
+      LEFT JOIN sub_categories sub ON p.sub_category_id = sub.id
       LEFT JOIN units_of_measure u ON p.unit_of_measure_id = u.id
       WHERE p.id = $1
     `,
@@ -191,7 +193,56 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "kitchen_staff"
       [req.params.id],
     );
 
-    res.json({ ...result.rows[0], images: images.rows });
+    // Sales Performance & Volume
+    const salesStats = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(oi.quantity), 0) AS total_units_sold,
+        COALESCE(SUM(COALESCE(oi.subtotal, oi.quantity * oi.price)), 0) AS total_revenue,
+        COUNT(DISTINCT o.id) AS total_orders
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      WHERE oi.product_id = $1 AND o.status NOT IN ('cancelled', 'failed')
+    `,
+      [req.params.id],
+    );
+
+    // Recent Orders featuring this product
+    const recentOrders = await pool.query(
+      `
+      SELECT
+        o.id, o.order_ref, o.customer_name, o.created_at, o.status,
+        oi.quantity, oi.price, COALESCE(oi.subtotal, oi.quantity * oi.price) AS total
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      WHERE oi.product_id = $1
+      ORDER BY o.created_at DESC
+      LIMIT 8
+    `,
+      [req.params.id],
+    );
+
+    // Recent Stock Movements (Audit Trail)
+    let recentMovements = [];
+    try {
+      const smRes = await pool.query(
+        `SELECT sm.id, sm.type, sm.quantity, sm.before_qty, sm.after_qty, sm.reference, sm.reason, sm.created_at
+         FROM stock_movements sm
+         WHERE sm.product_id = $1
+         ORDER BY sm.created_at DESC
+         LIMIT 6`,
+        [req.params.id]
+      );
+      recentMovements = smRes.rows;
+    } catch (_) {}
+
+    res.json({
+      ...result.rows[0],
+      images: images.rows,
+      sales_stats: salesStats.rows[0] || { total_units_sold: 0, total_revenue: 0, total_orders: 0 },
+      recent_orders: recentOrders.rows || [],
+      recent_movements: recentMovements,
+    });
   } catch (err) {
     next(err);
   }

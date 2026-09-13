@@ -1116,4 +1116,334 @@ router.delete(
   }
 );
 
+// ════════════════════════════════════════════════════════════════════════════
+// PURCHASE & RESTOCK CALENDAR SCHEDULER
+// ════════════════════════════════════════════════════════════════════════════
+
+let scheduledTableReady = false;
+async function ensureScheduledPurchasesTable() {
+  if (scheduledTableReady) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS scheduled_purchases (
+      id                 SERIAL PRIMARY KEY,
+      product_id         INT REFERENCES products(id) ON DELETE SET NULL,
+      product_name       VARCHAR(255) NOT NULL,
+      expected_date      DATE NOT NULL,
+      quantity           INT NOT NULL,
+      unit               VARCHAR(50) DEFAULT 'pcs',
+      estimated_cost     DECIMAL(12,2) DEFAULT 0,
+      supplier_name      VARCHAR(255),
+      supplier_id        INT,
+      notes              TEXT,
+      status             VARCHAR(30) DEFAULT 'scheduled',
+      received_date      DATE,
+      received_quantity  INT,
+      created_by         INT REFERENCES users(id) ON DELETE SET NULL,
+      created_at         TIMESTAMP DEFAULT NOW(),
+      updated_at         TIMESTAMP DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_scheduled_purchases_date ON scheduled_purchases(expected_date);
+    CREATE INDEX IF NOT EXISTS idx_scheduled_purchases_status ON scheduled_purchases(status);
+  `);
+  scheduledTableReady = true;
+}
+
+// ── GET /api/admin/inventory/schedules ──────────────────────────────
+router.get(
+  "/schedules",
+  requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      await ensureScheduledPurchasesTable();
+      const { start_date, end_date, month, status, search } = req.query;
+      const params = [];
+      const where = [];
+
+      if (start_date && end_date) {
+        params.push(start_date);
+        params.push(end_date);
+        where.push(`sp.expected_date BETWEEN $${params.length - 1} AND $${params.length}`);
+      } else if (month) {
+        params.push(`${month}%`);
+        where.push(`TO_CHAR(sp.expected_date, 'YYYY-MM') LIKE $${params.length}`);
+      }
+
+      if (status && status !== "all") {
+        if (status === "overdue") {
+          where.push(`sp.status = 'scheduled' AND sp.expected_date < CURRENT_DATE`);
+        } else {
+          params.push(status);
+          where.push(`sp.status = $${params.length}`);
+        }
+      }
+
+      if (search) {
+        params.push(`%${search}%`);
+        where.push(`(sp.product_name ILIKE $${params.length} OR sp.supplier_name ILIKE $${params.length} OR sp.notes ILIKE $${params.length})`);
+      }
+
+      const whereClause = where.length ? "WHERE " + where.join(" AND ") : "";
+
+      const query = `
+        SELECT
+          sp.*,
+          TO_CHAR(sp.expected_date, 'YYYY-MM-DD') AS expected_date_str,
+          TO_CHAR(sp.received_date, 'YYYY-MM-DD') AS received_date_str,
+          p.sku AS product_sku,
+          p.stock AS current_stock,
+          p.low_stock_threshold,
+          p.price AS current_price,
+          p.cost_price AS current_cost_price,
+          p.image_url AS product_image,
+          u.name AS created_by_name,
+          CASE 
+            WHEN sp.status = 'scheduled' AND sp.expected_date < CURRENT_DATE THEN 'overdue'
+            ELSE sp.status
+          END AS computed_status
+        FROM scheduled_purchases sp
+        LEFT JOIN products p ON sp.product_id = p.id
+        LEFT JOIN users u ON sp.created_by = u.id
+        ${whereClause}
+        ORDER BY sp.expected_date ASC, sp.id ASC
+      `;
+
+      const result = await pool.query(query, params);
+      res.json({ schedules: result.rows });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ── GET /api/admin/inventory/schedules/:id ──────────────────────────
+router.get(
+  "/schedules/:id",
+  requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      await ensureScheduledPurchasesTable();
+      const result = await pool.query(
+        `SELECT sp.*, p.sku AS product_sku, p.stock AS current_stock, p.image_url AS product_image
+         FROM scheduled_purchases sp
+         LEFT JOIN products p ON sp.product_id = p.id
+         WHERE sp.id = $1`,
+        [req.params.id]
+      );
+      if (!result.rows.length) return res.status(404).json({ message: "Schedule not found" });
+      res.json(result.rows[0]);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ── POST /api/admin/inventory/schedules ─────────────────────────────
+router.post(
+  "/schedules",
+  requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      await ensureScheduledPurchasesTable();
+      const {
+        product_id,
+        product_name,
+        expected_date,
+        quantity,
+        unit = "pcs",
+        estimated_cost = 0,
+        supplier_name,
+        supplier_id,
+        notes,
+      } = req.body;
+
+      if (!expected_date) {
+        return res.status(400).json({ message: "Expected date is required" });
+      }
+      if (!quantity || Number(quantity) <= 0) {
+        return res.status(400).json({ message: "Quantity must be greater than 0" });
+      }
+
+      let resolvedName = product_name;
+      if (product_id && !resolvedName) {
+        const prod = await pool.query("SELECT name FROM products WHERE id = $1", [product_id]);
+        if (prod.rows.length) resolvedName = prod.rows[0].name;
+      }
+      if (!resolvedName) {
+        return res.status(400).json({ message: "Product name or product selection is required" });
+      }
+
+      const result = await pool.query(
+        `INSERT INTO scheduled_purchases
+           (product_id, product_name, expected_date, quantity, unit, estimated_cost, supplier_name, supplier_id, notes, status, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'scheduled', $10)
+         RETURNING *`,
+        [
+          product_id ? parseInt(product_id) : null,
+          resolvedName.trim(),
+          expected_date,
+          parseInt(quantity),
+          unit || "pcs",
+          parseFloat(estimated_cost) || 0,
+          supplier_name ? supplier_name.trim() : null,
+          supplier_id ? parseInt(supplier_id) : null,
+          notes ? notes.trim() : null,
+          req.user?.id || null,
+        ]
+      );
+
+      res.status(201).json({
+        message: "Purchase scheduled successfully",
+        schedule: result.rows[0],
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ── PATCH /api/admin/inventory/schedules/:id ────────────────────────
+router.patch(
+  "/schedules/:id",
+  requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      await ensureScheduledPurchasesTable();
+      const {
+        product_id,
+        product_name,
+        expected_date,
+        quantity,
+        unit,
+        estimated_cost,
+        supplier_name,
+        notes,
+        status,
+      } = req.body;
+
+      const existing = await pool.query("SELECT * FROM scheduled_purchases WHERE id = $1", [req.params.id]);
+      if (!existing.rows.length) return res.status(404).json({ message: "Schedule not found" });
+
+      const prev = existing.rows[0];
+
+      const result = await pool.query(
+        `UPDATE scheduled_purchases SET
+           product_id     = COALESCE($1, product_id),
+           product_name   = COALESCE($2, product_name),
+           expected_date  = COALESCE($3, expected_date),
+           quantity       = COALESCE($4, quantity),
+           unit           = COALESCE($5, unit),
+           estimated_cost = COALESCE($6, estimated_cost),
+           supplier_name  = COALESCE($7, supplier_name),
+           notes          = COALESCE($8, notes),
+           status         = COALESCE($9, status),
+           updated_at     = NOW()
+         WHERE id = $10
+         RETURNING *`,
+        [
+          product_id !== undefined ? (product_id ? parseInt(product_id) : null) : prev.product_id,
+          product_name !== undefined ? product_name.trim() : prev.product_name,
+          expected_date !== undefined ? expected_date : prev.expected_date,
+          quantity !== undefined ? parseInt(quantity) : prev.quantity,
+          unit !== undefined ? unit : prev.unit,
+          estimated_cost !== undefined ? parseFloat(estimated_cost) : prev.estimated_cost,
+          supplier_name !== undefined ? supplier_name : prev.supplier_name,
+          notes !== undefined ? notes : prev.notes,
+          status !== undefined ? status : prev.status,
+          req.params.id,
+        ]
+      );
+
+      res.json({ message: "Schedule updated", schedule: result.rows[0] });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ── POST /api/admin/inventory/schedules/:id/receive ─────────────────
+// Marks scheduled purchase as received and updates inventory stock atomically
+router.post(
+  "/schedules/:id/receive",
+  requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      await ensureScheduledPurchasesTable();
+      await client.query("BEGIN");
+
+      const check = await client.query("SELECT * FROM scheduled_purchases WHERE id = $1 FOR UPDATE", [req.params.id]);
+      if (!check.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Schedule not found" });
+      }
+
+      const sch = check.rows[0];
+      if (sch.status === "received") {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ message: "This purchase has already been received and stocked in." });
+      }
+
+      const receivedQty = parseInt(req.body.received_quantity || sch.quantity);
+      const receivedDate = req.body.received_date || new Date().toISOString().split("T")[0];
+      const warehouseId = req.body.warehouse_id ? parseInt(req.body.warehouse_id) : null;
+      const unitCost = sch.estimated_cost && receivedQty > 0 ? (sch.estimated_cost / receivedQty) : null;
+
+      let stockResult = null;
+      if (sch.product_id) {
+        stockResult = await applyStockChange(client, {
+          productId: sch.product_id,
+          warehouseId,
+          type: "stock_in",
+          delta: receivedQty,
+          reference: `SCH-${sch.id}`,
+          reason: `Scheduled purchase restock (${sch.supplier_name || "Supplier"})`,
+          notes: sch.notes || `Stocked in from Restock Calendar schedule #${sch.id}`,
+          unitCost,
+          userId: req.user?.id,
+        });
+      }
+
+      const updated = await client.query(
+        `UPDATE scheduled_purchases SET
+           status            = 'received',
+           received_date     = $1,
+           received_quantity = $2,
+           updated_at        = NOW()
+         WHERE id = $3
+         RETURNING *`,
+        [receivedDate, receivedQty, sch.id]
+      );
+
+      await client.query("COMMIT");
+
+      res.json({
+        message: `Successfully received ${receivedQty} ${sch.unit || 'units'} and updated inventory.`,
+        schedule: updated.rows[0],
+        stock: stockResult,
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
+
+// ── DELETE /api/admin/inventory/schedules/:id ───────────────────────
+router.delete(
+  "/schedules/:id",
+  requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      await ensureScheduledPurchasesTable();
+      await pool.query("DELETE FROM scheduled_purchases WHERE id = $1", [req.params.id]);
+      res.json({ success: true, message: "Scheduled purchase deleted" });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 module.exports = router;
+

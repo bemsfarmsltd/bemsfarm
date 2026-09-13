@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import BarcodeSvg from '../../components/ui/BarcodeSvg'
 import { generateUniversalGoodsCode } from '../../lib/barcodeGenerator'
+import ProductDetailModal from '../../components/products/ProductDetailModal'
 
 export default function ProductsList() {
   const navigate = useNavigate()
@@ -24,6 +25,7 @@ export default function ProductsList() {
   // Quick Barcode Modal State
   const [previewBarcodeProduct, setPreviewBarcodeProduct] = useState(null)
   const [generatingBarcodeId, setGeneratingBarcodeId] = useState(null)
+  const [selectedProductId, setSelectedProductId] = useState(null)
 
   // Fetch categories for filter dropdown
   useEffect(() => {
@@ -264,7 +266,13 @@ export default function ProductsList() {
                     <tr key={p.id}>
                       <td className="text-muted fw-semibold">{(page - 1) * 15 + index + 1}</td>
                       <td>
-                        <div className="d-flex align-items-center gap-2">
+                        <div
+                          className="d-flex align-items-center gap-2"
+                          role="button"
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setSelectedProductId(p.id)}
+                          title="Click to view deep product details"
+                        >
                           {p.image_url ? (
                             <img
                               src={p.image_url}
@@ -281,7 +289,7 @@ export default function ProductsList() {
                             </div>
                           )}
                           <div>
-                            <div className="fw-bold text-dark">{p.name}</div>
+                            <div className="fw-bold text-dark text-decoration-hover">{p.name}</div>
                             {p.is_featured && (
                               <span className="badge bg-warning-subtle text-warning fs-xs">Featured</span>
                             )}
@@ -349,6 +357,14 @@ export default function ProductsList() {
                       </td>
                       <td className="text-end pe-3">
                         <div className="btn-group btn-group-sm">
+                          <button
+                            type="button"
+                            className="btn btn-outline-info"
+                            onClick={() => setSelectedProductId(p.id)}
+                            title="View Deep Details"
+                          >
+                            <i className="ri-eye-line"></i>
+                          </button>
                           <button
                             type="button"
                             className="btn btn-outline-secondary"
@@ -539,6 +555,18 @@ export default function ProductsList() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Deep Product Detail Modal */}
+      {selectedProductId && (
+        <ProductDetailModal
+          productId={selectedProductId}
+          onClose={() => setSelectedProductId(null)}
+          onScheduleRestock={(prod) => {
+            setSelectedProductId(null)
+            navigate(`/inventory/schedule?product_id=${prod.id}&name=${encodeURIComponent(prod.name)}`)
+          }}
+        />
       )}
     </div>
   )

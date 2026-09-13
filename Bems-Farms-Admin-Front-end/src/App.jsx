@@ -43,6 +43,7 @@ import Warehouses      from './pages/inventory/Warehouses'
 import StockAlerts     from './pages/inventory/StockAlerts'
 import StockValuation  from './pages/inventory/StockValuation'
 import LostItems       from './pages/inventory/LostItems'
+import PurchaseScheduleCalendar from './pages/inventory/PurchaseScheduleCalendar'
 
 // Orders
 import OrdersList  from './pages/orders/OrdersList'
@@ -153,6 +154,7 @@ function App() {
                 <Route path="/products/bulk-import"    element={<BulkImport />} />
 
                 <Route path="/inventory/stock"      element={<StockList />} />
+                <Route path="/inventory/schedule"   element={<PurchaseScheduleCalendar />} />
                 <Route path="/inventory/stock-in"   element={<StockIn />} />
                 <Route path="/inventory/stock-out"  element={<StockOut />} />
                 <Route path="/inventory/adjustment" element={<StockAdjustment />} />

@@ -25,15 +25,27 @@ function fmtNaira(v) {
   return `₦${n.toLocaleString()}`
 }
 
+function formatTimeAgo(dateStr) {
+  if (!dateStr) return '—'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return String(dateStr)
+  const diffSec = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (diffSec < 60) return 'Just now'
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`
+  if (diffSec < 604800) return `${Math.floor(diffSec / 86400)}d ago`
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+}
+
 // ── Shared drill-down column presets ──────────────────────────────────────────
 
 const orderColumns = [
   { key: 'order', label: 'Order', render: (r) => r.order_ref || r.id },
   { key: 'customer', label: 'Customer', render: (r) => r.customer_name || r.customer || '—' },
-  { key: 'items', label: 'Items', align: 'right', render: (r) => r.item_count ?? r.items ?? '—' },
+  { key: 'items', label: 'Items', align: 'right', render: (r) => r.item_count ?? r.items ?? 1 },
   { key: 'total', label: 'Total', align: 'right', render: (r) => fmtNaira(r.total_amount ?? r.total) },
   { key: 'status', label: 'Status', render: (r) => <Badge label={r.status} color={statusColor(r.status)} /> },
-  { key: 'created_at', label: 'Date', render: (r) => r.created_at ? new Date(r.created_at).toLocaleString() : (r.time_ago || r.time || '—') },
+  { key: 'created_at', label: 'Date', render: (r) => r.time_ago || (r.created_at ? formatTimeAgo(r.created_at) : (r.time || '—')) },
 ]
 
 const productSoldColumns = [
@@ -305,14 +317,16 @@ function OverviewTab() {
             <div className="card-body p-2.5">
               <div className="row g-1.5">
                 {[
-                  { label: 'New Order',    icon: 'ri-add-circle-line',        to: '/orders',              primary: true,  roles: null },
-                  { label: 'POS Terminal', icon: 'ri-store-2-line',           to: '/pos',                 primary: false, roles: ['superadmin','admin','manager','cashier'] },
-                  { label: 'Stock In',     icon: 'ri-archive-stack-line',     to: '/inventory/stock-in',  primary: false, roles: ['superadmin','admin','manager','kitchen_staff'] },
-                  { label: 'Add Product',  icon: 'ri-price-tag-3-line',       to: '/products/add',        primary: false, roles: ['superadmin','admin','manager'] },
-                  { label: 'Add Staff',    icon: 'ri-team-line',              to: '/staff/add',           primary: false, roles: ['superadmin','admin','manager'] },
-                  { label: 'Sales Report', icon: 'ri-bar-chart-grouped-line', to: '/reports/sales',       primary: false, roles: ['superadmin','admin','manager','accountant'] },
-                  { label: 'Finance',      icon: 'ri-bank-card-line',         to: '/accounts/overview',   primary: false, roles: ['superadmin','admin','manager','accountant'] },
-                  { label: 'Deliveries',   icon: 'ri-bike-line',              to: '/deliveries/active',   primary: false, roles: ['superadmin','admin','manager','delivery_manager'] },
+                  { label: 'New Order',     icon: 'ri-add-circle-line',        to: '/orders',              primary: true,  roles: null },
+                  { label: 'POS Terminal',  icon: 'ri-store-2-line',           to: '/pos',                 primary: false, roles: ['superadmin','admin','manager','cashier'] },
+                  { label: 'Stock In',      icon: 'ri-archive-stack-line',     to: '/inventory/stock-in',  primary: false, roles: ['superadmin','admin','manager','kitchen_staff'] },
+                  { label: 'Restock Cal',   icon: 'ri-calendar-event-line',    to: '/inventory/schedule',  primary: false, roles: ['superadmin','admin','manager','kitchen_staff'] },
+                  { label: 'Add Product',   icon: 'ri-price-tag-3-line',       to: '/products/add',        primary: false, roles: ['superadmin','admin','manager'] },
+                  { label: 'Invite Member', icon: 'ri-mail-send-line',         to: '/staff',               primary: false, roles: ['superadmin','admin','manager'] },
+                  { label: 'Add Staff',     icon: 'ri-team-line',              to: '/staff/add',           primary: false, roles: ['superadmin','admin','manager'] },
+                  { label: 'Sales Report',  icon: 'ri-bar-chart-grouped-line', to: '/reports/sales',       primary: false, roles: ['superadmin','admin','manager','accountant'] },
+                  { label: 'Finance',       icon: 'ri-bank-card-line',         to: '/accounts/overview',   primary: false, roles: ['superadmin','admin','manager','accountant'] },
+                  { label: 'Deliveries',    icon: 'ri-bike-line',              to: '/deliveries/active',   primary: false, roles: ['superadmin','admin','manager','delivery_manager'] },
                 ].filter(({ roles }) => !roles || hasRole(...roles))
                 .map(({ label, icon, to, primary }) => (
                   <div className="col-6" key={label}>
@@ -344,10 +358,10 @@ function OverviewTab() {
                       <Tr key={o.id}>
                         <Td><Link to={`/orders/${o.id}`} className="fw-bold text-dark text-decoration-none font-display" style={{ fontSize: '0.78rem' }}>{o.order_ref || o.id}</Link></Td>
                         <Td className="fw-semibold text-dark" style={{ fontSize: '0.78rem' }}>{o.customer_name || o.customer}</Td>
-                        <Td className="text-muted" style={{ fontSize: '0.75rem' }}>{o.item_count ?? o.items}</Td>
+                        <Td className="text-muted" style={{ fontSize: '0.75rem' }}>{o.item_count ?? o.items ?? 1}</Td>
                         <Td className="fw-bold font-display text-dark" style={{ fontSize: '0.78rem' }}>{fmtNaira(o.total_amount ?? o.total)}</Td>
                         <Td><Badge label={o.status} color={statusColor(o.status)} /></Td>
-                        <Td className="text-muted" style={{ fontSize: '0.72rem' }}>{o.time_ago || o.time}</Td>
+                        <Td className="text-muted" style={{ fontSize: '0.72rem' }}>{o.time_ago || formatTimeAgo(o.created_at) || o.time}</Td>
                       </Tr>
                     ))}
                   </Tbody>
@@ -722,10 +736,10 @@ function SalesTab() {
                 <Tr key={o.id}>
                   <Td><Link to={`/orders/${o.id}`} className="fw-medium fs-sm link link-custom">{o.order_ref || o.id}</Link></Td>
                   <Td>{o.customer_name || o.customer}</Td>
-                  <Td>{o.item_count ?? o.items}</Td>
+                  <Td>{o.item_count ?? o.items ?? 1}</Td>
                   <Td className="fw-semibold">{fmtNaira(o.total_amount ?? o.total)}</Td>
                   <Td><Badge label={o.status} color={statusColor(o.status)} /></Td>
-                  <Td className="text-muted fs-xs">{o.time_ago || o.time}</Td>
+                  <Td className="text-muted fs-xs">{o.time_ago || formatTimeAgo(o.created_at) || o.time}</Td>
                 </Tr>
               ))}
             </Tbody>
