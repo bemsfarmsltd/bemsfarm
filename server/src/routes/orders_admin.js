@@ -127,7 +127,26 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
         d.id AS delivery_id, d.status AS delivery_status,
         d.attempts, d.eta_minutes,
         (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count,
-        (SELECT STRING_AGG(oi.product_name, ', ' ORDER BY oi.id) FROM order_items oi WHERE oi.order_id = o.id) AS item_names
+        (SELECT STRING_AGG(oi.product_name, ', ' ORDER BY oi.id) FROM order_items oi WHERE oi.order_id = o.id) AS item_names,
+        COALESCE(
+          (
+            SELECT json_agg(json_build_object(
+              'id', oi.id,
+              'name', COALESCE(oi.product_name, p.name, 'Item'),
+              'sku', COALESCE(oi.sku, p.sku, ''),
+              'quantity', oi.quantity,
+              'qty', oi.quantity,
+              'price', COALESCE(oi.unit_price, oi.price, 0),
+              'unit_price', COALESCE(oi.unit_price, oi.price, 0),
+              'unit', COALESCE(oi.unit, p.unit, 'unit'),
+              'total', COALESCE(oi.subtotal, oi.quantity * oi.price, 0)
+            ) ORDER BY oi.id)
+            FROM order_items oi
+            LEFT JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = o.id
+          ),
+          '[]'::json
+        ) AS items
       FROM orders o
       LEFT JOIN users c ON o.customer_id = c.id
       LEFT JOIN drivers dr ON o.driver_id = dr.id
@@ -143,13 +162,13 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
     const stats = await pool.query(`
       SELECT
         COUNT(*)                                              AS total,
-        COUNT(*) FILTER (WHERE status IN ('pending','new_order','paid')) AS new_orders,
-        COUNT(*) FILTER (WHERE status IN ('processing','packed_ready','driver_assigned')) AS in_progress,
-        COUNT(*) FILTER (WHERE status = 'out_for_delivery')  AS out_for_delivery,
+        COUNT(*) FILTER (WHERE status IN ('pending','new_order','paid','confirmed')) AS new_orders,
+        COUNT(*) FILTER (WHERE status IN ('processing','packed_ready','packed','driver_assigned','assigned')) AS in_progress,
+        COUNT(*) FILTER (WHERE status IN ('out_for_delivery','shipped'))  AS out_for_delivery,
         COUNT(*) FILTER (WHERE status = 'delivery_attempted') AS delivery_attempted,
-        COUNT(*) FILTER (WHERE status = 'delivered')         AS delivered,
+        COUNT(*) FILTER (WHERE status IN ('delivered','completed'))         AS delivered,
         COUNT(*) FILTER (WHERE status = 'dispute')           AS disputes,
-        COALESCE(SUM(total) FILTER (WHERE status = 'delivered'), 0) AS revenue
+        COALESCE(SUM(total) FILTER (WHERE status IN ('delivered','completed')), 0) AS revenue
       FROM orders
     `);
 
@@ -162,6 +181,24 @@ router.get("/", requireRole("superadmin", "manager", "admin", "delivery_manager"
     });
   } catch (err) {
     console.error("GET /admin/orders:", err.message);
+    next(err);
+  }
+});
+
+// ── GET /api/admin/orders/form-data/staff ─────────────────────────
+// Returns staff members eligible for picking & packing
+router.get("/form-data/staff", requireRole("superadmin", "manager", "admin", "delivery_manager", "kitchen_staff", "cashier"), async (req, res, next) => {
+  try {
+    const rows = await pool.query(`
+      SELECT DISTINCT COALESCE(u.name, s.employee_code, 'Staff') AS name
+      FROM users u
+      LEFT JOIN staff s ON s.user_id = u.id
+      WHERE u.role NOT IN ('user', 'customer')
+      ORDER BY name ASC
+    `);
+    const names = rows.rows.map(r => r.name).filter(Boolean);
+    res.json({ staff: names.length ? names : ["Admin Staff", "Kitchen Team", "Store Team"] });
+  } catch (err) {
     next(err);
   }
 });
@@ -751,10 +788,16 @@ router.patch(
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-      const { status, notes, picking_staff } = req.body;
+      let { status, notes, picking_staff } = req.body;
+      let nextStatus = String(status || '').toLowerCase().trim();
+      if (nextStatus === 'packed') nextStatus = 'packed_ready';
+      if (nextStatus === 'assigned') nextStatus = 'driver_assigned';
+      if (nextStatus === 'shipped') nextStatus = 'out_for_delivery';
+      if (nextStatus === 'completed') nextStatus = 'delivered';
+      if (nextStatus === 'new_order' || nextStatus === 'pending') nextStatus = 'paid';
 
-      const VALID_STATUSES = ["processing", "packed_ready", "driver_assigned", "out_for_delivery", "delivery_attempted", "delivered", "cancelled", "dispute"];
-      if (!VALID_STATUSES.includes(status)) {
+      const VALID_STATUSES = ["paid", "confirmed", "processing", "packed_ready", "driver_assigned", "out_for_delivery", "delivery_attempted", "delivered", "cancelled", "dispute"];
+      if (!VALID_STATUSES.includes(nextStatus)) {
         await client.query("ROLLBACK");
         return res.status(400).json({ message: `status must be one of: ${VALID_STATUSES.join(", ")}` });
       }
@@ -774,20 +817,18 @@ router.patch(
         await client.query("ROLLBACK");
         return res.status(400).json({ message: "This order is disputed — use the dispute resolution flow instead" });
       }
-      if (["driver_assigned", "out_for_delivery"].includes(status) && !current.rows[0].driver_id) {
+      if (["driver_assigned", "out_for_delivery"].includes(nextStatus) && !current.rows[0].driver_id) {
         await client.query("ROLLBACK");
         return res.status(400).json({ message: "Assign a driver first" });
       }
 
       await client.query(
         "UPDATE orders SET status=$1, updated_at=NOW() WHERE id=$2",
-        [status, req.params.id],
+        [nextStatus, req.params.id],
       );
 
-      // Only restore on the transition INTO cancelled — fromStatus==='dispute'
-      // is already blocked above, but guard against re-cancelling an
-      // already-cancelled order here too, or stock would be double-restored.
-      if (status === "cancelled" && fromStatus !== "cancelled") {
+      // Only restore on the transition INTO cancelled
+      if (nextStatus === "cancelled" && fromStatus !== "cancelled") {
         await restoreOrderStock(client, req.params.id);
       }
 
@@ -795,7 +836,7 @@ router.patch(
         client,
         req.params.id,
         fromStatus,
-        status,
+        nextStatus,
         req.user.id,
         notes,
       );
@@ -827,7 +868,7 @@ router.patch(
         dispute: { type: "cancelled", desc: notes || "Dispute raised" },
       };
 
-      const ev = eventMap[status];
+      const ev = eventMap[nextStatus];
       if (ev) {
         await logTrackingEvent(
           client,
@@ -845,16 +886,19 @@ router.patch(
       // Send email notification to customer
       try {
         const emailResult = await pool.query(
-          `SELECT o.id, o.total, u.name, u.email FROM orders o
-           JOIN users u ON u.id = o.user_id WHERE o.id = $1`,
+          `SELECT o.id, o.total, COALESCE(o.customer_name, u.name) AS name, COALESCE(u.email, c.email) AS email
+           FROM orders o
+           LEFT JOIN users u ON u.id = o.customer_id
+           LEFT JOIN users c ON c.phone = o.customer_phone
+           WHERE o.id = $1`,
           [req.params.id]
         );
-        if (emailResult.rows.length) {
+        if (emailResult.rows.length && emailResult.rows[0].email) {
           const orderInfo = emailResult.rows[0];
           await emailService.sendOrderStatusEmail(
             { id: orderInfo.id, total: orderInfo.total },
             { name: orderInfo.name, email: orderInfo.email },
-            ev ? ev.type : status
+            ev ? ev.type : nextStatus
           );
           console.log("Email sent to:", orderInfo.email);
         }
@@ -862,7 +906,7 @@ router.patch(
         console.error("Email failed:", emailErr.message);
       }
 
-      res.json({ message: "Status updated", status });
+      res.json({ message: "Status updated", status: nextStatus });
     } catch (err) {
       await client.query("ROLLBACK");
       next(err);
@@ -1086,6 +1130,73 @@ router.patch(
       client.release();
     }
   },
+);
+
+// Alias: PATCH /api/admin/orders/:id/dispute
+router.patch(
+  "/:id/dispute",
+  requireRole("superadmin", "manager", "admin"),
+  validate(orderAdminSchemas.resolveDispute),
+  async (req, res, next) => {
+    // Forward to resolve-dispute logic
+    req.url = req.url.replace(/\/dispute$/, "/resolve-dispute");
+    router.handle(req, res, next);
+  }
+);
+
+// ── PATCH /api/admin/orders/:id/reschedule ───────────────────────
+router.patch(
+  "/:id/reschedule",
+  requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const { notes } = req.body;
+
+      const current = await client.query(
+        "SELECT status, attempts FROM orders WHERE id=$1",
+        [req.params.id]
+      );
+      if (!current.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      const nextAttempts = (current.rows[0].attempts || 0) + 1;
+      await client.query(
+        "UPDATE orders SET status='driver_assigned', attempts=$1, updated_at=NOW() WHERE id=$2",
+        [nextAttempts, req.params.id]
+      );
+
+      await logStatusChange(
+        client,
+        req.params.id,
+        current.rows[0].status,
+        "driver_assigned",
+        req.user.id,
+        notes || `Delivery rescheduled (attempt ${nextAttempts})`
+      );
+
+      await logTrackingEvent(
+        client,
+        req.params.id,
+        null,
+        "driver_assigned",
+        notes || `Delivery rescheduled (attempt ${nextAttempts})`,
+        "admin",
+        req.user.id
+      );
+
+      await client.query("COMMIT");
+      res.json({ message: "Delivery rescheduled", attempts: nextAttempts, status: "driver_assigned" });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
 );
 
 // ── PATCH /api/admin/orders/:id/cancel ───────────────────────────

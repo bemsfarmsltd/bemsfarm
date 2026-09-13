@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
@@ -9,361 +9,497 @@ const STATUS_CFG = {
   paid:               { label: 'New Order',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-money-dollar-circle-line' },
   new_order:          { label: 'New Order',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-money-dollar-circle-line' },
   pending:            { label: 'New Order',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-money-dollar-circle-line' },
-  confirmed:          { label: 'Confirmed',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-checkbox-circle-line'     },
-  processing:         { label: 'Processing',         color: '#f59e0b', bg: '#fef3c7', icon: 'ri-loader-line'              },
-  packed:             { label: 'Packed & Ready',     color: '#8b5cf6', bg: '#ede9fe', icon: 'ri-archive-line'             },
-  packed_ready:       { label: 'Packed & Ready',     color: '#8b5cf6', bg: '#ede9fe', icon: 'ri-archive-line'             },
-  assigned:           { label: 'Driver Assigned',    color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'       },
-  driver_assigned:    { label: 'Driver Assigned',    color: '#06b6d4', bg: '#cffafe', icon: 'ri-user-location-line'       },
-  shipped:            { label: 'Out for Delivery',   color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'               },
-  out_for_delivery:   { label: 'Out for Delivery',   color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'               },
-  delivery_attempted: { label: 'Delivery Attempted', color: '#f97316', bg: '#ffedd5', icon: 'ri-route-line'               },
-  delivered:          { label: 'Delivered',          color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'     },
-  completed:          { label: 'Delivered',          color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'     },
-  dispute:            { label: 'Dispute',            color: '#ef4444', bg: '#fee2e2', icon: 'ri-alert-line'               },
-  cancelled:          { label: 'Cancelled',          color: '#6b7280', bg: '#f3f4f6', icon: 'ri-close-circle-line'        },
-  refunded:           { label: 'Refunded',           color: '#6b7280', bg: '#f3f4f6', icon: 'ri-refund-2-line'            },
-  failed:             { label: 'Failed',             color: '#ef4444', bg: '#fee2e2', icon: 'ri-close-circle-line'        },
+  confirmed:          { label: 'Confirmed',          color: '#0284c7', bg: '#e0f2fe', icon: 'ri-checkbox-circle-line'     },
+  processing:         { label: 'Processing',         color: '#d97706', bg: '#fef3c7', icon: 'ri-loader-line'              },
+  packed:             { label: 'Packed & Ready',     color: '#7c3aed', bg: '#ede9fe', icon: 'ri-archive-line'             },
+  packed_ready:       { label: 'Packed & Ready',     color: '#7c3aed', bg: '#ede9fe', icon: 'ri-archive-line'             },
+  assigned:           { label: 'Driver Assigned',    color: '#0891b2', bg: '#cffafe', icon: 'ri-user-location-line'       },
+  driver_assigned:    { label: 'Driver Assigned',    color: '#0891b2', bg: '#cffafe', icon: 'ri-user-location-line'       },
+  shipped:            { label: 'Out for Delivery',   color: '#2563eb', bg: '#dbeafe', icon: 'ri-truck-line'               },
+  out_for_delivery:   { label: 'Out for Delivery',   color: '#2563eb', bg: '#dbeafe', icon: 'ri-truck-line'               },
+  delivery_attempted: { label: 'Delivery Attempted', color: '#ea580c', bg: '#ffedd5', icon: 'ri-route-line'               },
+  delivered:          { label: 'Delivered',          color: '#16a34a', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'     },
+  completed:          { label: 'Delivered',          color: '#16a34a', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'     },
+  dispute:            { label: 'Dispute',            color: '#dc2626', bg: '#fee2e2', icon: 'ri-alert-line'               },
+  cancelled:          { label: 'Cancelled',          color: '#4b5563', bg: '#f3f4f6', icon: 'ri-close-circle-line'        },
+  refunded:           { label: 'Refunded',           color: '#4b5563', bg: '#f3f4f6', icon: 'ri-refund-2-line'            },
+  failed:             { label: 'Failed',             color: '#dc2626', bg: '#fee2e2', icon: 'ri-close-circle-line'        },
 }
 
 const DEFAULT_STATUS_CFG = { label: 'Order Placed', color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-shopping-bag-3-line' }
 const getStatusCfg = (status) => (status && STATUS_CFG[String(status).toLowerCase()]) || DEFAULT_STATUS_CFG
 
 const CHANNEL_CFG = {
-  online:       { label: 'Online',         icon: 'ri-global-line',     color: '#3b82f6' },
-  web:          { label: 'Online',         icon: 'ri-global-line',     color: '#3b82f6' },
-  mobile_app:   { label: 'Mobile App',     icon: 'ri-smartphone-line', color: '#8b5cf6' },
-  mobile:       { label: 'Mobile App',     icon: 'ri-smartphone-line', color: '#8b5cf6' },
-  chef_bems:    { label: 'Chef Bems AI',   icon: 'ri-robot-line',      color: '#a855f7' },
-  chef_bems_ai: { label: 'Chef Bems AI',   icon: 'ri-robot-line',      color: '#a855f7' },
-  ai:           { label: 'Chef Bems AI',   icon: 'ri-robot-line',      color: '#a855f7' },
-  physical:     { label: 'Physical Store', icon: 'ri-store-2-line',    color: '#10b981' },
-  pos:          { label: 'POS Terminal',   icon: 'ri-store-2-line',    color: '#10b981' },
-  store:        { label: 'Physical Store', icon: 'ri-store-2-line',    color: '#10b981' },
+  online:       { label: 'Online Store',     icon: 'ri-global-line',     color: '#2563eb', badgeClass: 'bg-primary-subtle text-primary' },
+  web:          { label: 'Online Store',     icon: 'ri-global-line',     color: '#2563eb', badgeClass: 'bg-primary-subtle text-primary' },
+  mobile_app:   { label: 'Mobile App',       icon: 'ri-smartphone-line', color: '#7c3aed', badgeClass: 'bg-purple-subtle text-purple' },
+  mobile:       { label: 'Mobile App',       icon: 'ri-smartphone-line', color: '#7c3aed', badgeClass: 'bg-purple-subtle text-purple' },
+  chef_bems:    { label: 'Chef Bems AI',     icon: 'ri-robot-line',      color: '#9333ea', badgeClass: 'bg-info-subtle text-info' },
+  chef_bems_ai: { label: 'Chef Bems AI',     icon: 'ri-robot-line',      color: '#9333ea', badgeClass: 'bg-info-subtle text-info' },
+  ai:           { label: 'Chef Bems AI',     icon: 'ri-robot-line',      color: '#9333ea', badgeClass: 'bg-info-subtle text-info' },
+  physical:     { label: 'Physical Store (POS)', icon: 'ri-store-2-line', color: '#059669', badgeClass: 'bg-success-subtle text-success' },
+  pos:          { label: 'POS Terminal',     icon: 'ri-store-2-line',    color: '#059669', badgeClass: 'bg-success-subtle text-success' },
+  store:        { label: 'Physical Store',   icon: 'ri-store-2-line',    color: '#059669', badgeClass: 'bg-success-subtle text-success' },
 }
 
-const DEFAULT_CHANNEL_CFG = { label: 'Online', icon: 'ri-global-line', color: '#3b82f6' }
+const DEFAULT_CHANNEL_CFG = { label: 'Online', icon: 'ri-global-line', color: '#2563eb', badgeClass: 'bg-primary-subtle text-primary' }
 const getChannelCfg = (channel) => (channel && CHANNEL_CFG[String(channel).toLowerCase()]) || DEFAULT_CHANNEL_CFG
 
-// ─── Mock Data (Fallback) ───────────────────────────────────────────────────
-
-const DRIVERS = [
-  { id: 1, name: 'Tunde Adeyemi', phone: '08031234567', bike: 'LAG-234-AB', active: true  },
-  { id: 2, name: 'Emeka Okafor',  phone: '08045678901', bike: 'LAG-567-CD', active: true  },
-  { id: 3, name: 'Bola Akinwale', phone: '08056789012', bike: 'LAG-890-EF', active: true  },
-  { id: 4, name: 'Chidi Eze',     phone: '08067890123', bike: 'LAG-123-GH', active: false },
-  { id: 5, name: 'Femi Adeleye',  phone: '08078901234', bike: 'LAG-456-IJ', active: true  },
+// Distinct status tabs (prevents duplicate labels)
+const ORDER_STATUS_TABS = [
+  { key: 'all',                label: 'All Orders' },
+  { key: 'paid',               label: 'New Orders',         statuses: ['paid', 'new_order', 'pending'] },
+  { key: 'confirmed',          label: 'Confirmed',          statuses: ['confirmed'] },
+  { key: 'processing',         label: 'Processing',         statuses: ['processing'] },
+  { key: 'packed',             label: 'Packed & Ready',     statuses: ['packed', 'packed_ready'] },
+  { key: 'assigned',           label: 'Driver Assigned',    statuses: ['assigned', 'driver_assigned'] },
+  { key: 'shipped',            label: 'Out for Delivery',   statuses: ['shipped', 'out_for_delivery'] },
+  { key: 'delivery_attempted', label: 'Delivery Attempted', statuses: ['delivery_attempted'] },
+  { key: 'delivered',          label: 'Delivered',          statuses: ['delivered', 'completed'] },
+  { key: 'dispute',            label: 'Disputes',           statuses: ['dispute'] },
+  { key: 'cancelled',          label: 'Cancelled',          statuses: ['cancelled', 'refunded', 'failed'] },
 ]
 
-const STAFF = ['Kayode Afolabi', 'Amina Bello', 'Segun Oladele', 'Fatima Umar']
+const PIPELINE = ['paid', 'processing', 'packed', 'assigned', 'shipped', 'delivered']
+const pipelineIdx = (s) => (['delivery_attempted'].includes(s) ? PIPELINE.indexOf('shipped') : PIPELINE.indexOf(s))
 
-const PRODUCTS_CATALOG = [
-  { id: 1,  name: 'Fresh Tomatoes',        unit: 'kg',    price: 2800 },
-  { id: 2,  name: 'Red Bell Pepper',       unit: 'kg',    price: 3500 },
-  { id: 3,  name: 'Scotch Bonnet',         unit: 'kg',    price: 4200 },
-  { id: 4,  name: 'Fresh Spinach',         unit: 'bunch', price: 800  },
-  { id: 5,  name: 'Ugwu (Fluted Pumpkin)',unit: 'bunch', price: 600  },
-  { id: 6,  name: 'Plantain',              unit: 'hand',  price: 2500 },
-  { id: 7,  name: 'Yam (White)',           unit: 'tuber', price: 3200 },
-  { id: 8,  name: 'Ginger',               unit: 'kg',    price: 5500 },
-  { id: 9,  name: 'Garlic',               unit: 'kg',    price: 4800 },
-  { id: 10, name: 'Palm Oil',             unit: 'litre', price: 2100 },
-  { id: 11, name: 'Onion (Red)',          unit: 'kg',    price: 1800 },
-  { id: 12, name: 'Sweet Corn',          unit: 'cob',   price: 400  },
-]
-
-const p = (id, qty) => {
-  const prod = PRODUCTS_CATALOG.find(x => x.id === id) || { name: 'Item', price: 1000, unit: 'pcs' }
-  return { ...prod, qty, total: prod.price * qty }
-}
-
-const ORDERS_INIT = [
-  {
-    id: 'ORD-2026-0142', date: '2026-06-27 09:14', channel: 'online', status: 'paid',
-    customer: { name: 'Ngozi Obi', phone: '08123456789', email: 'ngozi@email.com', address: '14 Ikeja GRA, Lagos' },
-    items: [p(1,5), p(11,3), p(3,2)], deliveryFee: 800, payment: 'paystack', notes: '', driver: null, attempts: 0,
-    timeline: [{ status: 'paid', time: '2026-06-27 09:14', note: 'Payment confirmed. Ref: PST-9938422', by: 'System' }],
-  },
-  {
-    id: 'ORD-2026-0141', date: '2026-06-27 08:45', channel: 'chef_bems', status: 'processing',
-    customer: { name: 'Adaeze Nwosu', phone: '07098765432', email: 'adaeze@email.com', address: '7 Lekki Phase 1, Lagos' },
-    items: [p(1,8), p(2,4), p(6,3), p(5,5)], deliveryFee: 1200, payment: 'paystack',
-    notes: 'Jollof rice party for 25 people — Nancy AI order', driver: null, attempts: 0,
-    timeline: [
-      { status: 'paid',       time: '2026-06-27 08:45', note: 'Payment confirmed. Ref: PST-9937100', by: 'System' },
-      { status: 'processing', time: '2026-06-27 08:52', note: 'Order sent to picking queue. Picking staff: Kayode Afolabi', by: 'Amara Okonkwo (Admin)' },
-    ],
-  },
-]
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const fmt        = (n) => `₦${Number(n || 0).toLocaleString()}`
-const calcSub    = (items = []) => items.reduce((s, i) => s + (i.total || (i.price * i.qty) || 0), 0)
-const calcTotal  = (items = [], fee = 0) => calcSub(items) + (Number(fee) || 0)
-const PIPELINE   = ['paid','processing','packed','assigned','shipped','delivered']
-const pipelineIdx = (s) => ['delivery_attempted'].includes(s) ? PIPELINE.indexOf('shipped') : PIPELINE.indexOf(s)
-
-// ─── Component ────────────────────────────────────────────────────────────────
+const fmt = (n) => `₦${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+const calcSub = (items = []) => items.reduce((s, i) => s + (Number(i.total) || (Number(i.price || 0) * Number(i.qty || 1))), 0)
 
 export default function OrdersList() {
-  const [orders, setOrders]           = useState(ORDERS_INIT)
-  const [drivers, setDrivers]         = useState(DRIVERS)
-  const [loading, setLoading]         = useState(false)
-  const [search, setSearch]           = useState('')
-  const [filterStatus, setFilterStatus]   = useState('all')
-  const [filterChannel, setFilterChannel] = useState('all')
-  const [activeModal, setActiveModal] = useState(null)
-  const [selected, setSelected]       = useState(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  // Modal form state
-  const [pickingStaff, setPickingStaff]     = useState(STAFF[0])
+  const [orders, setOrders]             = useState([])
+  const [drivers, setDrivers]           = useState([])
+  const [staffList, setStaffList]       = useState([])
+  const [serverStats, setServerStats]   = useState(null)
+  const [loading, setLoading]           = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  // Filters
+  const [search, setSearch]             = useState('')
+  const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || 'all')
+  const [filterChannel, setFilterChannel] = useState(searchParams.get('channel') || 'all')
+  const [filterFulfillment, setFilterFulfillment] = useState(searchParams.get('fulfillment') || 'all')
+
+  // Modals & selection
+  const [activeModal, setActiveModal]   = useState(null)
+  const [selected, setSelected]         = useState(null)
+
+  // Modal form inputs
+  const [pickingStaff, setPickingStaff]     = useState('')
   const [assignDriverId, setAssignDriverId] = useState('')
   const [disputeDecision, setDisputeDecision] = useState('')
   const [disputeNote, setDisputeNote]       = useState('')
   const [disputeAmount, setDisputeAmount]   = useState('')
   const [cancelReason, setCancelReason]     = useState('')
   const [rescheduleNote, setRescheduleNote] = useState('')
-  const [assignType, setAssignType]         = useState('initial') // 'initial' | 'manual_reassign'
+  const [assignType, setAssignType]         = useState('initial')
 
-  // Load live orders from backend
+  const receiptRef = useRef(null)
+
+  // Sync URL search params
+  useEffect(() => {
+    const qStatus = searchParams.get('status')
+    if (qStatus && qStatus !== filterStatus) {
+      setFilterStatus(qStatus)
+    }
+    const qChannel = searchParams.get('channel')
+    if (qChannel && qChannel !== filterChannel) {
+      setFilterChannel(qChannel)
+    }
+  }, [searchParams])
+
+  // ─── Fetch live orders from backend ─────────────────────────────────────────
   const fetchOrders = useCallback(async () => {
     try {
-      const res = await api.get('/admin/orders?limit=100')
-      if (res.data?.orders?.length) {
+      setLoading(true)
+      const res = await api.get('/admin/orders?limit=200')
+      if (res.data?.orders) {
         const mapped = res.data.orders.map((o) => {
-          let parsedStatus = (o.status || 'paid').toLowerCase()
-          if (parsedStatus === 'pending' || parsedStatus === 'new_order' || parsedStatus === 'confirmed') parsedStatus = 'paid'
+          let parsedStatus = (o.status || 'paid').toLowerCase().trim()
+          if (parsedStatus === 'pending' || parsedStatus === 'new_order') parsedStatus = 'paid'
           if (parsedStatus === 'packed_ready') parsedStatus = 'packed'
           if (parsedStatus === 'driver_assigned') parsedStatus = 'assigned'
           if (parsedStatus === 'out_for_delivery') parsedStatus = 'shipped'
           if (parsedStatus === 'completed') parsedStatus = 'delivered'
 
           let channelKey = 'online'
-          const src = (o.channel || '').toLowerCase()
+          const src = (o.channel || o.source || '').toLowerCase()
           if (src.includes('chef') || src.includes('ai')) channelKey = 'chef_bems'
           else if (src.includes('mobile')) channelKey = 'mobile_app'
           else if (src.includes('pos') || src.includes('store') || src.includes('physical')) channelKey = 'physical'
 
+          // Real item parsing
+          let orderItems = []
+          if (Array.isArray(o.items) && o.items.length > 0) {
+            orderItems = o.items.map((it, idx) => ({
+              id: it.id || idx + 1,
+              name: it.name || it.product_name || 'Item',
+              sku: it.sku || '',
+              qty: Number(it.quantity || it.qty || 1),
+              unit: it.unit || 'pcs',
+              price: parseFloat(it.unit_price || it.price || 0),
+              total: parseFloat(it.total || it.subtotal || ((it.quantity || it.qty || 1) * (it.unit_price || it.price || 0))),
+            }))
+          } else if (o.item_names && String(o.item_names).trim()) {
+            orderItems = o.item_names.split(',').map((name, idx) => ({
+              id: idx + 1,
+              name: name.trim(),
+              sku: '',
+              qty: 1,
+              unit: 'item',
+              price: 0,
+              total: 0,
+            }))
+          }
+
+          const deliveryFee = parseFloat(o.delivery_fee) || 0
+          const computedTotal = parseFloat(o.total) || (calcSub(orderItems) + deliveryFee)
+
+          // Delivery vs in-store detection
+          const isPhysical = channelKey === 'physical'
+          const hasDeliveryAddress = !!(o.address && o.address.trim().length > 3 && !isPhysical)
+          const fulfillmentType = hasDeliveryAddress ? 'delivery' : 'pickup'
+
           return {
             id: String(o.id),
-            date: o.created_at ? new Date(o.created_at).toISOString().replace('T', ' ').slice(0, 16) : '2026-06-27 10:00',
+            date: o.created_at ? new Date(o.created_at).toISOString().replace('T', ' ').slice(0, 16) : '—',
             channel: channelKey,
             status: parsedStatus,
+            rawStatus: o.status,
+            fulfillmentType,
             customer: {
-              name: o.customer_name || 'Customer',
+              name: o.customer_name || (isPhysical ? 'Walk-in Customer' : 'Customer'),
               phone: o.customer_phone || '—',
               email: o.customer_email || '—',
-              address: o.address ? `${o.address}${o.delivery_city ? `, ${o.delivery_city}` : ''}` : 'Lagos, Nigeria',
+              address: o.address ? `${o.address}${o.delivery_city ? `, ${o.delivery_city}` : ''}` : (isPhysical ? 'In-Store POS' : 'Store Pickup / Lagos'),
             },
-            items: o.item_names ? o.item_names.split(',').map((name, i) => ({ id: i + 1, name: name.trim(), unit: 'unit', price: 1000, qty: 1, total: 1000 })) : [p(1, 1)],
-            deliveryFee: parseFloat(o.delivery_fee) || 0,
-            payment: o.payment_method || 'paystack',
+            items: orderItems,
+            itemCount: Number(o.item_count) || orderItems.length,
+            deliveryFee,
+            total: computedTotal,
+            payment: (o.payment_method || (isPhysical ? 'cash' : 'paystack')).toLowerCase(),
             notes: o.notes || '',
-            driver: o.driver_name ? { id: o.driver_id, name: o.driver_name, phone: o.driver_phone, bike: o.driver_plate || 'BIKE-01', active: true } : null,
+            disputeReason: o.dispute_reason || null,
+            disputeNote: o.dispute_notes || o.dispute_note || null,
+            cancelReason: o.cancel_reason || null,
+            driver: o.driver_name ? { id: o.driver_id, name: o.driver_name, phone: o.driver_phone, bike: o.driver_plate || 'Vehicle', active: true } : null,
             attempts: o.attempts || 0,
             timeline: [
-              { status: 'paid', time: o.created_at ? new Date(o.created_at).toISOString().replace('T', ' ').slice(0, 16) : '2026-06-27', note: 'Payment confirmed', by: 'System' }
+              { status: parsedStatus, time: o.created_at ? new Date(o.created_at).toISOString().replace('T', ' ').slice(0, 16) : '', note: `Order placed via ${getChannelCfg(channelKey).label}`, by: 'System' }
             ]
           }
         })
         setOrders(mapped)
+        if (res.data.stats) {
+          setServerStats(res.data.stats)
+        }
       }
     } catch (err) {
-      console.warn('Could not fetch live orders, using initial state:', err.message)
+      console.error('Failed to load orders:', err)
+      toast.error('Unable to fetch live orders')
+    } finally {
+      setLoading(false)
     }
   }, [])
 
-  // Load drivers from backend
+  // Load auxiliary form data: Drivers & Staff
   useEffect(() => {
-    async function loadDrivers() {
+    async function loadFormData() {
       try {
-        const res = await api.get('/admin/orders/form-data/drivers')
-        if (res.data?.drivers?.length) {
-          setDrivers(res.data.drivers.map((d) => ({
+        const [driversRes, staffRes] = await Promise.allSettled([
+          api.get('/admin/orders/form-data/drivers'),
+          api.get('/admin/orders/form-data/staff'),
+        ])
+        if (driversRes.status === 'fulfilled' && driversRes.value?.data?.drivers) {
+          setDrivers(driversRes.value.data.drivers.map((d) => ({
             id: d.id,
             name: d.name,
             phone: d.phone,
             bike: d.vehicle_plate || d.vehicle_type || 'Vehicle',
-            active: d.status !== 'inactive'
+            active: d.status !== 'inactive',
           })))
         }
+        if (staffRes.status === 'fulfilled' && staffRes.value?.data?.staff) {
+          setStaffList(staffRes.value.data.staff)
+          if (staffRes.value.data.staff.length > 0) {
+            setPickingStaff(staffRes.value.data.staff[0])
+          }
+        }
       } catch (err) {
-        console.warn('Could not load live drivers:', err.message)
+        console.warn('Form data loading notice:', err.message)
       }
     }
+
     fetchOrders()
-    loadDrivers()
+    loadFormData()
   }, [fetchOrders])
 
-  const openModal = (type, order, meta = {}) => {
-    setSelected(order); setActiveModal(type)
-    setAssignDriverId(''); setDisputeDecision(''); setDisputeNote('')
-    setDisputeAmount(''); setCancelReason(''); setRescheduleNote('')
-    setPickingStaff(STAFF[0])
+  // Open modal with detail enrichment
+  const openModal = async (type, order, meta = {}) => {
+    setSelected(order)
+    setActiveModal(type)
+    setAssignDriverId('')
+    setDisputeDecision('')
+    setDisputeNote('')
+    setDisputeAmount('')
+    setCancelReason('')
+    setRescheduleNote('')
+    if (staffList.length > 0) setPickingStaff(staffList[0])
     if (type === 'assign') setAssignType(meta.assignType || 'initial')
+
+    // If viewing or printing, fetch full order timeline & items from GET /admin/orders/:id
+    if (type === 'view' || type === 'receipt') {
+      try {
+        setDetailLoading(true)
+        const res = await api.get(`/admin/orders/${order.id}`)
+        if (res.data) {
+          const d = res.data
+          setSelected((prev) => {
+            if (!prev || prev.id !== order.id) return prev
+            return {
+              ...prev,
+              ...d,
+              items: (d.items && d.items.length)
+                ? d.items.map((it, i) => ({
+                    id: it.id || i + 1,
+                    name: it.name || it.product_name || 'Item',
+                    sku: it.sku || '',
+                    qty: Number(it.quantity || it.qty || 1),
+                    unit: it.unit || 'pcs',
+                    price: parseFloat(it.unit_price || it.price || 0),
+                    total: parseFloat(it.subtotal || ((it.quantity || it.qty || 1) * (it.unit_price || it.price || 0))),
+                  }))
+                : prev.items,
+              timeline: (d.timeline && d.timeline.length)
+                ? d.timeline.map((t) => ({
+                    status: t.to_status || t.status || 'updated',
+                    time: t.created_at ? new Date(t.created_at).toISOString().replace('T', ' ').slice(0, 16) : '',
+                    note: t.notes || `Status changed to ${t.to_status || t.status}`,
+                    by: t.changed_by_name || 'Admin',
+                  }))
+                : prev.timeline,
+            }
+          })
+        }
+      } catch (err) {
+        console.warn('Could not fetch deep order detail:', err.message)
+      } finally {
+        setDetailLoading(false)
+      }
+    }
   }
-  const closeModal = () => { setActiveModal(null); setSelected(null) }
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
+  const closeModal = () => {
+    setActiveModal(null)
+    setSelected(null)
+  }
 
-  const stats = useMemo(() => ({
-    total:             orders.length,
-    newOrders:         orders.filter(o => o.status === 'paid' || o.status === 'new_order' || o.status === 'pending').length,
-    inProgress:        orders.filter(o => ['processing','packed','assigned','packed_ready','driver_assigned'].includes(o.status)).length,
-    outForDelivery:    orders.filter(o => o.status === 'shipped' || o.status === 'out_for_delivery').length,
-    deliveryAttempted: orders.filter(o => o.status === 'delivery_attempted').length,
-    delivered:         orders.filter(o => o.status === 'delivered').length,
-    disputes:          orders.filter(o => o.status === 'dispute').length,
-    revenue:           orders.filter(o => o.status === 'delivered').reduce((s,o) => s + calcTotal(o.items, o.deliveryFee), 0),
-  }), [orders])
+  // ─── Stats ───────────────────────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    if (serverStats) {
+      return {
+        total:             Number(serverStats.total || 0),
+        newOrders:         Number(serverStats.new_orders || 0),
+        inProgress:        Number(serverStats.in_progress || 0),
+        outForDelivery:    Number(serverStats.out_for_delivery || 0),
+        deliveryAttempted: Number(serverStats.delivery_attempted || 0),
+        delivered:         Number(serverStats.delivered || 0),
+        disputes:          Number(serverStats.disputes || 0),
+        revenue:           Number(serverStats.revenue || 0),
+      }
+    }
+    return {
+      total:             orders.length,
+      newOrders:         orders.filter(o => ['paid', 'new_order', 'pending', 'confirmed'].includes(o.status)).length,
+      inProgress:        orders.filter(o => ['processing', 'packed', 'assigned', 'packed_ready', 'driver_assigned'].includes(o.status)).length,
+      outForDelivery:    orders.filter(o => ['shipped', 'out_for_delivery'].includes(o.status)).length,
+      deliveryAttempted: orders.filter(o => o.status === 'delivery_attempted').length,
+      delivered:         orders.filter(o => ['delivered', 'completed'].includes(o.status)).length,
+      disputes:          orders.filter(o => o.status === 'dispute').length,
+      revenue:           orders.filter(o => ['delivered', 'completed'].includes(o.status)).reduce((s, o) => s + (Number(o.total) || 0), 0),
+    }
+  }, [orders, serverStats])
 
-  // ── Filtered list ──────────────────────────────────────────────────────────
-
+  // ─── Filtered orders list ───────────────────────────────────────────────────
   const filtered = useMemo(() => {
-    const q = search.toLowerCase()
+    const q = search.toLowerCase().trim()
+    const activeTabObj = ORDER_STATUS_TABS.find(t => t.key === filterStatus)
+
     return orders
-      .filter(o => {
-        const okStatus  = filterStatus  === 'all' || o.status  === filterStatus
+      .filter((o) => {
+        // Status filter
+        let okStatus = true
+        if (filterStatus !== 'all') {
+          if (activeTabObj?.statuses) {
+            okStatus = activeTabObj.statuses.includes(o.status)
+          } else {
+            okStatus = o.status === filterStatus
+          }
+        }
+
+        // Channel filter
         const okChannel = filterChannel === 'all' || o.channel === filterChannel
-        const okSearch  = !q || o.id.toLowerCase().includes(q) || o.customer?.name?.toLowerCase().includes(q) || o.customer?.phone?.includes(q)
-        return okStatus && okChannel && okSearch
+
+        // Fulfillment sub-category filter
+        let okFulfillment = true
+        if (filterFulfillment === 'delivery') {
+          okFulfillment = o.fulfillmentType === 'delivery'
+        } else if (filterFulfillment === 'pickup') {
+          okFulfillment = o.fulfillmentType === 'pickup'
+        }
+
+        // Search filter
+        const okSearch =
+          !q ||
+          o.id.toLowerCase().includes(q) ||
+          o.customer?.name?.toLowerCase().includes(q) ||
+          o.customer?.phone?.includes(q) ||
+          (o.items && o.items.some(i => i.name.toLowerCase().includes(q)))
+
+        return okStatus && okChannel && okFulfillment && okSearch
       })
-      .sort((a,b) => new Date(b.date) - new Date(a.date))
-  }, [orders, search, filterStatus, filterChannel])
+      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+  }, [orders, search, filterStatus, filterChannel, filterFulfillment])
 
-  // ── Order mutations ────────────────────────────────────────────────────────
-
-  const pushEvent = (orderId, patch) => {
-    const now = new Date().toISOString().replace('T',' ').slice(0,16)
-    setOrders(prev => prev.map(o => {
-      if (o.id !== orderId) return o
-      const { _note, _by, ...rest } = patch
-      return { ...o, ...rest, timeline: [...(o.timeline || []), { status: rest.status, time: now, note: _note, by: _by || 'Admin' }] }
-    }))
-  }
+  // ─── Operational Mutations (Connected to Endpoints) ─────────────────────────
 
   const processOrder = async () => {
     if (!selected) return
+    setActionLoading(true)
     try {
       await api.patch(`/admin/orders/${selected.id}/status`, {
         status: 'processing',
         picking_staff: pickingStaff,
-        notes: `Order sent to picking queue. Staff: ${pickingStaff}`
-      }).catch(() => null)
-      pushEvent(selected.id, { status: 'processing', _note: `Order sent to picking queue. Picking staff: ${pickingStaff}`, _by: pickingStaff })
+        notes: `Order moved to picking queue. Staff: ${pickingStaff || 'Warehouse Team'}`
+      })
       toast.success(`Order ${selected.id} set to Processing`)
-    } catch {
-      toast.error('Failed to update status')
+      closeModal()
+      fetchOrders()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update order status')
+    } finally {
+      setActionLoading(false)
     }
-    closeModal()
   }
 
   const markPacked = async () => {
     if (!selected) return
+    setActionLoading(true)
     try {
       await api.patch(`/admin/orders/${selected.id}/status`, {
         status: 'packed_ready',
         picking_staff: pickingStaff,
-        notes: `Goods picked, packed and labelled. Ready for driver. Staff: ${pickingStaff}`
-      }).catch(() => null)
-      pushEvent(selected.id, { status: 'packed', _note: `Goods picked, packed and labelled. Ready for driver. Staff: ${pickingStaff}`, _by: pickingStaff })
+        notes: `Items packed and labelled. Ready for driver. Staff: ${pickingStaff || 'Packer'}`
+      })
       toast.success(`Order ${selected.id} marked as Packed & Ready`)
-    } catch {
-      toast.error('Failed to update status')
+      closeModal()
+      fetchOrders()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to mark order as packed')
+    } finally {
+      setActionLoading(false)
     }
-    closeModal()
   }
 
   const assignDriver = async () => {
     if (!assignDriverId || !selected) return
+    setActionLoading(true)
     const driver = drivers.find(d => String(d.id) === String(assignDriverId))
     try {
       await api.patch(`/admin/orders/${selected.id}/assign-driver`, {
         driver_id: parseInt(assignDriverId),
         reassign: assignType === 'manual_reassign'
-      }).catch(() => null)
-
-      if (assignType === 'manual_reassign') {
-        pushEvent(selected.id, {
-          status: 'assigned', driver,
-          _note: `Manual driver reassignment by Admin. Previous driver: ${selected.driver?.name || 'none'} → New driver: ${driver?.name}. Push notification sent to ${driver?.name}.`,
-          _by: 'Admin (Manual Reassign)',
-        })
-      } else {
-        pushEvent(selected.id, { status: 'assigned', driver, _note: `Driver assigned: ${driver?.name}. Push notification sent to driver app.`, _by: 'Admin' })
-      }
-      toast.success(`Driver ${driver?.name || ''} assigned to ${selected.id}`)
-    } catch {
-      toast.error('Failed to assign driver')
+      })
+      toast.success(`Driver ${driver?.name || ''} assigned to order ${selected.id}`)
+      closeModal()
+      fetchOrders()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to assign driver')
+    } finally {
+      setActionLoading(false)
     }
-    closeModal()
   }
 
   const resolveDispute = async () => {
     if (!disputeDecision || !selected) return
-    const total = calcTotal(selected.items, selected.deliveryFee)
-    const noteMap = {
-      full_refund:    `Admin decision: Full refund of ${fmt(total)} processed via Paystack.`,
-      partial_refund: `Admin decision: Partial refund of ${fmt(disputeAmount || 0)} via Paystack. Notes: ${disputeNote}`,
-      replacement:    `Admin decision: Replacement arranged. Driver instructed to collect goods from customer on the spot.`,
-      reject:         `Admin decision: Claim rejected. Reason: ${disputeNote}. Customer notified with written reason.`,
-    }
+    setActionLoading(true)
     try {
-      await api.patch(`/admin/orders/${selected.id}/dispute`, {
+      await api.patch(`/admin/orders/${selected.id}/resolve-dispute`, {
         decision: disputeDecision,
         notes: disputeNote,
         refund_amount: disputeAmount ? parseFloat(disputeAmount) : undefined
-      }).catch(() => null)
-      pushEvent(selected.id, { status: 'delivered', _note: noteMap[disputeDecision], _by: 'Admin' })
-      toast.success('Dispute decision applied')
-    } catch {
-      toast.error('Failed to resolve dispute')
+      })
+      toast.success('Dispute resolved successfully')
+      closeModal()
+      fetchOrders()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to resolve dispute')
+    } finally {
+      setActionLoading(false)
     }
-    closeModal()
   }
 
   const cancelOrder = async () => {
     if (!selected) return
+    setActionLoading(true)
     try {
       await api.patch(`/admin/orders/${selected.id}/cancel`, {
         reason: cancelReason || 'Cancelled by Admin'
-      }).catch(() => null)
-      pushEvent(selected.id, { status: 'cancelled', cancelReason, _note: `Order cancelled. Reason: ${cancelReason}. Refund triggered.`, _by: 'Admin' })
+      })
       toast.success(`Order ${selected.id} cancelled`)
-    } catch {
-      toast.error('Failed to cancel order')
+      closeModal()
+      fetchOrders()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel order')
+    } finally {
+      setActionLoading(false)
     }
-    closeModal()
   }
 
   const rescheduleDelivery = async () => {
     if (!selected) return
+    setActionLoading(true)
     try {
-      await api.patch(`/admin/orders/${selected.id}/status`, {
-        status: 'driver_assigned',
-        notes: `Delivery rescheduled (attempt ${(selected.attempts || 0) + 1}). ${rescheduleNote}`
-      }).catch(() => null)
-      pushEvent(selected.id, { status: 'assigned', attempts: selected.attempts, _note: `Delivery rescheduled (attempt ${(selected.attempts || 0) + 1}). ${rescheduleNote}. Driver: ${selected.driver?.name}`, _by: 'Admin' })
-      toast.success(`Delivery rescheduled for ${selected.id}`)
-    } catch {
-      toast.error('Failed to reschedule delivery')
+      await api.patch(`/admin/orders/${selected.id}/reschedule`, {
+        notes: rescheduleNote || 'Re-attempt scheduled by admin'
+      })
+      toast.success(`Delivery attempt rescheduled for ${selected.id}`)
+      closeModal()
+      fetchOrders()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to reschedule delivery')
+    } finally {
+      setActionLoading(false)
     }
-    closeModal()
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const handlePrint = () => {
+    window.print()
+  }
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="container-fluid">
 
       {/* Page Header */}
-      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
-        <h6 className="flex-grow-1 mb-0">All Orders</h6>
-        <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><Link to="/orders">Orders</Link></li>
-          <li className="breadcrumb-item active">All Orders</li>
-        </ul>
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row align-items-md-center justify-content-between">
+        <div>
+          <h6 className="flex-grow-1 mb-0 fw-bold">All Orders</h6>
+          <small className="text-muted">Manage multi-channel order fulfillment, picking, driver dispatch, and receipts</small>
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          <button className="btn btn-sm btn-outline-secondary" onClick={fetchOrders} title="Refresh orders">
+            <i className={`ri-refresh-line me-1 ${loading ? 'ri-spin' : ''}`} />Refresh
+          </button>
+          <ul className="breadcrumb flex-shrink-0 mb-0">
+            <li className="breadcrumb-item"><Link to="/orders">Orders</Link></li>
+            <li className="breadcrumb-item active">All Orders</li>
+          </ul>
+        </div>
       </div>
 
       {/* Stat Cards */}
@@ -377,17 +513,22 @@ export default function OrdersList() {
           { label:'Delivered',          value: stats.delivered,         color:'#22c55e', icon:'ri-checkbox-circle-line',    filter:'delivered'          },
           { label:'Disputes',           value: stats.disputes,          color:'#ef4444', icon:'ri-alert-line',              filter:'dispute'            },
           { label:'Total Revenue',      value: fmt(stats.revenue),      color:'#10b981', icon:'ri-bar-chart-2-line',        filter: null                },
-        ].map(c => (
+        ].map((c) => (
           <div key={c.label} className="col-6 col-md-3">
-            <div className="card p-3" style={{ borderLeft:`3px solid ${c.color}`, cursor: c.filter ? 'pointer' : 'default' }}
-              onClick={() => c.filter && setFilterStatus(c.filter)}>
+            <div
+              className="card p-3 h-100 shadow-sm transition-all"
+              style={{ borderLeft: `3px solid ${c.color}`, cursor: c.filter ? 'pointer' : 'default' }}
+              onClick={() => c.filter && setFilterStatus(c.filter)}
+            >
               <div className="d-flex align-items-center gap-3">
-                <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                  style={{ width:40, height:40, background:c.color+'20' }}>
-                  <i className={`${c.icon} fs-18`} style={{ color:c.color }}/>
+                <div
+                  className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: 42, height: 42, background: `${c.color}20` }}
+                >
+                  <i className={`${c.icon} fs-18`} style={{ color: c.color }} />
                 </div>
                 <div>
-                  <div className="text-muted" style={{ fontSize:11 }}>{c.label}</div>
+                  <div className="text-muted" style={{ fontSize: 11 }}>{c.label}</div>
                   <div className="fw-bold fs-18">{c.value}</div>
                 </div>
               </div>
@@ -396,113 +537,304 @@ export default function OrdersList() {
         ))}
       </div>
 
-      {/* Filter Bar */}
-      <div className="card mb-3">
-        <div className="card-body d-flex flex-wrap gap-2 align-items-center">
-          <div className="input-group" style={{ maxWidth:280 }}>
-            <span className="input-group-text"><i className="ri-search-line"/></span>
-            <input className="form-control" placeholder="Order ref, name, phone..." value={search} onChange={e => setSearch(e.target.value)}/>
+      {/* Main Filter & Category Bar */}
+      <div className="card mb-3 shadow-sm border-0">
+        <div className="card-body p-3">
+          <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-2">
+
+            {/* Operational Category / Fulfillment Sub-pills */}
+            <div className="btn-group btn-group-sm" role="group" aria-label="Fulfillment Category">
+              <button
+                type="button"
+                className={`btn ${filterFulfillment === 'all' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => setFilterFulfillment('all')}
+              >
+                All Operations
+              </button>
+              <button
+                type="button"
+                className={`btn ${filterFulfillment === 'delivery' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => setFilterFulfillment('delivery')}
+              >
+                <i className="ri-truck-line me-1" />Home Delivery
+              </button>
+              <button
+                type="button"
+                className={`btn ${filterFulfillment === 'pickup' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => setFilterFulfillment('pickup')}
+              >
+                <i className="ri-store-2-line me-1" />Store POS / Walk-in
+              </button>
+            </div>
+
+            {/* Quick stats counter */}
+            <div className="text-muted small">
+              Showing <strong>{filtered.length}</strong> of <strong>{orders.length}</strong> orders
+            </div>
           </div>
-          <select className="form-select" style={{ maxWidth:160 }} value={filterChannel} onChange={e => setFilterChannel(e.target.value)}>
-            <option value="all">All Channels</option>
-            {Object.entries(CHANNEL_CFG).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
-          {filterStatus !== 'all' && (
-            <button className="btn btn-sm btn-outline-secondary" onClick={() => setFilterStatus('all')}>
-              <i className="ri-close-line me-1"/>Clear Filter
-            </button>
-          )}
-          <div className="ms-auto text-muted small">{filtered.length} order{filtered.length !== 1 ? 's' : ''}</div>
-        </div>
-        {/* Status Tab Strip */}
-        <div className="border-top px-3" style={{ overflowX:'auto' }}>
-          <div className="d-flex" style={{ whiteSpace:'nowrap' }}>
-            {[{ key:'all', label:'All Orders' }, ...Object.entries(STATUS_CFG).map(([k,v]) => ({ key:k, label:v.label }))].map(t => (
-              <button key={t.key} className="btn btn-sm border-0 rounded-0 py-2 px-3"
-                style={{
-                  borderBottom: filterStatus === t.key ? '2px solid #6366f1' : '2px solid transparent',
-                  color:        filterStatus === t.key ? '#6366f1' : '#6b7280',
-                  fontWeight:   filterStatus === t.key ? 600 : 400,
-                  background:   'transparent',
+
+          <div className="d-flex flex-wrap gap-2 align-items-center">
+            {/* Search Input */}
+            <div className="input-group" style={{ maxWidth: 280 }}>
+              <span className="input-group-text bg-light border-end-0"><i className="ri-search-line text-muted" /></span>
+              <input
+                className="form-control border-start-0 ps-0"
+                placeholder="Order ref, customer, phone..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            {/* Channel Sub-category Dropdown */}
+            <select
+              className="form-select"
+              style={{ maxWidth: 190 }}
+              value={filterChannel}
+              onChange={(e) => setFilterChannel(e.target.value)}
+            >
+              <option value="all">All Channels</option>
+              <option value="online">Online Store</option>
+              <option value="physical">Physical Store (POS)</option>
+              <option value="chef_bems">Chef Bems AI</option>
+              <option value="mobile_app">Mobile App</option>
+            </select>
+
+            {(filterStatus !== 'all' || filterChannel !== 'all' || filterFulfillment !== 'all' || search) && (
+              <button
+                className="btn btn-sm btn-outline-danger"
+                onClick={() => {
+                  setFilterStatus('all')
+                  setFilterChannel('all')
+                  setFilterFulfillment('all')
+                  setSearch('')
                 }}
-                onClick={() => setFilterStatus(t.key)}>{t.label}</button>
-            ))}
+              >
+                <i className="ri-close-line me-1" />Reset Filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Clean Status Tab Strip (No duplicate tabs) */}
+        <div className="border-top px-3 bg-light-subtle" style={{ overflowX: 'auto' }}>
+          <div className="d-flex" style={{ whiteSpace: 'nowrap' }}>
+            {ORDER_STATUS_TABS.map((t) => {
+              const count = t.key === 'all'
+                ? orders.length
+                : orders.filter((o) => t.statuses?.includes(o.status)).length
+
+              const isActive = filterStatus === t.key
+              return (
+                <button
+                  key={t.key}
+                  className={`btn btn-sm border-0 rounded-0 py-2 px-3 d-inline-flex align-items-center gap-2 ${isActive ? 'fw-bold' : 'text-muted'}`}
+                  style={{
+                    borderBottom: isActive ? '2px solid #143C2D' : '2px solid transparent',
+                    color: isActive ? '#143C2D' : '#6b7280',
+                    background: 'transparent',
+                  }}
+                  onClick={() => setFilterStatus(t.key)}
+                >
+                  <span>{t.label}</span>
+                  <span
+                    className="badge rounded-pill"
+                    style={{
+                      fontSize: 10,
+                      background: isActive ? '#143C2D' : '#e2e8f0',
+                      color: isActive ? '#fff' : '#475569',
+                    }}
+                  >
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>
 
       {/* Orders Table */}
-      <div className="card">
+      <div className="card shadow-sm border-0">
         <div className="table-responsive">
           <table className="table table-hover align-middle mb-0">
             <thead className="table-light">
               <tr>
-                <th>Order Ref</th><th>Date</th><th>Customer</th><th>Channel</th>
-                <th>Items</th><th>Total</th><th>Driver</th><th>Status</th><th>Actions</th>
+                <th style={{ minWidth: 140 }}>Order Ref</th>
+                <th style={{ minWidth: 110 }}>Date</th>
+                <th style={{ minWidth: 160 }}>Customer</th>
+                <th style={{ minWidth: 130 }}>Channel</th>
+                <th style={{ minWidth: 180 }}>Items</th>
+                <th style={{ minWidth: 100 }}>Total</th>
+                <th style={{ minWidth: 120 }}>Driver</th>
+                <th style={{ minWidth: 120 }}>Status</th>
+                <th style={{ minWidth: 120 }} className="text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && (
-                <tr><td colSpan={9} className="text-center text-muted py-5">No orders found</td></tr>
+              {loading && orders.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="text-center py-5">
+                    <div className="spinner-border spinner-border-sm text-primary me-2" role="status" />
+                    <span className="text-muted">Loading live orders...</span>
+                  </td>
+                </tr>
               )}
-              {filtered.map(order => {
+
+              {!loading && filtered.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="text-center text-muted py-5">
+                    <i className="ri-inbox-line fs-2 d-block mb-2 text-muted" />
+                    No orders match your filter criteria.
+                  </td>
+                </tr>
+              )}
+
+              {filtered.map((order) => {
                 const cfg   = getStatusCfg(order.status)
                 const chCfg = getChannelCfg(order.channel)
-                const total = calcTotal(order.items, order.deliveryFee)
+
                 return (
                   <tr key={order.id}>
                     <td>
-                      <div className="fw-medium text-primary" style={{ cursor:'pointer' }} onClick={() => openModal('view', order)}>{order.id}</div>
-                      <div className="text-muted" style={{ fontSize:11 }}>
-                        {order.payment === 'paystack' ? '💳 Paystack' : order.payment === 'cash' ? '💵 Cash' : '💳 POS'}
+                      <div
+                        className="fw-bold text-primary"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => openModal('view', order)}
+                      >
+                        {order.id}
+                      </div>
+                      <div className="text-muted" style={{ fontSize: 11 }}>
+                        {order.payment === 'paystack' ? '💳 Paystack' : order.payment === 'cash' ? '💵 Cash' : '💳 POS Terminal'}
                       </div>
                     </td>
                     <td>
-                      <div style={{ fontSize:13 }}>{order.date.split(' ')[0]}</div>
-                      <div className="text-muted" style={{ fontSize:11 }}>{order.date.split(' ')[1]}</div>
+                      <div style={{ fontSize: 13 }}>{order.date.split(' ')[0]}</div>
+                      <div className="text-muted" style={{ fontSize: 11 }}>{order.date.split(' ')[1] || ''}</div>
                     </td>
                     <td>
                       <div className="fw-medium">{order.customer.name}</div>
-                      <div className="text-muted" style={{ fontSize:11 }}>{order.customer.phone}</div>
+                      <div className="text-muted" style={{ fontSize: 11 }}>{order.customer.phone}</div>
                     </td>
                     <td>
-                      <span className="badge rounded-pill" style={{ background:chCfg.color+'20', color:chCfg.color, fontSize:11 }}>
-                        <i className={`${chCfg.icon} me-1`}/>{chCfg.label}
+                      <span className={`badge rounded-pill ${chCfg.badgeClass || ''}`} style={{ fontSize: 11 }}>
+                        <i className={`${chCfg.icon} me-1`} />{chCfg.label}
                       </span>
                     </td>
                     <td>
-                      <div style={{ fontSize:13 }}>{order.items.length} item{order.items.length !== 1 ? 's' : ''}</div>
-                      <div className="text-muted" style={{ fontSize:11, maxWidth:180 }}>
-                        {order.items.slice(0,2).map(i => i.name).join(', ')}{order.items.length > 2 ? ` +${order.items.length-2} more` : ''}
-                      </div>
+                      {order.items.length > 0 ? (
+                        <>
+                          <div style={{ fontSize: 13 }}>
+                            {order.itemCount} item{order.itemCount !== 1 ? 's' : ''}
+                          </div>
+                          <div className="text-muted text-truncate" style={{ fontSize: 11, maxWidth: 200 }}>
+                            {order.items.slice(0, 2).map((i) => i.name).join(', ')}
+                            {order.items.length > 2 ? ` +${order.items.length - 2} more` : ''}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-muted" style={{ fontSize: 12 }}>Direct Sale</span>
+                      )}
                     </td>
-                    <td className="fw-bold">{fmt(total)}</td>
+                    <td className="fw-bold text-dark">{fmt(order.total)}</td>
                     <td>
-                      {order.driver
-                        ? <><div style={{ fontSize:13 }}>{order.driver.name}</div><div className="text-muted" style={{ fontSize:11 }}>{order.driver.phone}</div></>
-                        : <span className="text-muted">—</span>}
+                      {order.driver ? (
+                        <>
+                          <div style={{ fontSize: 13 }} className="fw-medium">{order.driver.name}</div>
+                          <div className="text-muted" style={{ fontSize: 11 }}>{order.driver.phone}</div>
+                        </>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
                     </td>
                     <td>
-                      <span className="badge" style={{ background:cfg.bg, color:cfg.color, fontSize:11 }}>
-                        <i className={`${cfg.icon} me-1`}/>{cfg.label}
+                      <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: 11 }}>
+                        <i className={`${cfg.icon} me-1`} />{cfg.label}
                       </span>
-                      {order.status === 'delivery_attempted' &&
-                        <div className="text-muted" style={{ fontSize:10 }}>Attempt {order.attempts}/2</div>}
+                      {order.status === 'delivery_attempted' && (
+                        <div className="text-muted" style={{ fontSize: 10 }}>Attempt {order.attempts}/2</div>
+                      )}
                     </td>
-                    <td>
-                      <div className="d-flex gap-1 flex-wrap">
-                        <button className="btn btn-sm btn-outline-secondary" title="View" onClick={() => openModal('view', order)}><i className="ri-eye-line"/></button>
-                        {order.status === 'paid'       && <button className="btn btn-sm btn-outline-primary" title="Process"         onClick={() => openModal('process',  order)}><i className="ri-play-circle-line"/></button>}
-                        {order.status === 'processing' && <button className="btn btn-sm btn-outline-success" title="Mark Packed"     onClick={() => openModal('pack',     order)}><i className="ri-archive-line"/></button>}
-                        {order.status === 'packed'     && <button className="btn btn-sm btn-outline-success" title="Assign Driver"   onClick={() => openModal('assign',   order, { assignType:'initial' })}><i className="ri-user-add-line"/></button>}
-                        {['assigned','shipped','delivery_attempted'].includes(order.status) && order.driver &&
-                          <button className="btn btn-sm btn-outline-warning" title="Reassign Driver" onClick={() => openModal('assign', order, { assignType:'manual_reassign' })}>
-                            <i className="ri-user-follow-line"/>
-                          </button>}
-                        {order.status === 'dispute'    && <button className="btn btn-sm btn-outline-danger"  title="Resolve"          onClick={() => openModal('dispute',  order)}><i className="ri-shield-check-line"/></button>}
-                        {order.status === 'delivery_attempted' && <button className="btn btn-sm btn-outline-secondary" title="Reschedule" onClick={() => openModal('reschedule', order)}><i className="ri-calendar-line"/></button>}
-                        {['paid','processing','packed','assigned'].includes(order.status) &&
-                          <button className="btn btn-sm btn-outline-danger" title="Cancel" onClick={() => openModal('cancel', order)}><i className="ri-close-circle-line"/></button>}
+                    <td className="text-end">
+                      <div className="d-inline-flex gap-1">
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          title="View Details"
+                          onClick={() => openModal('view', order)}
+                        >
+                          <i className="ri-eye-line" />
+                        </button>
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          title="Print Receipt"
+                          onClick={() => openModal('receipt', order)}
+                        >
+                          <i className="ri-printer-line" />
+                        </button>
+
+                        {/* Status workflow triggers */}
+                        {order.status === 'paid' && (
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            title="Process Order"
+                            onClick={() => openModal('process', order)}
+                          >
+                            <i className="ri-play-circle-line" />
+                          </button>
+                        )}
+                        {order.status === 'processing' && (
+                          <button
+                            className="btn btn-sm btn-outline-success"
+                            title="Mark Packed"
+                            onClick={() => openModal('pack', order)}
+                          >
+                            <i className="ri-archive-line" />
+                          </button>
+                        )}
+                        {order.status === 'packed' && (
+                          <button
+                            className="btn btn-sm btn-outline-success"
+                            title="Assign Driver"
+                            onClick={() => openModal('assign', order, { assignType: 'initial' })}
+                          >
+                            <i className="ri-user-add-line" />
+                          </button>
+                        )}
+                        {['assigned', 'shipped', 'delivery_attempted'].includes(order.status) && order.driver && (
+                          <button
+                            className="btn btn-sm btn-outline-warning"
+                            title="Reassign Driver"
+                            onClick={() => openModal('assign', order, { assignType: 'manual_reassign' })}
+                          >
+                            <i className="ri-user-follow-line" />
+                          </button>
+                        )}
+                        {order.status === 'dispute' && (
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            title="Resolve Dispute"
+                            onClick={() => openModal('dispute', order)}
+                          >
+                            <i className="ri-shield-check-line" />
+                          </button>
+                        )}
+                        {order.status === 'delivery_attempted' && (
+                          <button
+                            className="btn btn-sm btn-outline-secondary"
+                            title="Reschedule Attempt"
+                            onClick={() => openModal('reschedule', order)}
+                          >
+                            <i className="ri-calendar-line" />
+                          </button>
+                        )}
+                        {['paid', 'processing', 'packed', 'assigned'].includes(order.status) && (
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            title="Cancel Order"
+                            onClick={() => openModal('cancel', order)}
+                          >
+                            <i className="ri-close-circle-line" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -518,33 +850,46 @@ export default function OrdersList() {
       ════════════════════════════════════════════════ */}
 
       {activeModal && selected && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050,
-          display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
-          onClick={e => e.target === e.currentTarget && closeModal()}>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 1050,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+          onClick={(e) => e.target === e.currentTarget && closeModal()}
+        >
 
-          {/* ── VIEW ORDER ─────────────────────────────── */}
+          {/* ── 1. VIEW ORDER DETAILS ─────────────────────────────── */}
           {activeModal === 'view' && (() => {
-            const total = calcTotal(selected.items, selected.deliveryFee)
-            const cfg   = getStatusCfg(selected.status)
-            const idx   = pipelineIdx(selected.status)
+            const cfg = getStatusCfg(selected.status)
+            const idx = pipelineIdx(selected.status)
+
             return (
-              <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:880, maxHeight:'90vh', overflowY:'auto' }}>
+              <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 900, maxHeight: '92vh', overflowY: 'auto' }}>
                 {/* Header */}
                 <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
                   <div>
-                    <h5 className="mb-0">{selected.id}</h5>
+                    <h5 className="mb-0 fw-bold">{selected.id}</h5>
                     <div className="text-muted small">{selected.date} · {getChannelCfg(selected.channel).label}</div>
                   </div>
                   <div className="d-flex gap-2 align-items-center">
-                    <span className="badge" style={{ background:cfg.bg, color:cfg.color, fontSize:13 }}>
-                      <i className={`${cfg.icon} me-1`}/>{cfg.label}
+                    <span className="badge" style={{ background: cfg.bg, color: cfg.color, fontSize: 13 }}>
+                      <i className={`${cfg.icon} me-1`} />{cfg.label}
                     </span>
-                    <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line"/></button>
+                    <button className="btn btn-sm btn-outline-secondary" onClick={() => openModal('receipt', selected)} title="Print Sales Receipt">
+                      <i className="ri-printer-line me-1" />Print Receipt
+                    </button>
+                    <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
                   </div>
                 </div>
 
-                {/* Pipeline progress (online / app / chef orders only) */}
-                {!['physical'].includes(selected.channel) && !['dispute','cancelled'].includes(selected.status) && (
+                {/* Pipeline Progress */}
+                {!['physical'].includes(selected.channel) && !['dispute', 'cancelled'].includes(selected.status) && (
                   <div className="px-4 py-3 border-bottom bg-light">
                     <div className="d-flex align-items-center">
                       {PIPELINE.map((step, i) => {
@@ -552,19 +897,26 @@ export default function OrdersList() {
                         const done = i <= idx
                         const now  = i === idx
                         return (
-                          <div key={step} className="d-flex align-items-center flex-grow-1" style={{ minWidth:0 }}>
-                            <div className="d-flex flex-column align-items-center flex-shrink-0" style={{ gap:4 }}>
-                              <div className="rounded-circle d-flex align-items-center justify-content-center"
-                                style={{ width:28, height:28, background: done ? c.color : '#e5e7eb',
-                                  boxShadow: now ? `0 0 0 4px ${c.color}35` : 'none' }}>
-                                <i className={c.icon} style={{ color: done ? '#fff' : '#9ca3af', fontSize:11 }}/>
+                          <div key={step} className="d-flex align-items-center flex-grow-1" style={{ minWidth: 0 }}>
+                            <div className="d-flex flex-column align-items-center flex-shrink-0" style={{ gap: 4 }}>
+                              <div
+                                className="rounded-circle d-flex align-items-center justify-content-center"
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  background: done ? c.color : '#e5e7eb',
+                                  boxShadow: now ? `0 0 0 4px ${c.color}35` : 'none',
+                                }}
+                              >
+                                <i className={c.icon} style={{ color: done ? '#fff' : '#9ca3af', fontSize: 11 }} />
                               </div>
-                              <div style={{ fontSize:9, color: done ? c.color : '#9ca3af', whiteSpace:'nowrap', fontWeight: now ? 700 : 400 }}>
+                              <div style={{ fontSize: 9, color: done ? c.color : '#9ca3af', whiteSpace: 'nowrap', fontWeight: now ? 700 : 400 }}>
                                 {c.label}
                               </div>
                             </div>
-                            {i < PIPELINE.length - 1 &&
-                              <div className="flex-grow-1 mx-1" style={{ height:2, background: i < idx ? '#22c55e' : '#e5e7eb', borderRadius:1 }}/>}
+                            {i < PIPELINE.length - 1 && (
+                              <div className="flex-grow-1 mx-1" style={{ height: 2, background: i < idx ? '#22c55e' : '#e5e7eb', borderRadius: 1 }} />
+                            )}
                           </div>
                         )
                       })}
@@ -573,114 +925,154 @@ export default function OrdersList() {
                 )}
 
                 <div className="p-4">
+                  {detailLoading && (
+                    <div className="alert alert-info py-2 small mb-3">
+                      <i className="ri-loader-line ri-spin me-1" />Refreshing live order history from database...
+                    </div>
+                  )}
+
                   <div className="row g-4">
-                    {/* Left col */}
+                    {/* Left Column: Customer, Items, Delivery info */}
                     <div className="col-md-7">
-                      <div className="card border mb-3 p-3">
+                      <div className="card border mb-3 p-3 bg-light-subtle">
                         <div className="row g-3">
                           <div className="col-6">
                             <div className="text-muted small mb-1">Customer</div>
                             <div className="fw-medium">{selected.customer.name}</div>
-                            <div className="small">{selected.customer.phone}</div>
+                            <div className="small text-muted">{selected.customer.phone}</div>
                             <div className="small text-muted">{selected.customer.email}</div>
                           </div>
                           <div className="col-6">
-                            <div className="text-muted small mb-1">Delivery Address</div>
+                            <div className="text-muted small mb-1">Fulfillment Address</div>
                             <div className="small">{selected.customer.address}</div>
                           </div>
                           <div className="col-6">
                             <div className="text-muted small mb-1">Channel</div>
-                            {(() => { const c = getChannelCfg(selected.channel); return (
-                              <span className="badge" style={{ background:(c.color || '#3b82f6')+'20', color:c.color || '#3b82f6' }}>
-                                <i className={`${c.icon} me-1`}/>{c.label}
-                              </span>)})()}
+                            {(() => {
+                              const c = getChannelCfg(selected.channel)
+                              return (
+                                <span className={`badge rounded-pill ${c.badgeClass || ''}`} style={{ fontSize: 11 }}>
+                                  <i className={`${c.icon} me-1`} />{c.label}
+                                </span>
+                              )
+                            })()}
                           </div>
                           <div className="col-6">
-                            <div className="text-muted small mb-1">Payment</div>
-                            <div className="small">
-                              {selected.payment === 'paystack' ? '💳 Paystack' : selected.payment === 'cash' ? '💵 Cash' : '💳 POS'}
+                            <div className="text-muted small mb-1">Payment Method</div>
+                            <div className="small fw-medium">
+                              {selected.payment === 'paystack' ? '💳 Paystack' : selected.payment === 'cash' ? '💵 Cash' : '💳 POS Terminal'}
                             </div>
                           </div>
+
                           {selected.driver && (
-                            <div className="col-12">
+                            <div className="col-12 border-top pt-2 mt-2">
                               <div className="text-muted small mb-1">Assigned Driver</div>
                               <div className="d-flex align-items-center gap-2">
-                                <div className="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white flex-shrink-0"
-                                  style={{ width:32, height:32, fontSize:11 }}>
-                                  {selected.driver.name.split(' ').map(n=>n[0]).join('')}
+                                <div
+                                  className="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white flex-shrink-0"
+                                  style={{ width: 32, height: 32, fontSize: 11 }}
+                                >
+                                  {selected.driver.name.split(' ').map((n) => n[0]).join('')}
                                 </div>
                                 <div>
                                   <div className="fw-medium small">{selected.driver.name}</div>
-                                  <div className="text-muted" style={{ fontSize:11 }}>{selected.driver.phone} · {selected.driver.bike}</div>
+                                  <div className="text-muted" style={{ fontSize: 11 }}>{selected.driver.phone} · {selected.driver.bike}</div>
                                 </div>
                               </div>
                             </div>
                           )}
+
                           {selected.notes && (
-                            <div className="col-12">
-                              <div className="text-muted small mb-1">Notes</div>
-                              <div className="small">{selected.notes}</div>
+                            <div className="col-12 border-top pt-2 mt-2">
+                              <div className="text-muted small mb-1">Order Notes</div>
+                              <div className="small text-muted">{selected.notes}</div>
                             </div>
                           )}
                         </div>
                       </div>
 
-                      {/* Items */}
+                      {/* Items breakdown */}
                       <div className="card border mb-3 p-3">
-                        <div className="fw-medium mb-2 small">Order Items</div>
-                        <table className="table table-sm mb-0">
-                          <thead className="table-light">
-                            <tr><th>Product</th><th>Qty</th><th>Unit Price</th><th className="text-end">Total</th></tr>
-                          </thead>
-                          <tbody>
-                            {selected.items.map((item, i) => (
-                              <tr key={i}>
-                                <td>{item.name}</td>
-                                <td>{item.qty} {item.unit}</td>
-                                <td>{fmt(item.price)}</td>
-                                <td className="text-end">{fmt(item.total)}</td>
+                        <div className="fw-bold mb-2 small">Order Items ({selected.items?.length || 0})</div>
+                        {selected.items && selected.items.length > 0 ? (
+                          <table className="table table-sm mb-0 align-middle">
+                            <thead className="table-light">
+                              <tr>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th className="text-end">Total</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                        <div className="border-top pt-2 mt-2">
-                          <div className="d-flex justify-content-between small text-muted"><span>Subtotal</span><span>{fmt(calcSub(selected.items))}</span></div>
-                          <div className="d-flex justify-content-between small text-muted"><span>Delivery Fee</span><span>{fmt(selected.deliveryFee)}</span></div>
-                          <div className="d-flex justify-content-between fw-bold mt-1"><span>Total</span><span>{fmt(total)}</span></div>
+                            </thead>
+                            <tbody>
+                              {selected.items.map((it, idx) => (
+                                <tr key={it.id || idx}>
+                                  <td>
+                                    <div className="fw-medium small">{it.name}</div>
+                                    {it.sku && <div className="text-muted" style={{ fontSize: 10 }}>SKU: {it.sku}</div>}
+                                  </td>
+                                  <td className="small">{it.qty} {it.unit || ''}</td>
+                                  <td className="small">{fmt(it.price)}</td>
+                                  <td className="text-end small fw-medium">{fmt(it.total)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <div className="text-muted small py-2">No individual product items specified (Direct POS transaction).</div>
+                        )}
+
+                        <div className="border-top pt-2 mt-3">
+                          <div className="d-flex justify-content-between small text-muted">
+                            <span>Subtotal</span>
+                            <span>{fmt(calcSub(selected.items) || selected.total)}</span>
+                          </div>
+                          {selected.deliveryFee > 0 && (
+                            <div className="d-flex justify-content-between small text-muted">
+                              <span>Delivery Fee</span>
+                              <span>{fmt(selected.deliveryFee)}</span>
+                            </div>
+                          )}
+                          <div className="d-flex justify-content-between fw-bold mt-1 fs-15">
+                            <span>Total</span>
+                            <span className="text-primary">{fmt(selected.total)}</span>
+                          </div>
                         </div>
                       </div>
 
                       {selected.disputeReason && (
                         <div className="alert alert-danger p-3 mb-2 small">
-                          <div className="fw-medium mb-1"><i className="ri-alert-line me-1"/>Dispute Raised</div>
+                          <div className="fw-medium mb-1"><i className="ri-alert-line me-1" />Dispute Logged</div>
                           <div><strong>Reason:</strong> {selected.disputeReason}</div>
-                          {selected.disputeNote && <div><strong>Customer note:</strong> {selected.disputeNote}</div>}
+                          {selected.disputeNote && <div><strong>Note:</strong> {selected.disputeNote}</div>}
                         </div>
                       )}
                       {selected.cancelReason && (
                         <div className="alert alert-secondary p-3 mb-2 small">
-                          <div className="fw-medium mb-1"><i className="ri-close-circle-line me-1"/>Cancelled</div>
+                          <div className="fw-medium mb-1"><i className="ri-close-circle-line me-1" />Cancelled</div>
                           <div>{selected.cancelReason}</div>
                         </div>
                       )}
                     </div>
 
-                    {/* Right col — Timeline */}
+                    {/* Right Column: Timeline & Action shortcuts */}
                     <div className="col-md-5">
-                      <div className="fw-medium mb-3 small">Order Timeline</div>
-                      <div style={{ position:'relative' }}>
-                        <div style={{ position:'absolute', left:15, top:8, bottom:8, width:2, background:'#e5e7eb', zIndex:0 }}/>
-                        {selected.timeline.map((ev, i) => {
+                      <div className="fw-bold mb-3 small">Status & Tracking Timeline</div>
+                      <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'absolute', left: 15, top: 8, bottom: 8, width: 2, background: '#e5e7eb', zIndex: 0 }} />
+                        {selected.timeline && selected.timeline.map((ev, i) => {
                           const c = getStatusCfg(ev.status)
                           return (
-                            <div key={i} className="d-flex gap-3 mb-3" style={{ position:'relative', zIndex:1 }}>
-                              <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                                style={{ width:32, height:32, background:c?.bg||'#f3f4f6', border:`2px solid ${c?.color||'#d1d5db'}` }}>
-                                <i className={c?.icon||'ri-circle-line'} style={{ color:c?.color||'#6b7280', fontSize:11 }}/>
+                            <div key={i} className="d-flex gap-3 mb-3" style={{ position: 'relative', zIndex: 1 }}>
+                              <div
+                                className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                style={{ width: 32, height: 32, background: c?.bg || '#f3f4f6', border: `2px solid ${c?.color || '#d1d5db'}` }}
+                              >
+                                <i className={c?.icon || 'ri-circle-line'} style={{ color: c?.color || '#6b7280', fontSize: 11 }} />
                               </div>
                               <div>
-                                <div className="fw-medium" style={{ fontSize:13 }}>{c?.label||ev.status}</div>
-                                <div className="text-muted" style={{ fontSize:10 }}>{ev.time} · {ev.by}</div>
+                                <div className="fw-medium" style={{ fontSize: 13 }}>{c?.label || ev.status}</div>
+                                <div className="text-muted" style={{ fontSize: 10 }}>{ev.time} · {ev.by || 'System'}</div>
                                 <div className="small mt-1 text-muted">{ev.note}</div>
                               </div>
                             </div>
@@ -688,19 +1080,64 @@ export default function OrdersList() {
                         })}
                       </div>
 
-                      {/* Action shortcuts */}
-                      <div className="border-top pt-3 mt-2 d-flex flex-column gap-2">
-                        {selected.status === 'paid'       && <button className="btn btn-primary btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('process', selected), 100) }}><i className="ri-play-circle-line me-1"/>Process Order</button>}
-                        {selected.status === 'processing' && <button className="btn btn-success btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('pack', selected), 100) }}><i className="ri-archive-line me-1"/>Mark as Packed</button>}
-                        {selected.status === 'packed'     && <button className="btn btn-success btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('assign', selected, { assignType:'initial' }), 100) }}><i className="ri-user-add-line me-1"/>Assign Driver</button>}
-                        {['assigned','shipped','delivery_attempted'].includes(selected.status) && selected.driver && (
-                          <button className="btn btn-warning btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('assign', selected, { assignType:'manual_reassign' }), 100) }}>
-                            <i className="ri-user-follow-line me-1"/>Reassign Driver
+                      {/* Action Shortcuts */}
+                      <div className="border-top pt-3 mt-4 d-flex flex-column gap-2">
+                        {selected.status === 'paid' && (
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => { closeModal(); setTimeout(() => openModal('process', selected), 100) }}
+                          >
+                            <i className="ri-play-circle-line me-1" />Process Order (Picking)
                           </button>
                         )}
-                        {selected.status === 'dispute'    && <button className="btn btn-danger btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('dispute', selected), 100) }}><i className="ri-shield-check-line me-1"/>Resolve Dispute</button>}
-                        {selected.status === 'delivery_attempted' && <button className="btn btn-outline-secondary btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('reschedule', selected), 100) }}><i className="ri-calendar-line me-1"/>Reschedule / Cancel</button>}
-                        {['paid','processing','packed','assigned'].includes(selected.status) && <button className="btn btn-outline-danger btn-sm" onClick={() => { closeModal(); setTimeout(() => openModal('cancel', selected), 100) }}><i className="ri-close-circle-line me-1"/>Cancel Order</button>}
+                        {selected.status === 'processing' && (
+                          <button
+                            className="btn btn-success btn-sm"
+                            onClick={() => { closeModal(); setTimeout(() => openModal('pack', selected), 100) }}
+                          >
+                            <i className="ri-archive-line me-1" />Confirm Packed & Ready
+                          </button>
+                        )}
+                        {selected.status === 'packed' && (
+                          <button
+                            className="btn btn-success btn-sm"
+                            onClick={() => { closeModal(); setTimeout(() => openModal('assign', selected, { assignType: 'initial' }), 100) }}
+                          >
+                            <i className="ri-user-add-line me-1" />Assign Delivery Driver
+                          </button>
+                        )}
+                        {['assigned', 'shipped', 'delivery_attempted'].includes(selected.status) && selected.driver && (
+                          <button
+                            className="btn btn-warning btn-sm"
+                            onClick={() => { closeModal(); setTimeout(() => openModal('assign', selected, { assignType: 'manual_reassign' }), 100) }}
+                          >
+                            <i className="ri-user-follow-line me-1" />Reassign Driver
+                          </button>
+                        )}
+                        {selected.status === 'dispute' && (
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => { closeModal(); setTimeout(() => openModal('dispute', selected), 100) }}
+                          >
+                            <i className="ri-shield-check-line me-1" />Resolve Dispute
+                          </button>
+                        )}
+                        {selected.status === 'delivery_attempted' && (
+                          <button
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={() => { closeModal(); setTimeout(() => openModal('reschedule', selected), 100) }}
+                          >
+                            <i className="ri-calendar-line me-1" />Reschedule Delivery Attempt
+                          </button>
+                        )}
+                        {['paid', 'processing', 'packed', 'assigned'].includes(selected.status) && (
+                          <button
+                            className="btn btn-outline-danger btn-sm"
+                            onClick={() => { closeModal(); setTimeout(() => openModal('cancel', selected), 100) }}
+                          >
+                            <i className="ri-close-circle-line me-1" />Cancel Order
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -709,371 +1146,392 @@ export default function OrdersList() {
             )
           })()}
 
-          {/* ── PROCESS ORDER ──────────────────────────── */}
+          {/* ── 2. PRINTABLE RECEIPT MODAL ────────────────────────── */}
+          {activeModal === 'receipt' && (
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
+              <div className="d-flex align-items-center justify-content-between p-3 border-bottom d-print-none">
+                <h6 className="mb-0 fw-bold">Sales Receipt</h6>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-sm btn-primary" onClick={handlePrint}><i className="ri-printer-line me-1" />Print</button>
+                  <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
+                </div>
+              </div>
+
+              <div ref={receiptRef} className="p-4" style={{ fontFamily: 'monospace', fontSize: 12, color: '#111' }}>
+                <div className="text-center mb-3">
+                  <h5 className="fw-bold mb-0">BEMS FARMS LTD</h5>
+                  <div>Fresh Quality Agricultural Produce</div>
+                  <div>Km 14, Epe Expressway, Lagos</div>
+                  <div>Tel: +234 800 236 7327 | www.bemsfarms.com</div>
+                </div>
+
+                <div className="border-top border-bottom py-2 my-2">
+                  <div className="d-flex justify-content-between"><span>ORDER REF:</span><strong>{selected.id}</strong></div>
+                  <div className="d-flex justify-content-between"><span>DATE:</span><span>{selected.date}</span></div>
+                  <div className="d-flex justify-content-between"><span>CUSTOMER:</span><span>{selected.customer.name}</span></div>
+                  <div className="d-flex justify-content-between"><span>CHANNEL:</span><span>{getChannelCfg(selected.channel).label}</span></div>
+                </div>
+
+                <div className="py-2">
+                  <table className="w-100 mb-2">
+                    <thead>
+                      <tr className="border-bottom">
+                        <th className="text-start pb-1">ITEM</th>
+                        <th className="text-center pb-1">QTY</th>
+                        <th className="text-end pb-1">PRICE</th>
+                        <th className="text-end pb-1">TOTAL</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selected.items?.length > 0 ? (
+                        selected.items.map((it, i) => (
+                          <tr key={i}>
+                            <td className="py-1">{it.name}</td>
+                            <td className="text-center py-1">{it.qty}</td>
+                            <td className="text-end py-1">{fmt(it.price)}</td>
+                            <td className="text-end py-1">{fmt(it.total)}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr><td colSpan={4} className="py-2 text-center text-muted">Direct Sale / Walk-in</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="border-top pt-2">
+                  <div className="d-flex justify-content-between"><span>SUBTOTAL:</span><span>{fmt(calcSub(selected.items) || selected.total)}</span></div>
+                  {selected.deliveryFee > 0 && (
+                    <div className="d-flex justify-content-between"><span>DELIVERY FEE:</span><span>{fmt(selected.deliveryFee)}</span></div>
+                  )}
+                  <div className="d-flex justify-content-between fw-bold fs-15 mt-1 border-top pt-1">
+                    <span>GRAND TOTAL:</span>
+                    <span>{fmt(selected.total)}</span>
+                  </div>
+                  <div className="d-flex justify-content-between text-muted mt-1">
+                    <span>PAYMENT:</span>
+                    <span>{selected.payment?.toUpperCase()}</span>
+                  </div>
+                </div>
+
+                <div className="text-center mt-4 border-top pt-3 text-muted" style={{ fontSize: 11 }}>
+                  <div>Thank you for choosing Bems Farms!</div>
+                  <div>Certified Fresh & Organically Grown</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── 3. PROCESS ORDER MODAL ──────────────────────────── */}
           {activeModal === 'process' && (
-            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:480 }}>
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 460 }}>
               <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
-                <h5 className="mb-0">Process Order</h5>
-                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line"/></button>
+                <h5 className="mb-0 fw-bold">Process Order</h5>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
               <div className="p-4">
                 <div className="alert alert-info mb-3 small">
-                  <i className="ri-information-line me-1"/>
-                  This moves the order into the <strong>picking queue</strong>. A picking list will be generated for the assigned staff member.
+                  <i className="ri-information-line me-1" />
+                  Moves order into the warehouse picking queue. Assign a staff member responsible for gathering produce.
                 </div>
-                <div className="card border p-3 mb-3">
-                  <div className="fw-medium mb-1">{selected.id}</div>
-                  <div className="small text-muted mb-2">{selected.customer.name} · {fmt(calcTotal(selected.items, selected.deliveryFee))}</div>
-                  <div className="border-top pt-2">
-                    {selected.items.map((item, i) => (
-                      <div key={i} className="d-flex justify-content-between small py-1 border-bottom">
-                        <span>{item.name}</span><span className="fw-medium text-muted">{item.qty} {item.unit}</span>
-                      </div>
-                    ))}
-                  </div>
+                <div className="card border p-3 mb-3 bg-light">
+                  <div className="fw-bold">{selected.id}</div>
+                  <div className="small text-muted">{selected.customer.name} · {fmt(selected.total)}</div>
                 </div>
                 <div className="mb-3">
                   <label className="form-label fw-medium small">Assign Picking Staff</label>
-                  <select className="form-select" value={pickingStaff} onChange={e => setPickingStaff(e.target.value)}>
-                    {STAFF.map(s => <option key={s}>{s}</option>)}
+                  <select
+                    className="form-select"
+                    value={pickingStaff}
+                    onChange={(e) => setPickingStaff(e.target.value)}
+                  >
+                    {staffList.length > 0 ? (
+                      staffList.map((s) => <option key={s} value={s}>{s}</option>)
+                    ) : (
+                      <>
+                        <option value="Warehouse Staff">Warehouse Staff</option>
+                        <option value="Store Manager">Store Manager</option>
+                      </>
+                    )}
                   </select>
                 </div>
                 <div className="d-flex gap-2">
-                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
-                  <button className="btn btn-primary flex-fill" onClick={processOrder}>
-                    <i className="ri-send-plane-line me-1"/>Start Processing
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal} disabled={actionLoading}>Cancel</button>
+                  <button className="btn btn-primary flex-fill" onClick={processOrder} disabled={actionLoading}>
+                    {actionLoading ? 'Processing...' : 'Start Picking'}
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── MARK AS PACKED ─────────────────────────── */}
+          {/* ── 4. MARK PACKED MODAL ─────────────────────────── */}
           {activeModal === 'pack' && (
-            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:440 }}>
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 440 }}>
               <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
-                <h5 className="mb-0">Mark as Packed</h5>
-                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line"/></button>
+                <h5 className="mb-0 fw-bold">Mark as Packed & Ready</h5>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
               <div className="p-4">
                 <div className="alert alert-success mb-3 small">
-                  <i className="ri-archive-line me-1"/>
-                  Confirm all items have been picked, packed and labelled. The order will be ready for driver collection.
+                  <i className="ri-checkbox-circle-line me-1" />
+                  Confirm all goods have been inspected, weighed, packed, and labelled for dispatch.
                 </div>
                 <div className="mb-3">
-                  <label className="form-label fw-medium small">Packed by</label>
-                  <select className="form-select" value={pickingStaff} onChange={e => setPickingStaff(e.target.value)}>
-                    {STAFF.map(s => <option key={s}>{s}</option>)}
+                  <label className="form-label fw-medium small">Packed By</label>
+                  <select
+                    className="form-select"
+                    value={pickingStaff}
+                    onChange={(e) => setPickingStaff(e.target.value)}
+                  >
+                    {staffList.length > 0 ? (
+                      staffList.map((s) => <option key={s} value={s}>{s}</option>)
+                    ) : (
+                      <option value="Fulfillment Team">Fulfillment Team</option>
+                    )}
                   </select>
                 </div>
                 <div className="d-flex gap-2">
-                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
-                  <button className="btn btn-success flex-fill" onClick={markPacked}>
-                    <i className="ri-checkbox-circle-line me-1"/>Confirm Packed & Ready
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal} disabled={actionLoading}>Cancel</button>
+                  <button className="btn btn-success flex-fill" onClick={markPacked} disabled={actionLoading}>
+                    {actionLoading ? 'Saving...' : 'Confirm Packed'}
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── ASSIGN / REASSIGN DRIVER ───────────────── */}
+          {/* ── 5. ASSIGN DRIVER MODAL ───────────────── */}
           {activeModal === 'assign' && (
-            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:480 }}>
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 480 }}>
               <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
                 <div>
-                  <h5 className="mb-0">
-                    {assignType === 'manual_reassign'
-                      ? <><i className="ri-user-follow-line me-2 text-warning"/>Manual Driver Reassignment</>
-                      : <><i className="ri-user-add-line me-2 text-success"/>Assign Driver</>}
+                  <h5 className="mb-0 fw-bold">
+                    {assignType === 'manual_reassign' ? 'Reassign Driver' : 'Assign Delivery Driver'}
                   </h5>
                   <div className="text-muted small mt-1">{selected.id} · {selected.customer.name}</div>
                 </div>
-                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line"/></button>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
               <div className="p-4">
-
-                {/* Context info */}
-                <div className="p-3 border rounded mb-3" style={{ background:'#f8fafc' }}>
+                <div className="p-3 border rounded mb-3 bg-light">
                   <div className="d-flex gap-2 mb-1">
-                    <i className="ri-map-pin-line text-muted mt-1"/>
+                    <i className="ri-map-pin-line text-muted mt-1" />
                     <div className="small">{selected.customer.address}</div>
                   </div>
-                  {assignType === 'manual_reassign' && selected.driver && (
+                  {selected.driver && assignType === 'manual_reassign' && (
                     <div className="d-flex align-items-center gap-2 mt-2 pt-2 border-top">
-                      <span className="text-muted small">Current driver:</span>
-                      <div className="rounded-circle d-flex align-items-center justify-content-center bg-secondary text-white flex-shrink-0"
-                        style={{ width:24, height:24, fontSize:9 }}>
-                        {selected.driver.name.split(' ').map(n=>n[0]).join('')}
-                      </div>
-                      <span className="small fw-medium">{selected.driver.name}</span>
-                      <span className="badge bg-warning text-dark ms-auto" style={{ fontSize:10 }}>Being replaced</span>
+                      <span className="text-muted small">Current:</span>
+                      <span className="small fw-bold">{selected.driver.name}</span>
+                      <span className="badge bg-warning text-dark ms-auto" style={{ fontSize: 10 }}>Being replaced</span>
                     </div>
                   )}
                 </div>
 
-                {assignType === 'manual_reassign' && (
-                  <div className="alert alert-warning small p-2 mb-3">
-                    <i className="ri-alert-line me-1"/>
-                    This is a <strong>manual override</strong>. A reassignment event will be logged on the order timeline.
+                <label className="form-label fw-medium small mb-2">Available Fleet Drivers</label>
+                <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+                  {drivers.length > 0 ? (
+                    drivers
+                      .filter((d) => d.active && (assignType !== 'manual_reassign' || d.id !== selected.driver?.id))
+                      .map((d) => (
+                        <div
+                          key={d.id}
+                          className="d-flex align-items-center gap-3 p-2 border rounded mb-2"
+                          style={{
+                            cursor: 'pointer',
+                            background: Number(assignDriverId) === d.id ? '#ecfdf5' : '#fff',
+                            borderColor: Number(assignDriverId) === d.id ? '#10b981' : '#e5e7eb',
+                          }}
+                          onClick={() => setAssignDriverId(String(d.id))}
+                        >
+                          <div
+                            className="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0"
+                            style={{ width: 34, height: 34, fontSize: 11, background: '#10b981' }}
+                          >
+                            {d.name.split(' ').map((n) => n[0]).join('')}
+                          </div>
+                          <div className="flex-grow-1">
+                            <div className="fw-medium small">{d.name}</div>
+                            <div className="text-muted" style={{ fontSize: 11 }}>{d.phone} · {d.bike}</div>
+                          </div>
+                          {Number(assignDriverId) === d.id && <i className="ri-checkbox-circle-fill text-success fs-18" />}
+                        </div>
+                      ))
+                  ) : (
+                    <div className="text-muted small p-3 text-center border rounded">
+                      No active fleet drivers registered. Check Fleet & Deliveries settings.
+                    </div>
+                  )}
+                </div>
+
+                <div className="d-flex gap-2 mt-3">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal} disabled={actionLoading}>Cancel</button>
+                  <button
+                    className={`btn flex-fill ${assignType === 'manual_reassign' ? 'btn-warning' : 'btn-success'}`}
+                    onClick={assignDriver}
+                    disabled={!assignDriverId || actionLoading}
+                  >
+                    {actionLoading ? 'Assigning...' : 'Confirm Driver Assignment'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── 6. RESOLVE DISPUTE MODAL ────────────────────────── */}
+          {activeModal === 'dispute' && (
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 520 }}>
+              <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
+                <h5 className="mb-0 text-danger fw-bold"><i className="ri-alert-line me-2" />Resolve Customer Dispute</h5>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
+              </div>
+              <div className="p-4">
+                <div className="alert alert-danger mb-3 small">
+                  <strong>{selected.id}</strong> · {selected.customer.name}<br />
+                  <strong>Reason:</strong> {selected.disputeReason || 'Produce issue or delivery problem reported.'}
+                </div>
+
+                <label className="form-label fw-medium small mb-2">Resolution Decision</label>
+                {[
+                  { key: 'full_refund',    label: 'Full Refund',    desc: `Refund ${fmt(selected.total)} to customer`, color: '#22c55e', icon: 'ri-refund-2-line' },
+                  { key: 'partial_refund', label: 'Partial Refund', desc: 'Specify refund amount for affected items', color: '#f59e0b', icon: 'ri-money-dollar-circle-line' },
+                  { key: 'replacement',    label: 'Replacement',    desc: 'Send fresh replacement produce to customer', color: '#f97316', icon: 'ri-refresh-line' },
+                  { key: 'reject',         label: 'Reject Claim',   desc: 'Customer receives written rejection explanation', color: '#6b7280', icon: 'ri-close-circle-line' },
+                ].map((d) => (
+                  <div
+                    key={d.key}
+                    className="d-flex align-items-center gap-3 p-2 border rounded mb-2"
+                    style={{
+                      cursor: 'pointer',
+                      background: disputeDecision === d.key ? `${d.color}15` : '#fff',
+                      borderColor: disputeDecision === d.key ? d.color : '#dee2e6',
+                    }}
+                    onClick={() => setDisputeDecision(d.key)}
+                  >
+                    <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 32, height: 32, background: `${d.color}20` }}>
+                      <i className={`${d.icon} fs-16`} style={{ color: d.color }} />
+                    </div>
+                    <div className="flex-grow-1">
+                      <div className="fw-medium small">{d.label}</div>
+                      <div className="text-muted" style={{ fontSize: 11 }}>{d.desc}</div>
+                    </div>
+                    {disputeDecision === d.key && <i className="ri-checkbox-circle-fill fs-18" style={{ color: d.color }} />}
+                  </div>
+                ))}
+
+                {disputeDecision === 'partial_refund' && (
+                  <div className="mb-2 mt-2">
+                    <label className="form-label fw-medium small">Refund Amount (₦)</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      placeholder="e.g. 2000"
+                      value={disputeAmount}
+                      onChange={(e) => setDisputeAmount(e.target.value)}
+                    />
                   </div>
                 )}
 
-                <label className="form-label fw-medium small">
-                  {assignType === 'manual_reassign' ? 'Select New Driver' : 'Select Available Driver'}
-                </label>
-                {DRIVERS.filter(d => d.active && (assignType !== 'manual_reassign' || d.id !== selected.driver?.id)).map(driver => (
-                  <div key={driver.id}
-                    className="d-flex align-items-center gap-3 p-3 border rounded mb-2"
-                    style={{ cursor:'pointer',
-                      background:   Number(assignDriverId) === driver.id ? (assignType === 'manual_reassign' ? '#fef3c7' : '#ede9fe') : '#fff',
-                      borderColor:  Number(assignDriverId) === driver.id ? (assignType === 'manual_reassign' ? '#f59e0b' : '#8b5cf6') : '#dee2e6' }}
-                    onClick={() => setAssignDriverId(String(driver.id))}>
-                    <div className="rounded-circle d-flex align-items-center justify-content-center text-white flex-shrink-0"
-                      style={{ width:36, height:36, fontSize:11, background: assignType === 'manual_reassign' ? '#f59e0b' : '#6366f1' }}>
-                      {driver.name.split(' ').map(n=>n[0]).join('')}
-                    </div>
-                    <div className="flex-grow-1">
-                      <div className="fw-medium small">{driver.name}</div>
-                      <div className="text-muted" style={{ fontSize:11 }}>{driver.phone} · {driver.bike}</div>
-                    </div>
-                    {Number(assignDriverId) === driver.id &&
-                      <i className={`ri-checkbox-circle-fill fs-18 ${assignType === 'manual_reassign' ? 'text-warning' : 'text-primary'}`}/>}
+                {['reject', 'partial_refund', 'full_refund'].includes(disputeDecision) && (
+                  <div className="mb-3 mt-2">
+                    <label className="form-label fw-medium small">Resolution Notes</label>
+                    <textarea
+                      className="form-control"
+                      rows={2}
+                      placeholder="Notes for the customer and audit log..."
+                      value={disputeNote}
+                      onChange={(e) => setDisputeNote(e.target.value)}
+                    />
                   </div>
-                ))}
+                )}
+
                 <div className="d-flex gap-2 mt-3">
-                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal} disabled={actionLoading}>Cancel</button>
                   <button
-                    className={`btn flex-fill ${assignType === 'manual_reassign' ? 'btn-warning' : 'btn-success'}`}
-                    onClick={assignDriver} disabled={!assignDriverId}>
-                    <i className={`${assignType === 'manual_reassign' ? 'ri-user-follow-line' : 'ri-user-add-line'} me-1`}/>
-                    {assignType === 'manual_reassign' ? 'Reassign & Notify New Driver' : 'Assign & Notify Driver'}
+                    className="btn btn-danger flex-fill"
+                    onClick={resolveDispute}
+                    disabled={!disputeDecision || actionLoading}
+                  >
+                    {actionLoading ? 'Submitting...' : 'Confirm Resolution'}
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── RESOLVE DISPUTE ────────────────────────── */}
-          {activeModal === 'dispute' && (() => {
-            const total = calcTotal(selected.items, selected.deliveryFee)
-            return (
-              <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:540 }}>
-                <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
-                  <h5 className="mb-0 text-danger"><i className="ri-alert-line me-2"/>Resolve Dispute</h5>
-                  <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line"/></button>
-                </div>
-                <div className="p-4">
-                  <div className="alert alert-danger mb-3 small">
-                    <strong>{selected.id}</strong> · {selected.customer.name}<br/>
-                    <strong>Reason:</strong> {selected.disputeReason || 'Issue reported at delivery'}<br/>
-                    {selected.disputeNote && <><strong>Customer note:</strong> {selected.disputeNote}</>}
-                  </div>
-                  <label className="form-label fw-medium small mb-2">Admin Decision — Case by Case</label>
-                  {[
-                    { key:'full_refund',    label:'Full Refund',     desc:`Refund ${fmt(total)} to customer`,                        color:'#22c55e', icon:'ri-refund-2-line'              },
-                    { key:'partial_refund', label:'Partial Refund',  desc:'Specify refund amount',                                    color:'#f59e0b', icon:'ri-money-dollar-circle-line'    },
-                    { key:'replacement',    label:'Replacement',     desc:'Driver collects goods. Replacement order arranged.',       color:'#f97316', icon:'ri-refresh-line'                },
-                    { key:'reject',         label:'Reject Claim',    desc:'Customer receives written rejection reason.',              color:'#6b7280', icon:'ri-close-circle-line'           },
-                  ].map(d => (
-                    <div key={d.key}
-                      className="d-flex align-items-center gap-3 p-3 border rounded mb-2"
-                      style={{ cursor:'pointer', background: disputeDecision===d.key ? d.color+'15' : '#fff',
-                        borderColor: disputeDecision===d.key ? d.color : '#dee2e6' }}
-                      onClick={() => setDisputeDecision(d.key)}>
-                      <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                        style={{ width:36, height:36, background:d.color+'20' }}>
-                        <i className={`${d.icon} fs-16`} style={{ color:d.color }}/>
-                      </div>
-                      <div className="flex-grow-1">
-                        <div className="fw-medium small">{d.label}</div>
-                        <div className="text-muted" style={{ fontSize:11 }}>{d.desc}</div>
-                      </div>
-                      {disputeDecision===d.key && <i className="ri-checkbox-circle-fill fs-18" style={{ color:d.color }}/>}
-                    </div>
-                  ))}
-                  {disputeDecision === 'partial_refund' && (
-                    <div className="mb-3 mt-2">
-                      <label className="form-label fw-medium small">Refund Amount (₦)</label>
-                      <input type="number" className="form-control" placeholder="e.g. 5000"
-                        value={disputeAmount} onChange={e => setDisputeAmount(e.target.value)}/>
-                    </div>
-                  )}
-                  {['reject','partial_refund'].includes(disputeDecision) && (
-                    <div className="mb-3 mt-2">
-                      <label className="form-label fw-medium small">
-                        {disputeDecision === 'reject' ? 'Rejection Reason (sent to customer)' : 'Admin Notes'}
-                      </label>
-                      <textarea className="form-control" rows={3} placeholder="Write reason..."
-                        value={disputeNote} onChange={e => setDisputeNote(e.target.value)}/>
-                    </div>
-                  )}
-                  <div className="d-flex gap-2 mt-3">
-                    <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
-                    <button className="btn btn-danger flex-fill" onClick={resolveDispute}
-                      disabled={!disputeDecision
-                        || (disputeDecision==='partial_refund' && !disputeAmount)
-                        || (['reject','partial_refund'].includes(disputeDecision) && !disputeNote)}>
-                      <i className="ri-shield-check-line me-1"/>Confirm Resolution
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
-
-          {/* ── CANCEL ORDER ───────────────────────────── */}
+          {/* ── 7. CANCEL ORDER MODAL ───────────────────────────── */}
           {activeModal === 'cancel' && (
-            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:440 }}>
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 440 }}>
               <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
-                <h5 className="mb-0">Cancel Order</h5>
-                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line"/></button>
+                <h5 className="mb-0 fw-bold">Cancel Order</h5>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
               </div>
               <div className="p-4">
                 <div className="alert alert-warning mb-3 small">
-                  <i className="ri-alert-line me-1"/>
-                  Cancelling <strong>{selected.id}</strong> for <strong>{selected.customer.name}</strong>.
-                  A refund of <strong>{fmt(calcTotal(selected.items, selected.deliveryFee))}</strong> will be triggered.
+                  Cancelling order <strong>{selected.id}</strong>. Produce items will be automatically restocked into inventory.
                 </div>
                 <div className="mb-3">
                   <label className="form-label fw-medium small">Cancellation Reason</label>
-                  <textarea className="form-control" rows={3} placeholder="Why is this order being cancelled?"
-                    value={cancelReason} onChange={e => setCancelReason(e.target.value)}/>
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    placeholder="Reason for order cancellation..."
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                  />
                 </div>
                 <div className="d-flex gap-2">
-                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Go Back</button>
-                  <button className="btn btn-danger flex-fill" onClick={cancelOrder} disabled={!cancelReason}>
-                    <i className="ri-close-circle-line me-1"/>Cancel & Trigger Refund
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal} disabled={actionLoading}>Go Back</button>
+                  <button
+                    className="btn btn-danger flex-fill"
+                    onClick={cancelOrder}
+                    disabled={!cancelReason || actionLoading}
+                  >
+                    {actionLoading ? 'Cancelling...' : 'Cancel Order'}
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── CUSTOMER UNAVAILABLE — ADMIN DECISION ──── */}
-          {activeModal === 'reschedule' && (() => {
-            const isFinal = selected.attempts >= 2
-            return (
-              <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:540 }}>
-                {/* Dark header */}
-                <div style={{ background:'#1e293b', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
-                  <div className="d-flex align-items-center justify-content-between">
-                    <div>
-                      <div className="fw-bold fs-15">
-                        <i className="ri-route-line me-2 text-warning"/>Customer Unavailable — Admin Decision Required
-                      </div>
-                      <div style={{ fontSize:12, opacity:0.7, marginTop:4 }}>{selected.id} · {selected.customer.name}</div>
-                    </div>
-                    <button className="btn btn-sm btn-outline-light" onClick={closeModal}><i className="ri-close-line"/></button>
-                  </div>
+          {/* ── 8. RESCHEDULE DELIVERY MODAL ──── */}
+          {activeModal === 'reschedule' && (
+            <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 480 }}>
+              <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
+                <h5 className="mb-0 fw-bold"><i className="ri-calendar-line me-2 text-warning" />Reschedule Delivery</h5>
+                <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
+              </div>
+              <div className="p-4">
+                <div className="alert alert-warning mb-3 small">
+                  Delivery was attempted {selected.attempts || 1} time(s). Customer will be notified of the new attempt.
                 </div>
-
-                <div className="p-4">
-
-                  {/* What happened — flow context */}
-                  <div className="border rounded p-3 mb-4" style={{ background:'#f8fafc', fontSize:12 }}>
-                    <div className="fw-medium small mb-2 text-muted">What happened:</div>
-                    {[
-                      { icon:'ri-truck-line',         color:'#6b7280', text:`Driver (${selected.driver?.name || '—'}) arrived at customer location` },
-                      { icon:'ri-tap-line',            color:'#f97316', text:'Driver tapped CUSTOMER UNAVAILABLE on Driver App' },
-                      { icon:'ri-notification-3-line', color:'#3b82f6', text:'System sent push notification + SMS to customer' },
-                      { icon:'ri-timer-line',          color:'#f59e0b', text:'15-minute countdown timer started' },
-                      { icon:'ri-close-circle-line',   color:'#ef4444', text:'Timer expired — customer did not respond' },
-                    ].map((s, i) => (
-                      <div key={i} className="d-flex align-items-center gap-2 py-1">
-                        <i className={`${s.icon} flex-shrink-0`} style={{ color:s.color, fontSize:13 }}/>
-                        <span>{s.text}</span>
-                      </div>
-                    ))}
-                    <div className="mt-2 pt-2 border-top">
-                      <span className="badge" style={{ background: isFinal ? '#fee2e2' : '#ffedd5', color: isFinal ? '#ef4444' : '#f97316', fontSize:11 }}>
-                        {isFinal
-                          ? '⚠️ ATTEMPT 2 of 2 — Maximum reached. Order must be cancelled.'
-                          : `Attempt ${selected.attempts} of 2 — One more re-attempt allowed.`}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Admin Decision */}
-                  <div className="fw-medium small mb-3">Admin Decision — What would you like to do?</div>
-
-                  {/* Option A: Schedule Retry */}
-                  {!isFinal && (
-                    <div className="border rounded p-3 mb-2"
-                      style={{ cursor:'pointer', background: rescheduleNote !== '' ? '#fef3c715' : '#fff',
-                        borderColor: rescheduleNote !== '' ? '#f59e0b' : '#dee2e6' }}>
-                      <div className="d-flex align-items-center gap-3 mb-2">
-                        <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                          style={{ width:36, height:36, background:'#fef3c7' }}>
-                          <i className="ri-calendar-line" style={{ color:'#f59e0b', fontSize:16 }}/>
-                        </div>
-                        <div>
-                          <div className="fw-medium small">Schedule New Delivery Attempt</div>
-                          <div className="text-muted" style={{ fontSize:11 }}>Driver will attempt delivery again. Max 2 total.</div>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="form-label fw-medium small">Re-attempt Notes <span className="text-muted">(e.g. customer said call first, available after 5pm)</span></label>
-                        <textarea className="form-control" rows={2}
-                          placeholder="e.g. Customer confirmed available after 5pm. Called and verified."
-                          value={rescheduleNote} onChange={e => setRescheduleNote(e.target.value)}/>
-                        <button className="btn btn-warning w-100 mt-2" onClick={rescheduleDelivery} disabled={!rescheduleNote}>
-                          <i className="ri-calendar-line me-1"/>Confirm — Schedule New Attempt
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Option B: Cancel */}
-                  <div className="border rounded p-3" style={{ borderColor: isFinal ? '#ef4444' : '#dee2e6', background: isFinal ? '#fff5f5' : '#fff' }}>
-                    <div className="d-flex align-items-center gap-3 mb-3">
-                      <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                        style={{ width:36, height:36, background:'#fee2e2' }}>
-                        <i className="ri-close-circle-line" style={{ color:'#ef4444', fontSize:16 }}/>
-                      </div>
-                      <div>
-                        <div className="fw-medium small text-danger">
-                          {isFinal ? 'Cancel Order (Mandatory — 2 attempts exhausted)' : 'Cancel Order & Trigger Refund'}
-                        </div>
-                        <div className="text-muted" style={{ fontSize:11 }}>
-                          Refund of <strong>{fmt(calcTotal(selected.items, selected.deliveryFee))}</strong> triggered via Paystack. Driver returns goods to store. Stock restored.
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stock return steps */}
-                    <div className="border rounded p-3 mb-3" style={{ background:'#fafafa', fontSize:12 }}>
-                      <div className="fw-medium small mb-2 text-muted">Actions that will follow cancellation:</div>
-                      {[
-                        'Refund triggered via Paystack',
-                        'Driver instructed to return goods to store',
-                        'Admin / IMS checks goods back in',
-                        'Stock quantities restored in system',
-                      ].map((step, i) => (
-                        <div key={i} className="d-flex align-items-center gap-2 py-1">
-                          <i className="ri-arrow-right-s-line text-muted"/>
-                          <span>{step}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="form-label fw-medium small">Cancellation Reason</label>
-                      <textarea className="form-control" rows={2}
-                        placeholder={isFinal ? 'Customer unreachable after 2 delivery attempts. Goods returned to store.' : 'Reason for cancellation...'}
-                        value={cancelReason} onChange={e => setCancelReason(e.target.value)}/>
-                    </div>
-                    <button className="btn btn-danger w-100" onClick={cancelOrder} disabled={!cancelReason}>
-                      <i className="ri-close-circle-line me-1"/>Cancel Order & Trigger Refund
-                    </button>
-                  </div>
-
+                <div className="mb-3">
+                  <label className="form-label fw-medium small">Reschedule Notes / Instructions</label>
+                  <textarea
+                    className="form-control"
+                    rows={3}
+                    placeholder="e.g. Customer requested redelivery after 4pm, call before arriving..."
+                    value={rescheduleNote}
+                    onChange={(e) => setRescheduleNote(e.target.value)}
+                  />
+                </div>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal} disabled={actionLoading}>Cancel</button>
+                  <button
+                    className="btn btn-warning flex-fill"
+                    onClick={rescheduleDelivery}
+                    disabled={!rescheduleNote || actionLoading}
+                  >
+                    {actionLoading ? 'Saving...' : 'Reschedule Attempt'}
+                  </button>
                 </div>
               </div>
-            )
-          })()}
+            </div>
+          )}
 
         </div>
       )}
+
     </div>
   )
 }
