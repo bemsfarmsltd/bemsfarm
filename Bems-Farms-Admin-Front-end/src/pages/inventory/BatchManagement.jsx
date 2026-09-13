@@ -1,93 +1,149 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import api from '../../lib/api'
 
-const PRODUCTS   = ['Catfish (Smoked)','Fresh Milk','Chicken (Whole)','Fresh Tomatoes','Fresh Pepper','Palm Oil (25L)','Basmati Rice (5kg)','Cassava Flour']
-const SUPPLIERS  = ['Local Farmers Market','Eze Farm Supplies','Bems Processing Unit','Agro Kings Ltd','Fresh Direct Nigeria']
-const WAREHOUSES = ['Main Store','Cold Room','Dry Store','Farm Store']
-
-const TODAY = new Date('2026-06-26')
 function daysToExpiry(expDate) {
+  if (!expDate) return null
   const d = new Date(expDate)
-  return Math.ceil((d - TODAY) / 86400000)
+  const today = new Date(); today.setHours(0,0,0,0)
+  return Math.ceil((d - today) / 86400000)
 }
-function getBatchStatus(expDate, qty) {
+function getBatchStatus(status, expDate, qty) {
+  if (status === 'recalled') return 'recalled'
   if (qty === 0) return 'exhausted'
   const days = daysToExpiry(expDate)
-  if (days < 0)  return 'expired'
-  if (days <= 7) return 'expiring_soon'
+  if (days !== null && days < 0)  return 'expired'
+  if (days !== null && days <= 7) return 'expiring_soon'
   return 'active'
 }
 
-const MOCK_BATCHES = [
-  { id:1, batchNo:'BCH-2026-001', product:'Catfish (Smoked)',   supplier:'Bems Processing Unit',  mfgDate:'2026-06-01', expDate:'2026-07-01', qty:40,  warehouse:'Cold Room',  notes:''                },
-  { id:2, batchNo:'BCH-2026-002', product:'Fresh Milk',          supplier:'Agro Kings Ltd',         mfgDate:'2026-06-20', expDate:'2026-06-28', qty:18,  warehouse:'Cold Room',  notes:'Low-fat variety' },
-  { id:3, batchNo:'BCH-2026-003', product:'Chicken (Whole)',     supplier:'Local Farmers Market',   mfgDate:'2026-06-24', expDate:'2026-06-30', qty:25,  warehouse:'Cold Room',  notes:''                },
-  { id:4, batchNo:'BCH-2026-004', product:'Fresh Tomatoes',      supplier:'Fresh Direct Nigeria',   mfgDate:'2026-06-22', expDate:'2026-06-27', qty:10,  warehouse:'Main Store', notes:'Roma variety'    },
-  { id:5, batchNo:'BCH-2026-005', product:'Basmati Rice (5kg)',  supplier:'Eze Farm Supplies',      mfgDate:'2026-01-01', expDate:'2026-12-31', qty:120, warehouse:'Dry Store',  notes:''                },
-  { id:6, batchNo:'BCH-2026-006', product:'Palm Oil (25L)',       supplier:'Agro Kings Ltd',         mfgDate:'2026-03-01', expDate:'2026-06-20', qty:0,   warehouse:'Main Store', notes:'Exhausted'       },
-  { id:7, batchNo:'BCH-2026-007', product:'Cassava Flour',        supplier:'Bems Processing Unit',   mfgDate:'2026-05-15', expDate:'2026-08-15', qty:14,  warehouse:'Dry Store',  notes:''                },
-  { id:8, batchNo:'BCH-2026-008', product:'Fresh Pepper',         supplier:'Fresh Direct Nigeria',   mfgDate:'2026-06-25', expDate:'2026-06-30', qty:6,   warehouse:'Farm Store', notes:'Scotch bonnet'   },
-]
-
 const STATUS_CFG = {
-  active:       { label:'Active',        cls:'bg-success-subtle text-success', icon:'ri-checkbox-circle-line' },
-  expiring_soon:{ label:'Expiring Soon', cls:'bg-warning-subtle text-warning', icon:'ri-alarm-warning-line'   },
-  expired:      { label:'Expired',       cls:'bg-danger-subtle text-danger',   icon:'ri-close-circle-line'    },
-  exhausted:    { label:'Exhausted',     cls:'bg-secondary-subtle text-secondary', icon:'ri-archive-line'     },
-}
-
-function nextBatch(list) {
-  const max = list.reduce((m, r) => Math.max(m, Number(r.batchNo.split('-')[2])), 0)
-  return `BCH-2026-${String(max + 1).padStart(3,'0')}`
+  active:        { label:'Active',        cls:'bg-success-subtle text-success', icon:'ri-checkbox-circle-line' },
+  expiring_soon: { label:'Expiring Soon', cls:'bg-warning-subtle text-warning', icon:'ri-alarm-warning-line'   },
+  expired:       { label:'Expired',       cls:'bg-danger-subtle text-danger',   icon:'ri-close-circle-line'    },
+  exhausted:     { label:'Exhausted',     cls:'bg-secondary-subtle text-secondary', icon:'ri-archive-line'     },
+  recalled:      { label:'Recalled',      cls:'bg-danger-subtle text-danger',   icon:'ri-forbid-line'          },
 }
 
 export default function BatchManagement() {
-  const [records, setRecords] = useState(MOCK_BATCHES)
+  const [records, setRecords] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [products, setProducts] = useState([])
+  const [warehouses, setWarehouses] = useState([])
   const [search, setSearch]   = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [activeModal, setActiveModal]   = useState(null)
   const [editItem, setEditItem]         = useState(null)
+  const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    batchNo:'', product: PRODUCTS[0], supplier: SUPPLIERS[0], mfgDate:'', expDate:'', qty:0, warehouse:'Cold Room', notes:''
+    product_id: '', warehouse_id: '', batch_no: '', manufactured_date: '', expiry_date: '', quantity: 0, cost_price: '', notes: '',
   })
 
-  const enriched = useMemo(() => records.map(r => ({ ...r, status: getBatchStatus(r.expDate, r.qty) })), [records])
+  useEffect(() => {
+    async function loadMeta() {
+      try {
+        const [prodRes, whRes] = await Promise.all([
+          api.get('/admin/products', { params: { limit: 150 } }),
+          api.get('/admin/inventory/warehouses').catch(() => ({ data: { warehouses: [] } })),
+        ])
+        if (prodRes.data?.products) setProducts(prodRes.data.products)
+        if (whRes.data?.warehouses) setWarehouses(whRes.data.warehouses)
+      } catch (err) {
+        console.error('Error loading metadata for Batch Management:', err)
+      }
+    }
+    loadMeta()
+  }, [])
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/inventory/batches', { params: { limit: 100 } })
+      setRecords(res.data.batches || [])
+    } catch {
+      toast.error('Failed to load batches')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const enriched = useMemo(() => records.map(r => ({ ...r, computedStatus: getBatchStatus(r.status, r.expiry_date, r.quantity) })), [records])
 
   const filtered = useMemo(() => enriched.filter(r => {
-    const m = r.batchNo.toLowerCase().includes(search.toLowerCase()) ||
-              r.product.toLowerCase().includes(search.toLowerCase())
-    return m && (filterStatus === 'all' || r.status === filterStatus)
+    const q = search.toLowerCase()
+    const m = (r.batch_no || '').toLowerCase().includes(q) || (r.product_name || '').toLowerCase().includes(q)
+    return m && (filterStatus === 'all' || r.computedStatus === filterStatus)
   }), [enriched, search, filterStatus])
 
   const stats = useMemo(() => ({
     total:    enriched.length,
-    active:   enriched.filter(r => r.status === 'active').length,
-    expiring: enriched.filter(r => r.status === 'expiring_soon').length,
-    expired:  enriched.filter(r => r.status === 'expired' || r.status === 'exhausted').length,
+    active:   enriched.filter(r => r.computedStatus === 'active').length,
+    expiring: enriched.filter(r => r.computedStatus === 'expiring_soon').length,
+    expired:  enriched.filter(r => r.computedStatus === 'expired' || r.computedStatus === 'exhausted').length,
   }), [enriched])
 
   function openAdd() {
     setEditItem(null)
-    setForm({ batchNo: nextBatch(records), product: PRODUCTS[0], supplier: SUPPLIERS[0], mfgDate: new Date().toISOString().slice(0,10), expDate:'', qty:0, warehouse:'Cold Room', notes:'' })
+    setForm({
+      product_id: products[0]?.id ? String(products[0].id) : '', warehouse_id: '',
+      batch_no: `BCH-${Date.now().toString().slice(-6)}`, manufactured_date: new Date().toISOString().slice(0,10),
+      expiry_date: '', quantity: 0, cost_price: '', notes: '',
+    })
     setActiveModal('form')
   }
-  function openEdit(r) { setEditItem(r); setForm({ ...r }); setActiveModal('form') }
+  function openEdit(r) {
+    setEditItem(r)
+    setForm({ quantity: r.quantity, expiry_date: r.expiry_date ? r.expiry_date.slice(0,10) : '', notes: r.notes || '' })
+    setActiveModal('form')
+  }
   function openDelete(r) { setEditItem(r); setActiveModal('delete') }
   function closeModal() { setActiveModal(null); setEditItem(null) }
 
-  function saveForm(e) {
+  async function saveForm(e) {
     e.preventDefault()
-    if (editItem) {
-      setRecords(prev => prev.map(r => r.id === editItem.id ? { ...r, ...form } : r))
-    } else {
-      setRecords(prev => [...prev, { id: Math.max(...prev.map(r=>r.id))+1, ...form }])
+    setSaving(true)
+    try {
+      if (editItem) {
+        await api.patch(`/admin/inventory/batches/${editItem.id}`, {
+          quantity: form.quantity, expiry_date: form.expiry_date || undefined, notes: form.notes,
+        })
+        toast.success('Batch updated')
+      } else {
+        if (!form.product_id) { toast.error('Select a product'); setSaving(false); return }
+        if (!form.batch_no.trim()) { toast.error('Batch number required'); setSaving(false); return }
+        await api.post('/admin/inventory/batches', {
+          product_id: parseInt(form.product_id),
+          warehouse_id: form.warehouse_id ? parseInt(form.warehouse_id) : undefined,
+          batch_no: form.batch_no.trim(),
+          quantity: parseInt(form.quantity) || 0,
+          cost_price: form.cost_price ? parseFloat(form.cost_price) : undefined,
+          expiry_date: form.expiry_date || undefined,
+          manufactured_date: form.manufactured_date || undefined,
+          notes: form.notes || undefined,
+        })
+        toast.success('Batch added')
+      }
+      closeModal()
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save batch')
+    } finally {
+      setSaving(false)
     }
-    closeModal()
   }
 
-  function confirmDelete() {
-    setRecords(prev => prev.filter(r => r.id !== editItem.id))
-    closeModal()
+  async function confirmDelete() {
+    try {
+      await api.delete(`/admin/inventory/batches/${editItem.id}`)
+      toast.success('Batch recalled')
+      closeModal()
+      load()
+    } catch {
+      toast.error('Failed to recall batch')
+    }
   }
 
   return (
@@ -100,7 +156,6 @@ export default function BatchManagement() {
         </ul>
       </div>
 
-      {/* Alert banner for expiring batches */}
       {stats.expiring > 0 && (
         <div className="alert border-0 mb-4 d-flex align-items-center gap-2" style={{ background:'#fff8ec', color:'#8a5a00', borderLeft:'4px solid #f7b84b !important' }}>
           <i className="ri-alarm-warning-line fs-20 text-warning"></i>
@@ -145,6 +200,7 @@ export default function BatchManagement() {
               <option value="expiring_soon">Expiring Soon</option>
               <option value="expired">Expired</option>
               <option value="exhausted">Exhausted</option>
+              <option value="recalled">Recalled</option>
             </select>
             <button className="btn btn-primary d-flex align-items-center gap-1" onClick={openAdd}>
               <i className="ri-add-line"></i> Add Batch
@@ -158,7 +214,6 @@ export default function BatchManagement() {
                 <tr className="bg-light border-bottom">
                   <th className="fw-medium text-muted">Batch No</th>
                   <th className="fw-medium text-muted">Product</th>
-                  <th className="fw-medium text-muted">Supplier</th>
                   <th className="fw-medium text-muted">Mfg Date</th>
                   <th className="fw-medium text-muted">Expiry Date</th>
                   <th className="fw-medium text-muted">Days Left</th>
@@ -169,29 +224,31 @@ export default function BatchManagement() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 && (
-                  <tr><td colSpan={10} className="text-center py-5 text-muted">
+                {loading && (
+                  <tr><td colSpan={9} className="text-center py-5 text-muted">Loading batches…</td></tr>
+                )}
+                {!loading && filtered.length === 0 && (
+                  <tr><td colSpan={9} className="text-center py-5 text-muted">
                     <i className="ri-archive-stack-line fs-2 d-block mb-2"></i>No batches found
                   </td></tr>
                 )}
-                {filtered.map(r => {
-                  const sc   = STATUS_CFG[r.status]
-                  const days = daysToExpiry(r.expDate)
-                  const daysColor = days < 0 ? '#f06548' : days <= 7 ? '#f7b84b' : '#0ab39c'
+                {!loading && filtered.map(r => {
+                  const sc   = STATUS_CFG[r.computedStatus]
+                  const days = daysToExpiry(r.expiry_date)
+                  const daysColor = days === null ? '#adb5bd' : days < 0 ? '#f06548' : days <= 7 ? '#f7b84b' : '#0ab39c'
                   return (
                     <tr key={r.id}>
-                      <td><span className="fw-medium text-primary">{r.batchNo}</span></td>
-                      <td className="fw-medium">{r.product}</td>
-                      <td style={{ fontSize:12, color:'#6c757d' }}>{r.supplier}</td>
-                      <td>{r.mfgDate}</td>
-                      <td>{r.expDate}</td>
+                      <td><span className="fw-medium text-primary">{r.batch_no}</span></td>
+                      <td className="fw-medium">{r.product_name}</td>
+                      <td>{r.manufactured_date ? r.manufactured_date.slice(0,10) : '—'}</td>
+                      <td>{r.expiry_date ? r.expiry_date.slice(0,10) : '—'}</td>
                       <td>
                         <span className="fw-bold" style={{ color: daysColor }}>
-                          {days < 0 ? `${Math.abs(days)}d ago` : days === 0 ? 'Today!' : `${days}d`}
+                          {days === null ? '—' : days < 0 ? `${Math.abs(days)}d ago` : days === 0 ? 'Today!' : `${days}d`}
                         </span>
                       </td>
-                      <td className="fw-medium">{r.qty}</td>
-                      <td><span className="badge bg-light text-dark border">{r.warehouse}</span></td>
+                      <td className="fw-medium">{r.quantity}</td>
+                      <td><span className="badge bg-light text-dark border">{r.warehouse_name || '—'}</span></td>
                       <td><span className={`badge ${sc.cls}`}><i className={`${sc.icon} me-1`}></i>{sc.label}</span></td>
                       <td>
                         <div className="d-flex gap-1">
@@ -221,39 +278,43 @@ export default function BatchManagement() {
                 <div className="modal-body">
                   <form onSubmit={saveForm}>
                     <div className="row g-3">
-                      <div className="col-md-4">
-                        <label className="form-label fw-medium">Batch No</label>
-                        <input className="form-control bg-light" readOnly value={form.batchNo} />
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label fw-medium">Mfg Date</label>
-                        <input type="date" className="form-control" value={form.mfgDate} onChange={e => setForm(f=>({...f,mfgDate:e.target.value}))} />
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label fw-medium">Expiry Date <span className="text-danger">*</span></label>
-                        <input type="date" className="form-control" required value={form.expDate} onChange={e => setForm(f=>({...f,expDate:e.target.value}))} />
+                      {!editItem && (
+                        <>
+                          <div className="col-md-6">
+                            <label className="form-label fw-medium">Product <span className="text-danger">*</span></label>
+                            <select className="form-select" required value={form.product_id} onChange={e => setForm(f=>({...f,product_id:e.target.value}))}>
+                              <option value="">— Select Product —</option>
+                              {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku || 'No SKU'})</option>)}
+                            </select>
+                          </div>
+                          <div className="col-md-6">
+                            <label className="form-label fw-medium">Warehouse</label>
+                            <select className="form-select" value={form.warehouse_id} onChange={e => setForm(f=>({...f,warehouse_id:e.target.value}))}>
+                              <option value="">— Select —</option>
+                              {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                            </select>
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label fw-medium">Batch No <span className="text-danger">*</span></label>
+                            <input className="form-control" required value={form.batch_no} onChange={e => setForm(f=>({...f,batch_no:e.target.value}))} />
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label fw-medium">Mfg Date</label>
+                            <input type="date" className="form-control" value={form.manufactured_date} onChange={e => setForm(f=>({...f,manufactured_date:e.target.value}))} />
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label fw-medium">Cost Price (₦)</label>
+                            <input type="number" className="form-control" min="0" step="0.01" value={form.cost_price} onChange={e => setForm(f=>({...f,cost_price:e.target.value}))} />
+                          </div>
+                        </>
+                      )}
+                      <div className="col-md-6">
+                        <label className="form-label fw-medium">Expiry Date</label>
+                        <input type="date" className="form-control" value={form.expiry_date} onChange={e => setForm(f=>({...f,expiry_date:e.target.value}))} />
                       </div>
                       <div className="col-md-6">
-                        <label className="form-label fw-medium">Product <span className="text-danger">*</span></label>
-                        <select className="form-select" required value={form.product} onChange={e => setForm(f=>({...f,product:e.target.value}))}>
-                          {PRODUCTS.map(p => <option key={p}>{p}</option>)}
-                        </select>
-                      </div>
-                      <div className="col-md-6">
-                        <label className="form-label fw-medium">Supplier</label>
-                        <select className="form-select" value={form.supplier} onChange={e => setForm(f=>({...f,supplier:e.target.value}))}>
-                          {SUPPLIERS.map(s => <option key={s}>{s}</option>)}
-                        </select>
-                      </div>
-                      <div className="col-md-4">
                         <label className="form-label fw-medium">Quantity</label>
-                        <input type="number" className="form-control" min="0" value={form.qty} onChange={e => setForm(f=>({...f,qty:Number(e.target.value)}))} />
-                      </div>
-                      <div className="col-md-8">
-                        <label className="form-label fw-medium">Warehouse</label>
-                        <select className="form-select" value={form.warehouse} onChange={e => setForm(f=>({...f,warehouse:e.target.value}))}>
-                          {WAREHOUSES.map(w => <option key={w}>{w}</option>)}
-                        </select>
+                        <input type="number" className="form-control" min="0" value={form.quantity} onChange={e => setForm(f=>({...f,quantity:Number(e.target.value)}))} />
                       </div>
                       <div className="col-12">
                         <label className="form-label fw-medium">Notes</label>
@@ -262,7 +323,9 @@ export default function BatchManagement() {
                     </div>
                     <div className="d-flex gap-2 mt-4">
                       <button type="button" className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
-                      <button type="submit" className="btn btn-primary w-100">{editItem ? 'Save Changes' : 'Add Batch'}</button>
+                      <button type="submit" className="btn btn-primary w-100" disabled={saving}>
+                        {saving ? 'Saving…' : (editItem ? 'Save Changes' : 'Add Batch')}
+                      </button>
                     </div>
                   </form>
                 </div>
@@ -283,11 +346,11 @@ export default function BatchManagement() {
                     <i className="ri-delete-bin-line text-danger fs-22"></i>
                   </div>
                 </div>
-                <h6 className="mb-1">Delete Batch?</h6>
-                <p className="text-muted mb-4" style={{ fontSize:13 }}>{editItem?.batchNo} — {editItem?.product}</p>
+                <h6 className="mb-1">Recall Batch?</h6>
+                <p className="text-muted mb-4" style={{ fontSize:13 }}>{editItem?.batch_no} — {editItem?.product_name}</p>
                 <div className="d-flex gap-2">
                   <button className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
-                  <button className="btn btn-danger w-100" onClick={confirmDelete}>Delete</button>
+                  <button className="btn btn-danger w-100" onClick={confirmDelete}>Recall</button>
                 </div>
               </div>
             </div>

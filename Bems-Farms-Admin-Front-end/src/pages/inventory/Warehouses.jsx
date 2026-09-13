@@ -1,58 +1,82 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-
-const MOCK_WAREHOUSES = [
-  { id:1, name:'Main Store',  code:'WH-001', type:'General',    manager:'Emeka Adeola',   location:'Bems HQ, Block A',        capacity:500, used:312, products:48, phone:'08012345678', status:'active' },
-  { id:2, name:'Cold Room',   code:'WH-002', type:'Cold Chain', manager:'Ngozi Bello',    location:'Bems HQ, Block B (Rear)', capacity:200, used:133, products:22, phone:'08023456789', status:'active' },
-  { id:3, name:'Dry Store',   code:'WH-003', type:'Dry Goods',  manager:'Tunde Okafor',   location:'Bems HQ, Annex Building', capacity:400, used:180, products:31, phone:'08034567890', status:'active' },
-  { id:4, name:'Farm Store',  code:'WH-004', type:'Farm',       manager:'Chike Nwosu',    location:'Bems Farm Site, Km 12',   capacity:600, used:88,  products:15, phone:'08045678901', status:'active' },
-]
-
-const TYPE_ICON = {
-  'General':   { icon:'ri-store-2-line',    color:'#405189' },
-  'Cold Chain':{ icon:'ri-temp-cold-line',  color:'#299cdb' },
-  'Dry Goods': { icon:'ri-archive-line',    color:'#f7b84b' },
-  'Farm':      { icon:'ri-plant-line',      color:'#0ab39c' },
-}
+import toast from 'react-hot-toast'
+import api from '../../lib/api'
 
 export default function Warehouses() {
-  const [warehouses, setWarehouses] = useState(MOCK_WAREHOUSES)
+  const [warehouses, setWarehouses] = useState([])
+  const [loading, setLoading] = useState(true)
   const [activeModal, setActiveModal] = useState(null)
   const [editItem, setEditItem]       = useState(null)
+  const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    name:'', code:'', type:'General', manager:'', location:'', capacity:0, used:0, products:0, phone:'', status:'active'
+    name: '', code: '', location: '', manager: '', capacity: 0, status: 'active',
   })
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/inventory/warehouses')
+      setWarehouses(res.data.warehouses || [])
+    } catch {
+      toast.error('Failed to load warehouses')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
 
   const totals = {
     total:    warehouses.length,
     active:   warehouses.filter(w => w.status === 'active').length,
-    products: warehouses.reduce((s,w) => s + w.products, 0),
-    capacity: warehouses.reduce((s,w) => s + w.capacity, 0),
+    products: warehouses.reduce((s,w) => s + Number(w.product_count || 0), 0),
+    capacity: warehouses.reduce((s,w) => s + Number(w.capacity || 0), 0),
   }
 
   function openAdd() {
     setEditItem(null)
-    const nextNum = Math.max(...warehouses.map(w => Number(w.code.split('-')[1]))) + 1
-    setForm({ name:'', code:`WH-${String(nextNum).padStart(3,'0')}`, type:'General', manager:'', location:'', capacity:0, used:0, products:0, phone:'', status:'active' })
+    setForm({ name: '', code: '', location: '', manager: '', capacity: 0, status: 'active' })
     setActiveModal('form')
   }
-  function openEdit(w) { setEditItem(w); setForm({ ...w }); setActiveModal('form') }
+  function openEdit(w) {
+    setEditItem(w)
+    setForm({ name: w.name || '', code: w.code || '', location: w.location || '', manager: w.manager || '', capacity: w.capacity || 0, status: w.status || 'active' })
+    setActiveModal('form')
+  }
   function openDelete(w) { setEditItem(w); setActiveModal('delete') }
   function closeModal() { setActiveModal(null); setEditItem(null) }
 
-  function saveForm(e) {
+  async function saveForm(e) {
     e.preventDefault()
-    if (editItem) {
-      setWarehouses(prev => prev.map(w => w.id === editItem.id ? { ...w, ...form } : w))
-    } else {
-      setWarehouses(prev => [...prev, { id: Math.max(...prev.map(w=>w.id))+1, ...form }])
+    if (!form.name.trim()) return toast.error('Warehouse name is required')
+    setSaving(true)
+    try {
+      if (editItem) {
+        await api.patch(`/admin/inventory/warehouses/${editItem.id}`, form)
+        toast.success('Warehouse updated')
+      } else {
+        await api.post('/admin/inventory/warehouses', form)
+        toast.success('Warehouse added')
+      }
+      closeModal()
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save warehouse')
+    } finally {
+      setSaving(false)
     }
-    closeModal()
   }
 
-  function confirmDelete() {
-    setWarehouses(prev => prev.filter(w => w.id !== editItem.id))
-    closeModal()
+  async function confirmDelete() {
+    try {
+      await api.delete(`/admin/inventory/warehouses/${editItem.id}`)
+      toast.success('Warehouse deactivated')
+      closeModal()
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to deactivate warehouse')
+    }
   }
 
   return (
@@ -97,11 +121,19 @@ export default function Warehouses() {
         </button>
       </div>
 
+      {loading && <div className="text-center text-muted py-5">Loading warehouses…</div>}
+      {!loading && warehouses.length === 0 && (
+        <div className="text-center text-muted py-5">
+          <i className="ri-building-2-line fs-2 d-block mb-2"></i>No warehouses yet. Click "Add Warehouse" to create one.
+        </div>
+      )}
+
       {/* Warehouse cards */}
       <div className="row g-4">
         {warehouses.map(w => {
-          const usePct  = Math.round((w.used / w.capacity) * 100)
-          const ti      = TYPE_ICON[w.type] || TYPE_ICON['General']
+          const capacity = Number(w.capacity || 0)
+          const used = Number(w.total_units || 0)
+          const usePct  = capacity > 0 ? Math.round((used / capacity) * 100) : 0
           const barColor = usePct > 85 ? '#f06548' : usePct > 60 ? '#f7b84b' : '#0ab39c'
           return (
             <div className="col-md-6 col-xl-3" key={w.id}>
@@ -111,12 +143,12 @@ export default function Warehouses() {
                   <div className="d-flex align-items-start justify-content-between mb-3">
                     <div className="d-flex align-items-center gap-3">
                       <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                        style={{ width:44, height:44, background:`${ti.color}1a` }}>
-                        <i className={`${ti.icon} fs-20`} style={{ color:ti.color }}></i>
+                        style={{ width:44, height:44, background:'#4051891a' }}>
+                        <i className="ri-store-2-line fs-20" style={{ color:'#405189' }}></i>
                       </div>
                       <div>
                         <div className="fw-bold" style={{ fontSize:15 }}>{w.name}</div>
-                        <div className="text-muted" style={{ fontSize:11 }}><code>{w.code}</code> · {w.type}</div>
+                        <div className="text-muted" style={{ fontSize:11 }}>{w.code ? <code>{w.code}</code> : '—'}</div>
                       </div>
                     </div>
                     <span className={`badge ${w.status === 'active' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}`}>
@@ -128,31 +160,30 @@ export default function Warehouses() {
                   <div className="mb-3">
                     <div className="d-flex justify-content-between mb-1" style={{ fontSize:12 }}>
                       <span className="text-muted">Capacity Used</span>
-                      <span className="fw-bold" style={{ color: barColor }}>{usePct}%</span>
+                      <span className="fw-bold" style={{ color: barColor }}>{capacity > 0 ? `${usePct}%` : 'No limit set'}</span>
                     </div>
                     <div className="progress" style={{ height:8, borderRadius:4 }}>
-                      <div className="progress-bar" style={{ width:`${usePct}%`, background: barColor, borderRadius:4 }}></div>
+                      <div className="progress-bar" style={{ width:`${Math.min(usePct,100)}%`, background: barColor, borderRadius:4 }}></div>
                     </div>
                     <div className="d-flex justify-content-between mt-1" style={{ fontSize:11, color:'#adb5bd' }}>
-                      <span>{w.used} used</span>
-                      <span>{w.capacity} total</span>
+                      <span>{used} units in stock</span>
+                      <span>{capacity > 0 ? `${capacity} total` : ''}</span>
                     </div>
                   </div>
 
                   {/* Info rows */}
                   <div className="d-flex flex-column gap-1 mb-3" style={{ fontSize:13 }}>
-                    <div className="d-flex gap-2"><i className="ri-user-line text-muted"></i><span>{w.manager}</span></div>
-                    <div className="d-flex gap-2"><i className="ri-map-pin-line text-muted"></i><span style={{ color:'#6c757d' }}>{w.location}</span></div>
-                    <div className="d-flex gap-2"><i className="ri-phone-line text-muted"></i><span>{w.phone}</span></div>
+                    <div className="d-flex gap-2"><i className="ri-user-line text-muted"></i><span>{w.manager || 'No manager assigned'}</span></div>
+                    <div className="d-flex gap-2"><i className="ri-map-pin-line text-muted"></i><span style={{ color:'#6c757d' }}>{w.location || '—'}</span></div>
                   </div>
 
                   <div className="d-flex align-items-center justify-content-between border-top pt-3">
                     <div className="text-center">
-                      <div className="fw-bold fs-16">{w.products}</div>
+                      <div className="fw-bold fs-16">{w.product_count}</div>
                       <div className="text-muted" style={{ fontSize:11 }}>Products</div>
                     </div>
                     <div className="text-center">
-                      <div className="fw-bold fs-16">{w.capacity - w.used}</div>
+                      <div className="fw-bold fs-16">{capacity > 0 ? Math.max(0, capacity - used) : '—'}</div>
                       <div className="text-muted" style={{ fontSize:11 }}>Free Space</div>
                     </div>
                     <div className="d-flex gap-1">
@@ -180,39 +211,25 @@ export default function Warehouses() {
                 <div className="modal-body">
                   <form onSubmit={saveForm}>
                     <div className="row g-3">
-                      <div className="col-md-6">
+                      <div className="col-md-8">
                         <label className="form-label fw-medium">Warehouse Name <span className="text-danger">*</span></label>
                         <input className="form-control" required value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="e.g., Cold Room" />
                       </div>
-                      <div className="col-md-3">
+                      <div className="col-md-4">
                         <label className="form-label fw-medium">Code</label>
-                        <input className="form-control bg-light" readOnly value={form.code} />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label fw-medium">Type</label>
-                        <select className="form-select" value={form.type} onChange={e => setForm(f=>({...f,type:e.target.value}))}>
-                          {['General','Cold Chain','Dry Goods','Farm'].map(t => <option key={t}>{t}</option>)}
-                        </select>
+                        <input className="form-control" value={form.code} onChange={e => setForm(f=>({...f,code:e.target.value}))} placeholder="e.g., WH-002" />
                       </div>
                       <div className="col-md-6">
                         <label className="form-label fw-medium">Manager</label>
                         <input className="form-control" value={form.manager} onChange={e => setForm(f=>({...f,manager:e.target.value}))} placeholder="Manager name" />
                       </div>
                       <div className="col-md-6">
-                        <label className="form-label fw-medium">Phone</label>
-                        <input className="form-control" value={form.phone} onChange={e => setForm(f=>({...f,phone:e.target.value}))} placeholder="08xxxxxxxxx" />
+                        <label className="form-label fw-medium">Capacity (units)</label>
+                        <input type="number" className="form-control" min="0" value={form.capacity} onChange={e => setForm(f=>({...f,capacity:Number(e.target.value)}))} />
                       </div>
                       <div className="col-12">
                         <label className="form-label fw-medium">Location / Address</label>
                         <input className="form-control" value={form.location} onChange={e => setForm(f=>({...f,location:e.target.value}))} placeholder="e.g., Bems HQ, Block A" />
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label fw-medium">Capacity (units)</label>
-                        <input type="number" className="form-control" min="0" value={form.capacity} onChange={e => setForm(f=>({...f,capacity:Number(e.target.value)}))} />
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label fw-medium">Current Used</label>
-                        <input type="number" className="form-control" min="0" value={form.used} onChange={e => setForm(f=>({...f,used:Number(e.target.value)}))} />
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-medium">Status</label>
@@ -224,7 +241,9 @@ export default function Warehouses() {
                     </div>
                     <div className="d-flex gap-2 mt-4">
                       <button type="button" className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
-                      <button type="submit" className="btn btn-primary w-100">{editItem ? 'Save Changes' : 'Add Warehouse'}</button>
+                      <button type="submit" className="btn btn-primary w-100" disabled={saving}>
+                        {saving ? 'Saving…' : (editItem ? 'Save Changes' : 'Add Warehouse')}
+                      </button>
                     </div>
                   </form>
                 </div>
@@ -245,11 +264,11 @@ export default function Warehouses() {
                     <i className="ri-delete-bin-line text-danger fs-22"></i>
                   </div>
                 </div>
-                <h6 className="mb-1">Delete Warehouse?</h6>
+                <h6 className="mb-1">Deactivate Warehouse?</h6>
                 <p className="text-muted mb-4" style={{ fontSize:13 }}>{editItem?.name}</p>
                 <div className="d-flex gap-2">
                   <button className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
-                  <button className="btn btn-danger w-100" onClick={confirmDelete}>Delete</button>
+                  <button className="btn btn-danger w-100" onClick={confirmDelete}>Deactivate</button>
                 </div>
               </div>
             </div>
