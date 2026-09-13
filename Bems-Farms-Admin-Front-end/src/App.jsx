@@ -11,6 +11,7 @@ import {
 
 // Auth & Errors
 import Login from './pages/auth/Login'
+import Onboard from './pages/auth/Onboard'
 import Unauthorized from './pages/errors/Unauthorized'
 
 // Dashboard
@@ -59,6 +60,8 @@ import CustomersList  from './pages/customers/CustomersList'
 import CustomerDetail from './pages/customers/CustomerDetail'
 import LoyaltyPoints  from './pages/customers/LoyaltyPoints'
 import ActivityLog    from './pages/customers/ActivityLog'
+import AddCustomer    from './pages/customers/AddCustomer'
+import WalletBalance  from './pages/customers/WalletBalance'
 
 // Staff
 import StaffList        from './pages/staff/StaffList'
@@ -115,6 +118,8 @@ function App() {
         <Routes>
           {/* ── Public Auth Routes ── */}
           <Route path="/login" element={<Login />} />
+          <Route path="/onboard" element={<Onboard />} />
+          <Route path="/accept-invite" element={<Onboard />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           {/* ── All authenticated users ── */}
@@ -175,7 +180,9 @@ function App() {
               {/* ── Customers ── */}
               <Route element={<ProtectedRoute allowedRoles={CUSTOMER_ROLES} />}>
                 <Route path="/customers"          element={<CustomersList />} />
+                <Route path="/customers/add"      element={<AddCustomer />} />
                 <Route path="/customers/loyalty"  element={<LoyaltyPoints />} />
+                <Route path="/customers/wallet"   element={<WalletBalance />} />
                 <Route path="/customers/activity" element={<ActivityLog />} />
                 <Route path="/customers/:id"      element={<CustomerDetail />} />
               </Route>

@@ -1,8 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../../lib/api'
+import toast from 'react-hot-toast'
 
-const ini    = name => name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
-const fmtPts = n => Number(n).toLocaleString()+' pts'
+const ini    = name => (name || '?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
+const fmtPts = n => Number(n || 0).toLocaleString()+' pts'
+const fmtDate = d => d ? new Date(d).toISOString().slice(0,10) : '—'
 
 const TIER_CFG = {
   Platinum:{ bg:'#f5f3ff', color:'#7c3aed', border:'#ddd6fe', icon:'ri-vip-crown-2-fill',  min:10000, next:null,    label:'Platinum' },
@@ -11,76 +14,65 @@ const TIER_CFG = {
   Bronze:  { bg:'#fff7ed', color:'#c2410c', border:'#fed7aa', icon:'ri-star-half-fill',      min:0,     next:'Silver',label:'Bronze' },
 }
 
-const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec4899','#f97316','#14b8a6','#6366f1','#84cc16','#a855f7','#ef4444','#10b981','#d97706','#6366f1']
-
-const INIT_DATA = [
-  { id:'CUS-004', name:'Funke Oladele',   tier:'Platinum', points:9840,  lifetime:9840,  lastEarned:'2026-06-27' },
-  { id:'CUS-012', name:'Bisi Awojobi',    tier:'Platinum', points:11200, lifetime:11200, lastEarned:'2026-06-27' },
-  { id:'CUS-001', name:'Adaeze Nwosu',    tier:'Gold',     points:4120,  lifetime:4120,  lastEarned:'2026-06-25' },
-  { id:'CUS-007', name:'Babatunde Ojo',   tier:'Gold',     points:5240,  lifetime:5240,  lastEarned:'2026-06-26' },
-  { id:'CUS-009', name:'Emeka Okonkwo',   tier:'Gold',     points:7200,  lifetime:7200,  lastEarned:'2026-06-23' },
-  { id:'CUS-002', name:'Seun Adesanya',   tier:'Silver',   points:2845,  lifetime:2845,  lastEarned:'2026-06-27' },
-  { id:'CUS-006', name:'Ngozi Umeh',      tier:'Silver',   points:1780,  lifetime:1780,  lastEarned:'2026-06-24' },
-  { id:'CUS-011', name:'Chidi Okeke',     tier:'Silver',   points:2340,  lifetime:2340,  lastEarned:'2026-06-20' },
-  { id:'CUS-014', name:'Chioma Obi',      tier:'Silver',   points:1520,  lifetime:1520,  lastEarned:'2026-06-21' },
-  { id:'CUS-015', name:'Lanre Fasanya',   tier:'Silver',   points:3600,  lifetime:3600,  lastEarned:'2026-05-12' },
-  { id:'CUS-003', name:'Chukwuemeka Eze', tier:'Bronze',   points:982,   lifetime:982,   lastEarned:'2026-06-22' },
-  { id:'CUS-005', name:'Tolulope Badmus', tier:'Bronze',   points:624,   lifetime:624,   lastEarned:'2026-06-18' },
-  { id:'CUS-008', name:'Aminat Suleiman', tier:'Bronze',   points:285,   lifetime:285,   lastEarned:'2026-06-10' },
-  { id:'CUS-010', name:'Kemi Adeleke',    tier:'Bronze',   points:1120,  lifetime:1120,  lastEarned:'2026-04-30' },
-  { id:'CUS-013', name:'Yusuf Abdullahi', tier:'Bronze',   points:440,   lifetime:440,   lastEarned:'2026-06-15' },
-]
-
-const POINTS_HISTORY = [
-  { customer:'Funke Oladele',   type:'earn',  desc:'Order ORD-2026-0142 — 1 pt per ₦10 spent',  pts:+8500,  date:'2026-06-27' },
-  { customer:'Bisi Awojobi',    type:'earn',  desc:'Platinum weekly bonus',                        pts:+500,   date:'2026-06-27' },
-  { customer:'Seun Adesanya',   type:'earn',  desc:'Order ORD-2026-0139',                         pts:+320,   date:'2026-06-27' },
-  { customer:'Adaeze Nwosu',    type:'earn',  desc:'Order ORD-2026-0141',                         pts:+185,   date:'2026-06-25' },
-  { customer:'Emeka Okonkwo',   type:'redeem',desc:'Redeemed 500 pts for ₦2,000 wallet credit',  pts:-500,   date:'2026-06-23' },
-  { customer:'Babatunde Ojo',   type:'earn',  desc:'Order ORD-2026-0139',                         pts:+1200,  date:'2026-06-26' },
-  { customer:'Chioma Obi',      type:'earn',  desc:'Referral bonus — brought new customer',       pts:+200,   date:'2026-06-21' },
-  { customer:'Ngozi Umeh',      type:'earn',  desc:'Order ORD-2026-0135',                         pts:+140,   date:'2026-06-24' },
-  { customer:'Chidi Okeke',     type:'redeem',desc:'Redeemed 300 pts for free delivery',          pts:-300,   date:'2026-06-20' },
-  { customer:'Kemi Adeleke',    type:'admin', desc:'Admin bonus — feedback survey reward',        pts:+100,   date:'2026-06-18' },
-]
+const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec4899','#f97316','#14b8a6','#6366f1','#84cc16']
 
 export default function LoyaltyPoints() {
-  const [data, setData] = useState(INIT_DATA)
+  const [data, setData] = useState([])
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterTier, setTier] = useState('all')
   const [selected, setSelected] = useState(null)
   const [modal, setModal] = useState(null) // 'award' | 'deduct'
   const [pts, setPts] = useState('')
   const [reason, setReason] = useState('')
-  const [history, setHistory] = useState(POINTS_HISTORY)
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [custRes, histRes] = await Promise.all([
+        api.get('/admin/customers', { params: { limit: 200 } }),
+        api.get('/admin/customers/loyalty/activity', { params: { limit: 30 } }),
+      ])
+      setData(custRes.data.customers || [])
+      setHistory(histRes.data.activity || [])
+    } catch {
+      toast.error('Failed to load loyalty data')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
 
   const filtered = useMemo(() => data.filter(c => {
     if (filterTier !== 'all' && c.tier !== filterTier) return false
-    if (search) return c.name.toLowerCase().includes(search.toLowerCase()) || c.id.includes(search)
+    if (search) return c.name.toLowerCase().includes(search.toLowerCase()) || c.customer_code.toLowerCase().includes(search.toLowerCase())
     return true
   }), [data, search, filterTier])
 
-  const totalPts  = data.reduce((s,c)=>s+c.points, 0)
-  const platCount = data.filter(c=>c.tier==='Platinum').length
-  const goldCount = data.filter(c=>c.tier==='Gold').length
+  const totalPts  = data.reduce((s,c)=>s+Number(c.points||0), 0)
 
-  function processPoints(type) {
+  async function processPoints(type) {
     const amount = parseInt(pts)
     if (!amount || !selected) return
-    const sign = type==='award' ? +amount : -amount
-    setData(prev => prev.map(c => {
-      if (c.id !== selected.id) return c
-      const newPts = Math.max(0, c.points + sign)
-      const newTier = newPts>=10000?'Platinum':newPts>=5000?'Gold':newPts>=1000?'Silver':'Bronze'
-      return { ...c, points:newPts, tier:newTier }
-    }))
-    setHistory(prev => [{
-      customer:selected.name,
-      type: type==='award'?'admin':'redeem',
-      desc: reason || (type==='award'?'Admin points award':'Admin points deduction'),
-      pts:sign, date:new Date().toISOString().slice(0,10)
-    }, ...prev])
-    setModal(null); setPts(''); setReason(''); setSelected(null)
+    setSaving(true)
+    try {
+      const delta = type === 'award' ? amount : -amount
+      await api.post(`/admin/customers/${selected.customer_code}/loyalty`, {
+        points: delta,
+        type: type === 'award' ? 'bonus' : 'deducted',
+        description: reason || (type === 'award' ? 'Admin points award' : 'Admin points deduction'),
+      })
+      toast.success(type === 'award' ? 'Points awarded' : 'Points deducted')
+      setModal(null); setPts(''); setReason(''); setSelected(null)
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update points')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -88,7 +80,7 @@ export default function LoyaltyPoints() {
       <div className="page-heading d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <div>
           <h6 className="mb-0">Loyalty Points</h6>
-          <p className="text-muted mb-0" style={{fontSize:12}}>Manage customer loyalty tiers and points — earn 1 pt per ₦10 spent</p>
+          <p className="text-muted mb-0" style={{fontSize:12}}>Manage customer loyalty tiers and points</p>
         </div>
         <ul className="breadcrumb mb-0">
           <li className="breadcrumb-item"><Link to="/customers">Customers</Link></li>
@@ -100,7 +92,7 @@ export default function LoyaltyPoints() {
       <div className="row g-3 mb-4">
         {Object.entries(TIER_CFG).reverse().map(([tier, cfg]) => {
           const count = data.filter(c=>c.tier===tier).length
-          const totalInTier = data.filter(c=>c.tier===tier).reduce((s,c)=>s+c.points,0)
+          const totalInTier = data.filter(c=>c.tier===tier).reduce((s,c)=>s+Number(c.points||0),0)
           return (
             <div key={tier} className="col-6 col-md-3">
               <div className="card border-0 shadow-sm h-100" style={{cursor:'pointer',border:`2px solid ${filterTier===tier?cfg.color:'transparent'} !important`}}
@@ -154,9 +146,13 @@ export default function LoyaltyPoints() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((c,i) => {
-                    const tc = TIER_CFG[c.tier]
-                    const pctToNext = tc.next ? Math.min(100,(c.points/TIER_CFG[tc.next].min)*100) : 100
+                  {loading && (
+                    <tr><td colSpan={6} className="text-center py-5 text-muted">Loading…</td></tr>
+                  )}
+                  {!loading && filtered.map((c,i) => {
+                    const tc = TIER_CFG[c.tier] || TIER_CFG.Bronze
+                    const points = Number(c.points || 0)
+                    const pctToNext = tc.next ? Math.min(100,(points/TIER_CFG[tc.next].min)*100) : 100
                     return (
                       <tr key={c.id}>
                         <td className="px-3 py-2">
@@ -167,7 +163,7 @@ export default function LoyaltyPoints() {
                             </div>
                             <div>
                               <div style={{fontWeight:600,fontSize:13}}>{c.name}</div>
-                              <div className="text-muted" style={{fontSize:11}}>{c.id}</div>
+                              <div className="text-muted" style={{fontSize:11}}>{c.customer_code}</div>
                             </div>
                           </div>
                         </td>
@@ -178,13 +174,13 @@ export default function LoyaltyPoints() {
                           </span>
                         </td>
                         <td className="px-3 py-2">
-                          <div className="fw-bold" style={{color:'#8b5cf6'}}>{fmtPts(c.points)}</div>
+                          <div className="fw-bold" style={{color:'#8b5cf6'}}>{fmtPts(points)}</div>
                           <div style={{background:'#f1f5f9',borderRadius:3,height:4,width:80,marginTop:4,overflow:'hidden'}}>
                             <div style={{width:`${pctToNext}%`,height:'100%',background:tc.color,borderRadius:3}}/>
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-muted" style={{fontSize:12}}>{fmtPts(c.lifetime)}</td>
-                        <td className="px-3 py-2 text-muted" style={{fontSize:12}}>{c.lastEarned}</td>
+                        <td className="px-3 py-2 text-muted" style={{fontSize:12}}>{fmtPts(c.lifetime_points)}</td>
+                        <td className="px-3 py-2 text-muted" style={{fontSize:12}}>{fmtDate(c.last_earned_at)}</td>
                         <td className="px-3 py-2">
                           <div className="d-flex gap-1">
                             <button className="btn btn-sm btn-success" style={{fontSize:11,padding:'2px 8px'}}
@@ -213,20 +209,23 @@ export default function LoyaltyPoints() {
               <span className="fw-medium" style={{fontSize:14}}>Points Activity</span>
             </div>
             <div className="card-body p-0">
+              {history.length === 0 && (
+                <div className="text-center text-muted py-4" style={{fontSize:12}}>No loyalty activity yet.</div>
+              )}
               {history.slice(0,12).map((h,i) => (
-                <div key={i} className={`d-flex align-items-start gap-3 px-3 py-3 ${i<11?'border-bottom':''}`}>
+                <div key={h.id || i} className={`d-flex align-items-start gap-3 px-3 py-3 ${i<Math.min(history.length,12)-1?'border-bottom':''}`}>
                   <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{width:32,height:32,background:h.type==='earn'?'#f0fdf4':h.type==='redeem'?'#fef2f2':'#f5f3ff'}}>
-                    <i className={h.type==='earn'?'ri-add-line':h.type==='redeem'?'ri-subtract-line':'ri-admin-line'}
-                      style={{fontSize:13,color:h.type==='earn'?'#22c55e':h.type==='redeem'?'#ef4444':'#8b5cf6'}}/>
+                    style={{width:32,height:32,background:h.type==='earned'?'#f0fdf4':h.type==='redeemed'||h.type==='deducted'?'#fef2f2':'#f5f3ff'}}>
+                    <i className={h.type==='earned'?'ri-add-line':h.type==='redeemed'||h.type==='deducted'?'ri-subtract-line':'ri-admin-line'}
+                      style={{fontSize:13,color:h.type==='earned'?'#22c55e':h.type==='redeemed'||h.type==='deducted'?'#ef4444':'#8b5cf6'}}/>
                   </div>
                   <div className="flex-fill">
-                    <div style={{fontSize:12,fontWeight:500}}>{h.customer}</div>
-                    <div className="text-muted" style={{fontSize:10,marginTop:2,lineHeight:1.4}}>{h.desc}</div>
-                    <div className="text-muted" style={{fontSize:10}}>{h.date}</div>
+                    <div style={{fontSize:12,fontWeight:500}}>{h.customer_name}</div>
+                    <div className="text-muted" style={{fontSize:10,marginTop:2,lineHeight:1.4}}>{h.description}</div>
+                    <div className="text-muted" style={{fontSize:10}}>{fmtDate(h.created_at)}</div>
                   </div>
-                  <div className="fw-bold" style={{fontSize:13,color:h.pts>0?'#22c55e':'#ef4444',flexShrink:0}}>
-                    {h.pts>0?'+':''}{h.pts.toLocaleString()}
+                  <div className="fw-bold" style={{fontSize:13,color:h.points>0?'#22c55e':'#ef4444',flexShrink:0}}>
+                    {h.points>0?'+':''}{Number(h.points).toLocaleString()}
                   </div>
                 </div>
               ))}
@@ -257,8 +256,8 @@ export default function LoyaltyPoints() {
                 <div>
                   <div className="fw-semibold">{selected.name}</div>
                   <div className="d-flex align-items-center gap-2 mt-1">
-                    <span className="badge" style={{fontSize:10,background:TIER_CFG[selected.tier].bg,color:TIER_CFG[selected.tier].color,border:`1px solid ${TIER_CFG[selected.tier].border}`}}>
-                      <i className={`${TIER_CFG[selected.tier].icon} me-1`}/>{selected.tier}
+                    <span className="badge" style={{fontSize:10,background:(TIER_CFG[selected.tier]||TIER_CFG.Bronze).bg,color:(TIER_CFG[selected.tier]||TIER_CFG.Bronze).color,border:`1px solid ${(TIER_CFG[selected.tier]||TIER_CFG.Bronze).border}`}}>
+                      <i className={`${(TIER_CFG[selected.tier]||TIER_CFG.Bronze).icon} me-1`}/>{selected.tier}
                     </span>
                     <span className="text-muted" style={{fontSize:11}}>Current: <strong>{fmtPts(selected.points)}</strong></span>
                   </div>
@@ -273,7 +272,7 @@ export default function LoyaltyPoints() {
                   placeholder="e.g. 500" value={pts} onChange={e=>setPts(e.target.value)}/>
                 {pts && (
                   <div className="mt-1" style={{fontSize:11,color:modal==='award'?'#22c55e':'#ef4444'}}>
-                    New balance: {fmtPts(Math.max(0, selected.points + (modal==='award'?+pts:-pts)))}
+                    New balance: {fmtPts(Math.max(0, Number(selected.points) + (modal==='award'?+pts:-pts)))}
                   </div>
                 )}
               </div>
@@ -286,9 +285,9 @@ export default function LoyaltyPoints() {
               <div className="d-flex gap-2">
                 <button className="btn btn-outline-secondary flex-fill" onClick={()=>{setModal(null);setSelected(null)}}>Cancel</button>
                 <button className={`btn flex-fill ${modal==='award'?'btn-success':'btn-danger'}`}
-                  disabled={!pts || parseInt(pts)<1}
+                  disabled={!pts || parseInt(pts)<1 || saving}
                   onClick={()=>processPoints(modal)}>
-                  {modal==='award'?'Award':'Deduct'} {pts?fmtPts(pts):'Points'}
+                  {saving ? 'Saving…' : `${modal==='award'?'Award':'Deduct'} ${pts?fmtPts(pts):'Points'}`}
                 </button>
               </div>
             </div>
