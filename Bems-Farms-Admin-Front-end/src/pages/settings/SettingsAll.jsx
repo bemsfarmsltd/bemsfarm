@@ -3,18 +3,6 @@ import { Link } from 'react-router-dom'
 
 const SETTINGS_SECTIONS = [
   {
-    id: 'store-profile',
-    title: 'Store Profile & Branding',
-    subtitle: 'Manage farm business profile, store locations, and receipt brand identity',
-    icon: 'ri-store-2-line',
-    items: [
-      { name: 'General Store Info & Contact', path: '/settings/general' },
-      { name: 'Store Locations & Branches', path: '/stores' },
-      { name: 'Receipt & Invoice Templates', path: '/settings/invoices' },
-      { name: 'Business Hours & Operations', path: '/settings/general' }
-    ]
-  },
-  {
     id: 'team-onboarding',
     title: 'Team Onboarding & Access Control',
     subtitle: 'Invite staff members by email, assign system roles, and manage active team permissions',
@@ -24,6 +12,18 @@ const SETTINGS_SECTIONS = [
       { name: 'Pending Invitations & Active Links', path: '/onboarding?tab=onboarding' },
       { name: 'System Roles & Permissions Matrix', path: '/onboarding?tab=roles' },
       { name: 'Full Staff Directory', path: '/onboarding' }
+    ]
+  },
+  {
+    id: 'store-profile',
+    title: 'Store Profile & Branding',
+    subtitle: 'Manage farm business profile, store locations, and receipt brand identity',
+    icon: 'ri-store-2-line',
+    items: [
+      { name: 'General Store Info & Contact', path: '/settings/general' },
+      { name: 'Store Locations & Branches', path: '/stores' },
+      { name: 'Receipt & Invoice Templates', path: '/settings/invoices' },
+      { name: 'Business Hours & Operations', path: '/settings/general' }
     ]
   },
   {

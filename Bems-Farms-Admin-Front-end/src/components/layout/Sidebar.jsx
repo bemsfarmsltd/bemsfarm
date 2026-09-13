@@ -38,7 +38,9 @@ export default function Sidebar() {
   const showStores    = is('superadmin', 'admin')
   const showSettings  = is('superadmin', 'admin', 'manager')
   const showPOS       = is('superadmin', 'admin', 'manager', 'cashier')
-  const showGodEye    = is('superadmin')
+  // God Eye is restricted to one designated owner account, not the whole
+  // superadmin role — several staff (including test accounts) are superadmin.
+  const showGodEye    = (user?.email || '').toLowerCase() === 'admin@bemsfarms.com'
 
   // Auto-detect active category based on current pathname
   const getActiveCategoryFromPath = (path) => {
@@ -549,6 +551,7 @@ export default function Sidebar() {
               >
                 <i className="ri-store-3-line rail-icon"></i>
                 <span className="rail-label">Multi-Store</span>
+                <span className="sub-badge" style={{ background: '#F1F5F9', color: '#64748B', marginLeft: 'auto' }}>Coming Soon</span>
               </button>
             )}
 

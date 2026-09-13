@@ -155,6 +155,19 @@ async function ensureAuditTable() {
 
 // ── All routes below require admin / superadmin ───────────────────────────────
 router.use(protect, requireRole('superadmin', 'admin'));
+
+// God Eye exposes raw request payloads, IPs, and every staff account's
+// activity — several staff accounts share the superadmin role (including
+// test accounts), so role alone isn't tight enough. Restrict to the one
+// designated owner account.
+const GOD_EYE_ALLOWED_EMAILS = ['admin@bemsfarms.com'];
+router.use((req, res, next) => {
+  if (!GOD_EYE_ALLOWED_EMAILS.includes((req.user?.email || '').toLowerCase())) {
+    return res.status(403).json({ message: 'Access denied. God Eye is restricted to designated system owners.' });
+  }
+  next();
+});
+
 router.use(async (req, res, next) => {
   await ensureAuditTable();
   next();

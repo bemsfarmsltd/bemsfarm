@@ -281,8 +281,8 @@ function App() {
                 <Route path="/settings/manager"       element={<ManagerSettings />} />
               </Route>
 
-              {/* ── God Eye Audit Log — superadmin only ── */}
-              <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>
+              {/* ── God Eye Audit Log — restricted to one designated owner account ── */}
+              <Route element={<ProtectedRoute allowedRoles={['superadmin']} allowedEmails={['admin@bemsfarms.com']} />}>
                 <Route path="/god-eye" element={<GodEye />} />
               </Route>
             </Route>
