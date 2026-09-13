@@ -1,13 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../../lib/api'
 
-const fmt  = n => `₦${Number(n).toLocaleString()}`
-const fmtD = s => new Date(s).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+const fmt  = n => `₦${Number(n || 0).toLocaleString()}`
+const fmtD = s => s ? new Date(s).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'
 
-const CATEGORIES  = ['Staff Salary','Fuel & Transport','Packaging Materials','Utilities','Cold Storage',
-  'Vehicle Maintenance','Produce Purchase','Marketing','Office Rent','Software & IT','Security','Other']
-const PAY_METHODS = ['Bank Transfer','Cash','POS Terminal','Online']
-const APPROVERS   = ['Admin (Seun)','Finance Manager','Operations Manager','Superadmin']
+// Must match expenses_category_check in schema.sql / accountsAdminSchemas.js
+const CATEGORIES = [
+  { value: 'produce_purchase', label: 'Produce Purchase' },
+  { value: 'staff_salary',     label: 'Staff Salary' },
+  { value: 'fuel_transport',   label: 'Fuel & Transport' },
+  { value: 'packaging',        label: 'Packaging' },
+  { value: 'utilities_rent',   label: 'Utilities & Rent' },
+  { value: 'maintenance',      label: 'Maintenance' },
+  { value: 'marketing',        label: 'Marketing' },
+  { value: 'other',            label: 'Other' },
+]
+const CATEGORY_LABEL = Object.fromEntries(CATEGORIES.map(c => [c.value, c.label]))
+const PAY_METHODS = ['Bank Transfer', 'Cash', 'POS Terminal', 'Online']
 
 const STATUS_CFG = {
   paid:     { label:'Paid',     cls:'bg-success-subtle text-success border-success-subtle' },
@@ -17,37 +27,46 @@ const STATUS_CFG = {
 }
 
 const CAT_COLORS = {
-  'Staff Salary':'#3b82f6','Fuel & Transport':'#f59e0b','Packaging Materials':'#8b5cf6',
-  'Utilities':'#0ea5e9','Cold Storage':'#06b6d4','Vehicle Maintenance':'#f97316',
-  'Produce Purchase':'#22c55e','Marketing':'#ec4899','Office Rent':'#6366f1',
-  'Software & IT':'#64748b','Security':'#ef4444','Other':'#94a3b8',
+  produce_purchase:'#22c55e', staff_salary:'#3b82f6', fuel_transport:'#f59e0b', packaging:'#8b5cf6',
+  utilities_rent:'#0ea5e9', maintenance:'#f97316', marketing:'#ec4899', other:'#94a3b8',
 }
 
-const INITIAL_EXPENSES = [
-  { id:'EXP-0041', date:'2026-06-25', payee:'Staff Monthly Salary — June 2026', category:'Staff Salary',         method:'Bank Transfer', approvedBy:'Admin (Seun)',      status:'paid',     amount:920_000, note:'Full staff payroll June 2026' },
-  { id:'EXP-0040', date:'2026-06-27', payee:'Emeka Okafor (Driver Fuel)',        category:'Fuel & Transport',     method:'Cash',          approvedBy:'Operations Manager', status:'paid',     amount:48_000,  note:'June fuel allowance — 3 delivery drivers' },
-  { id:'EXP-0039', date:'2026-06-26', payee:'Lafiaji Packaging Supplies',        category:'Packaging Materials',  method:'Bank Transfer', approvedBy:'Finance Manager',   status:'paid',     amount:62_000,  note:'Cartons, foam nets, polythene bags' },
-  { id:'EXP-0038', date:'2026-06-25', payee:'IKEDC (Ikeja Electric)',            category:'Utilities',            method:'Online',        approvedBy:'Admin (Seun)',       status:'paid',     amount:28_500,  note:'June electricity bill — cold storage warehouse' },
-  { id:'EXP-0037', date:'2026-06-24', payee:'Cold Room Maintenance Ltd',         category:'Cold Storage',         method:'Bank Transfer', approvedBy:'Operations Manager', status:'pending',  amount:85_000,  note:'Compressor service + refrigerant top-up' },
-  { id:'EXP-0036', date:'2026-06-23', payee:'Benz Automobile Workshop',          category:'Vehicle Maintenance',  method:'Cash',          approvedBy:'Operations Manager', status:'paid',     amount:35_000,  note:'Toyota Hiace van — brake pads & oil change' },
-  { id:'EXP-0035', date:'2026-06-22', payee:'Gbagi Market Produce',              category:'Produce Purchase',     method:'Bank Transfer', approvedBy:'Admin (Seun)',       status:'paid',     amount:312_000, note:'Weekly produce stock — tomatoes, peppers, greens' },
-  { id:'EXP-0034', date:'2026-06-21', payee:'Meta Ads (Facebook/Instagram)',     category:'Marketing',            method:'Online',        approvedBy:'Admin (Seun)',       status:'paid',     amount:50_000,  note:'June social media ad campaign — Bems Farms promo' },
-  { id:'EXP-0033', date:'2026-06-20', payee:'Eko Atlantic Office — June Rent',  category:'Office Rent',          method:'Bank Transfer', approvedBy:'Superadmin',         status:'paid',     amount:180_000, note:'Monthly office rent — admin office Victoria Island' },
-  { id:'EXP-0032', date:'2026-06-18', payee:'Paystack Monthly Fees',             category:'Software & IT',        method:'Online',        approvedBy:'Admin (Seun)',       status:'paid',     amount:15_000,  note:'Paystack monthly subscription + transaction fees' },
-  { id:'EXP-0031', date:'2026-06-17', payee:'Delta Security Services',           category:'Security',             method:'Bank Transfer', approvedBy:'Superadmin',         status:'pending',  amount:45_000,  note:'Monthly security guard fee — warehouse + office' },
-  { id:'EXP-0030', date:'2026-06-15', payee:'Lasaco Internet (Fibre)',           category:'Utilities',            method:'Online',        approvedBy:'Admin (Seun)',       status:'paid',     amount:18_000,  note:'Office internet — 100Mbps fibre plan' },
-  { id:'EXP-0029', date:'2026-06-14', payee:'Extra Drivers — Weekend Delivery',  category:'Fuel & Transport',     method:'Cash',          approvedBy:'Operations Manager', status:'rejected', amount:22_000,  note:'Rejected — not pre-approved' },
-  { id:'EXP-0028', date:'2026-06-10', payee:'Ogun Farm Cooperative',             category:'Produce Purchase',     method:'Bank Transfer', approvedBy:'Admin (Seun)',       status:'paid',     amount:240_000, note:'Standing order — weekly farm produce' },
-]
+// Maps the real `expenses` row (server/src/routes/accounts_admin.js) to this page's UI shape.
+// approved_by / paid_by are set automatically server-side on status transitions — never client-supplied.
+function mapExpense(e) {
+  return {
+    id: e.id,
+    reference: e.reference,
+    date: e.date,
+    dueDate: e.due_date || '',
+    payee: e.description || '',
+    supplier: e.supplier_name || '',
+    category: e.category,
+    method: e.payment_method || '',
+    approvedBy: e.approved_by_name || '',
+    paidBy: e.paid_by_name || '',
+    status: e.status,
+    amount: Number(e.amount || 0),
+    note: e.notes || '',
+    receiptUrl: e.receipt_url || '',
+    bankAccountId: e.bank_account_id || '',
+    bankAccountLabel: e.bank_name ? `${e.bank_name} — ${e.bank_account}` : '',
+  }
+}
 
 const BLANK_FORM = {
-  date: new Date().toISOString().split('T')[0],
-  payee:'', category:'Staff Salary', method:'Bank Transfer',
-  approvedBy:'Admin (Seun)', status:'pending', amount:'', note:'',
+  date: new Date().toISOString().split('T')[0], dueDate: '',
+  payee: '', supplier: '', category: 'produce_purchase', method: 'Bank Transfer',
+  status: 'pending', amount: '', note: '', bankAccountId: '',
 }
 
 export default function Expenses() {
-  const [expenses, setExpenses] = useState(INITIAL_EXPENSES)
+  const [expenses, setExpenses] = useState([])
+  const [stats, setStats]       = useState(null)
+  const [bankAccounts, setBankAccounts] = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [error, setError]       = useState(false)
+  const [saving, setSaving]     = useState(false)
   const [search, setSearch]     = useState('')
   const [filterCat, setFiltCat] = useState('all')
   const [filterSt,  setFiltSt]  = useState('all')
@@ -56,6 +75,26 @@ export default function Expenses() {
   const [form, setForm]         = useState(BLANK_FORM)
   const [rejectReason, setRejectReason] = useState('')
 
+  const load = useCallback(async () => {
+    setLoading(true); setError(false)
+    try {
+      const res = await api.get('/admin/accounts/expenses', { params: { limit: 200 } })
+      setExpenses((res.data?.expenses || []).map(mapExpense))
+      setStats(res.data?.stats || null)
+    } catch {
+      setError(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    api.get('/admin/accounts/bank-accounts').then(res => {
+      setBankAccounts((res.data?.bank_accounts || []).filter(a => a.status === 'active'))
+    }).catch(() => {})
+  }, [])
+
   const closeModal = () => { setModal(null); setSelected(null); setForm(BLANK_FORM); setRejectReason('') }
 
   const openView    = e => { setSelected(e); setModal('view') }
@@ -63,57 +102,91 @@ export default function Expenses() {
   const openDelete  = e => { setSelected(e); setModal('delete') }
   const openApprove = e => { setSelected(e); setModal('approve') }
   const openReject  = e => { setSelected(e); setModal('reject') }
-  const openAdd     = () => { setForm({ ...BLANK_FORM }); setModal('add') }
+  const openAdd     = () => { setForm(BLANK_FORM); setModal('add') }
 
-  const saveExpense = () => {
+  const saveExpense = async () => {
     if (!form.payee || !form.amount) return
-    if (activeModal === 'add') {
-      const newE = { ...form, id: `EXP-${String(expenses.length + 42).padStart(4,'0')}`, amount: Number(form.amount) }
-      setExpenses(prev => [newE, ...prev])
-    } else {
-      setExpenses(prev => prev.map(e => e.id === selected.id ? { ...e, ...form, amount: Number(form.amount) } : e))
+    setSaving(true)
+    try {
+      if (activeModal === 'add') {
+        await api.post('/admin/accounts/expenses', {
+          category: form.category,
+          description: form.payee,
+          supplier_name: form.supplier || undefined,
+          amount: Number(form.amount),
+          date: form.date,
+          due_date: form.dueDate || undefined,
+          payment_method: form.method || undefined,
+          bank_account_id: form.bankAccountId ? Number(form.bankAccountId) : undefined,
+          notes: form.note || undefined,
+        })
+      } else {
+        await api.patch(`/admin/accounts/expenses/${selected.id}`, {
+          description: form.payee,
+          category: form.category,
+          supplier_name: form.supplier || undefined,
+          amount: Number(form.amount),
+          due_date: form.dueDate || undefined,
+          notes: form.note || undefined,
+          status: form.status,
+          bank_account_id: form.bankAccountId ? Number(form.bankAccountId) : undefined,
+        })
+      }
+      await load()
+      closeModal()
+    } catch (e) {
+      alert(e?.response?.data?.message || 'Could not save this expense.')
+    } finally {
+      setSaving(false)
     }
-    closeModal()
   }
 
-  const approveExpense = () => {
-    setExpenses(prev => prev.map(e => e.id === selected.id ? { ...e, status:'approved' } : e))
-    closeModal()
+  const patchStatus = async (id, payload) => {
+    try {
+      await api.patch(`/admin/accounts/expenses/${id}`, payload)
+      await load()
+    } catch (e) {
+      alert(e?.response?.data?.message || 'Could not update this expense.')
+    }
   }
 
-  const rejectExpense = () => {
+  const approveExpense = async () => { await patchStatus(selected.id, { status: 'approved' }); closeModal() }
+  const rejectExpense  = async () => {
     if (!rejectReason) return
-    setExpenses(prev => prev.map(e => e.id === selected.id
-      ? { ...e, status:'rejected', note: `Rejected: ${rejectReason}` } : e))
+    await patchStatus(selected.id, { status: 'rejected', notes: `Rejected: ${rejectReason}` })
     closeModal()
   }
+  const markPaid = e => patchStatus(e.id, { status: 'paid' })
 
-  const markPaid = e => {
-    setExpenses(prev => prev.map(ex => ex.id === e.id ? { ...ex, status:'paid' } : ex))
-  }
-
-  const deleteExpense = () => {
-    setExpenses(prev => prev.filter(e => e.id !== selected.id))
-    closeModal()
+  const voidExpense = async () => {
+    try {
+      await api.delete(`/admin/accounts/expenses/${selected.id}`)
+      await load()
+    } catch (e) {
+      alert(e?.response?.data?.message || 'Could not void this expense.')
+    } finally {
+      closeModal()
+    }
   }
 
   const filtered = expenses.filter(e => {
     const q = search.toLowerCase()
-    const ms = !q || e.payee.toLowerCase().includes(q) || e.id.toLowerCase().includes(q) || e.category.toLowerCase().includes(q)
+    const ms = !q || e.payee.toLowerCase().includes(q) || e.reference.toLowerCase().includes(q) || (CATEGORY_LABEL[e.category] || '').toLowerCase().includes(q)
     const mc = filterCat === 'all' || e.category === filterCat
     const mst = filterSt === 'all' || e.status === filterSt
     return ms && mc && mst
   })
 
   // Stats
-  const totalPaid    = expenses.filter(e => e.status === 'paid').reduce((s, e) => s + e.amount, 0)
-  const totalPending = expenses.filter(e => e.status === 'pending').reduce((s, e) => s + e.amount, 0)
+  const totalPaid    = stats ? Number(stats.total_paid || 0) : expenses.filter(e => ['approved','paid'].includes(e.status)).reduce((s, e) => s + e.amount, 0)
+  const totalPending = stats ? Number(stats.total_pending || 0) : expenses.filter(e => e.status === 'pending').reduce((s, e) => s + e.amount, 0)
+  const pendingCount = stats ? Number(stats.pending_count || 0) : expenses.filter(e => e.status === 'pending').length
   const totalApproved= expenses.filter(e => e.status === 'approved').reduce((s, e) => s + e.amount, 0)
   const today        = new Date().toISOString().split('T')[0]
   const todaySpend   = expenses.filter(e => e.date === today && e.status === 'paid').reduce((s, e) => s + e.amount, 0)
-  const totalVouchers= expenses.length
+  const totalVouchers= stats ? undefined : expenses.length
 
-  // Category totals
+  // Category totals (best-effort over the loaded page)
   const catTotals = expenses.reduce((acc, e) => {
     if (e.status === 'paid') acc[e.category] = (acc[e.category] || 0) + e.amount
     return acc
@@ -129,14 +202,25 @@ export default function Expenses() {
         </ul>
       </div>
 
+      {error && (
+        <div className="alert alert-warning d-flex align-items-center gap-3 rounded-3 mb-3">
+          <i className="ri-wifi-off-line fs-4" />
+          <div className="flex-grow-1">
+            <strong>Could not load expenses.</strong>
+            <span className="text-muted ms-2 fs-sm">Check your connection or server status.</span>
+          </div>
+          <button className="btn btn-sm btn-outline-warning" onClick={load}>Retry</button>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="row g-3 mb-4">
         {[
-          { label:'Total Paid',       val:fmt(totalPaid),    icon:'ri-arrow-down-circle-line', color:'#ef4444', bg:'#fef2f2' },
+          { label:'Total Paid/Approved', val:fmt(totalPaid),    icon:'ri-arrow-down-circle-line', color:'#ef4444', bg:'#fef2f2' },
           { label:"Today's Expenses", val:fmt(todaySpend),   icon:'ri-calendar-line',          color:'#f59e0b', bg:'#fffbeb' },
           { label:'Pending Approval', val:fmt(totalPending), icon:'ri-time-line',              color:'#8b5cf6', bg:'#f5f3ff' },
           { label:'Approved (Unpaid)',val:fmt(totalApproved),icon:'ri-checkbox-circle-line',   color:'#0ea5e9', bg:'#f0f9ff' },
-          { label:'Total Vouchers',   val:totalVouchers,     icon:'ri-file-list-3-line',       color:'#6366f1', bg:'#eef2ff' },
+          { label:'Vouchers Loaded',   val:totalVouchers ?? expenses.length,     icon:'ri-file-list-3-line',       color:'#6366f1', bg:'#eef2ff' },
         ].map((s, i) => (
           <div key={i} className="col-6 col-md-4 col-xl">
             <div className="card border-0 shadow-sm h-100">
@@ -158,13 +242,13 @@ export default function Expenses() {
       </div>
 
       {/* Pending approvals banner */}
-      {expenses.filter(e => e.status === 'pending').length > 0 && (
+      {pendingCount > 0 && (
         <div className="alert border d-flex align-items-center gap-3 mb-4"
           style={{ background:'#fffbeb', borderColor:'#fbbf24' }}>
           <i className="ri-alarm-warning-line fs-20 text-warning flex-shrink-0"/>
           <div>
             <div className="fw-medium" style={{ fontSize:13 }}>
-              {expenses.filter(e => e.status === 'pending').length} expenses awaiting approval
+              {pendingCount} expenses awaiting approval
               — totalling <strong>{fmt(totalPending)}</strong>
             </div>
             <div className="text-muted" style={{ fontSize:11 }}>
@@ -182,10 +266,12 @@ export default function Expenses() {
         <div className="card-body p-3">
           <div className="fw-medium mb-3" style={{ fontSize:13 }}>Spending by Category (Paid)</div>
           <div className="d-flex flex-wrap gap-3">
-            {Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).map(([cat, val]) => (
+            {Object.entries(catTotals).length === 0 ? (
+              <span className="text-muted fs-sm">No paid expenses yet.</span>
+            ) : Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).map(([cat, val]) => (
               <div key={cat} className="d-flex align-items-center gap-2 border rounded px-3 py-2">
                 <div style={{ width:10, height:10, borderRadius:'50%', background: CAT_COLORS[cat] || '#94a3b8' }}/>
-                <span style={{ fontSize:12 }} className="text-muted">{cat}:</span>
+                <span style={{ fontSize:12 }} className="text-muted">{CATEGORY_LABEL[cat] || cat}:</span>
                 <span className="fw-medium" style={{ fontSize:12 }}>{fmt(val)}</span>
               </div>
             ))}
@@ -200,13 +286,13 @@ export default function Expenses() {
             <div className="d-flex flex-wrap align-items-center gap-2">
               <div className="position-relative">
                 <input className="form-control ps-9" style={{ width:220 }}
-                  placeholder="Search payee, ID, category…"
+                  placeholder="Search payee, ref, category…"
                   value={search} onChange={e => setSearch(e.target.value)}/>
                 <i className="ri-search-line position-absolute top-50 translate-middle-y ms-3" style={{ fontSize:14, color:'#94a3b8' }}/>
               </div>
               <select className="form-select" style={{ width:170 }} value={filterCat} onChange={e => setFiltCat(e.target.value)}>
                 <option value="all">All Categories</option>
-                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
               <select className="form-select" style={{ width:140 }} value={filterSt} onChange={e => setFiltSt(e.target.value)}>
                 <option value="all">All Status</option>
@@ -235,13 +321,18 @@ export default function Expenses() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 && (
+                {loading ? (
+                  <tr><td colSpan={8} className="text-center text-muted py-5">
+                    <div className="spinner-border spinner-border-sm text-success me-2" role="status" />
+                    Loading expenses…
+                  </td></tr>
+                ) : filtered.length === 0 && (
                   <tr><td colSpan={8} className="text-center text-muted py-5">No expense records found.</td></tr>
                 )}
-                {filtered.map(e => (
+                {!loading && filtered.map(e => (
                   <tr key={e.id} className="border-bottom">
                     <td className="ps-4">
-                      <div className="fw-medium" style={{ fontSize:12 }}>{e.id}</div>
+                      <div className="fw-medium" style={{ fontSize:12 }}>{e.reference}</div>
                       <div className="text-muted" style={{ fontSize:11 }}>{fmtD(e.date)}</div>
                     </td>
                     <td>
@@ -251,11 +342,11 @@ export default function Expenses() {
                     <td>
                       <div className="d-flex align-items-center gap-1">
                         <div style={{ width:7, height:7, borderRadius:'50%', background: CAT_COLORS[e.category] || '#94a3b8' }}/>
-                        <span style={{ fontSize:12 }}>{e.category}</span>
+                        <span style={{ fontSize:12 }}>{CATEGORY_LABEL[e.category] || e.category}</span>
                       </div>
                     </td>
-                    <td><span className="badge bg-light text-dark border" style={{ fontSize:11 }}>{e.method}</span></td>
-                    <td><span className="text-muted" style={{ fontSize:12 }}>{e.approvedBy}</span></td>
+                    <td><span className="badge bg-light text-dark border" style={{ fontSize:11 }}>{e.method || '—'}</span></td>
+                    <td><span className="text-muted" style={{ fontSize:12 }}>{e.approvedBy || '—'}</span></td>
                     <td>
                       <span className={`badge border ${STATUS_CFG[e.status]?.cls}`} style={{ fontSize:11 }}>
                         {STATUS_CFG[e.status]?.label}
@@ -286,18 +377,20 @@ export default function Expenses() {
                         )}
                         <button className="btn btn-sm btn-outline-secondary" style={{ padding:'3px 8px' }}
                           onClick={() => openEdit(e)}><i className="ri-edit-line" style={{ fontSize:12 }}/></button>
-                        <button className="btn btn-sm btn-outline-danger" style={{ padding:'3px 8px' }}
-                          onClick={() => openDelete(e)}><i className="ri-delete-bin-line" style={{ fontSize:12 }}/></button>
+                        {e.status !== 'rejected' && (
+                          <button className="btn btn-sm btn-outline-danger" style={{ padding:'3px 8px' }}
+                            onClick={() => openDelete(e)} title="Void"><i className="ri-delete-bin-line" style={{ fontSize:12 }}/></button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
-              {filtered.length > 0 && (
+              {!loading && filtered.length > 0 && (
                 <tfoot className="bg-light">
                   <tr>
                     <td colSpan={6} className="ps-4 fw-medium text-muted" style={{ fontSize:12 }}>
-                      Showing {filtered.length} of {expenses.length} records
+                      Showing {filtered.length} of {expenses.length} loaded records
                     </td>
                     <td className="text-end pe-3 fw-bold text-danger" style={{ fontSize:13 }}>
                       −{fmt(filtered.reduce((s,e)=>s+e.amount,0))}
@@ -324,7 +417,7 @@ export default function Expenses() {
                 <div className="d-flex align-items-center justify-content-between">
                   <div>
                     <div className="fw-bold fs-15"><i className="ri-arrow-down-circle-line me-2 text-danger"/>Expense Voucher</div>
-                    <div style={{ fontSize:12, opacity:0.7, marginTop:4 }}>{selected.id} · {fmtD(selected.date)}</div>
+                    <div style={{ fontSize:12, opacity:0.7, marginTop:4 }}>{selected.reference} · {fmtD(selected.date)}</div>
                   </div>
                   <button className="btn btn-sm btn-outline-light" onClick={closeModal}><i className="ri-close-line"/></button>
                 </div>
@@ -337,12 +430,16 @@ export default function Expenses() {
                   </span>
                 </div>
                 {[
-                  ['Voucher ID', selected.id],
+                  ['Voucher Ref', selected.reference],
                   ['Payee', selected.payee],
-                  ['Category', selected.category],
-                  ['Payment Method', selected.method],
-                  ['Approved By', selected.approvedBy],
+                  ['Supplier', selected.supplier || '—'],
+                  ['Category', CATEGORY_LABEL[selected.category] || selected.category],
+                  ['Payment Method', selected.method || '—'],
+                  ['Approved By', selected.approvedBy || '—'],
+                  ['Paid By', selected.paidBy || '—'],
+                  ['Bank Account', selected.bankAccountLabel || '—'],
                   ['Date', fmtD(selected.date)],
+                  ['Due Date', fmtD(selected.dueDate)],
                 ].map(([lbl, val]) => (
                   <div key={lbl} className="d-flex justify-content-between py-2 border-bottom">
                     <span className="text-muted" style={{ fontSize:12 }}>{lbl}</span>
@@ -386,14 +483,14 @@ export default function Expenses() {
               <div className="p-4">
                 <div className="row g-3">
                   <div className="col-md-6">
-                    <label className="form-label small fw-medium">Date <span className="text-danger">*</span></label>
-                    <input type="date" className="form-control" value={form.date}
+                    <label className="form-label small fw-medium">Date {activeModal === 'add' && <span className="text-danger">*</span>}</label>
+                    <input type="date" className="form-control" value={form.date} disabled={activeModal === 'edit'}
                       onChange={e => setForm(f => ({ ...f, date: e.target.value }))}/>
                   </div>
                   <div className="col-md-6">
                     <label className="form-label small fw-medium">Category</label>
                     <select className="form-select" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
-                      {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                      {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                     </select>
                   </div>
                   <div className="col-12">
@@ -401,17 +498,22 @@ export default function Expenses() {
                     <input className="form-control" placeholder="Who or what is this payment for?"
                       value={form.payee} onChange={e => setForm(f => ({ ...f, payee: e.target.value }))}/>
                   </div>
+                  <div className="col-12">
+                    <label className="form-label small fw-medium">Supplier (optional)</label>
+                    <input className="form-control" placeholder="Supplier / vendor name"
+                      value={form.supplier} onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))}/>
+                  </div>
                   <div className="col-md-6">
                     <label className="form-label small fw-medium">Payment Method</label>
-                    <select className="form-select" value={form.method} onChange={e => setForm(f => ({ ...f, method: e.target.value }))}>
+                    <select className="form-select" value={form.method} disabled={activeModal === 'edit'}
+                      onChange={e => setForm(f => ({ ...f, method: e.target.value }))}>
                       {PAY_METHODS.map(m => <option key={m}>{m}</option>)}
                     </select>
                   </div>
                   <div className="col-md-6">
-                    <label className="form-label small fw-medium">Approved By</label>
-                    <select className="form-select" value={form.approvedBy} onChange={e => setForm(f => ({ ...f, approvedBy: e.target.value }))}>
-                      {APPROVERS.map(a => <option key={a}>{a}</option>)}
-                    </select>
+                    <label className="form-label small fw-medium">Due Date</label>
+                    <input type="date" className="form-control" value={form.dueDate}
+                      onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}/>
                   </div>
                   <div className="col-md-7">
                     <label className="form-label small fw-medium">Amount (₦) <span className="text-danger">*</span></label>
@@ -428,16 +530,30 @@ export default function Expenses() {
                     </select>
                   </div>
                   <div className="col-12">
+                    <label className="form-label small fw-medium">Bank Account {activeModal === 'add' ? '(debited when marked Paid)' : ''}</label>
+                    <select className="form-select" value={form.bankAccountId}
+                      onChange={e => setForm(f => ({ ...f, bankAccountId: e.target.value }))}>
+                      <option value="">— Not linked to a bank account —</option>
+                      {bankAccounts.map(a => <option key={a.id} value={a.id}>{a.bank_name} — {a.account_name}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-12">
                     <label className="form-label small fw-medium">Notes</label>
                     <textarea className="form-control" rows={2} placeholder="Additional details…"
                       value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}/>
                   </div>
                 </div>
+                {activeModal === 'add' && (
+                  <p className="text-muted mt-3 mb-0" style={{ fontSize: 11 }}>
+                    <i className="ri-information-line me-1" />
+                    Approver and payer are recorded automatically from whoever approves/marks this paid — they aren't set here.
+                  </p>
+                )}
                 <div className="d-flex gap-2 mt-4">
-                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal} disabled={saving}>Cancel</button>
                   <button className="btn btn-primary flex-fill" onClick={saveExpense}
-                    disabled={!form.payee || !form.amount}>
-                    <i className="ri-save-line me-1"/>
+                    disabled={saving || !form.payee || !form.amount}>
+                    {saving ? <span className="spinner-border spinner-border-sm me-1" /> : <i className="ri-save-line me-1"/>}
                     {activeModal === 'add' ? 'Add Expense' : 'Save Changes'}
                   </button>
                 </div>
@@ -462,12 +578,12 @@ export default function Expenses() {
                 <h5>Approve this expense?</h5>
                 <p className="text-muted small mb-4">
                   <strong>{selected.payee}</strong><br/>
-                  <strong>{fmt(selected.amount)}</strong> · {selected.category}
+                  <strong>{fmt(selected.amount)}</strong> · {CATEGORY_LABEL[selected.category] || selected.category}
                   <br/><span className="text-muted">{fmtD(selected.date)}</span>
                 </p>
                 <div className="alert alert-success small text-start">
                   <i className="ri-information-line me-1"/>
-                  Approving will mark this expense as <strong>Approved</strong>. Payment can then be processed and marked Paid.
+                  Approving will mark this expense as <strong>Approved</strong>, recorded under your account. Payment can then be processed and marked Paid.
                 </div>
                 <div className="d-flex gap-2 mt-3">
                   <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
@@ -506,12 +622,12 @@ export default function Expenses() {
             </div>
           )}
 
-          {/* DELETE */}
+          {/* VOID (the API has no hard delete — this sets status to 'rejected') */}
           {activeModal === 'delete' && selected && (
             <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:400 }}>
               <div style={{ background:'#7f1d1d', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
                 <div className="d-flex align-items-center justify-content-between">
-                  <div className="fw-bold fs-15"><i className="ri-delete-bin-line me-2"/>Delete Expense</div>
+                  <div className="fw-bold fs-15"><i className="ri-delete-bin-line me-2"/>Void Expense</div>
                   <button className="btn btn-sm btn-outline-light" onClick={closeModal}><i className="ri-close-line"/></button>
                 </div>
               </div>
@@ -520,15 +636,15 @@ export default function Expenses() {
                   style={{ width:56, height:56, background:'#fee2e2' }}>
                   <i className="ri-delete-bin-line fs-24 text-danger"/>
                 </div>
-                <h5>Delete this expense voucher?</h5>
+                <h5>Void this expense voucher?</h5>
                 <p className="text-muted small mb-4">
-                  <strong>{selected.id}</strong> — {selected.payee}<br/>
-                  <strong>{fmt(selected.amount)}</strong> · This action cannot be undone.
+                  <strong>{selected.reference}</strong> — {selected.payee}<br/>
+                  <strong>{fmt(selected.amount)}</strong> · This marks it Rejected — the record is kept, not deleted.
                 </p>
                 <div className="d-flex gap-2">
                   <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
-                  <button className="btn btn-danger flex-fill" onClick={deleteExpense}>
-                    <i className="ri-delete-bin-line me-1"/>Delete
+                  <button className="btn btn-danger flex-fill" onClick={voidExpense}>
+                    <i className="ri-delete-bin-line me-1"/>Void
                   </button>
                 </div>
               </div>
