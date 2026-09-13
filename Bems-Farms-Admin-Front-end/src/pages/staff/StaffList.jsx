@@ -159,10 +159,10 @@ export default function StaffList() {
           <p className="text-muted fs-sm mb-0">Manage employee accounts, system access levels, contact records, and active credentials.</p>
         </div>
         <div className="d-flex align-items-center gap-2">
-          <Link to="/settings/team" className="btn btn-primary">
+          <Link to="/onboarding?tab=onboarding" className="btn btn-primary">
             <i className="ri-user-add-line me-1 align-middle"></i>Invite Member
           </Link>
-          <Link to="/settings/roles" className="btn btn-outline-secondary">
+          <Link to="/onboarding?tab=roles" className="btn btn-outline-secondary">
             <i className="ri-shield-keyhole-line me-1 align-middle"></i>Roles &amp; Permissions
           </Link>
         </div>

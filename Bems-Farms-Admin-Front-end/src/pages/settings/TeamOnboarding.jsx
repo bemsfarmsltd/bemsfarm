@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
-import SettingsTabs from './SettingsTabs'
 
 // Available permissions for granular role management
 const AVAILABLE_PERMISSIONS = [
@@ -412,20 +411,17 @@ export default function TeamOnboarding({ initialTab }) {
 
   return (
     <div className="container-fluid py-3">
-      {/* 1. Settings Navigation Bar */}
-      <SettingsTabs />
-
-      {/* 2. Unified Page Header */}
+      {/* Page Header */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
           <div className="d-flex align-items-center gap-2 mb-1">
-            <h4 className="fw-bold font-display text-dark mb-0">Staff &amp; Team Management</h4>
+            <h4 className="fw-bold font-display text-dark mb-0">Team Onboarding &amp; Staff</h4>
             <span className="badge bg-emerald-subtle text-emerald border border-emerald-subtle px-2.5 py-1">
-              Unified Hub
+              Onboarding Hub
             </span>
           </div>
           <p className="text-muted fs-sm mb-0">
-            Invite team members, manage employee credentials, track onboarding invitations, and configure system role permissions.
+            Invite team members, track onboarding invitations, manage employee credentials, and configure system role permissions.
           </p>
         </div>
 

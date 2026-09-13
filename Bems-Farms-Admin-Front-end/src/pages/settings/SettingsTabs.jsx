@@ -1,11 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 
 const TABS = [
-  {
-    to: '/settings/team',
-    label: 'Staff & Team',
-    matches: ['/settings/team', '/settings/staff', '/settings/roles', '/settings/onboarding'],
-  },
   { to: '/settings/general', label: 'General' },
   { to: '/settings/pos', label: 'POS' },
   { to: '/settings/payment', label: 'Payment Gateway' },

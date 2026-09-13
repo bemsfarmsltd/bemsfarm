@@ -201,17 +201,23 @@ function App() {
               <Route path="/customers/:id"      element={<CustomerDetail />} />
               </Route>
 
-              {/* ── Staff (Consolidated under Settings) ── */}
+              {/* ── Onboarding / Staff & Team ── */}
               <Route element={<ProtectedRoute allowedRoles={STAFF_ROLES} />}>
-                <Route path="/staff"                   element={<Navigate to="/settings/staff" replace />} />
-                <Route path="/staff/list"              element={<Navigate to="/settings/staff" replace />} />
-                <Route path="/staff/add"               element={<Navigate to="/settings/team" replace />} />
-                <Route path="/staff/roles"             element={<Navigate to="/settings/roles" replace />} />
-                <Route path="/staff/roles-permissions" element={<Navigate to="/settings/roles" replace />} />
-                <Route path="/staff/attendance"        element={<Navigate to="/settings/staff" replace />} />
-                <Route path="/staff/schedule"          element={<Navigate to="/settings/staff" replace />} />
-                <Route path="/staff/holidays"          element={<Navigate to="/settings/staff" replace />} />
-                <Route path="/staff/payroll"           element={<Navigate to="/settings/staff" replace />} />
+                <Route path="/onboarding"              element={<TeamOnboarding />} />
+                <Route path="/onboarding/staff"        element={<TeamOnboarding initialTab="staff" />} />
+                <Route path="/onboarding/invites"      element={<TeamOnboarding initialTab="onboarding" />} />
+                <Route path="/onboarding/roles"        element={<TeamOnboarding initialTab="roles" />} />
+
+                {/* Legacy staff routes */}
+                <Route path="/staff"                   element={<Navigate to="/onboarding" replace />} />
+                <Route path="/staff/list"              element={<Navigate to="/onboarding?tab=staff" replace />} />
+                <Route path="/staff/add"               element={<Navigate to="/onboarding?tab=onboarding" replace />} />
+                <Route path="/staff/roles"             element={<Navigate to="/onboarding?tab=roles" replace />} />
+                <Route path="/staff/roles-permissions" element={<Navigate to="/onboarding?tab=roles" replace />} />
+                <Route path="/staff/attendance"        element={<Navigate to="/onboarding?tab=staff" replace />} />
+                <Route path="/staff/schedule"          element={<Navigate to="/onboarding?tab=staff" replace />} />
+                <Route path="/staff/holidays"          element={<Navigate to="/onboarding?tab=staff" replace />} />
+                <Route path="/staff/payroll"           element={<Navigate to="/onboarding?tab=staff" replace />} />
               </Route>
 
               {/* ── Accounts / Finance ── */}
@@ -253,10 +259,11 @@ function App() {
               <Route element={<ProtectedRoute allowedRoles={SETTINGS_ROLES} />}>
                 <Route path="/settings"               element={<SettingsAll />} />
                 <Route path="/settings/all"           element={<SettingsAll />} />
-                <Route path="/settings/team"          element={<TeamOnboarding />} />
-                <Route path="/settings/onboarding"    element={<Navigate to="/settings/team?tab=onboarding" replace />} />
-                <Route path="/settings/staff"         element={<TeamOnboarding initialTab="staff" />} />
-                <Route path="/settings/roles"         element={<TeamOnboarding initialTab="roles" />} />
+                {/* Legacy settings team routes */}
+                <Route path="/settings/team"          element={<Navigate to="/onboarding" replace />} />
+                <Route path="/settings/onboarding"    element={<Navigate to="/onboarding?tab=onboarding" replace />} />
+                <Route path="/settings/staff"         element={<Navigate to="/onboarding?tab=staff" replace />} />
+                <Route path="/settings/roles"         element={<Navigate to="/onboarding?tab=roles" replace />} />
                 {/* Legacy audit redirect for superadmin */}
                 <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>
                   <Route path="/settings/audit" element={<Navigate to="/god-eye" replace />} />

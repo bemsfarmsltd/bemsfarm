@@ -208,10 +208,10 @@ export default function RolesPermissions() {
           <p className="text-muted fs-sm mb-0">Control granular module permissions and system capabilities across various job functions.</p>
         </div>
         <div className="d-flex align-items-center gap-2">
-          <Link to="/settings/staff" className="btn btn-outline-secondary">
+          <Link to="/onboarding" className="btn btn-outline-secondary">
             <i className="ri-team-line me-1 align-middle"></i>Staff Directory
           </Link>
-          <Link to="/settings/team" className="btn btn-outline-primary">
+          <Link to="/onboarding?tab=onboarding" className="btn btn-outline-primary">
             <i className="ri-user-add-line me-1 align-middle"></i>Invite Member
           </Link>
           <button type="button" className="btn btn-primary" onClick={openAddModal}>

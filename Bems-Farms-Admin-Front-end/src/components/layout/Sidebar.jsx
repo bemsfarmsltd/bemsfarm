@@ -16,11 +16,12 @@ export default function Sidebar() {
     orders: '/orders',
     deliveries: '/deliveries/active',
     customers: '/customers',
+    onboarding: '/onboarding',
     finance: '/accounts/overview',
     reports: '/reports/sales',
     chef: '/chef-bems/conversations',
     stores: '/stores',
-    settings: '/settings/team',
+    settings: '/settings/general',
     godeye: '/god-eye',
   }
 
@@ -47,7 +48,7 @@ export default function Sidebar() {
     if (path.startsWith('/orders')) return 'orders'
     if (path.startsWith('/deliveries')) return 'deliveries'
     if (path.startsWith('/customers')) return 'customers'
-    if (path.startsWith('/staff')) return 'settings'
+    if (path.startsWith('/onboarding') || path.startsWith('/staff') || path.startsWith('/settings/team') || path.startsWith('/settings/staff') || path.startsWith('/settings/roles')) return 'onboarding'
     if (path.startsWith('/accounts')) return 'finance'
     if (path.startsWith('/reports')) return 'reports'
     if (path.startsWith('/chef-bems')) return 'chef'
@@ -79,6 +80,22 @@ export default function Sidebar() {
     const currentTab = new URLSearchParams(location.search).get('tab')
     if (!currentTab && tabKey === 'overview') return true
     return currentTab === tabKey
+  }
+
+  // Helper to check which onboarding tab is currently open
+  const isOnboardingTabActive = (tabKey) => {
+    if (!location.pathname.startsWith('/onboarding') && !location.pathname.startsWith('/staff') && !location.pathname.startsWith('/settings/team')) return false
+    const currentTab = new URLSearchParams(location.search).get('tab')
+    if (tabKey === 'staff') {
+      return (!currentTab || currentTab === 'staff') && !location.pathname.includes('invites') && !location.pathname.includes('roles')
+    }
+    if (tabKey === 'onboarding') {
+      return currentTab === 'onboarding' || location.pathname.includes('invites')
+    }
+    if (tabKey === 'roles') {
+      return currentTab === 'roles' || location.pathname.includes('roles')
+    }
+    return false
   }
 
   const hasSubpanel = activeTab !== 'godeye' && activeTab !== 'pos'
@@ -483,6 +500,19 @@ export default function Sidebar() {
               </button>
             )}
 
+            {/* Onboarding */}
+            {showStaff && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'onboarding' ? 'active' : ''}`}
+                onClick={() => handleCategoryClick('onboarding')}
+                title="Team Onboarding & Staff"
+              >
+                <i className="ri-user-add-line rail-icon"></i>
+                <span className="rail-label">Onboarding</span>
+              </button>
+            )}
+
             {/* Finance */}
             {showFinance && (
               <button
@@ -577,7 +607,7 @@ export default function Sidebar() {
                 {activeTab === 'orders' && 'Sales & Orders'}
                 {activeTab === 'deliveries' && 'Operations & Dispatch'}
                 {activeTab === 'customers' && 'Customer CRM'}
-                {activeTab === 'staff' && 'Staff Accounts & Roles'}
+                {activeTab === 'onboarding' && 'Team Onboarding'}
                 {activeTab === 'finance' && 'Finance'}
                 {activeTab === 'reports' && 'Analytics & Reports'}
                 {activeTab === 'chef' && 'Chef Bems AI'}
@@ -809,6 +839,32 @@ export default function Sidebar() {
               </>
             )}
 
+            {/* 7. ONBOARDING */}
+            {activeTab === 'onboarding' && (
+              <>
+                <Link
+                  to="/onboarding"
+                  className={`dual-sub-link ${isOnboardingTabActive('staff') ? 'active' : ''}`}
+                >
+                  <span>Staff Directory</span>
+                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Active</span>
+                </Link>
+                <Link
+                  to="/onboarding?tab=onboarding"
+                  className={`dual-sub-link ${isOnboardingTabActive('onboarding') ? 'active' : ''}`}
+                >
+                  <span>Team Onboarding</span>
+                  <span className="sub-badge" style={{ background: '#FEF3C7', color: '#B45309' }}>Invites</span>
+                </Link>
+                <Link
+                  to="/onboarding?tab=roles"
+                  className={`dual-sub-link ${isOnboardingTabActive('roles') ? 'active' : ''}`}
+                >
+                  <span>Roles &amp; Permissions</span>
+                </Link>
+              </>
+            )}
+
             {/* 8. FINANCE */}
             {activeTab === 'finance' && (
               <>
@@ -887,10 +943,6 @@ export default function Sidebar() {
             {/* 12. SETTINGS */}
             {activeTab === 'settings' && (
               <>
-                <NavLink to="/settings/team" className={({ isActive }) => `dual-sub-link ${isActive || location.pathname.startsWith('/settings/staff') || location.pathname.startsWith('/settings/roles') ? 'active' : ''}`}>
-                  <span>Staff &amp; Team</span>
-                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Manage</span>
-                </NavLink>
                 {['superadmin'].includes(user?.role) && <NavLink to="/settings/audit" className="dual-sub-link">System Audit (Legacy)</NavLink>}
                 <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>General Store Info</span>

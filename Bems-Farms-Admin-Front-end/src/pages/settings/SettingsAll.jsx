@@ -20,10 +20,10 @@ const SETTINGS_SECTIONS = [
     subtitle: 'Invite staff members by email, assign system roles, and manage active team permissions',
     icon: 'ri-user-add-line',
     items: [
-      { name: 'Invite Team Member (1-Click Link)', path: '/settings/team' },
-      { name: 'Pending Invitations & Active Links', path: '/settings/team' },
-      { name: 'System Roles & Permissions Matrix', path: '/staff/roles' },
-      { name: 'Full Staff Directory', path: '/staff' }
+      { name: 'Invite Team Member (1-Click Link)', path: '/onboarding?tab=onboarding' },
+      { name: 'Pending Invitations & Active Links', path: '/onboarding?tab=onboarding' },
+      { name: 'System Roles & Permissions Matrix', path: '/onboarding?tab=roles' },
+      { name: 'Full Staff Directory', path: '/onboarding' }
     ]
   },
   {
