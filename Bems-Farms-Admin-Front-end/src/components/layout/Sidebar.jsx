@@ -81,6 +81,18 @@ export default function Sidebar() {
     return currentTab === tabKey
   }
 
+  const hasSubpanel = activeTab !== 'godeye' && activeTab !== 'pos'
+
+  // Sync body class when no subpanel is active (e.g. God Eye full-width mode)
+  useEffect(() => {
+    if (!hasSubpanel) {
+      document.body.classList.add('no-subpanel')
+    } else {
+      document.body.classList.remove('no-subpanel')
+    }
+    return () => document.body.classList.remove('no-subpanel')
+  }, [hasSubpanel])
+
   // Sync body class when rail expands on hover so entire layout pushes smoothly together
   useEffect(() => {
     if (isRailExpanded) {
@@ -108,8 +120,17 @@ export default function Sidebar() {
         position: relative;
         transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1);
       }
+      .dual-sidebar-container.no-subpanel {
+        width: 68px !important;
+      }
       body.rail-is-hovered .dual-sidebar-container {
         width: 415px;
+      }
+      body.rail-is-hovered .dual-sidebar-container.no-subpanel {
+        width: 215px !important;
+      }
+      .dual-sidebar-container.no-subpanel .sidebar-sub-panel {
+        display: none !important;
       }
       
       /* ── COLUMN 1: LIGHT RAIL (68px default -> expands to 215px on hover) ── */
@@ -366,7 +387,7 @@ export default function Sidebar() {
 
   return (
     <div id="main-sidebar" className="main-sidebar">
-      <div className="dual-sidebar-container">
+      <div className={`dual-sidebar-container ${!hasSubpanel ? 'no-subpanel' : ''}`}>
 
         {/* ── LEFT COLUMN: DARK RAIL (Hover expands to full width with text) ── */}
         <div
@@ -501,19 +522,6 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* Settings */}
-            {showSettings && (
-              <button
-                type="button"
-                className={`rail-btn ${activeTab === 'settings' ? 'active' : ''}`}
-                onClick={() => handleCategoryClick('settings')}
-                title="System Settings"
-              >
-                <i className="ri-settings-3-line rail-icon"></i>
-                <span className="rail-label">Settings</span>
-              </button>
-            )}
-
             {/* God Eye Audit — superadmin only */}
             {showGodEye && (
               <button
@@ -525,6 +533,19 @@ export default function Sidebar() {
               >
                 <span className="rail-icon" style={{ fontSize: 18, lineHeight: 1 }}>👁️</span>
                 <span className="rail-label" style={{ fontWeight: activeTab === 'godeye' ? 700 : 500 }}>God Eye</span>
+              </button>
+            )}
+
+            {/* Settings */}
+            {showSettings && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'settings' ? 'active' : ''}`}
+                onClick={() => handleCategoryClick('settings')}
+                title="System Settings"
+              >
+                <i className="ri-settings-3-line rail-icon"></i>
+                <span className="rail-label">Settings</span>
               </button>
             )}
           </div>
@@ -543,27 +564,27 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN: WHITE SUB-NAVIGATION PANEL (ALWAYS OPEN & DOCKED) ── */}
-        <div className="sidebar-sub-panel">
+        {/* ── RIGHT COLUMN: WHITE SUB-NAVIGATION PANEL (SHOWN ONLY WHEN SUBPANEL ACTIVE) ── */}
+        {hasSubpanel && (
+          <div className="sidebar-sub-panel">
 
-          {/* Subpanel Header */}
-          <div className="sub-panel-header">
-            <div className="sub-panel-title">
-              {activeTab === 'dashboards' && 'Dashboards'}
-              {activeTab === 'products' && 'Products & Catalog'}
-              {activeTab === 'inventory' && 'Stock & Warehouses'}
-              {activeTab === 'orders' && 'Sales & Orders'}
-              {activeTab === 'deliveries' && 'Operations & Dispatch'}
-              {activeTab === 'customers' && 'Customer CRM'}
-              {activeTab === 'staff' && 'Staff Accounts & Roles'}
-              {activeTab === 'finance' && 'Finance'}
-              {activeTab === 'reports' && 'Analytics & Reports'}
-              {activeTab === 'chef' && 'Chef Bems AI'}
-              {activeTab === 'stores' && 'Multi-Store Network'}
-              {activeTab === 'settings' && 'System Settings'}
-              {activeTab === 'godeye' && '👁️ God Eye — Audit'}
+            {/* Subpanel Header */}
+            <div className="sub-panel-header">
+              <div className="sub-panel-title">
+                {activeTab === 'dashboards' && 'Dashboards'}
+                {activeTab === 'products' && 'Products & Catalog'}
+                {activeTab === 'inventory' && 'Stock & Warehouses'}
+                {activeTab === 'orders' && 'Sales & Orders'}
+                {activeTab === 'deliveries' && 'Operations & Dispatch'}
+                {activeTab === 'customers' && 'Customer CRM'}
+                {activeTab === 'staff' && 'Staff Accounts & Roles'}
+                {activeTab === 'finance' && 'Finance'}
+                {activeTab === 'reports' && 'Analytics & Reports'}
+                {activeTab === 'chef' && 'Chef Bems AI'}
+                {activeTab === 'stores' && 'Multi-Store Network'}
+                {activeTab === 'settings' && 'System Settings'}
+              </div>
             </div>
-          </div>
 
           {/* Subpanel Links List */}
           <div className="sub-panel-nav">
@@ -915,33 +936,12 @@ export default function Sidebar() {
               </>
             )}
 
-            {/* 13. GOD EYE — superadmin only */}
-            {activeTab === 'godeye' && showGodEye && (
-              <>
-                <div className="sub-panel-section-label" style={{ padding: '12px 16px 6px', fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '.07em', textTransform: 'uppercase' }}>
-                  Omniscient Audit Log
-                </div>
-                <NavLink to="/god-eye" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>👁️ God Eye Dashboard</span>
-                  <span className="sub-badge" style={{ background: '#fef2f2', color: '#dc2626' }}>Live</span>
-                </NavLink>
-                <div className="sub-panel-section-label" style={{ padding: '12px 16px 4px', fontSize: 10, fontWeight: 600, color: '#cbd5e1', letterSpacing: '.06em', textTransform: 'uppercase' }}>
-                  Categories
-                </div>
-                <NavLink to="/god-eye?category=auth"      className="dual-sub-link"><span>🔐 Auth Events</span></NavLink>
-                <NavLink to="/god-eye?category=security"  className="dual-sub-link"><span>🛡️ Security</span></NavLink>
-                <NavLink to="/god-eye?category=customer"  className="dual-sub-link"><span>👤 Customer Actions</span></NavLink>
-                <NavLink to="/god-eye?category=admin"     className="dual-sub-link"><span>⚙️ Admin Actions</span></NavLink>
-                <NavLink to="/god-eye?category=financial" className="dual-sub-link"><span>💰 Financial</span></NavLink>
-                <NavLink to="/god-eye?category=developer" className="dual-sub-link"><span>👨‍💻 Developer Events</span></NavLink>
-              </>
-            )}
-
           </div>{/* end sub-panel-nav */}
 
-        </div>{/* end sidebar-sub-panel */}
+        </div>
+      )}{/* end sidebar-sub-panel */}
 
-      </div>
     </div>
-  )
+  </div>
+)
 }

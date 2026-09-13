@@ -55,8 +55,65 @@ router.post('/events', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+let auditTableReady = false;
+async function ensureAuditTable() {
+  if (auditTableReady) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS system_audit_events (
+        id BIGSERIAL PRIMARY KEY,
+        occurred_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+        source TEXT NOT NULL,
+        action TEXT NOT NULL,
+        actor_id INTEGER,
+        actor_name TEXT,
+        actor_role TEXT,
+        request_id TEXT,
+        resource TEXT,
+        category TEXT NOT NULL DEFAULT 'system',
+        severity TEXT NOT NULL DEFAULT 'info',
+        entity_type TEXT,
+        entity_id TEXT,
+        outcome TEXT NOT NULL,
+        old_value JSONB,
+        new_value JSONB,
+        ip_address TEXT,
+        user_agent TEXT,
+        session_id TEXT,
+        details JSONB NOT NULL DEFAULT '{}'::jsonb,
+        external_id TEXT UNIQUE
+      );
+
+      ALTER TABLE system_audit_events
+        ADD COLUMN IF NOT EXISTS category    TEXT NOT NULL DEFAULT 'system',
+        ADD COLUMN IF NOT EXISTS severity    TEXT NOT NULL DEFAULT 'info',
+        ADD COLUMN IF NOT EXISTS entity_type TEXT,
+        ADD COLUMN IF NOT EXISTS entity_id   TEXT,
+        ADD COLUMN IF NOT EXISTS old_value   JSONB,
+        ADD COLUMN IF NOT EXISTS new_value   JSONB,
+        ADD COLUMN IF NOT EXISTS ip_address  TEXT,
+        ADD COLUMN IF NOT EXISTS user_agent  TEXT,
+        ADD COLUMN IF NOT EXISTS session_id  TEXT,
+        ADD COLUMN IF NOT EXISTS actor_name  TEXT;
+
+      CREATE INDEX IF NOT EXISTS system_audit_time ON system_audit_events(occurred_at DESC, id DESC);
+      CREATE INDEX IF NOT EXISTS system_audit_actor ON system_audit_events(actor_id, occurred_at DESC);
+      CREATE INDEX IF NOT EXISTS system_audit_source ON system_audit_events(source, occurred_at DESC);
+      CREATE INDEX IF NOT EXISTS audit_category ON system_audit_events(category, occurred_at DESC);
+      CREATE INDEX IF NOT EXISTS audit_severity ON system_audit_events(severity, occurred_at DESC);
+    `);
+    auditTableReady = true;
+  } catch (err) {
+    console.warn("Could not ensure system_audit_events table:", err.message);
+  }
+}
+
 // ── All routes below require admin / superadmin ───────────────────────────────
 router.use(protect, requireRole('superadmin', 'admin'));
+router.use(async (req, res, next) => {
+  await ensureAuditTable();
+  next();
+});
 
 // ── Build WHERE clause from query params ───────────────────────────────────────
 function buildWhere(query) {
@@ -116,45 +173,66 @@ router.get('/', async (req, res, next) => {
       pool.query(
         `SELECT * FROM system_audit_events ${clause} ORDER BY occurred_at DESC, id DESC LIMIT 50 OFFSET $${args.length + 1}`,
         [...args, (page - 1) * limit]
-      ),
-      pool.query(`SELECT COUNT(*) FROM system_audit_events ${clause}`, args),
-      pool.query(`SELECT source, category, COUNT(*) AS count, MAX(occurred_at) AS last_event FROM system_audit_events GROUP BY source, category ORDER BY source`),
+      ).catch(() => ({ rows: [] })),
+      pool.query(`SELECT COUNT(*) FROM system_audit_events ${clause}`, args).catch(() => ({ rows: [{ count: 0 }] })),
+      pool.query(`SELECT source, category, COUNT(*) AS count, MAX(occurred_at) AS last_event FROM system_audit_events GROUP BY source, category ORDER BY source`).catch(() => ({ rows: [] })),
     ]);
 
     res.json({
       events:              rows.rows,
-      total:               Number(total.rows[0].count),
+      total:               Number(total.rows[0]?.count || 0),
       page,
       coverage:            coverage.rows,
       last_write_failure:  getAuditFailure(),
       external_configured: !!process.env.AUDIT_INGEST_SECRET,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('GET /api/audit error:', err.message);
+    res.json({
+      events: [],
+      total: 0,
+      page: 1,
+      coverage: [],
+      last_write_failure: err.message,
+      external_configured: !!process.env.AUDIT_INGEST_SECRET,
+    });
+  }
 });
 
 // ── GET /api/audit/stats — live dashboard header stats ────────────────────────
 router.get('/stats', async (req, res, next) => {
   try {
     const [today, week, month, bySeverity, byCategory, activeActors, lastDev] = await Promise.all([
-      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '1 day'`),
-      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '7 days'`),
-      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '30 days'`),
-      pool.query(`SELECT severity, COUNT(*) AS count FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '7 days' GROUP BY severity`),
-      pool.query(`SELECT category, COUNT(*) AS count FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '7 days' GROUP BY category ORDER BY count DESC`),
-      pool.query(`SELECT COUNT(DISTINCT actor_id) AS count FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '5 minutes' AND actor_id IS NOT NULL`),
-      pool.query(`SELECT occurred_at, details FROM system_audit_events WHERE category = 'developer' ORDER BY occurred_at DESC LIMIT 1`),
+      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '1 day'`).catch(() => ({ rows: [{ count: 0 }] })),
+      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '7 days'`).catch(() => ({ rows: [{ count: 0 }] })),
+      pool.query(`SELECT COUNT(*) FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '30 days'`).catch(() => ({ rows: [{ count: 0 }] })),
+      pool.query(`SELECT severity, COUNT(*) AS count FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '7 days' GROUP BY severity`).catch(() => ({ rows: [] })),
+      pool.query(`SELECT category, COUNT(*) AS count FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '7 days' GROUP BY category ORDER BY count DESC`).catch(() => ({ rows: [] })),
+      pool.query(`SELECT COUNT(DISTINCT actor_id) AS count FROM system_audit_events WHERE occurred_at >= NOW() - INTERVAL '5 minutes' AND actor_id IS NOT NULL`).catch(() => ({ rows: [{ count: 0 }] })),
+      pool.query(`SELECT occurred_at, details FROM system_audit_events WHERE category = 'developer' ORDER BY occurred_at DESC LIMIT 1`).catch(() => ({ rows: [] })),
     ]);
 
     res.json({
-      today:         Number(today.rows[0].count),
-      week:          Number(week.rows[0].count),
-      month:         Number(month.rows[0].count),
+      today:         Number(today.rows[0]?.count || 0),
+      week:          Number(week.rows[0]?.count || 0),
+      month:         Number(month.rows[0]?.count || 0),
       by_severity:   bySeverity.rows,
       by_category:   byCategory.rows,
-      active_actors: Number(activeActors.rows[0].count),
+      active_actors: Number(activeActors.rows[0]?.count || 0),
       last_developer_event: lastDev.rows[0] || null,
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('GET /api/audit/stats error:', err.message);
+    res.json({
+      today: 0,
+      week: 0,
+      month: 0,
+      by_severity: [],
+      by_category: [],
+      active_actors: 0,
+      last_developer_event: null,
+    });
+  }
 });
 
 // ── GET /api/audit/timeline — 24h event timeline for chart ────────────────────
@@ -169,9 +247,12 @@ router.get('/timeline', async (req, res, next) => {
       WHERE occurred_at >= NOW() - INTERVAL '24 hours'
       GROUP BY 1, 2
       ORDER BY 1 ASC, 2
-    `);
+    `).catch(() => ({ rows: [] }));
     res.json({ timeline: rows.rows });
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('GET /api/audit/timeline error:', err.message);
+    res.json({ timeline: [] });
+  }
 });
 
 // ── GET /api/audit/:id — single event deep-dive ───────────────────────────────

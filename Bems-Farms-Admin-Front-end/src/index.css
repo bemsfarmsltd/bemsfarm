@@ -92,6 +92,13 @@ body.rail-is-hovered #main-sidebar {
   width: 415px !important;
 }
 
+body.no-subpanel #main-sidebar {
+  width: 68px !important;
+}
+body.no-subpanel.rail-is-hovered #main-sidebar {
+  width: 215px !important;
+}
+
 body.sidebar-condensed #main-sidebar {
   transform: translateX(-100%) !important;
 }
@@ -103,6 +110,12 @@ body.sidebar-condensed #main-sidebar {
   }
   body.rail-is-hovered .page-wrapper {
     margin-left: 415px !important;
+  }
+  body.no-subpanel .page-wrapper {
+    margin-left: 68px !important;
+  }
+  body.no-subpanel.rail-is-hovered .page-wrapper {
+    margin-left: 215px !important;
   }
   body.sidebar-condensed .page-wrapper {
     margin-left: 0 !important;

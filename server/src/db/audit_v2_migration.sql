@@ -4,7 +4,32 @@
 -- Idempotent — safe to run multiple times.
 -- ============================================================
 
--- Expand system_audit_events with God Eye columns
+-- Base table creation if not exists
+CREATE TABLE IF NOT EXISTS system_audit_events (
+  id BIGSERIAL PRIMARY KEY,
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+  source TEXT NOT NULL,
+  action TEXT NOT NULL,
+  actor_id INTEGER,
+  actor_name TEXT,
+  actor_role TEXT,
+  request_id TEXT,
+  resource TEXT,
+  category TEXT NOT NULL DEFAULT 'system',
+  severity TEXT NOT NULL DEFAULT 'info',
+  entity_type TEXT,
+  entity_id TEXT,
+  outcome TEXT NOT NULL,
+  old_value JSONB,
+  new_value JSONB,
+  ip_address TEXT,
+  user_agent TEXT,
+  session_id TEXT,
+  details JSONB NOT NULL DEFAULT '{}'::jsonb,
+  external_id TEXT UNIQUE
+);
+
+-- Expand system_audit_events with God Eye columns (in case table was previously created with fewer columns)
 ALTER TABLE system_audit_events
   ADD COLUMN IF NOT EXISTS category    TEXT NOT NULL DEFAULT 'system',
   ADD COLUMN IF NOT EXISTS severity    TEXT NOT NULL DEFAULT 'info',
