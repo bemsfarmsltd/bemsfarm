@@ -540,40 +540,7 @@ export default function OrdersList() {
       {/* Main Filter & Category Bar */}
       <div className="card mb-3 shadow-sm border-0">
         <div className="card-body p-3">
-          <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-2">
-
-            {/* Operational Category / Fulfillment Sub-pills */}
-            <div className="btn-group btn-group-sm" role="group" aria-label="Fulfillment Category">
-              <button
-                type="button"
-                className={`btn ${filterFulfillment === 'all' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                onClick={() => setFilterFulfillment('all')}
-              >
-                All Operations
-              </button>
-              <button
-                type="button"
-                className={`btn ${filterFulfillment === 'delivery' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                onClick={() => setFilterFulfillment('delivery')}
-              >
-                <i className="ri-truck-line me-1" />Home Delivery
-              </button>
-              <button
-                type="button"
-                className={`btn ${filterFulfillment === 'pickup' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                onClick={() => setFilterFulfillment('pickup')}
-              >
-                <i className="ri-store-2-line me-1" />Store POS / Walk-in
-              </button>
-            </div>
-
-            {/* Quick stats counter */}
-            <div className="text-muted small">
-              Showing <strong>{filtered.length}</strong> of <strong>{orders.length}</strong> orders
-            </div>
-          </div>
-
-          <div className="d-flex flex-wrap gap-2 align-items-center">
+          <div className="d-flex flex-wrap gap-2 align-items-center justify-content-between">
             {/* Search Input */}
             <div className="input-group" style={{ maxWidth: 280 }}>
               <span className="input-group-text bg-light border-end-0"><i className="ri-search-line text-muted" /></span>
@@ -599,19 +566,22 @@ export default function OrdersList() {
               <option value="mobile_app">Mobile App</option>
             </select>
 
-            {(filterStatus !== 'all' || filterChannel !== 'all' || filterFulfillment !== 'all' || search) && (
+            {(filterStatus !== 'all' || filterChannel !== 'all' || search) && (
               <button
                 className="btn btn-sm btn-outline-danger"
                 onClick={() => {
                   setFilterStatus('all')
                   setFilterChannel('all')
-                  setFilterFulfillment('all')
                   setSearch('')
                 }}
               >
                 <i className="ri-close-line me-1" />Reset Filters
               </button>
             )}
+
+            <div className="text-muted small ms-auto">
+              Showing <strong>{filtered.length}</strong> of <strong>{orders.length}</strong> orders
+            </div>
           </div>
         </div>
 

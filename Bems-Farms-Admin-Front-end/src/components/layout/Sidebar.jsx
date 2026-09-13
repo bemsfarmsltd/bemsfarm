@@ -722,23 +722,12 @@ export default function Sidebar() {
                 <NavLink to="/orders" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>All Orders</span>
                 </NavLink>
-                <NavLink to="/orders?status=processing" className="dual-sub-link">
-                  <span>Picking &amp; Packing</span>
-                </NavLink>
-                <NavLink to="/orders?status=packed" className="dual-sub-link">
-                  <span>Dispatch Queue</span>
-                </NavLink>
                 <NavLink to="/orders/invoices" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Invoices</span>
                 </NavLink>
                 {is('superadmin', 'admin', 'manager') && (
                   <NavLink to="/orders/refunds" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                     <span>Refunds &amp; Returns</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/orders?status=dispute" className="dual-sub-link">
-                    <span>Disputes</span>
                   </NavLink>
                 )}
               </>
