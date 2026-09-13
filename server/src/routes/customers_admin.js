@@ -402,15 +402,66 @@ Based on purchase history and a total spending of **₦${Number(customer.total_s
 // ── GET /api/admin/customers/site-activity ────────────────────────
 // Real platform-wide activity feed (logins, orders, admin product edits,
 // AI chats, etc.) recorded by utils/aiContext.js's trackActivity() —
-// replaces ActivityLog.jsx's previously fully-hardcoded 25-row fixture.
+// replaces ActivityLog.jsx's previously hardcoded fixture.
 // Must be registered before GET /:id or Express treats "site-activity"
 // as an :id value.
-router.get("/site-activity", requireRole("superadmin", "manager"), async (req, res, next) => {
+let hasSyncedHistorical = false;
+async function ensureHistoricalActivity() {
+  if (hasSyncedHistorical) return;
   try {
+    const check = await pool.query("SELECT COUNT(*) FROM ai_user_activity");
+    const count = parseInt(check.rows[0]?.count || "0", 10);
+    if (count < 10) {
+      // Backfill past orders if missing
+      await pool.query(`
+        INSERT INTO ai_user_activity (user_id, type, entity_type, entity_id, metadata, created_at)
+        SELECT o.user_id, 'order_created', 'order', o.id::text,
+               json_build_object('total', o.total, 'status', o.status)::jsonb,
+               COALESCE(o.created_at, NOW())
+        FROM orders o
+        WHERE o.id::text NOT IN (
+          SELECT COALESCE(entity_id, '') FROM ai_user_activity WHERE type = 'order_created'
+        )
+      `).catch(() => {});
+
+      // Backfill user registrations if missing
+      await pool.query(`
+        INSERT INTO ai_user_activity (user_id, type, entity_type, entity_id, metadata, created_at)
+        SELECT u.id, 'registered', 'user', u.id::text,
+               json_build_object('name', u.name, 'email', u.email)::jsonb,
+               COALESCE(u.created_at, NOW())
+        FROM users u
+        WHERE u.id::text NOT IN (
+          SELECT COALESCE(entity_id, '') FROM ai_user_activity WHERE type = 'registered'
+        )
+      `).catch(() => {});
+
+      // Backfill logins for users who have recorded last_login
+      await pool.query(`
+        INSERT INTO ai_user_activity (user_id, type, entity_type, entity_id, metadata, created_at)
+        SELECT u.id, 'login', 'user', u.id::text,
+               json_build_object('name', u.name, 'email', u.email)::jsonb,
+               COALESCE(u.last_login, u.updated_at, u.created_at, NOW())
+        FROM users u
+        WHERE u.last_login IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM ai_user_activity a WHERE a.user_id = u.id AND a.type = 'login'
+          )
+      `).catch(() => {});
+    }
+    hasSyncedHistorical = true;
+  } catch (err) {
+    console.warn("[customers_admin] ensureHistoricalActivity notice:", err.message);
+  }
+}
+
+router.get("/site-activity", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+  try {
+    await ensureHistoricalActivity();
     const { type = "", search = "", date_from = "", date_to = "", limit: limitRaw = 100 } = req.query;
     const limit = clampLimit(limitRaw, 100);
     const params = [];
-    const where = ["c.role = 'user'"];
+    const where = [];
 
     if (type) {
       params.push(type);
@@ -452,7 +503,7 @@ router.get("/site-activity", requireRole("superadmin", "manager"), async (req, r
 
     res.json({
       activity: result.rows,
-      total: parseInt(countRow.rows[0].count),
+      total: parseInt(countRow.rows[0]?.count || 0),
       type_counts: Object.fromEntries(typeCounts.rows.map((r) => [r.type, parseInt(r.count)])),
     });
   } catch (err) {

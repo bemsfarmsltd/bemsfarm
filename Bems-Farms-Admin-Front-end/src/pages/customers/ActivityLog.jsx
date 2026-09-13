@@ -22,6 +22,17 @@ const DEFAULT_TYPE_CFG = { label:'Activity', icon:'ri-pulse-line', color:'#64748
 
 function describe(a) {
   const cfg = TYPE_CFG[a.type] || DEFAULT_TYPE_CFG
+  if (a.metadata && a.metadata.description) return a.metadata.description
+  if (a.metadata && a.metadata.order_number) return `Order #${a.metadata.order_number}${a.metadata.total ? ` (₦${Number(a.metadata.total).toLocaleString()})` : ''}`
+  if (a.type === 'order_created') {
+    const total = a.metadata?.total ? ` — ₦${Number(a.metadata.total).toLocaleString()}` : ''
+    return `Order Placed #${a.entity_id || ''}${total}`
+  }
+  if (a.type === 'registered') return `New account created`
+  if (a.type === 'login') return `Logged in successfully`
+  if (a.type === 'email_verified_login') return `Email verified and logged in`
+  if (a.type === 'ai_chat') return `Interacted with AI Assistant`
+  if (a.metadata && a.metadata.name) return `${cfg.label} — ${a.metadata.name}`
   if (a.entity_id) return `${cfg.label} — ${a.entity_type || ''} ${a.entity_id}`.trim()
   return cfg.label
 }
@@ -75,7 +86,7 @@ export default function ActivityLog() {
   const totalEvents = Object.values(typeCounts).reduce((s,n)=>s+n,0)
   const todayStr = new Date().toISOString().slice(0,10)
   const todayCount  = activity.filter(a=>(a.created_at||'').startsWith(todayStr)).length
-  const loginCount  = typeCounts.login || 0
+  const loginCount  = (typeCounts.login || 0) + (typeCounts.email_verified_login || 0)
   const orderCount  = typeCounts.order_created || 0
   const chatCount   = typeCounts.ai_chat || 0
 
@@ -216,11 +227,23 @@ export default function ActivityLog() {
                     <div className="d-flex align-items-start justify-content-between flex-wrap gap-1">
                       <div>
                         <div className="d-flex align-items-center gap-2 mb-1">
-                          <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white"
-                            style={{width:22,height:22,background:AVATAR_COLORS[(a.user_id||0)%AVATAR_COLORS.length],fontSize:9}}>
-                            {ini(name)}
-                          </div>
-                          <span style={{fontSize:12,fontWeight:600,color:'#1e293b'}}>{name}</span>
+                          {a.user_id ? (
+                            <Link to={`/customers/${a.user_id}`} className="text-decoration-none d-flex align-items-center gap-2 group-link">
+                              <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white shadow-xs"
+                                style={{width:24,height:24,background:AVATAR_COLORS[(a.user_id||0)%AVATAR_COLORS.length],fontSize:9}}>
+                                {ini(name)}
+                              </div>
+                              <span style={{fontSize:12,fontWeight:600,color:'#1e293b'}} className="hover-primary">{name}</span>
+                            </Link>
+                          ) : (
+                            <>
+                              <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white shadow-xs"
+                                style={{width:24,height:24,background:'#94a3b8',fontSize:9}}>
+                                {ini(name)}
+                              </div>
+                              <span style={{fontSize:12,fontWeight:600,color:'#1e293b'}}>{name}</span>
+                            </>
+                          )}
                           <span className="badge" style={{fontSize:9,background:tc.bg,color:tc.color,border:`1px solid ${tc.bg}`}}>
                             {tc.label}
                           </span>
