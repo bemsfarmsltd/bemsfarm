@@ -121,11 +121,69 @@ const staffAdminSchemas = require("../schemas/staffAdminSchemas");
 const { clampLimit } = require("../utils/pagination");
 const { sendStaffInvitationEmail } = require("../services/emailService");
 
-let invitationsTableReady = false;
-async function ensureStaffInvitationsTable() {
-  if (invitationsTableReady) return;
+let staffTablesReady = false;
+async function ensureStaffTables() {
+  if (staffTablesReady) return;
   try {
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS staff (
+        id SERIAL PRIMARY KEY,
+        user_id INT REFERENCES users(id) ON DELETE SET NULL,
+        employee_id VARCHAR(20) UNIQUE,
+        employee_code VARCHAR(20),
+        name VARCHAR(150),
+        email VARCHAR(150),
+        phone VARCHAR(30),
+        system_role VARCHAR(50),
+        department VARCHAR(100),
+        role VARCHAR(100),
+        shift VARCHAR(20) DEFAULT 'morning',
+        basic_salary DECIMAL(12,2),
+        hire_date DATE,
+        bank_name VARCHAR(100),
+        account_number VARCHAR(30),
+        account_name VARCHAR(255),
+        emergency_contact VARCHAR(100),
+        emergency_phone VARCHAR(20),
+        address TEXT,
+        notes TEXT,
+        status VARCHAR(20) DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS staff_attendance (
+        id SERIAL PRIMARY KEY,
+        staff_id INT REFERENCES staff(id) ON DELETE CASCADE,
+        date DATE NOT NULL,
+        clock_in TIMESTAMP,
+        clock_out TIMESTAMP,
+        status VARCHAR(20) DEFAULT 'present',
+        notes TEXT,
+        created_by INT REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE (staff_id, date)
+      );
+
+      CREATE TABLE IF NOT EXISTS staff_roles (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) UNIQUE NOT NULL,
+        description TEXT,
+        permissions JSONB DEFAULT '[]',
+        is_system BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+      INSERT INTO staff_roles (name, description, is_system, permissions) VALUES
+        ('superadmin', 'Full system access & administrative controls', true, '["*"]'::jsonb),
+        ('manager', 'Store manager with operations, inventory & team oversight', true, '["dashboard","pos","orders","inventory","products","deliveries","kitchen","reports","staff","customers","settings"]'::jsonb),
+        ('cashier', 'POS cashier for point-of-sale checkout & customer lookup', true, '["pos","orders","customers"]'::jsonb),
+        ('storekeeper', 'Warehouse inventory & stock-in receipt manager', true, '["inventory","products"]'::jsonb),
+        ('delivery_manager', 'Delivery operations, dispatch & rider assignment', true, '["deliveries","orders"]'::jsonb),
+        ('accountant', 'Finance overview, ledger & sales/expense reporting', true, '["reports","dashboard"]'::jsonb),
+        ('kitchen', 'Chef Bems kitchen order prep & meal fulfillment', true, '["kitchen","orders"]'::jsonb)
+      ON CONFLICT (name) DO NOTHING;
+
       CREATE TABLE IF NOT EXISTS staff_invitations (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) NOT NULL,
@@ -141,14 +199,45 @@ async function ensureStaffInvitationsTable() {
       );
       CREATE INDEX IF NOT EXISTS idx_staff_invitations_token ON staff_invitations(token);
       CREATE INDEX IF NOT EXISTS idx_staff_invitations_email ON staff_invitations(email);
+
+      INSERT INTO staff (user_id, employee_id, employee_code, name, email, phone, system_role, department, role, shift, status, created_at, updated_at)
+      SELECT u.id,
+             'EMP-' || LPAD(u.id::text, 3, '0'),
+             'EMP-' || LPAD(u.id::text, 3, '0'),
+             COALESCE(u.name, 'Staff Member'),
+             u.email,
+             u.phone,
+             u.role,
+             CASE
+               WHEN u.role = 'superadmin' THEN 'Executive'
+               WHEN u.role IN ('admin','manager') THEN 'Management'
+               WHEN u.role = 'cashier' THEN 'Sales & POS'
+               WHEN u.role = 'kitchen_staff' THEN 'Kitchen & Operations'
+               WHEN u.role = 'delivery_manager' THEN 'Logistics'
+               WHEN u.role = 'accountant' THEN 'Finance'
+               ELSE 'Store Operations'
+             END,
+             REPLACE(INITCAP(REPLACE(u.role, '_', ' ')), 'Superadmin', 'Super Admin'),
+             'morning',
+             'active',
+             NOW(),
+             NOW()
+      FROM users u
+      WHERE u.role IN ('superadmin', 'admin', 'manager', 'cashier', 'kitchen_staff', 'delivery_manager', 'accountant')
+        AND NOT EXISTS (SELECT 1 FROM staff s WHERE s.user_id = u.id)
+      ON CONFLICT DO NOTHING;
     `);
-    invitationsTableReady = true;
+    staffTablesReady = true;
   } catch (err) {
-    console.warn("Could not ensure staff_invitations table:", err.message);
+    console.warn("Could not ensure staff tables:", err.message);
   }
 }
 
 router.use(protect);
+router.use(async (req, res, next) => {
+  await ensureStaffTables();
+  next();
+});
 
 // ── HELPER: generate employee code ──────────────────────────────────────────
 // pg_advisory_xact_lock serializes concurrent callers (auto-released at
@@ -243,6 +332,7 @@ router.get("/", requireRole("superadmin", "manager"), async (req, res, next) => 
 // STAFF DETAIL  ──  GET /api/admin/staff/:id
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
+  if (!/^\d+$/.test(req.params.id)) return next();
   try {
     const result = await pool.query(`
       SELECT
@@ -582,6 +672,7 @@ router.post(
 // UPDATE STAFF  ──  PATCH /api/admin/staff/:id
 // ════════════════════════════════════════════════════════════════════════════
 router.patch("/:id", requireRole("superadmin", "manager"), validate(staffAdminSchemas.updateStaff), async (req, res, next) => {
+  if (!/^\d+$/.test(req.params.id)) return next();
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -641,6 +732,7 @@ router.patch("/:id", requireRole("superadmin", "manager"), validate(staffAdminSc
 // STATUS CHANGE  ──  PATCH /api/admin/staff/:id/status
 // ════════════════════════════════════════════════════════════════════════════
 router.patch("/:id/status", requireRole("superadmin", "manager"), validate(staffAdminSchemas.staffStatus), async (req, res, next) => {
+  if (!/^\d+$/.test(req.params.id)) return next();
   try {
     const { status } = req.body;
 
@@ -665,6 +757,7 @@ router.patch("/:id/status", requireRole("superadmin", "manager"), validate(staff
 // SOFT DELETE  ──  DELETE /api/admin/staff/:id
 // ════════════════════════════════════════════════════════════════════════════
 router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
+  if (!/^\d+$/.test(req.params.id)) return next();
   const client = await pool.connect();
   try {
     await client.query("BEGIN");

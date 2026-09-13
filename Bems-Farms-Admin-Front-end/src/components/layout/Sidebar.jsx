@@ -866,20 +866,10 @@ export default function Sidebar() {
             {/* 12. SETTINGS */}
             {activeTab === 'settings' && (
               <>
-                <NavLink to="/settings/team" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Team &amp; Onboarding</span>
-                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Invite</span>
+                <NavLink to="/settings/team" className={({ isActive }) => `dual-sub-link ${isActive || location.pathname.startsWith('/settings/staff') || location.pathname.startsWith('/settings/roles') ? 'active' : ''}`}>
+                  <span>Staff &amp; Team</span>
+                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Manage</span>
                 </NavLink>
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/settings/staff" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Staff Accounts</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/settings/roles" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Roles &amp; Permissions</span>
-                  </NavLink>
-                )}
                 {['superadmin'].includes(user?.role) && <NavLink to="/settings/audit" className="dual-sub-link">System Audit (Legacy)</NavLink>}
                 <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>General Store Info</span>

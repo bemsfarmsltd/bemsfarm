@@ -254,9 +254,9 @@ function App() {
                 <Route path="/settings"               element={<SettingsAll />} />
                 <Route path="/settings/all"           element={<SettingsAll />} />
                 <Route path="/settings/team"          element={<TeamOnboarding />} />
-                <Route path="/settings/onboarding"    element={<TeamOnboarding />} />
-                <Route path="/settings/staff"         element={<StaffList />} />
-                <Route path="/settings/roles"         element={<RolesPermissions />} />
+                <Route path="/settings/onboarding"    element={<Navigate to="/settings/team?tab=onboarding" replace />} />
+                <Route path="/settings/staff"         element={<TeamOnboarding initialTab="staff" />} />
+                <Route path="/settings/roles"         element={<TeamOnboarding initialTab="roles" />} />
                 {/* Legacy audit redirect for superadmin */}
                 <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>
                   <Route path="/settings/audit" element={<Navigate to="/god-eye" replace />} />
