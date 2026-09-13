@@ -375,8 +375,8 @@ export default function Invoices() {
                 <tr><td colSpan={9} className="text-center text-muted py-5">No invoices found</td></tr>
               )}
               {filtered.map(inv => {
-                const cfg   = STATUS_CFG[inv.status]
-                const chCfg = CHANNEL_CFG[inv.channel]
+                const cfg   = STATUS_CFG[inv.status] || STATUS_CFG.draft
+                const chCfg = CHANNEL_CFG[inv.channel] || CHANNEL_CFG.online
                 const total = calcTotal(inv.items, inv.deliveryFee, inv.discount)
                 const overdue = inv.status !== 'paid' && inv.status !== 'cancelled' && new Date(inv.dueDate) < new Date()
                 return (
@@ -447,8 +447,8 @@ export default function Invoices() {
           {/* ── VIEW INVOICE ───────────────────────────── */}
           {activeModal === 'view' && selected && (() => {
             const total = calcTotal(selected.items, selected.deliveryFee, selected.discount)
-            const cfg   = STATUS_CFG[selected.status]
-            const chCfg = CHANNEL_CFG[selected.channel]
+            const cfg   = STATUS_CFG[selected.status] || STATUS_CFG.draft
+            const chCfg = CHANNEL_CFG[selected.channel] || CHANNEL_CFG.online
             return (
               <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:720, maxHeight:'90vh', overflowY:'auto' }}>
                 {/* Invoice header band */}

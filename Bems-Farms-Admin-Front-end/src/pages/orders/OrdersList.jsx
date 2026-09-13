@@ -9,6 +9,7 @@ const STATUS_CFG = {
   paid:               { label: 'New Order',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-money-dollar-circle-line' },
   new_order:          { label: 'New Order',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-money-dollar-circle-line' },
   pending:            { label: 'New Order',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-money-dollar-circle-line' },
+  confirmed:          { label: 'Confirmed',          color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-checkbox-circle-line'     },
   processing:         { label: 'Processing',         color: '#f59e0b', bg: '#fef3c7', icon: 'ri-loader-line'              },
   packed:             { label: 'Packed & Ready',     color: '#8b5cf6', bg: '#ede9fe', icon: 'ri-archive-line'             },
   packed_ready:       { label: 'Packed & Ready',     color: '#8b5cf6', bg: '#ede9fe', icon: 'ri-archive-line'             },
@@ -18,18 +19,31 @@ const STATUS_CFG = {
   out_for_delivery:   { label: 'Out for Delivery',   color: '#3b82f6', bg: '#dbeafe', icon: 'ri-truck-line'               },
   delivery_attempted: { label: 'Delivery Attempted', color: '#f97316', bg: '#ffedd5', icon: 'ri-route-line'               },
   delivered:          { label: 'Delivered',          color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'     },
+  completed:          { label: 'Delivered',          color: '#22c55e', bg: '#dcfce7', icon: 'ri-checkbox-circle-line'     },
   dispute:            { label: 'Dispute',            color: '#ef4444', bg: '#fee2e2', icon: 'ri-alert-line'               },
   cancelled:          { label: 'Cancelled',          color: '#6b7280', bg: '#f3f4f6', icon: 'ri-close-circle-line'        },
+  refunded:           { label: 'Refunded',           color: '#6b7280', bg: '#f3f4f6', icon: 'ri-refund-2-line'            },
+  failed:             { label: 'Failed',             color: '#ef4444', bg: '#fee2e2', icon: 'ri-close-circle-line'        },
 }
 
+const DEFAULT_STATUS_CFG = { label: 'Order Placed', color: '#0ea5e9', bg: '#e0f2fe', icon: 'ri-shopping-bag-3-line' }
+const getStatusCfg = (status) => (status && STATUS_CFG[String(status).toLowerCase()]) || DEFAULT_STATUS_CFG
+
 const CHANNEL_CFG = {
-  online:    { label: 'Online',         icon: 'ri-global-line',     color: '#3b82f6' },
-  mobile_app:{ label: 'Mobile App',     icon: 'ri-smartphone-line', color: '#8b5cf6' },
-  chef_bems: { label: 'Chef Bems AI',   icon: 'ri-robot-line',      color: '#a855f7' },
-  chef_bems_ai: { label: 'Chef Bems AI', icon: 'ri-robot-line',    color: '#a855f7' },
-  physical:  { label: 'Physical Store', icon: 'ri-store-2-line',    color: '#10b981' },
-  pos:       { label: 'POS Terminal',   icon: 'ri-store-2-line',    color: '#10b981' },
+  online:       { label: 'Online',         icon: 'ri-global-line',     color: '#3b82f6' },
+  web:          { label: 'Online',         icon: 'ri-global-line',     color: '#3b82f6' },
+  mobile_app:   { label: 'Mobile App',     icon: 'ri-smartphone-line', color: '#8b5cf6' },
+  mobile:       { label: 'Mobile App',     icon: 'ri-smartphone-line', color: '#8b5cf6' },
+  chef_bems:    { label: 'Chef Bems AI',   icon: 'ri-robot-line',      color: '#a855f7' },
+  chef_bems_ai: { label: 'Chef Bems AI',   icon: 'ri-robot-line',      color: '#a855f7' },
+  ai:           { label: 'Chef Bems AI',   icon: 'ri-robot-line',      color: '#a855f7' },
+  physical:     { label: 'Physical Store', icon: 'ri-store-2-line',    color: '#10b981' },
+  pos:          { label: 'POS Terminal',   icon: 'ri-store-2-line',    color: '#10b981' },
+  store:        { label: 'Physical Store', icon: 'ri-store-2-line',    color: '#10b981' },
 }
+
+const DEFAULT_CHANNEL_CFG = { label: 'Online', icon: 'ri-global-line', color: '#3b82f6' }
+const getChannelCfg = (channel) => (channel && CHANNEL_CFG[String(channel).toLowerCase()]) || DEFAULT_CHANNEL_CFG
 
 // ─── Mock Data (Fallback) ───────────────────────────────────────────────────
 
@@ -118,11 +132,12 @@ export default function OrdersList() {
       const res = await api.get('/admin/orders?limit=100')
       if (res.data?.orders?.length) {
         const mapped = res.data.orders.map((o) => {
-          let parsedStatus = o.status
-          if (parsedStatus === 'pending' || parsedStatus === 'new_order') parsedStatus = 'paid'
+          let parsedStatus = (o.status || 'paid').toLowerCase()
+          if (parsedStatus === 'pending' || parsedStatus === 'new_order' || parsedStatus === 'confirmed') parsedStatus = 'paid'
           if (parsedStatus === 'packed_ready') parsedStatus = 'packed'
           if (parsedStatus === 'driver_assigned') parsedStatus = 'assigned'
           if (parsedStatus === 'out_for_delivery') parsedStatus = 'shipped'
+          if (parsedStatus === 'completed') parsedStatus = 'delivered'
 
           let channelKey = 'online'
           const src = (o.channel || '').toLowerCase()
@@ -431,8 +446,8 @@ export default function OrdersList() {
                 <tr><td colSpan={9} className="text-center text-muted py-5">No orders found</td></tr>
               )}
               {filtered.map(order => {
-                const cfg   = STATUS_CFG[order.status]
-                const chCfg = CHANNEL_CFG[order.channel]
+                const cfg   = getStatusCfg(order.status)
+                const chCfg = getChannelCfg(order.channel)
                 const total = calcTotal(order.items, order.deliveryFee)
                 return (
                   <tr key={order.id}>
@@ -510,7 +525,7 @@ export default function OrdersList() {
           {/* ── VIEW ORDER ─────────────────────────────── */}
           {activeModal === 'view' && (() => {
             const total = calcTotal(selected.items, selected.deliveryFee)
-            const cfg   = STATUS_CFG[selected.status]
+            const cfg   = getStatusCfg(selected.status)
             const idx   = pipelineIdx(selected.status)
             return (
               <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:880, maxHeight:'90vh', overflowY:'auto' }}>
@@ -518,7 +533,7 @@ export default function OrdersList() {
                 <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
                   <div>
                     <h5 className="mb-0">{selected.id}</h5>
-                    <div className="text-muted small">{selected.date} · {CHANNEL_CFG[selected.channel].label}</div>
+                    <div className="text-muted small">{selected.date} · {getChannelCfg(selected.channel).label}</div>
                   </div>
                   <div className="d-flex gap-2 align-items-center">
                     <span className="badge" style={{ background:cfg.bg, color:cfg.color, fontSize:13 }}>
@@ -533,7 +548,7 @@ export default function OrdersList() {
                   <div className="px-4 py-3 border-bottom bg-light">
                     <div className="d-flex align-items-center">
                       {PIPELINE.map((step, i) => {
-                        const c    = STATUS_CFG[step]
+                        const c    = getStatusCfg(step)
                         const done = i <= idx
                         const now  = i === idx
                         return (
@@ -575,8 +590,8 @@ export default function OrdersList() {
                           </div>
                           <div className="col-6">
                             <div className="text-muted small mb-1">Channel</div>
-                            {(() => { const c = CHANNEL_CFG[selected.channel]; return (
-                              <span className="badge" style={{ background:c.color+'20', color:c.color }}>
+                            {(() => { const c = getChannelCfg(selected.channel); return (
+                              <span className="badge" style={{ background:(c.color || '#3b82f6')+'20', color:c.color || '#3b82f6' }}>
                                 <i className={`${c.icon} me-1`}/>{c.label}
                               </span>)})()}
                           </div>
@@ -656,7 +671,7 @@ export default function OrdersList() {
                       <div style={{ position:'relative' }}>
                         <div style={{ position:'absolute', left:15, top:8, bottom:8, width:2, background:'#e5e7eb', zIndex:0 }}/>
                         {selected.timeline.map((ev, i) => {
-                          const c = STATUS_CFG[ev.status]
+                          const c = getStatusCfg(ev.status)
                           return (
                             <div key={i} className="d-flex gap-3 mb-3" style={{ position:'relative', zIndex:1 }}>
                               <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
