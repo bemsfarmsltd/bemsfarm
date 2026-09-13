@@ -639,9 +639,6 @@ export default function Sidebar() {
                 <NavLink to="/products/categories" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Categories</span>
                 </NavLink>
-                <NavLink to="/products/sub-categories" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Sub-Categories</span>
-                </NavLink>
                 <NavLink to="/products/units" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Units of Measure</span>
                 </NavLink>

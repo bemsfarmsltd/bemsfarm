@@ -623,6 +623,33 @@ a.link-custom-primary {
   box-shadow: 0 0 0 3px rgba(20, 60, 45, 0.15) !important;
 }
 
+/* The base theme (admin-*.css) ships two conflicting .form-switch
+   implementations: one styles the checkbox itself as the sliding switch
+   (the standard Bootstrap approach this app's markup uses everywhere —
+   an <input class="form-check-input"> followed by a <label
+   class="form-check-label"> containing the visible text), the other
+   hides the checkbox entirely and turns an *empty* label into the
+   switch via a fixed 3rem x 1.75rem box. The second rule loads later and
+   wins, which makes every switch's checkbox invisible and forces any
+   text placed inside .form-check-label into that tiny fixed box —
+   wrapping character-by-character ("Availa" / "ble for" / "Sale").
+   Restore the first (correct, already-defined) rendering. */
+.form-switch .form-check-input[type="checkbox"] {
+  visibility: visible !important;
+  width: 2em !important;
+  height: 1.38em !important;
+}
+
+.form-switch .form-check-label {
+  width: auto !important;
+  height: auto !important;
+  border-radius: 0 !important;
+}
+
+.form-switch .form-check-label::after {
+  content: none !important;
+}
+
 .form-control:focus,
 .form-select:focus {
   border-color: #143C2D !important;

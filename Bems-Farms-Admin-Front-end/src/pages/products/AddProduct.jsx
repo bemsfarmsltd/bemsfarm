@@ -477,20 +477,7 @@ export default function AddProduct() {
                       </select>
                     </div>
 
-                    <div className="col-md-4">
-                      <label htmlFor="subCategorySelect" className="form-label fw-semibold">Sub-Category</label>
-                      <select
-                        id="subCategorySelect"
-                        className="form-select"
-                        value={formData.sub_category_id}
-                        onChange={(e) => handleChange('sub_category_id', e.target.value)}
-                        disabled={!formData.category_id || filteredSubs.length === 0}>
-                        <option value="">{formData.category_id ? (filteredSubs.length ? '— Select Sub-Category —' : '— None Available —') : '— Pick Category First —'}</option>
-                        {filteredSubs.map((s) => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
-                      </select>
-                    </div>
+
 
                     <div className="col-md-4">
                       <label htmlFor="brandSelect" className="form-label fw-semibold">Brand</label>

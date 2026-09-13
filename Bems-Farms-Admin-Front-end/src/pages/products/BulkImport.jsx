@@ -36,20 +36,7 @@ const IMPORT_TYPES = {
       { key: 'status',      label: 'Status',        required: false },
     ],
     templateHeaders: ['name','code','description','status'],
-  },
-  sub_categories: {
-    label: 'Sub-Categories',
-    icon: 'ri-folder-open-line',
-    color: '#299cdb',
-    fields: [
-      { key: 'name',        label: 'Sub-Category Name', required: true  },
-      { key: 'category_id', label: 'Parent Category ID', required: true  },
-      { key: 'code',        label: 'Code',               required: false },
-      { key: 'description', label: 'Description',        required: false },
-      { key: 'status',      label: 'Status',             required: false },
-    ],
-    templateHeaders: ['name','category_id','code','description','status'],
-  },
+
 }
 
 const HISTORY = [

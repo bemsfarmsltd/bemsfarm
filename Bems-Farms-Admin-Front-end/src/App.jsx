@@ -136,7 +136,7 @@ function App() {
                 <Route path="/products"                element={<ProductsList />} />
                 <Route path="/products/add"            element={<AddProduct />} />
                 <Route path="/products/categories"     element={<Categories />} />
-                <Route path="/products/sub-categories" element={<SubCategories />} />
+                <Route path="/products/sub-categories" element={<Navigate to="/products/categories" replace />} />
                 <Route path="/products/units"          element={<Units />} />
                 <Route path="/products/brands"         element={<Navigate to="/products" replace />} />
                 <Route path="/products/variants"       element={<Variants />} />
