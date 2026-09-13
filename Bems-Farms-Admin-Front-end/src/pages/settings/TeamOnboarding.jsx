@@ -74,11 +74,7 @@ export default function TeamOnboarding({ initialTab }) {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Active view: 'staff' | 'onboarding' | 'roles'
-  const activeView = searchParams.get('tab') || initialTab || 'staff'
-  const setView = (tab) => {
-    setSearchParams(tab === 'staff' ? {} : { tab })
-  }
+
 
   // ── 1. ONBOARDING & INVITE STATE ──────────────────────────────────────────
   const [email, setEmail] = useState('')
@@ -111,6 +107,7 @@ export default function TeamOnboarding({ initialTab }) {
   const [processingDeactivate, setProcessingDeactivate] = useState(false)
   const [deletingStaff, setDeletingStaff] = useState(null)
   const [processingDelete, setProcessingDelete] = useState(false)
+  const [deleteCanForce, setDeleteCanForce] = useState(false)
 
   // ── 3. ROLES & PERMISSIONS STATE ──────────────────────────────────────────
   const [roles, setRoles] = useState(DEFAULT_SYSTEM_ROLES)
@@ -294,16 +291,18 @@ export default function TeamOnboarding({ initialTab }) {
     }
   }
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = async (force = false) => {
     if (!deletingStaff) return
     setProcessingDelete(true)
     try {
-      await api.delete(`/admin/staff/${deletingStaff.id}/permanent`)
-      toast.success('Staff member permanently deleted')
+      await api.delete(`/admin/staff/${deletingStaff.id}/permanent`, { params: force ? { force: true } : undefined })
+      toast.success(force ? 'Staff member and related records purged' : 'Staff member permanently deleted')
       setDeletingStaff(null)
+      setDeleteCanForce(false)
       fetchAllData()
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete staff member')
+      setDeleteCanForce(!!err.response?.data?.can_force)
     } finally {
       setProcessingDelete(false)
     }
@@ -558,55 +557,12 @@ export default function TeamOnboarding({ initialTab }) {
         </div>
       </div>
 
-      {/* 4. Segmented View Switcher */}
-      <div className="card border-0 shadow-sm rounded-4 mb-4 p-1.5 bg-white">
-        <div className="d-flex align-items-center gap-1 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setView('staff')}
-            className={`btn btn-sm rounded-3 fw-semibold px-3 py-1.5 border-0 ${
-              activeView === 'staff'
-                ? 'bg-dark text-white shadow-xs'
-                : 'text-muted hover-bg-light'
-            }`}
-          >
-            <i className="ri-team-line me-1"></i> Staff Directory ({staff.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('onboarding')}
-            className={`btn btn-sm rounded-3 fw-semibold px-3 py-1.5 border-0 ${
-              activeView === 'onboarding'
-                ? 'bg-dark text-white shadow-xs'
-                : 'text-muted hover-bg-light'
-            }`}
-          >
-            <i className="ri-mail-send-line me-1"></i> Team Onboarding ({invitations.length})
-            {pendingInvitesCount > 0 && (
-              <span className="badge bg-warning text-dark ms-1.5 px-1.5 py-0.5 fs-2xs">
-                {pendingInvitesCount}
-              </span>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('roles')}
-            className={`btn btn-sm rounded-3 fw-semibold px-3 py-1.5 border-0 ${
-              activeView === 'roles'
-                ? 'bg-dark text-white shadow-xs'
-                : 'text-muted hover-bg-light'
-            }`}
-          >
-            <i className="ri-shield-keyhole-line me-1"></i> Roles &amp; Permissions ({roles.length})
-          </button>
-        </div>
-      </div>
+
 
       {/* ═════════════════════════════════════════════════════════════════════════
           SECTION 1: TEAM ONBOARDING & QUICK INVITE
       ═════════════════════════════════════════════════════════════════════════ */}
-      {activeView === 'onboarding' && (
-        <div className="mb-5" id="invite-section">
+      <div className="mb-5" id="invite-section">
           {/* Quick Invite Card */}
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-4" id="invite-form-card">
             <div className="card-header bg-white border-bottom p-3.5 d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -897,14 +853,12 @@ export default function TeamOnboarding({ initialTab }) {
               </table>
             </div>
           </div>
-        </div>
-      )}
+      </div>
 
       {/* ═════════════════════════════════════════════════════════════════════════
           SECTION 2: STAFF DIRECTORY & USER ACCOUNTS
       ═════════════════════════════════════════════════════════════════════════ */}
-      {activeView === 'staff' && (
-        <div className="mb-5" id="staff-section">
+      <div className="mb-5" id="staff-section">
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
             <div className="card-header bg-white border-bottom p-3.5 d-flex justify-content-between align-items-center flex-wrap gap-2">
               <div className="d-flex align-items-center gap-2">
@@ -1128,7 +1082,7 @@ export default function TeamOnboarding({ initialTab }) {
                                 <button
                                   type="button"
                                   className="btn btn-outline-danger"
-                                  onClick={() => setDeletingStaff(member)}
+                                  onClick={() => { setDeletingStaff(member); setDeleteCanForce(false) }}
                                   title="Permanently delete staff member"
                                 >
                                   <i className="ri-delete-bin-line"></i>
@@ -1165,18 +1119,17 @@ export default function TeamOnboarding({ initialTab }) {
                   >
                     Next
                   </button>
-                </div>
+                  </div>
               </div>
             )}
           </div>
-        </div>
-      )}
+      </div>
+
 
       {/* ═════════════════════════════════════════════════════════════════════════
           SECTION 3: ROLES & PERMISSIONS MATRIX
       ═════════════════════════════════════════════════════════════════════════ */}
-      {activeView === 'roles' && (
-        <div className="mb-5" id="roles-section">
+      <div className="mb-5" id="roles-section">
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
             <div className="card-header bg-white border-bottom p-3.5 d-flex justify-content-between align-items-center flex-wrap gap-2">
               <div className="d-flex align-items-center gap-2">
@@ -1317,8 +1270,8 @@ export default function TeamOnboarding({ initialTab }) {
               </table>
             </div>
           </div>
-        </div>
-      )}
+      </div>
+
 
       {/* ═════════════════════════════════════════════════════════════════════════
           MODALS
@@ -1540,7 +1493,7 @@ export default function TeamOnboarding({ initialTab }) {
         <div
           className="modal d-block"
           style={{ background: 'rgba(15,23,42,0.6)', zIndex: 1060 }}
-          onClick={() => setDeletingStaff(null)}
+          onClick={() => { setDeletingStaff(null); setDeleteCanForce(false) }}
         >
           <div
             className="modal-dialog modal-dialog-centered"
@@ -1560,7 +1513,7 @@ export default function TeamOnboarding({ initialTab }) {
                 <button
                   type="button"
                   className="btn-close"
-                  onClick={() => setDeletingStaff(null)}
+                  onClick={() => { setDeletingStaff(null); setDeleteCanForce(false) }}
                 ></button>
               </div>
 
@@ -1570,24 +1523,47 @@ export default function TeamOnboarding({ initialTab }) {
                   login account, and attendance/payroll history. This cannot be undone — if you only want to revoke
                   their access, use <strong>Deactivate</strong> instead.
                 </p>
+                {deleteCanForce && (
+                  <p className="text-warning fs-sm mb-0 mt-3 p-3 rounded-3 bg-warning-subtle">
+                    <i className="ri-alert-line me-1"></i>
+                    They have related records (things they created, approved, or were assigned) blocking a plain
+                    delete. <strong>Force Delete</strong> will reassign those records to a placeholder account —
+                    real business data (coupons, expenses, stock movements, etc.) is never deleted — and then remove
+                    this staff member for good.
+                  </p>
+                )}
               </div>
 
               <div className="modal-footer bg-light border-top p-3 d-flex justify-content-between">
                 <button
                   type="button"
                   className="btn btn-outline-secondary btn-sm"
-                  onClick={() => setDeletingStaff(null)}
+                  onClick={() => { setDeletingStaff(null); setDeleteCanForce(false) }}
                 >
                   Cancel
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-danger btn-sm px-4 shadow-sm"
-                  disabled={processingDelete}
-                  onClick={handleConfirmDelete}
-                >
-                  {processingDelete ? 'Deleting…' : 'Yes, Delete Permanently'}
-                </button>
+                <div className="d-flex gap-2">
+                  {!deleteCanForce && (
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm px-4 shadow-sm"
+                      disabled={processingDelete}
+                      onClick={() => handleConfirmDelete(false)}
+                    >
+                      {processingDelete ? 'Deleting…' : 'Yes, Delete Permanently'}
+                    </button>
+                  )}
+                  {deleteCanForce && (
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm px-4 shadow-sm"
+                      disabled={processingDelete}
+                      onClick={() => handleConfirmDelete(true)}
+                    >
+                      {processingDelete ? 'Purging…' : 'Force Delete Anyway'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
