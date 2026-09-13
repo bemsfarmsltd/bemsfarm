@@ -16,12 +16,11 @@ export default function Sidebar() {
     orders: '/orders',
     deliveries: '/deliveries/active',
     customers: '/customers',
-    staff: '/staff',
     finance: '/accounts/overview',
     reports: '/reports/sales',
     chef: '/chef-bems/conversations',
     stores: '/stores',
-    settings: '/settings/general',
+    settings: '/settings/team',
   }
 
   // Role helpers
@@ -46,7 +45,7 @@ export default function Sidebar() {
     if (path.startsWith('/orders')) return 'orders'
     if (path.startsWith('/deliveries')) return 'deliveries'
     if (path.startsWith('/customers')) return 'customers'
-    if (path.startsWith('/staff')) return 'staff'
+    if (path.startsWith('/staff')) return 'settings'
     if (path.startsWith('/accounts')) return 'finance'
     if (path.startsWith('/reports')) return 'reports'
     if (path.startsWith('/chef-bems')) return 'chef'
@@ -460,19 +459,6 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* Staff */}
-            {showStaff && (
-              <button
-                type="button"
-                className={`rail-btn ${activeTab === 'staff' ? 'active' : ''}`}
-                onClick={() => handleCategoryClick('staff')}
-                title="Staff Accounts & Roles"
-              >
-                <i className="ri-shield-user-line rail-icon"></i>
-                <span className="rail-label">Staff</span>
-              </button>
-            )}
-
             {/* Finance */}
             {showFinance && (
               <button
@@ -782,22 +768,6 @@ export default function Sidebar() {
               </>
             )}
 
-            {/* 7. STAFF ACCOUNTS & ROLES */}
-            {activeTab === 'staff' && (
-              <>
-                <NavLink to="/staff" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Staff Accounts</span>
-                </NavLink>
-                <NavLink to="/settings/team" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Invite Member (Onboard)</span>
-                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Invite</span>
-                </NavLink>
-                <NavLink to="/staff/roles" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Roles &amp; Permissions</span>
-                </NavLink>
-              </>
-            )}
-
             {/* 8. FINANCE */}
             {activeTab === 'finance' && (
               <>
@@ -880,6 +850,16 @@ export default function Sidebar() {
                   <span>Team &amp; Onboarding</span>
                   <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Invite</span>
                 </NavLink>
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/settings/staff" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Staff Accounts</span>
+                  </NavLink>
+                )}
+                {is('superadmin', 'admin', 'manager') && (
+                  <NavLink to="/settings/roles" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                    <span>Roles &amp; Permissions</span>
+                  </NavLink>
+                )}
                 <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>General Store Info</span>
                 </NavLink>

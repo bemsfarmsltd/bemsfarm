@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import { toast } from 'react-hot-toast'
+import SettingsTabs from '../settings/SettingsTabs'
 
 const AVAILABLE_PERMISSIONS = [
   { id: 'dashboard', label: 'Dashboard & Analytics', desc: 'View high level store metrics & sales KPI cards' },
@@ -140,16 +141,22 @@ export default function RolesPermissions() {
   })
 
   return (
-    <div className="container-fluid">
+    <div className="container-fluid py-3">
+      {/* Settings Navigation Tabs */}
+      <SettingsTabs />
+
       {/* Page Heading */}
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row d-flex justify-content-between align-items-md-center">
         <div>
-          <h6 className="mb-0 fw-bold">Role Permissions & System Access Levels</h6>
+          <h5 className="mb-0 fw-bold font-display text-dark">Role Permissions &amp; System Access Levels</h5>
           <p className="text-muted fs-sm mb-0">Control granular module permissions and system capabilities across various job functions.</p>
         </div>
         <div className="d-flex align-items-center gap-2">
-          <Link to="/staff" className="btn btn-outline-secondary">
+          <Link to="/settings/staff" className="btn btn-outline-secondary">
             <i className="ri-team-line me-1 align-middle"></i>Staff Directory
+          </Link>
+          <Link to="/settings/team" className="btn btn-outline-primary">
+            <i className="ri-user-add-line me-1 align-middle"></i>Invite Member
           </Link>
           <button type="button" className="btn btn-primary" onClick={openAddModal}>
             <i className="ri-add-line me-1 align-middle"></i>Create Custom Role

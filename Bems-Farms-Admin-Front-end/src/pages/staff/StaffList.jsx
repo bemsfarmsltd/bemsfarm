@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../lib/api'
 import { toast } from 'react-hot-toast'
+import SettingsTabs from '../settings/SettingsTabs'
 
 export default function StaffList() {
   const [staff, setStaff] = useState([])
@@ -147,19 +148,22 @@ export default function StaffList() {
   }
 
   return (
-    <div className="container-fluid">
+    <div className="container-fluid py-3">
+      {/* Settings Navigation Tabs */}
+      <SettingsTabs />
+
       {/* Heading */}
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row d-flex justify-content-between align-items-md-center">
         <div>
-          <h6 className="mb-0 fw-bold">Staff Directory & User Accounts</h6>
+          <h5 className="mb-0 fw-bold font-display text-dark">Staff Directory &amp; User Accounts</h5>
           <p className="text-muted fs-sm mb-0">Manage employee accounts, system access levels, contact records, and active credentials.</p>
         </div>
         <div className="d-flex align-items-center gap-2">
-          <Link to="/staff/add" className="btn btn-primary">
-            <i className="ri-user-add-line me-1 align-middle"></i>Add Staff
+          <Link to="/settings/team" className="btn btn-primary">
+            <i className="ri-user-add-line me-1 align-middle"></i>Invite Member
           </Link>
-          <Link to="/staff/roles-permissions" className="btn btn-outline-secondary">
-            <i className="ri-shield-keyhole-line me-1 align-middle"></i>Roles & Permissions
+          <Link to="/settings/roles" className="btn btn-outline-secondary">
+            <i className="ri-shield-keyhole-line me-1 align-middle"></i>Roles &amp; Permissions
           </Link>
         </div>
       </div>

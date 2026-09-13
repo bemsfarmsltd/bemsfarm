@@ -245,6 +245,8 @@ function App() {
                 <Route path="/settings/all"           element={<SettingsAll />} />
                 <Route path="/settings/team"          element={<TeamOnboarding />} />
                 <Route path="/settings/onboarding"    element={<TeamOnboarding />} />
+                <Route path="/settings/staff"         element={<StaffList />} />
+                <Route path="/settings/roles"         element={<RolesPermissions />} />
                 <Route path="/settings/general"       element={<GeneralSettings />} />
                 <Route path="/settings/notifications" element={<NotificationSettings />} />
                 <Route path="/settings/payment"       element={<PaymentSettings />} />

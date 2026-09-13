@@ -1,7 +1,9 @@
 import { NavLink } from 'react-router-dom'
 
 const TABS = [
-  { to: '/settings/team', label: 'Team & Onboarding' },
+  { to: '/settings/team', label: 'Team Onboarding' },
+  { to: '/settings/staff', label: 'Staff Accounts' },
+  { to: '/settings/roles', label: 'Roles & Permissions' },
   { to: '/settings/general', label: 'General' },
   { to: '/settings/pos', label: 'POS' },
   { to: '/settings/payment', label: 'Payment Gateway' },
