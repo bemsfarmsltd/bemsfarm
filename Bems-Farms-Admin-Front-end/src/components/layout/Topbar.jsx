@@ -1,17 +1,89 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { ROLE_META } from '../../lib/roles'
+import api from '../../lib/api'
 import toast from 'react-hot-toast'
+
+const EMPTY_RESULTS = { products: [], orders: [], customers: [], staff: [] }
 
 export default function Topbar({ onToggleSidebar }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState(EMPTY_RESULTS)
+  const [searching, setSearching] = useState(false)
+  const [open, setOpen] = useState(false)
+  const searchInputRef = useRef(null)
+  const searchBoxRef = useRef(null)
+  const debounceRef = useRef(null)
+
   // Re-initialize Lucide icons after render
   useEffect(() => {
     if (window.lucide) window.lucide.createIcons()
   })
+
+  // ⌘K / Ctrl+K focuses the global search
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+      if (e.key === 'Escape') {
+        setOpen(false)
+        searchInputRef.current?.blur()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  // Close results dropdown when clicking outside
+  useEffect(() => {
+    const onClickOutside = (e) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  const runSearch = useCallback((q) => {
+    clearTimeout(debounceRef.current)
+    if (q.trim().length < 2) {
+      setResults(EMPTY_RESULTS)
+      setSearching(false)
+      return
+    }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const res = await api.get('/admin/search', { params: { q: q.trim() } })
+        setResults(res.data || EMPTY_RESULTS)
+      } catch {
+        setResults(EMPTY_RESULTS)
+      } finally {
+        setSearching(false)
+      }
+    }, 300)
+  }, [])
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value
+    setQuery(val)
+    setOpen(true)
+    runSearch(val)
+  }
+
+  const goTo = (path) => {
+    setOpen(false)
+    setQuery('')
+    setResults(EMPTY_RESULTS)
+    navigate(path)
+  }
+
+  const totalResults = results.products.length + results.orders.length + results.customers.length + results.staff.length
 
   const handleLogout = () => {
     logout()
@@ -96,17 +168,109 @@ export default function Topbar({ onToggleSidebar }) {
       </div>
 
       {/* ── Center Zone: Global Executive Command Search Bar ── */}
-      <div className="topbar-search-container d-none d-md-flex align-items-center mx-auto position-relative">
+      <div ref={searchBoxRef} className="topbar-search-container d-none d-md-flex align-items-center mx-auto position-relative">
         <i
           className="ri-search-line position-absolute"
           style={{ left: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 14, color: '#94A3B8' }}
         ></i>
         <input
+          ref={searchInputRef}
           type="search"
           className="topbar-search-input w-100"
           placeholder="Search products, orders, stock, customers..."
+          value={query}
+          onChange={handleSearchChange}
+          onFocus={() => query.trim().length >= 2 && setOpen(true)}
         />
-        <span className="topbar-search-shortcut">⌘K</span>
+        {!query && <span className="topbar-search-shortcut">⌘K</span>}
+
+        {open && query.trim().length >= 2 && (
+          <div
+            className="shadow-lg border-0 bg-white"
+            style={{
+              position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0,
+              borderRadius: '0.85rem', maxHeight: 420, overflowY: 'auto', zIndex: 1050,
+              border: '1px solid #E2E8F0',
+            }}
+          >
+            {searching ? (
+              <div className="p-3 text-center text-muted fs-sm">Searching…</div>
+            ) : totalResults === 0 ? (
+              <div className="p-3 text-center text-muted fs-sm">No results for "{query}"</div>
+            ) : (
+              <div className="py-2">
+                {results.products.length > 0 && (
+                  <div className="mb-1">
+                    <div className="px-3 py-1 fs-xxs fw-bold text-uppercase text-muted">Products</div>
+                    {results.products.map((p) => (
+                      <button
+                        key={`p-${p.id}`}
+                        type="button"
+                        className="dropdown-item d-flex align-items-center gap-2 px-3 py-2 w-100 border-0 bg-transparent text-start"
+                        onClick={() => goTo(`/products/add?edit=${p.id}`)}
+                      >
+                        <i className="ri-price-tag-3-line text-primary"></i>
+                        <span className="fw-semibold fs-sm text-truncate flex-grow-1">{p.name}</span>
+                        <span className="text-muted fs-xxs">{p.sku || ''}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {results.orders.length > 0 && (
+                  <div className="mb-1">
+                    <div className="px-3 py-1 fs-xxs fw-bold text-uppercase text-muted">Orders</div>
+                    {results.orders.map((o) => (
+                      <button
+                        key={`o-${o.id}`}
+                        type="button"
+                        className="dropdown-item d-flex align-items-center gap-2 px-3 py-2 w-100 border-0 bg-transparent text-start"
+                        onClick={() => goTo(`/orders/${o.id}`)}
+                      >
+                        <i className="ri-shopping-cart-2-line text-success"></i>
+                        <span className="fw-semibold fs-sm text-truncate flex-grow-1">{o.order_ref || o.id}</span>
+                        <span className="text-muted fs-xxs">{o.customer_name || ''}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {results.customers.length > 0 && (
+                  <div className="mb-1">
+                    <div className="px-3 py-1 fs-xxs fw-bold text-uppercase text-muted">Customers</div>
+                    {results.customers.map((c) => (
+                      <button
+                        key={`c-${c.id}`}
+                        type="button"
+                        className="dropdown-item d-flex align-items-center gap-2 px-3 py-2 w-100 border-0 bg-transparent text-start"
+                        onClick={() => goTo(`/customers/${c.id}`)}
+                      >
+                        <i className="ri-user-line text-info"></i>
+                        <span className="fw-semibold fs-sm text-truncate flex-grow-1">{c.name}</span>
+                        <span className="text-muted fs-xxs">{c.phone || c.email || ''}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {results.staff.length > 0 && (
+                  <div>
+                    <div className="px-3 py-1 fs-xxs fw-bold text-uppercase text-muted">Staff</div>
+                    {results.staff.map((s) => (
+                      <button
+                        key={`s-${s.id}`}
+                        type="button"
+                        className="dropdown-item d-flex align-items-center gap-2 px-3 py-2 w-100 border-0 bg-transparent text-start"
+                        onClick={() => goTo('/staff')}
+                      >
+                        <i className="ri-shield-user-line text-warning"></i>
+                        <span className="fw-semibold fs-sm text-truncate flex-grow-1">{s.name}</span>
+                        <span className="text-muted fs-xxs">{s.role || ''}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Right Zone: Live Store + Notifications + Profile ── */}
