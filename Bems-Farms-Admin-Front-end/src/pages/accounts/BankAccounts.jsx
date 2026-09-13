@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../../lib/api'
 
-const fmt = n => `₦${Number(n).toLocaleString()}`
-const ini = name => name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+const fmt = n => `₦${Number(n || 0).toLocaleString()}`
+const ini = name => (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
 const BANK_COLORS = {
   'GTBank':       { bg: '#f97316', text: '#fff' },
@@ -16,94 +17,25 @@ const BANK_COLORS = {
 const ACCOUNT_TYPES = ['Current Account', 'Savings Account', 'Domiciliary Account']
 const BANKS = ['GTBank', 'Access Bank', 'First Bank', 'Zenith Bank', 'UBA', 'Stanbic IBTC']
 
-const INITIAL_ACCOUNTS = [
-  {
-    id: 'ACC-001',
-    bank: 'GTBank',
-    accountName: 'Bems Farms Nigeria Ltd',
-    accountNo: '0123456789',
-    type: 'Current Account',
-    currency: 'NGN',
-    balance: 4_850_000,
-    status: 'active',
-    lastTxn: '27 Jun, 2026',
-    description: 'Main operational account — daily sales, supplier payments, logistics.',
-    recentTxns: [
-      { ref: 'TXN-8821', desc: 'Paystack settlement — online orders', amount: 312_000, type: 'credit', date: '27 Jun, 2026' },
-      { ref: 'TXN-8818', desc: 'Supplier payment — Ogun farm produce', amount: -185_000, type: 'debit', date: '26 Jun, 2026' },
-      { ref: 'TXN-8805', desc: 'Paystack settlement', amount: 276_500, type: 'credit', date: '25 Jun, 2026' },
-      { ref: 'TXN-8799', desc: 'Delivery driver fuel allowance', amount: -48_000, type: 'debit', date: '25 Jun, 2026' },
-      { ref: 'TXN-8791', desc: 'Packaging materials — Lafiaji market', amount: -62_000, type: 'debit', date: '24 Jun, 2026' },
-    ],
-  },
-  {
-    id: 'ACC-002',
-    bank: 'Access Bank',
-    accountName: 'Bems Farms Payroll',
-    accountNo: '0987654321',
-    type: 'Current Account',
-    currency: 'NGN',
-    balance: 1_320_000,
-    status: 'active',
-    lastTxn: '25 Jun, 2026',
-    description: 'Dedicated payroll account — staff and driver salary disbursements.',
-    recentTxns: [
-      { ref: 'TXN-8800', desc: 'Staff salary transfer — June 2026', amount: -920_000, type: 'debit', date: '25 Jun, 2026' },
-      { ref: 'TXN-8782', desc: 'Top-up from GTBank ops account', amount: 1_200_000, type: 'credit', date: '24 Jun, 2026' },
-      { ref: 'TXN-8760', desc: 'Driver bonus payment — May 2026', amount: -125_000, type: 'debit', date: '01 Jun, 2026' },
-    ],
-  },
-  {
-    id: 'ACC-003',
-    bank: 'First Bank',
-    accountName: 'Bems Farms Tax Reserve',
-    accountNo: '3011223344',
-    type: 'Savings Account',
-    currency: 'NGN',
-    balance: 2_100_000,
-    status: 'active',
-    lastTxn: '20 Jun, 2026',
-    description: 'Tax and compliance reserve — VAT, corporate income tax, FIRS payments.',
-    recentTxns: [
-      { ref: 'TXN-8750', desc: 'Monthly tax reserve deposit', amount: 350_000, type: 'credit', date: '20 Jun, 2026' },
-      { ref: 'TXN-8690', desc: 'FIRS VAT payment — May 2026', amount: -280_000, type: 'debit', date: '15 Jun, 2026' },
-      { ref: 'TXN-8650', desc: 'Monthly tax reserve deposit', amount: 350_000, type: 'credit', date: '20 May, 2026' },
-    ],
-  },
-  {
-    id: 'ACC-004',
-    bank: 'Zenith Bank',
-    accountName: 'Bems Farms POS Settlement',
-    accountNo: '2081234567',
-    type: 'Current Account',
-    currency: 'NGN',
-    balance: 680_000,
-    status: 'active',
-    lastTxn: '27 Jun, 2026',
-    description: 'POS & Paystack settlement receiving account. Reconciled weekly to GTBank ops.',
-    recentTxns: [
-      { ref: 'TXN-8822', desc: 'POS settlement — Lagos Island store', amount: 198_000, type: 'credit', date: '27 Jun, 2026' },
-      { ref: 'TXN-8819', desc: 'Transfer to GTBank ops account', amount: -500_000, type: 'debit', date: '26 Jun, 2026' },
-      { ref: 'TXN-8810', desc: 'POS settlement — Victoria Island POS', amount: 312_000, type: 'credit', date: '25 Jun, 2026' },
-    ],
-  },
-  {
-    id: 'ACC-005',
-    bank: 'UBA',
-    accountName: 'Bems Farms USD Reserve',
-    accountNo: '1000234567',
-    type: 'Domiciliary Account',
-    currency: 'USD',
-    balance: 12_400,
-    status: 'inactive',
-    lastTxn: '10 Jun, 2026',
-    description: 'USD domiciliary account for imported equipment, packaging, and FX reserve.',
-    recentTxns: [
-      { ref: 'TXN-8700', desc: 'USD purchase — packaging import', amount: -2_800, type: 'debit', date: '10 Jun, 2026' },
-      { ref: 'TXN-8650', desc: 'USD deposit', amount: 5_000, type: 'credit', date: '01 Jun, 2026' },
-    ],
-  },
-]
+// Maps the real bank_accounts row (server/src/repositories/accountsRepository.js)
+// to the shape this page's UI already expects.
+function mapAccount(a) {
+  return {
+    id: a.id,
+    bank: a.bank_name,
+    accountName: a.account_name,
+    accountNo: a.account_number || '',
+    type: a.account_type || 'Current Account',
+    currency: a.currency || 'NGN',
+    balance: Number(a.balance || 0),
+    status: a.status || 'active',
+    lastTxn: a.last_transaction_at
+      ? new Date(a.last_transaction_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+      : '—',
+    description: a.notes || '',
+    isPrimary: Boolean(a.is_primary),
+  }
+}
 
 const BLANK = {
   bank: 'GTBank', accountName: '', accountNo: '', type: 'Current Account',
@@ -111,46 +43,101 @@ const BLANK = {
 }
 
 export default function BankAccounts() {
-  const [accounts, setAccounts]   = useState(INITIAL_ACCOUNTS)
+  const [accounts, setAccounts]   = useState([])
+  const [loading, setLoading]     = useState(true)
+  const [error, setError]         = useState(false)
+  const [saving, setSaving]       = useState(false)
   const [search, setSearch]       = useState('')
   const [filterStatus, setFilter] = useState('all')
   const [activeModal, setModal]   = useState(null) // 'add'|'edit'|'view'|'delete'
   const [selected, setSelected]   = useState(null)
   const [form, setForm]           = useState(BLANK)
+  const [recentTxns, setRecentTxns] = useState([])
+  const [txnsLoading, setTxnsLoading] = useState(false)
 
-  const closeModal = () => { setModal(null); setSelected(null); setForm(BLANK) }
+  const load = useCallback(async () => {
+    setLoading(true); setError(false)
+    try {
+      const res = await api.get('/admin/accounts/bank-accounts')
+      setAccounts((res.data?.bank_accounts || []).map(mapAccount))
+    } catch {
+      setError(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+  useEffect(() => { load() }, [load])
 
-  const openView   = acc => { setSelected(acc); setModal('view') }
+  const closeModal = () => { setModal(null); setSelected(null); setForm(BLANK); setRecentTxns([]) }
+
+  const openView = async acc => {
+    setSelected(acc); setModal('view'); setTxnsLoading(true)
+    try {
+      const res = await api.get('/admin/accounts/transactions', { params: { bank_account_id: acc.id, limit: 5 } })
+      setRecentTxns(res.data?.transactions || [])
+    } catch {
+      setRecentTxns([])
+    } finally {
+      setTxnsLoading(false)
+    }
+  }
   const openEdit   = acc => { setSelected(acc); setForm({ ...acc }); setModal('edit') }
   const openDelete = acc => { setSelected(acc); setModal('delete') }
   const openAdd    = ()  => { setForm(BLANK); setModal('add') }
 
-  const saveAccount = () => {
+  const saveAccount = async () => {
     if (!form.accountName || !form.accountNo) return
-    if (activeModal === 'add') {
-      const newAcc = {
-        ...form,
-        id: `ACC-00${accounts.length + 1}`,
-        balance: Number(form.balance) || 0,
-        lastTxn: new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }),
-        recentTxns: [],
+    setSaving(true)
+    try {
+      if (activeModal === 'add') {
+        await api.post('/admin/accounts/bank-accounts', {
+          account_name: form.accountName,
+          bank_name: form.bank,
+          account_number: form.accountNo,
+          account_type: form.type,
+          currency: form.currency,
+          opening_balance: Number(form.balance) || 0,
+          notes: form.description || null,
+        })
+      } else {
+        await api.patch(`/admin/accounts/bank-accounts/${selected.id}`, {
+          account_name: form.accountName,
+          bank_name: form.bank,
+          account_number: form.accountNo,
+          account_type: form.type,
+          status: form.status,
+          notes: form.description || null,
+        })
       }
-      setAccounts(prev => [newAcc, ...prev])
-    } else {
-      setAccounts(prev => prev.map(a => a.id === selected.id ? { ...a, ...form, balance: Number(form.balance) } : a))
+      await load()
+      closeModal()
+    } catch (e) {
+      alert(e?.response?.data?.message || 'Could not save this account.')
+    } finally {
+      setSaving(false)
     }
-    closeModal()
   }
 
-  const deleteAccount = () => {
-    setAccounts(prev => prev.filter(a => a.id !== selected.id))
-    closeModal()
+  const deactivateAccount = async () => {
+    try {
+      await api.delete(`/admin/accounts/bank-accounts/${selected.id}`)
+      await load()
+    } catch (e) {
+      alert(e?.response?.data?.message || 'Could not deactivate this account.')
+    } finally {
+      closeModal()
+    }
   }
 
-  const toggleStatus = acc => {
-    setAccounts(prev => prev.map(a => a.id === acc.id
-      ? { ...a, status: a.status === 'active' ? 'inactive' : 'active' }
-      : a))
+  const toggleStatus = async acc => {
+    try {
+      await api.patch(`/admin/accounts/bank-accounts/${acc.id}`, {
+        status: acc.status === 'active' ? 'inactive' : 'active',
+      })
+      await load()
+    } catch (e) {
+      alert(e?.response?.data?.message || 'Could not update status.')
+    }
   }
 
   const filtered = accounts.filter(a => {
@@ -222,6 +209,17 @@ export default function BankAccounts() {
         ))}
       </div>
 
+      {error && (
+        <div className="alert alert-warning d-flex align-items-center gap-3 rounded-3 mb-3">
+          <i className="ri-wifi-off-line fs-4" />
+          <div className="flex-grow-1">
+            <strong>Could not load bank accounts.</strong>
+            <span className="text-muted ms-2 fs-sm">Check your connection or server status.</span>
+          </div>
+          <button className="btn btn-sm btn-outline-warning" onClick={load}>Retry</button>
+        </div>
+      )}
+
       {/* Table Card */}
       <div className="card border-0 shadow-sm">
         <div className="card-header bg-white border-bottom">
@@ -261,10 +259,15 @@ export default function BankAccounts() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 && (
+                {loading ? (
+                  <tr><td colSpan={7} className="text-center text-muted py-5">
+                    <div className="spinner-border spinner-border-sm text-success me-2" role="status" />
+                    Loading bank accounts…
+                  </td></tr>
+                ) : filtered.length === 0 && (
                   <tr><td colSpan={7} className="text-center text-muted py-5">No accounts found.</td></tr>
                 )}
-                {filtered.map(acc => (
+                {!loading && filtered.map(acc => (
                   <tr key={acc.id} className="border-bottom">
                     <td className="ps-4">
                       <div className="d-flex align-items-center gap-3">
@@ -308,8 +311,8 @@ export default function BankAccounts() {
                           <i className={`${acc.status === 'active' ? 'ri-pause-line' : 'ri-play-line'}`} style={{ fontSize:12 }}/>
                         </button>
                         <button className="btn btn-sm btn-outline-danger" style={{ padding:'3px 8px' }}
-                          onClick={() => openDelete(acc)} title="Delete">
-                          <i className="ri-delete-bin-line" style={{ fontSize:12 }}/>
+                          onClick={() => openDelete(acc)} title="Deactivate">
+                          <i className="ri-pause-circle-line" style={{ fontSize:12 }}/>
                         </button>
                       </div>
                     </td>
@@ -375,17 +378,19 @@ export default function BankAccounts() {
 
                 {/* Recent transactions */}
                 <div className="fw-medium mb-2" style={{ fontSize:13 }}>Recent Transactions</div>
-                {(selected.recentTxns || []).length === 0
+                {txnsLoading ? (
+                  <p className="text-muted small"><span className="spinner-border spinner-border-sm me-2" />Loading…</p>
+                ) : recentTxns.length === 0
                   ? <p className="text-muted small">No transactions recorded yet.</p>
                   : (
                   <div className="border rounded overflow-hidden">
-                    {selected.recentTxns.map((t, i) => (
-                      <div key={i} className={`d-flex align-items-center justify-content-between px-3 py-2 ${i < selected.recentTxns.length - 1 ? 'border-bottom' : ''}`}>
+                    {recentTxns.map((t, i) => (
+                      <div key={t.id ?? i} className={`d-flex align-items-center justify-content-between px-3 py-2 ${i < recentTxns.length - 1 ? 'border-bottom' : ''}`}>
                         <div>
-                          <div style={{ fontSize:12, fontWeight:500 }}>{t.desc}</div>
-                          <div className="text-muted" style={{ fontSize:11 }}>{t.ref} · {t.date}</div>
+                          <div style={{ fontSize:12, fontWeight:500 }}>{t.description || t.sub_type || 'Transaction'}</div>
+                          <div className="text-muted" style={{ fontSize:11 }}>{t.reference} · {t.date ? new Date(t.date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : ''}</div>
                         </div>
-                        <div className={`fw-bold`} style={{ fontSize:13, color: t.type === 'credit' ? '#22c55e' : '#ef4444' }}>
+                        <div className="fw-bold" style={{ fontSize:13, color: t.type === 'credit' ? '#22c55e' : '#ef4444' }}>
                           {t.type === 'credit' ? '+' : '−'}
                           {selected.currency === 'USD' ? `$${Math.abs(t.amount).toLocaleString()}` : fmt(Math.abs(t.amount))}
                         </div>
@@ -443,7 +448,8 @@ export default function BankAccounts() {
                   </div>
                   <div className="col-md-5">
                     <label className="form-label small fw-medium">Currency</label>
-                    <select className="form-select" value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
+                    <select className="form-select" value={form.currency} disabled={activeModal === 'edit'}
+                      onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
                       <option value="NGN">NGN (₦)</option>
                       <option value="USD">USD ($)</option>
                       <option value="GBP">GBP (£)</option>
@@ -451,10 +457,10 @@ export default function BankAccounts() {
                     </select>
                   </div>
                   <div className="col-md-7">
-                    <label className="form-label small fw-medium">Opening / Current Balance</label>
+                    <label className="form-label small fw-medium">{activeModal === 'edit' ? 'Current Balance' : 'Opening Balance'}</label>
                     <div className="input-group">
                       <span className="input-group-text">{form.currency === 'NGN' ? '₦' : form.currency === 'USD' ? '$' : form.currency}</span>
-                      <input className="form-control" type="number" placeholder="0.00"
+                      <input className="form-control" type="number" placeholder="0.00" disabled={activeModal === 'edit'}
                         value={form.balance} onChange={e => setForm(f => ({ ...f, balance: e.target.value }))}/>
                     </div>
                   </div>
@@ -473,11 +479,18 @@ export default function BankAccounts() {
                   </div>
                 </div>
 
+                {activeModal === 'edit' && (
+                  <p className="text-muted mt-3 mb-0" style={{ fontSize: 11 }}>
+                    <i className="ri-information-line me-1" />
+                    Balance and currency can't be edited directly — balance only changes through recorded transactions/transfers.
+                  </p>
+                )}
+
                 <div className="d-flex gap-2 mt-4">
-                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal} disabled={saving}>Cancel</button>
                   <button className="btn btn-primary flex-fill" onClick={saveAccount}
-                    disabled={!form.accountName || !form.accountNo}>
-                    <i className="ri-save-line me-1"/>
+                    disabled={saving || !form.accountName || !form.accountNo}>
+                    {saving ? <span className="spinner-border spinner-border-sm me-1" /> : <i className="ri-save-line me-1"/>}
                     {activeModal === 'add' ? 'Add Account' : 'Save Changes'}
                   </button>
                 </div>
@@ -485,12 +498,12 @@ export default function BankAccounts() {
             </div>
           )}
 
-          {/* DELETE */}
+          {/* DEACTIVATE (the API has no hard delete — this sets status to inactive) */}
           {activeModal === 'delete' && selected && (
             <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:420 }}>
               <div style={{ background:'#7f1d1d', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
                 <div className="d-flex align-items-center justify-content-between">
-                  <div className="fw-bold fs-15"><i className="ri-delete-bin-line me-2"/>Delete Account</div>
+                  <div className="fw-bold fs-15"><i className="ri-pause-circle-line me-2"/>Deactivate Account</div>
                   <button className="btn btn-sm btn-outline-light" onClick={closeModal}><i className="ri-close-line"/></button>
                 </div>
               </div>
@@ -500,17 +513,17 @@ export default function BankAccounts() {
                     style={{ width:56, height:56, background:'#fee2e2' }}>
                     <i className="ri-bank-line fs-24 text-danger"/>
                   </div>
-                  <h5>Delete this account?</h5>
+                  <h5>Deactivate this account?</h5>
                   <p className="text-muted small">
                     <strong>{selected.bank}</strong> — {selected.accountName}<br/>
-                    Account ending <strong>**** {selected.accountNo.slice(-4)}</strong> will be permanently removed.
-                    All transaction records linked to this account will be lost.
+                    Account ending <strong>**** {selected.accountNo.slice(-4)}</strong> will be marked inactive.
+                    Its transaction history is kept and it can be reactivated later.
                   </p>
                 </div>
                 <div className="d-flex gap-2">
                   <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
-                  <button className="btn btn-danger flex-fill" onClick={deleteAccount}>
-                    <i className="ri-delete-bin-line me-1"/>Delete Account
+                  <button className="btn btn-danger flex-fill" onClick={deactivateAccount}>
+                    <i className="ri-pause-circle-line me-1"/>Deactivate Account
                   </button>
                 </div>
               </div>
