@@ -193,15 +193,17 @@ function App() {
                 <Route path="/customers/:id"      element={<CustomerDetail />} />
               </Route>
 
-              {/* ── Staff ── */}
+              {/* ── Staff (Consolidated under Settings) ── */}
               <Route element={<ProtectedRoute allowedRoles={STAFF_ROLES} />}>
-                <Route path="/staff"            element={<StaffList />} />
-                <Route path="/staff/add"        element={<AddStaff />} />
-                <Route path="/staff/roles"      element={<RolesPermissions />} />
-                <Route path="/staff/attendance" element={<Attendance />} />
-                <Route path="/staff/schedule"   element={<Schedule />} />
-                <Route path="/staff/holidays"   element={<Holidays />} />
-                <Route path="/staff/payroll"    element={<Payroll />} />
+                <Route path="/staff"                   element={<Navigate to="/settings/staff" replace />} />
+                <Route path="/staff/list"              element={<Navigate to="/settings/staff" replace />} />
+                <Route path="/staff/add"               element={<Navigate to="/settings/team" replace />} />
+                <Route path="/staff/roles"             element={<Navigate to="/settings/roles" replace />} />
+                <Route path="/staff/roles-permissions" element={<Navigate to="/settings/roles" replace />} />
+                <Route path="/staff/attendance"        element={<Navigate to="/settings/staff" replace />} />
+                <Route path="/staff/schedule"          element={<Navigate to="/settings/staff" replace />} />
+                <Route path="/staff/holidays"          element={<Navigate to="/settings/staff" replace />} />
+                <Route path="/staff/payroll"           element={<Navigate to="/settings/staff" replace />} />
               </Route>
 
               {/* ── Accounts / Finance ── */}

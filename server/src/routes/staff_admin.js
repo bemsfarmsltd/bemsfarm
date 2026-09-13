@@ -1144,6 +1144,28 @@ router.patch("/payroll/:id", requireRole("superadmin", "manager"), async (req, r
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/roles", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
+    // Auto-create table and seed default system roles if not present
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS staff_roles (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) UNIQUE NOT NULL,
+        description TEXT,
+        permissions JSONB DEFAULT '[]',
+        is_system BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+      INSERT INTO staff_roles (name, description, is_system, permissions) VALUES
+        ('superadmin', 'Full system access & administrative controls', true, '["*"]'::jsonb),
+        ('manager', 'Store manager with operations, inventory & team oversight', true, '["dashboard","pos","orders","inventory","products","deliveries","kitchen","reports","staff","customers","settings"]'::jsonb),
+        ('cashier', 'POS cashier for point-of-sale checkout & customer lookup', true, '["pos","orders","customers"]'::jsonb),
+        ('storekeeper', 'Warehouse inventory & stock-in receipt manager', true, '["inventory","products"]'::jsonb),
+        ('delivery_manager', 'Delivery operations, dispatch & rider assignment', true, '["deliveries","orders"]'::jsonb),
+        ('accountant', 'Finance overview, ledger & sales/expense reporting', true, '["reports","dashboard"]'::jsonb),
+        ('kitchen', 'Chef Bems kitchen order prep & meal fulfillment', true, '["kitchen","orders"]'::jsonb)
+      ON CONFLICT (name) DO NOTHING;
+    `);
+
     const roles = await pool.query(`
       SELECT sr.*,
         (SELECT COUNT(*) FROM staff s

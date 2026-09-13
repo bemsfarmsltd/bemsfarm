@@ -18,9 +18,60 @@ const AVAILABLE_PERMISSIONS = [
   { id: 'settings', label: 'System Configuration', desc: 'Manage payment gateways, store settings, and tax policies' },
 ]
 
+const DEFAULT_SYSTEM_ROLES = [
+  {
+    id: 1,
+    name: 'superadmin',
+    description: 'Full unrestricted system access, administrative controls & billing.',
+    permissions: ['*'],
+    is_system: true,
+    staff_count: 1,
+  },
+  {
+    id: 2,
+    name: 'manager',
+    description: 'Store manager with operations, inventory, customer & team oversight.',
+    permissions: ['dashboard', 'pos', 'orders', 'inventory', 'products', 'deliveries', 'kitchen', 'reports', 'staff', 'customers', 'settings'],
+    is_system: true,
+    staff_count: 0,
+  },
+  {
+    id: 3,
+    name: 'cashier',
+    description: 'POS cashier for point-of-sale checkout, receipts & customer lookups.',
+    permissions: ['pos', 'orders', 'customers'],
+    is_system: true,
+    staff_count: 0,
+  },
+  {
+    id: 4,
+    name: 'storekeeper',
+    description: 'Warehouse inventory, stock batch receipt & stock level adjustments.',
+    permissions: ['inventory', 'products'],
+    is_system: true,
+    staff_count: 0,
+  },
+  {
+    id: 5,
+    name: 'delivery_manager',
+    description: 'Delivery dispatch, rider assignments, routing & tracking.',
+    permissions: ['deliveries', 'orders'],
+    is_system: true,
+    staff_count: 0,
+  },
+  {
+    id: 6,
+    name: 'accountant',
+    description: 'Financial ledger, revenue & expenditure reporting.',
+    permissions: ['reports', 'dashboard'],
+    is_system: true,
+    staff_count: 0,
+  },
+]
+
 export default function RolesPermissions() {
-  const [roles, setRoles] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [roles, setRoles] = useState(DEFAULT_SYSTEM_ROLES)
+  const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
 
   // Modal State
@@ -40,12 +91,12 @@ export default function RolesPermissions() {
 
   const fetchRoles = useCallback(async () => {
     try {
-      setLoading(true)
       const res = await api.get('/admin/staff/roles')
-      setRoles(res.data.roles || [])
+      const fetched = res.data?.roles || []
+      setRoles(fetched.length > 0 ? fetched : DEFAULT_SYSTEM_ROLES)
     } catch (err) {
       console.error('Failed to fetch roles:', err)
-      toast.error('Failed to load role permissions')
+      setRoles((prev) => (prev.length > 0 ? prev : DEFAULT_SYSTEM_ROLES))
     } finally {
       setLoading(false)
     }
