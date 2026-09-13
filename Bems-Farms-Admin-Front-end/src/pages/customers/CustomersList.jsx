@@ -61,20 +61,23 @@ export default function CustomersList() {
     const newStatus = c.status === 'active' ? 'inactive' : 'active'
     setCustomers(prev => prev.map(x => x.id === c.id ? { ...x, status: newStatus } : x))
     try {
-      await api.patch(`/admin/customers/${c.customer_code}/status`, { status: newStatus })
-    } catch {
-      toast.error('Failed to update status')
+      const target = c.id || c.customer_code || c.email
+      await api.patch(`/admin/customers/${target}/status`, { status: newStatus })
+      toast.success(`Customer ${c.name || ''} marked as ${newStatus}`)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update status')
       setCustomers(prev => prev.map(x => x.id === c.id ? { ...x, status: c.status } : x))
     }
   }
 
   async function deleteCustomer() {
     try {
-      await api.delete(`/admin/customers/${selected.customer_code}`)
+      const target = selected.id || selected.customer_code || selected.email
+      await api.delete(`/admin/customers/${target}`)
       setCustomers(prev => prev.filter(c => c.id !== selected.id))
       toast.success('Customer removed')
-    } catch {
-      toast.error('Failed to remove customer')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to remove customer')
     }
     closeModal()
   }
@@ -215,10 +218,10 @@ export default function CustomersList() {
                           {ini(c.name)}
                         </div>
                         <div>
-                          <Link to={`/customers/${c.customer_code}`} style={{fontWeight:600,color:'#1e293b',textDecoration:'none'}}>
+                          <Link to={`/customers/${c.customer_code || c.id}`} style={{fontWeight:600,color:'#1e293b',textDecoration:'none'}}>
                             {c.name}
                           </Link>
-                          <div className="text-muted" style={{fontSize:10}}>{c.customer_code} · Joined {fmtDate(c.joined_at)}</div>
+                          <div className="text-muted" style={{fontSize:10}}>{c.customer_code || ('CUS-' + String(c.id).padStart(4, '0'))} · Joined {fmtDate(c.joined_at)}</div>
                         </div>
                       </div>
                     </td>
@@ -258,7 +261,7 @@ export default function CustomersList() {
                     </td>
                     <td className="px-3 py-2">
                       <div className="d-flex gap-1">
-                        <Link to={`/customers/${c.customer_code}`}
+                        <Link to={`/customers/${c.customer_code || c.id}`}
                           className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
                           style={{width:30,height:30,padding:0,borderRadius:'50%'}} title="View Profile">
                           <i className="ri-eye-line" style={{fontSize:13}}/>

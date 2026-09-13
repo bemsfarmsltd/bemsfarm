@@ -130,12 +130,13 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
 
 
     // Check account status
-    if (user.status === "suspended") {
+    const userStatus = String(user.status || "active").toLowerCase().trim();
+    if (userStatus === "suspended") {
       return res
         .status(403)
         .json({ message: "Account suspended. Contact support." });
     }
-    if (user.status === "inactive") {
+    if (userStatus === "inactive" || userStatus === "deactivated") {
       return res
         .status(403)
         .json({ message: "Account inactive. Contact support." });
@@ -951,12 +952,13 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
       user = userResult.rows[0];
       // /login blocks suspended/inactive accounts — Google sign-in must too,
       // or a deactivated/suspended user can just re-authenticate around it.
-      if (user.status === "suspended") {
+      const userStatus = String(user.status || "active").toLowerCase().trim();
+      if (userStatus === "suspended") {
         return res
           .status(403)
           .json({ message: "Account suspended. Contact support." });
       }
-      if (user.status === "inactive") {
+      if (userStatus === "inactive" || userStatus === "deactivated") {
         return res
           .status(403)
           .json({ message: "Account inactive. Contact support." });

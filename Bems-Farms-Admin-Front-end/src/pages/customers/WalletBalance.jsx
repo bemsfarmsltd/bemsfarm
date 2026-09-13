@@ -81,7 +81,8 @@ export default function WalletBalance() {
     setSelectedCust(c)
     setModal('history')
     try {
-      const res = await api.get('/admin/customers/wallet/activity', { params: { customer_id: c.customer_code, limit: 50 } })
+      const target = c.customer_code || c.id
+      const res = await api.get('/admin/customers/wallet/activity', { params: { customer_id: target, limit: 50 } })
       setCustHistory(res.data.activity || [])
     } catch {
       toast.error('Failed to load wallet history')
@@ -94,7 +95,8 @@ export default function WalletBalance() {
     if (!amt || !selectedCust) return
     setSaving(true)
     try {
-      await api.post(`/admin/customers/${selectedCust.customer_code}/wallet`, {
+      const target = selectedCust.customer_code || selectedCust.id
+      await api.post(`/admin/customers/${target}/wallet`, {
         amount: amt, type: 'topup', method, note: note || undefined,
       })
       toast.success('Wallet topped up')
@@ -112,7 +114,8 @@ export default function WalletBalance() {
     if (!amt || !selectedCust || !note.trim()) return
     setSaving(true)
     try {
-      await api.post(`/admin/customers/${selectedCust.customer_code}/wallet`, {
+      const target = selectedCust.customer_code || selectedCust.id
+      await api.post(`/admin/customers/${target}/wallet`, {
         amount: amt, type: 'debit', method: 'Admin Adjustment', note,
       })
       toast.success('Wallet debited')

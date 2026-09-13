@@ -55,10 +55,15 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
     params.push(cappedLimit);
     params.push(offset);
 
+    // Auto-backfill missing customer_codes in background
+    pool.query("UPDATE users SET customer_code = 'CUS-' || LPAD(id::text, 4, '0') WHERE customer_code IS NULL AND role = 'user'").catch(() => {});
+
     const rows = await pool.query(
       `
       SELECT
-        c.id, c.customer_code, c.name, c.phone, c.email,
+        c.id,
+        COALESCE(c.customer_code, 'CUS-' || LPAD(c.id::text, 4, '0')) AS customer_code,
+        c.name, c.phone, c.email,
         c.address AS zone, c.status, c.total_orders, c.total_spent,
         c.joined_at, c.last_order_at,
         COALESCE(cl.points_balance, 0) AS points,
@@ -670,11 +675,34 @@ router.patch(
   async (req, res, next) => {
     try {
       const { status } = req.body;
-      await pool.query(
-        "UPDATE users SET status=$1 WHERE id::text=$2 OR customer_code=$2",
-        [status, req.params.id],
-      );
-      res.json({ message: "Status updated" });
+      const target = String(req.params.id || "").trim();
+
+      if (!target || target === "undefined" || target === "null") {
+        return res.status(400).json({ message: "Valid customer identifier required" });
+      }
+
+      let result;
+      if (!isNaN(Number(target))) {
+        result = await pool.query(
+          `UPDATE users SET status=$1, token_version = token_version + 1, updated_at=NOW()
+           WHERE id=$2 OR customer_code=$3
+           RETURNING id, name, email, status`,
+          [status, Number(target), target],
+        );
+      } else {
+        result = await pool.query(
+          `UPDATE users SET status=$1, token_version = token_version + 1, updated_at=NOW()
+           WHERE customer_code=$2 OR LOWER(email)=LOWER($2)
+           RETURNING id, name, email, status`,
+          [status, target],
+        );
+      }
+
+      if (!result.rowCount) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+
+      res.json({ message: `Customer status updated to ${status}`, user: result.rows[0] });
     } catch (err) {
       next(err);
     }
@@ -687,18 +715,46 @@ router.delete(
   requireRole("superadmin", "manager"),
   async (req, res, next) => {
     try {
-      // Soft delete — anonymise PII
-      await pool.query(
-        `
-      UPDATE users SET
-        name   = 'Deleted Customer',
-        phone  = 'deleted_' || id,
-        email  = NULL,
-        status = 'inactive'
-      WHERE id::text=$1 OR customer_code=$1
-    `,
-        [req.params.id],
-      );
+      const target = String(req.params.id || "").trim();
+
+      if (!target || target === "undefined" || target === "null") {
+        return res.status(400).json({ message: "Valid customer identifier required" });
+      }
+
+      // Soft delete — anonymise PII, deactivate account, and invalidate tokens
+      let result;
+      if (!isNaN(Number(target))) {
+        result = await pool.query(
+          `UPDATE users SET
+             name   = 'Deleted Customer',
+             phone  = 'deleted_' || id,
+             email  = NULL,
+             status = 'inactive',
+             token_version = token_version + 1,
+             updated_at = NOW()
+           WHERE id=$1 OR customer_code=$2
+           RETURNING id`,
+          [Number(target), target],
+        );
+      } else {
+        result = await pool.query(
+          `UPDATE users SET
+             name   = 'Deleted Customer',
+             phone  = 'deleted_' || id,
+             email  = NULL,
+             status = 'inactive',
+             token_version = token_version + 1,
+             updated_at = NOW()
+           WHERE customer_code=$1 OR LOWER(email)=LOWER($1)
+           RETURNING id`,
+          [target],
+        );
+      }
+
+      if (!result.rowCount) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+
       res.json({ message: "Customer removed" });
     } catch (err) {
       next(err);

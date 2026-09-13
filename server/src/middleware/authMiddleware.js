@@ -46,10 +46,11 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ message: "User not found" });
     }
 
-    if (result.rows[0].status === "suspended") {
+    const userStatus = String(result.rows[0].status || "active").toLowerCase().trim();
+    if (userStatus === "suspended") {
       return res.status(403).json({ message: "Account suspended" });
     }
-    if (result.rows[0].status === "inactive") {
+    if (userStatus === "inactive" || userStatus === "deactivated") {
       return res.status(403).json({ message: "Account deactivated" });
     }
 
