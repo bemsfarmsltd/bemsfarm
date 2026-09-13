@@ -112,6 +112,7 @@ import TaxSettings          from './pages/settings/TaxSettings'
 import CurrencySettings     from './pages/settings/CurrencySettings'
 import InvoiceSettings      from './pages/settings/InvoiceSettings'
 import ManagerSettings      from './pages/settings/ManagerSettings'
+import TeamOnboarding        from './pages/settings/TeamOnboarding'
 
 function App() {
   return (
@@ -242,6 +243,8 @@ function App() {
               <Route element={<ProtectedRoute allowedRoles={SETTINGS_ROLES} />}>
                 <Route path="/settings"               element={<SettingsAll />} />
                 <Route path="/settings/all"           element={<SettingsAll />} />
+                <Route path="/settings/team"          element={<TeamOnboarding />} />
+                <Route path="/settings/onboarding"    element={<TeamOnboarding />} />
                 <Route path="/settings/general"       element={<GeneralSettings />} />
                 <Route path="/settings/notifications" element={<NotificationSettings />} />
                 <Route path="/settings/payment"       element={<PaymentSettings />} />

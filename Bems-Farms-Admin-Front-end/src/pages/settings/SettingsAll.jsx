@@ -15,6 +15,18 @@ const SETTINGS_SECTIONS = [
     ]
   },
   {
+    id: 'team-onboarding',
+    title: 'Team Onboarding & Access Control',
+    subtitle: 'Invite staff members by email, assign system roles, and manage active team permissions',
+    icon: 'ri-user-add-line',
+    items: [
+      { name: 'Invite Team Member (1-Click Link)', path: '/settings/team' },
+      { name: 'Pending Invitations & Active Links', path: '/settings/team' },
+      { name: 'System Roles & Permissions Matrix', path: '/staff/roles' },
+      { name: 'Full Staff Directory', path: '/staff' }
+    ]
+  },
+  {
     id: 'pos-terminal',
     title: 'POS Terminal Settings',
     subtitle: 'Configure register terminals, barcode scanners, and cashier shift limits',

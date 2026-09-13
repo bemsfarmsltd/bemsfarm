@@ -788,8 +788,9 @@ export default function Sidebar() {
                 <NavLink to="/staff" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Staff Accounts</span>
                 </NavLink>
-                <NavLink to="/staff/add" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Add Staff Account</span>
+                <NavLink to="/settings/team" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Invite Member (Onboard)</span>
+                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Invite</span>
                 </NavLink>
                 <NavLink to="/staff/roles" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Roles &amp; Permissions</span>
@@ -875,6 +876,10 @@ export default function Sidebar() {
             {/* 12. SETTINGS */}
             {activeTab === 'settings' && (
               <>
+                <NavLink to="/settings/team" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Team &amp; Onboarding</span>
+                  <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Invite</span>
+                </NavLink>
                 <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>General Store Info</span>
                 </NavLink>

@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
 
 const TABS = [
-  { to: '/settings/tax', label: 'Tax' },
-  { to: '/settings/coupons', label: 'Coupons' },
+  { to: '/settings/team', label: 'Team & Onboarding' },
   { to: '/settings/general', label: 'General' },
   { to: '/settings/pos', label: 'POS' },
   { to: '/settings/payment', label: 'Payment Gateway' },
+  { to: '/settings/tax', label: 'Tax' },
+  { to: '/settings/coupons', label: 'Coupons' },
   { to: '/settings/currencies', label: 'Currencies' },
   { to: '/settings/invoices', label: 'Invoices' },
   { to: '/settings/manager', label: 'Manager' },
