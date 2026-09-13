@@ -61,13 +61,22 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
     params.push(offset);
 
     // Auto-backfill missing customer_codes in background
-    pool.query("UPDATE users SET customer_code = 'CUS-' || LPAD(id::text, 4, '0') WHERE customer_code IS NULL AND role = 'user'").catch(() => {});
+    pool.query(`
+      UPDATE users
+      SET customer_code = 'CUS-' || LPAD(id::text, 4, '0')
+      WHERE (customer_code IS NULL OR customer_code = 'null' OR customer_code = 'undefined' OR TRIM(customer_code) = '')
+        AND role = 'user'
+    `).catch(() => {});
 
     const rows = await pool.query(
       `
       SELECT
         c.id,
-        COALESCE(c.customer_code, 'CUS-' || LPAD(c.id::text, 4, '0')) AS customer_code,
+        CASE
+          WHEN c.customer_code IS NOT NULL AND c.customer_code != 'null' AND c.customer_code != 'undefined' AND TRIM(c.customer_code) != ''
+          THEN c.customer_code
+          ELSE 'CUS-' || LPAD(c.id::text, 4, '0')
+        END AS customer_code,
         c.name, c.phone, c.email,
         c.address AS zone, c.status, c.total_orders, c.total_spent,
         c.joined_at, c.last_order_at, c.last_login,
@@ -454,14 +463,21 @@ router.get("/site-activity", requireRole("superadmin", "manager"), async (req, r
 // ── GET /api/admin/customers/:id ──────────────────────────────────
 router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "cashier"), async (req, res, next) => {
   try {
-    const target = req.params.id;
+    const target = String(req.params.id || "").trim();
+    if (!target || target === "null" || target === "undefined") {
+      return res.status(404).json({ message: "Customer not found" });
+    }
     const isNum = !isNaN(Number(target));
 
     const result = await pool.query(
       `
       SELECT
         c.*,
-        COALESCE(c.customer_code, 'CUS-' || LPAD(c.id::text, 4, '0')) AS customer_code,
+        CASE
+          WHEN c.customer_code IS NOT NULL AND c.customer_code != 'null' AND c.customer_code != 'undefined' AND TRIM(c.customer_code) != ''
+          THEN c.customer_code
+          ELSE 'CUS-' || LPAD(c.id::text, 4, '0')
+        END AS customer_code,
         COALESCE(cl.points_balance, 0)  AS points,
         COALESCE(cl.lifetime_points, 0) AS lifetime_points,
         COALESCE(lt.name, 'Bronze')     AS tier,

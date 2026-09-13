@@ -60,7 +60,7 @@ export default function LoyaltyPoints() {
     setSaving(true)
     try {
       const delta = type === 'award' ? amount : -amount
-      const target = selected.customer_code || selected.id
+      const target = (selected.id != null && String(selected.id) !== 'null') ? selected.id : selected.customer_code
       await api.post(`/admin/customers/${target}/loyalty`, {
         points: delta,
         type: type === 'award' ? 'bonus' : 'deducted',

@@ -83,7 +83,7 @@ export default function CustomersList() {
     const newStatus = c.status === 'active' ? 'inactive' : 'active'
     setCustomers(prev => prev.map(x => x.id === c.id ? { ...x, status: newStatus } : x))
     try {
-      const target = c.id || c.customer_code || c.email
+      const target = (c.id != null && String(c.id) !== 'null') ? c.id : (c.customer_code && c.customer_code !== 'null' ? c.customer_code : c.email)
       await api.patch(`/admin/customers/${target}/status`, { status: newStatus })
       toast.success(`Customer ${c.name || ''} marked as ${newStatus}`)
     } catch (err) {
@@ -100,7 +100,7 @@ export default function CustomersList() {
     }
     setDeleting(true)
     try {
-      const target = selected.id || selected.customer_code || selected.email
+      const target = (selected.id != null && String(selected.id) !== 'null') ? selected.id : (selected.customer_code && selected.customer_code !== 'null' ? selected.customer_code : selected.email)
       await api.delete(`/admin/customers/${target}`, {
         data: { admin_password: adminPassword.trim() },
         headers: { 'x-admin-password': adminPassword.trim() },
@@ -242,7 +242,11 @@ export default function CustomersList() {
               {!loading && customers.map((c,i) => {
                 const tc = TIER_CFG[c.tier] || TIER_CFG.Bronze
                 const sc = STATUS_CFG[c.status] || STATUS_CFG.active
-                const profileUrl = `/customers/${c.customer_code || c.id}`
+                const customerId = (c.id != null && String(c.id) !== 'null') ? c.id : c.customer_code
+                const profileUrl = `/customers/${customerId}`
+                const displayCode = (c.customer_code && c.customer_code !== 'null' && c.customer_code !== 'undefined')
+                  ? c.customer_code
+                  : ('CUS-' + String(c.id || '').padStart(4, '0'))
                 return (
                   <tr key={c.id}>
                     <td className="px-3 py-2">
@@ -256,7 +260,7 @@ export default function CustomersList() {
                             {c.name}
                           </Link>
                           <div className="text-muted" style={{fontSize:10}}>
-                            <span className="font-monospace text-primary">{c.customer_code || ('CUS-' + String(c.id).padStart(4, '0'))}</span>
+                            <span className="font-monospace text-primary">{displayCode}</span>
                             <span> · Joined {fmtDate(c.joined_at)}</span>
                           </div>
                         </div>

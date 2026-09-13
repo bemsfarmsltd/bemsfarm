@@ -61,6 +61,11 @@ export default function CustomerDetail() {
   const [deleting, setDeleting]               = useState(false)
 
   const fetchCustomer = useCallback(async () => {
+    if (!id || id === 'null' || id === 'undefined') {
+      setLoading(false)
+      setCustomer(null)
+      return
+    }
     setLoading(true)
     try {
       const res = await api.get(`/admin/customers/${id}`)
@@ -80,7 +85,7 @@ export default function CustomerDetail() {
   async function handleToggleStatus() {
     if (!customer) return
     const newStatus = customer.status === 'active' ? 'inactive' : 'active'
-    const target = customer.id || customer.customer_code || customer.email
+    const target = (customer.id != null && String(customer.id) !== 'null') ? customer.id : (customer.customer_code && customer.customer_code !== 'null' ? customer.customer_code : customer.email)
     setTogglingStatus(true)
     try {
       await api.patch(`/admin/customers/${target}/status`, { status: newStatus })
@@ -95,7 +100,7 @@ export default function CustomerDetail() {
 
   async function handleSaveNotes() {
     if (!customer) return
-    const target = customer.id || customer.customer_code || customer.email
+    const target = (customer.id != null && String(customer.id) !== 'null') ? customer.id : (customer.customer_code && customer.customer_code !== 'null' ? customer.customer_code : customer.email)
     setSavingNotes(true)
     try {
       await api.patch(`/admin/customers/${target}/notes`, { notes: notesText })
@@ -116,7 +121,7 @@ export default function CustomerDetail() {
     }
     setDeleting(true)
     try {
-      const target = customer.id || customer.customer_code || customer.email
+      const target = (customer.id != null && String(customer.id) !== 'null') ? customer.id : (customer.customer_code && customer.customer_code !== 'null' ? customer.customer_code : customer.email)
       await api.delete(`/admin/customers/${target}`, {
         data: { admin_password: adminPassword.trim() },
         headers: { 'x-admin-password': adminPassword.trim() },

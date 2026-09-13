@@ -81,7 +81,7 @@ export default function WalletBalance() {
     setSelectedCust(c)
     setModal('history')
     try {
-      const target = c.customer_code || c.id
+      const target = (c.id != null && String(c.id) !== 'null') ? c.id : c.customer_code
       const res = await api.get('/admin/customers/wallet/activity', { params: { customer_id: target, limit: 50 } })
       setCustHistory(res.data.activity || [])
     } catch {
@@ -95,7 +95,7 @@ export default function WalletBalance() {
     if (!amt || !selectedCust) return
     setSaving(true)
     try {
-      const target = selectedCust.customer_code || selectedCust.id
+      const target = (selectedCust.id != null && String(selectedCust.id) !== 'null') ? selectedCust.id : selectedCust.customer_code
       await api.post(`/admin/customers/${target}/wallet`, {
         amount: amt, type: 'topup', method, note: note || undefined,
       })
