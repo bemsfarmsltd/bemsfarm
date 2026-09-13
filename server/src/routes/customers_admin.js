@@ -3,6 +3,7 @@
 
 const express = require("express");
 const router = express.Router();
+const bcrypt = require("bcryptjs");
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const { CUSTOMER_ROLE } = require("../config/roles");
@@ -25,7 +26,11 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
     const cappedLimit = clampLimit(limit, 20);
     const offset = (parseInt(page) - 1) * cappedLimit;
     const params = [];
-    const where = ["c.role = 'user'"];
+    const where = [
+      "c.role = 'user'",
+      "COALESCE(c.status, '') != 'deleted'",
+      "COALESCE(c.name, '') != 'Deleted Customer'",
+    ];
 
     if (search) {
       params.push(`%${search}%`);
@@ -92,6 +97,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
         COALESCE(SUM(total_spent), 0)                    AS total_revenue,
         COALESCE(AVG(total_spent), 0)                    AS avg_spent
       FROM users
+      WHERE role = 'user' AND COALESCE(status, '') != 'deleted' AND COALESCE(name, '') != 'Deleted Customer'
     `);
 
     const platinum = await pool.query(`
@@ -760,50 +766,95 @@ router.patch(
 // ── DELETE /api/admin/customers/:id ──────────────────────────────
 router.delete(
   "/:id",
-  requireRole("superadmin", "manager"),
+  requireRole("superadmin", "manager", "admin"),
   async (req, res, next) => {
     try {
+      const adminPassword =
+        req.body?.admin_password ||
+        req.body?.password ||
+        req.headers["x-admin-password"];
+
+      if (!adminPassword || typeof adminPassword !== "string" || !adminPassword.trim()) {
+        return res.status(400).json({
+          message: "Admin password is required to delete a customer.",
+        });
+      }
+
+      // Verify the authenticated admin user's credentials
+      const adminUser = await pool.query(
+        "SELECT id, password, role FROM users WHERE id = $1",
+        [req.user.id],
+      );
+
+      if (!adminUser.rows.length) {
+        return res.status(401).json({ message: "Administrator account not found." });
+      }
+
+      const isValidPassword = await bcrypt.compare(
+        adminPassword.trim(),
+        adminUser.rows[0].password || "",
+      );
+
+      if (!isValidPassword) {
+        return res.status(401).json({
+          message: "Incorrect admin password. Customer deletion was cancelled.",
+        });
+      }
+
       const target = String(req.params.id || "").trim();
-
       if (!target || target === "undefined" || target === "null") {
-        return res.status(400).json({ message: "Valid customer identifier required" });
+        return res.status(400).json({ message: "Valid customer identifier required." });
       }
 
-      // Soft delete — anonymise PII, deactivate account, and invalidate tokens
-      let result;
+      // Find the customer record
+      let findQuery, findParams;
       if (!isNaN(Number(target))) {
-        result = await pool.query(
-          `UPDATE users SET
-             name   = 'Deleted Customer',
-             phone  = 'deleted_' || id,
-             email  = NULL,
-             status = 'inactive',
-             token_version = token_version + 1,
-             updated_at = NOW()
-           WHERE id=$1 OR customer_code=$2
-           RETURNING id`,
-          [Number(target), target],
-        );
+        findQuery = "SELECT id, name, email FROM users WHERE id = $1 OR customer_code = $2";
+        findParams = [Number(target), target];
       } else {
-        result = await pool.query(
+        findQuery = "SELECT id, name, email FROM users WHERE customer_code = $1 OR LOWER(email) = LOWER($1)";
+        findParams = [target];
+      }
+
+      const custRes = await pool.query(findQuery, findParams);
+      if (!custRes.rows.length) {
+        return res.status(404).json({ message: "Customer not found." });
+      }
+
+      const customerId = custRes.rows[0].id;
+
+      // Clean up customer associations and unlink historical orders
+      await pool.query("UPDATE orders SET customer_id = NULL, user_id = NULL WHERE customer_id = $1 OR user_id = $1", [customerId]).catch(() => {});
+      await pool.query("DELETE FROM customer_wallet_transactions WHERE customer_id = $1", [customerId]).catch(() => {});
+      await pool.query("DELETE FROM customer_wallets WHERE customer_id = $1", [customerId]).catch(() => {});
+      await pool.query("DELETE FROM loyalty_transactions WHERE customer_id = $1", [customerId]).catch(() => {});
+      await pool.query("DELETE FROM customer_loyalty WHERE customer_id = $1", [customerId]).catch(() => {});
+      await pool.query("DELETE FROM user_addresses WHERE user_id = $1", [customerId]).catch(() => {});
+      await pool.query("DELETE FROM ai_user_activity WHERE user_id = $1", [customerId]).catch(() => {});
+      await pool.query("DELETE FROM ai_user_context WHERE user_id = $1", [customerId]).catch(() => {});
+      await pool.query("DELETE FROM ai_onboarding_data WHERE user_id = $1", [customerId]).catch(() => {});
+      await pool.query("DELETE FROM customer_carts WHERE customer_id = $1", [customerId]).catch(() => {});
+      await pool.query("DELETE FROM coupon_usages WHERE user_id = $1", [customerId]).catch(() => {});
+      await pool.query("DELETE FROM product_reviews WHERE user_id = $1", [customerId]).catch(() => {});
+
+      // Attempt hard delete; fallback to status='deleted' if any other DB constraint fires
+      try {
+        await pool.query("DELETE FROM users WHERE id = $1", [customerId]);
+      } catch (delErr) {
+        await pool.query(
           `UPDATE users SET
-             name   = 'Deleted Customer',
-             phone  = 'deleted_' || id,
-             email  = NULL,
-             status = 'inactive',
+             name = 'Deleted Customer',
+             phone = 'deleted_' || id,
+             email = NULL,
+             status = 'deleted',
              token_version = token_version + 1,
              updated_at = NOW()
-           WHERE customer_code=$1 OR LOWER(email)=LOWER($1)
-           RETURNING id`,
-          [target],
+           WHERE id = $1`,
+          [customerId],
         );
       }
 
-      if (!result.rowCount) {
-        return res.status(404).json({ message: "Customer not found" });
-      }
-
-      res.json({ message: "Customer removed" });
+      res.json({ message: "Customer successfully deleted." });
     } catch (err) {
       next(err);
     }

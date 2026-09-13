@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
@@ -46,12 +46,19 @@ const AVATAR_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#0ea5e9', '#
 
 export default function CustomerDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [customer, setCustomer] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('orders')
   const [togglingStatus, setTogglingStatus] = useState(false)
   const [notesText, setNotesText] = useState('')
   const [savingNotes, setSavingNotes] = useState(false)
+
+  // Delete modal state requiring admin password
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [adminPassword, setAdminPassword]     = useState('')
+  const [showPassword, setShowPassword]       = useState(false)
+  const [deleting, setDeleting]               = useState(false)
 
   const fetchCustomer = useCallback(async () => {
     setLoading(true)
@@ -98,6 +105,28 @@ export default function CustomerDetail() {
       toast.error(err.response?.data?.message || 'Failed to save notes')
     } finally {
       setSavingNotes(false)
+    }
+  }
+
+  async function handleDeleteCustomer(e) {
+    if (e) e.preventDefault()
+    if (!adminPassword.trim()) {
+      toast.error('Please enter your administrator password to authorize deletion')
+      return
+    }
+    setDeleting(true)
+    try {
+      const target = customer.id || customer.customer_code || customer.email
+      await api.delete(`/admin/customers/${target}`, {
+        data: { admin_password: adminPassword.trim() },
+        headers: { 'x-admin-password': adminPassword.trim() },
+      })
+      toast.success(`Customer ${customer.name} deleted successfully`)
+      navigate('/customers')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete customer')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -214,6 +243,17 @@ export default function CustomerDetail() {
               <i className="ri-mail-line" /> Email
             </a>
           )}
+          <button
+            onClick={() => {
+              setAdminPassword('')
+              setShowPassword(false)
+              setShowDeleteModal(true)
+            }}
+            className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
+            title="Permanently remove this customer"
+          >
+            <i className="ri-delete-bin-line" /> Delete Customer
+          </button>
         </div>
       </div>
 
@@ -834,6 +874,114 @@ export default function CustomerDetail() {
           </div>
         </div>
       </div>
+
+      {/* DELETE / REMOVE MODAL WITH ADMIN PASSWORD AUTHORIZATION */}
+      {showDeleteModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={() => { if (!deleting) setShowDeleteModal(false) }}
+        >
+          <div
+            style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 440, boxShadow: '0 25px 70px rgba(0,0,0,0.3)', overflow: 'hidden' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ background: '#dc2626', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className="d-flex align-items-center gap-2 text-white">
+                <i className="ri-shield-keyhole-line" style={{ fontSize: 20 }} />
+                <span style={{ fontWeight: 600, fontSize: 15 }}>Security Authorization Required</span>
+              </div>
+              <button className="btn-close btn-close-white btn-sm" disabled={deleting} onClick={() => setShowDeleteModal(false)} />
+            </div>
+
+            <form onSubmit={handleDeleteCustomer} className="p-4 text-start">
+              <div className="d-flex align-items-center gap-3 mb-3">
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width: 48, height: 48, background: '#fee2e2' }}
+                >
+                  <i className="ri-delete-bin-2-line" style={{ color: '#dc2626', fontSize: 22 }} />
+                </div>
+                <div>
+                  <div className="fw-bold text-dark" style={{ fontSize: 16 }}>Delete {customer.name}</div>
+                  <div className="text-muted" style={{ fontSize: 12 }}>
+                    {customer.customer_code} · {customer.email || customer.phone || 'No direct contact'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 rounded mb-3" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
+                <div style={{ fontSize: 12, color: '#991b1b', lineHeight: 1.5 }}>
+                  <strong className="d-block mb-1">
+                    <i className="ri-error-warning-line me-1" />
+                    Warning: Irreversible Action
+                  </strong>
+                  Deleting this customer account will remove their personal profile, delivery addresses, and revoke all active login sessions immediately. Historical financial reporting will be preserved.
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold text-dark" style={{ fontSize: 12 }}>
+                  Enter Your Administrator Password to Confirm:
+                </label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light text-muted border-end-0">
+                    <i className="ri-lock-password-line" />
+                  </span>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className="form-control border-start-0 border-end-0"
+                    placeholder="Enter admin password"
+                    value={adminPassword}
+                    autoFocus
+                    required
+                    onChange={e => setAdminPassword(e.target.value)}
+                    style={{ fontSize: 13 }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-light border border-start-0 text-muted"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                  >
+                    <i className={showPassword ? 'ri-eye-off-line' : 'ri-eye-line'} />
+                  </button>
+                </div>
+                <div className="form-text" style={{ fontSize: 11 }}>
+                  Your current login password is used to verify you have authorization to delete records.
+                </div>
+              </div>
+
+              <div className="d-flex gap-2 pt-2 border-top">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary flex-fill"
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-danger flex-fill d-flex align-items-center justify-content-center gap-1"
+                  disabled={deleting || !adminPassword.trim()}
+                >
+                  {deleting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" />
+                      <span>Verifying &amp; Deleting…</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="ri-delete-bin-line" />
+                      <span>Verify &amp; Delete</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

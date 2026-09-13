@@ -42,6 +42,9 @@ export default function CustomersList() {
   const [filterSt, setSt]     = useState('all')
   const [selected, setSelected] = useState(null)
   const [modal, setModal]     = useState(null) // 'delete'
+  const [adminPassword, setAdminPassword] = useState('')
+  const [showPassword, setShowPassword]   = useState(false)
+  const [deleting, setDeleting]           = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -68,7 +71,13 @@ export default function CustomersList() {
     return () => clearTimeout(t)
   }, [load])
 
-  const closeModal = () => { setModal(null); setSelected(null) }
+  const closeModal = () => {
+    setModal(null)
+    setSelected(null)
+    setAdminPassword('')
+    setShowPassword(false)
+    setDeleting(false)
+  }
 
   async function toggleStatus(c) {
     const newStatus = c.status === 'active' ? 'inactive' : 'active'
@@ -83,16 +92,27 @@ export default function CustomersList() {
     }
   }
 
-  async function deleteCustomer() {
+  async function deleteCustomer(e) {
+    if (e) e.preventDefault()
+    if (!adminPassword.trim()) {
+      toast.error('Please enter your administrator password to authorize deletion')
+      return
+    }
+    setDeleting(true)
     try {
       const target = selected.id || selected.customer_code || selected.email
-      await api.delete(`/admin/customers/${target}`)
+      await api.delete(`/admin/customers/${target}`, {
+        data: { admin_password: adminPassword.trim() },
+        headers: { 'x-admin-password': adminPassword.trim() },
+      })
       setCustomers(prev => prev.filter(c => c.id !== selected.id))
-      toast.success('Customer removed')
+      toast.success(`Customer ${selected.name} deleted successfully`)
+      closeModal()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to remove customer')
+      toast.error(err.response?.data?.message || 'Failed to delete customer')
+    } finally {
+      setDeleting(false)
     }
-    closeModal()
   }
 
   const totalRevenue = customers.reduce((s,c)=>s+Number(c.total_spent || 0), 0)
@@ -306,35 +326,103 @@ export default function CustomersList() {
         </div>
       </div>
 
-      {/* DELETE / REMOVE MODAL */}
+      {/* DELETE / REMOVE MODAL WITH ADMIN PASSWORD AUTHORIZATION */}
       {modal==='delete' && selected && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:1050,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:1050,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}
           onClick={closeModal}>
-          <div style={{background:'#fff',borderRadius:12,width:'100%',maxWidth:420,boxShadow:'0 20px 60px rgba(0,0,0,0.2)'}}
+          <div style={{background:'#fff',borderRadius:14,width:'100%',maxWidth:440,boxShadow:'0 25px 70px rgba(0,0,0,0.3)',overflow:'hidden'}}
             onClick={e=>e.stopPropagation()}>
-            <div style={{background:'#1e293b',borderRadius:'12px 12px 0 0',padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <span style={{color:'#fff',fontWeight:600,fontSize:15}}>Remove Customer</span>
+            <div style={{background:'#dc2626',padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div className="d-flex align-items-center gap-2 text-white">
+                <i className="ri-shield-keyhole-line" style={{fontSize:20}}/>
+                <span style={{fontWeight:600,fontSize:15}}>Security Authorization Required</span>
+              </div>
               <button className="btn-close btn-close-white btn-sm" onClick={closeModal}/>
             </div>
-            <div className="p-4 text-center">
-              <div className="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
-                style={{width:56,height:56,background:'#fef2f2'}}>
-                <i className="ri-user-unfollow-line" style={{color:'#ef4444',fontSize:24}}/>
-              </div>
-              <div className="fw-semibold mb-1" style={{fontSize:15}}>Remove {selected.name}?</div>
-              <div className="text-muted mb-1" style={{fontSize:13}}>
-                This anonymises the customer's personal data and marks the account inactive.
-              </div>
-              <div className="p-2 rounded mb-4" style={{background:'#fef2f2',border:'1px solid #fecaca'}}>
-                <div style={{fontSize:12,color:'#dc2626'}}>
-                  {selected.total_orders || 0} orders · {fmt(selected.total_spent)} revenue · {fmtPts(selected.points)} loyalty points on record.
+            <form onSubmit={deleteCustomer} className="p-4 text-start">
+              <div className="d-flex align-items-center gap-3 mb-3">
+                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{width:48,height:48,background:'#fee2e2'}}>
+                  <i className="ri-delete-bin-2-line" style={{color:'#dc2626',fontSize:22}}/>
+                </div>
+                <div>
+                  <div className="fw-bold text-dark" style={{fontSize:16}}>Delete Customer</div>
+                  <div className="text-muted" style={{fontSize:12}}>
+                    {selected.name} ({selected.customer_code || ('CUS-' + String(selected.id).padStart(4, '0'))})
+                  </div>
                 </div>
               </div>
-              <div className="d-flex gap-2">
-                <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
-                <button className="btn btn-danger flex-fill" onClick={deleteCustomer}>Yes, Remove</button>
+
+              <div className="p-3 rounded mb-3" style={{background:'#fef2f2',border:'1px solid #fecaca'}}>
+                <div style={{fontSize:12,color:'#991b1b',lineHeight:1.5}}>
+                  <strong className="d-block mb-1">
+                    <i className="ri-error-warning-line me-1"/>
+                    Warning: Irreversible Action
+                  </strong>
+                  Deleting this customer account will remove their personal profile, delivery addresses, and revoke all active login sessions immediately.
+                </div>
               </div>
-            </div>
+
+              <div className="mb-3">
+                <label className="form-label fw-semibold text-dark" style={{fontSize:12}}>
+                  Enter Your Administrator Password to Confirm:
+                </label>
+                <div className="input-group">
+                  <span className="input-group-text bg-light text-muted border-end-0">
+                    <i className="ri-lock-password-line"/>
+                  </span>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className="form-control border-start-0 border-end-0"
+                    placeholder="Enter admin password"
+                    value={adminPassword}
+                    autoFocus
+                    required
+                    onChange={e => setAdminPassword(e.target.value)}
+                    style={{fontSize:13}}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-light border border-start-0 text-muted"
+                    onClick={() => setShowPassword(!showPassword)}
+                    tabIndex={-1}
+                  >
+                    <i className={showPassword ? 'ri-eye-off-line' : 'ri-eye-line'}/>
+                  </button>
+                </div>
+                <div className="form-text" style={{fontSize:11}}>
+                  Your current login password is used to verify you have authorization to delete records.
+                </div>
+              </div>
+
+              <div className="d-flex gap-2 pt-2 border-top">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary flex-fill"
+                  onClick={closeModal}
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-danger flex-fill d-flex align-items-center justify-content-center gap-1"
+                  disabled={deleting || !adminPassword.trim()}
+                >
+                  {deleting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm"/>
+                      <span>Verifying &amp; Deleting…</span>
+                    </>
+                  ) : (
+                    <>
+                      <i className="ri-delete-bin-line"/>
+                      <span>Verify &amp; Delete</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
