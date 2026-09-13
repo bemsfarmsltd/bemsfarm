@@ -52,4 +52,8 @@ const inviteStaff = z.object({
   department: z.string().trim().max(100).optional(),
 });
 
+const staffStatus = z.object({
+  status: z.enum(STAFF_STATUSES, { error: `status must be one of: ${STAFF_STATUSES.join(", ")}` }),
+});
+
 module.exports = { createStaff, updateStaff, staffStatus, inviteStaff };

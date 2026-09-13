@@ -142,6 +142,11 @@ export function AuthProvider({ children }) {
   )
 
   /** Check if current user can access a section (pass an allowedRoles array). */
+  const canAccess = useCallback(
+    (allowedRoles) => !allowedRoles || allowedRoles.length === 0 || hasRole(...allowedRoles),
+    [hasRole]
+  )
+
   /** Set session directly after onboarding / token refresh */
   const setSession = useCallback((userData, token) => {
     localStorage.setItem('admin_token', token)
