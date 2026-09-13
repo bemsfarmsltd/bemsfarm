@@ -426,7 +426,7 @@ router.post(
   "/bulk-import",
   requireRole("superadmin", "manager", "admin", "kitchen_staff"),
   async (req, res, next) => {
-    const { type, rows } = req.body;
+    const { type, rows, update_existing = false, auto_create_categories = true } = req.body;
     if (!["products", "categories", "sub_categories"].includes(type)) {
       return res.status(400).json({ message: "Invalid import type" });
     }
@@ -438,28 +438,101 @@ router.post(
     }
 
     let imported = 0;
+    let updated = 0;
     const errors = [];
+
+    // Cache categories to avoid repetitive queries
+    const categoriesMap = new Map();
+    const existingCats = await pool.query("SELECT id, name, code FROM categories");
+    existingCats.rows.forEach((c) => {
+      categoriesMap.set(String(c.id), c.id);
+      categoriesMap.set(c.name.toLowerCase().trim(), c.id);
+      if (c.code) categoriesMap.set(c.code.toLowerCase().trim(), c.id);
+    });
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const rowNum = i + 2; // account for the header row in the source file
       try {
         if (type === "products") {
-          if (!row.name?.trim()) throw new Error("name is required");
-          if (!row.sku?.trim()) throw new Error("sku is required");
-          if (!row.category_id) throw new Error("category_id is required");
-          if (row.unit_price === undefined || row.unit_price === "" || isNaN(parseFloat(row.unit_price))) {
-            throw new Error("unit_price is required and must be a number");
+          if (!row.name?.trim()) throw new Error("Product name is required");
+          if (!row.sku?.trim()) throw new Error("SKU is required");
+
+          // Clean currency & numeric values (handle ₦, $, commas)
+          const rawPrice = String(row.unit_price ?? row.price ?? "").replace(/[^0-9.]/g, "");
+          if (!rawPrice || isNaN(parseFloat(rawPrice))) {
+            throw new Error("unit_price is required and must be a valid number");
           }
-          if (row.stock_qty === undefined || row.stock_qty === "" || isNaN(parseInt(row.stock_qty))) {
+          const unitPrice = parseFloat(rawPrice);
+
+          const rawStock = String(row.stock_qty ?? row.stock ?? "").replace(/[^0-9]/g, "");
+          if (!rawStock || isNaN(parseInt(rawStock))) {
             throw new Error("stock_qty is required and must be a number");
           }
+          const stockQty = parseInt(rawStock);
 
+          const costPrice = row.cost_price ? parseFloat(String(row.cost_price).replace(/[^0-9.]/g, "")) : null;
+          const lowStockAlert = row.low_stock_alert ? parseInt(String(row.low_stock_alert).replace(/[^0-9]/g, "")) : 10;
+          const taxRate = row.tax_percent ? parseFloat(String(row.tax_percent).replace(/[^0-9.]/g, "")) : 7.5;
+
+          // Resolve category (by ID or by name)
+          let categoryId = null;
+          const catInput = String(row.category_id || row.category || "").trim();
+          if (catInput) {
+            const catKey = catInput.toLowerCase();
+            if (categoriesMap.has(catKey)) {
+              categoryId = categoriesMap.get(catKey);
+            } else if (auto_create_categories) {
+              const newCat = await pool.query(
+                "INSERT INTO categories (name, status, created_at) VALUES ($1, 'active', NOW()) RETURNING id",
+                [catInput]
+              );
+              categoryId = newCat.rows[0].id;
+              categoriesMap.set(catKey, categoryId);
+              categoriesMap.set(String(categoryId), categoryId);
+            }
+          }
+
+          if (!categoryId) {
+            const fallback = existingCats.rows[0]?.id || 1;
+            categoryId = fallback;
+          }
+
+          // Check duplicate SKU
           const dup = await pool.query("SELECT id FROM products WHERE sku=$1", [row.sku.trim()]);
-          if (dup.rows.length) throw new Error(`SKU "${row.sku.trim()}" already exists`);
+          if (dup.rows.length) {
+            if (update_existing) {
+              await pool.query(
+                `UPDATE products
+                 SET name = $1, barcode = COALESCE($2, barcode), category_id = $3,
+                     unit_price = $4, price = $4, cost_price = COALESCE($5, cost_price),
+                     stock = $6, stock_quantity = $6, unit = COALESCE($7, unit),
+                     low_stock_threshold = COALESCE($8, low_stock_threshold),
+                     tax_rate = COALESCE($9, tax_rate), description = COALESCE($10, description),
+                     status = COALESCE($11, status), updated_at = NOW()
+                 WHERE sku = $12`,
+                [
+                  row.name.trim(),
+                  row.barcode?.trim() || null,
+                  categoryId,
+                  unitPrice,
+                  costPrice,
+                  stockQty,
+                  row.unit?.trim() || null,
+                  lowStockAlert,
+                  taxRate,
+                  row.description?.trim() || null,
+                  row.status?.trim() || "active",
+                  row.sku.trim(),
+                ]
+              );
+              updated++;
+              continue;
+            } else {
+              throw new Error(`SKU "${row.sku.trim()}" already exists in the system`);
+            }
+          }
 
-          const unitPrice = parseFloat(row.unit_price);
-          const stockQty = parseInt(row.stock_qty);
           await pool.query(
             `INSERT INTO products
                (name, sku, barcode, category_id, sub_category_id, unit_price, price, cost_price,
@@ -470,19 +543,20 @@ router.post(
               row.name.trim(),
               row.sku.trim(),
               row.barcode?.trim() || null,
-              parseInt(row.category_id),
+              categoryId,
               row.sub_category_id ? parseInt(row.sub_category_id) : null,
               unitPrice,
-              row.cost_price ? parseFloat(row.cost_price) : null,
+              costPrice,
               stockQty,
               row.unit?.trim() || null,
-              row.low_stock_alert ? parseInt(row.low_stock_alert) : 10,
-              row.tax_percent ? parseFloat(row.tax_percent) : 7.5,
+              lowStockAlert,
+              taxRate,
               row.description?.trim() || null,
               row.status?.trim() || "active",
               req.user.id,
             ],
           );
+          imported++;
         } else if (type === "categories") {
           if (!row.name?.trim()) throw new Error("name is required");
           await pool.query(
@@ -507,12 +581,13 @@ router.post(
       }
     }
 
-    res.status(imported > 0 ? 201 : 400).json({
+    res.status(imported > 0 || updated > 0 ? 201 : 400).json({
       imported,
+      updated,
       failed: errors.length,
       total: rows.length,
       errors: errors.slice(0, 50),
-      message: `${imported} of ${rows.length} rows imported${errors.length ? `, ${errors.length} failed` : ""}`,
+      message: `${imported} imported, ${updated} updated of ${rows.length} rows${errors.length ? `, ${errors.length} failed` : ""}`,
     });
   },
 );

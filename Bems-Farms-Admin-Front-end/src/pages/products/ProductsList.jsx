@@ -119,6 +119,9 @@ export default function ProductsList() {
           <small className="text-muted">Manage store inventory, prices, SKUs, universal barcodes, and stock thresholds</small>
         </div>
         <div className="d-flex gap-2">
+          <Link to="/products/import" className="btn btn-outline-secondary d-flex align-items-center gap-1 shadow-sm">
+            <i className="ri-upload-cloud-line"></i> Bulk Import
+          </Link>
           <Link to="/products/barcode" className="btn btn-outline-success d-flex align-items-center gap-1 shadow-sm">
             <i className="ri-barcode-line"></i> Barcode Studio
           </Link>

@@ -1,5 +1,27 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import api from '../../lib/api'
+
+// ── Sample CSV Template Data ──────────────────────────────────────────────────
+const PRODUCTS_SAMPLE_CSV = `name,sku,barcode,category,unit_price,cost_price,stock_qty,unit,low_stock_alert,tax_percent,description,status
+Ofada Rice (5kg Bag),RICE-OFA-05KG,950110001001,Rice & Grains,12500,9800,150,5 kg bag,15,7.5,"Stone-free premium aromatic brown ofada rice.",active
+Pure Red Palm Oil (1L),OIL-PLM-01LT,950110001002,Cooking Oils,3200,2400,200,1 litre bottle,20,7.5,"First-press unrefined red palm oil from Imo State groves.",active
+Fresh Farm Eggs (Crate),EGG-FRM-01CR,950110001003,Poultry & Dairy,4500,3600,85,1 crate (30 eggs),10,0.0,"Clean grade-A brown eggs freshly collected daily.",active
+Smoked Catfish (Pack of 4),FISH-CAT-04PK,950110001004,Fish & Seafood,6000,4500,45,Pack of 4,8,7.5,"Oven-dried hygienic catfish with long shelf life.",active
+Ijebu Garri (5kg Bag),GAR-IJB-05KG,950110001005,Tubers & Grains,5500,4200,110,5 kg bag,12,7.5,"Crispy, sour, dry-fried authentic Ijebu cassava flakes.",active
+Ugu Pumpkin Leaves (Large Bunch),VEG-UGU-01BN,950110001006,Fresh Vegetables,800,500,60,Large bunch,15,0.0,"Farm-fresh cut fluted pumpkin leaves rich in iron.",active`
+
+const PRODUCTS_BLANK_CSV = `name,sku,barcode,category,unit_price,cost_price,stock_qty,unit,low_stock_alert,tax_percent,description,status`
+
+const CATEGORIES_SAMPLE_CSV = `name,code,description,status
+Rice & Grains,GRAINS,"Local and imported grains, flours, and cereals",active
+Cooking Oils,OILS,"Red palm oil, vegetable oil, groundnut oil",active
+Poultry & Dairy,POULTRY,"Farm fresh eggs, chicken, and dairy items",active
+Fish & Seafood,SEAFOOD,"Fresh and smoked fish, crayfish, and prawns",active
+Tubers & Root Crops,TUBERS,"Yams, cassava, potatoes, and plantains",active`
+
+const CATEGORIES_BLANK_CSV = `name,code,description,status`
 
 // ── System fields per import type ─────────────────────────────────────────────
 const IMPORT_TYPES = {
@@ -8,79 +30,182 @@ const IMPORT_TYPES = {
     icon: 'ri-box-3-line',
     color: '#0ab39c',
     fields: [
-      { key: 'name',             label: 'Product Name',      required: true  },
-      { key: 'sku',              label: 'SKU',               required: true  },
-      { key: 'barcode',          label: 'Barcode',           required: false },
-      { key: 'category_id',      label: 'Category ID',       required: true  },
-      { key: 'sub_category_id',  label: 'Sub-Category ID',   required: false },
-      { key: 'brand_id',         label: 'Brand ID',          required: false },
-      { key: 'unit_price',       label: 'Unit Price (₦)',    required: true  },
-      { key: 'cost_price',       label: 'Cost Price (₦)',    required: false },
-      { key: 'stock_qty',        label: 'Stock Quantity',    required: true  },
-      { key: 'unit',             label: 'Unit (kg/pack/…)',  required: false },
-      { key: 'low_stock_alert',  label: 'Low Stock Alert',   required: false },
-      { key: 'tax_percent',      label: 'Tax (%)',           required: false },
-      { key: 'description',      label: 'Description',       required: false },
-      { key: 'status',           label: 'Status',            required: false },
+      { key: 'name',             label: 'Product Name',      required: true,  example: 'Ofada Rice (5kg Bag)', desc: 'Official commercial name of product' },
+      { key: 'sku',              label: 'SKU (Stock Code)',  required: true,  example: 'RICE-OFA-05KG',         desc: 'Unique product tracking code' },
+      { key: 'barcode',          label: 'Barcode / UPC',     required: false, example: '950110001001',         desc: 'Universal barcode or EAN number' },
+      { key: 'category_id',      label: 'Category Name/ID',  required: true,  example: 'Rice & Grains',         desc: 'Category name or numeric ID' },
+      { key: 'unit_price',       label: 'Selling Price (₦)', required: true,  example: '12500',                 desc: 'Retail or sales price per unit' },
+      { key: 'cost_price',       label: 'Cost Price (₦)',    required: false, example: '9800',                  desc: 'Purchase or production cost' },
+      { key: 'stock_qty',        label: 'Initial Stock Qty', required: true,  example: '150',                   desc: 'Units in warehouse / store stock' },
+      { key: 'unit',             label: 'Packaging Unit',    required: false, example: '5 kg bag',              desc: 'e.g. 1 kg, crate, litre bottle' },
+      { key: 'low_stock_alert',  label: 'Low Stock Alert',   required: false, example: '15',                    desc: 'Threshold triggering replenishment' },
+      { key: 'tax_percent',      label: 'Tax Rate (%)',      required: false, example: '7.5',                   desc: 'VAT rate applied to sales' },
+      { key: 'description',      label: 'Description',       required: false, example: 'Premium stone-free...', desc: 'Customer and store details' },
+      { key: 'status',           label: 'Status',            required: false, example: 'active',                desc: 'active or inactive' },
     ],
-    templateHeaders: ['name','sku','barcode','category_id','sub_category_id','brand_id','unit_price','cost_price','stock_qty','unit','low_stock_alert','tax_percent','description','status'],
+    sampleCSV: PRODUCTS_SAMPLE_CSV,
+    blankCSV: PRODUCTS_BLANK_CSV,
   },
   categories: {
     label: 'Categories',
     icon: 'ri-folder-line',
     color: '#405189',
     fields: [
-      { key: 'name',        label: 'Category Name', required: true  },
-      { key: 'code',        label: 'Code',          required: false },
-      { key: 'description', label: 'Description',   required: false },
-      { key: 'status',      label: 'Status',        required: false },
+      { key: 'name',        label: 'Category Name', required: true,  example: 'Rice & Grains',         desc: 'Department or category title' },
+      { key: 'code',        label: 'Category Code', required: false, example: 'GRAINS',                desc: 'Short uppercase classification code' },
+      { key: 'description', label: 'Description',   required: false, example: 'Grains, flours & rice', desc: 'Department details' },
+      { key: 'status',      label: 'Status',        required: false, example: 'active',                desc: 'active or inactive' },
     ],
-    templateHeaders: ['name','code','description','status'],
-
+    sampleCSV: CATEGORIES_SAMPLE_CSV,
+    blankCSV: CATEGORIES_BLANK_CSV,
+  },
 }
 
-const HISTORY = [
-  { file: 'products_jan.xlsx',     type: 'products',       by: 'Admin',           status: 'success',    date: '12 Jan 2025' },
-  { file: 'variants_feb.csv',      type: 'products',       by: 'Store Manager',   status: 'success',    date: '08 Feb 2025' },
-  { file: 'price_update.xls',      type: 'products',       by: 'Admin',           status: 'failed',     date: '22 Feb 2025' },
-  { file: 'category_import.csv',   type: 'categories',     by: 'Inventory Team',  status: 'processing', date: '01 Mar 2025' },
-  { file: 'supplier_products.xlsx','type': 'products',     by: 'Warehouse Admin', status: 'success',    date: '10 Mar 2025' },
-]
-
-const STATUS_BADGE = {
-  success:    'bg-success-subtle text-success border border-success-subtle',
-  failed:     'bg-danger-subtle text-danger border border-danger-subtle',
-  processing: 'bg-info-subtle text-info border border-info-subtle',
+const FIELD_ALIASES = {
+  name: ['name', 'product_name', 'product', 'item_name', 'item', 'title', 'goods_name'],
+  sku: ['sku', 'item_code', 'product_code', 'code', 'product_sku', 'reference', 'ref'],
+  barcode: ['barcode', 'upc', 'ean', 'gtin', 'isbn', 'barcode_number', 'upc_ean'],
+  category_id: ['category', 'category_name', 'category_id', 'department', 'cat', 'dept', 'product_category'],
+  sub_category_id: ['sub_category', 'sub_category_name', 'sub_category_id', 'subcategory', 'subcat'],
+  unit_price: ['unit_price', 'price', 'selling_price', 'retail_price', 'sales_price', 'rate', 'amount', 'selling_rate'],
+  cost_price: ['cost_price', 'cost', 'buying_price', 'purchase_price', 'wholesale_price', 'unit_cost'],
+  stock_qty: ['stock_qty', 'stock', 'quantity', 'qty', 'stock_quantity', 'count', 'units', 'inventory', 'on_hand'],
+  unit: ['unit', 'uom', 'measurement', 'package', 'package_size', 'size', 'packaging', 'unit_of_measure'],
+  low_stock_alert: ['low_stock_alert', 'low_stock', 'min_stock', 'reorder_level', 'threshold', 'alert_threshold'],
+  tax_percent: ['tax_percent', 'tax', 'vat', 'tax_rate', 'vat_percent'],
+  description: ['description', 'desc', 'details', 'notes', 'product_description', 'summary', 'about'],
+  status: ['status', 'active', 'state', 'visibility'],
+  code: ['code', 'category_code', 'slug', 'cat_code'],
 }
 
-function downloadTemplate(typeKey) {
-  const type = IMPORT_TYPES[typeKey]
-  const csv = type.templateHeaders.join(',') + '\n' +
-    type.templateHeaders.map(() => '').join(',')
-  const blob = new Blob([csv], { type: 'text/csv' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href = url
-  a.download = `bems_${typeKey}_template.csv`
-  a.click()
+// ── Robust RFC-4180 Compliant CSV Parser ──────────────────────────────────────
+function parseCSV(text) {
+  const lines = []
+  let row = []
+  let cell = ''
+  let inQuotes = false
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]
+    const nextChar = text[i + 1]
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        cell += '"'
+        i++
+      } else {
+        inQuotes = !inQuotes
+      }
+    } else if (char === ',' && !inQuotes) {
+      row.push(cell.trim())
+      cell = ''
+    } else if ((char === '\r' || char === '\n') && !inQuotes) {
+      if (char === '\r' && nextChar === '\n') {
+        i++
+      }
+      row.push(cell.trim())
+      if (row.some(c => c !== '')) {
+        lines.push(row)
+      }
+      row = []
+      cell = ''
+    } else {
+      cell += char
+    }
+  }
+
+  if (cell || row.length > 0) {
+    row.push(cell.trim())
+    if (row.some(c => c !== '')) {
+      lines.push(row)
+    }
+  }
+
+  if (!lines.length) return { headers: [], rows: [] }
+  const headers = lines[0].map(h => h.replace(/^["']|["']$/g, '').trim())
+  const rows = lines.slice(1).map(r => {
+    const obj = {}
+    headers.forEach((h, idx) => {
+      obj[h] = r[idx] !== undefined ? r[idx] : ''
+    })
+    return obj
+  })
+
+  return { headers, rows }
+}
+
+function autoMapHeaders(headers, fields) {
+  const map = {}
+  fields.forEach(f => {
+    // 1. Exact key match
+    const exact = headers.find(h => h.toLowerCase() === f.key.toLowerCase())
+    if (exact) {
+      map[f.key] = exact
+      return
+    }
+    // 2. Exact label match
+    const labelMatch = headers.find(h => h.toLowerCase() === f.label.toLowerCase())
+    if (labelMatch) {
+      map[f.key] = labelMatch
+      return
+    }
+    // 3. Known aliases match
+    const aliases = FIELD_ALIASES[f.key] || []
+    const aliasMatch = headers.find(h => {
+      const normalized = h.toLowerCase().replace(/[\s_-]+/g, '_')
+      return aliases.some(a => normalized === a || normalized.includes(a))
+    })
+    if (aliasMatch) {
+      map[f.key] = aliasMatch
+    }
+  })
+  return map
+}
+
+function downloadCSV(filename, content) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
   URL.revokeObjectURL(url)
-}
-
-function parseCSVHeaders(text) {
-  const firstLine = text.split('\n')[0]
-  return firstLine.split(',').map(h => h.trim().replace(/^"|"$/g, ''))
 }
 
 export default function BulkImport() {
   const [activeType, setActiveType]     = useState('products')
-  const [step, setStep]                 = useState(1) // 1=upload, 2=map, 3=done
+  const [step, setStep]                 = useState(1) // 1 = upload & download, 2 = map, 3 = results
   const [dragOver, setDragOver]         = useState(false)
   const [uploadedFile, setUploadedFile] = useState(null)
   const [fileHeaders, setFileHeaders]   = useState([])
+  const [parsedRows, setParsedRows]     = useState([])
   const [mapping, setMapping]           = useState({})
+  const [updateExisting, setUpdateExisting] = useState(true)
+  const [autoCreateCategories, setAutoCreateCategories] = useState(true)
   const [importing, setImporting]       = useState(false)
-  const [history, setHistory]           = useState(HISTORY)
+  const [importResult, setImportResult] = useState(null)
+  const [showGuidelines, setShowGuidelines] = useState(false)
   const fileInputRef = useRef(null)
+
+  // Load / persist history in localStorage
+  const [history, setHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('bems_import_history')
+      return saved ? JSON.parse(saved) : [
+        { file: 'bems_products_sample.csv', type: 'products', by: 'Administrator', status: 'success', imported: 6, failed: 0, date: '12 Sep 2026' },
+      ]
+    } catch {
+      return []
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('bems_import_history', JSON.stringify(history))
+    } catch {}
+  }, [history])
 
   const typeConfig = IMPORT_TYPES[activeType]
 
@@ -93,43 +218,46 @@ export default function BulkImport() {
     setStep(1)
     setUploadedFile(null)
     setFileHeaders([])
+    setParsedRows([])
     setMapping({})
+    setImportResult(null)
   }
 
   function handleFile(file) {
     if (!file) return
+    if (!file.name.match(/\.(csv|tsv|txt)$/i)) {
+      toast.error('Please upload a valid CSV file (.csv)')
+      return
+    }
+
     setUploadedFile(file)
     const reader = new FileReader()
     reader.onload = e => {
-      const text = e.target.result
-      const headers = parseCSVHeaders(text)
-      setFileHeaders(headers)
-      // Auto-map: if a file column exactly matches a system field key or label, pre-select it
-      const autoMap = {}
-      typeConfig.fields.forEach(f => {
-        const match = headers.find(h =>
-          h.toLowerCase() === f.key.toLowerCase() ||
-          h.toLowerCase() === f.label.toLowerCase()
-        )
-        if (match) autoMap[f.key] = match
-      })
-      setMapping(autoMap)
-      setStep(2)
+      try {
+        const text = e.target.result
+        const { headers, rows } = parseCSV(text)
+        if (!headers.length) {
+          toast.error('The uploaded file is empty or could not be read.')
+          return
+        }
+        if (!rows.length) {
+          toast.error('The uploaded CSV file contains headers but no data rows.')
+          return
+        }
+
+        setFileHeaders(headers)
+        setParsedRows(rows)
+
+        const autoMap = autoMapHeaders(headers, typeConfig.fields)
+        setMapping(autoMap)
+        setStep(2)
+        toast.success(`Loaded ${rows.length} rows and ${headers.length} columns!`)
+      } catch (err) {
+        console.error('CSV parse error:', err)
+        toast.error('Failed to parse CSV file. Please ensure it is UTF-8 encoded.')
+      }
     }
-    // For XLSX we can only do text read (won't parse properly, but shows the flow)
-    if (file.name.endsWith('.csv')) {
-      reader.readAsText(file)
-    } else {
-      // For xlsx/xls: simulate with template headers as demo
-      setFileHeaders(typeConfig.templateHeaders)
-      const autoMap = {}
-      typeConfig.fields.forEach(f => {
-        if (typeConfig.templateHeaders.includes(f.key)) autoMap[f.key] = f.key
-      })
-      setMapping(autoMap)
-      setUploadedFile(file)
-      setStep(2)
-    }
+    reader.readAsText(file)
   }
 
   function handleDrop(e) {
@@ -139,301 +267,721 @@ export default function BulkImport() {
     if (file) handleFile(file)
   }
 
-  function handleImport() {
+  // Check required fields mapping
+  const missingRequired = useMemo(() => {
+    return typeConfig.fields.filter(f => f.required && !mapping[f.key])
+  }, [typeConfig, mapping])
+
+  const isExactSchemaMatch = useMemo(() => {
+    return typeConfig.fields.every(f => mapping[f.key] === f.key)
+  }, [typeConfig, mapping])
+
+  // Live preview of first 5 mapped rows
+  const transformedPreview = useMemo(() => {
+    if (!parsedRows.length) return []
+    return parsedRows.slice(0, 5).map(row => {
+      const transformed = {}
+      typeConfig.fields.forEach(f => {
+        const mappedHeader = mapping[f.key]
+        transformed[f.key] = mappedHeader ? row[mappedHeader] : ''
+      })
+      return transformed
+    })
+  }, [parsedRows, mapping, typeConfig])
+
+  async function handleExecuteImport() {
+    if (missingRequired.length > 0) {
+      toast.error(`Please map all required fields: ${missingRequired.map(f => f.label).join(', ')}`)
+      return
+    }
+
     setImporting(true)
-    setTimeout(() => {
+    try {
+      // Transform all rows according to user's schema mapping
+      const mappedRows = parsedRows.map(row => {
+        const item = {}
+        typeConfig.fields.forEach(f => {
+          const mappedHeader = mapping[f.key]
+          if (mappedHeader && row[mappedHeader] !== undefined) {
+            item[f.key] = row[mappedHeader]
+          }
+        })
+        return item
+      })
+
+      const payload = {
+        type: activeType,
+        rows: mappedRows,
+        update_existing: updateExisting,
+        auto_create_categories: autoCreateCategories,
+      }
+
+      const res = await api.post('/admin/products/bulk-import', payload)
+      const data = res.data
+
+      setImportResult({
+        success: true,
+        imported: data.imported || 0,
+        updated: data.updated || 0,
+        failed: data.failed || 0,
+        total: data.total || mappedRows.length,
+        errors: data.errors || [],
+        message: data.message,
+      })
+
+      // Add to history
       const newEntry = {
-        file: uploadedFile.name,
+        file: uploadedFile?.name || `${activeType}_import.csv`,
         type: activeType,
         by: 'Admin',
-        status: 'success',
-        date: new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }),
+        status: data.failed > 0 ? (data.imported > 0 ? 'partial' : 'failed') : 'success',
+        imported: data.imported || 0,
+        failed: data.failed || 0,
+        date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       }
       setHistory(prev => [newEntry, ...prev])
-      setImporting(false)
+
       setStep(3)
-    }, 1800)
+      toast.success(data.message || 'Import finished successfully!')
+    } catch (err) {
+      console.error('Import failed:', err)
+      const errMsg = err?.response?.data?.message || err.message || 'Bulk import failed'
+      toast.error(errMsg)
+      setImportResult({
+        success: false,
+        imported: err?.response?.data?.imported || 0,
+        failed: err?.response?.data?.failed || parsedRows.length,
+        total: parsedRows.length,
+        errors: err?.response?.data?.errors || [{ row: 'All', message: errMsg }],
+        message: errMsg,
+      })
+      setStep(3)
+    } finally {
+      setImporting(false)
+    }
   }
 
-  const requiredMapped  = typeConfig.fields.filter(f => f.required).every(f => mapping[f.key])
-  const mappedCount     = Object.values(mapping).filter(Boolean).length
-
   return (
-    <div className="container-fluid">
-      {/* ── Page heading ──────────────────────────────────────────────────── */}
-      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
-        <h6 className="flex-grow-1 mb-0">Bulk Import</h6>
-        <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><Link to="/products">Products</Link></li>
-          <li className="breadcrumb-item active">Bulk Import</li>
-        </ul>
+    <div className="container-fluid py-2">
+      {/* ── Page Header ──────────────────────────────────────────────────── */}
+      <div className="gap-2 page-heading mb-3 flex-column flex-md-row d-flex justify-content-between align-items-md-center">
+        <div>
+          <h6 className="mb-0 fw-bold">Bulk Import & Schema Mapping</h6>
+          <p className="text-muted fs-sm mb-0">
+            Download standardized CSV templates, map your custom columns, and batch import goods into Bems Farms inventory.
+          </p>
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          <Link to="/products" className="btn btn-outline-secondary btn-sm">
+            <i className="ri-arrow-left-line me-1"></i>Back to Products
+          </Link>
+          <Link to="/products/export" className="btn btn-outline-primary btn-sm">
+            <i className="ri-download-cloud-line me-1"></i>Bulk Export
+          </Link>
+        </div>
       </div>
 
-      {/* ── Import type tabs ──────────────────────────────────────────────── */}
-      <div className="card mb-4">
-        <div className="card-body py-3">
-          <div className="d-flex gap-2 flex-wrap">
+      {/* ── Type Selector ────────────────────────────────────────────────── */}
+      <div className="card shadow-sm border-0 mb-3">
+        <div className="card-body p-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div className="d-flex gap-2">
             {Object.entries(IMPORT_TYPES).map(([key, cfg]) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => handleTypeChange(key)}
-                className={`btn d-flex align-items-center gap-2 ${activeType === key ? 'btn-primary' : 'btn-outline-secondary'}`}
-                style={activeType === key ? { background: cfg.color, borderColor: cfg.color } : {}}
+                className={`btn btn-sm d-flex align-items-center gap-1.5 ${
+                  activeType === key ? 'btn-dark text-white fw-bold' : 'btn-light text-dark'
+                }`}
               >
-                <i className={cfg.icon}></i> {cfg.label}
+                <i className={cfg.icon} style={{ color: activeType === key ? '#10b981' : undefined }}></i>
+                <span>Import {cfg.label}</span>
               </button>
             ))}
+          </div>
+
+          <div className="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary"
+              onClick={() => setShowGuidelines(prev => !prev)}
+            >
+              <i className="ri-information-line me-1"></i>
+              {showGuidelines ? 'Hide Schema Guide' : 'View Schema Guide'}
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="row">
-        <div className="col-12">
+      {/* ── Schema Reference Guide (Collapsible) ─────────────────────────── */}
+      {showGuidelines && (
+        <div className="card shadow-sm border-0 mb-3 bg-light">
+          <div className="card-header bg-white py-2 border-bottom d-flex justify-content-between align-items-center">
+            <h6 className="fw-bold mb-0 fs-sm text-dark d-flex align-items-center gap-2">
+              <i className="ri-file-list-3-line text-primary"></i>
+              Official {typeConfig.label} Schema Specification
+            </h6>
+            <span className="badge bg-primary-subtle text-primary">System Format</span>
+          </div>
+          <div className="card-body p-0">
+            <div className="table-responsive">
+              <table className="table table-sm table-hover align-middle mb-0 fs-xs">
+                <thead className="table-light text-muted">
+                  <tr>
+                    <th className="ps-3">System Column</th>
+                    <th>Required?</th>
+                    <th>Example Value</th>
+                    <th className="pe-3">Description & Accepted Values</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {typeConfig.fields.map(f => (
+                    <tr key={f.key}>
+                      <td className="ps-3 font-monospace fw-bold text-dark">{f.key}</td>
+                      <td>
+                        {f.required ? (
+                          <span className="badge bg-danger-subtle text-danger">Required</span>
+                        ) : (
+                          <span className="badge bg-secondary-subtle text-secondary">Optional</span>
+                        )}
+                      </td>
+                      <td className="font-monospace text-muted">{f.example}</td>
+                      <td className="pe-3 text-muted">{f.desc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
-          {/* ── Step 1: Upload ──────────────────────────────────────────────── */}
-          {step === 1 && (
-            <div className="card">
-              <div className="card-header d-flex align-items-center justify-content-between">
-                <h5 className="card-title mb-0">
-                  <i className={`${typeConfig.icon} me-2`} style={{ color: typeConfig.color }}></i>
-                  Import {typeConfig.label}
-                </h5>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary"
-                  onClick={() => downloadTemplate(activeType)}
-                >
-                  <i className="ri-download-line me-1"></i> Download Template
-                </button>
-              </div>
-              <div className="card-body">
-
-                {/* Instructions */}
-                <div className="alert alert-secondary mb-4">
-                  <h6 className="mb-2">Required columns for {typeConfig.label}</h6>
-                  <div className="d-flex flex-wrap gap-2 mt-2">
-                    {typeConfig.fields.map(f => (
-                      <span key={f.key} className={`badge ${f.required ? 'bg-primary' : 'bg-secondary bg-opacity-25 text-body'}`}>
-                        {f.label}{f.required ? ' *' : ''}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="mb-0 mt-3 small text-muted">
-                    * Required fields. Download the template above to get started with the correct column names.
-                  </p>
+      {/* ── Step Progress Indicator ───────────────────────────────────────── */}
+      <div className="card shadow-sm border-0 mb-4">
+        <div className="card-body py-3">
+          <div className="row g-2 text-center">
+            <div className="col-4">
+              <div className={`p-2 rounded-3 ${step === 1 ? 'bg-primary text-white' : step > 1 ? 'bg-success text-white' : 'bg-light text-muted'}`}>
+                <div className="fw-bold fs-xs">STEP 1</div>
+                <div className="fs-sm fw-semibold">
+                  <i className="ri-download-cloud-line me-1"></i>Download Template & Upload
                 </div>
+              </div>
+            </div>
+            <div className="col-4">
+              <div className={`p-2 rounded-3 ${step === 2 ? 'bg-primary text-white' : step > 2 ? 'bg-success text-white' : 'bg-light text-muted'}`}>
+                <div className="fw-bold fs-xs">STEP 2</div>
+                <div className="fs-sm fw-semibold">
+                  <i className="ri-git-merge-line me-1"></i>Schema Mapping & Validation
+                </div>
+              </div>
+            </div>
+            <div className="col-4">
+              <div className={`p-2 rounded-3 ${step === 3 ? 'bg-success text-white' : 'bg-light text-muted'}`}>
+                <div className="fw-bold fs-xs">STEP 3</div>
+                <div className="fs-sm fw-semibold">
+                  <i className="ri-checkbox-circle-line me-1"></i>Review & Results
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-                {/* Drop zone */}
+      {/* ── STEP 1: Download Templates & Upload File ──────────────────────── */}
+      {step === 1 && (
+        <div className="row g-3">
+          {/* Direct Download Templates Card */}
+          <div className="col-12">
+            <div className="card shadow-sm border-0 border-start border-4 border-success">
+              <div className="card-body p-4">
+                <div className="row align-items-center g-3">
+                  <div className="col-lg-8">
+                    <div className="d-flex align-items-center gap-3">
+                      <div className="size-12 rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center fs-2xl flex-shrink-0">
+                        <i className="ri-file-excel-2-line"></i>
+                      </div>
+                      <div>
+                        <h5 className="fw-bold text-dark mb-1">
+                          Download Official Bems Farms {typeConfig.label} CSV Template
+                        </h5>
+                        <p className="text-muted fs-sm mb-0">
+                          Use our pre-configured CSV spreadsheet to fill in your inventory directly. Uploading this template guarantees <strong>100% automatic schema mapping</strong> with zero manual adjustments.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-lg-4">
+                    <div className="d-flex flex-column flex-sm-row gap-2 justify-content-lg-end">
+                      <button
+                        type="button"
+                        className="btn btn-outline-success d-flex align-items-center justify-content-center gap-1.5"
+                        onClick={() => downloadCSV(`bems_${activeType}_blank_template.csv`, typeConfig.blankCSV)}
+                        title="Download blank template with official column headers only"
+                      >
+                        <i className="ri-download-line"></i>
+                        <span>Blank Template</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-success text-white d-flex align-items-center justify-content-center gap-1.5 shadow-sm"
+                        onClick={() => downloadCSV(`bems_${activeType}_with_samples.csv`, typeConfig.sampleCSV)}
+                        title="Download template prefilled with realistic Nigerian farm produce examples"
+                      >
+                        <i className="ri-file-download-fill"></i>
+                        <span>Sample CSV (with Data)</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Drag and Drop Upload Zone */}
+          <div className="col-12">
+            <div className="card shadow-sm border-0">
+              <div className="card-header bg-transparent border-bottom py-3">
+                <h6 className="card-title fw-bold mb-0 text-dark">
+                  Upload CSV Data File
+                </h6>
+              </div>
+              <div className="card-body p-4">
                 <div
-                  className={`border rounded p-5 text-center ${dragOver ? 'border-primary bg-primary bg-opacity-10' : 'border-dashed'}`}
-                  style={{ cursor: 'pointer', borderStyle: 'dashed', borderWidth: 2 }}
+                  className={`border rounded-4 p-5 text-center transition-all ${
+                    dragOver ? 'border-primary bg-primary bg-opacity-10 scale-up' : 'border-dashed'
+                  }`}
+                  style={{
+                    cursor: 'pointer',
+                    borderStyle: 'dashed',
+                    borderWidth: 2,
+                    borderColor: dragOver ? '#10b981' : '#cbd5e1',
+                    backgroundColor: dragOver ? 'rgba(16, 185, 129, 0.05)' : '#f8fafc',
+                  }}
                   onDragOver={e => { e.preventDefault(); setDragOver(true) }}
                   onDragLeave={() => setDragOver(false)}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <div style={{ fontSize: 48 }}>📂</div>
-                  <h6 className="fw-semibold mt-2 mb-1">Drag & drop your file here</h6>
-                  <p className="text-muted small mb-3">or click to browse — CSV, XLS, XLSX accepted (max 10 MB)</p>
+                  <div className="size-16 rounded-circle bg-white shadow-sm text-primary d-flex align-items-center justify-content-center mx-auto mb-3 fs-3xl">
+                    <i className="ri-upload-cloud-2-line"></i>
+                  </div>
+                  <h5 className="fw-bold text-dark mb-1">Drag and drop your CSV file here</h5>
+                  <p className="text-muted fs-sm mb-3">
+                    Supports <code>.csv</code> files exported from Excel, Google Sheets, Odoo, or our official template (up to 10 MB).
+                  </p>
                   <button
                     type="button"
-                    className="btn btn-outline-secondary px-4"
+                    className="btn btn-primary px-4 shadow-sm"
                     onClick={e => { e.stopPropagation(); fileInputRef.current?.click() }}
                   >
-                    Browse File
+                    <i className="ri-folder-open-line me-1"></i>Browse Computer
                   </button>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".csv,.xls,.xlsx"
+                    accept=".csv,.tsv,.txt"
                     className="d-none"
                     onChange={e => handleFile(e.target.files[0])}
                   />
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        </div>
+      )}
 
-          {/* ── Step 2: Column Mapping ──────────────────────────────────────── */}
-          {step === 2 && (
-            <div className="card">
-              <div className="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+      {/* ── STEP 2: Interactive Schema Mapping ────────────────────────────── */}
+      {step === 2 && (
+        <div className="row g-3">
+          {/* File summary & Schema Detection Banner */}
+          <div className="col-12">
+            <div className={`alert ${isExactSchemaMatch ? 'alert-success' : 'alert-info'} d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-sm mb-0`}>
+              <div className="d-flex align-items-center gap-3">
+                <i className={`${isExactSchemaMatch ? 'ri-checkbox-circle-fill fs-2xl text-success' : 'ri-git-merge-line fs-2xl text-info'}`}></i>
                 <div>
-                  <h5 className="card-title mb-1">
-                    <i className="ri-git-merge-line me-2 text-primary"></i>
-                    Map Your Columns
-                  </h5>
-                  <p className="text-muted mb-0 small">
-                    File: <strong>{uploadedFile?.name}</strong> · {fileHeaders.length} column{fileHeaders.length !== 1 ? 's' : ''} detected · {mappedCount} mapped
+                  <h6 className="fw-bold mb-0">
+                    {isExactSchemaMatch ? '✨ Perfect Match: Official Template Schema Detected!' : 'Custom CSV Detected — Review Schema Mapping'}
+                  </h6>
+                  <p className="mb-0 fs-xs">
+                    File: <strong>{uploadedFile?.name}</strong> ({(uploadedFile?.size / 1024).toFixed(1)} KB) · <strong>{parsedRows.length} data rows</strong> · <strong>{fileHeaders.length} columns detected</strong>
                   </p>
                 </div>
-                <button type="button" className="btn btn-sm btn-outline-secondary" onClick={resetUpload}>
-                  <i className="ri-arrow-left-line me-1"></i> Change File
+              </div>
+
+              <div className="d-flex align-items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary bg-white"
+                  onClick={resetUpload}
+                >
+                  <i className="ri-arrow-left-line me-1"></i>Change File
                 </button>
-              </div>
-
-              <div className="card-body">
-                {/* Detected columns preview */}
-                <div className="mb-4">
-                  <p className="fw-medium mb-2 small text-muted text-uppercase" style={{ letterSpacing: 1 }}>Columns detected in your file</p>
-                  <div className="d-flex flex-wrap gap-2">
-                    {fileHeaders.map(h => (
-                      <span key={h} className="badge bg-light border text-body fw-normal px-3 py-2" style={{ fontSize: 12 }}>
-                        {h}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <hr />
-
-                {/* Mapping grid */}
-                <p className="fw-medium mb-3 small text-muted text-uppercase" style={{ letterSpacing: 1 }}>Match your columns to system fields</p>
-                <div className="row g-3">
-                  {typeConfig.fields.map(f => (
-                    <div className="col-md-6 col-xl-4" key={f.key}>
-                      <label className="form-label fw-medium mb-1" style={{ fontSize: 13 }}>
-                        {f.label}
-                        {f.required && <span className="text-danger ms-1">*</span>}
-                      </label>
-                      <select
-                        className={`form-select form-select-sm ${mapping[f.key] ? 'border-success' : f.required ? 'border-warning' : ''}`}
-                        value={mapping[f.key] || ''}
-                        onChange={e => setMapping(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      >
-                        <option value="">— not mapped —</option>
-                        {fileHeaders.map(h => (
-                          <option key={h} value={h}>{h}</option>
-                        ))}
-                      </select>
-                      {mapping[f.key] && (
-                        <div className="mt-1 d-flex align-items-center gap-1" style={{ fontSize: 11, color: '#0ab39c' }}>
-                          <i className="ri-check-line"></i> mapped from <strong>"{mapping[f.key]}"</strong>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Mapping summary + import button */}
-                <div className="mt-4 pt-3 border-top d-flex align-items-center justify-content-between flex-wrap gap-3">
-                  <div>
-                    {!requiredMapped && (
-                      <div className="text-warning small">
-                        <i className="ri-alert-line me-1"></i>
-                        Map all required (*) fields before importing.
-                      </div>
-                    )}
-                    {requiredMapped && (
-                      <div className="text-success small">
-                        <i className="ri-check-double-line me-1"></i>
-                        All required fields mapped. Ready to import.
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-primary px-4"
-                    disabled={!requiredMapped || importing}
-                    onClick={handleImport}
-                  >
-                    {importing
-                      ? <><span className="spinner-border spinner-border-sm me-2"></span>Importing…</>
-                      : <><i className="ri-upload-cloud-line me-1"></i>Import {typeConfig.label}</>
-                    }
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 3: Success ─────────────────────────────────────────────── */}
-          {step === 3 && (
-            <div className="card">
-              <div className="card-body text-center py-5">
-                <div style={{ fontSize: 56 }}>✅</div>
-                <h5 className="mt-3 mb-1">Import Successful</h5>
-                <p className="text-muted">{uploadedFile?.name} has been imported as {typeConfig.label}.</p>
-                <button type="button" className="btn btn-primary mt-2" onClick={resetUpload}>
-                  <i className="ri-upload-line me-1"></i> Import Another File
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ── Import History ──────────────────────────────────────────────── */}
-          <div className="card mt-4">
-            <div className="card-header d-flex justify-content-between align-items-center">
-              <h5 className="card-title mb-0">Import History</h5>
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => { resetUpload(); window.scrollTo(0,0) }}
-              >
-                <i className="ri-upload-line me-1"></i>Upload File
-              </button>
-            </div>
-            <div className="card-body pt-0">
-              <div className="table-card table-responsive">
-                <table className="table table-borderless align-middle text-nowrap mb-0">
-                  <thead className="bg-light border-bottom">
-                    <tr>
-                      <th className="fw-medium text-muted">File Name</th>
-                      <th className="fw-medium text-muted">Import Type</th>
-                      <th className="fw-medium text-muted">Uploaded By</th>
-                      <th className="fw-medium text-muted">Status</th>
-                      <th className="fw-medium text-muted">Date</th>
-                      <th className="fw-medium text-muted">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.map((row, i) => {
-                      const cfg = IMPORT_TYPES[row.type] || IMPORT_TYPES.products
-                      return (
-                        <tr key={i}>
-                          <td>
-                            <div className="d-flex align-items-center gap-2">
-                              <div style={{ width:28, height:28, borderRadius:6, background: cfg.color+'20', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                                <i className={cfg.icon} style={{ color: cfg.color, fontSize:14 }}></i>
-                              </div>
-                              <a href="#" className="fw-medium text-reset">{row.file}</a>
-                            </div>
-                          </td>
-                          <td>
-                            <span className="badge bg-secondary bg-opacity-10 text-body fw-normal px-2">
-                              {cfg.label}
-                            </span>
-                          </td>
-                          <td>{row.by}</td>
-                          <td>
-                            <span className={`badge ${STATUS_BADGE[row.status]}`}>
-                              {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
-                            </span>
-                          </td>
-                          <td>{row.date}</td>
-                          <td>
-                            <div className="d-flex gap-2">
-                              <button type="button" className="btn btn-sub-secondary size-8 btn-icon">
-                                <i className="ri-eye-line"></i>
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-sub-danger size-8 btn-icon"
-                                onClick={() => setHistory(prev => prev.filter((_, idx) => idx !== i))}
-                              >
-                                <i className="ri-delete-bin-line"></i>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
               </div>
             </div>
           </div>
 
+          {/* Schema Mapping Table */}
+          <div className="col-12">
+            <div className="card shadow-sm border-0">
+              <div className="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                  <h6 className="fw-bold mb-0 text-dark">
+                    Map Source CSV Columns to Bems Farms Fields
+                  </h6>
+                  <p className="text-muted fs-xs mb-0">
+                    Confirm or adjust which column from your file supplies each system attribute.
+                  </p>
+                </div>
+
+                <div className="d-flex align-items-center gap-2">
+                  <span className="badge bg-light text-dark border">
+                    {Object.values(mapping).filter(Boolean).length} of {typeConfig.fields.length} Fields Mapped
+                  </span>
+                  {missingRequired.length === 0 ? (
+                    <span className="badge bg-success-subtle text-success border border-success-subtle">
+                      <i className="ri-check-line me-1"></i>All Required Fields Ready
+                    </span>
+                  ) : (
+                    <span className="badge bg-danger-subtle text-danger border border-danger-subtle">
+                      <i className="ri-alert-line me-1"></i>{missingRequired.length} Required Field(s) Missing
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="card-body p-0">
+                <div className="table-responsive">
+                  <table className="table align-middle table-hover mb-0 text-nowrap">
+                    <thead className="table-light">
+                      <tr>
+                        <th className="ps-3" style={{ width: '28%' }}>Target System Field</th>
+                        <th style={{ width: '36%' }}>Source Column in CSV</th>
+                        <th className="pe-3" style={{ width: '36%' }}>Live Preview (from your file)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {typeConfig.fields.map(field => {
+                        const mappedHeader = mapping[field.key] || ''
+                        const sampleRow = parsedRows[0] || {}
+                        const sampleVal = mappedHeader ? sampleRow[mappedHeader] : ''
+
+                        return (
+                          <tr key={field.key} className={!mappedHeader && field.required ? 'table-warning bg-opacity-25' : ''}>
+                            <td className="ps-3">
+                              <div className="d-flex align-items-center gap-2">
+                                <div>
+                                  <div className="fw-bold text-dark fs-sm">
+                                    {field.label}
+                                    {field.required && <span className="text-danger ms-1">*</span>}
+                                  </div>
+                                  <span className="text-muted fs-xs font-monospace">{field.key}</span>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td>
+                              <div className="d-flex align-items-center gap-2">
+                                <select
+                                  className={`form-select form-select-sm ${
+                                    mappedHeader ? 'border-success bg-success-subtle text-success fw-semibold' : field.required ? 'border-danger' : ''
+                                  }`}
+                                  value={mappedHeader}
+                                  onChange={e => setMapping(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                >
+                                  <option value="">— Do not import (Skip) —</option>
+                                  {fileHeaders.map(h => (
+                                    <option key={h} value={h}>
+                                      {h}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </td>
+
+                            <td className="pe-3">
+                              {mappedHeader ? (
+                                <div className="d-flex align-items-center gap-2">
+                                  <span className="badge bg-light text-dark border font-monospace text-truncate" style={{ maxWidth: 280 }}>
+                                    {sampleVal ? String(sampleVal) : <span className="text-muted fst-italic">&lt;empty&gt;</span>}
+                                  </span>
+                                  <i className="ri-check-line text-success fs-sm" title="Mapped successfully"></i>
+                                </div>
+                              ) : (
+                                <span className="text-muted fs-xs fst-italic">
+                                  {field.required ? '⚠️ Needs mapping to proceed' : 'Optional (will use default)'}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Transformed Data Preview (First 5 Rows) ────────────────────── */}
+          <div className="col-12">
+            <div className="card shadow-sm border-0">
+              <div className="card-header bg-transparent border-bottom py-2.5 d-flex justify-content-between align-items-center">
+                <h6 className="fw-bold mb-0 text-dark fs-sm d-flex align-items-center gap-2">
+                  <i className="ri-eye-line text-primary"></i>
+                  Data Preview — First 5 Records Transformed with Current Schema
+                </h6>
+                <span className="text-muted fs-xs">
+                  Showing 5 of {parsedRows.length} records
+                </span>
+              </div>
+
+              <div className="card-body p-0">
+                <div className="table-responsive" style={{ maxHeight: 250 }}>
+                  <table className="table table-sm table-striped align-middle mb-0 fs-xs text-nowrap">
+                    <thead className="table-light">
+                      <tr>
+                        <th className="ps-3">#</th>
+                        {typeConfig.fields.filter(f => mapping[f.key]).map(f => (
+                          <th key={f.key}>{f.label}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {transformedPreview.map((row, idx) => (
+                        <tr key={idx}>
+                          <td className="ps-3 fw-bold text-muted">{idx + 1}</td>
+                          {typeConfig.fields.filter(f => mapping[f.key]).map(f => (
+                            <td key={f.key} className="text-dark">
+                              {row[f.key] ? String(row[f.key]) : <span className="text-muted fst-italic">—</span>}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Import Options & Action Bar */}
+              <div className="card-footer bg-white border-top py-3">
+                <div className="row align-items-center g-3">
+                  <div className="col-md-7">
+                    <div className="d-flex flex-column flex-sm-row gap-3">
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id="chkUpdateExisting"
+                          checked={updateExisting}
+                          onChange={e => setUpdateExisting(e.target.checked)}
+                        />
+                        <label className="form-check-label fs-xs fw-semibold" htmlFor="chkUpdateExisting">
+                          Update existing products if SKU already exists
+                        </label>
+                      </div>
+
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id="chkAutoCreateCats"
+                          checked={autoCreateCategories}
+                          onChange={e => setAutoCreateCategories(e.target.checked)}
+                        />
+                        <label className="form-check-label fs-xs fw-semibold" htmlFor="chkAutoCreateCats">
+                          Auto-create missing categories
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-md-5 d-flex justify-content-md-end gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-light btn-sm"
+                      onClick={resetUpload}
+                      disabled={importing}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-success d-flex align-items-center gap-1.5 px-4 shadow-sm"
+                      disabled={missingRequired.length > 0 || importing}
+                      onClick={handleExecuteImport}
+                    >
+                      {importing ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-1"></span>
+                          Processing Batch Import...
+                        </>
+                      ) : (
+                        <>
+                          <i className="ri-upload-cloud-fill"></i>
+                          <span>Execute Import ({parsedRows.length} Rows)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── STEP 3: Results & Execution Summary ───────────────────────────── */}
+      {step === 3 && importResult && (
+        <div className="row g-3">
+          <div className="col-12">
+            <div className="card shadow-sm border-0 text-center p-4">
+              <div className="card-body">
+                <div className={`size-16 rounded-circle ${importResult.failed === 0 ? 'bg-success' : 'bg-warning'} bg-opacity-10 ${importResult.failed === 0 ? 'text-success' : 'text-warning'} d-flex align-items-center justify-content-center mx-auto mb-3 fs-3xl`}>
+                  <i className={importResult.failed === 0 ? 'ri-checkbox-circle-fill' : 'ri-alert-fill'}></i>
+                </div>
+
+                <h4 className="fw-bold text-dark mb-1">
+                  {importResult.failed === 0 ? 'Bulk Import Completed Successfully!' : 'Import Finished with Some Errors'}
+                </h4>
+                <p className="text-muted fs-sm mb-4">
+                  {importResult.message || `Processed ${importResult.total} records.`}
+                </p>
+
+                {/* KPI Result Counters */}
+                <div className="row g-3 justify-content-center mb-4">
+                  <div className="col-sm-4 col-md-3">
+                    <div className="p-3 bg-success bg-opacity-10 border border-success border-opacity-25 rounded-3">
+                      <div className="text-success fs-xs fw-bold text-uppercase">Imported New</div>
+                      <h3 className="fw-bold text-success mb-0">{importResult.imported}</h3>
+                    </div>
+                  </div>
+                  {importResult.updated > 0 && (
+                    <div className="col-sm-4 col-md-3">
+                      <div className="p-3 bg-info bg-opacity-10 border border-info border-opacity-25 rounded-3">
+                        <div className="text-info fs-xs fw-bold text-uppercase">Updated Existing</div>
+                        <h3 className="fw-bold text-info mb-0">{importResult.updated}</h3>
+                      </div>
+                    </div>
+                  )}
+                  <div className="col-sm-4 col-md-3">
+                    <div className={`p-3 ${importResult.failed > 0 ? 'bg-danger bg-opacity-10 border border-danger border-opacity-25' : 'bg-light'} rounded-3`}>
+                      <div className={`${importResult.failed > 0 ? 'text-danger' : 'text-muted'} fs-xs fw-bold text-uppercase`}>Failed Rows</div>
+                      <h3 className={`fw-bold ${importResult.failed > 0 ? 'text-danger' : 'text-dark'} mb-0`}>{importResult.failed}</h3>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Error details if any */}
+                {importResult.errors && importResult.errors.length > 0 && (
+                  <div className="text-start mb-4">
+                    <h6 className="fw-bold text-danger fs-sm mb-2">
+                      <i className="ri-error-warning-line me-1"></i>Error Details by Row:
+                    </h6>
+                    <div className="border rounded-3 p-3 bg-light" style={{ maxHeight: 200, overflowY: 'auto' }}>
+                      <ul className="mb-0 ps-3 fs-xs text-danger">
+                        {importResult.errors.map((err, i) => (
+                          <li key={i} className="mb-1">
+                            <strong>Row {err.row}:</strong> {err.message}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                <div className="d-flex justify-content-center gap-2">
+                  <button type="button" className="btn btn-outline-secondary" onClick={resetUpload}>
+                    <i className="ri-upload-line me-1"></i>Import Another CSV
+                  </button>
+                  <Link to="/products" className="btn btn-primary shadow-sm">
+                    <i className="ri-box-3-line me-1"></i>View Product Directory
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Import History ────────────────────────────────────────────────── */}
+      <div className="card shadow-sm border-0 mt-4">
+        <div className="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+          <div>
+            <h6 className="card-title fw-bold mb-0 text-dark">Recent Import History</h6>
+            <p className="text-muted fs-xs mb-0">Record of uploaded batches, status, and dates</p>
+          </div>
+          <button
+            className="btn btn-outline-danger btn-sm"
+            onClick={() => {
+              if (window.confirm('Clear import history log?')) {
+                setHistory([])
+              }
+            }}
+          >
+            <i className="ri-delete-bin-line me-1"></i>Clear History
+          </button>
+        </div>
+
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table align-middle table-hover mb-0 text-nowrap">
+              <thead className="table-light fs-xs text-muted">
+                <tr>
+                  <th className="ps-3">Source File</th>
+                  <th>Category</th>
+                  <th>Uploaded By</th>
+                  <th>Results</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="text-center text-muted py-4 fs-sm">
+                      No import history recorded yet.
+                    </td>
+                  </tr>
+                ) : (
+                  history.map((row, i) => (
+                    <tr key={i}>
+                      <td className="ps-3">
+                        <div className="d-flex align-items-center gap-2">
+                          <i className="ri-file-text-line text-success fs-base"></i>
+                          <span className="fw-semibold text-dark fs-sm">{row.file}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="badge bg-secondary-subtle text-secondary text-capitalize">
+                          {row.type}
+                        </span>
+                      </td>
+                      <td className="fs-sm">{row.by || 'Admin'}</td>
+                      <td>
+                        <span className="text-success fs-xs fw-semibold">+{row.imported || 0} imported</span>
+                        {row.failed > 0 && <span className="text-danger fs-xs ms-2">({row.failed} failed)</span>}
+                      </td>
+                      <td>
+                        <span className={`badge ${
+                          row.status === 'success'
+                            ? 'bg-success-subtle text-success border border-success-subtle'
+                            : row.status === 'partial'
+                            ? 'bg-warning-subtle text-warning border border-warning-subtle'
+                            : 'bg-danger-subtle text-danger border border-danger-subtle'
+                        }`}>
+                          {row.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="text-muted fs-xs">{row.date}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

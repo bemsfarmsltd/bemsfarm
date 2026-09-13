@@ -49,7 +49,7 @@ export default function AddStaff() {
       }
       const res = await api.post('/admin/staff', payload)
       toast.success(res.data.message || 'Staff account created successfully!')
-      
+
       if (res.data.temp_password) {
         setCreatedStaffInfo({
           name: formData.name,
@@ -75,16 +75,10 @@ export default function AddStaff() {
           <h6 className="mb-0 fw-bold">Add Staff Member</h6>
           <p className="text-muted fs-sm mb-0">Create staff credentials, configure department, assign system permissions & roles.</p>
         </div>
-        <div className="d-flex align-items-center gap-2">
-          <Link to="/staff" className="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
-            <i className="ri-mail-send-line"></i>
-            <span>Invite via Email Instead</span>
-          </Link>
-          <ul className="breadcrumb flex-shrink-0 mb-0 d-none d-md-flex">
-            <li className="breadcrumb-item"><Link to="/staff">Staff</Link></li>
-            <li className="breadcrumb-item active">Add Staff</li>
-          </ul>
-        </div>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><Link to="/staff">Staff</Link></li>
+          <li className="breadcrumb-item active">Add Staff</li>
+        </ul>
       </div>
 
       {createdStaffInfo && (

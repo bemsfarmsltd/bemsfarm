@@ -30,6 +30,7 @@ import Variants        from './pages/products/Variants'
 import Reviews         from './pages/products/Reviews'
 import Barcode         from './pages/products/Barcode'
 import BulkExport      from './pages/products/BulkExport'
+import BulkImport      from './pages/products/BulkImport'
 
 // Inventory
 import StockList       from './pages/inventory/StockList'
@@ -148,6 +149,8 @@ function App() {
                 <Route path="/products/reviews"        element={<Reviews />} />
                 <Route path="/products/barcode"        element={<Barcode />} />
                 <Route path="/products/export"         element={<BulkExport />} />
+                <Route path="/products/import"         element={<BulkImport />} />
+                <Route path="/products/bulk-import"    element={<BulkImport />} />
 
                 <Route path="/inventory/stock"      element={<StockList />} />
                 <Route path="/inventory/stock-in"   element={<StockIn />} />
