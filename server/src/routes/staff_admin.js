@@ -834,6 +834,17 @@ router.delete("/:id/permanent", requireRole("superadmin"), async (req, res, next
     res.json({ message: "Staff member permanently deleted" });
   } catch (err) {
     await client.query("ROLLBACK");
+    // Dozens of tables (coupons, expenses, orders, products, notifications,
+    // stock movements, staff schedules/holidays, etc.) record who created/
+    // touched them via a plain user/staff FK with no ON DELETE clause — so
+    // any staff member who has actually done something in the system will
+    // fail a hard delete with a raw 23503 foreign-key-violation instead of
+    // a message that tells the admin what to do about it.
+    if (err.code === "23503") {
+      return res.status(400).json({
+        message: `Can't permanently delete this staff member — they still have related records${err.table ? ` in "${err.table}"` : ""} (e.g. things they created, approved, or were assigned). Use Deactivate instead to revoke their access without losing that history.`,
+      });
+    }
     next(err);
   } finally {
     client.release();
