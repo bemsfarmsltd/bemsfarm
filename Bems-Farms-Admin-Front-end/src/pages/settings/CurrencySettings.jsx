@@ -1,315 +1,162 @@
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
+import api from '../../lib/api'
+import SettingsTabs from './SettingsTabs'
+
+const BLANK = { code: '', name: '', symbol: '', exchange_rate: '1', is_default: false, is_enabled: true }
 
 export default function CurrencySettings() {
+  const [currencies, setCurrencies] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [form, setForm] = useState(BLANK)
+
+  const load = () => {
+    setLoading(true)
+    api.get('/admin/settings/currencies')
+      .then(res => setCurrencies(res.data.currencies || []))
+      .catch(() => toast.error('Failed to load currencies'))
+      .finally(() => setLoading(false))
+  }
+  useEffect(load, [])
+
+  function openAdd() { setEditing(null); setForm(BLANK); setModalOpen(true) }
+  function openEdit(c) {
+    setEditing(c)
+    setForm({ code: c.code, name: c.name, symbol: c.symbol || '', exchange_rate: c.exchange_rate, is_default: c.is_default, is_enabled: c.is_enabled })
+    setModalOpen(true)
+  }
+  const fld = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  async function handleSave(e) {
+    e.preventDefault()
+    if (!form.code.trim() || !form.name.trim()) return toast.error('Code and name are required')
+    setSaving(true)
+    try {
+      await api.post('/admin/settings/currencies', form)
+      toast.success(editing ? 'Currency updated' : 'Currency added')
+      setModalOpen(false)
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save currency')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleEnabled(c) {
+    try {
+      await api.post('/admin/settings/currencies', { code: c.code, name: c.name, is_enabled: !c.is_enabled })
+      load()
+    } catch {
+      toast.error('Failed to update currency')
+    }
+  }
+
   return (
     <div className="container-fluid">
-      <div className="mb-5">
-              <h4 className="fs-xl">Settings</h4>
-              <p className="text-muted">Manage overall store preferences and system configurations.</p>
+      <SettingsTabs />
+
+      <div className="card">
+        <div className="card-header d-flex flex-wrap gap-4 align-items-center justify-content-between">
+          <h5 className="card-title mb-1">Currencies</h5>
+          <button type="button" className="btn btn-primary" onClick={openAdd}><i className="ri-add-line me-1"></i>Add Currency</button>
+        </div>
+        <div className="card-body pt-0">
+          <div className="table-card table-responsive">
+            <table className="table table-borderless text-nowrap align-middle mb-0">
+              <thead>
+                <tr className="bg-light border-bottom">
+                  <th className="fw-medium text-muted">Currency Name</th>
+                  <th className="fw-medium text-muted">Code</th>
+                  <th className="fw-medium text-muted">Symbol</th>
+                  <th className="fw-medium text-muted">Exchange Rate</th>
+                  <th className="fw-medium text-muted">Default</th>
+                  <th className="fw-medium text-muted">Status</th>
+                  <th className="fw-medium text-muted">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr><td colSpan={7} className="text-center py-5 text-muted">Loading currencies…</td></tr>
+                )}
+                {!loading && currencies.length === 0 && (
+                  <tr><td colSpan={7} className="text-center py-5 text-muted">No currencies configured yet.</td></tr>
+                )}
+                {!loading && currencies.map(c => (
+                  <tr key={c.code}>
+                    <td>{c.name}</td>
+                    <td>{c.code}</td>
+                    <td>{c.symbol || '—'}</td>
+                    <td>{c.is_default ? 'Base Currency' : Number(c.exchange_rate).toLocaleString()}</td>
+                    <td>{c.is_default ? <span className="badge bg-primary-subtle text-primary">Default</span> : '—'}</td>
+                    <td>
+                      <span className={`badge ${c.is_enabled ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}`}>
+                        {c.is_enabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="d-flex gap-2">
+                        <button type="button" className="btn btn-sub-secondary size-8 btn-icon" onClick={() => openEdit(c)}><i className="ri-edit-line"></i></button>
+                        <button type="button" className="btn btn-sub-danger size-8 btn-icon" onClick={() => toggleEnabled(c)}>
+                          <i className={c.is_enabled ? 'ri-close-circle-line' : 'ri-checkbox-circle-line'}></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <ul className="nav nav-underline mb-5 border-bottom nav-primary" id="settings-tab" role="tablist">
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-tax.html" className="nav-link py-6px" aria-current="page">Tax</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-coupons.html" className="nav-link py-6px" aria-current="page">Coupons</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-general.html" className="nav-link py-6px" aria-current="page">General</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-pos.html" className="nav-link py-6px" aria-current="page">POS</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-payment-gateway.html" className="nav-link py-6px" aria-current="page">Payment Gateway</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-currencies.html" className="nav-link py-6px active" aria-current="page">Currencies</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-invoices.html" className="nav-link py-6px" aria-current="page">Invoices</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-manager.html" className="nav-link py-6px" aria-current="page">Manager</a>
-              </li>
-          </ul>
+        </div>
+      </div>
 
-          <div className="card">
-              <div className="card-header d-flex flex-wrap gap-4 align-items-center justify-content-between">
-                  <h5 className="card-title mb-1">Currencies</h5>
-                  <div className="d-flex flex-wrap gap-2 align-items-center">
-                      <div className="position-relative">
-                          <input type="text" id="tableSearch" className="form-control ps-10" placeholder="Search currency..." />
-                          <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
-                      </div>
-                      <button type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCurrencyModal"><i data-lucide="plus" className="size-4 me-1"></i>Add Currency</button>
+      {modalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={() => setModalOpen(false)}>
+          <div style={{ background: '#fff', borderRadius: 12, width: '100%', maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+            <div className="d-flex align-items-center justify-content-between p-4 border-bottom">
+              <h6 className="mb-0">{editing ? 'Edit Currency' : 'Add Currency'}</h6>
+              <button type="button" className="btn-close" onClick={() => setModalOpen(false)}></button>
+            </div>
+            <form onSubmit={handleSave}>
+              <div className="p-4">
+                <div className="row g-4">
+                  <div className="col-12">
+                    <label className="form-label">Currency Name</label>
+                    <input className="form-control" placeholder="e.g. US Dollar" value={form.name} onChange={e => fld('name', e.target.value)} required />
                   </div>
-              </div>
-              <div className="card-body pt-0">
-                  <div className="table-card table-responsive">
-                      <table className="table table-borderless text-nowrap align-middle mb-0">
-                          <thead>
-                              <tr className="bg-light border-bottom">
-                                  <th>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" id="checkAllCurrencies" />
-                                      </div>
-                                  </th>
-                                  <th className="fw-medium text-muted">Currency Name</th>
-                                  <th className="fw-medium text-muted">Code</th>
-                                  <th className="fw-medium text-muted">Symbol</th>
-                                  <th className="fw-medium text-muted">Exchange Rate</th>
-                                  <th className="fw-medium text-muted">Created On</th>
-                                  <th className="fw-medium text-muted">Last Updated</th>
-                                  <th className="fw-medium text-muted">Action</th>
-                              </tr>
-                          </thead>
-                          <tbody>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>Indian Rupee</td>
-                                  <td>INR</td>
-                                  <td>₹</td>
-                                  <td>Base Currency</td>
-                                  <td>2025-12-01</td>
-                                  <td>2026-01-01</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>US Dollar</td>
-                                  <td>USD</td>
-                                  <td>$</td>
-                                  <td>1 USD = 83.25 INR</td>
-                                  <td>2025-12-10</td>
-                                  <td>2026-01-01</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>Euro</td>
-                                  <td>EUR</td>
-                                  <td>€</td>
-                                  <td>1 EUR = 90.10 INR</td>
-                                  <td>2025-12-15</td>
-                                  <td>2025-12-28</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>British Pound</td>
-                                  <td>GBP</td>
-                                  <td>£</td>
-                                  <td>1 GBP = 104.75 INR</td>
-                                  <td>2025-12-18</td>
-                                  <td>2026-01-01</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon">
-                                              <i className="ri-edit-line"></i>
-                                          </button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                                              <i className="ri-delete-bin-line"></i>
-                                          </button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>Australian Dollar</td>
-                                  <td>AUD</td>
-                                  <td>A$</td>
-                                  <td>1 AUD = 55.20 INR</td>
-                                  <td>2025-12-20</td>
-                                  <td>2026-01-01</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon">
-                                              <i className="ri-edit-line"></i>
-                                          </button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                                              <i className="ri-delete-bin-line"></i>
-                                          </button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>Canadian Dollar</td>
-                                  <td>CAD</td>
-                                  <td>C$</td>
-                                  <td>1 CAD = 61.85 INR</td>
-                                  <td>2025-12-22</td>
-                                  <td>2025-12-30</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon">
-                                              <i className="ri-edit-line"></i>
-                                          </button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                                              <i className="ri-delete-bin-line"></i>
-                                          </button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>Singapore Dollar</td>
-                                  <td>SGD</td>
-                                  <td>S$</td>
-                                  <td>1 SGD = 62.40 INR</td>
-                                  <td>2025-12-25</td>
-                                  <td>2026-01-01</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon">
-                                              <i className="ri-edit-line"></i>
-                                          </button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                                              <i className="ri-delete-bin-line"></i>
-                                          </button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>Japanese Yen</td>
-                                  <td>JPY</td>
-                                  <td>¥</td>
-                                  <td>1 JPY = 0.56 INR</td>
-                                  <td>2025-12-26</td>
-                                  <td>2026-01-01</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon">
-                                              <i className="ri-edit-line"></i>
-                                          </button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                                              <i className="ri-delete-bin-line"></i>
-                                          </button>
-                                      </div>
-                                  </td>
-                              </tr>
-                          </tbody>
-                      </table>
+                  <div className="col-md-6">
+                    <label className="form-label">Currency Code</label>
+                    <input className="form-control text-uppercase" placeholder="e.g. USD" maxLength={3} value={form.code} disabled={!!editing}
+                      onChange={e => fld('code', e.target.value.toUpperCase())} required />
                   </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Symbol</label>
+                    <input className="form-control" placeholder="$" value={form.symbol} onChange={e => fld('symbol', e.target.value)} />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Exchange Rate (to NGN)</label>
+                    <input type="number" step="0.0001" className="form-control" placeholder="1.00" value={form.exchange_rate} onChange={e => fld('exchange_rate', e.target.value)} />
+                  </div>
+                  <div className="col-md-6 d-flex align-items-end">
+                    <div className="form-check">
+                      <input className="form-check-input" type="checkbox" id="is_default" checked={form.is_default} onChange={e => fld('is_default', e.target.checked)} />
+                      <label className="form-check-label" htmlFor="is_default">Set as default currency</label>
+                    </div>
+                  </div>
+                </div>
               </div>
+              <div className="d-flex gap-2 p-4 pt-0">
+                <button type="button" className="btn btn-light w-100" onClick={() => setModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary w-100" disabled={saving}>{saving ? 'Saving…' : (editing ? 'Save Changes' : 'Add Currency')}</button>
+              </div>
+            </form>
           </div>
-
-
-          <div className="modal fade" id="addCurrencyModal" tabIndex="-1" aria-hidden="true">
-              <div className="modal-dialog modal-dialog-centered">
-                  <div className="modal-content">
-                      <div className="modal-header">
-                          <h6 className="modal-title">Add Currency</h6>
-                          <button type="button" className="btn-close" data-bs-dismiss="modal"></button>
-                      </div>
-                      <div className="modal-body position-relative">
-                          <form>
-                              <div className="row g-5">
-                                  <div className="col-12">
-                                      <label htmlFor="currencyName" className="form-label">Currency Name</label>
-                                      <input id="currencyName" type="text" className="form-control" placeholder="e.g. US Dollar" />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="currencyCode" className="form-label">Currency Code</label>
-                                      <input id="currencyCode" type="text" className="form-control text-uppercase" placeholder="e.g. USD" />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="currencySymbol" className="form-label">Currency Symbol</label>
-                                      <input id="currencySymbol" type="text" className="form-control" placeholder="$" />
-                                  </div>
-                                  <div className="col-md-5">
-                                      <label htmlFor="exchangeRate" className="form-label">Exchange Rate</label>
-                                      <input id="exchangeRate" type="number" className="form-control" placeholder="1.00" />
-                                  </div>
-                                  <div className="col-md-7">
-                                      <label htmlFor="symbolPosition" className="form-label">Symbol Position</label>
-                                      <div id="symbolPosition"></div>
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="createOn" className="form-label">Created On</label>
-                                      <input id="createOn" type="text" className="form-control" data-datepicker data-date-format="yyyy-MM-dd" placeholder="Created on" />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="lastUpdated" className="form-label">Last Updated</label>
-                                      <input id="lastUpdated" type="text" className="form-control" data-datepicker data-date-format="yyyy-MM-dd" placeholder="Last Updated" />
-                                  </div>
-                              </div>
-                              <div className="d-flex gap-2 mt-7">
-                                  <button type="button" className="btn btn-light w-100" data-bs-dismiss="modal">Cancel</button>
-                                  <button type="submit" className="btn btn-primary w-100">Add Currency</button>
-                              </div>
-                          </form>
-                      </div>
-                  </div>
-              </div>
-          </div>
-
-
-          <div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-              <div className="modal-dialog modal-dialog-centered modal-xs">
-                  <div className="modal-content p-7 text-center">
-                      <div className="d-flex justify-content-center mb-4">
-                          <div className="size-14 bg-danger-subtle rounded-circle d-flex align-items-center justify-content-center size-16">
-                              <i className="ri-delete-bin-line text-danger fs-2xl"></i>
-                          </div>
-                      </div>
-                      <h5 className="mb-4 lh-base">Are you sure you want to delete this Currency?</h5>
-                      <div className="d-flex justify-content-center align-items-center gap-2">
-                          <button type="button" className="btn btn-danger" data-bs-dismiss="modal">Delete</button>
-                          <button type="button" className="btn btn-link text-reset" data-bs-dismiss="modal">Cancel</button>
-                      </div>
-                  </div>
-              </div>
-          </div>
+        </div>
+      )}
     </div>
   )
 }

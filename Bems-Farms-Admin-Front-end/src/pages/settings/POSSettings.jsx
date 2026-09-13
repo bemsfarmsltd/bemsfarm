@@ -1,171 +1,93 @@
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
+import api from '../../lib/api'
+import SettingsTabs from './SettingsTabs'
+
+const BLANK = { pos_receipt_header: '', pos_receipt_footer: '', pos_print_receipt: 'true', pos_low_stock_threshold: '' }
 
 export default function POSSettings() {
+  const [form, setForm] = useState(BLANK)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    api.get('/admin/settings/pos')
+      .then(res => setForm(f => ({ ...f, ...res.data.settings })))
+      .catch(() => toast.error('Failed to load POS settings'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const fld = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const isOn = (k) => form[k] === 'true'
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      const res = await api.post('/admin/settings/pos', form)
+      setForm(f => ({ ...f, ...res.data.settings }))
+      toast.success('POS settings saved')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save settings')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return <div className="container-fluid py-5 text-center text-muted">Loading settings…</div>
+
   return (
     <div className="container-fluid">
-      <div className="mb-5">
-              <h4 className="fs-xl">Settings</h4>
-              <p className="text-muted">Manage overall store preferences and system configurations.</p>
-          </div>
-          <ul className="nav nav-underline mb-5 border-bottom nav-primary" id="settings-tab" role="tablist">
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-tax.html" className="nav-link py-6px" aria-current="page">Tax</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-coupons.html" className="nav-link py-6px" aria-current="page">Coupons</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-general.html" className="nav-link py-6px" aria-current="page">General</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-pos.html" className="nav-link py-6px active" aria-current="page">POS</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-payment-gateway.html" className="nav-link py-6px" aria-current="page">Payment Gateway</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-currencies.html" className="nav-link py-6px" aria-current="page">Currencies</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-invoices.html" className="nav-link py-6px" aria-current="page">Invoices</a>
-              </li>
-              <li className="nav-item" role="presentation">
-                  <a href="apps-setting-manager.html" className="nav-link py-6px" aria-current="page">Manager</a>
-              </li>
-          </ul>
+      <SettingsTabs />
 
-          <div className="card">
-              <div className="card-body">
-                  <h6 className="mb-1">POS Configuration Settings</h6>
-                  <p className="text-muted mb-5">Manage POS receipts, printers, customer types, stock alerts, and payment options.</p>
-                  <div className="d-flex flex-column gap-6">
-                      <div className="row g-2 align-items-center">
-                          <div className="col-md-4">
-                              <label htmlFor="taxRegistrationNumber" className="form-label mb-0 fs-15">Receipt Format</label>
-                          </div>
-                          <div className="col-md-8">
-                              <div id="receiptFormate" className="w-56"></div>
-                          </div>
-                      </div>
-                      <div className="row g-2 align-items-center">
-                          <div className="col-md-4">
-                              <label htmlFor="taxRegistrationNumber" className="form-label mb-0 fs-15">POS Printer Settings</label>
-                          </div>
-                          <div className="col-md-8">
-                              <div id="posPrinter" className="w-56"></div>
-                          </div>
-                      </div>
-                      <div className="row g-2 align-items-center">
-                          <div className="col-md-4">
-                              <label htmlFor="taxRegistrationName" className="form-label mb-0 fs-15">Auto Print Receipt</label>
-                          </div>
-                          <div className="col-md-8">
-                              <div className="form-switch switch-light-primary">
-                                  <input type="checkbox" id="switch-light-1" defaultChecked /><label className="label" htmlFor="switch-light-1"></label>
-                              </div>
-                          </div>
-                      </div>
-                      <div className="row g-2 align-items-center">
-                          <div className="col-md-4">
-                              <label htmlFor="taxDisplayName" className="form-label mb-0 fs-15">Default Customer Type</label>
-                          </div>
-                          <div className="col-md-8">
-                              <div className="d-flex flex-wrap align-items-center gap-6">
-                                  <div className="form-check check-primary">
-                                      <input className="form-check-input" type="checkbox" id="defaultCheck1" />
-                                      <label className="form-check-label" htmlFor="defaultCheck1">
-                                          Regular
-                                      </label>
-                                  </div>
-                                  <div className="form-check check-primary">
-                                      <input className="form-check-input" type="checkbox" id="defaultCheck2" />
-                                      <label className="form-check-label" htmlFor="defaultCheck2">
-                                          Member
-                                      </label>
-                                  </div>
-                                  <div className="form-check check-primary">
-                                      <input className="form-check-input" type="checkbox" id="defaultCheck3" />
-                                      <label className="form-check-label" htmlFor="defaultCheck3">
-                                          Wholesale
-                                      </label>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                      <div className="row g-2 align-items-center">
-                          <div className="col-md-4">
-                              <label htmlFor="taxRate" className="form-label mb-0 fs-15">Low Stock Alert</label>
-                          </div>
-                          <div className="col-md-8">
-                              <input type="number" className="form-control w-28" id="lowStock" placeholder="Enter threshold" defaultValue="5" />
-                          </div>
-                      </div>
-                      <div className="row g-2 align-items-center">
-                          <div className="col-md-4">
-                              <label htmlFor="taxRate" className="form-label mb-0 fs-15">Enable Barcode Scanning</label>
-                          </div>
-                          <div className="col-md-8">
-                              <div className="form-switch switch-light-primary">
-                                  <input type="checkbox" id="switch-light-2" defaultChecked /><label className="label" htmlFor="switch-light-2"></label>
-                              </div>
-                          </div>
-                      </div>
-                      <div className="row g-2 align-items-center">
-                          <div className="col-md-4">
-                              <label htmlFor="taxDisplayName" className="form-label mb-0 fs-15">Payment Methods</label>
-                          </div>
-                          <div className="col-md-8">
-                              <div className="d-flex flex-wrap align-items-center gap-6">
-                                  <div className="form-check check-primary">
-                                      <input className="form-check-input" type="checkbox" id="defaultCheck4" />
-                                      <label className="form-check-label" htmlFor="defaultCheck4">
-                                          Cash
-                                      </label>
-                                  </div>
-                                  <div className="form-check check-primary">
-                                      <input className="form-check-input" type="checkbox" id="defaultCheck5" />
-                                      <label className="form-check-label" htmlFor="defaultCheck5">
-                                          Card
-                                      </label>
-                                  </div>
-                                  <div className="form-check check-primary">
-                                      <input className="form-check-input" type="checkbox" id="defaultCheck6" />
-                                      <label className="form-check-label" htmlFor="defaultCheck6">
-                                          UPI
-                                      </label>
-                                  </div>
-                                  <div className="form-check check-primary">
-                                      <input className="form-check-input" type="checkbox" id="defaultCheck7" />
-                                      <label className="form-check-label" htmlFor="defaultCheck7">
-                                          Wallet
-                                      </label>
-                                  </div>
-                                  <div className="form-check check-primary">
-                                      <input className="form-check-input" type="checkbox" id="defaultCheck8" />
-                                      <label className="form-check-label" htmlFor="defaultCheck8">
-                                          COD
-                                      </label>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                      <div className="row g-2 align-items-center">
-                          <div className="col-md-4">
-                              <label htmlFor="taxRate" className="form-label mb-0 fs-15">Enable Order Notes</label>
-                          </div>
-                          <div className="col-md-8">
-                              <div className="form-switch switch-light-primary">
-                                  <input type="checkbox" id="switch-light-2" /><label className="label" htmlFor="switch-light-2"></label>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-                  <div className="text-end mt-5">
-                      <button className="btn btn-outline-light border me-1">Cancel</button>
-                      <button className="btn btn-primary">Save</button>
-                  </div>
+      <div className="card mb-5">
+        <div className="card-body">
+          <h6 className="mb-1">POS Configuration</h6>
+          <p className="text-muted mb-5">Manage receipt content and stock alert threshold used by the register.</p>
+          <div className="d-flex flex-column gap-6">
+            <div className="row g-2 align-items-center">
+              <div className="col-md-4">
+                <label htmlFor="pos_receipt_header" className="form-label mb-0 fs-15">Receipt Header</label>
               </div>
+              <div className="col-md-8">
+                <input id="pos_receipt_header" className="form-control w-56" placeholder="Bems Farms" value={form.pos_receipt_header || ''} onChange={e => fld('pos_receipt_header', e.target.value)} />
+              </div>
+            </div>
+            <div className="row g-2 align-items-center">
+              <div className="col-md-4">
+                <label htmlFor="pos_receipt_footer" className="form-label mb-0 fs-15">Receipt Footer</label>
+              </div>
+              <div className="col-md-8">
+                <input id="pos_receipt_footer" className="form-control w-56" placeholder="Thank you!" value={form.pos_receipt_footer || ''} onChange={e => fld('pos_receipt_footer', e.target.value)} />
+              </div>
+            </div>
+            <div className="row g-2 align-items-center">
+              <div className="col-md-4">
+                <label className="form-label mb-0 fs-15">Auto Print Receipt</label>
+              </div>
+              <div className="col-md-8">
+                <div className="form-switch switch-light-primary">
+                  <input type="checkbox" id="pos_print_receipt" checked={isOn('pos_print_receipt')} onChange={() => fld('pos_print_receipt', isOn('pos_print_receipt') ? 'false' : 'true')} />
+                  <label className="label" htmlFor="pos_print_receipt"></label>
+                </div>
+              </div>
+            </div>
+            <div className="row g-2 align-items-center">
+              <div className="col-md-4">
+                <label htmlFor="pos_low_stock_threshold" className="form-label mb-0 fs-15">Low Stock Alert Threshold</label>
+              </div>
+              <div className="col-md-8">
+                <input type="number" className="form-control w-28" id="pos_low_stock_threshold" placeholder="5" value={form.pos_low_stock_threshold || ''} onChange={e => fld('pos_low_stock_threshold', e.target.value)} />
+              </div>
+            </div>
           </div>
+        </div>
+      </div>
+
+      <div className="text-end mb-5">
+        <button className="btn btn-primary" disabled={saving} onClick={handleSave}>
+          {saving ? 'Saving…' : 'Save Changes'}
+        </button>
+      </div>
     </div>
   )
 }
