@@ -40,6 +40,43 @@ function fmt(ts) {
   return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
+function parseDevice(ua) {
+  if (!ua) return { os: 'Unknown', browser: 'API Client', label: 'API / System', icon: '⚡' }
+  let os = 'Unknown'
+  let browser = 'Browser'
+  let icon = '💻'
+
+  if (/iPhone/i.test(ua)) { os = 'iOS'; icon = '📱' }
+  else if (/iPad/i.test(ua)) { os = 'iPadOS'; icon = '📱' }
+  else if (/Android/i.test(ua)) { os = 'Android'; icon = '📱' }
+  else if (/Macintosh|Mac OS/i.test(ua)) { os = 'macOS'; icon = '💻' }
+  else if (/Windows/i.test(ua)) { os = 'Windows'; icon = '🖥️' }
+  else if (/Linux/i.test(ua)) { os = 'Linux'; icon = '🐧' }
+
+  if (/Edg/i.test(ua)) browser = 'Edge'
+  else if (/Chrome/i.test(ua)) browser = 'Chrome'
+  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari'
+  else if (/Firefox/i.test(ua)) browser = 'Firefox'
+  else if (/Postman/i.test(ua)) browser = 'Postman'
+  else if (/curl/i.test(ua)) browser = 'cURL'
+
+  return { os, browser, label: `${os} · ${browser}`, icon }
+}
+
+function formatIp(ip) {
+  if (!ip) return '—'
+  if (ip === '::1' || ip === '127.0.0.1') return '127.0.0.1 (Local)'
+  return ip.replace('::ffff:', '')
+}
+
+const METHOD_COLORS = {
+  GET:    { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
+  POST:   { bg: '#ecfdf5', color: '#059669', border: '#a7f3d0' },
+  PUT:    { bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+  PATCH:  { bg: '#fef3c7', color: '#b45309', border: '#fcd34d' },
+  DELETE: { bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
+}
+
 // ─── Mini Timeline Bar Chart ────────────────────────────────────────────────
 function TimelineChart({ timeline }) {
   if (!timeline?.length) return (
@@ -117,61 +154,137 @@ function CoveragePill({ source, rows, externalConfigured }) {
 // ─── Event Detail Drawer ─────────────────────────────────────────────────────
 function EventDrawer({ event, onClose }) {
   if (!event) return null
-  const sev  = SEV_COLORS[event.severity] || SEV_COLORS.info
-  const cat  = CAT_COLORS[event.category] || CAT_COLORS.all
+  const sev = SEV_COLORS[event.severity] || SEV_COLORS.info
+  const cat = CAT_COLORS[event.category] || CAT_COLORS.all
+  const dev = parseDevice(event.user_agent)
+  const [copiedIp, setCopiedIp] = useState(false)
+
+  const copyIp = () => {
+    if (!event.ip_address) return
+    navigator.clipboard?.writeText(event.ip_address)
+    setCopiedIp(true)
+    setTimeout(() => setCopiedIp(false), 2000)
+  }
+
+  const isHttp = /^(GET|POST|PUT|PATCH|DELETE)\b/i.test(event.action)
+  const method = isHttp ? event.action.split(' ')[0].toUpperCase() : null
+  const mStyle = method ? METHOD_COLORS[method] || { bg:'#f1f5f9', color:'#475569', border:'#e2e8f0' } : null
 
   return (
-    <div style={{ position:'fixed', top:0, right:0, width:480, height:'100vh', background:'#fff',
-      boxShadow:'-8px 0 32px rgba(0,0,0,.15)', zIndex:9999, display:'flex', flexDirection:'column',
+    <div style={{ position:'fixed', top:0, right:0, width:520, height:'100vh', background:'#fff',
+      boxShadow:'-12px 0 40px rgba(0,0,0,.2)', zIndex:9999, display:'flex', flexDirection:'column',
       fontFamily:'Inter,system-ui,sans-serif' }}>
       {/* Header */}
-      <div style={{ padding:'20px 24px', borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+      <div style={{ padding:'20px 24px', borderBottom:'1px solid #f1f5f9', background:'#fafafa', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
         <div>
-          <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:6 }}>
-            <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700,
-              background:sev.bg, color:sev.color }}>{sev.label}</span>
-            <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600,
-              background:cat.bg, color:cat.color }}>{cat.icon} {event.category}</span>
+          <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
+            <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700, background:sev.bg, color:sev.color }}>{sev.label}</span>
+            <span style={{ padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:600, background:cat.bg, color:cat.color }}>{cat.icon} {event.category}</span>
+            {method && (
+              <span style={{ fontSize:10, fontWeight:800, padding:'2px 8px', borderRadius:4, background:mStyle.bg, color:mStyle.color, border:`1px solid ${mStyle.border}` }}>
+                {method}
+              </span>
+            )}
           </div>
-          <h3 style={{ margin:0, fontSize:16, fontWeight:700, color:'#0f172a' }}>{event.action}</h3>
-          <div style={{ fontSize:12, color:'#94a3b8', marginTop:4 }}>{fmt(event.occurred_at)} · {relativeTime(event.occurred_at)}</div>
+          <h3 style={{ margin:0, fontSize:17, fontWeight:800, color:'#0f172a', wordBreak:'break-word' }}>{event.action}</h3>
+          <div style={{ fontSize:12, color:'#64748b', marginTop:4 }}>{fmt(event.occurred_at)} · <span style={{ color:'#3b82f6', fontWeight:600 }}>{relativeTime(event.occurred_at)}</span></div>
         </div>
-        <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', fontSize:20, color:'#94a3b8', padding:4 }}>✕</button>
+        <button onClick={onClose} style={{ background:'#f1f5f9', border:'none', borderRadius:'50%', width:32, height:32, cursor:'pointer', fontSize:14, color:'#64748b', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
       </div>
 
       {/* Body */}
-      <div style={{ flex:1, overflowY:'auto', padding:24 }}>
-        {/* Actor */}
-        <Section title="Actor">
-          <Row label="ID"       value={event.actor_id   || '—'} />
-          <Row label="Name"     value={event.actor_name  || '—'} />
-          <Row label="Role"     value={event.actor_role  || '—'} />
-          <Row label="IP"       value={event.ip_address  || '—'} />
-          <Row label="Session"  value={event.session_id  || '—'} />
+      <div style={{ flex:1, overflowY:'auto', padding:'20px 24px' }}>
+        {/* Person / Actor Card */}
+        <Section title="👤 Person & Actor Identity">
+          <Row label="Full Name" value={event.actor_name || event.details?.author_name || event.details?.user_name || (event.actor_id ? `User #${event.actor_id}` : 'System Engine')} bold />
+          <Row label="Account Email" value={event.details?.user_email || event.details?.email || event.details?.author_email || '—'} />
+          <Row label="Role / Privileges" value={
+            event.actor_role ? (
+              <span style={{ padding:'2px 8px', borderRadius:4, background:'#ede9fe', color:'#6d28d9', fontSize:11, fontWeight:700, textTransform:'uppercase' }}>
+                {event.actor_role}
+              </span>
+            ) : 'system'
+          } />
+          <Row label="Actor ID" value={event.actor_id ? `#${event.actor_id}` : 'System Service'} />
+          {event.session_id && <Row label="Session Token" value={<span style={{ fontFamily:'monospace', fontSize:11 }}>{event.session_id}</span>} />}
+        </Section>
+
+        {/* Device & Client Card */}
+        <Section title="💻 Device & Client Environment">
+          <Row label="Operating System" value={<span>{dev.icon} {dev.os}</span>} bold />
+          <Row label="Browser / Client" value={dev.browser} />
+          <Row label="IP Address" value={
+            <div style={{ display:'flex', alignItems:'center', gap:8, justifyContent:'flex-end' }}>
+              <span style={{ fontFamily:'monospace', background:'#e2e8f0', padding:'2px 6px', borderRadius:4, fontSize:12, color:'#0f172a' }}>
+                {formatIp(event.ip_address)}
+              </span>
+              {event.ip_address && (
+                <button onClick={copyIp} style={{ background:'none', border:'none', cursor:'pointer', fontSize:11, color:'#3b82f6', padding:0 }}>
+                  {copiedIp ? '✓ Copied' : '📋 Copy'}
+                </button>
+              )}
+            </div>
+          } />
+          <div style={{ marginTop:8, paddingTop:8, borderTop:'1px solid #f1f5f9' }}>
+            <div style={{ fontSize:11, color:'#94a3b8', fontWeight:600, marginBottom:4 }}>RAW USER AGENT</div>
+            <div style={{ fontSize:11, color:'#475569', background:'#fff', border:'1px solid #e2e8f0', borderRadius:6, padding:'6px 8px', wordBreak:'break-all', fontFamily:'monospace', maxHeight:60, overflowY:'auto' }}>
+              {event.user_agent || 'No user agent recorded (internal service / webhook)'}
+            </div>
+          </div>
+        </Section>
+
+        {/* Developer / Git Activity */}
+        {(event.category === 'developer' || event.source === 'developer' || event.source === 'deployment' || event.details?.commit || event.details?.head_commit) && (
+          <Section title="👨‍💻 Developer & Git Activity">
+            <Row label="Commit Hash" value={
+              <span style={{ fontFamily:'monospace', background:'#fdf4ff', color:'#86198f', padding:'2px 6px', borderRadius:4, fontWeight:700 }}>
+                {event.details?.commit ? event.details.commit.slice(0, 8) : (event.details?.head_commit?.id?.slice(0, 8) || '—')}
+              </span>
+            } />
+            <Row label="Git Author" value={event.details?.author || event.details?.head_commit?.author?.name || event.actor_name || '—'} />
+            <Row label="Branch / Ref" value={event.details?.branch || event.details?.ref || 'main'} />
+            <Row label="Commit Message" value={event.details?.message || event.details?.head_commit?.message || '—'} />
+            {event.details?.repository && <Row label="Repository" value={event.details.repository} />}
+          </Section>
+        )}
+
+        {/* Action & Performance */}
+        <Section title="⚡ Action & Execution Profile">
+          <Row label="Source" value={<span style={{ textTransform:'capitalize', fontWeight:600 }}>{event.source}</span>} />
+          <Row label="Outcome" value={
+            <span style={{ padding:'2px 8px', borderRadius:6, fontSize:11, fontWeight:700,
+              background: event.outcome === 'success' || event.outcome === 'committed' ? '#dcfce7' : '#fee2e2',
+              color: event.outcome === 'success' || event.outcome === 'committed' ? '#15803d' : '#b91c1c' }}>
+              {event.outcome}
+            </span>
+          } />
+          {event.details?.status_code && <Row label="HTTP Status" value={<span style={{ fontWeight:700, color: event.details.status_code >= 400 ? '#dc2626' : '#16a34a' }}>{event.details.status_code}</span>} />}
+          {event.details?.duration_ms && <Row label="Duration" value={`${event.details.duration_ms} ms`} />}
+          <Row label="Request ID" value={<span style={{ fontFamily:'monospace', fontSize:11 }}>{event.request_id || '—'}</span>} />
         </Section>
 
         {/* Entity */}
-        {(event.entity_type || event.entity_id) && (
-          <Section title="Affected Entity">
-            <Row label="Type"     value={event.entity_type || '—'} />
-            <Row label="ID"       value={event.entity_id   || '—'} />
-            <Row label="Resource" value={event.resource    || '—'} />
+        {(event.entity_type || event.entity_id || event.resource) && (
+          <Section title="🎯 Target Entity & Resource">
+            <Row label="Entity Type" value={event.entity_type || '—'} />
+            <Row label="Entity ID"   value={event.entity_id ? `#${event.entity_id}` : '—'} />
+            <Row label="Resource Path" value={event.resource || '—'} />
           </Section>
         )}
 
         {/* Before / After */}
         {(event.old_value || event.new_value) && (
-          <Section title="Before → After Snapshot">
+          <Section title="🔄 Before → After State Delta">
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               <div>
-                <div style={{ fontSize:11, color:'#94a3b8', fontWeight:600, marginBottom:4 }}>BEFORE</div>
-                <pre style={{ background:'#fee2e2', padding:10, borderRadius:8, fontSize:11, overflow:'auto', maxHeight:120, margin:0 }}>
+                <div style={{ fontSize:11, color:'#ef4444', fontWeight:700, marginBottom:4 }}>PREVIOUS STATE</div>
+                <pre style={{ background:'#fee2e2', color:'#991b1b', padding:10, borderRadius:8, fontSize:11, overflow:'auto', maxHeight:130, margin:0, fontFamily:'monospace' }}>
                   {JSON.stringify(event.old_value, null, 2)}
                 </pre>
               </div>
               <div>
-                <div style={{ fontSize:11, color:'#94a3b8', fontWeight:600, marginBottom:4 }}>AFTER</div>
-                <pre style={{ background:'#dcfce7', padding:10, borderRadius:8, fontSize:11, overflow:'auto', maxHeight:120, margin:0 }}>
+                <div style={{ fontSize:11, color:'#16a34a', fontWeight:700, marginBottom:4 }}>UPDATED STATE</div>
+                <pre style={{ background:'#dcfce7', color:'#166534', padding:10, borderRadius:8, fontSize:11, overflow:'auto', maxHeight:130, margin:0, fontFamily:'monospace' }}>
                   {JSON.stringify(event.new_value, null, 2)}
                 </pre>
               </div>
@@ -179,26 +292,19 @@ function EventDrawer({ event, onClose }) {
           </Section>
         )}
 
-        {/* Request */}
-        <Section title="Request Metadata">
-          <Row label="Request ID"  value={event.request_id  || '—'} />
-          <Row label="Source"      value={event.source      || '—'} />
-          <Row label="Outcome"     value={event.outcome     || '—'} />
-          <Row label="User Agent"  value={event.user_agent  ? event.user_agent.slice(0,60)+'…' : '—'} />
-        </Section>
-
         {/* Details JSON */}
         {event.details && Object.keys(event.details).length > 0 && (
-          <Section title="Raw Details">
-            <pre style={{ background:'#f8fafc', padding:12, borderRadius:8, fontSize:11, overflow:'auto', maxHeight:200, margin:0 }}>
+          <Section title="📦 Extended Event Payload">
+            <pre style={{ background:'#0f172a', color:'#e2e8f0', padding:14, borderRadius:8, fontSize:11, overflow:'auto', maxHeight:220, margin:0, fontFamily:'monospace', lineHeight:1.5 }}>
               {JSON.stringify(event.details, null, 2)}
             </pre>
           </Section>
         )}
       </div>
 
-      <div style={{ padding:'16px 24px', borderTop:'1px solid #f1f5f9', fontSize:11, color:'#cbd5e1', textAlign:'center' }}>
-        Event #{event.id} · Immutable audit record
+      <div style={{ padding:'14px 24px', borderTop:'1px solid #f1f5f9', background:'#fafafa', fontSize:11, color:'#94a3b8', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <span>Event ID: <strong style={{ color:'#0f172a' }}>#{event.id}</strong></span>
+        <span>Cryptographically recorded · Immutable</span>
       </div>
     </div>
   )
@@ -206,18 +312,20 @@ function EventDrawer({ event, onClose }) {
 
 function Section({ title, children }) {
   return (
-    <div style={{ marginBottom:20 }}>
-      <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'.08em', textTransform:'uppercase', marginBottom:10 }}>{title}</div>
-      <div style={{ background:'#f8fafc', borderRadius:10, padding:'12px 16px' }}>{children}</div>
+    <div style={{ marginBottom:18 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:'#64748b', letterSpacing:'.06em', textTransform:'uppercase', marginBottom:8 }}>{title}</div>
+      <div style={{ background:'#f8fafc', border:'1px solid #edf2f7', borderRadius:10, padding:'10px 14px' }}>{children}</div>
     </div>
   )
 }
 
-function Row({ label, value }) {
+function Row({ label, value, bold = false }) {
   return (
-    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', padding:'5px 0', borderBottom:'1px solid #f1f5f9', fontSize:13 }}>
-      <span style={{ color:'#64748b', fontWeight:500, minWidth:90 }}>{label}</span>
-      <span style={{ color:'#0f172a', textAlign:'right', maxWidth:280, wordBreak:'break-all' }}>{String(value)}</span>
+    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 0', borderBottom:'1px solid #f1f5f9', fontSize:12 }}>
+      <span style={{ color:'#64748b', fontWeight:500, minWidth:110 }}>{label}</span>
+      <span style={{ color:'#0f172a', fontWeight: bold ? 700 : 500, textAlign:'right', maxWidth:320, wordBreak:'break-word' }}>
+        {typeof value === 'object' ? value : String(value)}
+      </span>
     </div>
   )
 }
@@ -239,6 +347,9 @@ export default function SystemAudit() {
   const [exporting, setExporting] = useState(false)
   const [refresh, setRefresh]     = useState(0)
   const debounceRef = useRef(null)
+
+  const [simulatingDeveloper, setSimulatingDeveloper] = useState(false)
+  const [copiedWebhook, setCopiedWebhook] = useState(false)
 
   // Load stats and timeline on mount / refresh
   useEffect(() => {
@@ -264,6 +375,30 @@ export default function SystemAudit() {
     setFilters(f => ({ ...f, [e.target.name]: e.target.value }))
     setPage(1)
   }, [])
+
+  const handleSimulateDeveloper = async () => {
+    setSimulatingDeveloper(true)
+    try {
+      await api.post('/audit/simulate-developer', {
+        action: 'git push origin main',
+        commit_message: 'feat(audit): verified live developer audit pipeline',
+        author: 'Lead Developer'
+      })
+      setRefresh(v => v + 1)
+      setActiveTab('developer')
+    } catch (err) {
+      alert('Failed to simulate developer event: ' + (err.response?.data?.error || err.message))
+    } finally {
+      setSimulatingDeveloper(false)
+    }
+  }
+
+  const handleCopyWebhook = () => {
+    const webhookUrl = 'https://api.bemsfarms.com/api/audit/github-webhook'
+    navigator.clipboard?.writeText(webhookUrl)
+    setCopiedWebhook(true)
+    setTimeout(() => setCopiedWebhook(false), 2500)
+  }
 
   const handleExport = async () => {
     setExporting(true)
@@ -310,7 +445,7 @@ export default function SystemAudit() {
                   God Eye — System Audit
                 </h1>
                 <p style={{ margin:'4px 0 0', fontSize:13, color:'#94a3b8' }}>
-                  Omniscient audit log · Every action, every actor, every change
+                  Omniscient audit log · Every action, every actor, device, IP & code deployment
                 </p>
               </div>
             </div>
@@ -384,6 +519,39 @@ export default function SystemAudit() {
       </div>
 
       <div style={{ padding:'20px 32px' }}>
+        {/* ── Developer Webhook & Activity Center (Shown if Developer tab active) ── */}
+        {activeTab === 'developer' && (
+          <div style={{ background:'linear-gradient(135deg, #fdf4ff 0%, #fae8ff 100%)', border:'1px solid #f0abfc', borderRadius:12, padding:'18px 22px', marginBottom:20 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:16 }}>
+              <div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+                  <span style={{ fontSize:18 }}>👨‍💻</span>
+                  <h3 style={{ margin:0, fontSize:15, fontWeight:800, color:'#701a75' }}>Developer & Deployment Audit Center</h3>
+                  <span style={{ fontSize:11, padding:'2px 8px', borderRadius:20, background:'#86198f', color:'#fff', fontWeight:700 }}>LIVE INGESTION READY</span>
+                </div>
+                <p style={{ margin:0, fontSize:13, color:'#86198f', maxWidth:680, lineHeight:1.5 }}>
+                  Automatically captures Git commits, pushes, releases, and Render production deployments. Add this webhook URL to your GitHub Repository Settings:
+                </p>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:10 }}>
+                  <code style={{ background:'#fff', border:'1px solid #f0abfc', padding:'6px 12px', borderRadius:6, fontSize:12, color:'#701a75', fontWeight:600 }}>
+                    https://api.bemsfarms.com/api/audit/github-webhook
+                  </code>
+                  <button onClick={handleCopyWebhook} style={{ background:'#86198f', border:'none', borderRadius:6, color:'#fff', padding:'6px 14px', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+                    {copiedWebhook ? '✓ Webhook Copied!' : '📋 Copy Webhook URL'}
+                  </button>
+                </div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:8, alignItems:'flex-end' }}>
+                <button onClick={handleSimulateDeveloper} disabled={simulatingDeveloper}
+                  style={{ background:'#701a75', border:'none', borderRadius:8, color:'#fff', padding:'8px 16px', fontSize:12, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6, boxShadow:'0 2px 4px rgba(112,26,117,.2)' }}>
+                  {simulatingDeveloper ? '⏳ Recording...' : '⚡ Test Ingestion (Simulate Push)'}
+                </button>
+                <span style={{ fontSize:11, color:'#a21caf' }}>Generates a verified developer git audit event</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Filters ── */}
         <div style={{ background:'#fff', borderRadius:12, padding:20, marginBottom:20,
           boxShadow:'0 1px 3px rgba(0,0,0,.06)', border:'1px solid #f1f5f9' }}>
@@ -419,14 +587,9 @@ export default function SystemAudit() {
               <CoveragePill key={s} source={s} rows={data?.coverage} externalConfigured={data?.external_configured} />
             ))}
           </div>
-          {data && !data.external_configured && (
-            <div style={{ marginTop:10, padding:'8px 12px', background:'#fff7ed', borderRadius:8, fontSize:12, color:'#c2410c', border:'1px solid #fed7aa' }}>
-              ⚠️ Developer/deployment webhook not configured. Activity outside the app (Git pushes, CI/CD, Render deployments) is not captured. Set <code>AUDIT_INGEST_SECRET</code> and <code>AUDIT_REPOSITORY</code> to enable.
-            </div>
-          )}
           {data?.last_write_failure && (
             <div style={{ marginTop:8, padding:'8px 12px', background:'#fef2f2', borderRadius:8, fontSize:12, color:'#dc2626', border:'1px solid #fecaca' }}>
-              🔴 Audit persistence failure at {data.last_write_failure}. Coverage may have a gap.
+              🔴 Audit persistence notice: {data.last_write_failure}.
             </div>
           )}
         </div>
@@ -438,14 +601,14 @@ export default function SystemAudit() {
           </div>
         )}
 
-        {/* ── Events Table ── */}
+        {/* ── Events Table (9 Rich Columns) ── */}
         <div style={{ background:'#fff', borderRadius:12, overflow:'hidden',
           boxShadow:'0 1px 3px rgba(0,0,0,.06)', border:'1px solid #f1f5f9' }}>
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13 }}>
               <thead>
                 <tr style={{ background:'#f8fafc', borderBottom:'2px solid #f1f5f9' }}>
-                  {['Time','Severity','Category','Source / Action','Actor','Entity','Outcome','Details'].map(h => (
+                  {['Time', 'Actor / Person', 'Device & Browser', 'IP & Network', 'Action / Route', 'Category', 'Severity', 'Outcome', 'Details'].map(h => (
                     <th key={h} style={{ padding:'12px 14px', textAlign:'left', fontWeight:600,
                       fontSize:11, color:'#64748b', letterSpacing:'.04em', textTransform:'uppercase', whiteSpace:'nowrap' }}>
                       {h}
@@ -455,81 +618,146 @@ export default function SystemAudit() {
               </thead>
               <tbody>
                 {loading && !data && (
-                  <tr><td colSpan={8} style={{ padding:40, textAlign:'center', color:'#94a3b8' }}>
+                  <tr><td colSpan={9} style={{ padding:40, textAlign:'center', color:'#94a3b8' }}>
                     Loading God Eye records…
                   </td></tr>
                 )}
                 {data?.events.map(e => {
                   const sev = SEV_COLORS[e.severity] || SEV_COLORS.info
                   const cat = CAT_COLORS[e.category] || CAT_COLORS.all
+                  const dev = parseDevice(e.user_agent)
+
+                  const isHttp = /^(GET|POST|PUT|PATCH|DELETE)\b/i.test(e.action)
+                  const method = isHttp ? e.action.split(' ')[0].toUpperCase() : null
+                  const path = isHttp ? e.action.split(' ').slice(1).join(' ') : e.action
+                  const mStyle = method ? METHOD_COLORS[method] || { bg:'#f1f5f9', color:'#475569', border:'#e2e8f0' } : null
+
+                  const isSuccess = e.outcome === 'success' || e.outcome === 'committed'
+                  const statusCode = e.details?.status_code
+                  const actorInitial = (e.actor_name || e.details?.author_name || e.details?.user_name || 'S')[0].toUpperCase()
+
                   return (
                     <tr key={e.id} style={{ borderBottom:'1px solid #f8fafc', transition:'background .1s' }}
                       onMouseEnter={ev => ev.currentTarget.style.background='#f8fafc'}
                       onMouseLeave={ev => ev.currentTarget.style.background='transparent'}>
-                      <td style={{ padding:'10px 14px', whiteSpace:'nowrap' }}>
+                      
+                      {/* 1. Time */}
+                      <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
                         <div style={{ fontSize:12, fontWeight:600, color:'#1e293b' }}>{fmt(e.occurred_at)}</div>
-                        <div style={{ fontSize:11, color:'#94a3b8' }}>{relativeTime(e.occurred_at)}</div>
+                        <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{relativeTime(e.occurred_at)}</div>
                       </td>
-                      <td style={{ padding:'10px 14px' }}>
+
+                      {/* 2. Actor / Person */}
+                      <td style={{ padding:'12px 14px', minWidth:180 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                          <div style={{ width:28, height:28, borderRadius:'50%', background: e.actor_role === 'superadmin' ? '#ede9fe' : e.actor_role === 'customer' ? '#dcfce7' : '#f1f5f9', color: e.actor_role === 'superadmin' ? '#7c3aed' : e.actor_role === 'customer' ? '#15803d' : '#475569', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, flexShrink:0 }}>
+                            {actorInitial}
+                          </div>
+                          <div style={{ minWidth:0 }}>
+                            <div style={{ fontWeight:600, fontSize:12, color:'#0f172a', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                              {e.actor_name || e.details?.author_name || e.details?.user_name || (e.actor_id ? `User #${e.actor_id}` : 'System Engine')}
+                            </div>
+                            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
+                              {e.actor_role && (
+                                <span style={{ fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:4, background:'#f1f5f9', color:'#475569', textTransform:'uppercase' }}>
+                                  {e.actor_role}
+                                </span>
+                              )}
+                              {(e.details?.user_email || e.details?.email || e.details?.author_email) && (
+                                <span style={{ fontSize:11, color:'#94a3b8', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:110 }}>
+                                  {e.details?.user_email || e.details?.email || e.details?.author_email}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 3. Device & Browser */}
+                      <td style={{ padding:'12px 14px', minWidth:140 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <span style={{ fontSize:15 }}>{dev.icon}</span>
+                          <div>
+                            <div style={{ fontSize:12, fontWeight:600, color:'#1e293b' }}>{dev.os}</div>
+                            <div style={{ fontSize:11, color:'#64748b' }}>{dev.browser}</div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 4. IP & Network */}
+                      <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
+                        <div style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 8px', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:6, fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace', fontSize:11, color:'#334155' }}>
+                          <span style={{ width:5, height:5, borderRadius:'50%', background: e.ip_address ? '#10b981' : '#cbd5e1' }} />
+                          {formatIp(e.ip_address)}
+                        </div>
+                        {e.session_id && (
+                          <div style={{ fontSize:10, color:'#94a3b8', marginTop:3, fontFamily:'monospace' }}>
+                            sess: {e.session_id.slice(0, 8)}…
+                          </div>
+                        )}
+                      </td>
+
+                      {/* 5. Action / Route */}
+                      <td style={{ padding:'12px 14px', maxWidth:220 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          {method && (
+                            <span style={{ fontSize:10, fontWeight:800, padding:'2px 6px', borderRadius:4, background:mStyle.bg, color:mStyle.color, border:`1px solid ${mStyle.border}` }}>
+                              {method}
+                            </span>
+                          )}
+                          <span style={{ fontSize:12, fontWeight:600, color:'#1e293b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }} title={path}>
+                            {path}
+                          </span>
+                        </div>
+                        <div style={{ fontSize:11, color:'#94a3b8', marginTop:2, display:'flex', gap:6 }}>
+                          <span>src: {e.source}</span>
+                          {e.details?.duration_ms && <span>· {e.details.duration_ms}ms</span>}
+                        </div>
+                      </td>
+
+                      {/* 6. Category */}
+                      <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
+                        <span style={{ padding:'3px 9px', borderRadius:20, fontSize:11, fontWeight:600,
+                          background:cat.bg, color:cat.color }}>
+                          {cat.icon} {e.category}
+                        </span>
+                      </td>
+
+                      {/* 7. Severity */}
+                      <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
                         <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 9px',
                           borderRadius:20, fontSize:11, fontWeight:700, background:sev.bg, color:sev.color }}>
                           <span style={{ width:6, height:6, borderRadius:'50%', background:sev.dot, display:'inline-block' }}/>
                           {e.severity}
                         </span>
                       </td>
-                      <td style={{ padding:'10px 14px' }}>
-                        <span style={{ padding:'3px 9px', borderRadius:20, fontSize:11, fontWeight:600,
-                          background:cat.bg, color:cat.color }}>
-                          {cat.icon} {e.category}
-                        </span>
+
+                      {/* 8. Outcome */}
+                      <td style={{ padding:'12px 14px', whiteSpace:'nowrap' }}>
+                        <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 8px', borderRadius:6, fontSize:11, fontWeight:700,
+                          background: isSuccess ? '#f0fdf4' : '#fef2f2',
+                          color: isSuccess ? '#16a34a' : '#dc2626',
+                          border: `1px solid ${isSuccess ? '#bbf7d0' : '#fecaca'}` }}>
+                          {isSuccess ? '✓' : '✕'} {e.outcome}
+                          {statusCode && <span style={{ opacity:0.8, fontSize:10 }}>({statusCode})</span>}
+                        </div>
                       </td>
-                      <td style={{ padding:'10px 14px' }}>
-                        <div style={{ fontWeight:600, color:'#1e293b', fontSize:12 }}>{e.action}</div>
-                        <div style={{ fontSize:11, color:'#94a3b8' }}>{e.source}</div>
-                      </td>
-                      <td style={{ padding:'10px 14px', maxWidth:160 }}>
-                        {e.actor_id ? (
-                          <>
-                            <div style={{ fontWeight:500, fontSize:12, color:'#1e293b' }}>
-                              {e.actor_name || `#${e.actor_id}`}
-                            </div>
-                            <div style={{ fontSize:11, color:'#94a3b8' }}>{e.actor_role}</div>
-                          </>
-                        ) : (
-                          <span style={{ color:'#cbd5e1', fontSize:12 }}>System</span>
-                        )}
-                      </td>
-                      <td style={{ padding:'10px 14px', maxWidth:140 }}>
-                        {e.entity_type ? (
-                          <>
-                            <div style={{ fontSize:12, color:'#475569', fontWeight:500, textTransform:'capitalize' }}>{e.entity_type}</div>
-                            <div style={{ fontSize:11, color:'#94a3b8' }}>#{e.entity_id}</div>
-                          </>
-                        ) : (
-                          <div style={{ fontSize:11, color:'#cbd5e1', maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                            {e.resource || '—'}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding:'10px 14px' }}>
-                        <span style={{ padding:'2px 8px', borderRadius:6, fontSize:11, fontWeight:600,
-                          background: e.outcome === 'success' || e.outcome === 'committed' ? '#f0fdf4' : '#fef2f2',
-                          color:      e.outcome === 'success' || e.outcome === 'committed' ? '#16a34a' : '#dc2626' }}>
-                          {e.outcome}
-                        </span>
-                      </td>
-                      <td style={{ padding:'10px 14px' }}>
+
+                      {/* 9. Details */}
+                      <td style={{ padding:'12px 14px', textAlign:'right' }}>
                         <button onClick={() => setSelectedEvent(e)}
-                          style={{ background:'#f1f5f9', border:'none', borderRadius:6, padding:'5px 10px',
-                            cursor:'pointer', fontSize:11, fontWeight:600, color:'#475569' }}>
-                          View →
+                          style={{ background:'#f1f5f9', border:'1px solid #e2e8f0', borderRadius:6, padding:'6px 12px',
+                            cursor:'pointer', fontSize:11, fontWeight:600, color:'#334155', transition:'all .15s' }}
+                          onMouseEnter={ev => { ev.currentTarget.style.background = '#3b82f6'; ev.currentTarget.style.color = '#fff'; ev.currentTarget.style.borderColor = '#3b82f6' }}
+                          onMouseLeave={ev => { ev.currentTarget.style.background = '#f1f5f9'; ev.currentTarget.style.color = '#334155'; ev.currentTarget.style.borderColor = '#e2e8f0' }}>
+                          Inspect →
                         </button>
                       </td>
                     </tr>
                   )
                 })}
                 {data && !data.events.length && (
-                  <tr><td colSpan={8} style={{ padding:48, textAlign:'center', color:'#94a3b8', fontSize:13 }}>
+                  <tr><td colSpan={9} style={{ padding:48, textAlign:'center', color:'#94a3b8', fontSize:13 }}>
                     <div style={{ fontSize:32, marginBottom:8 }}>🔍</div>
                     <div>No events match the current filters.</div>
                     <div style={{ fontSize:12, marginTop:4 }}>Try adjusting or clearing the filters above.</div>

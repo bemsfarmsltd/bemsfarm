@@ -105,34 +105,40 @@ function extractSessionId(req) {
 // Core write — lightweight (original interface)
 // ────────────────────────────────────────────────────────────
 async function recordAudit(event, db = pool) {
-  const q = `
-    INSERT INTO system_audit_events
-      (source,action,actor_id,actor_role,actor_name,request_id,resource,outcome,
-       category,severity,entity_type,entity_id,old_value,new_value,
-       ip_address,user_agent,session_id,details,external_id)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-    ON CONFLICT(external_id) DO NOTHING`;
-  await db.query(q, [
-    event.source,
-    event.action,
-    event.actor_id   || null,
-    event.actor_role || null,
-    event.actor_name || null,
-    event.request_id || null,
-    event.resource   || null,
-    event.outcome,
-    event.category   || 'system',
-    event.severity   || 'info',
-    event.entity_type || null,
-    event.entity_id   || null,
-    event.old_value   ? JSON.stringify(event.old_value) : null,
-    event.new_value   ? JSON.stringify(event.new_value) : null,
-    event.ip_address  || null,
-    event.user_agent  || null,
-    event.session_id  || null,
-    JSON.stringify(event.details || {}),
-    event.external_id || null,
-  ]);
+  try {
+    const q = `
+      INSERT INTO system_audit_events
+        (source,action,actor_id,actor_role,actor_name,request_id,resource,outcome,
+         category,severity,entity_type,entity_id,old_value,new_value,
+         ip_address,user_agent,session_id,details,external_id)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+      ON CONFLICT(external_id) DO NOTHING`;
+    await db.query(q, [
+      event.source,
+      event.action,
+      event.actor_id   || null,
+      event.actor_role || null,
+      event.actor_name || null,
+      event.request_id || null,
+      event.resource   || null,
+      event.outcome,
+      event.category   || 'system',
+      event.severity   || 'info',
+      event.entity_type || null,
+      event.entity_id   || null,
+      event.old_value   ? JSON.stringify(event.old_value) : null,
+      event.new_value   ? JSON.stringify(event.new_value) : null,
+      event.ip_address  || null,
+      event.user_agent  || null,
+      event.session_id  || null,
+      JSON.stringify(event.details || {}),
+      event.external_id || null,
+    ]);
+    lastFailure = null;
+  } catch (err) {
+    lastFailure = new Date().toISOString();
+    throw err;
+  }
 }
 
 // ────────────────────────────────────────────────────────────
@@ -179,12 +185,17 @@ function auditRequests(req, res, next) {
     const resource = route ? `${req.baseUrl || ''}${route}` : 'unmatched-api-route';
     const severity = detectSeverity(req.method, res.statusCode, category);
 
+    const user = req.user || req.auditActor;
+    const actorName = user?.name
+      ? (user.email && user.name !== user.email ? `${user.name} (${user.email})` : user.name)
+      : (user?.email || (req.body?.email ? `Visitor (${req.body.email})` : null));
+
     recordAudit({
       source:      'api',
       action:      req.method,
-      actor_id:    req.user?.id   || req.auditActor?.id   || null,
-      actor_role:  req.user?.role || req.auditActor?.role || null,
-      actor_name:  req.user?.name || req.user?.email      || null,
+      actor_id:    user?.id   || null,
+      actor_role:  user?.role || null,
+      actor_name:  actorName,
       request_id:  requestId,
       resource,
       outcome:     res.statusCode < 400 ? 'success' : 'failure',
@@ -233,6 +244,54 @@ function recordSecurityEvent(req, action, details = {}) {
 }
 
 // ────────────────────────────────────────────────────────────
+// Automatic Deployment / Startup Event for Developer Audit
+// ────────────────────────────────────────────────────────────
+async function recordDeploymentEvent() {
+  try {
+    let commitHash = process.env.RENDER_GIT_COMMIT || '';
+    let branch = process.env.RENDER_GIT_BRANCH || 'main';
+    let author = 'CI/CD Pipeline';
+    let message = 'Production release deployed';
+
+    try {
+      const { execSync } = require('child_process');
+      const gitOut = execSync('git log -1 --pretty=format:"%H|%s|%an"', { timeout: 3000 }).toString().trim();
+      if (gitOut && gitOut.includes('|')) {
+        const parts = gitOut.split('|');
+        commitHash = parts[0] || commitHash;
+        message = parts[1] || message;
+        author = parts[2] || author;
+      }
+    } catch (_) {}
+
+    const externalId = commitHash ? `deploy:${commitHash.slice(0, 16)}` : `deploy:${Date.now()}`;
+
+    await recordAudit({
+      source: 'deployment',
+      action: 'deploy',
+      outcome: 'success',
+      resource: process.env.AUDIT_REPOSITORY || 'bemsfarmsltd/bemsfarm',
+      category: 'developer',
+      severity: 'info',
+      actor_name: author,
+      actor_role: 'developer',
+      external_id: externalId,
+      details: {
+        commit: commitHash,
+        branch,
+        message,
+        environment: process.env.NODE_ENV || 'production',
+        node_version: process.version,
+        service: process.env.RENDER_SERVICE_NAME || 'bems-api',
+      },
+    });
+    console.log('[god-eye] Recorded deployment audit event for commit:', commitHash.slice(0, 7));
+  } catch (err) {
+    console.warn('[god-eye] Could not record deployment event:', err.message);
+  }
+}
+
+// ────────────────────────────────────────────────────────────
 // Signed external webhook verification
 // ────────────────────────────────────────────────────────────
 function verifyEventSignature(raw, timestamp, signature, secret, now = Date.now()) {
@@ -250,6 +309,7 @@ module.exports = {
   auditRequests,
   setAuditContext,
   recordSecurityEvent,
+  recordDeploymentEvent,
   verifyEventSignature,
   getAuditFailure: () => lastFailure,
 };

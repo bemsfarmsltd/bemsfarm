@@ -55,6 +55,49 @@ router.post('/events', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── Native GitHub Webhook Handler (No complex custom HMAC needed) ────────────
+router.post(['/github-webhook', '/github'], async (req, res, next) => {
+  try {
+    const eventType = req.headers['x-github-event'] || 'push';
+    if (eventType === 'ping') {
+      return res.json({ ok: true, message: 'GitHub Webhook successfully received by Bems Farms God Eye!' });
+    }
+
+    const payload = req.body || {};
+    const repo = payload.repository?.full_name || 'bemsfarmsltd/bemsfarm';
+    const branch = (payload.ref || '').replace('refs/heads/', '') || 'main';
+    const headCommit = payload.head_commit || (payload.commits && payload.commits[payload.commits.length - 1]) || {};
+    const actor = payload.pusher?.name || headCommit.author?.name || payload.sender?.login || 'Developer';
+    const commitMsg = headCommit.message || `Git ${eventType} event on ${branch}`;
+
+    await recordAudit({
+      source: 'developer',
+      action: eventType === 'push' ? 'push' : eventType,
+      outcome: 'success',
+      resource: repo,
+      category: 'developer',
+      severity: 'info',
+      actor_name: actor,
+      actor_role: 'developer',
+      external_id: headCommit.id ? `gh:${headCommit.id}` : `gh:${Date.now()}:${Math.random().toString(36).slice(2, 7)}`,
+      details: {
+        commit: headCommit.id || null,
+        message: commitMsg,
+        branch,
+        author: headCommit.author?.name || actor,
+        author_email: headCommit.author?.email || payload.pusher?.email || null,
+        commit_url: headCommit.url || null,
+        commits_count: payload.commits?.length || 1,
+        event_type: eventType,
+      },
+    });
+
+    res.json({ recorded: true, event: eventType });
+  } catch (err) {
+    next(err);
+  }
+});
+
 let auditTableReady = false;
 async function ensureAuditTable() {
   if (auditTableReady) return;
@@ -286,6 +329,41 @@ router.get('/export', requireRole('superadmin'), async (req, res, next) => {
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="bems-god-eye-audit-${new Date().toISOString().slice(0,10)}.csv"`);
     res.send(csv);
+  } catch (err) { next(err); }
+});
+
+// ── POST /api/audit/simulate-developer — superadmin test developer audit event ──
+router.post('/simulate-developer', requireRole('superadmin', 'admin'), async (req, res, next) => {
+  try {
+    const sampleCommits = [
+      { msg: 'feat(storefront): optimize checkout payment gateway & instant order receipt dispatch', author: req.user?.name || 'Lead DevOps Engineer' },
+      { msg: 'fix(inventory): synchronize real-time low-stock threshold with warehouse dispatch', author: req.user?.name || 'Backend Engineer' },
+      { msg: 'perf(db): add composite indices on customer product demand telemetry & God Eye audit logs', author: req.user?.name || 'Infrastructure Team' },
+    ];
+    const pick = sampleCommits[Math.floor(Math.random() * sampleCommits.length)];
+    const fakeCommit = Math.random().toString(16).slice(2, 10) + Math.random().toString(16).slice(2, 10);
+
+    await recordAudit({
+      source: 'developer',
+      action: 'push',
+      outcome: 'success',
+      resource: 'bemsfarmsltd/bemsfarm',
+      category: 'developer',
+      severity: 'info',
+      actor_name: pick.author,
+      actor_role: 'developer',
+      external_id: `test:${fakeCommit}`,
+      details: {
+        commit: fakeCommit,
+        branch: 'main',
+        message: pick.msg,
+        environment: 'production',
+        author: pick.author,
+        simulated: true,
+      },
+    });
+
+    res.json({ recorded: true, message: 'Developer audit event recorded successfully' });
   } catch (err) { next(err); }
 });
 

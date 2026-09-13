@@ -69,6 +69,10 @@ app.use('/api/audit', require('./routes/audit'));
     const sql  = fs.readFileSync(path.join(__dirname, 'db/audit_v2_migration.sql'), 'utf8');
     await pool.query(sql);
     console.log('✅ God Eye Audit v2 schema ready.');
+
+    // Auto-record deployment audit event for Developer Audit
+    const { recordDeploymentEvent } = require('./services/auditService');
+    await recordDeploymentEvent();
   } catch (e) {
     console.warn('[god-eye] Audit v2 migration skipped (will retry next boot):', e.message?.slice(0,120));
   }
