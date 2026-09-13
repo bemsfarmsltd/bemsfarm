@@ -75,10 +75,10 @@ export default function TeamOnboarding({ initialTab }) {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // Active view: 'all' | 'staff' | 'onboarding' | 'roles'
-  const activeView = searchParams.get('tab') || initialTab || 'all'
+  // Active view: 'staff' | 'onboarding' | 'roles'
+  const activeView = searchParams.get('tab') || initialTab || 'staff'
   const setView = (tab) => {
-    setSearchParams(tab === 'all' ? {} : { tab })
+    setSearchParams(tab === 'staff' ? {} : { tab })
   }
 
   // ── 1. ONBOARDING & INVITE STATE ──────────────────────────────────────────
@@ -448,22 +448,25 @@ export default function TeamOnboarding({ initialTab }) {
           >
             <i className="ri-shield-keyhole-line"></i> + Create Custom Role
           </button>
-          <a
-            href="#invite-form-card"
+          <button
+            type="button"
             className="btn btn-primary btn-sm d-inline-flex align-items-center gap-1.5 shadow-sm"
-            onClick={() => {
-              if (activeView !== 'all' && activeView !== 'onboarding') setView('onboarding')
-            }}
+            onClick={() => setView('onboarding')}
           >
             <i className="ri-mail-send-line"></i> + Invite Member
-          </a>
+          </button>
         </div>
       </div>
 
       {/* 3. KPI Stats Row */}
       <div className="row g-3 mb-4">
         <div className="col-6 col-md-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+          <div
+            className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100"
+            style={{ cursor: 'pointer' }}
+            onClick={() => setView('staff')}
+            title="View Staff Directory"
+          >
             <div className="d-flex align-items-center justify-content-between">
               <div>
                 <small className="text-muted text-uppercase fw-bold fs-xs">Total Staff</small>
@@ -480,7 +483,12 @@ export default function TeamOnboarding({ initialTab }) {
         </div>
 
         <div className="col-6 col-md-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+          <div
+            className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100"
+            style={{ cursor: 'pointer' }}
+            onClick={() => setView('staff')}
+            title="View Active Staff"
+          >
             <div className="d-flex align-items-center justify-content-between">
               <div>
                 <small className="text-muted text-uppercase fw-bold fs-xs">Active Accounts</small>
@@ -497,7 +505,12 @@ export default function TeamOnboarding({ initialTab }) {
         </div>
 
         <div className="col-6 col-md-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+          <div
+            className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100"
+            style={{ cursor: 'pointer' }}
+            onClick={() => setView('onboarding')}
+            title="View Onboarding Invitations"
+          >
             <div className="d-flex align-items-center justify-content-between">
               <div>
                 <small className="text-muted text-uppercase fw-bold fs-xs">Pending Invites</small>
@@ -512,7 +525,12 @@ export default function TeamOnboarding({ initialTab }) {
         </div>
 
         <div className="col-6 col-md-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+          <div
+            className="card border-0 shadow-sm rounded-4 p-3 bg-white h-100"
+            style={{ cursor: 'pointer' }}
+            onClick={() => setView('roles')}
+            title="View Roles & Permissions"
+          >
             <div className="d-flex align-items-center justify-content-between">
               <div>
                 <small className="text-muted text-uppercase fw-bold fs-xs">System Roles</small>
@@ -530,17 +548,6 @@ export default function TeamOnboarding({ initialTab }) {
       {/* 4. Segmented View Switcher */}
       <div className="card border-0 shadow-sm rounded-4 mb-4 p-1.5 bg-white">
         <div className="d-flex align-items-center gap-1 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setView('all')}
-            className={`btn btn-sm rounded-3 fw-semibold px-3 py-1.5 border-0 ${
-              activeView === 'all'
-                ? 'bg-dark text-white shadow-xs'
-                : 'text-muted hover-bg-light'
-            }`}
-          >
-            <i className="ri-dashboard-line me-1"></i> All-in-One Dashboard
-          </button>
           <button
             type="button"
             onClick={() => setView('staff')}
@@ -585,7 +592,7 @@ export default function TeamOnboarding({ initialTab }) {
       {/* ═════════════════════════════════════════════════════════════════════════
           SECTION 1: TEAM ONBOARDING & QUICK INVITE
       ═════════════════════════════════════════════════════════════════════════ */}
-      {(activeView === 'all' || activeView === 'onboarding') && (
+      {activeView === 'onboarding' && (
         <div className="mb-5" id="invite-section">
           {/* Quick Invite Card */}
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden mb-4" id="invite-form-card">
@@ -883,7 +890,7 @@ export default function TeamOnboarding({ initialTab }) {
       {/* ═════════════════════════════════════════════════════════════════════════
           SECTION 2: STAFF DIRECTORY & USER ACCOUNTS
       ═════════════════════════════════════════════════════════════════════════ */}
-      {(activeView === 'all' || activeView === 'staff') && (
+      {activeView === 'staff' && (
         <div className="mb-5" id="staff-section">
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
             <div className="card-header bg-white border-bottom p-3.5 d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -1145,7 +1152,7 @@ export default function TeamOnboarding({ initialTab }) {
       {/* ═════════════════════════════════════════════════════════════════════════
           SECTION 3: ROLES & PERMISSIONS MATRIX
       ═════════════════════════════════════════════════════════════════════════ */}
-      {(activeView === 'all' || activeView === 'roles') && (
+      {activeView === 'roles' && (
         <div className="mb-5" id="roles-section">
           <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
             <div className="card-header bg-white border-bottom p-3.5 d-flex justify-content-between align-items-center flex-wrap gap-2">

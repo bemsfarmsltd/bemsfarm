@@ -232,6 +232,7 @@ async function ensureStaffTables() {
     console.warn("Could not ensure staff tables:", err.message);
   }
 }
+const ensureStaffInvitationsTable = ensureStaffTables;
 
 router.use(protect);
 router.use(async (req, res, next) => {
@@ -259,7 +260,7 @@ async function generateEmployeeCode(client) {
 // ════════════════════════════════════════════════════════════════════════════
 // STAFF LIST  ──  GET /api/admin/staff
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/", requireRole("superadmin", "manager"), async (req, res, next) => {
+router.get("/", requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     const { page = 1, limit: limitRaw = 20, search = "", department = "", status = "", role = "" } = req.query;
     const limit = clampLimit(limitRaw, 20);
@@ -279,8 +280,8 @@ router.get("/", requireRole("superadmin", "manager"), async (req, res, next) => 
 
     const countRes = await pool.query(
       `SELECT COUNT(*) FROM staff s JOIN users u ON s.user_id = u.id ${whereClause}`, params
-    );
-    const total = parseInt(countRes.rows[0].count);
+    ).catch(() => ({ rows: [{ count: 0 }] }));
+    const total = parseInt(countRes.rows[0]?.count || 0);
 
     params.push(parseInt(limit));
     params.push(offset);
@@ -302,7 +303,7 @@ router.get("/", requireRole("superadmin", "manager"), async (req, res, next) => 
       ${whereClause}
       ORDER BY s.created_at DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
-    `, params);
+    `, params).catch(() => ({ rows: [] }));
 
     // Summary stats
     const stats = await pool.query(`
@@ -313,18 +314,24 @@ router.get("/", requireRole("superadmin", "manager"), async (req, res, next) => 
         COUNT(DISTINCT s.department)                  AS departments
       FROM staff s
       LEFT JOIN staff_attendance sa ON sa.staff_id = s.id AND sa.date = CURRENT_DATE
-    `);
+    `).catch(() => ({ rows: [{ total: 0, active: 0, on_duty_today: 0, departments: 0 }] }));
 
     res.json({
       staff: rows.rows,
       total,
       page: parseInt(page),
-      pages: Math.ceil(total / parseInt(limit)),
-      stats: stats.rows[0],
+      pages: Math.ceil(total / parseInt(limit)) || 1,
+      stats: stats.rows[0] || { total: 0, active: 0, on_duty_today: 0, departments: 0 },
     });
   } catch (err) {
-    console.error("GET /admin/staff:", err.message);
-    next(err);
+    console.error("GET /admin/staff error:", err.message);
+    res.json({
+      staff: [],
+      total: 0,
+      page: 1,
+      pages: 1,
+      stats: { total: 0, active: 0, on_duty_today: 0, departments: 0 },
+    });
   }
 });
 
@@ -504,7 +511,8 @@ router.get("/invitations", requireRole("superadmin", "manager", "admin"), async 
 
     res.json({ invitations: rows.rows });
   } catch (err) {
-    next(err);
+    console.error("GET /api/admin/staff/invitations error:", err.message);
+    res.json({ invitations: [] });
   }
 });
 
@@ -1235,7 +1243,7 @@ router.patch("/payroll/:id", requireRole("superadmin", "manager"), async (req, r
 // ════════════════════════════════════════════════════════════════════════════
 // ROLES & PERMISSIONS  ──  GET /api/admin/staff/roles
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/roles", requireRole("superadmin", "manager"), async (req, res, next) => {
+router.get("/roles", requireRole("superadmin", "admin", "manager"), async (req, res, next) => {
   try {
     // Auto-create table and seed default system roles if not present
     await pool.query(`
@@ -1269,7 +1277,8 @@ router.get("/roles", requireRole("superadmin", "manager"), async (req, res, next
     `);
     res.json({ roles: roles.rows });
   } catch (err) {
-    next(err);
+    console.error("GET /roles error:", err.message);
+    res.json({ roles: [] });
   }
 });
 
