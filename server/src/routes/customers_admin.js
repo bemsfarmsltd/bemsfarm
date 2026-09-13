@@ -412,7 +412,12 @@ router.get("/site-activity", requireRole("superadmin", "manager", "admin"), asyn
     const { type = "", search = "", date_from = "", date_to = "", limit: limitRaw = 100 } = req.query;
     const limit = clampLimit(limitRaw, 100);
     const params = [];
-    const where = ["u.role = 'user'", "a.type IN ('login','registered','email_verified_login','order_created','product_viewed','onboarding_completed','profile_updated')"];
+    const where = [
+      "u.role = 'user'",
+      "COALESCE(u.status, '') != 'deleted'",
+      "COALESCE(u.name, '') != 'Deleted Customer'",
+      "a.type IN ('login','registered','email_verified_login','order_created','product_viewed','onboarding_completed','profile_updated')",
+    ];
 
     if (type) {
       params.push(type);
@@ -449,7 +454,7 @@ router.get("/site-activity", requireRole("superadmin", "manager", "admin"), asyn
         `SELECT COUNT(*) FROM ai_user_activity a LEFT JOIN users u ON u.id = a.user_id ${clause}`,
         params.slice(0, -1),
       ),
-      pool.query(`SELECT a.type, COUNT(*) FROM ai_user_activity a JOIN users u ON u.id=a.user_id WHERE u.role='user' AND a.type IN ('login','registered','email_verified_login','order_created','product_viewed','onboarding_completed','profile_updated') GROUP BY a.type`),
+      pool.query(`SELECT a.type, COUNT(*) FROM ai_user_activity a JOIN users u ON u.id=a.user_id WHERE u.role='user' AND COALESCE(u.status,'') != 'deleted' AND COALESCE(u.name,'') != 'Deleted Customer' AND a.type IN ('login','registered','email_verified_login','order_created','product_viewed','onboarding_completed','profile_updated') GROUP BY a.type`),
     ]);
 
     res.json({

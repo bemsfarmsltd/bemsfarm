@@ -714,11 +714,6 @@ export default function Sidebar() {
                   </NavLink>
                 )}
                 {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/products/import" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Bulk Import</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
                   <NavLink to="/products/export" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                     <span>Bulk Export</span>
                   </NavLink>

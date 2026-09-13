@@ -49,41 +49,67 @@ const BRANDS = [
 
 // ── Full product import schema ──────────────────────────────────────────────
 const PRODUCT_IMPORT_FIELDS = [
-  { key: 'name', label: 'Product Name', required: true, section: 'Product Info' },
-  { key: 'description', label: 'Description', required: false, section: 'Product Info' },
-  { key: 'category', label: 'Category', required: true, section: 'Product Info' },
-  { key: 'brand', label: 'Brand', required: false, section: 'Product Info' },
-  { key: 'unit', label: 'Unit of Measure', required: true, section: 'Product Info' },
-  { key: 'model_variant', label: 'Model / Variant', required: false, section: 'Product Info' },
-  { key: 'tags', label: 'Tags', required: false, section: 'Product Info' },
-  { key: 'unit_price', label: 'Unit Price (₦)', required: true, section: 'Pricing & Stock' },
-  { key: 'cost_price', label: 'Cost Price (₦)', required: true, section: 'Pricing & Stock' },
-  { key: 'available_for_sale', label: 'Available for Sale', required: false, section: 'Pricing & Stock', hint: 'yes | no' },
-  { key: 'stock_qty', label: 'Stock Quantity', required: false, section: 'Pricing & Stock' },
-  { key: 'low_stock_alert', label: 'Low Stock Alert', required: false, section: 'Pricing & Stock' },
-  { key: 'sku', label: 'SKU', required: true, section: 'Advanced Settings' },
-  { key: 'barcode', label: 'Barcode', required: false, section: 'Advanced Settings' },
-  { key: 'tax', label: 'Tax (%)', required: false, section: 'Advanced Settings' },
-  { key: 'track_inventory', label: 'Track Inventory', required: false, section: 'Advanced Settings', hint: 'yes | no' },
-  { key: 'expiry_date', label: 'Expiry Date', required: false, section: 'Advanced Settings', hint: 'YYYY-MM-DD' },
-  { key: 'status', label: 'Product Status', required: false, section: 'Advanced Settings', hint: 'active | inactive | draft' },
-  { key: 'hsn_code', label: 'HSN Code', required: false, section: 'Advanced Settings' },
-  { key: 'return_policy', label: 'Return Policy', required: false, section: 'Advanced Settings', hint: 'no_return | 7days | 14days | 30days' },
-  { key: 'main_image_url', label: 'Main Image URL', required: true, section: 'Images & Media' },
-  { key: 'image_2_url', label: 'Image 2 URL', required: false, section: 'Images & Media' },
-  { key: 'image_3_url', label: 'Image 3 URL', required: false, section: 'Images & Media' },
-  { key: 'image_4_url', label: 'Image 4 URL', required: false, section: 'Images & Media' },
-  { key: 'image_title', label: 'Image Title', required: false, section: 'Images & Media' },
-  { key: 'image_tags', label: 'Image Tags', required: false, section: 'Images & Media' },
-  { key: 'video_url', label: 'Product Video URL', required: false, section: 'Images & Media' },
+  { key: 'name', label: 'Product Name', required: true, section: 'Product Info', example: 'Ofada Rice (5kg Bag)' },
+  { key: 'description', label: 'Description', required: false, section: 'Product Info', example: 'Stone-free premium aromatic brown ofada rice.' },
+  { key: 'category', label: 'Category', required: true, section: 'Product Info', example: 'Rice & Grains' },
+  { key: 'brand', label: 'Brand', required: false, section: 'Product Info', example: 'Bems Farms (Own Brand)' },
+  { key: 'unit', label: 'Unit of Measure', required: true, section: 'Product Info', example: 'kg' },
+  { key: 'model_variant', label: 'Model / Variant', required: false, section: 'Product Info', example: '5kg Bag' },
+  { key: 'tags', label: 'Tags', required: false, section: 'Product Info', example: 'Organic, Best Seller' },
+  { key: 'unit_price', label: 'Unit Price (₦)', required: true, section: 'Pricing & Stock', example: '12500' },
+  { key: 'cost_price', label: 'Cost Price (₦)', required: true, section: 'Pricing & Stock', example: '9800' },
+  { key: 'available_for_sale', label: 'Available for Sale', required: false, section: 'Pricing & Stock', hint: 'yes | no', example: 'yes' },
+  { key: 'stock_qty', label: 'Stock Quantity', required: false, section: 'Pricing & Stock', example: '150' },
+  { key: 'low_stock_alert', label: 'Low Stock Alert', required: false, section: 'Pricing & Stock', example: '15' },
+  { key: 'sku', label: 'SKU', required: true, section: 'Advanced Settings', example: 'RICE-OFA-05KG' },
+  { key: 'barcode', label: 'Barcode', required: false, section: 'Advanced Settings', example: '950110001001' },
+  { key: 'tax', label: 'Tax (%)', required: false, section: 'Advanced Settings', example: '7.5' },
+  { key: 'track_inventory', label: 'Track Inventory', required: false, section: 'Advanced Settings', hint: 'yes | no', example: 'yes' },
+  { key: 'expiry_date', label: 'Expiry Date', required: false, section: 'Advanced Settings', hint: 'YYYY-MM-DD', example: '' },
+  { key: 'status', label: 'Product Status', required: false, section: 'Advanced Settings', hint: 'active | inactive | draft', example: 'active' },
+  { key: 'hsn_code', label: 'HSN Code', required: false, section: 'Advanced Settings', example: '' },
+  { key: 'return_policy', label: 'Return Policy', required: false, section: 'Advanced Settings', hint: 'no_return | 7days | 14days | 30days', example: 'no_return' },
+  { key: 'main_image_url', label: 'Main Image URL', required: true, section: 'Images & Media', example: 'https://images.unsplash.com/photo-rice.jpg' },
+  { key: 'image_2_url', label: 'Image 2 URL', required: false, section: 'Images & Media', example: '' },
+  { key: 'image_3_url', label: 'Image 3 URL', required: false, section: 'Images & Media', example: '' },
+  { key: 'image_4_url', label: 'Image 4 URL', required: false, section: 'Images & Media', example: '' },
+  { key: 'image_title', label: 'Image Title', required: false, section: 'Images & Media', example: '' },
+  { key: 'image_tags', label: 'Image Tags', required: false, section: 'Images & Media', example: '' },
+  { key: 'video_url', label: 'Product Video URL', required: false, section: 'Images & Media', example: '' },
 ]
+
+function downloadCSV(filename, content) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+function csvEscape(val) {
+  const s = String(val ?? '')
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+function buildProductTemplateCSV(withSampleData) {
+  const headers = PRODUCT_IMPORT_FIELDS.map((f) => f.key)
+  const lines = [headers.join(',')]
+  if (withSampleData) {
+    lines.push(PRODUCT_IMPORT_FIELDS.map((f) => csvEscape(f.example || '')).join(','))
+  }
+  return lines.join('\n')
+}
 
 export default function AddProduct() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const editId = searchParams.get('edit') || searchParams.get('id')
 
-  const [mode, setMode] = useState('single')
+  const [mode, setMode] = useState(searchParams.get('mode') === 'import' ? 'import' : 'single')
   const [importDone, setImportDone] = useState(false)
   const [importedCount, setImportedCount] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -381,6 +407,38 @@ export default function AddProduct() {
       {mode === 'import' && !editId && (
         <div className="row">
           <div className="col-12">
+            <div className="card mb-4 border-start border-4 border-success">
+              <div className="card-body d-flex flex-wrap align-items-center gap-3 justify-content-between">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="size-12 rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center fs-2xl flex-shrink-0">
+                    <i className="ri-file-excel-2-line"></i>
+                  </div>
+                  <div>
+                    <h6 className="fw-bold text-dark mb-1">Download the Official Product CSV Template</h6>
+                    <p className="text-muted fs-sm mb-0">
+                      Fill it in and re-upload — matching column headers guarantee 100% automatic schema mapping.
+                    </p>
+                  </div>
+                </div>
+                <div className="d-flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline-success d-flex align-items-center gap-1.5"
+                    onClick={() => downloadCSV('bems_products_blank_template.csv', buildProductTemplateCSV(false))}
+                  >
+                    <i className="ri-download-line"></i> Blank Template
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-success text-white d-flex align-items-center gap-1.5 shadow-sm"
+                    onClick={() => downloadCSV('bems_products_sample.csv', buildProductTemplateCSV(true))}
+                  >
+                    <i className="ri-file-download-fill"></i> Sample CSV (with Data)
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="card mb-4">
               <div className="card-header d-flex align-items-center gap-2">
                 <i className="ri-table-line text-primary fs-16"></i>
@@ -397,9 +455,10 @@ export default function AddProduct() {
                       <div className="p-2 rounded d-flex flex-column gap-1"
                         style={{ background: f.required ? '#fef3f3' : '#f8f9fa', border: `1px solid ${f.required ? '#fecaca' : '#e9ecef'}` }}>
                         <div className="d-flex align-items-center gap-1">
-                          <code style={{ fontSize: 11, color: '#405189' }}>{f.label}</code>
+                          <code style={{ fontSize: 11, color: '#405189' }}>{f.key}</code>
                           {f.required && <span className="text-danger fw-bold" style={{ fontSize: 13 }}>*</span>}
                         </div>
+                        <span className="text-muted" style={{ fontSize: 11 }}>{f.label}{f.hint ? ` — ${f.hint}` : ''}</span>
                       </div>
                     </div>
                   ))}
