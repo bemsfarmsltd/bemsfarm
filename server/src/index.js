@@ -26,6 +26,7 @@ app.use(
         "https://www.bemsfarms.com",
         "https://bemsfarms.com",
         "https://bemsfarm.vercel.app",
+        "https://palegoldenrod-bee-264147.hostingersite.com",
         // Henry's admin frontend — update these to match his actual deployment URL
         "https://bems-admin.vercel.app",
         "https://admin.bemsfarms.com",
