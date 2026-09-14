@@ -13,7 +13,7 @@ router.use(protect);
 // Fetches active undismissed broadcasts for the logged-in customer (targeted or global)
 router.get("/active", requireRole("user"), async (req, res, next) => {
   try {
-    await initCrmTables();
+
     const userId = req.user.id;
 
     const query = `
@@ -45,7 +45,7 @@ router.get("/active", requireRole("user"), async (req, res, next) => {
 // Customer dismissed the popup card
 router.post("/:id/dismiss", requireRole("user"), async (req, res, next) => {
   try {
-    await initCrmTables();
+
     const broadcastId = req.params.id;
     const userId = req.user.id;
 
@@ -68,7 +68,7 @@ router.post("/:id/dismiss", requireRole("user"), async (req, res, next) => {
 // Admin lists all broadcasts with delivery statistics
 router.get("/admin/all", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
-    await initCrmTables();
+
     const result = await pool.query(`
       SELECT b.id, b.title, b.message, b.type, b.target_type, b.customer_id,
              b.action_label, b.action_url, b.status, b.created_at,
@@ -96,7 +96,7 @@ router.get("/admin/all", requireRole("superadmin", "manager", "admin"), async (r
 // Admin creates a targeted or platform-wide broadcast
 router.post("/admin", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
-    await initCrmTables();
+
     const {
       title,
       message,
@@ -165,7 +165,7 @@ router.post("/admin", requireRole("superadmin", "manager", "admin"), async (req,
 // Admin archives or deletes a broadcast
 router.delete("/admin/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
-    await initCrmTables();
+
     const id = req.params.id;
     await pool.query("UPDATE customer_broadcasts SET status='archived' WHERE id = $1", [id]);
     res.json({ message: "Broadcast removed successfully" });

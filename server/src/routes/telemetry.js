@@ -18,7 +18,7 @@ router.post(['/product-click','/demand-click'],optionalAuth,async(req,res,next)=
       if(req.user)await pool.query(`INSERT INTO ai_user_activity(user_id,type,entity_type,entity_id,metadata) VALUES($1,'product_viewed','product',$2,$3)`,[req.user.id,String(p.id),JSON.stringify({name:p.name})]);
       return res.json({success:true});
     }
-    await initCrmTables();
+
     const db=await pool.connect();
     try{
       await db.query('BEGIN');
@@ -36,7 +36,7 @@ router.post(['/product-click','/demand-click'],optionalAuth,async(req,res,next)=
   }catch(e){next(e);}
 });
 router.get('/demand-summary',protect,requireRole('superadmin','admin','manager','accountant'),async(req,res,next)=>{
-  try{await initCrmTables();const r=await pool.query(`SELECT d.product_id,MAX(p.name) AS product_name,COUNT(*) AS demand_clicks,
+  try{const r=await pool.query(`SELECT d.product_id,MAX(p.name) AS product_name,COUNT(*) AS demand_clicks,
     COUNT(DISTINCT d.user_id) AS unique_customers,COUNT(*) FILTER(WHERE d.user_id IS NULL) AS guest_clicks,
     MAX(d.created_at) AS last_demanded_at,MAX(p.stock) AS stock FROM product_demand_telemetry d
     LEFT JOIN products p ON p.id=d.product_id WHERE d.created_at>NOW()-INTERVAL '30 days'

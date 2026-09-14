@@ -471,7 +471,7 @@ router.get("/site-activity", requireRole("superadmin", "manager", "admin"), asyn
 // Centralized Support Chat inbox for admin staff to see all customer inquiries
 router.get("/conversations/inbox", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
   try {
-    await initCrmTables();
+
     const result = await pool.query(`
       SELECT 
         c.id AS conversation_id,
@@ -505,7 +505,7 @@ router.get("/conversations/inbox", requireRole("superadmin", "manager", "admin")
 // Out-of-stock items clicked by customers for the procurement next-purchase list
 router.get("/procurement/demand-ranking", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
-    await initCrmTables();
+
     const result = await pool.query(`
       SELECT 
         pdt.product_id,
@@ -534,7 +534,7 @@ router.get("/procurement/demand-ranking", requireRole("superadmin", "manager", "
 // Most ordered goods, most clicked goods, saved wishlist, and out-of-stock demands
 router.get("/:id/goods-intelligence", requireRole("superadmin", "manager", "admin", "accountant"), async (req, res, next) => {
   try {
-    await initCrmTables();
+
     const target = String(req.params.id || "").trim();
     if (!target || target === "null" || target === "undefined") {
       return res.status(404).json({ message: "Customer not found" });

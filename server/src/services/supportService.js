@@ -6,14 +6,14 @@ async function resolveCustomer(target){
   return r.rows[0];
 }
 async function getMessages(customerId){
-  await initCrmTables();
+
   const r=await pool.query(`SELECT m.*,u.name AS admin_name FROM customer_messages m LEFT JOIN users u ON u.id=m.admin_id
     WHERE m.customer_id=$1 ORDER BY m.created_at DESC,m.id DESC LIMIT 200`,[customerId]);
   return {messages:r.rows.reverse()};
 }
 async function sendMessage(customerId,message,actor){
   if(typeof message!=='string' || !message.trim() || message.length>4000) throw Object.assign(new Error('Message must contain 1–4,000 characters'),{status:400});
-  await initCrmTables();
+
   const db=await pool.connect();
   try{
     await db.query('BEGIN');
@@ -26,7 +26,7 @@ async function sendMessage(customerId,message,actor){
   }catch(err){await db.query('ROLLBACK');throw err;}finally{db.release();}
 }
 async function markRead(customerId,sender){
-  await initCrmTables();
+
   await pool.query('UPDATE customer_messages SET is_read=true WHERE customer_id=$1 AND sender_type=$2 AND is_read=false',[customerId,sender]);
 }
 module.exports={resolveCustomer,getMessages,sendMessage,markRead};

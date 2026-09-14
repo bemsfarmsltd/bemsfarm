@@ -234,6 +234,15 @@ const errorHandler = require("./middleware/errorHandler");
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+const { initCrmTables } = require("./db/migrate_crm_chat_broadcast");
+
+initCrmTables()
+  .then(() => {
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+  })
+  .catch((err) => {
+    console.error("Failed to initialize CRM tables on startup:", err);
+    process.exit(1);
+  });
 
 module.exports = app;
