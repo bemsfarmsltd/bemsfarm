@@ -463,6 +463,7 @@ export default function POS() {
     if (!trimmed) return false
     const product = byBarcode[trimmed] || byBarcode['BF-' + trimmed] || bySku[trimmed]
     if (product) {
+      setViewMode('register')
       addProductToCart(product)
     } else {
       playBeep('error')
@@ -473,12 +474,12 @@ export default function POS() {
   const scanBuffer = useRef('')
   const lastKeyTime = useRef(0)
   const onScanRef = useRef(handleBarcodeScan)
-  onScanRef.current = handleBarcodeScan
+  onScanRef.current = activeModal === 'scanner' ? scannerAddProduct : handleBarcodeScan
 
   useEffect(() => {
     function onKeyDown(e) {
       const tag = e.target.tagName
-      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable
 
       if (e.key === 'F1') {
         e.preventDefault()
@@ -548,14 +549,19 @@ export default function POS() {
         return
       }
 
-      if (isInput) return
+      if (e.defaultPrevented || isInput || (activeModal && activeModal !== 'scanner') || e.ctrlKey || e.altKey || e.metaKey) {
+        scanBuffer.current = ''
+        return
+      }
 
       const now = Date.now()
-      if (e.key === 'Enter') {
-        if (scanBuffer.current.length >= 3) {
-          onScanRef.current(scanBuffer.current)
-        }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        const code = scanBuffer.current
         scanBuffer.current = ''
+        if (code && now - lastKeyTime.current <= 300) {
+          e.preventDefault()
+          onScanRef.current(code)
+        }
         return
       }
       if (e.key.length === 1) {
@@ -963,9 +969,10 @@ export default function POS() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             onKeyDown={e => {
-              if (e.key === 'Enter' && search.trim()) {
-                const success = handleBarcodeScan(search)
-                if (success) setSearch('')
+              if ((e.key === 'Enter' || e.key === 'Tab') && e.currentTarget.value.trim()) {
+                e.preventDefault()
+                handleBarcodeScan(e.currentTarget.value)
+                setSearch('')
               }
             }}
           />
@@ -1488,7 +1495,10 @@ export default function POS() {
                         autoComplete="off"
                         onChange={e => setScanCode(e.target.value)}
                         onKeyDown={e => {
-                          if (e.key === 'Enter') scannerAddProduct(scanCode)
+                          if ((e.key === 'Enter' || e.key === 'Tab') && e.currentTarget.value.trim()) {
+                            e.preventDefault()
+                            scannerAddProduct(e.currentTarget.value)
+                          }
                         }}
                       />
                       <button className="btn btn-emerald-solid px-4 fw-bold" onClick={() => scannerAddProduct(scanCode)}>
