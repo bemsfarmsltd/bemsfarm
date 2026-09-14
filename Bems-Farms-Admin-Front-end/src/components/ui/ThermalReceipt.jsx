@@ -1,5 +1,26 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import JsBarcode from 'jsbarcode'
 import api from '../../lib/api'
+
+function Barcode({ value }) {
+  const svgRef = useRef(null)
+  useEffect(() => {
+    if (svgRef.current && value) {
+      try {
+        JsBarcode(svgRef.current, value, {
+          format: "CODE128",
+          width: 1.5,
+          height: 35,
+          displayValue: false,
+          margin: 0,
+          background: "transparent",
+          lineColor: "#000"
+        })
+      } catch (e) { console.error('Barcode error', e) }
+    }
+  }, [value])
+  return <svg ref={svgRef} className="thermal-receipt__real-barcode" style={{ maxWidth: '85%', height: 'auto', margin: '0 auto 10px', display: 'block' }} />
+}
 
 const money = (value) => `₦${Number(value || 0).toLocaleString('en-NG', { maximumFractionDigits: 2 })}`
 const DEFAULTS = {
@@ -132,7 +153,9 @@ export default function ThermalReceipt({
     <footer className="thermal-receipt__footer">
       <strong>{receiptFooter}</strong>
       <p>Freshness you can trust, every day.</p>
-      {enabled('pos_receipt_show_barcode') && <div className="thermal-receipt__barcode" aria-hidden="true" />}
+      {enabled('pos_receipt_show_barcode') && (
+        receiptNumber ? <Barcode value={receiptNumber} /> : <div className="thermal-receipt__barcode" aria-hidden="true" />
+      )}
       <small>{receiptNumber || 'BEMS FARMS'} · {settings.pos_receipt_return_note}</small>
     </footer>
   </article>

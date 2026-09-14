@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
@@ -69,6 +70,7 @@ const calcSub = (items = []) => items.reduce((s, i) => s + (Number(i.total) || (
 
 export default function OrdersList() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { user } = useAuth()
 
   const [orders, setOrders]             = useState([])
   const [drivers, setDrivers]           = useState([])
@@ -1140,6 +1142,7 @@ export default function OrdersList() {
                   customer={selected.customer?.name}
                   customerPhone={selected.customer?.phone}
                   channel={getChannelCfg(selected.channel).label}
+                  cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : 'Cashier'}
                   fulfillment={selected.fulfillmentType === 'delivery' ? 'Delivery' : 'Store pickup'}
                   status={getStatusCfg(selected.status).label}
                   items={selected.items}
