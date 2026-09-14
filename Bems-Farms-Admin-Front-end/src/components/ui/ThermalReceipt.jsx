@@ -74,7 +74,7 @@ export default function ThermalReceipt({
   return <article data-paper-size={settings.pos_receipt_paper_size} className={`thermal-receipt thermal-receipt--${settings.pos_receipt_paper_size} thermal-receipt-print-root`} aria-label={`Receipt ${receiptNumber || ''}`}>
     <header className="thermal-receipt__brand">
       {enabled('pos_receipt_show_logo') && <img className="thermal-receipt__logo" src={settings.store_logo_url || '/bemsfarms_logo.png'} alt={settings.store_name} />}
-      <h1>{settings.store_name}</h1>
+      {(!enabled('pos_receipt_show_logo') || !settings.store_logo_url) && <h1>{settings.store_name}</h1>}
       <p>{settings.pos_receipt_tagline}</p>
       <address>{settings.store_address}<br />
         {enabled('pos_receipt_show_phone') && settings.store_phone}{enabled('pos_receipt_show_email') && settings.store_email ? ` · ${settings.store_email}` : ''}
