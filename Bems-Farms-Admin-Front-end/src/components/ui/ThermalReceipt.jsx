@@ -9,17 +9,17 @@ function Barcode({ value }) {
       try {
         JsBarcode(svgRef.current, value, {
           format: "CODE128",
-          width: 1.5,
-          height: 35,
+          width: 2,
+          height: 40,
           displayValue: false,
-          margin: 0,
+          margin: 10,
           background: "transparent",
           lineColor: "#000"
         })
       } catch (e) { console.error('Barcode error', e) }
     }
   }, [value])
-  return <svg ref={svgRef} className="thermal-receipt__real-barcode" style={{ maxWidth: '85%', height: 'auto', margin: '0 auto 10px', display: 'block' }} />
+  return <svg ref={svgRef} className="thermal-receipt__real-barcode" style={{ maxWidth: '90%', height: 'auto', margin: '0 auto 10px', display: 'block' }} />
 }
 
 const money = (value) => `₦${Number(value || 0).toLocaleString('en-NG', { maximumFractionDigits: 2 })}`
