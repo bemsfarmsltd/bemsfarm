@@ -917,7 +917,7 @@ a.link-custom-primary {
 .thermal-receipt__brand h1 { margin:5px 0 1px; font:800 18px/1.1 Arial,sans-serif; letter-spacing:.5px; }
 .thermal-receipt__brand p { margin:0 0 5px; font-weight:700; }
 .thermal-receipt__brand address { margin:0; font-style:normal; font-size:9.5px; }
-.thermal-receipt__mark { display:grid; place-items:center; width:30px; height:30px; margin:0 auto; border:2px solid #000; border-radius:50%; font:900 12px Arial,sans-serif; }
+.thermal-receipt__logo { display:block; width:auto; max-width:46mm; height:17mm; margin:0 auto 2px; object-fit:contain; filter:grayscale(1) contrast(1.18); }
 .thermal-receipt__title { display:flex; align-items:baseline; justify-content:space-between; margin:14px 0 8px; padding:6px 0; border-block:1px dashed #222; font-weight:800; letter-spacing:.7px; }
 .thermal-receipt__title small { font-weight:400; letter-spacing:0; }
 .thermal-receipt__meta,.thermal-receipt__payment { padding-bottom:8px; }
@@ -941,6 +941,9 @@ a.link-custom-primary {
 .thermal-receipt__footer small { font-size:8px; }
 .thermal-receipt__barcode { width:70%; height:25px; margin:0 auto 4px; background:repeating-linear-gradient(90deg,#000 0 1px,transparent 1px 3px,#000 3px 5px,transparent 5px 7px,#000 7px 8px,transparent 8px 11px); }
 .pos-success-hero-card--receipt { width:min(440px,calc(100vw - 24px)); max-height:94vh; overflow-y:auto; }
+.thermal-receipt--58 { width:58mm; padding-inline:3mm; font-size:9.5px; }
+.thermal-receipt--58 .thermal-receipt__logo { max-width:40mm; height:14mm; }
+.thermal-receipt--58 .thermal-receipt__brand h1 { font-size:15px; }
 
 @page { size:80mm auto; margin:0; }
 @media print {
@@ -953,6 +956,8 @@ a.link-custom-primary {
     margin:0 !important; padding:4mm 4mm 7mm !important; box-shadow:none !important;
     print-color-adjust:exact; -webkit-print-color-adjust:exact;
   }
+  body.thermal-print-active.thermal-print-58,
+  body.thermal-print-active.thermal-print-58 .thermal-receipt-print-root { width:58mm !important; }
 }
 @media screen and (max-width:380px) {
   .thermal-receipt-preview { padding:10px; }

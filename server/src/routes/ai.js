@@ -37,8 +37,8 @@ async function resolveUser(req) {
 // meant /recipe-helper couldn't reach them at all.
 // ═══════════════════════════════════════════════════════════════
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = "gemini-1.5-flash";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // Low-level Gemini caller shared by both features below. Each
 // feature builds its own prompt and parses the response differently,
@@ -601,16 +601,8 @@ router.post("/chat", async (req, res, next) => {
 
       return res.json({ reply: aiReply, source: "gemini" });
     } catch (geminiErr) {
-      console.error("⚠️ Gemini call failed, using fallback:", geminiErr.message);
-      const fallback = getFallbackTip();
-      if (conversationId) {
-        await saveMessages(conversationId, [
-          { role: "user",      content: lastMessage, source: "user" },
-          { role: "assistant", content: fallback,    source: "fallback" },
-        ]);
-        maybeTitleConversation(conversationId, lastMessage, callGeminiRaw);
-      }
-      return res.json({ reply: fallback, source: "fallback" });
+      console.error("⚠️ Gemini call failed:", geminiErr.message);
+      return res.status(503).json({ message: "The AI assistant is temporarily unavailable. Please try again shortly." });
     }
   } catch (err) {
     console.error("❌ Chat error:", err.message);
@@ -645,6 +637,19 @@ BemsFarms sells: rice (Ofada, basmati, parboiled, long-grain), palm oil, groundn
 Tone: Warm, encouraging, practical — like a knowledgeable friend who loves cooking. Use Nigerian food terms naturally (iru, uziza, efirin, tatashe, rodo, etc.). Keep responses concise but helpful. When relevant, suggest BemsFarms products the user can order.
 
 Never claim to be human. You are an AI kitchen assistant. If asked something outside cooking/nutrition, gently redirect to food topics.`;
+
+async function loadChefKnowledge() {
+  const [rules, substitutions, recommendations] = await Promise.all([
+    pool.query("SELECT condition, rule_text, tags FROM admin_dietary_rules ORDER BY priority DESC, id").catch(() => ({ rows: [] })),
+    pool.query("SELECT original_item, substitute_item, reason, dietary_tags FROM admin_substitutions WHERE is_active=true ORDER BY confidence DESC, id LIMIT 100").catch(() => ({ rows: [] })),
+    pool.query("SELECT title, trigger_condition, recommended_items, context_tags FROM admin_recommendations WHERE is_active=true ORDER BY priority ASC, id LIMIT 100").catch(() => ({ rows: [] })),
+  ]);
+  const sections = [];
+  if (rules.rows.length) sections.push(`DIETARY RULES:\n${rules.rows.map((r) => `- ${r.condition}: ${r.rule_text}${r.tags ? ` [${r.tags}]` : ""}`).join("\n")}`);
+  if (substitutions.rows.length) sections.push(`APPROVED SUBSTITUTIONS:\n${substitutions.rows.map((r) => `- ${r.original_item} -> ${r.substitute_item}${r.reason ? ` (${r.reason})` : ""}`).join("\n")}`);
+  if (recommendations.rows.length) sections.push(`CURATED RECOMMENDATIONS:\n${recommendations.rows.map((r) => `- When ${r.trigger_condition}: ${r.recommended_items}`).join("\n")}`);
+  return sections.join("\n\n");
+}
 
 // Extracts which real catalog products (if any) a Chef Bems reply recommends,
 // so the frontend can render "Add to Cart" buttons for them. Only used on the
@@ -690,6 +695,20 @@ Which of these catalog products, if any, does the reply recommend or suggest the
   }
 }
 
+async function validateRelatedProducts(candidates) {
+  if (!Array.isArray(candidates) || !candidates.length) return [];
+  const catalog = await pool.query(
+    "SELECT id, name, COALESCE(unit_price, price, 0) AS price, unit, stock FROM products WHERE status='active' AND COALESCE(stock,0) > 0 LIMIT 500"
+  );
+  return candidates.map((candidate) => {
+    const match = catalog.rows.find((product) =>
+      String(product.id) === String(candidate?.id || candidate?.product_id) ||
+      product.name.toLowerCase() === String(candidate?.name || candidate?.product_name || "").toLowerCase()
+    );
+    return match ? { id: match.id, name: match.name, price: Number(match.price), unit: match.unit || "1 unit", stock: Number(match.stock) } : null;
+  }).filter(Boolean).slice(0, 8);
+}
+
 router.post("/chef-chat", async (req, res, next) => {
   try {
     const {
@@ -715,6 +734,7 @@ router.post("/chef-chat", async (req, res, next) => {
 
     const customerId = user?.id || bodyUserId || bodyCustomerId || null;
     const customerEmail = user?.email || bodyEmail || bodyCustomerEmail || null;
+    const chefKnowledge = await loadChefKnowledge();
 
     if (user) {
       [contextBlock, conversationId] = await Promise.all([
@@ -748,6 +768,7 @@ router.post("/chef-chat", async (req, res, next) => {
           conversationHistory: history,
           cartItems,
           userPreferences,
+          chefKnowledge,
         }),
         signal: AbortSignal.timeout(120000), // Timeout after 2 minutes
       });
@@ -755,7 +776,8 @@ router.post("/chef-chat", async (req, res, next) => {
       if (n8nRes.ok) {
         const n8nData = await n8nRes.json();
         const reply = n8nData.reply || n8nData.response || n8nData.message || n8nData.content;
-        const relatedProducts = n8nData.relatedProducts || [];
+        if (!reply || typeof reply !== "string") throw new Error("n8n webhook returned no usable reply");
+        const relatedProducts = await validateRelatedProducts(n8nData.relatedProducts || []);
 
         if (conversationId && reply) {
           await saveMessages(conversationId, [
@@ -779,8 +801,8 @@ router.post("/chef-chat", async (req, res, next) => {
 
       // 2. Fallback to Gemini locally (existing code)
       const systemPrompt = contextBlock
-        ? `${contextBlock}\n\n${CHEF_BEMS_PROMPT}`
-        : CHEF_BEMS_PROMPT;
+        ? `${contextBlock}\n\n${CHEF_BEMS_PROMPT}${chefKnowledge ? `\n\nADMIN-MANAGED KNOWLEDGE:\n${chefKnowledge}` : ""}`
+        : `${CHEF_BEMS_PROMPT}${chefKnowledge ? `\n\nADMIN-MANAGED KNOWLEDGE:\n${chefKnowledge}` : ""}`;
 
       const cartContext =
         cartItems.length > 0
@@ -821,22 +843,7 @@ router.post("/chef-chat", async (req, res, next) => {
         return res.json({ reply, relatedProducts, source: "gemini" });
       } catch (geminiErr) {
         console.warn("⚠️ Chef Bems Gemini failed:", geminiErr.message);
-
-        const fallbacks = [
-          "I'm having a brief moment away from the kitchen! For now: the key to great Nigerian cooking is always fresh ingredients, the right balance of palm oil, and patience. What dish were you asking about? 🍲",
-          "Taking a quick break! While I'm away: garri, beans, and palm oil are the holy trinity of Nigerian pantry staples. Try to always have them stocked. Ask me again in a moment! 🌾",
-          "Chef Bems is temporarily offline, but here's a tip: egusi soup tastes best when you fry the egusi in palm oil first before adding water. Back shortly! 👨‍🍳",
-        ];
-        const fallback = fallbacks[Math.floor(Math.random() * fallbacks.length)];
-        
-        if (conversationId) {
-          await saveMessages(conversationId, [
-            { role: "user",      content: message,  source: "user" },
-            { role: "assistant", content: fallback, source: "fallback" },
-          ]);
-          maybeTitleConversation(conversationId, message, callGeminiRaw);
-        }
-        return res.json({ reply: fallback, source: "fallback" });
+        return res.status(503).json({ message: "Chef Bems is temporarily unavailable. Please try again shortly." });
       }
     }
   } catch (err) {
@@ -957,22 +964,8 @@ function getRuleBasedReply(message) {
   return null;
 }
 
-function getFallbackTip() {
-  const tips = [
-    "💡 Tip: Use code FRESH20 for 20% off",
-    "🛒 Need help finding ingredients? Tell me what you're cooking!",
-    "🎯 Use our AI Recommendations page for personalized health-based shopping",
-  ];
-  return tips[Math.floor(Math.random() * tips.length)];
-}
-
 async function callGeminiVision(base64Data, mimeType) {
-  if (process.env.GEMINI_API_KEY === "MOCK") {
-    return {
-      reply: "👨‍🍳 (MOCK Vision Engine) I looked at your ingredient photo and detected some Fresh Tomatoes, Onion (Red), and Tatashe (Bell Pepper)! This is the perfect base for a classic Nigerian Tomato Stew. Would you like me to guide you on how to cook it?",
-      ingredients: ["Tomatoes", "Onion", "Pepper"]
-    };
-  }
+  if (!process.env.GEMINI_API_KEY) throw new Error("Gemini Vision is not configured");
 
   const model = "gemini-2.5-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;

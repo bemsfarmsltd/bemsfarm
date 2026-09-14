@@ -296,42 +296,6 @@ router.post("/notify", async (req, res, next) => {
 
     await client.query("COMMIT");
 
-    // ── Update ai_conversations for super admin monitoring ────────────────────
-    // Non-critical side effect — runs after COMMIT, on the pool (not the
-    // now-released transactional client), so a failure here can never abort
-    // or silently discard the cart save that already succeeded above. (It
-    // used to run inside the transaction and swallow its own errors via
-    // console.warn — but since Postgres treats COMMIT on an already-aborted
-    // transaction as an implicit rollback with no client-visible error, a
-    // failure here was silently discarding the entire cart/product save
-    // while the API still reported success.)
-    try {
-      const cartSnapshotJson = JSON.stringify(cartItems.rows);
-      const activeConv = await pool.query(
-        `SELECT id FROM ai_conversations WHERE session_id = $1 LIMIT 1`,
-        [session_id]
-      );
-      if (activeConv.rows.length) {
-        await pool.query(
-          `UPDATE ai_conversations
-           SET cart_snapshot = $1,
-               last_message_at = NOW()
-           WHERE session_id = $2`,
-          [cartSnapshotJson, session_id]
-        );
-      } else {
-        await pool.query(
-          `INSERT INTO ai_conversations
-             (session_id, channel, customer_id, cart_snapshot, status, started_at, last_message_at)
-           VALUES ($1, 'web', $2, $3, 'active', NOW(), NOW())`,
-          [session_id, customer_id || null, cartSnapshotJson]
-        );
-      }
-      console.log(`📡 Updated ai_conversations cart_snapshot notification for session: ${session_id}`);
-    } catch (convErr) {
-      console.warn("⚠️ Failed to update ai_conversations snapshot:", convErr.message);
-    }
-
     res.json({
       success:     true,
       message:     `${addedItems.length} item(s) added to cart`,

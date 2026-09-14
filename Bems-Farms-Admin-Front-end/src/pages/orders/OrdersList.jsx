@@ -287,6 +287,7 @@ export default function OrdersList() {
         }
       } catch (err) {
         console.warn('Could not fetch deep order detail:', err.message)
+        toast.error('Full product details could not be loaded for this receipt')
       } finally {
         setDetailLoading(false)
       }
@@ -1123,18 +1124,24 @@ export default function OrdersList() {
               <div className="d-flex align-items-center justify-content-between p-3 border-bottom d-print-none">
                 <h6 className="mb-0 fw-bold">Sales Receipt</h6>
                 <div className="d-flex gap-2">
-                  <button className="btn btn-sm btn-primary" onClick={handlePrint}><i className="ri-printer-line me-1" />Print</button>
+                  <button className="btn btn-sm btn-primary" onClick={handlePrint} disabled={detailLoading}>
+                    <i className={`${detailLoading ? 'ri-loader-4-line ri-spin' : 'ri-printer-line'} me-1`} />
+                    {detailLoading ? 'Loading items…' : 'Print'}
+                  </button>
                   <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
                 </div>
               </div>
 
               <div ref={receiptRef} className="thermal-receipt-preview">
                 <ThermalReceipt
+                  receiptType={selected.channel === 'physical' ? 'pos' : 'online'}
                   receiptNumber={selected.id}
                   date={selected.date}
                   customer={selected.customer?.name}
                   customerPhone={selected.customer?.phone}
                   channel={getChannelCfg(selected.channel).label}
+                  fulfillment={selected.fulfillmentType === 'delivery' ? 'Delivery' : 'Store pickup'}
+                  status={getStatusCfg(selected.status).label}
                   items={selected.items}
                   subtotal={calcSub(selected.items) || selected.total}
                   deliveryFee={selected.deliveryFee}

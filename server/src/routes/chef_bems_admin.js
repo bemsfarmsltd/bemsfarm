@@ -16,27 +16,38 @@ router.get("/conversations", AI_ROLES, async (req, res, next) => {
     const { search = "", status, page = 1, limit: limitRaw = 20 } = req.query;
     const limit = clampLimit(limitRaw, 20);
     const params = []; const where = [];
-    // ai_conversations has no customer_name/user_message columns (that was
-    // the old assumed schema) — search the real ones instead: session_id,
-    // customer_phone, and the joined customer's name.
     if (search) {
       params.push(`%${search}%`);
-      where.push(`(ac.session_id ILIKE $${params.length} OR ac.customer_phone ILIKE $${params.length} OR u.name ILIKE $${params.length})`);
+      where.push(`(ac.session_id ILIKE $${params.length} OR ac.title ILIKE $${params.length} OR u.name ILIKE $${params.length} OR u.phone ILIKE $${params.length})`);
     }
-    if (status) { params.push(status); where.push(`ac.status = $${params.length}`); }
-    const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    where.push("ac.bot_type = 'chef'");
+    if (status === "completed") where.push("ac.archived = true");
+    if (status === "active") where.push("ac.archived = false");
+    if (status === "escalated" || status === "abandoned") where.push("false");
+    const clause = `WHERE ${where.join(" AND ")}`;
     const offset = (parseInt(page)-1)*parseInt(limit);
     const [rows, cnt] = await Promise.all([
       pool.query(
-        `SELECT ac.*, u.name AS customer_name
-         FROM ai_conversations ac
-         LEFT JOIN users u ON u.id = ac.customer_id
+        `SELECT ac.*, ac.user_id AS customer_id,
+                u.name AS customer_name, u.phone AS customer_phone,
+                CASE WHEN ac.archived THEN 'completed' ELSE 'active' END AS status,
+                COALESCE(
+                  JSON_AGG(JSON_BUILD_OBJECT(
+                    'id', m.id, 'role', m.role, 'content', m.content,
+                    'source', m.source, 'created_at', m.created_at
+                  ) ORDER BY m.created_at) FILTER (WHERE m.id IS NOT NULL),
+                  '[]'::json
+                ) AS messages
+         FROM admin_ai_conversations ac
+         LEFT JOIN users u ON u.id = ac.user_id
+         LEFT JOIN ai_conversation_messages m ON m.conversation_id = ac.id
          ${clause}
-         ORDER BY ac.last_message_at DESC NULLS LAST, ac.started_at DESC
+         GROUP BY ac.id, u.name, u.phone
+         ORDER BY ac.last_message_at DESC NULLS LAST, ac.created_at DESC
          LIMIT $${params.length+1} OFFSET $${params.length+2}`,
         [...params, parseInt(limit), offset]
       ),
-      pool.query(`SELECT COUNT(*) FROM ai_conversations ac LEFT JOIN users u ON u.id = ac.customer_id ${clause}`, params),
+      pool.query(`SELECT COUNT(*) FROM admin_ai_conversations ac LEFT JOIN users u ON u.id = ac.user_id ${clause}`, params),
     ]);
     res.json({ conversations: rows.rows, total: parseInt(cnt.rows[0].count), page: parseInt(page), pages: Math.ceil(parseInt(cnt.rows[0].count)/parseInt(limit)) });
   } catch (err) { next(err); }
@@ -45,12 +56,9 @@ router.get("/conversations", AI_ROLES, async (req, res, next) => {
 router.patch("/conversations/:id/status", requireRole("superadmin","manager"), async (req, res, next) => {
   try {
     const { status } = req.body;
-    // Matches the real ai_conversations_status_check constraint — the
-    // previous pending/resolved/escalated list doesn't exist in the DB and
-    // every call here would fail the CHECK constraint with a raw 500.
-    const valid = ["active","completed","escalated","abandoned"];
+    const valid = ["active","completed"];
     if (!valid.includes(status)) return res.status(400).json({ message: `status must be one of: ${valid.join(", ")}` });
-    const result = await pool.query("UPDATE ai_conversations SET status=$1 WHERE id=$2 RETURNING *", [status, req.params.id]);
+    const result = await pool.query("UPDATE admin_ai_conversations SET archived=$1 WHERE id=$2 AND bot_type='chef' RETURNING *", [status === "completed", req.params.id]);
     if (!result.rows.length) return res.status(404).json({ message: "Not found" });
     res.json({ conversation: result.rows[0] });
   } catch (err) { next(err); }
@@ -58,7 +66,7 @@ router.patch("/conversations/:id/status", requireRole("superadmin","manager"), a
 
 router.delete("/conversations/:id", requireRole("superadmin"), async (req, res, next) => {
   try {
-    await pool.query("DELETE FROM ai_conversations WHERE id=$1", [req.params.id]);
+    await pool.query("DELETE FROM admin_ai_conversations WHERE id=$1 AND bot_type='chef'", [req.params.id]);
     res.json({ message: "Conversation deleted" });
   } catch (err) { next(err); }
 });
