@@ -52,8 +52,7 @@ export default function LoginPage() {
   const from = customerHome(location.state?.from);
   useEffect(() => {
     if (!user) return;
-    if (isStaff(user.role)) handoff('admin');
-    else if (user.role === 'user') navigate(from, { replace: true });
+    if (isStaff(user.role) || user.role === 'user') navigate(from, { replace: true });
     else setError('Your account has no supported role. Please contact support.');
   }, [user, from, navigate]);
 
