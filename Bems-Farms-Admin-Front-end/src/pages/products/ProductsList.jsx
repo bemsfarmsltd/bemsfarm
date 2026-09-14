@@ -112,6 +112,65 @@ export default function ProductsList() {
     return products
   }, [products, barcodeFilter])
 
+  const handlePrintLabel = () => {
+    if (!previewBarcodeProduct?.barcode) return
+    const printWindow = window.open('', '_blank', 'width=500,height=400')
+    if (!printWindow) return
+    const barcodeSvg = document.getElementById('preview-barcode-svg-element')?.outerHTML || ''
+    const priceStr = formatNaira(previewBarcodeProduct.price || previewBarcodeProduct.unit_price)
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Print Barcode</title>
+          <style>
+            @page { size: 50mm 25mm; margin: 0; }
+            body { 
+              font-family: system-ui, sans-serif; 
+              margin: 0; 
+              padding: 1.5mm; 
+              width: 50mm; 
+              height: 25mm; 
+              box-sizing: border-box; 
+              display: flex; 
+              flex-direction: column; 
+              justify-content: space-between;
+              overflow: hidden; 
+              background: #fff;
+              color: #000;
+            }
+            .header { display: flex; justify-content: space-between; font-size: 7px; font-weight: bold; }
+            .header span:first-child { background: #000; color: #fff; padding: 1px 4px; border-radius: 2px; }
+            .name { font-size: 9px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+            .price-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 1px; }
+            .price { font-size: 11px; font-weight: bold; }
+            .unit { font-size: 7px; color: #333; }
+            .barcode { text-align: center; margin-top: auto; }
+            .barcode svg { height: 8mm !important; width: auto !important; max-width: 100% !important; }
+            .sku { text-align: center; font-size: 6px; font-family: monospace; margin-top: 1px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <span>BEMS FARMS</span>
+            <span>Fresh Produce</span>
+          </div>
+          <div class="name">${previewBarcodeProduct.name}</div>
+          <div class="price-row">
+            <span class="price">${priceStr}</span>
+            <span class="unit">${previewBarcodeProduct.unit || 'per unit'}</span>
+          </div>
+          <div class="barcode">${barcodeSvg}</div>
+          <div class="sku">SKU: ${previewBarcodeProduct.sku || 'N/A'}</div>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+
   return (
     <div className="container-fluid py-3">
       {/* Page Heading */}
@@ -479,7 +538,7 @@ export default function ProductsList() {
                     <span className="text-muted fs-xs">{previewBarcodeProduct.unit || 'per unit'}</span>
                   </div>
 
-                  <div className="my-2">
+                  <div className="my-2" id="preview-barcode-svg-element">
                     <BarcodeSvg
                       value={previewBarcodeProduct.barcode}
                       format="CODE128"
@@ -506,7 +565,7 @@ export default function ProductsList() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => window.print()}
+                  onClick={handlePrintLabel}
                 >
                   <i className="ri-printer-line me-1"></i> Print Label
                 </button>
