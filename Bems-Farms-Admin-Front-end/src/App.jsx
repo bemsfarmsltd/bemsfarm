@@ -115,10 +115,13 @@ import ManagerSettings      from './pages/settings/ManagerSettings'
 import TeamOnboarding        from './pages/settings/TeamOnboarding'
 import Profile               from './pages/settings/Profile'
 
+import GlobalBarcodeListener from './components/GlobalBarcodeListener'
+
 function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
+        <GlobalBarcodeListener />
         <Routes>
           {/* ── Public Auth Routes ── */}
           <Route path="/login" element={<Login />} />

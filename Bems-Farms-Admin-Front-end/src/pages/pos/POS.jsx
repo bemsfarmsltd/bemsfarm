@@ -460,7 +460,7 @@ export default function POS() {
   // Barcode Scanner Listener
   const handleBarcodeScan = useCallback((code) => {
     const trimmed = code.trim().toUpperCase()
-    if (!trimmed) return
+    if (!trimmed) return false
     const product = byBarcode[trimmed] || byBarcode['BF-' + trimmed] || bySku[trimmed]
     if (product) {
       addProductToCart(product)
@@ -964,7 +964,8 @@ export default function POS() {
             onChange={e => setSearch(e.target.value)}
             onKeyDown={e => {
               if (e.key === 'Enter' && search.trim()) {
-                handleBarcodeScan(search)
+                const success = handleBarcodeScan(search)
+                if (success) setSearch('')
               }
             }}
           />
