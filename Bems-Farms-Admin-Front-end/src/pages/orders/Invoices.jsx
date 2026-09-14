@@ -593,7 +593,7 @@ export default function Invoices() {
                   <div className="d-flex align-items-start justify-content-between">
                     <div>
                       <div className="fw-bold fs-18 mb-1">BEMS FARMS</div>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>Fresh Produce & Food Delivery · Lagos, Nigeria</div>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>Fresh Produce & Food Delivery · Abia State, Nigeria</div>
                     </div>
                     <div className="text-end">
                       <div className="fw-bold fs-20">{selected.id}</div>

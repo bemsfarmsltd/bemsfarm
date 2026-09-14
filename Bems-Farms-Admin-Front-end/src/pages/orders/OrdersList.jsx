@@ -175,7 +175,7 @@ export default function OrdersList() {
               name: o.customer_name || (isPhysical ? 'Walk-in Customer' : 'Customer'),
               phone: o.customer_phone || '—',
               email: o.customer_email || '—',
-              address: o.address ? `${o.address}${o.delivery_city ? `, ${o.delivery_city}` : ''}` : (isPhysical ? 'In-Store POS' : 'Store Pickup / Lagos'),
+              address: o.address ? `${o.address}${o.delivery_city ? `, ${o.delivery_city}` : ''}` : (isPhysical ? 'In-Store POS' : 'Store Pickup / Abia State'),
             },
             items: orderItems,
             itemCount: Number(o.item_count) || orderItems.length,

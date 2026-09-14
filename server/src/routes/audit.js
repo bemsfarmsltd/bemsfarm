@@ -374,7 +374,7 @@ router.post('/simulate-developer', requireRole('superadmin', 'admin'), async (re
       actor_name: pick.author,
       actor_role: 'developer',
       external_id: `test:${fakeCommit}`,
-      location: 'Lagos, Nigeria',
+      location: 'Abia State, Nigeria',
       details: {
         commit: fakeCommit,
         branch: 'main',
@@ -383,11 +383,11 @@ router.post('/simulate-developer', requireRole('superadmin', 'admin'), async (re
         author: pick.author,
         simulated: true,
         location: {
-          city: 'Lagos',
+          city: 'Abia State',
           country: 'Nigeria',
           country_code: 'NG',
           flag: '🇳🇬',
-          display: 'Lagos, Nigeria'
+          display: 'Abia State, Nigeria'
         }
       },
     });

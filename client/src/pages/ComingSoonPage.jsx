@@ -37,7 +37,7 @@ const TEASER_FEATURES = [
   {
     icon: "",
     label: "Fast local delivery",
-    desc: "Fresh food to your door across Lagos & beyond",
+    desc: "Fresh food to your door across Abia State & beyond",
   },
   {
     icon: "",

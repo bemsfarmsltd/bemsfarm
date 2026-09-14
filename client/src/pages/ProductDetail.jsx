@@ -1055,7 +1055,7 @@ export default function ProductDetail() {
               >
                 {[
                   "Standard delivery: 1-2 business days",
-                  "Express delivery: Same day in Lagos",
+                  "Express delivery: Same day in Abia State",
                   "Nationwide door-to-door dispatch",
                 ].map((item) => (
                   <div

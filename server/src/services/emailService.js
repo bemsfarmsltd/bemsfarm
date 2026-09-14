@@ -68,7 +68,7 @@ const footer = `
   </div>
   <div style="background: #1B4332; padding: 24px 40px; border-radius: 0 0 16px 16px; text-align: center;">
     <p style="color: rgba(255,255,255,0.7); margin: 0; font-size: 13px;">
-      © 2026 BemsFarms | Lagos, Nigeria | <a href="mailto:info@bemsfarms.com" style="color: #52B788;">info@bemsfarms.com</a>
+      © 2026 BemsFarms | Abia State, Nigeria | <a href="mailto:info@bemsfarms.com" style="color: #52B788;">info@bemsfarms.com</a>
     </p>
   </div>
 `;
@@ -141,7 +141,7 @@ async function sendOrderConfirmationEmail(order, user, items) {
         </p>
       </div>
       <p style="color: #9CA3AF; font-size: 13px;">
-        Estimated delivery: <strong>2-4 hours</strong> (Lagos) or <strong>1-3 days</strong> (other states)
+        Estimated delivery: <strong>2-4 hours</strong> (Abia State) or <strong>1-3 days</strong> (other states)
       </p>
       ${footer}
     </div>`,

@@ -114,7 +114,7 @@ function parseLocation(event) {
   if (!cleanIp) {
     return { flag: '☁️', display: 'System Cloud', city: 'Cloud Server', country: 'Internal', countryCode: 'SYS' }
   }
-  return { flag: '📍', display: 'Nigeria · Starlink', city: 'Lagos', country: 'Nigeria', countryCode: 'NG' }
+  return { flag: '📍', display: 'Nigeria · Starlink', city: 'Abia State', country: 'Nigeria', countryCode: 'NG' }
 }
 
 const METHOD_COLORS = {

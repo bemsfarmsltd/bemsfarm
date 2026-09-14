@@ -9,8 +9,8 @@ async function testRegister() {
       password: "Password123!",
       phone: "+2348012345678",
       address: "123 Test St",
-      city: "Lagos",
-      state: "Lagos",
+      city: "Abia State",
+      state: "Abia State",
       latitude: 6.5244,
       longitude: 3.3792
     };

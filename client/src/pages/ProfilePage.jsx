@@ -10,7 +10,7 @@ import { getNairaPrice } from "../utils/currency";
 import { getProductImage } from "../utils/productImages";
 
 const NIGERIAN_STATES = [
-  "Lagos", "Abuja (FCT)", "Ogun", "Oyo", "Rivers", "Delta", "Edo",
+  "Abia State", "Abuja (FCT)", "Ogun", "Oyo", "Rivers", "Delta", "Edo",
   "Kaduna", "Kano", "Enugu", "Anambra", "Akwa Ibom", "Ondo", "Osun",
   "Kwara", "Plateau", "Abia", "Imo", "Benue", "Bayelsa"
 ];
@@ -30,7 +30,7 @@ export default function ProfilePage() {
     lastName: "",
     email: "",
     phone: "",
-    preferredState: "Lagos",
+    preferredState: "Abia State",
     deliveryNotes: "",
   });
 
@@ -53,7 +53,7 @@ export default function ProfilePage() {
     receiver_phone: "",
     street_address: "",
     city: "",
-    state: "Lagos",
+    state: "Abia State",
     is_default: false,
   });
   const [editingAddressId, setEditingAddressId] = useState(null);
@@ -96,7 +96,7 @@ export default function ProfilePage() {
       lastName,
       email: user.email || "",
       phone: user.phone || "",
-      preferredState: user.state || "Lagos",
+      preferredState: user.state || "Abia State",
       deliveryNotes: user.address || "",
     });
     setAvatar(user.avatar_url || null);
@@ -249,7 +249,7 @@ export default function ProfilePage() {
       receiver_phone: user?.phone || "",
       street_address: "",
       city: "",
-      state: "Lagos",
+      state: "Abia State",
       is_default: addresses.length === 0,
     });
     setAddressError(null);
@@ -264,7 +264,7 @@ export default function ProfilePage() {
       receiver_phone: addr.receiver_phone || "",
       street_address: addr.street_address || "",
       city: addr.city || "",
-      state: addr.state || "Lagos",
+      state: addr.state || "Abia State",
       is_default: !!addr.is_default,
     });
     setAddressError(null);

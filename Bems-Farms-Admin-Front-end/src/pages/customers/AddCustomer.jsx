@@ -140,7 +140,7 @@ export default function AddCustomer() {
               <div className="card-body">
                 <div className="row g-3">
                   <div className="col-md-6">
-                    <label className="form-label" style={{fontSize:12}}>Area / Zone (Lagos)</label>
+                    <label className="form-label" style={{fontSize:12}}>Area / Zone (Abia State)</label>
                     <select className="form-select form-select-sm" value={form.zone} onChange={e=>fld('zone',e.target.value)}>
                       {ZONES.map(z=><option key={z}>{z}</option>)}
                     </select>
@@ -153,7 +153,7 @@ export default function AddCustomer() {
                   <div className="col-12">
                     <label className="form-label" style={{fontSize:12}}>Full Address</label>
                     <textarea className="form-control form-control-sm" rows={2}
-                      placeholder="No. 12, Admiralty Way, Lekki Phase 1, Lagos"
+                      placeholder="No. 12, Admiralty Way, Aba, Abia State"
                       value={form.address} onChange={e=>fld('address',e.target.value)}/>
                   </div>
                 </div>

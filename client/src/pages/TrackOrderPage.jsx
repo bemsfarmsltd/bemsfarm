@@ -126,7 +126,7 @@ const COVERAGE_HUBS = [
   {
     name: "Nationwide Across Nigeria (All 36 States + FCT)",
     tag: "2 – 3 Business Days",
-    areas: "Lagos, Abuja (FCT), Ibadan, Kano, Kaduna, Jos, and all locations nationwide",
+    areas: "Abia State, Abuja (FCT), Ibadan, Kano, Kaduna, Jos, and all locations nationwide",
     timing: "Insured nationwide freight and interstate logistics",
   },
 ];
@@ -134,7 +134,7 @@ const COVERAGE_HUBS = [
 const FAQS = [
   {
     q: "How does nationwide delivery work from Abia State?",
-    a: "Orders within Abia State (Umuahia, Aba, Ohafia, etc.) and neighboring South-East cities are dispatched via our direct courier fleet for same-day or next-day delivery. Orders to Lagos, Abuja, Port Harcourt, and other states across Nigeria are transported via insured inter-state logistics networks.",
+    a: "Orders within Abia State (Umuahia, Aba, Ohafia, etc.) and neighboring South-East cities are dispatched via our direct courier fleet for same-day or next-day delivery. Orders to Abia State, Abuja, Port Harcourt, and other states across Nigeria are transported via insured inter-state logistics networks.",
   },
   {
     q: "How is delivery fee calculated?",

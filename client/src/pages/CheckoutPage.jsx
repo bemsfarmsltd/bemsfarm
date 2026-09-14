@@ -35,7 +35,7 @@ const STATES = [
   "Kebbi",
   "Kogi",
   "Kwara",
-  "Lagos",
+  "Abia State",
   "Nasarawa",
   "Niger",
   "Ogun",
@@ -85,7 +85,7 @@ export default function CheckoutPage() {
     phone: user?.phone || "",
     address: "",
     city: "",
-    state: "Lagos",
+    state: "Abia State",
     latitude: null,
     longitude: null,
   });
@@ -131,7 +131,7 @@ export default function CheckoutPage() {
             phone: defaultAddr.receiver_phone || f.phone || user.phone || "",
             address: defaultAddr.street_address || "",
             city: defaultAddr.city || "",
-            state: defaultAddr.state || f.state || "Lagos",
+            state: defaultAddr.state || f.state || "Abia State",
           }));
         } else {
           setDeliveryMode("custom");
@@ -157,7 +157,7 @@ export default function CheckoutPage() {
       phone: addr.receiver_phone || f.phone || "",
       address: addr.street_address || "",
       city: addr.city || "",
-      state: addr.state || "Lagos",
+      state: addr.state || "Abia State",
       latitude: addr.latitude || null,
       longitude: addr.longitude || null,
     }));

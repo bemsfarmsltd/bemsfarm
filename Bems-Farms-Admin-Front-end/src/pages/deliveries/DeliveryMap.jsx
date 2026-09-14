@@ -14,7 +14,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
-// Bems Farms warehouse — dispatch origin (Lagos Island)
+// Bems Farms warehouse — dispatch origin (Aba)
 const STORE_POS = [6.4553, 3.3862]
 
 const STATUS_CFG = {
@@ -340,7 +340,7 @@ export default function DeliveryMap() {
                 <div style={{ padding: '12px 14px', minWidth: 200 }}>
                   <div className="fw-bold mb-1" style={{ fontSize: 13 }}>🏪 Bems Farms Warehouse</div>
                   <div className="text-muted small">Dispatch origin · All active deliveries depart here</div>
-                  <div className="mt-2 small"><i className="ri-map-pin-line me-1" />Lagos Island, Lagos</div>
+                  <div className="mt-2 small"><i className="ri-map-pin-line me-1" />Aba, Abia State</div>
                 </div>
               </Popup>
             </Marker>

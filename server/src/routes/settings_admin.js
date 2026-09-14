@@ -283,7 +283,7 @@ router.get("/receipt", requireRole(...STAFF_ROLES), async (req, res, next) => {
         store_name: general.store_name || "Bems Farms Ltd",
         store_phone: general.store_phone || "+234 800 236 7326",
         store_email: general.store_email || "info@bemsfarms.com",
-        store_address: general.store_address || "Lagos, Nigeria",
+        store_address: general.store_address || "Abia State, Nigeria",
         store_logo_url: general.store_logo_url || "/bemsfarms_logo.png",
         store_tax_id: general.store_tax_id || "",
         store_registration_number: general.store_registration_number || "",

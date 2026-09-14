@@ -43,7 +43,7 @@ const BRANDS = [
   { id: 3, name: 'Naija Naturals' },
   { id: 4, name: 'Farm Direct' },
   { id: 5, name: 'Green Basket' },
-  { id: 6, name: 'Lagos Organics' },
+  { id: 6, name: 'Abia Organics' },
   { id: 7, name: 'No Brand / Generic' },
 ]
 

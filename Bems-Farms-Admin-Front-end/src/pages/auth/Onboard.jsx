@@ -334,7 +334,7 @@ export default function Onboard() {
                     <input
                       type="text"
                       className="form-control border-start-0 ps-0"
-                      placeholder="e.g. 14 Ikeja GRA, Lagos"
+                      placeholder="e.g. 14 Aba, Abia State"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                     />

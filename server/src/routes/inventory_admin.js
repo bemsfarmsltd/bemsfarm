@@ -18,8 +18,8 @@
 //   updated_at  TIMESTAMP DEFAULT NOW()
 // );
 // INSERT INTO warehouses (name, code, location, status) VALUES
-//   ('Main Store', 'MAIN', '14 Farm Road, Epe, Lagos', 'active'),
-//   ('Cold Store',  'COLD', '14 Farm Road, Epe, Lagos', 'active')
+//   ('Main Store', 'MAIN', '14 Farm Road, Aba, Abia State', 'active'),
+//   ('Cold Store',  'COLD', '14 Farm Road, Aba, Abia State', 'active')
 // ON CONFLICT DO NOTHING;
 //
 // -- STOCK MOVEMENTS (audit trail for every stock change)

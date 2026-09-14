@@ -83,9 +83,9 @@ export default function ContactPage() {
       lines: [
         { text: "BemsFarm HQ", type: "info" },
         {
-          text: "Lagos Island, Lagos State, Nigeria",
+          text: "Aba, Abia State State, Nigeria",
           type: "maps",
-          value: "BemsFarm+Lagos+Island+Nigeria",
+          value: "BemsFarm+Abia State+Island+Nigeria",
         },
         { text: "Mon - Sat: 8am - 8pm", type: "info" },
       ],

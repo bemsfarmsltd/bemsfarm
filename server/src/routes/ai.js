@@ -408,7 +408,7 @@ function getRuleBasedReply(message) {
   }
 
   if (m.match(/deliver|shipping|fast|how long/)) {
-    return "🚚 **Same-day in Lagos** (2-4 hours) | **1-3 days nationwide** | Free delivery over ₦15,000";
+    return "🚚 **Same-day in Abia State** (2-4 hours) | **1-3 days nationwide** | Free delivery over ₦15,000";
   }
 
   // No match — caller falls through to Gemini for an open-ended answer

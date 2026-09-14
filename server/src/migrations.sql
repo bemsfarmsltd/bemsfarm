@@ -258,11 +258,11 @@ ALTER TABLE warehouses
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP   DEFAULT NOW();
 
 INSERT INTO warehouses (name, code, location, status)
-  SELECT 'Main Store','MAIN','14 Farm Road, Epe, Lagos','active'
+  SELECT 'Main Store','MAIN','14 Farm Road, Aba, Abia State','active'
   WHERE NOT EXISTS (SELECT 1 FROM warehouses WHERE code='MAIN');
 
 INSERT INTO warehouses (name, code, location, status)
-  SELECT 'Cold Store','COLD','14 Farm Road, Epe, Lagos','active'
+  SELECT 'Cold Store','COLD','14 Farm Road, Aba, Abia State','active'
   WHERE NOT EXISTS (SELECT 1 FROM warehouses WHERE code='COLD');
 
 
