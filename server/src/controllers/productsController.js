@@ -122,22 +122,5 @@ const getProductById = async (req, res, next) => {
   }
 };
 
-// ─── GET FEATURED PRODUCTS ─────────────────────────────────────
-// GET /api/products/featured
-const getFeaturedProducts = async (req, res, next) => {
-  try {
-    const result = await pool.query(
-      `SELECT p.*, c.name as category_name 
-       FROM products p
-       LEFT JOIN categories c ON p.category_id = c.id
-       WHERE p.is_featured = true AND p.status != 'archived'
-       ORDER BY p.id ASC`,
-    );
 
-    res.json({ products: result.rows.map(stripPrivateProductFields) });
-  } catch (error) {
-    next(error);
-  }
-};
-
-module.exports = { getProducts, getProductById, getFeaturedProducts };
+module.exports = { getProducts, getProductById };

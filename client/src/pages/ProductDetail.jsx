@@ -20,7 +20,7 @@ export default function ProductDetail() {
   const navigate = useNavigate();
   const { isMobile, isTablet, isDesktop, isTabletAny, padding, gap, cols } =
     useResponsive();
-  const { addToCart } = useCart();
+  const { addToCart, openCartDrawer } = useCart();
   const { user, isLoggedIn } = useAuth();
   const [product, setProduct] = useState(null);
   const [related, setRelated] = useState([]);
@@ -123,6 +123,7 @@ export default function ProductDetail() {
   const handleAdd = () => {
     addToCart(product, quantity);
     setAdded(true);
+    openCartDrawer();
     setTimeout(() => setAdded(false), 1000);
   };
 

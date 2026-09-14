@@ -753,16 +753,6 @@ router.post("/refresh", async (req, res, next) => {
   }
 });
 
-// ─────────────────────────────────────────────
-// LOGOUT
-// ─────────────────────────────────────────────
-router.post("/logout", protect, async (req, res, next) => {
-  await pool.query("UPDATE users SET refresh_token=NULL WHERE id=$1", [
-    req.user.id,
-  ]);
-  res.clearCookie("refreshToken");
-  res.json({ message: "Logged out" });
-});
 
 // ─────────────────────────────────────────────
 // FORGOT PASSWORD

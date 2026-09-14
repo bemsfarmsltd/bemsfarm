@@ -313,6 +313,7 @@ export default function HomePage() {
       message: `Added ${product.name} to basket`,
       type: "success",
     });
+    openCartDrawer();
     toastTimerRef.current = setTimeout(() => {
       setToast(null);
     }, 2500);

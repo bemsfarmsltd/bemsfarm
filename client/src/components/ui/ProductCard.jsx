@@ -81,7 +81,7 @@ export function getProductEmoji(name) {
 export default function ProductCard({ product, index = 0 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addToCart } = useCart();
+  const { addToCart, openCartDrawer } = useCart();
 
   const [added, setAdded] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -109,6 +109,7 @@ export default function ProductCard({ product, index = 0 }) {
     }
     addToCart(product);
     setAdded(true);
+    openCartDrawer();
     setTimeout(() => setAdded(false), 800);
   };
 

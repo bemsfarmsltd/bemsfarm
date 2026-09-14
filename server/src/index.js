@@ -166,7 +166,6 @@ const purchasesAdminRoutes = require("./routes/purchases_admin");
 const reportsAdminRoutes = require("./routes/reports_admin");
 const aiContextRoutes = require("./routes/ai_context");
 const storesAdminRoutes = require("./routes/stores_admin");
-const cartRoutes = require("./routes/cart");
 const settingsAdminRoutes = require("./routes/settings_admin");
 const couponsAdminRoutes = require("./routes/coupons_admin");
 const posAdminRoutes = require("./routes/pos_admin");
@@ -210,7 +209,6 @@ app.use("/api/admin/payments", paymentsAdminRoutes);
 // Legacy fallback admin route
 app.use("/api/admin", adminRoutes);
 app.use("/api/ai/context", aiContextRoutes);
-app.use("/api/cart", cartRoutes);
 app.use("/api/addresses", addressesRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/telemetry", telemetryRoutes);

@@ -124,7 +124,7 @@ export default function ProductsPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const { user } = useAuth();
-  const { cart, addToCart, updateQuantity } = useCart();
+  const { cart, addToCart, updateQuantity, openCartDrawer } = useCart();
   const { toggleWishlist, isSaved } = useWishlist();
 
   const [products, setProducts] = useState([]);
@@ -190,6 +190,7 @@ export default function ProductsPage() {
       message: `Added ${product.name} to basket`,
       type: "success",
     });
+    openCartDrawer();
     setTimeout(() => setToast(null), 2500);
   };
 

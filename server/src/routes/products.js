@@ -5,14 +5,12 @@ const { clampLimit } = require("../utils/pagination");
 const {
   getProducts,
   getProductById,
-  getFeaturedProducts,
 } = require("../controllers/productsController");
 const { protect } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const { submitReview } = require("../schemas/reviewSchemas");
 
-// IMPORTANT: /featured must come BEFORE /:id
-router.get("/featured", getFeaturedProducts);
+// Routes
 router.get("/", getProducts);
 // ================================================================
 // ADD THIS TO server/src/routes/products.js
