@@ -10,7 +10,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"set ELECTRON=true&& npm run dev\" \"wait-on http://localhost:5174 && electron .\"",
-    "electron:build": "npm run build && electron-builder"
+    "electron:build": "npm run build -- --base=./ && electron-builder"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
