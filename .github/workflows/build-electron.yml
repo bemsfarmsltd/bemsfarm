@@ -1,0 +1,51 @@
+name: Build Desktop Apps
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    
+    defaults:
+      run:
+        working-directory: Bems-Farms-Admin-Front-end
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v3
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: Bems-Farms-Admin-Front-end/package-lock.json
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Electron App
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run electron:build
+
+      - name: Upload Artifacts (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v3
+        with:
+          name: BemsFarms-macOS
+          path: Bems-Farms-Admin-Front-end/release/*.dmg
+
+      - name: Upload Artifacts (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v3
+        with:
+          name: BemsFarms-Windows
+          path: Bems-Farms-Admin-Front-end/release/*.exe
