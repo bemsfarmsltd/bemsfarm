@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
-export default function ProtectedRoute({ allowedRoles }) {
+export default function ProtectedRoute({ allowedRoles, allowedEmails }) {
   const { user, loading, canAccess } = useAuth()
   const location = useLocation()
 
@@ -23,6 +23,10 @@ export default function ProtectedRoute({ allowedRoles }) {
   }
 
   if (allowedRoles && !canAccess(allowedRoles)) {
+    return <Navigate to="/unauthorized" replace />
+  }
+
+  if (allowedEmails && !allowedEmails.includes((user.email || '').toLowerCase())) {
     return <Navigate to="/unauthorized" replace />
   }
 

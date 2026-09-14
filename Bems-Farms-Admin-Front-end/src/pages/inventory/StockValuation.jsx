@@ -1,194 +1,46 @@
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../../lib/api'
 
-const MOCK_VALUATION = [
-  { id:1,  product:'Basmati Rice (5kg)',  sku:'GRN-RIC-001', category:'Grains & Carbs', unit:'bag',    qty:120, cost:4800,  price:6500  },
-  { id:2,  product:'Fresh Tomatoes',      sku:'VEG-TOM-001', category:'Vegetables',     unit:'kg',     qty:8,   cost:800,   price:1200  },
-  { id:3,  product:'Palm Oil (25L)',       sku:'OIL-PLM-001', category:'Grains & Carbs', unit:'crate',  qty:0,   cost:18000, price:24000 },
-  { id:4,  product:'Catfish (Smoked)',    sku:'SEA-CAT-001', category:'Seafood',         unit:'kg',     qty:35,  cost:3200,  price:4500  },
-  { id:5,  product:'Fresh Pepper',        sku:'VEG-PEP-001', category:'Vegetables',     unit:'kg',     qty:6,   cost:700,   price:1100  },
-  { id:6,  product:'Chicken (Whole)',     sku:'MEA-CHK-001', category:'Meat',            unit:'kg',     qty:52,  cost:2800,  price:3800  },
-  { id:7,  product:'Fresh Yam (Tuber)',   sku:'GRN-YAM-001', category:'Grains & Carbs', unit:'tuber',  qty:90,  cost:1200,  price:1800  },
-  { id:8,  product:'Cassava Flour (2kg)', sku:'GRN-CAS-001', category:'Grains & Carbs', unit:'pack',   qty:14,  cost:1100,  price:1600  },
-  { id:9,  product:'Fresh Milk (1L)',     sku:'DAI-MLK-001', category:'Dairy & Eggs',   unit:'bottle', qty:40,  cost:900,   price:1400  },
-  { id:10, product:'Plantain (Bunch)',    sku:'FRM-PLT-001', category:'Fresh Farm',     unit:'bunch',  qty:25,  cost:1500,  price:2200  },
-]
+const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
 
 export default function StockValuation() {
-  const enriched = useMemo(() => MOCK_VALUATION.map(p => ({
-    ...p,
-    costValue:   p.qty * p.cost,
-    retailValue: p.qty * p.price,
-    profit:      p.qty * (p.price - p.cost),
-    margin:      p.cost > 0 ? Math.round(((p.price - p.cost) / p.price) * 100) : 0,
-  })), [])
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+  const load = useCallback(async () => {
+    setLoading(true); setError('')
+    try { setData((await api.get('/admin/inventory/valuation')).data) }
+    catch (err) { setError(err.response?.data?.message || 'Stock valuation could not be loaded.') }
+    finally { setLoading(false) }
+  }, [])
+  useEffect(() => { load() }, [load])
 
-  const totals = useMemo(() => ({
-    costValue:   enriched.reduce((s,p) => s + p.costValue, 0),
-    retailValue: enriched.reduce((s,p) => s + p.retailValue, 0),
-    profit:      enriched.reduce((s,p) => s + p.profit, 0),
-    products:    enriched.length,
-  }), [enriched])
+  const rows = useMemo(() => (data?.products || []).filter((item) => {
+    const query = search.trim().toLowerCase()
+    return !query || [item.name, item.sku, item.category].some((value) => value?.toLowerCase().includes(query))
+  }), [data, search])
+  const summary = data?.summary || {}
+  const profit = Number(summary.retail_value || 0) - Number(summary.cost_value || 0)
+  const margin = Number(summary.retail_value) > 0 ? profit / Number(summary.retail_value) * 100 : 0
 
-  // Category breakdown
-  const byCategory = useMemo(() => {
-    const map = {}
-    enriched.forEach(p => {
-      if (!map[p.category]) map[p.category] = { category: p.category, costValue:0, retailValue:0, products:0, qty:0 }
-      map[p.category].costValue   += p.costValue
-      map[p.category].retailValue += p.retailValue
-      map[p.category].products    += 1
-      map[p.category].qty         += p.qty
-    })
-    return Object.values(map).sort((a,b) => b.retailValue - a.retailValue)
-  }, [enriched])
-
-  const CAT_COLORS = ['#405189','#0ab39c','#f7b84b','#f06548','#299cdb','#6559cc','#e83e8c']
-
-  return (
-    <div className="container-fluid">
-      <div className="gap-2 page-heading mb-3">
-        <h6 className="flex-grow-1 mb-0">Stock Valuation</h6>
-        <ul className="breadcrumb flex-shrink-0 mb-0">
-          <li className="breadcrumb-item"><Link to="/inventory/stock">Inventory</Link></li>
-          <li className="breadcrumb-item active">Valuation</li>
-        </ul>
-      </div>
-
-      {/* Summary cards */}
-      <div className="row g-3 mb-4">
-        {[
-          { label:'Cost Value (Stock)',   value:`₦${totals.costValue.toLocaleString()}`,   icon:'ri-price-tag-3-line',          color:'#405189', sub:'At purchase price' },
-          { label:'Retail Value (Stock)', value:`₦${totals.retailValue.toLocaleString()}`, icon:'ri-store-2-line',              color:'#0ab39c', sub:'At selling price'  },
-          { label:'Potential Profit',     value:`₦${totals.profit.toLocaleString()}`,      icon:'ri-line-chart-line',           color:'#299cdb', sub:'If all stock sold'  },
-          { label:'Avg Gross Margin',     value:`${Math.round((totals.profit / totals.retailValue) * 100)}%`, icon:'ri-percent-line', color:'#f7b84b', sub:'Across all products' },
-        ].map(c => (
-          <div className="col-6 col-xl-3" key={c.label}>
-            <div className="card mb-0" style={{ borderLeft:`3px solid ${c.color}` }}>
-              <div className="card-body py-3">
-                <div className="d-flex align-items-center gap-3 mb-1">
-                  <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                    style={{ width:40, height:40, background:`${c.color}1a` }}>
-                    <i className={`${c.icon} fs-18`} style={{ color:c.color }}></i>
-                  </div>
-                  <div>
-                    <div className="fw-bold" style={{ fontSize:18, color:c.color }}>{c.value}</div>
-                    <div className="text-muted" style={{ fontSize:12 }}>{c.label}</div>
-                  </div>
-                </div>
-                <div className="text-muted" style={{ fontSize:11, paddingLeft:52 }}>{c.sub}</div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Category breakdown */}
-      <div className="card mb-4">
-        <div className="card-header">
-          <h6 className="mb-0 fw-semibold">Valuation by Category</h6>
-        </div>
-        <div className="card-body pt-0">
-          <div className="table-responsive">
-            <table className="table align-middle mb-0">
-              <thead>
-                <tr className="bg-light border-bottom">
-                  <th className="fw-medium text-muted">Category</th>
-                  <th className="fw-medium text-muted">Products</th>
-                  <th className="fw-medium text-muted">Total Qty</th>
-                  <th className="fw-medium text-muted">Cost Value</th>
-                  <th className="fw-medium text-muted">Retail Value</th>
-                  <th className="fw-medium text-muted">% of Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {byCategory.map((c, i) => {
-                  const pct = Math.round((c.retailValue / totals.retailValue) * 100)
-                  return (
-                    <tr key={c.category}>
-                      <td>
-                        <div className="d-flex align-items-center gap-2">
-                          <div style={{ width:10, height:10, borderRadius:'50%', background: CAT_COLORS[i % CAT_COLORS.length] }}></div>
-                          <span className="fw-medium">{c.category}</span>
-                        </div>
-                      </td>
-                      <td>{c.products}</td>
-                      <td>{c.qty}</td>
-                      <td>₦{c.costValue.toLocaleString()}</td>
-                      <td className="fw-medium">₦{c.retailValue.toLocaleString()}</td>
-                      <td style={{ minWidth:140 }}>
-                        <div className="d-flex align-items-center gap-2">
-                          <div className="progress flex-grow-1" style={{ height:6 }}>
-                            <div className="progress-bar" style={{ width:`${pct}%`, background: CAT_COLORS[i % CAT_COLORS.length] }}></div>
-                          </div>
-                          <span style={{ fontSize:12, minWidth:32 }}>{pct}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* Full product valuation table */}
-      <div className="card">
-        <div className="card-header d-flex justify-content-between align-items-center">
-          <h6 className="mb-0 fw-semibold">Product-Level Valuation</h6>
-          <span className="badge bg-light text-dark border">{enriched.length} products</span>
-        </div>
-        <div className="card-body pt-0">
-          <div className="table-responsive">
-            <table className="table align-middle text-nowrap mb-0">
-              <thead>
-                <tr className="bg-light border-bottom">
-                  <th className="fw-medium text-muted">Product</th>
-                  <th className="fw-medium text-muted">SKU</th>
-                  <th className="fw-medium text-muted">Category</th>
-                  <th className="fw-medium text-muted">Qty</th>
-                  <th className="fw-medium text-muted">Unit Cost</th>
-                  <th className="fw-medium text-muted">Sell Price</th>
-                  <th className="fw-medium text-muted">Cost Value</th>
-                  <th className="fw-medium text-muted">Retail Value</th>
-                  <th className="fw-medium text-muted">Potential Profit</th>
-                  <th className="fw-medium text-muted">Margin</th>
-                </tr>
-              </thead>
-              <tbody>
-                {enriched.map(p => (
-                  <tr key={p.id} style={{ opacity: p.qty === 0 ? 0.5 : 1 }}>
-                    <td className="fw-medium">{p.product}</td>
-                    <td><code style={{ fontSize:12 }}>{p.sku}</code></td>
-                    <td><span className="badge bg-light text-dark border">{p.category}</span></td>
-                    <td className={p.qty === 0 ? 'text-danger fw-bold' : 'fw-medium'}>{p.qty}</td>
-                    <td>₦{p.cost.toLocaleString()}</td>
-                    <td>₦{p.price.toLocaleString()}</td>
-                    <td>₦{p.costValue.toLocaleString()}</td>
-                    <td className="fw-medium">₦{p.retailValue.toLocaleString()}</td>
-                    <td className="text-success fw-medium">₦{p.profit.toLocaleString()}</td>
-                    <td>
-                      <span className="badge" style={{ background: p.margin >= 30 ? '#d1fae5' : p.margin >= 15 ? '#fef3c7' : '#fee2e2', color: p.margin >= 30 ? '#065f46' : p.margin >= 15 ? '#92400e' : '#991b1b' }}>
-                        {p.margin}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="border-top">
-                <tr style={{ background:'#f8f9fa' }}>
-                  <td colSpan={6} className="fw-bold">Total</td>
-                  <td className="fw-bold">₦{totals.costValue.toLocaleString()}</td>
-                  <td className="fw-bold">₦{totals.retailValue.toLocaleString()}</td>
-                  <td className="fw-bold text-success">₦{totals.profit.toLocaleString()}</td>
-                  <td className="fw-bold">{Math.round((totals.profit / totals.retailValue) * 100)}%</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      </div>
+  return <div className="container-fluid">
+    <div className="page-heading d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+      <div><h5 className="mb-1 fw-bold">Stock valuation</h5><p className="text-muted mb-0 fs-13">Live inventory value from current product quantities and prices.</p></div>
+      <div className="d-flex gap-2"><button className="btn btn-outline-secondary" onClick={load} disabled={loading}><i className="ri-refresh-line me-1" /> Refresh</button><Link to="/inventory/stock" className="btn btn-primary">View stock list</Link></div>
     </div>
-  )
+    {error && <div className="alert alert-danger d-flex justify-content-between" role="alert"><span>{error}</span><button className="btn btn-sm btn-danger" onClick={load}>Retry</button></div>}
+    {loading && <div className="card p-5 text-center" role="status"><div className="spinner-border text-primary mx-auto mb-2" />Calculating live valuation…</div>}
+    {!loading && data && <>
+      <div className="row g-3 mb-4">{[
+        ['Cost value', money(summary.cost_value), 'Current stock at recorded cost price', 'ri-price-tag-3-line', '#405189'],
+        ['Retail value', money(summary.retail_value), 'Current stock at selling price', 'ri-store-2-line', '#0d8065'],
+        ['Potential gross profit', money(profit), 'Before expenses, shrinkage and tax', 'ri-line-chart-line', '#1677b8'],
+        ['Potential gross margin', `${margin.toFixed(1)}%`, `${Number(summary.total_skus || 0).toLocaleString()} active SKUs`, 'ri-percent-line', '#b7791f'],
+      ].map(([label,value,hint,icon,color]) => <div className="col-12 col-sm-6 col-xl-3" key={label}><div className="card h-100 mb-0 border-0 shadow-sm"><div className="card-body p-3"><div className="d-flex align-items-center gap-3"><span className="rounded-3 p-2" style={{background:`${color}16`,color}}><i className={`${icon} fs-20`} /></span><div><div className="text-muted fs-12 text-uppercase fw-semibold">{label}</div><div className="fs-20 fw-bold" style={{color}}>{value}</div></div></div><p className="text-muted fs-12 mb-0 mt-3">{hint}</p></div></div></div>)}</div>
+      <div className="card mb-4"><div className="card-header"><h6 className="mb-0 fw-bold">Valuation by category</h6></div><div className="table-responsive"><table className="table align-middle mb-0"><thead><tr><th>Category</th><th>SKUs</th><th>Units</th><th>Cost value</th><th>Retail value</th><th>Potential profit</th></tr></thead><tbody>{(data.by_category || []).map(row => <tr key={row.category}><td className="fw-semibold">{row.category || 'Uncategorised'}</td><td>{row.skus}</td><td>{row.total_units}</td><td>{money(row.cost_value)}</td><td>{money(row.retail_value)}</td><td className="text-success fw-semibold">{money(Number(row.retail_value)-Number(row.cost_value))}</td></tr>)}</tbody></table></div></div>
+      <div className="card"><div className="card-header d-flex align-items-center justify-content-between gap-3 flex-wrap"><div><h6 className="mb-0 fw-bold">Product valuation</h6><small className="text-muted">Potential profit uses current cost and selling prices.</small></div><input aria-label="Search product valuation" className="form-control" style={{maxWidth:320}} placeholder="Search product, SKU or category…" value={search} onChange={e=>setSearch(e.target.value)} /></div><div className="table-responsive"><table className="table align-middle text-nowrap mb-0"><thead><tr><th>Product</th><th>Category</th><th>Stock</th><th>Cost price</th><th>Selling price</th><th>Cost value</th><th>Retail value</th><th>Potential profit</th><th>Margin</th></tr></thead><tbody>{rows.map(row=><tr key={row.id}><td><strong>{row.name}</strong><small className="d-block text-muted">{row.sku || 'No SKU'}</small></td><td>{row.category || 'Uncategorised'}</td><td>{row.stock} {row.unit || 'units'}</td><td>{money(row.cost_price)}</td><td>{money(row.unit_price)}</td><td>{money(row.cost_value)}</td><td>{money(row.retail_value)}</td><td className={Number(row.potential_profit)<0?'text-danger fw-semibold':'text-success fw-semibold'}>{money(row.potential_profit)}</td><td>{Number(row.margin_pct || 0).toFixed(1)}%</td></tr>)}{!rows.length&&<tr><td colSpan="9" className="text-center text-muted py-5">No matching active products.</td></tr>}</tbody></table></div></div>
+    </>}
+  </div>
 }

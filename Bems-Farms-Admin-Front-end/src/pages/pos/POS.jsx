@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../lib/api'
 import SalesHub from './SalesHub'
+import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
 
 // ── Categories & Definitions ────────────────────────────────────────────────
 const CATEGORY_DEFINITIONS = [
@@ -220,6 +221,8 @@ export default function POS() {
   const [payLaterDate, setPayLaterDate]     = useState('')
   // Success data
   const [successData, setSuccessData]       = useState(null)
+  const [autoPrintReceipt, setAutoPrintReceipt] = useState(true)
+  const [autoPrintPending, setAutoPrintPending] = useState(false)
 
   // Goods Return modal
   const POS_RETURN_REASONS = [
@@ -380,11 +383,23 @@ export default function POS() {
         const rcpts = rcptRes?.data?.receipts || []
         if (Array.isArray(rcpts) && isMounted) {
           const mappedHistory = rcpts.map(r => ({
-            inv: r.order_ref || `INV-${r.id}`,
+            inv: r.receipt_number || r.id,
             cust: r.customer_name || 'Walk-in',
             method: r.payment_method || 'Cash',
-            time: r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
-            amount: Number(r.total_amount || r.total || 0)
+            time: r.paid_at ? new Date(r.paid_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+            date: r.paid_at ? new Date(r.paid_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+            amount: Number(r.total_amount || r.total || 0),
+            subtotal: Number(r.subtotal || 0),
+            tax: Number(r.tax_amount || 0),
+            discount: Number(r.discount_amount || 0),
+            cashier: r.cashier_name || '',
+            items: (r.items || []).map((item, index) => ({
+              id: item.id || index,
+              name: item.product_name || item.name || 'Item',
+              qty: Number(item.quantity || 1),
+              price: Number(item.unit_price || item.price || 0),
+              total: Number(item.subtotal || Number(item.quantity || 1) * Number(item.unit_price || item.price || 0)),
+            })),
           }))
           setHistoryList(mappedHistory)
         }
@@ -661,6 +676,21 @@ export default function POS() {
   const total = afterDiscount + vat
   const itemCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart])
 
+  useEffect(() => {
+    api.get('/admin/settings/receipt')
+      .then((response) => setAutoPrintReceipt(response.data?.settings?.pos_print_receipt !== 'false'))
+      .catch(() => setAutoPrintReceipt(true))
+  }, [])
+
+  useEffect(() => {
+    if (!autoPrintPending || !autoPrintReceipt || activeModal !== 'success' || !successData) return undefined
+    const timer = window.setTimeout(() => {
+      printThermalReceipt()
+      setAutoPrintPending(false)
+    }, 350)
+    return () => window.clearTimeout(timer)
+  }, [activeModal, autoPrintPending, autoPrintReceipt, successData])
+
   // Payment Confirmation
   async function confirmPayment(method) {
     if (cart.length === 0) return
@@ -689,6 +719,7 @@ export default function POS() {
       ...prev.slice(0, 49)
     ])
 
+    let completedReceipt = receiptData
     try {
       const salePayload = {
         order_ref: orderId,
@@ -709,12 +740,34 @@ export default function POS() {
         split_payments: method === 'Split Tender' ? splitRows.filter(r => Number(r.amount) > 0) : undefined
       }
 
-      await api.post('/admin/pos/sale', salePayload).catch(() => api.post('/admin/pos/sales', salePayload))
+      const saleResponse = await api.post('/admin/pos/sale', salePayload).catch(() => api.post('/admin/pos/sales', salePayload))
+      const savedOrder = saleResponse.data?.order || {}
+      const savedItems = saleResponse.data?.items || []
+      completedReceipt = {
+        ...receiptData,
+        orderId: savedOrder.order_ref || savedOrder.id || receiptData.orderId,
+        cart: savedItems.length ? savedItems.map((item, index) => ({
+          id: item.product_id || index,
+          name: item.name || item.product_name || 'Item',
+          sku: item.sku || '',
+          qty: Number(item.quantity || item.qty || 1),
+          price: Number(item.unit_price || item.price || 0),
+          total: Number(item.line_total || item.subtotal || 0),
+        })) : receiptData.cart,
+        subtotal: Number(savedOrder.subtotal ?? receiptData.subtotal),
+        discountAmt: Number(savedOrder.discount_amount ?? receiptData.discountAmt),
+        vat: Number(savedOrder.tax_amount ?? receiptData.vat),
+        total: Number(savedOrder.total ?? receiptData.total),
+        change: Number(saleResponse.data?.change_amount ?? receiptData.change),
+      }
     } catch (e) {
       console.warn('POS transaction sync notice', e)
+      showToast('Sale could not be saved. Receipt was not printed.', 'error', '⚠️')
+      return
     }
 
-    setSuccessData(receiptData)
+    setSuccessData(completedReceipt)
+    setAutoPrintPending(true)
     setActiveModal('success')
   }
 
@@ -2135,7 +2188,7 @@ export default function POS() {
       {/* ─── Payment Success Modal ──────────────────────────────────────── */}
       {activeModal === 'success' && successData && (
         <div className="pos-success-screen-overlay">
-          <div className="pos-success-hero-card">
+          <div className="pos-success-hero-card pos-success-hero-card--receipt">
             <div className="pos-success-check-ring">
               ✓
             </div>
@@ -2143,29 +2196,30 @@ export default function POS() {
             <h5 className="pos-success-headline">Sale Completed!</h5>
             <div className="pos-success-bill-ref">Receipt ID: {successData.orderId}</div>
 
-            <div className="pos-success-summary-box">
-              <div className="d-flex justify-content-between mb-2">
-                <span className="text-muted">Customer</span>
-                <strong className="pos-entry-item-title">{successData.customer?.name || 'Walk-in Customer'}</strong>
-              </div>
-              <div className="d-flex justify-content-between mb-2">
-                <span className="text-muted">Payment Method</span>
-                <strong className="text-emerald">{successData.method}</strong>
-              </div>
-              <div className="d-flex justify-content-between mb-2">
-                <span className="text-muted">Total Charged</span>
-                <strong className="fs-16 pos-entry-item-title">{fmt(successData.total)}</strong>
-              </div>
-              {successData.method === 'Cash' && successData.change > 0 && (
-                <div className="d-flex justify-content-between pt-2 border-top">
-                  <span className="text-amber fw-bold">Change Returned</span>
-                  <strong className="text-amber fs-16">{fmt(successData.change)}</strong>
-                </div>
-              )}
+            <div className="thermal-receipt-preview thermal-receipt-preview--pos">
+              <ThermalReceipt
+                receiptType="pos"
+                receiptNumber={successData.orderId}
+                date={`${successData.date} · ${successData.time}`}
+                customer={successData.customer?.name}
+                customerPhone={successData.customer?.phone}
+                channel="POS Terminal"
+                cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : 'Cashier'}
+                status="PAID"
+                items={successData.cart}
+                subtotal={successData.subtotal}
+                discount={successData.discountAmt}
+                tax={successData.vat}
+                total={successData.total}
+                paymentMethod={successData.method}
+                amountTendered={successData.method === 'Cash' ? successData.cashReceived : undefined}
+                change={successData.change}
+                note={successData.orderNote}
+              />
             </div>
 
             <div className="d-flex gap-2 mb-3">
-              <button className="btn btn-outline-secondary flex-fill py-2 fw-bold" onClick={() => window.print()}>
+              <button className="btn btn-outline-secondary flex-fill py-2 fw-bold" onClick={printThermalReceipt}>
                 <i className="ri-printer-line me-1"></i> Print Receipt
               </button>
             </div>
@@ -2805,13 +2859,18 @@ export default function POS() {
                                     onClick={() => {
                                       setSuccessData({
                                         orderId: h.inv,
-                                        tenderMethod: h.method,
-                                        paidAmount: h.amount,
-                                        changeAmount: 0,
-                                        lines: [],
-                                        customer: h.cust,
+                                        method: h.method,
+                                        total: h.amount,
+                                        subtotal: h.subtotal,
+                                        vat: h.tax,
+                                        discountAmt: h.discount,
+                                        change: 0,
+                                        cart: h.items,
+                                        customer: { name: h.cust },
+                                        date: h.date,
                                         time: h.time,
                                       })
+                                      setAutoPrintPending(false)
                                       setActiveModal('success')
                                     }}>
                                     <i className="ri-printer-line me-1"></i>Reprint Slip

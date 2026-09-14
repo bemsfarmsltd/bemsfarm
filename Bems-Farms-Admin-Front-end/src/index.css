@@ -805,3 +805,162 @@ a.link-custom-primary {
 .chart-panel-clickable {
   cursor: pointer;
 }
+/* Shared premium dialog language. This also upgrades legacy Bootstrap modals
+   while screens migrate to PremiumModal for full focus management. */
+:root {
+  --modal-brand: #0d5c46;
+  --modal-brand-soft: #eaf6f1;
+  --modal-ink: #17211d;
+  --modal-muted: #6b7671;
+  --modal-border: #e5ebe7;
+  --modal-shadow: 0 32px 80px rgba(18, 39, 31, .22), 0 8px 24px rgba(18, 39, 31, .1);
+}
+
+.premium-modal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(9, 22, 17, .62);
+  backdrop-filter: blur(8px) saturate(.85);
+  animation: premium-backdrop-in .18s ease-out;
+}
+
+.premium-modal,
+.modal.show .modal-content {
+  border: 1px solid rgba(255,255,255,.72) !important;
+  border-radius: 20px !important;
+  background: #fff;
+  box-shadow: var(--modal-shadow) !important;
+  overflow: hidden;
+}
+
+.premium-modal {
+  width: min(100%, 620px);
+  max-height: min(880px, calc(100dvh - 48px));
+  display: flex;
+  flex-direction: column;
+  animation: premium-dialog-in .22s cubic-bezier(.2,.8,.2,1);
+}
+.premium-modal--sm { width: min(100%, 440px); }
+.premium-modal--lg { width: min(100%, 840px); }
+.premium-modal--xl { width: min(100%, 1120px); }
+
+.premium-modal__header,
+.modal.show .modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 22px 24px !important;
+  border-bottom: 1px solid var(--modal-border) !important;
+  background: linear-gradient(145deg, #fbfdfc 0%, #f4f8f6 100%) !important;
+}
+.premium-modal__icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  height: 42px;
+  border-radius: 13px;
+  color: var(--modal-brand);
+  background: var(--modal-brand-soft);
+  border: 1px solid #cce9dd;
+  font-size: 20px;
+}
+.premium-modal--danger .premium-modal__icon { color:#b42318; background:#fef3f2; border-color:#fecdca; }
+.premium-modal--warning .premium-modal__icon { color:#b54708; background:#fffaeb; border-color:#fedf89; }
+.premium-modal__heading { min-width: 0; flex: 1; }
+.premium-modal__heading h2 { margin: 1px 0 4px; color:var(--modal-ink); font-size:18px; line-height:1.3; font-weight:750; letter-spacing:-.02em; }
+.premium-modal__heading p { margin:0; color:var(--modal-muted); font-size:13px; line-height:1.55; }
+.premium-modal__close {
+  display:grid; place-items:center; width:36px; height:36px; padding:0;
+  border:1px solid var(--modal-border); border-radius:11px; color:#68736e; background:#fff;
+  font-size:20px; transition:.15s ease;
+}
+.premium-modal__close:hover { color:var(--modal-ink); border-color:#cbd7d1; background:#f7faf8; transform:translateY(-1px); }
+.premium-modal__close:focus-visible { outline:3px solid rgba(13,92,70,.2); outline-offset:2px; }
+.premium-modal__body,
+.modal.show .modal-body { padding:24px !important; overflow-y:auto; overscroll-behavior:contain; }
+.premium-modal__footer,
+.modal.show .modal-footer { display:flex; justify-content:flex-end; align-items:center; gap:10px; padding:16px 24px !important; border-top:1px solid var(--modal-border) !important; background:#fbfcfb !important; }
+.premium-modal .form-control, .premium-modal .form-select,
+.modal.show .form-control, .modal.show .form-select { min-height:44px; border-radius:11px; border-color:#dce5e0; }
+.premium-modal textarea.form-control, .modal.show textarea.form-control { min-height:88px; }
+.premium-modal .form-control:focus, .premium-modal .form-select:focus,
+.modal.show .form-control:focus, .modal.show .form-select:focus { border-color:#5fa58f; box-shadow:0 0 0 4px rgba(13,92,70,.1); }
+.premium-modal__footer .btn, .modal.show .modal-footer .btn { min-height:42px; border-radius:11px; padding-inline:18px; font-weight:650; }
+.modal.show { background:rgba(9,22,17,.62) !important; backdrop-filter:blur(8px) saturate(.85); }
+.modal.show .modal-dialog { margin-top:24px; margin-bottom:24px; }
+
+@keyframes premium-backdrop-in { from { opacity:0 } to { opacity:1 } }
+@keyframes premium-dialog-in { from { opacity:0; transform:translateY(14px) scale(.975) } to { opacity:1; transform:none } }
+@media (prefers-reduced-motion: reduce) { .premium-modal-layer,.premium-modal { animation:none; } }
+@media (max-width: 575.98px) {
+  .premium-modal-layer { align-items:end; padding:10px; }
+  .premium-modal { width:100%; max-height:calc(100dvh - 20px); border-radius:20px 20px 14px 14px !important; }
+  .premium-modal__header,.premium-modal__body,.premium-modal__footer { padding-left:18px !important; padding-right:18px !important; }
+  .premium-modal__footer { flex-direction:column-reverse; }
+  .premium-modal__footer .btn { width:100%; }
+}
+
+/* Thermal receipt — designed for 80 mm rolls and safely compresses to 58 mm. */
+.thermal-receipt-preview { padding:22px; background:#eef2ef; }
+.thermal-receipt-preview--pos { max-height:48vh; overflow-y:auto; border:1px solid #dfe8e3; border-radius:14px; margin-bottom:14px; }
+.thermal-receipt {
+  width:80mm; max-width:100%; margin:0 auto; padding:6mm 5mm 8mm;
+  color:#080808; background:#fff; font-family:"Courier New",Courier,monospace;
+  font-size:11px; font-variant-numeric:tabular-nums; line-height:1.35;
+  box-shadow:0 14px 40px rgba(17,42,32,.12);
+}
+.thermal-receipt__brand { text-align:center; }
+.thermal-receipt__brand h1 { margin:5px 0 1px; font:800 18px/1.1 Arial,sans-serif; letter-spacing:.5px; }
+.thermal-receipt__brand p { margin:0 0 5px; font-weight:700; }
+.thermal-receipt__brand address { margin:0; font-style:normal; font-size:9.5px; }
+.thermal-receipt__logo { display:block; width:auto; max-width:46mm; height:17mm; margin:0 auto 2px; object-fit:contain; filter:grayscale(1) contrast(1.18); }
+.thermal-receipt__title { display:flex; align-items:baseline; justify-content:space-between; margin:14px 0 8px; padding:6px 0; border-block:1px dashed #222; font-weight:800; letter-spacing:.7px; }
+.thermal-receipt__title small { font-weight:400; letter-spacing:0; }
+.thermal-receipt__meta,.thermal-receipt__payment { padding-bottom:8px; }
+.thermal-receipt__row { display:flex; justify-content:space-between; gap:12px; padding:1px 0; }
+.thermal-receipt__row > :last-child { max-width:65%; text-align:right; overflow-wrap:anywhere; }
+.thermal-receipt__row--strong { font-weight:800; }
+.thermal-receipt__items { border-top:1px dashed #222; }
+.thermal-receipt__items-head { display:flex; justify-content:space-between; padding:6px 0 4px; font-weight:800; border-bottom:1px solid #777; }
+.thermal-receipt__item { padding:6px 0; border-bottom:1px dotted #aaa; }
+.thermal-receipt__item-name { font-weight:800; overflow-wrap:anywhere; }
+.thermal-receipt__item-line { display:flex; justify-content:space-between; gap:8px; margin-top:2px; }
+.thermal-receipt__item-line strong { white-space:nowrap; }
+.thermal-receipt__item small { display:block; margin-top:1px; color:#444; font-size:9px; }
+.thermal-receipt__empty { padding:10px 0; text-align:center; }
+.thermal-receipt__totals { padding:7px 0; border-bottom:1px dashed #222; }
+.thermal-receipt__totals .thermal-receipt__row--strong { margin-top:5px; padding-top:5px; border-top:2px solid #111; font-size:15px; }
+.thermal-receipt__payment { padding-top:7px; }
+.thermal-receipt__note { margin:1px 0 9px; padding:6px; border:1px dashed #555; overflow-wrap:anywhere; }
+.thermal-receipt__footer { padding-top:9px; border-top:1px dashed #222; text-align:center; }
+.thermal-receipt__footer p { margin:2px 0 8px; }
+.thermal-receipt__footer small { font-size:8px; }
+.thermal-receipt__barcode { width:70%; height:25px; margin:0 auto 4px; background:repeating-linear-gradient(90deg,#000 0 1px,transparent 1px 3px,#000 3px 5px,transparent 5px 7px,#000 7px 8px,transparent 8px 11px); }
+.pos-success-hero-card--receipt { width:min(440px,calc(100vw - 24px)); max-height:94vh; overflow-y:auto; }
+.thermal-receipt--58 { width:58mm; padding-inline:3mm; font-size:9.5px; }
+.thermal-receipt--58 .thermal-receipt__logo { max-width:40mm; height:14mm; }
+.thermal-receipt--58 .thermal-receipt__brand h1 { font-size:15px; }
+
+@page { size:80mm auto; margin:0; }
+@media print {
+  body.thermal-print-active { width:80mm !important; margin:0 !important; padding:0 !important; background:#fff !important; }
+  body.thermal-print-active * { visibility:hidden !important; }
+  body.thermal-print-active .thermal-receipt-print-root,
+  body.thermal-print-active .thermal-receipt-print-root * { visibility:visible !important; }
+  body.thermal-print-active .thermal-receipt-print-root {
+    position:absolute !important; inset:0 auto auto 0 !important; width:80mm !important; max-width:none !important;
+    margin:0 !important; padding:4mm 4mm 7mm !important; box-shadow:none !important;
+    print-color-adjust:exact; -webkit-print-color-adjust:exact;
+  }
+  body.thermal-print-active.thermal-print-58,
+  body.thermal-print-active.thermal-print-58 .thermal-receipt-print-root { width:58mm !important; }
+}
+@media screen and (max-width:380px) {
+  .thermal-receipt-preview { padding:10px; }
+  .thermal-receipt { width:58mm; padding-inline:3mm; font-size:10px; }
+  .thermal-receipt__brand h1 { font-size:16px; }
+}

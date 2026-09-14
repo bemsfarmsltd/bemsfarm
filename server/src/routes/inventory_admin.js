@@ -96,7 +96,12 @@ async function applyStockChange(client, { productId, warehouseId, type, delta, r
   if (!before.rows.length) throw new Error("Product not found");
 
   const beforeQty = parseInt(before.rows[0].stock) || 0;
-  const afterQty  = Math.max(0, beforeQty + delta);
+  const afterQty = beforeQty + delta;
+  if (afterQty < 0) {
+    const error = new Error(`Insufficient stock. Only ${beforeQty} available.`);
+    error.status = 409;
+    throw error;
+  }
 
   await client.query(
     "UPDATE products SET stock=$1, stock_quantity=$1, updated_at=NOW() WHERE id=$2",
@@ -206,7 +211,7 @@ router.post(
       if (!product_id || !from_warehouse_id || !to_warehouse_id || isNaN(qty) || qty <= 0) {
         return res.status(400).json({ message: "Invalid transfer parameters" });
       }
-      if (from_warehouse_id === to_warehouse_id) {
+      if (Number(from_warehouse_id) === Number(to_warehouse_id)) {
         return res.status(400).json({ message: "Source and destination warehouses must be different" });
       }
 
@@ -326,13 +331,13 @@ router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper
 // ════════════════════════════════════════════════════════════════════════════
 // STOCK VALUATION  ──  GET /api/admin/inventory/valuation
 // ════════════════════════════════════════════════════════════════════════════
-router.get("/valuation", requireRole("superadmin", "manager", "admin", "kitchen_staff"), async (req, res, next) => {
+router.get("/valuation", requireRole("superadmin", "manager", "admin", "accountant", "storekeeper", "kitchen_staff"), async (req, res, next) => {
   try {
-    const [totalValue, byCategory, topValueItems, movements30d] = await Promise.all([
+    const [totalValue, byCategory, products, movements30d] = await Promise.all([
       pool.query(`
         SELECT
           COUNT(*) AS total_skus,
-          COALESCE(SUM(stock * COALESCE(cost_price, unit_price, price, 0)), 0) AS cost_value,
+          COALESCE(SUM(stock * COALESCE(cost_price, 0)), 0) AS cost_value,
           COALESCE(SUM(stock * COALESCE(unit_price, price, 0)), 0)             AS retail_value,
           COALESCE(SUM(stock), 0) AS total_units
         FROM products WHERE status = 'active'
@@ -343,7 +348,7 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin", "kitchen_
           cat.name AS category,
           COUNT(p.id) AS skus,
           SUM(p.stock) AS total_units,
-          COALESCE(SUM(p.stock * COALESCE(p.cost_price, p.unit_price, p.price, 0)), 0) AS cost_value,
+          COALESCE(SUM(p.stock * COALESCE(p.cost_price, 0)), 0) AS cost_value,
           COALESCE(SUM(p.stock * COALESCE(p.unit_price, p.price, 0)), 0)               AS retail_value
         FROM products p
         JOIN categories cat ON p.category_id = cat.id
@@ -354,14 +359,20 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin", "kitchen_
 
       pool.query(`
         SELECT
-          p.name, p.sku, p.stock,
+          p.id, p.name, p.sku, p.stock, p.unit, cat.name AS category,
           COALESCE(p.unit_price, p.price, 0) AS unit_price,
           COALESCE(p.cost_price, 0)          AS cost_price,
-          p.stock * COALESCE(p.unit_price, p.price, 0) AS retail_value
+          p.stock * COALESCE(p.cost_price, 0) AS cost_value,
+          p.stock * COALESCE(p.unit_price, p.price, 0) AS retail_value,
+          p.stock * (COALESCE(p.unit_price, p.price, 0) - COALESCE(p.cost_price, 0)) AS potential_profit,
+          CASE WHEN COALESCE(p.unit_price, p.price, 0) > 0
+            THEN ROUND(((COALESCE(p.unit_price, p.price, 0) - COALESCE(p.cost_price, 0)) /
+              COALESCE(p.unit_price, p.price, 0)) * 100, 2)
+            ELSE 0 END AS margin_pct
         FROM products p
-        WHERE p.status = 'active' AND p.stock > 0
+        LEFT JOIN categories cat ON cat.id = p.category_id
+        WHERE p.status = 'active'
         ORDER BY retail_value DESC
-        LIMIT 10
       `),
 
       pool.query(`
@@ -379,7 +390,8 @@ router.get("/valuation", requireRole("superadmin", "manager", "admin", "kitchen_
     res.json({
       summary: totalValue.rows[0],
       by_category: byCategory.rows,
-      top_value_items: topValueItems.rows,
+      products: products.rows,
+      top_value_items: products.rows.slice(0, 10),
       movements_30d: movements30d.rows,
     });
   } catch (err) {
@@ -1446,4 +1458,3 @@ router.delete(
 );
 
 module.exports = router;
-

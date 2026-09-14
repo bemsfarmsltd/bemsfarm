@@ -35,7 +35,6 @@ import Variants        from './pages/products/Variants'
 import Reviews         from './pages/products/Reviews'
 import Barcode         from './pages/products/Barcode'
 import BulkExport      from './pages/products/BulkExport'
-import BulkImport      from './pages/products/BulkImport'
 
 // Inventory
 import StockList       from './pages/inventory/StockList'
@@ -156,8 +155,9 @@ function App() {
                 <Route path="/products/reviews"        element={<Reviews />} />
                 <Route path="/products/barcode"        element={<Barcode />} />
                 <Route path="/products/export"         element={<BulkExport />} />
-                <Route path="/products/import"         element={<BulkImport />} />
-                <Route path="/products/bulk-import"    element={<BulkImport />} />
+                {/* Bulk import lives inside Add Product now — old links land there in import mode */}
+                <Route path="/products/import"         element={<Navigate to="/products/add?mode=import" replace />} />
+                <Route path="/products/bulk-import"    element={<Navigate to="/products/add?mode=import" replace />} />
 
                 <Route path="/inventory/stock"      element={<StockList />} />
                 <Route path="/inventory/schedule"   element={<PurchaseScheduleCalendar />} />
@@ -281,8 +281,8 @@ function App() {
                 <Route path="/settings/manager"       element={<ManagerSettings />} />
               </Route>
 
-              {/* ── God Eye Audit Log — superadmin only ── */}
-              <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>
+              {/* ── God Eye Audit Log — restricted to one designated owner account ── */}
+              <Route element={<ProtectedRoute allowedRoles={['superadmin']} allowedEmails={['admin@bemsfarms.com']} />}>
                 <Route path="/god-eye" element={<GodEye />} />
               </Route>
             </Route>

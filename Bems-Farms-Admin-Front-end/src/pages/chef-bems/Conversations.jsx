@@ -39,7 +39,7 @@ export default function Conversations() {
   const kpi = {
     total: convos.length,
     active: convos.filter(c => c.status === 'active').length,
-    escalated: convos.filter(c => c.status === 'escalated').length,
+    messages: convos.reduce((sum, c) => sum + Number(c.message_count || c.messages?.length || 0), 0),
     completed: convos.filter(c => c.status === 'completed').length,
   }
 
@@ -73,7 +73,7 @@ export default function Conversations() {
         {[
           { label: 'Total Sessions', value: kpi.total,     icon: 'ri-chat-3-line',           bg: '#e0f2fe', color: '#0369a1' },
           { label: 'Active',         value: kpi.active,    icon: 'ri-flashlight-line',       bg: '#dbeafe', color: '#1e40af' },
-          { label: 'Escalated',      value: kpi.escalated, icon: 'ri-alarm-warning-line',    bg: '#fee2e2', color: '#dc2626' },
+          { label: 'Messages',       value: kpi.messages,  icon: 'ri-message-3-line',         bg: '#fef3c7', color: '#b45309' },
           { label: 'Completed',      value: kpi.completed, icon: 'ri-checkbox-circle-line',  bg: '#dcfce7', color: '#15803d' },
         ].map(k => (
           <div className="col" key={k.label}>
@@ -101,7 +101,7 @@ export default function Conversations() {
                 placeholder="Search phone, name, session..."
                 value={search} onChange={e => setSearch(e.target.value)} />
               <div className="d-flex gap-1 flex-wrap">
-                {['all', 'active', 'escalated', 'completed', 'abandoned'].map(s => (
+                {['all', 'active', 'completed'].map(s => (
                   <button key={s} onClick={() => setStatusFilter(s)}
                     className="btn btn-sm"
                     style={{ fontSize: 10, padding: '2px 8px', background: statusFilter === s ? '#0ea5e9' : '#f1f5f9', color: statusFilter === s ? '#fff' : '#475569', border: 'none' }}>
@@ -163,7 +163,7 @@ export default function Conversations() {
                     </div>
                     <div style={{ fontSize: 11, color: '#64748b' }}>
                       {selected.customer_phone && <><i className="ri-phone-line me-1"></i>{selected.customer_phone}<span className="mx-2">·</span></>}
-                      <i className="ri-time-line me-1"></i>Started {fmtDateTime(selected.started_at)}
+                      <i className="ri-time-line me-1"></i>Started {fmtDateTime(selected.created_at)}
                       {selected.order_id && <><span className="mx-2">·</span><i className="ri-shopping-bag-line me-1"></i>Order #{selected.order_id}</>}
                     </div>
                   </div>
@@ -218,11 +218,6 @@ export default function Conversations() {
                     Chef Bems AI handles replies automatically.
                   </div>
                   <div className="d-flex gap-2">
-                    {selected.status === 'escalated' && (
-                      <button className="btn btn-sm btn-outline-warning" disabled={updating} onClick={() => setStatus(selected.id, 'active')}>
-                        <i className="ri-check-line me-1"></i>Dismiss Escalation
-                      </button>
-                    )}
                     {selected.status !== 'completed' && (
                       <button className="btn btn-sm btn-success" disabled={updating} onClick={() => setStatus(selected.id, 'completed')}>
                         <i className="ri-checkbox-circle-line me-1"></i>Mark Completed

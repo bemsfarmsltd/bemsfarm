@@ -116,7 +116,7 @@ router.get("/overview", async (req, res, next) => {
           WHERE date = CURRENT_DATE AND status = 'absent'`),
 
       // Pending AI conversations
-      q1(`SELECT COUNT(*) AS count FROM ai_conversations WHERE status = 'pending'`),
+      q1(`SELECT COUNT(*) AS count FROM admin_ai_conversations WHERE bot_type='chef' AND archived=false`),
 
       // Returns/refunds submitted today
       q1(`SELECT COUNT(*) AS count FROM returns WHERE DATE(created_at) = CURRENT_DATE`),
@@ -211,12 +211,13 @@ router.get("/overview", async (req, res, next) => {
       q(`SELECT
            ac.id,
            COALESCE(c.name, 'Anonymous') AS customer,
-           COALESCE(ac.messages->0->>'content', 'No message') AS query,
-           ac.status,
-           ac.started_at AS created_at
-         FROM ai_conversations ac
-         LEFT JOIN users c ON ac.customer_id = c.id
-         ORDER BY ac.started_at DESC
+           COALESCE((SELECT content FROM ai_conversation_messages WHERE conversation_id=ac.id ORDER BY created_at LIMIT 1), 'No message') AS query,
+           CASE WHEN ac.archived THEN 'completed' ELSE 'active' END AS status,
+           ac.created_at
+         FROM admin_ai_conversations ac
+         LEFT JOIN users c ON ac.user_id = c.id
+         WHERE ac.bot_type='chef'
+         ORDER BY ac.created_at DESC
          LIMIT 3`),
     ]);
 
@@ -866,40 +867,39 @@ router.get("/ai", async (req, res, next) => {
       recentConvs,
       convBreakdown,
     ] = await Promise.all([
-      q1(`SELECT COUNT(*) AS count FROM ai_conversations
-          WHERE DATE(started_at) = CURRENT_DATE`),
+      q1(`SELECT COUNT(*) AS count FROM admin_ai_conversations
+          WHERE bot_type='chef' AND DATE(created_at) = CURRENT_DATE`),
 
-      q1(`SELECT COUNT(*) AS count FROM ai_conversations
-          WHERE status = 'pending'`),
+      q1(`SELECT COUNT(*) AS count FROM admin_ai_conversations
+          WHERE bot_type='chef' AND archived=false`),
 
       q(`SELECT condition AS name, rule_text AS scope, 'active' AS status
          FROM admin_dietary_rules
          LIMIT 10`),
 
       q(`SELECT
-           ma.name AS meal,
-           COUNT(mdf.id) AS association_count
-         FROM meal_associations ma
-         LEFT JOIN meal_dietary_flags mdf ON ma.id = mdf.meal_id
-         GROUP BY ma.id, ma.name
-         ORDER BY association_count DESC
+           product_a || ' + ' || product_b AS meal,
+           association_strength AS association_count
+         FROM product_associations
+         ORDER BY association_strength DESC
          LIMIT 5`),
 
       q(`SELECT
            ac.id,
            COALESCE(c.name, 'Anonymous') AS customer,
-           COALESCE(ac.messages->0->>'content', 'No message') AS query,
-           ac.status,
-           ac.started_at AS created_at
-         FROM ai_conversations ac
-         LEFT JOIN users c ON ac.customer_id = c.id
-         ORDER BY ac.started_at DESC
+           COALESCE((SELECT content FROM ai_conversation_messages WHERE conversation_id=ac.id ORDER BY created_at LIMIT 1), 'No message') AS query,
+           CASE WHEN ac.archived THEN 'completed' ELSE 'active' END AS status,
+           ac.created_at
+         FROM admin_ai_conversations ac
+         LEFT JOIN users c ON ac.user_id = c.id
+         WHERE ac.bot_type='chef'
+         ORDER BY ac.created_at DESC
          LIMIT 10`),
 
-      q(`SELECT status, COUNT(*) AS count
-         FROM ai_conversations
-         WHERE DATE(started_at) = CURRENT_DATE
-         GROUP BY status`),
+      q(`SELECT CASE WHEN archived THEN 'completed' ELSE 'active' END AS status, COUNT(*) AS count
+         FROM admin_ai_conversations
+         WHERE bot_type='chef' AND DATE(created_at) = CURRENT_DATE
+         GROUP BY archived`),
     ]);
 
     const breakdownMap = {};

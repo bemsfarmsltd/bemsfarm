@@ -273,6 +273,51 @@ router.post("/pos", requireRole("superadmin", "manager"), async (req, res, next)
   }
 });
 
+// Receipt-safe settings are available to every staff role that can issue or
+// reprint a sale. The allowlist prevents unrelated configuration from leaking.
+router.get("/receipt", requireRole(...STAFF_ROLES), async (req, res, next) => {
+  try {
+    const [general, pos] = await Promise.all([getGroup("general"), getGroup("pos")]);
+    res.json({
+      settings: {
+        store_name: general.store_name || "Bems Farms Ltd",
+        store_phone: general.store_phone || "+234 800 236 7326",
+        store_email: general.store_email || "info@bemsfarms.com",
+        store_address: general.store_address || "Lagos, Nigeria",
+        store_logo_url: general.store_logo_url || "/bemsfarms_logo.png",
+        store_tax_id: general.store_tax_id || "",
+        store_registration_number: general.store_registration_number || "",
+        pos_receipt_tagline: pos.pos_receipt_tagline || "Fresh food. Trusted quality.",
+        pos_receipt_website: pos.pos_receipt_website || "bemsfarms.com",
+        pos_receipt_header: pos.pos_receipt_header || "SALES RECEIPT",
+        pos_receipt_footer: pos.pos_receipt_footer || "Thank you for shopping with us",
+        pos_receipt_return_note: pos.pos_receipt_return_note || "Keep this receipt for returns",
+        pos_receipt_paper_size: pos.pos_receipt_paper_size || "80",
+        pos_receipt_show_logo: pos.pos_receipt_show_logo ?? "true",
+        pos_receipt_show_phone: pos.pos_receipt_show_phone ?? "true",
+        pos_receipt_show_email: pos.pos_receipt_show_email ?? "false",
+        pos_receipt_show_sku: pos.pos_receipt_show_sku ?? "true",
+        pos_receipt_show_barcode: pos.pos_receipt_show_barcode ?? "true",
+        receipt_pos_title: pos.receipt_pos_title || "POS SALES RECEIPT",
+        receipt_pos_footer: pos.receipt_pos_footer || pos.pos_receipt_footer || "Thank you for shopping with us",
+        receipt_online_title: pos.receipt_online_title || "ONLINE ORDER RECEIPT",
+        receipt_online_footer: pos.receipt_online_footer || "Thank you for your order",
+        receipt_refund_title: pos.receipt_refund_title || "REFUND / RETURN RECEIPT",
+        receipt_refund_footer: pos.receipt_refund_footer || "Your return has been recorded",
+        receipt_stock_title: pos.receipt_stock_title || "STOCK RECEIVING SLIP",
+        receipt_stock_footer: pos.receipt_stock_footer || "Goods received and recorded",
+        receipt_payment_title: pos.receipt_payment_title || "PAYMENT RECEIPT",
+        receipt_payment_footer: pos.receipt_payment_footer || "Payment received with thanks",
+        receipt_invoice_title: pos.receipt_invoice_title || "SALES INVOICE",
+        receipt_invoice_footer: pos.receipt_invoice_footer || "Thank you for your business",
+        pos_print_receipt: pos.pos_print_receipt ?? "true",
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ════════════════════════════════════════════════════════════════════════════
 // INVOICE SETTINGS
 // ════════════════════════════════════════════════════════════════════════════

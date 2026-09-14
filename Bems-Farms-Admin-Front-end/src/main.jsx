@@ -25,7 +25,31 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter basename={adminBasename}>
       <App />
-      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+      <Toaster
+        position="top-right"
+        gutter={12}
+        containerStyle={{ top: 20, right: 20 }}
+        toastOptions={{
+          duration: 4000,
+          style: {
+            maxWidth: 420,
+            padding: '14px 16px',
+            color: '#17211d',
+            background: 'rgba(255, 255, 255, 0.98)',
+            border: '1px solid #e3ebe6',
+            borderRadius: 14,
+            boxShadow: '0 18px 48px rgba(15, 45, 35, 0.16)',
+            fontWeight: 600,
+          },
+          success: {
+            iconTheme: { primary: '#0d8065', secondary: '#ffffff' },
+          },
+          error: {
+            duration: 5500,
+            iconTheme: { primary: '#d64545', secondary: '#ffffff' },
+          },
+        }}
+      />
     </BrowserRouter>
   </StrictMode>,
 )

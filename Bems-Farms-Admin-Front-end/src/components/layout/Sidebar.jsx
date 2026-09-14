@@ -38,7 +38,9 @@ export default function Sidebar() {
   const showStores    = is('superadmin', 'admin')
   const showSettings  = is('superadmin', 'admin', 'manager')
   const showPOS       = is('superadmin', 'admin', 'manager', 'cashier')
-  const showGodEye    = is('superadmin')
+  // God Eye is restricted to one designated owner account, not the whole
+  // superadmin role — several staff (including test accounts) are superadmin.
+  const showGodEye    = (user?.email || '').toLowerCase() === 'admin@bemsfarms.com'
 
   // Auto-detect active category based on current pathname
   const getActiveCategoryFromPath = (path) => {
@@ -500,19 +502,6 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* Onboarding */}
-            {showStaff && (
-              <button
-                type="button"
-                className={`rail-btn ${activeTab === 'onboarding' ? 'active' : ''}`}
-                onClick={() => handleCategoryClick('onboarding')}
-                title="Team Onboarding & Staff"
-              >
-                <i className="ri-user-add-line rail-icon"></i>
-                <span className="rail-label">Onboarding</span>
-              </button>
-            )}
-
             {/* Finance */}
             {showFinance && (
               <button
@@ -549,6 +538,20 @@ export default function Sidebar() {
               >
                 <i className="ri-store-3-line rail-icon"></i>
                 <span className="rail-label">Multi-Store</span>
+                <span className="sub-badge" style={{ background: '#F1F5F9', color: '#64748B', marginLeft: 'auto' }}>Coming Soon</span>
+              </button>
+            )}
+
+            {/* Onboarding */}
+            {showStaff && (
+              <button
+                type="button"
+                className={`rail-btn ${activeTab === 'onboarding' ? 'active' : ''}`}
+                onClick={() => handleCategoryClick('onboarding')}
+                title="Team Onboarding & Staff"
+              >
+                <i className="ri-user-add-line rail-icon"></i>
+                <span className="rail-label">Onboarding</span>
               </button>
             )}
 
@@ -708,11 +711,6 @@ export default function Sidebar() {
                 {is('superadmin', 'admin', 'manager') && (
                   <NavLink to="/products/barcode" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                     <span>Barcode Generator</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin', 'manager') && (
-                  <NavLink to="/products/import" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Bulk Import</span>
                   </NavLink>
                 )}
                 {is('superadmin', 'admin', 'manager') && (

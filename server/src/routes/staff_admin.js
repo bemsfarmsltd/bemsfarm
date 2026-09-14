@@ -787,6 +787,90 @@ router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
   }
 });
 
+// Attribution-only FK columns pointing at users(id) with no ON DELETE clause,
+// where the column is nullable — detaching them loses nothing but the
+// "who did this" pointer, so a plain SET NULL is safe.
+const NULLABLE_USER_REF_COLUMNS = [
+  ["ai_conversations", "escalated_to"],
+  ["delivery_assignments", "assigned_by"],
+  ["expenses", "approved_by"],
+  ["loyalty_transactions", "created_by"],
+  ["meal_dietary_flags", "verified_by"],
+  ["order_status_history", "changed_by"],
+  ["orders", "created_by"],
+  ["products", "created_by"],
+  ["returns", "processed_by"],
+  ["staff_attendance", "recorded_by"],
+  ["staff_holidays", "approved_by"],
+  ["stock_adjustments", "approved_by"],
+  ["stock_in", "approved_by"],
+  ["system_settings", "updated_by"],
+];
+
+// Same idea, but the column is NOT NULL (financial/inventory ledger rows —
+// coupons, expenses, income, invoices, payroll, stock movements, etc.) —
+// can't be nulled, and the underlying record must never be deleted just
+// because whoever entered it left, so reassign to a placeholder account.
+const REQUIRED_USER_REF_COLUMNS = [
+  ["commission_payments", "created_by"],
+  ["coupons", "created_by"],
+  ["expenses", "created_by"],
+  ["income", "created_by"],
+  ["invoices", "created_by"],
+  ["lost_items", "reported_by"],
+  ["money_transfers", "created_by"],
+  ["payroll", "created_by"],
+  ["pos_sessions", "cashier_id"],
+  ["stock_adjustments", "created_by"],
+  ["stock_in", "created_by"],
+  ["stock_out", "created_by"],
+  ["stock_transfers", "created_by"],
+  ["staff_schedules", "created_by"],
+];
+
+const DELETED_USER_PLACEHOLDER_EMAIL = "deleted-user@bemsfarms-system.local";
+
+// Ensures a single inert placeholder account exists to inherit NOT NULL
+// "created/approved by" attribution from a permanently-deleted staff
+// member, so real business records (a coupon, an expense, a stock
+// movement) are never destroyed just to remove the person who logged them.
+// It can never sign in: no password, status 'inactive', role 'user'.
+async function ensureDeletedUserPlaceholder(client) {
+  const existing = await client.query("SELECT id FROM users WHERE email=$1", [DELETED_USER_PLACEHOLDER_EMAIL]);
+  if (existing.rows.length) return existing.rows[0].id;
+  const created = await client.query(
+    `INSERT INTO users (name, email, password, role, status, created_at)
+     VALUES ('Deleted Staff Member', $1, NULL, 'user', 'inactive', NOW())
+     RETURNING id`,
+    [DELETED_USER_PLACEHOLDER_EMAIL],
+  );
+  return created.rows[0].id;
+}
+
+// Detaches every table that would otherwise block hard-deleting this staff
+// member's account, without ever deleting someone else's business data.
+// Rows that intrinsically belong only to this person (their own schedule
+// entries, holiday requests, notifications) are removed outright; every
+// other table just loses its "who did this" pointer.
+async function purgeStaffReferences(client, { userId, staffId }) {
+  await client.query("DELETE FROM staff_holidays WHERE staff_id=$1", [staffId]);
+  await client.query("DELETE FROM staff_schedules WHERE staff_id=$1", [staffId]);
+  if (userId) {
+    await client.query("DELETE FROM notifications WHERE user_id=$1", [userId]);
+  }
+
+  if (!userId) return;
+
+  for (const [table, column] of NULLABLE_USER_REF_COLUMNS) {
+    await client.query(`UPDATE ${table} SET ${column} = NULL WHERE ${column} = $1`, [userId]);
+  }
+
+  const placeholderId = await ensureDeletedUserPlaceholder(client);
+  for (const [table, column] of REQUIRED_USER_REF_COLUMNS) {
+    await client.query(`UPDATE ${table} SET ${column} = $1 WHERE ${column} = $2`, [placeholderId, userId]);
+  }
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // HARD DELETE  ──  DELETE /api/admin/staff/:id/permanent
 // Permanently erases the staff record (attendance/payroll history cascade
@@ -794,9 +878,15 @@ router.delete("/:id", requireRole("superadmin"), async (req, res, next) => {
 // can't be undone by re-activating. Reserved for onboarded staff an admin
 // wants gone entirely (e.g. mis-invited or test accounts), not for staff
 // with real history someone might need to look back on later.
+//
+// Pass ?force=true to also detach every record that would otherwise block
+// the delete (see purgeStaffReferences) — real business records are never
+// deleted, only reassigned to a placeholder or (for records that only ever
+// belonged to this person) removed.
 // ════════════════════════════════════════════════════════════════════════════
 router.delete("/:id/permanent", requireRole("superadmin"), async (req, res, next) => {
   if (!/^\d+$/.test(req.params.id)) return next();
+  const force = req.query.force === "true";
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -826,6 +916,10 @@ router.delete("/:id/permanent", requireRole("superadmin"), async (req, res, next
       }
     }
 
+    if (force) {
+      await purgeStaffReferences(client, { userId: user_id, staffId: req.params.id });
+    }
+
     await client.query("DELETE FROM staff WHERE id=$1", [req.params.id]);
     if (user_id) {
       await client.query("DELETE FROM users WHERE id=$1", [user_id]);
@@ -834,6 +928,20 @@ router.delete("/:id/permanent", requireRole("superadmin"), async (req, res, next
     res.json({ message: "Staff member permanently deleted" });
   } catch (err) {
     await client.query("ROLLBACK");
+    // Dozens of tables (coupons, expenses, orders, products, notifications,
+    // stock movements, staff schedules/holidays, etc.) record who created/
+    // touched them via a plain user/staff FK with no ON DELETE clause — so
+    // any staff member who has actually done something in the system will
+    // fail a hard delete with a raw 23503 foreign-key-violation instead of
+    // a message that tells the admin what to do about it.
+    if (err.code === "23503") {
+      return res.status(400).json({
+        message: force
+          ? `Still can't delete — a related record${err.table ? ` in "${err.table}"` : ""} isn't covered by the purge yet. Use Deactivate instead.`
+          : `Can't permanently delete this staff member — they still have related records${err.table ? ` in "${err.table}"` : ""} (e.g. things they created, approved, or were assigned). Retry with "force" to detach those records and delete anyway (real business records are reassigned, never destroyed), or use Deactivate instead to revoke their access without losing that history.`,
+        can_force: !force,
+      });
+    }
     next(err);
   } finally {
     client.release();

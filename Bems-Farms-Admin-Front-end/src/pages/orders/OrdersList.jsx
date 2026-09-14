@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
+import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -286,6 +287,7 @@ export default function OrdersList() {
         }
       } catch (err) {
         console.warn('Could not fetch deep order detail:', err.message)
+        toast.error('Full product details could not be loaded for this receipt')
       } finally {
         setDetailLoading(false)
       }
@@ -477,7 +479,7 @@ export default function OrdersList() {
   }
 
   const handlePrint = () => {
-    window.print()
+    printThermalReceipt()
   }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -1122,72 +1124,31 @@ export default function OrdersList() {
               <div className="d-flex align-items-center justify-content-between p-3 border-bottom d-print-none">
                 <h6 className="mb-0 fw-bold">Sales Receipt</h6>
                 <div className="d-flex gap-2">
-                  <button className="btn btn-sm btn-primary" onClick={handlePrint}><i className="ri-printer-line me-1" />Print</button>
+                  <button className="btn btn-sm btn-primary" onClick={handlePrint} disabled={detailLoading}>
+                    <i className={`${detailLoading ? 'ri-loader-4-line ri-spin' : 'ri-printer-line'} me-1`} />
+                    {detailLoading ? 'Loading items…' : 'Print'}
+                  </button>
                   <button className="btn btn-sm btn-outline-secondary" onClick={closeModal}><i className="ri-close-line" /></button>
                 </div>
               </div>
 
-              <div ref={receiptRef} className="p-4" style={{ fontFamily: 'monospace', fontSize: 12, color: '#111' }}>
-                <div className="text-center mb-3">
-                  <h5 className="fw-bold mb-0">BEMS FARMS LTD</h5>
-                  <div>Fresh Quality Agricultural Produce</div>
-                  <div>Km 14, Epe Expressway, Lagos</div>
-                  <div>Tel: +234 800 236 7327 | www.bemsfarms.com</div>
-                </div>
-
-                <div className="border-top border-bottom py-2 my-2">
-                  <div className="d-flex justify-content-between"><span>ORDER REF:</span><strong>{selected.id}</strong></div>
-                  <div className="d-flex justify-content-between"><span>DATE:</span><span>{selected.date}</span></div>
-                  <div className="d-flex justify-content-between"><span>CUSTOMER:</span><span>{selected.customer.name}</span></div>
-                  <div className="d-flex justify-content-between"><span>CHANNEL:</span><span>{getChannelCfg(selected.channel).label}</span></div>
-                </div>
-
-                <div className="py-2">
-                  <table className="w-100 mb-2">
-                    <thead>
-                      <tr className="border-bottom">
-                        <th className="text-start pb-1">ITEM</th>
-                        <th className="text-center pb-1">QTY</th>
-                        <th className="text-end pb-1">PRICE</th>
-                        <th className="text-end pb-1">TOTAL</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selected.items?.length > 0 ? (
-                        selected.items.map((it, i) => (
-                          <tr key={i}>
-                            <td className="py-1">{it.name}</td>
-                            <td className="text-center py-1">{it.qty}</td>
-                            <td className="text-end py-1">{fmt(it.price)}</td>
-                            <td className="text-end py-1">{fmt(it.total)}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr><td colSpan={4} className="py-2 text-center text-muted">Direct Sale / Walk-in</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="border-top pt-2">
-                  <div className="d-flex justify-content-between"><span>SUBTOTAL:</span><span>{fmt(calcSub(selected.items) || selected.total)}</span></div>
-                  {selected.deliveryFee > 0 && (
-                    <div className="d-flex justify-content-between"><span>DELIVERY FEE:</span><span>{fmt(selected.deliveryFee)}</span></div>
-                  )}
-                  <div className="d-flex justify-content-between fw-bold fs-15 mt-1 border-top pt-1">
-                    <span>GRAND TOTAL:</span>
-                    <span>{fmt(selected.total)}</span>
-                  </div>
-                  <div className="d-flex justify-content-between text-muted mt-1">
-                    <span>PAYMENT:</span>
-                    <span>{selected.payment?.toUpperCase()}</span>
-                  </div>
-                </div>
-
-                <div className="text-center mt-4 border-top pt-3 text-muted" style={{ fontSize: 11 }}>
-                  <div>Thank you for choosing Bems Farms!</div>
-                  <div>Certified Fresh & Organically Grown</div>
-                </div>
+              <div ref={receiptRef} className="thermal-receipt-preview">
+                <ThermalReceipt
+                  receiptType={selected.channel === 'physical' ? 'pos' : 'online'}
+                  receiptNumber={selected.id}
+                  date={selected.date}
+                  customer={selected.customer?.name}
+                  customerPhone={selected.customer?.phone}
+                  channel={getChannelCfg(selected.channel).label}
+                  fulfillment={selected.fulfillmentType === 'delivery' ? 'Delivery' : 'Store pickup'}
+                  status={getStatusCfg(selected.status).label}
+                  items={selected.items}
+                  subtotal={calcSub(selected.items) || selected.total}
+                  deliveryFee={selected.deliveryFee}
+                  total={selected.total}
+                  paymentMethod={selected.payment?.toUpperCase()}
+                  note={selected.notes}
+                />
               </div>
             </div>
           )}

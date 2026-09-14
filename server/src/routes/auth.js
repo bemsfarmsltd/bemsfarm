@@ -1006,6 +1006,32 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
     const token = generateAccessToken(user);
     const nameParts = (user.name || "").trim().split(" ");
 
+    // The password-login route above stamps last_login on every successful
+    // sign-in; this Google route never did, so any account that only ever
+    // signs in via Google always showed "Never Logged In" on the admin
+    // Customer Detail page regardless of how recently they'd actually used it.
+    await pool.query("UPDATE users SET last_login=NOW() WHERE id=$1", [user.id]);
+
+    const clientIP = req.ip || req.connection?.remoteAddress || "unknown";
+    upsertContext(user.id, {
+      full_name:  user.name,
+      email:      user.email,
+      phone:      user.phone || null,
+      role:       user.role,
+      last_login: new Date().toISOString(),
+    });
+    trackActivity(user.id, "login", { ip: clientIP, metadata: { origin: "google" } });
+
+    recordAuditRich({
+      source: 'api', action: 'LOGIN_SUCCESS',
+      actor_id: user.id, actor_name: user.name, actor_role: user.role,
+      request_id: req.auditRequestId, resource: '/api/auth/google',
+      outcome: 'success', category: 'auth', severity: 'info',
+      entity_type: 'user', entity_id: String(user.id),
+      ip_address: clientIP, user_agent: (req.headers['user-agent'] || '').slice(0,300),
+      details: { origin: "google", role: user.role },
+    }).catch(() => {});
+
     res.json({
       message: "Google authentication successful",
       token,
