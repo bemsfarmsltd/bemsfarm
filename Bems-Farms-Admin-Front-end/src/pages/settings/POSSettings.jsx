@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import SettingsTabs from './SettingsTabs'
 import ThermalReceipt from '../../components/ui/ThermalReceipt'
+import { useAuth } from '../../context/AuthContext'
 
 const BLANK = {
   store_name: 'Bems Farms Ltd', store_phone: '+234 800 236 7326', store_email: 'info@bemsfarms.com',
@@ -30,6 +31,7 @@ const RECEIPT_TYPES = [
 ]
 
 export default function POSSettings() {
+  const { user } = useAuth()
   const [form, setForm] = useState(BLANK)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -97,7 +99,7 @@ export default function POSSettings() {
         </div></div>
       </div>
       <div className="col-xl-5"><div className="card position-sticky" style={{ top: 88 }}><div className="card-header d-flex justify-content-between"><h6 className="mb-0 fw-bold">Live print preview</h6><span className="badge bg-light text-dark border">{form.pos_receipt_paper_size} mm</span></div><div className="thermal-receipt-preview">
-        <ThermalReceipt settings={form} receiptType={receiptType} receiptNumber="BF-PREVIEW-001" date="14 Sep 2026 · 12:30" customer="Walk-in Customer" channel="POS Terminal" cashier="Admin Cashier" items={SAMPLE_ITEMS} subtotal={12800} tax={960} total={13760} paymentMethod="Cash" amountTendered={15000} change={1240} />
+        <ThermalReceipt settings={form} receiptType={receiptType} receiptNumber="BF-PREVIEW-001" date="14 Sep 2026 · 12:30" customer="Walk-in Customer" channel="POS Terminal" cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : 'Cashier'} items={SAMPLE_ITEMS} subtotal={12800} tax={960} total={13760} paymentMethod="Cash" amountTendered={15000} change={1240} />
       </div></div></div>
     </div>
   </div>
