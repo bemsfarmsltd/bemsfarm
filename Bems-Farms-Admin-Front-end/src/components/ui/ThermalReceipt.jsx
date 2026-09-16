@@ -43,20 +43,122 @@ export function printThermalReceipt() {
   if (isPrintingLock) return
   isPrintingLock = true
 
-  const paperSize = document.querySelector('.thermal-receipt-print-root')?.dataset.paperSize || '80'
-  const cleanup = () => {
-    document.body.classList.remove('thermal-print-active', 'thermal-print-58')
-    setTimeout(() => { isPrintingLock = false }, 500)
+  const receiptEl = document.querySelector('.thermal-receipt-print-root')
+  if (!receiptEl) {
+    isPrintingLock = false
+    return
   }
-  document.body.classList.add('thermal-print-active')
-  if (paperSize === '58') document.body.classList.add('thermal-print-58')
 
-  window.addEventListener('afterprint', cleanup, { once: true })
+  const paperSize = receiptEl.dataset.paperSize || '80'
+  const receiptHTML = receiptEl.outerHTML
 
-  setTimeout(() => {
-    window.print()
-    setTimeout(cleanup, 2000)
-  }, 100)
+  let iframe = document.getElementById('bems-thermal-print-iframe')
+  if (!iframe) {
+    iframe = document.createElement('iframe')
+    iframe.id = 'bems-thermal-print-iframe'
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    iframe.style.visibility = 'hidden'
+    document.body.appendChild(iframe)
+  }
+
+  const doc = iframe.contentWindow?.document || iframe.contentDocument
+  if (!doc) {
+    isPrintingLock = false
+    return
+  }
+
+  const receiptCSS = `
+    @page {
+      margin: 0;
+      size: auto;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: auto;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #000;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: visible;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .thermal-receipt {
+      width: ${paperSize === '58' ? '54mm' : '76mm'};
+      max-width: ${paperSize === '58' ? '54mm' : '76mm'};
+      margin: 0 auto;
+      padding: 2mm 2.5mm 4mm;
+      color: #000;
+      background: #fff;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.3;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    .thermal-receipt__brand { text-align: center; margin-bottom: 6px; }
+    .thermal-receipt__brand h1 { margin: 2px 0 1px; font: 800 18px/1.1 "Inter", sans-serif; letter-spacing: 0.1px; }
+    .thermal-receipt__brand p { margin: 0 0 2px; font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; opacity: 0.85; }
+    .thermal-receipt__brand address { margin: 0; font-style: normal; font-size: 10.5px; color: #111; line-height: 1.25; }
+    .thermal-receipt__logo { display: block; width: auto; max-width: 44mm; height: 13.5mm; margin: 0 auto 4px; object-fit: contain; filter: grayscale(1) contrast(1.25); }
+    .thermal-receipt__title { margin: 6px 0 5px; text-align: center; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; font-size: 12px; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 3.5px 0; }
+    .thermal-receipt__title small { display: none; }
+    .thermal-receipt__meta, .thermal-receipt__payment { padding-bottom: 5px; }
+    .thermal-receipt__row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; font-size: 11.5px; }
+    .thermal-receipt__row > :last-child { max-width: 65%; text-align: right; overflow-wrap: anywhere; }
+    .thermal-receipt__row--strong { font-weight: 800; }
+    .thermal-receipt__items { border-top: 1px dashed #000; margin-top: 3px; }
+    .thermal-receipt__items-head { display: flex; justify-content: space-between; padding: 4px 0 3px; font-weight: 800; border-bottom: 1px solid #000; font-size: 11px; letter-spacing: 0.5px; }
+    .thermal-receipt__item { padding: 3.5px 0; border-bottom: 1px dotted #ccc; }
+    .thermal-receipt__item:last-child { border-bottom: none; }
+    .thermal-receipt__item-name { font-weight: 800; font-size: 12px; overflow-wrap: anywhere; margin-bottom: 1.5px; line-height: 1.2; }
+    .thermal-receipt__item-line { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-size: 11px; }
+    .thermal-receipt__item-line span { color: #222; font-size: 11px; font-weight: 500; }
+    .thermal-receipt__item-line strong { font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .thermal-receipt__item small { display: block; margin-top: 1px; color: #555; font-size: 9.5px; }
+    .thermal-receipt__empty { padding: 8px 0; text-align: center; font-style: italic; color: #555; font-size: 11px; }
+    .thermal-receipt__totals { padding: 4px 0; border-top: 1px solid #000; border-bottom: 1px solid #000; margin: 4px 0; }
+    .thermal-receipt__totals .thermal-receipt__row { padding: 2px 0; }
+    .thermal-receipt__totals .thermal-receipt__row--strong { margin-top: 3px; padding-top: 4px; border-top: 1px dashed #000; font-size: 14.5px; font-weight: 900; }
+    .thermal-receipt__payment { padding-top: 3px; border-bottom: 1px dashed #000; }
+    .thermal-receipt__note { margin: 4px 0; padding: 4px 8px; border-radius: 4px; background: #f5f5f5; font-size: 10px; overflow-wrap: anywhere; font-style: italic; text-align: center; }
+    .thermal-receipt__footer { padding-top: 5px; border-top: 1px dashed #000; text-align: center; display: flex; flex-direction: column; align-items: center; }
+    .thermal-receipt__footer strong { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; margin-bottom: 1px; }
+    .thermal-receipt__footer small { font-size: 9.5px; color: #444; font-family: monospace; margin-top: 2px; }
+    .thermal-receipt__barcode { width: 70%; height: 20px; margin: 2px auto 2px; background: repeating-linear-gradient(90deg,#000 0 1.5px,transparent 1.5px 3.5px,#000 3.5px 6px,transparent 6px 8px,#000 8px 9.5px,transparent 9.5px 13px); opacity: 0.9; }
+    .thermal-receipt__real-barcode { margin: 3px auto 2px; display: block; shape-rendering: crispEdges; }
+  `
+
+  doc.open()
+  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt</title><style>${receiptCSS}</style></head><body>${receiptHTML}</body></html>`)
+  doc.close()
+
+  const executePrint = () => {
+    try {
+      iframe.contentWindow?.focus()
+      iframe.contentWindow?.print()
+    } catch (e) {
+      console.error('Iframe print error', e)
+    } finally {
+      setTimeout(() => {
+        isPrintingLock = false
+      }, 1000)
+    }
+  }
+
+  // Allow images/SVGs in the iframe to layout
+  setTimeout(executePrint, 120)
 }
 
 function ReceiptRow({ label, value, strong = false }) {
