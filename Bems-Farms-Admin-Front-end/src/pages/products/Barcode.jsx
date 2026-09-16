@@ -303,50 +303,50 @@ export default function Barcode() {
     }
 
     // Grab the rendered SVGs from the hidden canvas
-    const getSvgStr = (val, symbology, isCompact) => {
-      const bHtml = document.querySelector(\`#printable-barcode-canvas .bc-\${val}\`)?.innerHTML || ''
+    const getSvgStr = (val) => {
+      const bHtml = document.querySelector(`#printable-barcode-canvas .bc-${val}`)?.innerHTML || ''
       return bHtml
     }
 
     const labelsHtml = printableLabelArray.map(item => {
       const priceStr = formatNaira(item.price || item.unit_price)
       const isCompact = labelTemplate === 'compact_40x20'
-      const svg = document.getElementById(\`svg-queue-\${item.id}-\${item.copyIndex}\`)?.outerHTML || ''
+      const svg = document.getElementById(`svg-queue-${item.id}-${item.copyIndex}`)?.outerHTML || getSvgStr(item.barcodeValue) || ''
       
-      return \`
+      return `
         <div class="label-page">
-          \${showBrandHeader ? \`
+          ${showBrandHeader ? `
             <div class="header">
               <span>BEMS FARMS</span>
               <span>Fresh Produce</span>
             </div>
-          \` : ''}
-          \${showProductName ? \`<div class="name">\${item.name}</div>\` : ''}
-          \${showPrice ? \`
+          ` : ''}
+          ${showProductName ? `<div class="name">${item.name}</div>` : ''}
+          ${showPrice ? `
             <div class="price-row">
-              <span class="price">\${priceStr}</span>
-              \${showCategory ? \`<span class="unit">\${item.unit || 'Per Unit'}</span>\` : ''}
+              <span class="price">${priceStr}</span>
+              ${showCategory ? `<span class="unit">${item.unit || 'Per Unit'}</span>` : ''}
             </div>
-          \` : ''}
-          <div class="barcode">\${svg}</div>
-          \${showSku ? \`<div class="sku">UGC: \${item.barcodeValue}</div>\` : ''}
-          \${showDates ? \`
+          ` : ''}
+          <div class="barcode">${svg}</div>
+          ${showSku ? `<div class="sku">UGC: ${item.barcodeValue}</div>` : ''}
+          ${showDates ? `
             <div class="dates">
-              <span>Packed: \${new Date().toLocaleDateString('en-GB')}</span>
+              <span>Packed: ${new Date().toLocaleDateString('en-GB')}</span>
               <span>Origin: Nigeria</span>
             </div>
-          \` : ''}
+          ` : ''}
         </div>
-      \`
+      `
     }).join('')
 
-    printWindow.document.write(\`
+    printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
           <title>Print Queue</title>
           <style>
-            @page { size: \${pageSize}; margin: 0; }
+            @page { size: ${pageSize}; margin: 0; }
             body { 
               font-family: system-ui, sans-serif; 
               margin: 0; 
@@ -355,8 +355,8 @@ export default function Barcode() {
               color: #000;
             }
             .label-page {
-              width: \${w};
-              height: \${h};
+              width: ${w};
+              height: ${h};
               padding: 1.5mm;
               box-sizing: border-box;
               display: flex;
@@ -365,26 +365,26 @@ export default function Barcode() {
               overflow: hidden;
               page-break-after: always;
             }
-            .header { display: flex; justify-content: space-between; font-size: \${labelTemplate==='crate_100x75' ? '12px' : '7px'}; font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 1px; margin-bottom: 2px; }
+            .header { display: flex; justify-content: space-between; font-size: ${labelTemplate==='crate_100x75' ? '12px' : '7px'}; font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 1px; margin-bottom: 2px; }
             .header span:first-child { background: #000; color: #fff; padding: 1px 4px; border-radius: 2px; }
-            .name { font-size: \${labelTemplate==='crate_100x75' ? '16px' : '9px'}; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+            .name { font-size: ${labelTemplate==='crate_100x75' ? '16px' : '9px'}; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
             .price-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 1px; }
-            .price { font-size: \${labelTemplate==='crate_100x75' ? '22px' : '11px'}; font-weight: bold; }
-            .unit { font-size: \${labelTemplate==='crate_100x75' ? '12px' : '7px'}; color: #333; }
+            .price { font-size: ${labelTemplate==='crate_100x75' ? '22px' : '11px'}; font-weight: bold; }
+            .unit { font-size: ${labelTemplate==='crate_100x75' ? '12px' : '7px'}; color: #333; }
             .barcode { text-align: center; margin-top: auto; }
-            .barcode svg { height: \${labelTemplate==='crate_100x75' ? '30mm' : (labelTemplate==='compact_40x20' ? '6mm' : '8mm')} !important; width: auto !important; max-width: 100% !important; }
-            .sku { text-align: center; font-size: \${labelTemplate==='crate_100x75' ? '10px' : '6px'}; font-family: monospace; margin-top: 1px; }
-            .dates { display: flex; justify-content: space-between; font-size: \${labelTemplate==='crate_100x75' ? '9px' : '5px'}; color: #333; border-top: 1px solid #ccc; padding-top: 1px; margin-top: 1px; }
+            .barcode svg { height: ${labelTemplate==='crate_100x75' ? '30mm' : (labelTemplate==='compact_40x20' ? '6mm' : '8mm')} !important; width: auto !important; max-width: 100% !important; }
+            .sku { text-align: center; font-size: ${labelTemplate==='crate_100x75' ? '10px' : '6px'}; font-family: monospace; margin-top: 1px; }
+            .dates { display: flex; justify-content: space-between; font-size: ${labelTemplate==='crate_100x75' ? '9px' : '5px'}; color: #333; border-top: 1px solid #ccc; padding-top: 1px; margin-top: 1px; }
           </style>
         </head>
         <body>
-          \${labelsHtml}
+          ${labelsHtml}
           <script>
             window.onload = function() { window.print(); window.close(); }
           </script>
         </body>
       </html>
-    \`)
+    `)
     printWindow.document.close()
   }
 

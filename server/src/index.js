@@ -98,7 +98,7 @@ const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: getClientIp,
-  validate: { trustProxy: false, xForwardedForHeader: false },
+  validate: false,
   message: { message: "Too many requests, please try again after a few minutes." },
   skip: (req) => {
     // Never rate limit internal probes
@@ -118,7 +118,7 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: getClientIp,
-  validate: { trustProxy: false, xForwardedForHeader: false },
+  validate: false,
   message: { message: "Too many login attempts. Please try again in a few minutes." },
   // Do not rate-limit token verification or refresh calls
   skip: (req) => req.path === "/me" || req.path === "/refresh",
@@ -130,7 +130,7 @@ const aiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: getClientIp,
-  validate: { trustProxy: false, xForwardedForHeader: false },
+  validate: false,
   message: { message: "AI request limit reached. Please try again in an hour." },
 });
 
@@ -140,7 +140,7 @@ const paymentLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: getClientIp,
-  validate: { trustProxy: false, xForwardedForHeader: false },
+  validate: false,
   message: { message: "Too many payment requests. Please slow down." },
 });
 
@@ -236,13 +236,11 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 const { initCrmTables } = require("./db/migrate_crm_chat_broadcast");
 
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
 initCrmTables()
-  .then(() => {
-    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-  })
   .catch((err) => {
-    console.error("Failed to initialize CRM tables on startup:", err);
-    process.exit(1);
+    console.warn("CRM tables startup notice (will retry on query):", err.message?.slice(0, 120));
   });
 
 module.exports = app;
