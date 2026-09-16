@@ -184,6 +184,14 @@ export default function POS() {
   const [heldOrders, setHeldOrders]         = useState([])
   const [orderId, setOrderId]               = useState(genOrderId)
 
+  // Calculation
+  const subtotal = useMemo(() => cart.reduce((s, i) => s + i.price * i.qty, 0), [cart])
+  const discountAmt = Math.round(subtotal * (discountPct / 100))
+  const afterDiscount = subtotal - discountAmt
+  const vat = Math.round(afterDiscount * 0.075)
+  const total = afterDiscount + vat
+  const itemCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart])
+
   // Modals
   const [activeModal, setActiveModal]       = useState(null)
   const closeModal = () => setActiveModal(null)
@@ -766,14 +774,6 @@ export default function POS() {
     setHeldOrders(prev => prev.filter((_, i) => i !== idx))
     showToast('Held order restored to cart', 'success', '▶️')
   }
-
-  // Calculation
-  const subtotal = useMemo(() => cart.reduce((s, i) => s + i.price * i.qty, 0), [cart])
-  const discountAmt = Math.round(subtotal * (discountPct / 100))
-  const afterDiscount = subtotal - discountAmt
-  const vat = Math.round(afterDiscount * 0.075)
-  const total = afterDiscount + vat
-  const itemCount = useMemo(() => cart.reduce((s, i) => s + i.qty, 0), [cart])
 
   useEffect(() => {
     api.get('/admin/settings/receipt')
