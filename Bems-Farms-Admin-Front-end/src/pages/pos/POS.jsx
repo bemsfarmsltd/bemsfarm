@@ -71,6 +71,9 @@ function playBeep(type = 'scan') {
     const AudioCtx = window.AudioContext || window.webkitAudioContext
     if (!AudioCtx) return
     const ctx = new AudioCtx()
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {})
+    }
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
     osc.connect(gain)
@@ -79,25 +82,25 @@ function playBeep(type = 'scan') {
     if (type === 'scan') {
       osc.type = 'sine'
       osc.frequency.setValueAtTime(880, ctx.currentTime)
-      gain.gain.setValueAtTime(0.12, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08)
+      gain.gain.setValueAtTime(0.18, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1)
       osc.start(ctx.currentTime)
-      osc.stop(ctx.currentTime + 0.08)
+      osc.stop(ctx.currentTime + 0.1)
     } else if (type === 'success') {
       osc.type = 'triangle'
       osc.frequency.setValueAtTime(587.33, ctx.currentTime)
       osc.frequency.setValueAtTime(880, ctx.currentTime + 0.08)
-      gain.gain.setValueAtTime(0.15, ctx.currentTime)
+      gain.gain.setValueAtTime(0.2, ctx.currentTime)
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22)
       osc.start(ctx.currentTime)
       osc.stop(ctx.currentTime + 0.22)
     } else if (type === 'error') {
       osc.type = 'sawtooth'
       osc.frequency.setValueAtTime(220, ctx.currentTime)
-      gain.gain.setValueAtTime(0.2, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
+      gain.gain.setValueAtTime(0.25, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18)
       osc.start(ctx.currentTime)
-      osc.stop(ctx.currentTime + 0.15)
+      osc.stop(ctx.currentTime + 0.18)
     }
   } catch {
     // Audio muted if blocked
@@ -580,11 +583,25 @@ export default function POS() {
   }, [byBarcode, bySku, productsList, activeModal])
 
   const scanBuffer = useRef('')
-  const scanKeyTimestamps = useRef([])
+  const scanTimeoutRef = useRef(null)
   const onScanRef = useRef(handleBarcodeScan)
   onScanRef.current = handleBarcodeScan
 
   useEffect(() => {
+    function processBufferedScan() {
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current)
+        scanTimeoutRef.current = null
+      }
+
+      const buffered = cleanBarcodeString(scanBuffer.current)
+      scanBuffer.current = ''
+
+      if (buffered.length >= 2) {
+        onScanRef.current(buffered)
+      }
+    }
+
     function onKeyDown(e) {
       const tag = e.target?.tagName
       const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable
@@ -673,68 +690,63 @@ export default function POS() {
 
       if (e.ctrlKey || e.altKey || e.metaKey) {
         scanBuffer.current = ''
-        scanKeyTimestamps.current = []
+        if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current)
         return
       }
 
-      const now = Date.now()
-
       if (e.key === 'Enter' || e.key === 'Tab') {
-        const buffered = cleanBarcodeString(scanBuffer.current)
-        const timestamps = scanKeyTimestamps.current
-
-        let isHardwareScan = false
-        if (buffered.length >= 2) {
-          if (!isInput) {
-            isHardwareScan = true
-          } else if (timestamps.length >= 2) {
-            const totalDuration = timestamps[timestamps.length - 1] - timestamps[0]
-            const avgInterval = totalDuration / (timestamps.length - 1)
-            if (avgInterval < 150) {
-              isHardwareScan = true
-            }
-          }
-        }
-
-        scanBuffer.current = ''
-        scanKeyTimestamps.current = []
-
-        if (isHardwareScan || isSearchInput) {
-          const codeToScan = isSearchInput && search.trim() ? search.trim() : buffered
-          if (codeToScan) {
+        if (isSearchInput) {
+          const val = scanInputRef.current?.value?.trim() || search.trim() || cleanBarcodeString(scanBuffer.current)
+          if (val) {
             e.preventDefault()
             e.stopPropagation()
-            if (isSearchInput) setSearch('')
-            if (isInput && !isSearchInput && e.target) {
-              try {
-                if (typeof e.target.value === 'string' && buffered) {
-                  e.target.value = e.target.value.replace(new RegExp(`${buffered.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), '')
-                }
-              } catch (_err) {}
-            }
-            onScanRef.current(codeToScan)
-            return
+            setSearch('')
+            if (scanInputRef.current) scanInputRef.current.value = ''
+            onScanRef.current(val)
           }
+          scanBuffer.current = ''
+          if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current)
+          return
+        }
+
+        if (scanBuffer.current.length >= 2) {
+          e.preventDefault()
+          e.stopPropagation()
+          if (isInput && e.target && typeof e.target.value === 'string' && scanBuffer.current) {
+            try {
+              e.target.value = e.target.value.replace(new RegExp(`${scanBuffer.current.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), '')
+            } catch (_err) {}
+          }
+          processBufferedScan()
+          return
         }
         return
       }
 
       if (e.key && e.key.length === 1) {
-        const timestamps = scanKeyTimestamps.current
-        const lastTime = timestamps.length > 0 ? timestamps[timestamps.length - 1] : 0
-
-        if (now - lastTime > 300) {
-          scanBuffer.current = ''
-          scanKeyTimestamps.current = []
-        }
-
         scanBuffer.current += e.key
-        scanKeyTimestamps.current.push(now)
+
+        // If not in a standard form input, or if in the search bar:
+        // Set auto-burst timeout (75ms). If no more keys arrive, automatically process scan!
+        if (!isInput || isSearchInput) {
+          if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current)
+          scanTimeoutRef.current = setTimeout(() => {
+            if (scanBuffer.current.length >= 3) {
+              if (isSearchInput) setSearch('')
+              processBufferedScan()
+            } else {
+              scanBuffer.current = ''
+            }
+          }, 75)
+        }
       }
     }
 
     window.addEventListener('keydown', onKeyDown, true)
-    return () => window.removeEventListener('keydown', onKeyDown, true)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true)
+      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current)
+    }
   }, [viewMode, activeModal, search, cart.length, total])
 
   useEffect(() => {
