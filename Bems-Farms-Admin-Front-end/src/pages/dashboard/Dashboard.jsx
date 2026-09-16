@@ -349,7 +349,7 @@ function TabError({ onRetry }) {
 
 // ── Tab 1: Overview Tab (Executive Summary) ───────────────────────────────────
 
-function OverviewTab() {
+function OverviewTab({ range = 'today', from = '', to = '' }) {
   const { hasRole } = useAuth()
   const revenueRef  = useRef(null)
   const ordersRef   = useRef(null)
@@ -361,11 +361,13 @@ function OverviewTab() {
   const load = useCallback(async () => {
     setLoading(true); setError(false)
     try {
-      const res = await api.get('/dashboard/overview')
+      const res = await api.get('/dashboard/overview', {
+        params: { range, from, to },
+      })
       setData(res.data)
     } catch { setError(true) }
     finally { setLoading(false) }
-  }, [])
+  }, [range, from, to])
 
   useEffect(() => { load() }, [load])
 
@@ -786,7 +788,7 @@ function OverviewTab() {
 
 // ── Tab 2: Sales Tab (Commercial Performance) ──────────────────────────────────
 
-function SalesTab() {
+function SalesTab({ range = 'today', from = '', to = '' }) {
   const revWeekRef  = useRef(null)
   const revMonthRef = useRef(null)
   const categoryRef = useRef(null)
@@ -798,10 +800,14 @@ function SalesTab() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
-    try { setData((await api.get('/dashboard/sales')).data) }
-    catch { setError(true) }
+    try {
+      const res = await api.get('/dashboard/sales', {
+        params: { range, from, to },
+      })
+      setData(res.data)
+    } catch { setError(true) }
     finally { setLoading(false) }
-  }, [])
+  }, [range, from, to])
   useEffect(() => { load() }, [load])
 
   const weekDays   = data?.charts?.daily_7d?.map(r => r.day_label) ?? []
@@ -1067,7 +1073,7 @@ function SalesTab() {
 
 // ── Tab 3: Revenue & Settlements Tab (Real Inflows, Channels, Tender & Settlements) ───────
 
-function FinanceTab() {
+function FinanceTab({ range = 'today', from = '', to = '' }) {
   const revenueTrendRef = useRef(null)
   const paymentDonutRef = useRef(null)
   const channelDonutRef = useRef(null)
@@ -1078,10 +1084,14 @@ function FinanceTab() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
-    try { setData((await api.get('/dashboard/finance')).data) }
-    catch { setError(true) }
+    try {
+      const res = await api.get('/dashboard/finance', {
+        params: { range, from, to },
+      })
+      setData(res.data)
+    } catch { setError(true) }
     finally { setLoading(false) }
-  }, [])
+  }, [range, from, to])
   useEffect(() => { load() }, [load])
 
   const months6      = data?.charts?.monthly_6m?.map(r => r.month) ?? []
@@ -1512,7 +1522,7 @@ function FinanceTab() {
 
 // ── Tab 4: Inventory Tab (Stock Valuation & Reorder Alerts) ───────────────────
 
-function InventoryTab() {
+function InventoryTab({ range = 'today', from = '', to = '' }) {
   const stockRef = useRef(null)
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
@@ -1521,10 +1531,14 @@ function InventoryTab() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
-    try { setData((await api.get('/dashboard/inventory')).data) }
-    catch { setError(true) }
+    try {
+      const res = await api.get('/dashboard/inventory', {
+        params: { range, from, to },
+      })
+      setData(res.data)
+    } catch { setError(true) }
     finally { setLoading(false) }
-  }, [])
+  }, [range, from, to])
   useEffect(() => { load() }, [load])
 
   const catNames  = data?.charts?.value_by_category?.map(r => r.category) ?? []
@@ -1755,7 +1769,7 @@ function InventoryTab() {
 
 // ── Tab 5: Operations Tab (Logistics, Drivers & Procurement) ──────────────────
 
-function OperationsTab() {
+function OperationsTab({ range = 'today', from = '', to = '' }) {
   const deliveryRef = useRef(null)
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
@@ -1764,10 +1778,14 @@ function OperationsTab() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
-    try { setData((await api.get('/dashboard/operations')).data) }
-    catch { setError(true) }
+    try {
+      const res = await api.get('/dashboard/operations', {
+        params: { range, from, to },
+      })
+      setData(res.data)
+    } catch { setError(true) }
     finally { setLoading(false) }
-  }, [])
+  }, [range, from, to])
   useEffect(() => { load() }, [load])
 
   const breakdown = data?.delivery_breakdown ?? {}
@@ -2124,7 +2142,7 @@ const customerColumns = [
   },
 ]
 
-function CustomersTab() {
+function CustomersTab({ range = 'today', from = '', to = '' }) {
   const growthRef = useRef(null)
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
@@ -2133,10 +2151,14 @@ function CustomersTab() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
-    try { setData((await api.get('/dashboard/customers')).data) }
-    catch { setError(true) }
+    try {
+      const res = await api.get('/dashboard/customers', {
+        params: { range, from, to },
+      })
+      setData(res.data)
+    } catch { setError(true) }
     finally { setLoading(false) }
-  }, [])
+  }, [range, from, to])
   useEffect(() => { load() }, [load])
 
   const growthMonths = data?.charts?.growth_last_6?.map(r => r.month) ?? []
@@ -2174,7 +2196,7 @@ function CustomersTab() {
           <StatsCard title="Total Customers" value={(kpis.total_customers ?? 0).toLocaleString()} sub="Active customer profiles" riIcon="ri-group-line" color="blue" onClick={() => openCustomers('Total Customers', 'Top registered customers')} />
         </div>
         <div className="col-12 col-sm-6 col-xl-3">
-          <StatsCard title="New Signups This Month" value={kpis.new_this_month ?? 0} sub="New accounts registered" riIcon="ri-user-add-line" color="green" onClick={openGrowth} />
+          <StatsCard title="New Signups In Period" value={kpis.new_this_month ?? 0} sub="New accounts registered" riIcon="ri-user-add-line" color="green" onClick={openGrowth} />
         </div>
         <div className="col-12 col-sm-6 col-xl-3">
           <StatsCard title="Customer Wallet Float" value={fmtNaira(kpis.wallet_balance)} sub={`${fmtNaira(kpis.wallet_funded)} lifetime funded`} riIcon="ri-wallet-3-line" color="purple" onClick={() => openCustomers('Wallet Balances', 'Customer wallets')} />
@@ -2285,7 +2307,7 @@ function CustomersTab() {
 
 // ── Tab 7: Chef Bems AI Tab (Conversations, Recipes & Rules) ──────────────────
 
-function ChefBemsTab() {
+function ChefBemsTab({ range = 'today', from = '', to = '' }) {
   const aiRef = useRef(null)
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
@@ -2294,10 +2316,14 @@ function ChefBemsTab() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
-    try { setData((await api.get('/dashboard/ai')).data) }
-    catch { setError(true) }
+    try {
+      const res = await api.get('/dashboard/ai', {
+        params: { range, from, to },
+      })
+      setData(res.data)
+    } catch { setError(true) }
     finally { setLoading(false) }
-  }, [])
+  }, [range, from, to])
   useEffect(() => { load() }, [load])
 
   const breakdown = data?.conv_breakdown ?? {}
@@ -2545,6 +2571,237 @@ function ChefBemsTab() {
   )
 }
 
+// ── Date Filter Toolbar & Calendar Picker ─────────────────────────────────────
+
+function DateFilterToolbar({ range, from, to, onFilterChange }) {
+  const [showPicker, setShowPicker] = useState(false)
+  const [startDate, setStartDate] = useState(from || '')
+  const [endDate, setEndDate]     = useState(to || '')
+  const pickerRef = useRef(null)
+
+  // Sync internal state when external from/to changes
+  useEffect(() => {
+    setStartDate(from || '')
+    setEndDate(to || '')
+  }, [from, to])
+
+  // Close calendar popover on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        setShowPicker(false)
+      }
+    }
+    if (showPicker) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showPicker])
+
+  const handleApplyCustom = (e) => {
+    e.preventDefault()
+    if (!startDate || !endDate) return
+    onFilterChange('custom', startDate, endDate)
+    setShowPicker(false)
+  }
+
+  const handleSetPreset = (presetRange) => {
+    onFilterChange(presetRange, '', '')
+    setShowPicker(false)
+  }
+
+  const QUICK_TOGGLES = [
+    { key: 'today', label: 'Today',    icon: 'ri-calendar-check-line' },
+    { key: '7d',    label: '7 Days',   icon: 'ri-calendar-line' },
+    { key: '12d',   label: '12 Days',  icon: 'ri-calendar-2-line' },
+    { key: '1m',    label: '1 Month',  icon: 'ri-calendar-event-line' },
+    { key: '1y',    label: '1 Year',   icon: 'ri-history-line' },
+  ]
+
+  const getActiveLabel = () => {
+    if (range === 'today') return 'Today'
+    if (range === '7d')    return 'Last 7 Days'
+    if (range === '12d')   return 'Last 12 Days'
+    if (range === '1m')    return 'Last 1 Month'
+    if (range === '1y')    return 'Last 1 Year'
+    if (range === 'custom' && from && to) return `${from} to ${to}`
+    return 'Today'
+  }
+
+  return (
+    <div
+      className="card mb-3 border-0 shadow-sm"
+      style={{
+        borderRadius: '0.85rem',
+        backgroundColor: '#FFFFFF',
+        border: '1px solid #E5E7EB',
+      }}
+    >
+      <div className="card-body py-2.5 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2.5">
+        {/* Left: Quick Timeframe Toggles */}
+        <div className="d-flex align-items-center gap-1.5 flex-wrap">
+          <div className="d-flex align-items-center gap-1 me-2 text-muted fw-bold" style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <i className="ri-filter-3-line text-success" style={{ fontSize: 14 }} />
+            <span>Timeframe:</span>
+          </div>
+
+          <div className="btn-group shadow-0 p-0.5 bg-light rounded-2 border" role="group" style={{ borderColor: '#E5E7EB' }}>
+            {QUICK_TOGGLES.map(({ key, label }) => {
+              const isActive = range === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleSetPreset(key)}
+                  className={`btn btn-sm ${isActive ? 'btn-dark text-white fw-bold shadow-xs' : 'btn-light text-secondary fw-semibold border-0'}`}
+                  style={{
+                    borderRadius: '0.35rem',
+                    fontSize: '0.76rem',
+                    padding: '0.3rem 0.7rem',
+                    transition: 'all 0.15s ease',
+                    backgroundColor: isActive ? '#143c2d' : 'transparent',
+                  }}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Calendar Custom Range Trigger */}
+          <div className="position-relative ms-1" ref={pickerRef}>
+            <button
+              type="button"
+              onClick={() => setShowPicker(!showPicker)}
+              className={`btn btn-sm d-flex align-items-center gap-1.5 ${range === 'custom' ? 'btn-success text-white fw-bold shadow-xs' : 'btn-light text-dark fw-semibold border'}`}
+              style={{
+                borderRadius: '0.45rem',
+                fontSize: '0.76rem',
+                padding: '0.32rem 0.75rem',
+                backgroundColor: range === 'custom' ? '#143c2d' : '#FFFFFF',
+                borderColor: range === 'custom' ? '#143c2d' : '#D1D5DB',
+              }}
+            >
+              <i className="ri-calendar-todo-line" style={{ fontSize: 13 }} />
+              <span>{range === 'custom' && from && to ? `${from} → ${to}` : 'Calendar Range'}</span>
+              <i className={`ri-arrow-${showPicker ? 'up' : 'down'}-s-line`} style={{ fontSize: 12 }} />
+            </button>
+
+            {/* Calendar Popover Dropdown */}
+            {showPicker && (
+              <div
+                className="position-absolute start-0 mt-2 p-3 bg-white rounded-3 shadow-lg border"
+                style={{
+                  zIndex: 1050,
+                  minWidth: '320px',
+                  borderColor: '#E5E7EB',
+                  animation: 'fadeIn 0.15s ease',
+                }}
+              >
+                <div className="d-flex align-items-center justify-content-between pb-2 mb-2.5 border-bottom">
+                  <div className="d-flex align-items-center gap-1.5">
+                    <i className="ri-calendar-check-fill text-success" style={{ fontSize: 16 }} />
+                    <span className="fw-bold text-dark fs-xs">Select Custom Date Range</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    style={{ fontSize: '0.65rem' }}
+                    onClick={() => setShowPicker(false)}
+                  />
+                </div>
+
+                <form onSubmit={handleApplyCustom}>
+                  <div className="mb-2.5">
+                    <label className="form-label text-muted fs-xs fw-semibold mb-1">From Date</label>
+                    <input
+                      type="date"
+                      className="form-control form-control-sm font-monospace"
+                      value={startDate}
+                      max={endDate || undefined}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      required
+                      style={{ fontSize: '0.8rem', borderRadius: '0.4rem' }}
+                    />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label text-muted fs-xs fw-semibold mb-1">To Date</label>
+                    <input
+                      type="date"
+                      className="form-control form-control-sm font-monospace"
+                      value={endDate}
+                      min={startDate || undefined}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      required
+                      style={{ fontSize: '0.8rem', borderRadius: '0.4rem' }}
+                    />
+                  </div>
+
+                  <div className="d-flex align-items-center justify-content-between gap-2 pt-1">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-light text-secondary border px-2.5"
+                      style={{ fontSize: '0.74rem', borderRadius: '0.4rem' }}
+                      onClick={() => handleSetPreset('today')}
+                    >
+                      Reset Today
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-sm btn-success text-white fw-bold px-3 d-flex align-items-center gap-1"
+                      style={{ fontSize: '0.74rem', borderRadius: '0.4rem', backgroundColor: '#143c2d', borderColor: '#143c2d' }}
+                    >
+                      <i className="ri-check-line" /> Apply Filter
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Active Date Pill & Live Indicator */}
+        <div className="d-flex align-items-center gap-2">
+          <div
+            className="d-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill"
+            style={{
+              backgroundColor: '#F0FDF4',
+              border: '1px solid #BBF7D0',
+              fontSize: '0.75rem',
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                backgroundColor: '#16A34A',
+                display: 'inline-block',
+              }}
+            />
+            <span className="text-muted">Viewing:</span>
+            <strong className="text-success fw-bold">{getActiveLabel()}</strong>
+            {range !== 'today' && (
+              <button
+                type="button"
+                onClick={() => onFilterChange('today', '', '')}
+                className="btn btn-link text-muted p-0 ms-1 d-flex align-items-center text-decoration-none"
+                title="Reset filter to today"
+                style={{ fontSize: '0.8rem', lineHeight: 1 }}
+              >
+                <i className="ri-close-circle-fill text-secondary" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
 const ALL_TABS = [
@@ -2567,6 +2824,9 @@ export default function Dashboard() {
   const { user, hasRole } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
+  const rangeParam = searchParams.get('range') || 'today'
+  const fromParam  = searchParams.get('from') || ''
+  const toParam    = searchParams.get('to') || ''
 
   const TABS = ALL_TABS.filter(t => !t.roles || hasRole(...t.roles))
   const defaultTab = (user && DEFAULT_TAB[user.role]) ?? 'overview'
@@ -2575,19 +2835,44 @@ export default function Dashboard() {
     ? tabParam
     : (TABS.some(t => t.key === defaultTab) ? defaultTab : firstTab)
 
-  const setTab = (key) => setSearchParams({ tab: key }, { replace: true })
+  const setTab = (key) => {
+    const params = new URLSearchParams(searchParams)
+    params.set('tab', key)
+    setSearchParams(params, { replace: true })
+  }
+
+  const handleFilterChange = (newRange, newFrom = '', newTo = '') => {
+    const params = new URLSearchParams(searchParams)
+    params.set('range', newRange)
+    if (newRange === 'custom' && newFrom && newTo) {
+      params.set('from', newFrom)
+      params.set('to', newTo)
+    } else {
+      params.delete('from')
+      params.delete('to')
+    }
+    setSearchParams(params, { replace: true })
+  }
 
   return (
     <div className="container-fluid py-3">
       {/* Page Header */}
       <PageHeader
         title={`Good ${getGreeting()}, ${user?.name?.split(' ')[0] ?? 'Admin'} 👋`}
-        sub="Here's what's happening at Bems Farms today."
+        sub="Here's what's happening at Bems Farms."
       >
         <button className="btn btn-sm btn-outline-success" onClick={() => window.location.reload()}>
           <i className="ri-refresh-line me-1" /> Refresh
         </button>
       </PageHeader>
+
+      {/* Date Filter Toolbar with Toggles & Calendar Picker */}
+      <DateFilterToolbar
+        range={rangeParam}
+        from={fromParam}
+        to={toParam}
+        onFilterChange={handleFilterChange}
+      />
 
       {/* Tab Navigation */}
       <div className="d-flex align-items-center gap-1 mb-3 flex-wrap" style={{ borderBottom: '2px solid #EFECE6', paddingBottom: '0.25rem' }}>
@@ -2606,13 +2891,13 @@ export default function Dashboard() {
       </div>
 
       {/* Active Tab View */}
-      {activeTab === 'overview'   && <OverviewTab />}
-      {activeTab === 'sales'      && <SalesTab />}
-      {activeTab === 'finance'    && <FinanceTab />}
-      {activeTab === 'inventory'  && <InventoryTab />}
-      {activeTab === 'operations' && <OperationsTab />}
-      {activeTab === 'customers'  && <CustomersTab />}
-      {activeTab === 'ai'         && <ChefBemsTab />}
+      {activeTab === 'overview'   && <OverviewTab range={rangeParam} from={fromParam} to={toParam} />}
+      {activeTab === 'sales'      && <SalesTab range={rangeParam} from={fromParam} to={toParam} />}
+      {activeTab === 'finance'    && <FinanceTab range={rangeParam} from={fromParam} to={toParam} />}
+      {activeTab === 'inventory'  && <InventoryTab range={rangeParam} from={fromParam} to={toParam} />}
+      {activeTab === 'operations' && <OperationsTab range={rangeParam} from={fromParam} to={toParam} />}
+      {activeTab === 'customers'  && <CustomersTab range={rangeParam} from={fromParam} to={toParam} />}
+      {activeTab === 'ai'         && <ChefBemsTab range={rangeParam} from={fromParam} to={toParam} />}
     </div>
   )
 }

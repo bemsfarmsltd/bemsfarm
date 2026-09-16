@@ -46,11 +46,107 @@ const PIPELINE_STAGE_MAP = {
   delivered: "delivered",
 };
 
+// ── HELPER: Date range & timeframe parser ──────────────────────────
+function parseDateFilter(query = {}) {
+  const range = (query.range || 'today').toLowerCase();
+  const customFrom = query.from;
+  const customTo = query.to;
+
+  if (range === 'custom' && customFrom && customTo) {
+    const fromStr = `${customFrom} 00:00:00`;
+    const toStr = `${customTo} 23:59:59`;
+    return {
+      range: 'custom',
+      label: `${customFrom} to ${customTo}`,
+      isFiltered: true,
+      ordersWhere: `created_at >= '${fromStr}'::timestamp AND created_at <= '${toStr}'::timestamp`,
+      incomeWhere: `date >= '${customFrom}'::date AND date <= '${customTo}'::date`,
+      returnsWhere: `created_at >= '${fromStr}'::timestamp AND created_at <= '${toStr}'::timestamp`,
+      attendanceWhere: `date >= '${customFrom}'::date AND date <= '${customTo}'::date`,
+      usersWhere: `joined_at >= '${fromStr}'::timestamp AND joined_at <= '${toStr}'::timestamp`,
+      aiWhere: `created_at >= '${fromStr}'::timestamp AND created_at <= '${toStr}'::timestamp`,
+      from: customFrom,
+      to: customTo,
+    };
+  }
+
+  if (range === '7d') {
+    return {
+      range: '7d',
+      label: 'Last 7 Days',
+      isFiltered: true,
+      ordersWhere: `created_at >= NOW() - INTERVAL '7 days'`,
+      incomeWhere: `date >= CURRENT_DATE - INTERVAL '7 days'`,
+      returnsWhere: `created_at >= NOW() - INTERVAL '7 days'`,
+      attendanceWhere: `date >= CURRENT_DATE - INTERVAL '7 days'`,
+      usersWhere: `joined_at >= NOW() - INTERVAL '7 days'`,
+      aiWhere: `created_at >= NOW() - INTERVAL '7 days'`,
+    };
+  }
+
+  if (range === '12d') {
+    return {
+      range: '12d',
+      label: 'Last 12 Days',
+      isFiltered: true,
+      ordersWhere: `created_at >= NOW() - INTERVAL '12 days'`,
+      incomeWhere: `date >= CURRENT_DATE - INTERVAL '12 days'`,
+      returnsWhere: `created_at >= NOW() - INTERVAL '12 days'`,
+      attendanceWhere: `date >= CURRENT_DATE - INTERVAL '12 days'`,
+      usersWhere: `joined_at >= NOW() - INTERVAL '12 days'`,
+      aiWhere: `created_at >= NOW() - INTERVAL '12 days'`,
+    };
+  }
+
+  if (range === '1m' || range === '30d' || range === 'month') {
+    return {
+      range: '1m',
+      label: 'Last 1 Month (30 Days)',
+      isFiltered: true,
+      ordersWhere: `created_at >= NOW() - INTERVAL '30 days'`,
+      incomeWhere: `date >= CURRENT_DATE - INTERVAL '30 days'`,
+      returnsWhere: `created_at >= NOW() - INTERVAL '30 days'`,
+      attendanceWhere: `date >= CURRENT_DATE - INTERVAL '30 days'`,
+      usersWhere: `joined_at >= NOW() - INTERVAL '30 days'`,
+      aiWhere: `created_at >= NOW() - INTERVAL '30 days'`,
+    };
+  }
+
+  if (range === '1y' || range === '365d' || range === 'year') {
+    return {
+      range: '1y',
+      label: 'Last 1 Year',
+      isFiltered: true,
+      ordersWhere: `created_at >= NOW() - INTERVAL '1 year'`,
+      incomeWhere: `date >= CURRENT_DATE - INTERVAL '1 year'`,
+      returnsWhere: `created_at >= NOW() - INTERVAL '1 year'`,
+      attendanceWhere: `date >= CURRENT_DATE - INTERVAL '1 year'`,
+      usersWhere: `joined_at >= NOW() - INTERVAL '1 year'`,
+      aiWhere: `created_at >= NOW() - INTERVAL '1 year'`,
+    };
+  }
+
+  // Default: 'today'
+  return {
+    range: 'today',
+    label: 'Today',
+    isFiltered: false,
+    ordersWhere: `DATE(created_at) = CURRENT_DATE`,
+    incomeWhere: `DATE(date) = CURRENT_DATE`,
+    returnsWhere: `DATE(created_at) = CURRENT_DATE`,
+    attendanceWhere: `date = CURRENT_DATE`,
+    usersWhere: `DATE(joined_at) = CURRENT_DATE`,
+    aiWhere: `DATE(created_at) = CURRENT_DATE`,
+  };
+}
+
 // ── OVERVIEW TAB ─────────────────────────────────────────────────
 router.get("/overview", async (req, res, next) => {
   try {
+    const filter = parseDateFilter(req.query);
+
     const [
-      revenueToday,
+      revenuePeriod,
       pendingOrders,
       readyDispatch,
       activeDeliveries,
@@ -61,7 +157,7 @@ router.get("/overview", async (req, res, next) => {
       staffOnDuty,
       staffAbsent,
       pendingAi,
-      returnsToday,
+      returnsPeriod,
       pipeline,
       recentOrders,
       weekRevenue,
@@ -71,12 +167,12 @@ router.get("/overview", async (req, res, next) => {
       activeDeliveriesList,
       recentConvs,
     ] = await Promise.all([
-      // Today's revenue + order count
+      // Period revenue + order count
       q1(`SELECT
             COALESCE(SUM(total),0) AS revenue,
             COUNT(*) AS orders
           FROM orders
-          WHERE DATE(created_at) = CURRENT_DATE
+          WHERE ${filter.ordersWhere}
             AND status NOT IN ('cancelled')`),
 
       // Pending orders
@@ -118,12 +214,12 @@ router.get("/overview", async (req, res, next) => {
       // Pending AI conversations
       q1(`SELECT COUNT(*) AS count FROM admin_ai_conversations WHERE bot_type='chef' AND archived=false`),
 
-      // Returns/refunds submitted today
-      q1(`SELECT COUNT(*) AS count FROM returns WHERE DATE(created_at) = CURRENT_DATE`),
+      // Returns/refunds submitted in period
+      q1(`SELECT COUNT(*) AS count FROM returns WHERE ${filter.returnsWhere}`),
 
-      // Pipeline counts
+      // Pipeline counts in period
       q(`SELECT status, COUNT(*) AS count FROM orders
-         WHERE DATE(created_at) = CURRENT_DATE
+         WHERE ${filter.ordersWhere}
          GROUP BY status`),
 
       // Recent orders (last 10)
@@ -138,6 +234,7 @@ router.get("/overview", async (req, res, next) => {
            ) AS items
          FROM orders o
          LEFT JOIN users c ON o.customer_id = c.id
+         WHERE ${filter.ordersWhere}
          ORDER BY o.created_at DESC
          LIMIT 10`),
 
@@ -169,7 +266,7 @@ router.get("/overview", async (req, res, next) => {
          GROUP BY d.day
          ORDER BY d.day`),
 
-      // Top selling produce, last 30 days
+      // Top selling produce in period
       q(`SELECT
            p.name, p.sku,
            SUM(oi.quantity) AS units_sold,
@@ -177,7 +274,7 @@ router.get("/overview", async (req, res, next) => {
          FROM order_items oi
          JOIN products p ON oi.product_id = p.id
          JOIN orders o ON oi.order_id = o.id
-         WHERE o.created_at >= NOW() - INTERVAL '30 days'
+         WHERE ${filter.ordersWhere}
            AND o.status NOT IN ('cancelled')
          GROUP BY p.id, p.name, p.sku
          ORDER BY total_revenue DESC
@@ -247,12 +344,18 @@ router.get("/overview", async (req, res, next) => {
       const stage = PIPELINE_STAGE_MAP[r.status] || r.status;
       pipelineMap[stage] = (pipelineMap[stage] || 0) + parseInt(r.count);
     });
-    pipelineMap.returned = parseInt(returnsToday.count || 0);
+    pipelineMap.returned = parseInt(returnsPeriod.count || 0);
 
     res.json({
+      filter: {
+        range: filter.range,
+        label: filter.label,
+        from: filter.from,
+        to: filter.to,
+      },
       kpis: {
-        revenue_today: parseFloat(revenueToday.revenue || 0),
-        orders_today: parseInt(revenueToday.orders || 0),
+        revenue_today: parseFloat(revenuePeriod.revenue || 0),
+        orders_today: parseInt(revenuePeriod.orders || 0),
         pending_orders: parseInt(pendingOrders.count || 0),
         ready_dispatch: parseInt(readyDispatch.count || 0),
         active_deliveries: parseInt(activeDeliveries.count || 0),
@@ -291,10 +394,12 @@ router.get("/overview", async (req, res, next) => {
 // ── SALES TAB ────────────────────────────────────────────────────
 router.get("/sales", async (req, res, next) => {
   try {
+    const filter = parseDateFilter(req.query);
+
     const [
-      todayStats,
+      periodStats,
       monthStats,
-      returnsToday,
+      returnsPeriod,
       skusSold,
       daily7d,
       last6Months,
@@ -304,31 +409,33 @@ router.get("/sales", async (req, res, next) => {
       byPayment,
       bySource,
     ] = await Promise.all([
+      // Revenue in selected period
       q1(`SELECT
             COALESCE(SUM(total),0) AS revenue,
             COUNT(*) AS orders,
             COALESCE(AVG(total),0) AS avg_order
           FROM orders
-          WHERE DATE(created_at) = CURRENT_DATE
+          WHERE ${filter.ordersWhere}
             AND status NOT IN ('cancelled')`),
 
+      // 30-day baseline for comparison
       q1(`SELECT
             COALESCE(SUM(total),0) AS revenue,
             COUNT(*) AS orders
           FROM orders
-          WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+          WHERE created_at >= NOW() - INTERVAL '30 days'
             AND status NOT IN ('cancelled')`),
 
-      // Returns/refunds submitted today
+      // Returns/refunds in period
       q1(`SELECT COUNT(*) AS count, COALESCE(SUM(refund_amount),0) AS total
           FROM returns
-          WHERE DATE(created_at) = CURRENT_DATE`),
+          WHERE ${filter.returnsWhere}`),
 
-      // Distinct SKUs sold today
+      // Distinct SKUs sold in period
       q1(`SELECT COUNT(DISTINCT oi.product_id) AS count
           FROM order_items oi
           JOIN orders o ON oi.order_id = o.id
-          WHERE DATE(o.created_at) = CURRENT_DATE
+          WHERE ${filter.ordersWhere}
             AND o.status NOT IN ('cancelled')`),
 
       // Revenue last 7 days (daily)
@@ -355,6 +462,7 @@ router.get("/sales", async (req, res, next) => {
          GROUP BY DATE_TRUNC('month', created_at)
          ORDER BY DATE_TRUNC('month', created_at)`),
 
+      // Top products in period
       q(`SELECT
            p.name,
            p.sku,
@@ -364,21 +472,24 @@ router.get("/sales", async (req, res, next) => {
          FROM order_items oi
          JOIN products p ON oi.product_id = p.id
          JOIN orders o ON oi.order_id = o.id
-         WHERE o.created_at >= NOW() - INTERVAL '30 days'
+         WHERE ${filter.ordersWhere}
            AND o.status NOT IN ('cancelled')
          GROUP BY p.id, p.name, p.sku
          ORDER BY revenue DESC
          LIMIT 5`),
 
+      // Recent orders in period
       q(`SELECT
-           o.id, o.total, o.status, o.created_at,
+           o.id, o.order_ref, o.total, o.status, o.created_at,
            COALESCE(o.customer_name, c.name, 'Walk-in') AS customer,
            (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS items
          FROM orders o
          LEFT JOIN users c ON o.customer_id = c.id
+         WHERE ${filter.ordersWhere}
          ORDER BY o.created_at DESC
          LIMIT 10`),
 
+      // Category revenue in period
       q(`SELECT
            cat.name AS category,
            COALESCE(SUM(oi.subtotal), 0) AS revenue
@@ -386,38 +497,40 @@ router.get("/sales", async (req, res, next) => {
          JOIN products p ON oi.product_id = p.id
          JOIN categories cat ON p.category_id = cat.id
          JOIN orders o ON oi.order_id = o.id
-         WHERE o.created_at >= DATE_TRUNC('month', NOW())
+         WHERE ${filter.ordersWhere}
            AND o.status NOT IN ('cancelled')
          GROUP BY cat.name
          ORDER BY revenue DESC
          LIMIT 6`),
 
+      // Payment methods in period
       q(`SELECT
-           COALESCE(payment_method, 'unknown') AS method,
+           COALESCE(NULLIF(TRIM(payment_method), ''), 'cash') AS method,
            COUNT(*) AS count,
            SUM(total) AS amount
          FROM orders
-         WHERE created_at >= DATE_TRUNC('month', NOW())
+         WHERE ${filter.ordersWhere}
            AND status NOT IN ('cancelled')
-         GROUP BY payment_method
+         GROUP BY method
          ORDER BY count DESC`),
 
+      // Sales source in period
       q(`SELECT
            COALESCE(source, 'Web App') AS source,
            COUNT(*) AS count,
            SUM(total) AS revenue
          FROM orders
-         WHERE created_at >= DATE_TRUNC('month', NOW())
+         WHERE ${filter.ordersWhere}
            AND status NOT IN ('cancelled')
          GROUP BY source
          ORDER BY count DESC`),
     ]);
 
-    const [returnsTodayList, skusSoldList] = await Promise.all([
+    const [returnsPeriodList, skusSoldList] = await Promise.all([
       q(`SELECT r.id, r.order_id, p.name AS product, r.reason, r.refund_amount, r.status
          FROM returns r
          LEFT JOIN products p ON r.product_id = p.id
-         WHERE DATE(r.created_at) = CURRENT_DATE
+         WHERE ${filter.returnsWhere}
          ORDER BY r.created_at DESC
          LIMIT 10`),
 
@@ -425,7 +538,7 @@ router.get("/sales", async (req, res, next) => {
          FROM order_items oi
          JOIN orders o ON oi.order_id = o.id
          JOIN products p ON oi.product_id = p.id
-         WHERE DATE(o.created_at) = CURRENT_DATE
+         WHERE ${filter.ordersWhere}
            AND o.status NOT IN ('cancelled')
          GROUP BY p.id, p.name, p.sku
          ORDER BY revenue DESC
@@ -433,14 +546,20 @@ router.get("/sales", async (req, res, next) => {
     ]);
 
     res.json({
+      filter: {
+        range: filter.range,
+        label: filter.label,
+        from: filter.from,
+        to: filter.to,
+      },
       kpis: {
-        today_revenue: parseFloat(todayStats.revenue || 0),
-        orders_today: parseInt(todayStats.orders || 0),
-        avg_order_value: parseFloat(todayStats.avg_order || 0),
+        today_revenue: parseFloat(periodStats.revenue || 0),
+        orders_today: parseInt(periodStats.orders || 0),
+        avg_order_value: parseFloat(periodStats.avg_order || 0),
         month_revenue: parseFloat(monthStats.revenue || 0),
         orders_month: parseInt(monthStats.orders || 0),
-        returns_today: parseInt(returnsToday.count || 0),
-        returns_value: parseFloat(returnsToday.total || 0),
+        returns_today: parseInt(returnsPeriod.count || 0),
+        returns_value: parseFloat(returnsPeriod.total || 0),
         skus_sold: parseInt(skusSold.count || 0),
       },
       charts: {
@@ -452,7 +571,7 @@ router.get("/sales", async (req, res, next) => {
       },
       top_products: topProducts,
       recent_orders: recentOrders,
-      returns_today_list: returnsTodayList,
+      returns_today_list: returnsPeriodList,
       skus_sold_list: skusSoldList,
     });
   } catch (err) {
@@ -463,54 +582,56 @@ router.get("/sales", async (req, res, next) => {
 // ── FINANCE / REVENUE & SETTLEMENTS TAB ─────────────────────────
 router.get("/finance", async (req, res, next) => {
   try {
+    const filter = parseDateFilter(req.query);
+
     const [
-      monthGrossStats,
-      todayGrossStats,
-      posStatsMonth,
-      webStatsMonth,
+      periodGrossStats,
+      allTimeGrossStats,
+      posStatsPeriod,
+      webStatsPeriod,
       walletStats,
-      commissionsStatsMonth,
-      refundsStatsMonth,
+      commissionsStatsPeriod,
+      refundsStatsPeriod,
       monthly6m,
       byPayment,
       byChannel,
       daily7d,
       recentSettlements,
     ] = await Promise.all([
-      // 1. Total monthly gross revenue: orders revenue + non-order completed income
+      // 1. Period gross revenue: orders revenue + non-order completed income in selected period
       q1(`SELECT
             (
-              COALESCE((SELECT SUM(total) FROM orders WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW()) AND status NOT IN ('cancelled')), 0)
+              COALESCE((SELECT SUM(total) FROM orders WHERE ${filter.ordersWhere} AND status NOT IN ('cancelled')), 0)
               +
-              COALESCE((SELECT SUM(amount) FROM income WHERE DATE_TRUNC('month', date) = DATE_TRUNC('month', NOW()) AND status = 'completed' AND (order_id IS NULL OR order_id = '')), 0)
+              COALESCE((SELECT SUM(amount) FROM income WHERE ${filter.incomeWhere} AND status = 'completed' AND (order_id IS NULL OR order_id = '')), 0)
             ) AS gross_revenue,
-            COALESCE((SELECT COUNT(*) FROM orders WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW()) AND status NOT IN ('cancelled')), 0) AS total_orders,
-            COALESCE((SELECT AVG(total) FROM orders WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW()) AND status NOT IN ('cancelled')), 0) AS avg_order_value`),
+            COALESCE((SELECT COUNT(*) FROM orders WHERE ${filter.ordersWhere} AND status NOT IN ('cancelled')), 0) AS total_orders,
+            COALESCE((SELECT AVG(total) FROM orders WHERE ${filter.ordersWhere} AND status NOT IN ('cancelled')), 0) AS avg_order_value`),
 
-      // 2. Today's gross revenue
+      // 2. All-time / 30-day baseline stats for reference
       q1(`SELECT
             (
-              COALESCE((SELECT SUM(total) FROM orders WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled')), 0)
+              COALESCE((SELECT SUM(total) FROM orders WHERE status NOT IN ('cancelled')), 0)
               +
-              COALESCE((SELECT SUM(amount) FROM income WHERE DATE(date) = CURRENT_DATE AND status = 'completed' AND (order_id IS NULL OR order_id = '')), 0)
-            ) AS today_revenue,
-            COALESCE((SELECT COUNT(*) FROM orders WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled')), 0) AS today_orders`),
+              COALESCE((SELECT SUM(amount) FROM income WHERE status = 'completed' AND (order_id IS NULL OR order_id = '')), 0)
+            ) AS all_time_revenue,
+            COALESCE((SELECT COUNT(*) FROM orders WHERE status NOT IN ('cancelled')), 0) AS all_time_orders`),
 
-      // 3. POS In-Store Revenue this month
+      // 3. POS In-Store Revenue in period
       q1(`SELECT
             COALESCE(SUM(total), 0) AS revenue,
             COUNT(*) AS orders
           FROM orders
-          WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+          WHERE ${filter.ordersWhere}
             AND status NOT IN ('cancelled')
             AND (source = 'pos' OR payment_method = 'pos_terminal')`),
 
-      // 4. Online & Storefront Revenue this month
+      // 4. Online & Storefront Revenue in period
       q1(`SELECT
             COALESCE(SUM(total), 0) AS revenue,
             COUNT(*) AS orders
           FROM orders
-          WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+          WHERE ${filter.ordersWhere}
             AND status NOT IN ('cancelled')
             AND (source != 'pos' OR source IS NULL)
             AND (payment_method != 'pos_terminal' OR payment_method IS NULL)`),
@@ -522,19 +643,19 @@ router.get("/finance", async (req, res, next) => {
             COALESCE(SUM(total_spent), 0) AS total_spent
           FROM customer_wallets`),
 
-      // 6. Driver Delivery Commission Accruals this month
+      // 6. Driver Delivery Commission Accruals in period
       q1(`SELECT
             COALESCE(SUM(commission_amount), 0) AS total_commissions,
             COUNT(*) AS total_trips
           FROM driver_commissions
-          WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())`),
+          WHERE ${filter.ordersWhere}`),
 
-      // 7. Refunds & Returns Deductions this month
+      // 7. Refunds & Returns Deductions in period
       q1(`SELECT
             COALESCE(SUM(refund_amount), 0) AS total_refunds,
             COUNT(*) AS count
           FROM returns
-          WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())`),
+          WHERE ${filter.returnsWhere}`),
 
       // 8. 6-Month Gross Revenue & Order Volume
       q(`SELECT
@@ -557,18 +678,18 @@ router.get("/finance", async (req, res, next) => {
          ) inc ON inc.m = d
          ORDER BY d`),
 
-      // 9. Payment Methods Breakdown this month
+      // 9. Payment Methods Breakdown in period
       q(`SELECT
            COALESCE(NULLIF(TRIM(payment_method), ''), 'cash') AS method,
            COUNT(*) AS count,
            SUM(total) AS amount
          FROM orders
-         WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+         WHERE ${filter.ordersWhere}
            AND status NOT IN ('cancelled')
          GROUP BY method
          ORDER BY amount DESC`),
 
-      // 10. Sales Channel Split this month (POS vs Web vs Manual)
+      // 10. Sales Channel Split in period (POS vs Web vs Manual)
       q(`SELECT
            CASE
              WHEN source = 'pos' OR payment_method = 'pos_terminal' THEN 'POS In-Store'
@@ -579,7 +700,7 @@ router.get("/finance", async (req, res, next) => {
            COUNT(*) AS count,
            SUM(total) AS amount
          FROM orders
-         WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+         WHERE ${filter.ordersWhere}
            AND status NOT IN ('cancelled')
          GROUP BY channel
          ORDER BY amount DESC`),
@@ -599,7 +720,7 @@ router.get("/finance", async (req, res, next) => {
          GROUP BY d.day
          ORDER BY d.day`),
 
-      // 12. Recent Financial Transactions & Order Settlements (Last 25)
+      // 12. Recent Financial Transactions & Order Settlements in period
       q(`SELECT
            o.id,
            COALESCE(o.order_ref, CAST(o.id AS VARCHAR)) AS ref,
@@ -615,17 +736,18 @@ router.get("/finance", async (req, res, next) => {
            o.created_at
          FROM orders o
          LEFT JOIN users c ON o.customer_id = c.id
-         WHERE o.status NOT IN ('cancelled')
+         WHERE ${filter.ordersWhere}
+           AND o.status NOT IN ('cancelled')
          ORDER BY o.created_at DESC
          LIMIT 25`),
     ]);
 
-    const grossMonth = parseFloat(monthGrossStats.gross_revenue || 0);
-    const posRev = parseFloat(posStatsMonth.revenue || 0);
-    const webRev = parseFloat(webStatsMonth.revenue || 0);
+    const grossPeriod = parseFloat(periodGrossStats.gross_revenue || 0);
+    const posRev = parseFloat(posStatsPeriod.revenue || 0);
+    const webRev = parseFloat(webStatsPeriod.revenue || 0);
     const walletFloat = parseFloat(walletStats.total_balance || 0);
-    const refundsMonth = parseFloat(refundsStatsMonth.total_refunds || 0);
-    const commsMonth = parseFloat(commissionsStatsMonth.total_commissions || 0);
+    const refundsPeriod = parseFloat(refundsStatsPeriod.total_refunds || 0);
+    const commsPeriod = parseFloat(commissionsStatsPeriod.total_commissions || 0);
 
     // Calculate tender percentage shares
     const totalTenderAmount = byPayment.reduce((acc, p) => acc + parseFloat(p.amount || 0), 0) || 1;
@@ -637,23 +759,29 @@ router.get("/finance", async (req, res, next) => {
     }));
 
     res.json({
+      filter: {
+        range: filter.range,
+        label: filter.label,
+        from: filter.from,
+        to: filter.to,
+      },
       kpis: {
-        month_revenue: grossMonth,
-        today_revenue: parseFloat(todayGrossStats.today_revenue || 0),
-        total_orders_month: parseInt(monthGrossStats.total_orders || 0),
-        today_orders: parseInt(todayGrossStats.today_orders || 0),
-        avg_order_value: parseFloat(monthGrossStats.avg_order_value || 0),
+        month_revenue: grossPeriod,
+        today_revenue: grossPeriod, // represents selected period gross
+        total_orders_month: parseInt(periodGrossStats.total_orders || 0),
+        today_orders: parseInt(periodGrossStats.total_orders || 0),
+        avg_order_value: parseFloat(periodGrossStats.avg_order_value || 0),
         pos_revenue: posRev,
-        pos_orders: parseInt(posStatsMonth.orders || 0),
+        pos_orders: parseInt(posStatsPeriod.orders || 0),
         web_revenue: webRev,
-        web_orders: parseInt(webStatsMonth.orders || 0),
+        web_orders: parseInt(webStatsPeriod.orders || 0),
         wallet_float: walletFloat,
         wallet_funded: parseFloat(walletStats.total_funded || 0),
         wallet_spent: parseFloat(walletStats.total_spent || 0),
-        driver_commissions: commsMonth,
-        driver_trips: parseInt(commissionsStatsMonth.total_trips || 0),
-        refunds_month: refundsMonth,
-        refunds_count: parseInt(refundsStatsMonth.count || 0),
+        driver_commissions: commsPeriod,
+        driver_trips: parseInt(commissionsStatsPeriod.total_trips || 0),
+        refunds_month: refundsPeriod,
+        refunds_count: parseInt(refundsStatsPeriod.count || 0),
       },
       charts: {
         monthly_6m: monthly6m.map((r) => ({
@@ -777,6 +905,8 @@ router.get("/inventory", async (req, res, next) => {
 // ── OPERATIONS TAB ───────────────────────────────────────────────
 router.get("/operations", async (req, res, next) => {
   try {
+    const filter = parseDateFilter(req.query);
+
     const [
       activeDeliveriesCount,
       activeDeliveries,
@@ -816,11 +946,11 @@ router.get("/operations", async (req, res, next) => {
             ) AS avg_mins
           FROM deliveries
           WHERE status = 'delivered'
-            AND DATE(delivered_at) = CURRENT_DATE`),
+            AND ${filter.ordersWhere.replace(/created_at/g, 'delivered_at')}`),
 
-      // Real total count of staff clocked in today (matching Overview)
+      // Real total count of staff clocked in
       q1(`SELECT COUNT(*) AS count FROM staff_attendance
-          WHERE date = CURRENT_DATE AND status = 'present'`),
+          WHERE ${filter.attendanceWhere} AND status = 'present'`),
 
       q(`SELECT
            s.name, st.role, st.shift,
@@ -828,7 +958,7 @@ router.get("/operations", async (req, res, next) => {
          FROM staff_attendance sa
          JOIN staff st ON sa.staff_id = st.id
          JOIN users s ON st.user_id = s.id
-         WHERE sa.date = CURRENT_DATE
+         WHERE ${filter.attendanceWhere}
          ORDER BY sa.clock_in ASC NULLS LAST
          LIMIT 10`),
 
@@ -839,12 +969,13 @@ router.get("/operations", async (req, res, next) => {
            e.status
          FROM expenses e
          WHERE e.category = 'produce_purchase'
+           AND ${filter.incomeWhere}
          ORDER BY e.date DESC
          LIMIT 5`),
 
       q(`SELECT status, COUNT(*) AS count
          FROM deliveries
-         WHERE DATE(created_at) = CURRENT_DATE
+         WHERE ${filter.ordersWhere}
          GROUP BY status`),
     ]);
 
@@ -861,7 +992,7 @@ router.get("/operations", async (req, res, next) => {
            ROUND(EXTRACT(EPOCH FROM (delivered_at - dispatched_at)) / 60) AS minutes
          FROM deliveries
          WHERE status = 'delivered'
-           AND DATE(delivered_at) = CURRENT_DATE
+           AND ${filter.ordersWhere.replace(/created_at/g, 'delivered_at')}
          ORDER BY delivered_at DESC
          LIMIT 10`),
     ]);
@@ -872,6 +1003,12 @@ router.get("/operations", async (req, res, next) => {
     });
 
     res.json({
+      filter: {
+        range: filter.range,
+        label: filter.label,
+        from: filter.from,
+        to: filter.to,
+      },
       kpis: {
         active_deliveries: parseInt(activeDeliveriesCount.count || 0),
         drivers_on_duty: parseInt(driversOnDuty.count || 0),
@@ -893,9 +1030,11 @@ router.get("/operations", async (req, res, next) => {
 // ── CUSTOMERS TAB ────────────────────────────────────────────────
 router.get("/customers", async (req, res, next) => {
   try {
+    const filter = parseDateFilter(req.query);
+
     const [
       totalCustomers,
-      newThisMonth,
+      newInPeriod,
       loyaltyStats,
       walletStats,
       customerList,
@@ -904,7 +1043,7 @@ router.get("/customers", async (req, res, next) => {
       q1(`SELECT COUNT(*) AS count FROM users WHERE status = 'active'`),
 
       q1(`SELECT COUNT(*) AS count FROM users
-          WHERE DATE_TRUNC('month', joined_at) = DATE_TRUNC('month', NOW())`),
+          WHERE ${filter.usersWhere}`),
 
       q1(`SELECT
             COALESCE(SUM(points_balance), 0) AS total_balance,
@@ -937,9 +1076,15 @@ router.get("/customers", async (req, res, next) => {
     ]);
 
     res.json({
+      filter: {
+        range: filter.range,
+        label: filter.label,
+        from: filter.from,
+        to: filter.to,
+      },
       kpis: {
         total_customers: parseInt(totalCustomers.count || 0),
-        new_this_month: parseInt(newThisMonth.count || 0),
+        new_this_month: parseInt(newInPeriod.count || 0),
         total_points: parseInt(loyaltyStats.total_balance || 0),
         lifetime_points: parseInt(loyaltyStats.total_lifetime || 0),
         wallet_balance: parseFloat(walletStats.total_balance || 0),
@@ -957,8 +1102,10 @@ router.get("/customers", async (req, res, next) => {
 // ── CHEF BEMS AI TAB ─────────────────────────────────────────────
 router.get("/ai", async (req, res, next) => {
   try {
+    const filter = parseDateFilter(req.query);
+
     const [
-      convToday,
+      convPeriod,
       pendingConvs,
       dietaryRulesCount,
       dietaryRules,
@@ -968,7 +1115,7 @@ router.get("/ai", async (req, res, next) => {
       convBreakdown,
     ] = await Promise.all([
       q1(`SELECT COUNT(*) AS count FROM admin_ai_conversations
-          WHERE bot_type='chef' AND DATE(created_at) = CURRENT_DATE`),
+          WHERE bot_type='chef' AND ${filter.aiWhere}`),
 
       q1(`SELECT COUNT(*) AS count FROM admin_ai_conversations
           WHERE bot_type='chef' AND archived=false`),
@@ -1004,7 +1151,7 @@ router.get("/ai", async (req, res, next) => {
 
       q(`SELECT CASE WHEN archived THEN 'completed' ELSE 'active' END AS status, COUNT(*) AS count
          FROM admin_ai_conversations
-         WHERE bot_type='chef' AND DATE(created_at) = CURRENT_DATE
+         WHERE bot_type='chef' AND ${filter.aiWhere}
          GROUP BY archived`),
     ]);
 
@@ -1014,8 +1161,14 @@ router.get("/ai", async (req, res, next) => {
     });
 
     res.json({
+      filter: {
+        range: filter.range,
+        label: filter.label,
+        from: filter.from,
+        to: filter.to,
+      },
       kpis: {
-        conversations_today: parseInt(convToday.count || 0),
+        conversations_today: parseInt(convPeriod.count || 0),
         pending_replies: parseInt(pendingConvs.count || 0),
         dietary_rules: parseInt(dietaryRulesCount.count || 0),
         meal_associations: parseInt(mealAssociationsCount.count || 0),
