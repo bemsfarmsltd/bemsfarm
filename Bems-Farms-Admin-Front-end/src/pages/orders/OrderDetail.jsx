@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
+import ThermalReceipt, { printThermalReceipt } from '../../components/ui/ThermalReceipt'
+import { useAuth } from '../../context/AuthContext'
 
 const STATUS_COLOR = {
   paid: 'info',
@@ -26,9 +28,11 @@ const fmt = (n) => `₦${Number(n || 0).toLocaleString(undefined, { minimumFract
 
 export default function OrderDetail() {
   const { id } = useParams()
+  const { user } = useAuth()
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [showReceipt, setShowReceipt] = useState(false)
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -63,6 +67,10 @@ export default function OrderDetail() {
     } finally {
       setUpdating(false)
     }
+  }
+
+  const handlePrintReceipt = () => {
+    printThermalReceipt()
   }
 
   if (loading) {
@@ -116,8 +124,8 @@ export default function OrderDetail() {
           <span className={`badge bg-${color}-subtle text-${color} px-3 py-2 text-uppercase fs-xs`}>
             {order.status}
           </span>
-          <button className="btn btn-outline-secondary btn-sm" onClick={() => window.print()}>
-            <i className="ri-printer-line me-1" />Print
+          <button className="btn btn-primary btn-sm" onClick={() => setShowReceipt(true)}>
+            <i className="ri-printer-line me-1" />Print Receipt
           </button>
         </div>
       </div>
@@ -311,6 +319,75 @@ export default function OrderDetail() {
           )}
         </div>
       </div>
+
+      {/* Background Thermal Print Target */}
+      <div className="pos-thermal-print-container" aria-hidden="true">
+        <ThermalReceipt
+          receiptType={order.channel === 'physical' || order.source?.toLowerCase().includes('pos') ? 'pos' : 'online'}
+          receiptNumber={order.order_ref || order.id}
+          date={order.created_at ? new Date(order.created_at).toLocaleString('en-NG') : new Date().toLocaleString('en-NG')}
+          customer={order.customer_name || 'Walk-in Customer'}
+          customerPhone={order.customer_phone}
+          channel={order.source || (order.channel === 'physical' ? 'POS Terminal' : 'Online Store')}
+          cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : 'Cashier'}
+          fulfillment={order.fulfillment_type || (order.delivery_address ? 'Delivery' : 'Store pickup')}
+          status={order.status?.toUpperCase()}
+          items={items}
+          subtotal={subtotal}
+          deliveryFee={deliveryFee}
+          discount={discount}
+          total={total}
+          paymentMethod={order.payment_method?.toUpperCase()}
+          note={order.notes}
+        />
+      </div>
+
+      {/* Printable Receipt Preview Modal */}
+      {showReceipt && (
+        <div
+          className="modal fade show d-block"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050 }}
+          onClick={() => setShowReceipt(false)}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered"
+            style={{ maxWidth: 440 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '1rem' }}>
+              <div className="modal-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+                <h6 className="modal-title fw-bold mb-0">Sales Receipt #{order.order_ref || order.id}</h6>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-sm btn-primary" onClick={handlePrintReceipt}>
+                    <i className="ri-printer-line me-1" />Print Receipt
+                  </button>
+                  <button className="btn-close" onClick={() => setShowReceipt(false)} />
+                </div>
+              </div>
+              <div className="modal-body p-3 thermal-receipt-preview" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
+                <ThermalReceipt
+                  receiptType={order.channel === 'physical' || order.source?.toLowerCase().includes('pos') ? 'pos' : 'online'}
+                  receiptNumber={order.order_ref || order.id}
+                  date={order.created_at ? new Date(order.created_at).toLocaleString('en-NG') : new Date().toLocaleString('en-NG')}
+                  customer={order.customer_name || 'Walk-in Customer'}
+                  customerPhone={order.customer_phone}
+                  channel={order.source || (order.channel === 'physical' ? 'POS Terminal' : 'Online Store')}
+                  cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : 'Cashier'}
+                  fulfillment={order.fulfillment_type || (order.delivery_address ? 'Delivery' : 'Store pickup')}
+                  status={order.status?.toUpperCase()}
+                  items={items}
+                  subtotal={subtotal}
+                  deliveryFee={deliveryFee}
+                  discount={discount}
+                  total={total}
+                  paymentMethod={order.payment_method?.toUpperCase()}
+                  note={order.notes}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
