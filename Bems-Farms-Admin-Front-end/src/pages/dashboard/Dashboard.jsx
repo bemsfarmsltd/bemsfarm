@@ -2571,9 +2571,9 @@ function ChefBemsTab({ range = 'today', from = '', to = '' }) {
   )
 }
 
-// ── Date Filter Toolbar & Calendar Picker ─────────────────────────────────────
+// ── Date Filter Controls & Calendar Picker (Inline with Tabs) ────────────────
 
-function DateFilterToolbar({ range, from, to, onFilterChange }) {
+function DateFilterControls({ range, from, to, onFilterChange }) {
   const [showPicker, setShowPicker] = useState(false)
   const [startDate, setStartDate] = useState(from || '')
   const [endDate, setEndDate]     = useState(to || '')
@@ -2613,11 +2613,11 @@ function DateFilterToolbar({ range, from, to, onFilterChange }) {
   }
 
   const QUICK_TOGGLES = [
-    { key: 'today', label: 'Today',    icon: 'ri-calendar-check-line' },
-    { key: '7d',    label: '7 Days',   icon: 'ri-calendar-line' },
-    { key: '12d',   label: '12 Days',  icon: 'ri-calendar-2-line' },
-    { key: '1m',    label: '1 Month',  icon: 'ri-calendar-event-line' },
-    { key: '1y',    label: '1 Year',   icon: 'ri-history-line' },
+    { key: 'today', label: 'Today' },
+    { key: '7d',    label: '7 Days' },
+    { key: '12d',   label: '12 Days' },
+    { key: '1m',    label: '1 Month' },
+    { key: '1y',    label: '1 Year' },
   ]
 
   const getActiveLabel = () => {
@@ -2626,178 +2626,157 @@ function DateFilterToolbar({ range, from, to, onFilterChange }) {
     if (range === '12d')   return 'Last 12 Days'
     if (range === '1m')    return 'Last 1 Month'
     if (range === '1y')    return 'Last 1 Year'
-    if (range === 'custom' && from && to) return `${from} to ${to}`
+    if (range === 'custom' && from && to) return `${from} → ${to}`
     return 'Today'
   }
 
   return (
-    <div
-      className="card mb-3 border-0 shadow-sm"
-      style={{
-        borderRadius: '0.85rem',
-        backgroundColor: '#FFFFFF',
-        border: '1px solid #E5E7EB',
-      }}
-    >
-      <div className="card-body py-2.5 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2.5">
-        {/* Left: Quick Timeframe Toggles */}
-        <div className="d-flex align-items-center gap-1.5 flex-wrap">
-          <div className="d-flex align-items-center gap-1 me-2 text-muted fw-bold" style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            <i className="ri-filter-3-line text-success" style={{ fontSize: 14 }} />
-            <span>Timeframe:</span>
-          </div>
-
-          <div className="btn-group shadow-0 p-0.5 bg-light rounded-2 border" role="group" style={{ borderColor: '#E5E7EB' }}>
-            {QUICK_TOGGLES.map(({ key, label }) => {
-              const isActive = range === key
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => handleSetPreset(key)}
-                  className={`btn btn-sm ${isActive ? 'btn-dark text-white fw-bold shadow-xs' : 'btn-light text-secondary fw-semibold border-0'}`}
-                  style={{
-                    borderRadius: '0.35rem',
-                    fontSize: '0.76rem',
-                    padding: '0.3rem 0.7rem',
-                    transition: 'all 0.15s ease',
-                    backgroundColor: isActive ? '#143c2d' : 'transparent',
-                  }}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Calendar Custom Range Trigger */}
-          <div className="position-relative ms-1" ref={pickerRef}>
+    <div className="d-flex align-items-center gap-2 flex-wrap ms-auto">
+      {/* Quick Timeframe Buttons */}
+      <div className="btn-group shadow-0 p-0.5 bg-white rounded-2 border" role="group" style={{ borderColor: '#E5E7EB' }}>
+        {QUICK_TOGGLES.map(({ key, label }) => {
+          const isActive = range === key
+          return (
             <button
+              key={key}
               type="button"
-              onClick={() => setShowPicker(!showPicker)}
-              className={`btn btn-sm d-flex align-items-center gap-1.5 ${range === 'custom' ? 'btn-success text-white fw-bold shadow-xs' : 'btn-light text-dark fw-semibold border'}`}
+              onClick={() => handleSetPreset(key)}
+              className={`btn btn-sm ${isActive ? 'btn-dark text-white fw-bold shadow-xs' : 'btn-light text-secondary fw-semibold border-0'}`}
               style={{
-                borderRadius: '0.45rem',
-                fontSize: '0.76rem',
-                padding: '0.32rem 0.75rem',
-                backgroundColor: range === 'custom' ? '#143c2d' : '#FFFFFF',
-                borderColor: range === 'custom' ? '#143c2d' : '#D1D5DB',
+                borderRadius: '0.35rem',
+                fontSize: '0.74rem',
+                padding: '0.28rem 0.65rem',
+                transition: 'all 0.15s ease',
+                backgroundColor: isActive ? '#143c2d' : 'transparent',
               }}
             >
-              <i className="ri-calendar-todo-line" style={{ fontSize: 13 }} />
-              <span>{range === 'custom' && from && to ? `${from} → ${to}` : 'Calendar Range'}</span>
-              <i className={`ri-arrow-${showPicker ? 'up' : 'down'}-s-line`} style={{ fontSize: 12 }} />
+              {label}
             </button>
+          )
+        })}
+      </div>
 
-            {/* Calendar Popover Dropdown */}
-            {showPicker && (
-              <div
-                className="position-absolute start-0 mt-2 p-3 bg-white rounded-3 shadow-lg border"
-                style={{
-                  zIndex: 1050,
-                  minWidth: '320px',
-                  borderColor: '#E5E7EB',
-                  animation: 'fadeIn 0.15s ease',
-                }}
-              >
-                <div className="d-flex align-items-center justify-content-between pb-2 mb-2.5 border-bottom">
-                  <div className="d-flex align-items-center gap-1.5">
-                    <i className="ri-calendar-check-fill text-success" style={{ fontSize: 16 }} />
-                    <span className="fw-bold text-dark fs-xs">Select Custom Date Range</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn-close"
-                    style={{ fontSize: '0.65rem' }}
-                    onClick={() => setShowPicker(false)}
-                  />
-                </div>
+      {/* Calendar Range Dropdown */}
+      <div className="position-relative" ref={pickerRef}>
+        <button
+          type="button"
+          onClick={() => setShowPicker(!showPicker)}
+          className={`btn btn-sm d-flex align-items-center gap-1.5 ${range === 'custom' ? 'btn-success text-white fw-bold shadow-xs' : 'btn-light text-dark fw-semibold border'}`}
+          style={{
+            borderRadius: '0.45rem',
+            fontSize: '0.74rem',
+            padding: '0.3rem 0.7rem',
+            backgroundColor: range === 'custom' ? '#143c2d' : '#FFFFFF',
+            borderColor: range === 'custom' ? '#143c2d' : '#E5E7EB',
+          }}
+        >
+          <i className="ri-calendar-todo-line" style={{ fontSize: 13 }} />
+          <span>{range === 'custom' && from && to ? `${from} → ${to}` : 'Calendar Range'}</span>
+          <i className={`ri-arrow-${showPicker ? 'up' : 'down'}-s-line`} style={{ fontSize: 11 }} />
+        </button>
 
-                <form onSubmit={handleApplyCustom}>
-                  <div className="mb-2.5">
-                    <label className="form-label text-muted fs-xs fw-semibold mb-1">From Date</label>
-                    <input
-                      type="date"
-                      className="form-control form-control-sm font-monospace"
-                      value={startDate}
-                      max={endDate || undefined}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      required
-                      style={{ fontSize: '0.8rem', borderRadius: '0.4rem' }}
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label text-muted fs-xs fw-semibold mb-1">To Date</label>
-                    <input
-                      type="date"
-                      className="form-control form-control-sm font-monospace"
-                      value={endDate}
-                      min={startDate || undefined}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      required
-                      style={{ fontSize: '0.8rem', borderRadius: '0.4rem' }}
-                    />
-                  </div>
-
-                  <div className="d-flex align-items-center justify-content-between gap-2 pt-1">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-light text-secondary border px-2.5"
-                      style={{ fontSize: '0.74rem', borderRadius: '0.4rem' }}
-                      onClick={() => handleSetPreset('today')}
-                    >
-                      Reset Today
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn btn-sm btn-success text-white fw-bold px-3 d-flex align-items-center gap-1"
-                      style={{ fontSize: '0.74rem', borderRadius: '0.4rem', backgroundColor: '#143c2d', borderColor: '#143c2d' }}
-                    >
-                      <i className="ri-check-line" /> Apply Filter
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right: Active Date Pill & Live Indicator */}
-        <div className="d-flex align-items-center gap-2">
+        {showPicker && (
           <div
-            className="d-flex align-items-center gap-1.5 px-2.5 py-1 rounded-pill"
+            className="position-absolute end-0 mt-2 p-3 bg-white rounded-3 shadow-lg border"
             style={{
-              backgroundColor: '#F0FDF4',
-              border: '1px solid #BBF7D0',
-              fontSize: '0.75rem',
+              zIndex: 1050,
+              minWidth: '300px',
+              borderColor: '#E5E7EB',
             }}
           >
-            <span
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                backgroundColor: '#16A34A',
-                display: 'inline-block',
-              }}
-            />
-            <span className="text-muted">Viewing:</span>
-            <strong className="text-success fw-bold">{getActiveLabel()}</strong>
-            {range !== 'today' && (
+            <div className="d-flex align-items-center justify-content-between pb-2 mb-2.5 border-bottom">
+              <div className="d-flex align-items-center gap-1.5">
+                <i className="ri-calendar-check-fill text-success" style={{ fontSize: 15 }} />
+                <span className="fw-bold text-dark fs-xs">Select Custom Date Range</span>
+              </div>
               <button
                 type="button"
-                onClick={() => onFilterChange('today', '', '')}
-                className="btn btn-link text-muted p-0 ms-1 d-flex align-items-center text-decoration-none"
-                title="Reset filter to today"
-                style={{ fontSize: '0.8rem', lineHeight: 1 }}
-              >
-                <i className="ri-close-circle-fill text-secondary" />
-              </button>
-            )}
+                className="btn-close"
+                style={{ fontSize: '0.65rem' }}
+                onClick={() => setShowPicker(false)}
+              />
+            </div>
+
+            <form onSubmit={handleApplyCustom}>
+              <div className="mb-2.5">
+                <label className="form-label text-muted fs-xs fw-semibold mb-1">From Date</label>
+                <input
+                  type="date"
+                  className="form-control form-control-sm font-monospace"
+                  value={startDate}
+                  max={endDate || undefined}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  required
+                  style={{ fontSize: '0.78rem', borderRadius: '0.4rem' }}
+                />
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label text-muted fs-xs fw-semibold mb-1">To Date</label>
+                <input
+                  type="date"
+                  className="form-control form-control-sm font-monospace"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  required
+                  style={{ fontSize: '0.78rem', borderRadius: '0.4rem' }}
+                />
+              </div>
+
+              <div className="d-flex align-items-center justify-content-between gap-2 pt-1">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-light text-secondary border px-2.5"
+                  style={{ fontSize: '0.72rem', borderRadius: '0.4rem' }}
+                  onClick={() => handleSetPreset('today')}
+                >
+                  Reset Today
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-sm btn-success text-white fw-bold px-3 d-flex align-items-center gap-1"
+                  style={{ fontSize: '0.72rem', borderRadius: '0.4rem', backgroundColor: '#143c2d', borderColor: '#143c2d' }}
+                >
+                  <i className="ri-check-line" /> Apply
+                </button>
+              </div>
+            </form>
           </div>
-        </div>
+        )}
       </div>
+
+      {/* Active Range Pill (shown when range != today, with 1-click reset) */}
+      {range !== 'today' && (
+        <div
+          className="d-flex align-items-center gap-1.5 px-2 py-1 rounded-pill"
+          style={{
+            backgroundColor: '#F0FDF4',
+            border: '1px solid #BBF7D0',
+            fontSize: '0.72rem',
+          }}
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              backgroundColor: '#16A34A',
+              display: 'inline-block',
+            }}
+          />
+          <strong className="text-success fw-bold">{getActiveLabel()}</strong>
+          <button
+            type="button"
+            onClick={() => onFilterChange('today', '', '')}
+            className="btn btn-link text-muted p-0 ms-0.5 d-flex align-items-center text-decoration-none"
+            title="Reset to today"
+            style={{ fontSize: '0.78rem', lineHeight: 1 }}
+          >
+            <i className="ri-close-circle-fill text-secondary" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -2866,28 +2845,42 @@ export default function Dashboard() {
         </button>
       </PageHeader>
 
-      {/* Date Filter Toolbar with Toggles & Calendar Picker */}
-      <DateFilterToolbar
-        range={rangeParam}
-        from={fromParam}
-        to={toParam}
-        onFilterChange={handleFilterChange}
-      />
+      {/* Unified Tab Navigation & Timeframe Filter Bar (Same Line) */}
+      <div
+        className="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap"
+        style={{
+          borderBottom: '2px solid #EFECE6',
+          paddingBottom: '0.45rem',
+        }}
+      >
+        {/* Left: Tab Navigation */}
+        <div className="d-flex align-items-center gap-1.5 flex-wrap">
+          {TABS.map(({ key, label, icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={`btn btn-sm d-flex align-items-center gap-1.5 ${activeTab === key ? 'btn-dark' : 'btn-light'}`}
+              style={{
+                borderRadius: '0.5rem',
+                fontWeight: 600,
+                fontSize: '0.78rem',
+                border: activeTab === key ? '1px solid #1f2937' : '1px solid transparent',
+              }}
+            >
+              <i className={icon} style={{ fontSize: 13 }} />
+              {label}
+            </button>
+          ))}
+        </div>
 
-      {/* Tab Navigation */}
-      <div className="d-flex align-items-center gap-1 mb-3 flex-wrap" style={{ borderBottom: '2px solid #EFECE6', paddingBottom: '0.25rem' }}>
-        {TABS.map(({ key, label, icon }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={`btn btn-sm d-flex align-items-center gap-1.5 ${activeTab === key ? 'btn-dark' : 'btn-light'}`}
-            style={{ borderRadius: '0.5rem', fontWeight: 600, fontSize: '0.78rem', border: activeTab === key ? '1px solid #1f2937' : '1px solid transparent' }}
-          >
-            <i className={icon} style={{ fontSize: 13 }} />
-            {label}
-          </button>
-        ))}
+        {/* Right: Timeframe Filter Controls */}
+        <DateFilterControls
+          range={rangeParam}
+          from={fromParam}
+          to={toParam}
+          onFilterChange={handleFilterChange}
+        />
       </div>
 
       {/* Active Tab View */}
