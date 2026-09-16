@@ -47,42 +47,269 @@ function formatTimeAgo(dateStr) {
 // ── Shared drill-down column presets ──────────────────────────────────────────
 
 const orderColumns = [
-  { key: 'order', label: 'Order', render: (r) => r.order_ref || r.id },
-  { key: 'customer', label: 'Customer', render: (r) => r.customer_name || r.customer || '—' },
-  { key: 'items', label: 'Items', align: 'right', render: (r) => r.item_count ?? r.items ?? 1 },
-  { key: 'total', label: 'Total', align: 'right', render: (r) => fmtNaira(r.total_amount ?? r.total) },
-  { key: 'status', label: 'Status', render: (r) => <Badge label={r.status} color={statusColor(r.status)} /> },
-  { key: 'created_at', label: 'Date', render: (r) => r.time_ago || (r.created_at ? formatTimeAgo(r.created_at) : (r.time || '—')) },
+  {
+    key: 'order',
+    label: 'Order Ref',
+    render: (r) => (
+      <span
+        className="fw-bold font-monospace"
+        style={{
+          backgroundColor: '#F0F9FF',
+          color: '#0369A1',
+          padding: '0.25rem 0.6rem',
+          borderRadius: '0.4rem',
+          border: '1px solid #BAE6FD',
+          fontSize: '0.78rem',
+        }}
+      >
+        {r.order_ref || r.id}
+      </span>
+    ),
+  },
+  {
+    key: 'customer',
+    label: 'Customer',
+    render: (r) => (
+      <div>
+        <div className="fw-semibold text-dark" style={{ fontSize: '0.86rem' }}>
+          {r.customer_name || r.customer || 'Guest Customer'}
+        </div>
+        {(r.customer_phone || r.phone) && (
+          <div className="text-muted fs-xs font-monospace">{r.customer_phone || r.phone}</div>
+        )}
+      </div>
+    ),
+  },
+  {
+    key: 'items',
+    label: 'Items',
+    align: 'center',
+    render: (r) => (
+      <span className="badge bg-light text-secondary border px-2.5 py-1" style={{ fontSize: '0.75rem' }}>
+        {r.item_count ?? r.items ?? 1} item{((r.item_count ?? r.items ?? 1) === 1 ? '' : 's')}
+      </span>
+    ),
+  },
+  {
+    key: 'total',
+    label: 'Total Amount',
+    align: 'right',
+    render: (r) => (
+      <span className="fw-bold text-dark font-monospace" style={{ fontSize: '0.9rem' }}>
+        {fmtNaira(r.total_amount ?? r.total)}
+      </span>
+    ),
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    render: (r) => <Badge label={r.status} color={statusColor(r.status)} dot />,
+  },
+  {
+    key: 'created_at',
+    label: 'Date & Time',
+    render: (r) => (
+      <div>
+        <div className="text-dark fw-medium" style={{ fontSize: '0.82rem' }}>
+          {r.created_at ? fmtDate(r.created_at) : (r.date || '—')}
+        </div>
+        <div className="text-muted fs-xs">
+          {r.time_ago || (r.created_at ? formatTimeAgo(r.created_at) : (r.time || '—'))}
+        </div>
+      </div>
+    ),
+  },
 ]
 
 const productSoldColumns = [
-  { key: 'name', label: 'Product', render: (r) => <><p className="fw-medium fs-sm mb-0">{r.name}</p><span className="text-muted fs-xs">{r.sku}</span></> },
-  { key: 'sold', label: 'Units Sold', align: 'right', render: (r) => r.units_sold ?? r.sold ?? r.qty_sold ?? '—' },
-  { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtNaira(r.total_revenue ?? r.revenue) },
+  {
+    key: 'name',
+    label: 'Product',
+    render: (r) => (
+      <div>
+        <p className="fw-bold text-dark mb-0" style={{ fontSize: '0.86rem' }}>{r.name}</p>
+        {r.sku && (
+          <span className="badge bg-light text-secondary border font-monospace mt-0.5" style={{ fontSize: '0.68rem' }}>
+            {r.sku}
+          </span>
+        )}
+      </div>
+    ),
+  },
+  {
+    key: 'sold',
+    label: 'Units Sold',
+    align: 'right',
+    render: (r) => (
+      <span className="badge bg-light text-dark border px-2.5 py-1 fw-bold" style={{ fontSize: '0.78rem' }}>
+        {Number(r.units_sold ?? r.sold ?? r.qty_sold ?? 0).toLocaleString()} units
+      </span>
+    ),
+  },
+  {
+    key: 'revenue',
+    label: 'Total Revenue',
+    align: 'right',
+    render: (r) => (
+      <span className="fw-bold text-success font-monospace" style={{ fontSize: '0.9rem' }}>
+        {fmtNaira(r.total_revenue ?? r.revenue)}
+      </span>
+    ),
+  },
 ]
 
 const lowStockColumns = [
-  { key: 'name', label: 'Product', render: (r) => r.name },
-  { key: 'sku', label: 'SKU', render: (r) => <span className="badge bg-light text-dark fs-xs">{r.sku}</span> },
-  { key: 'stock', label: 'In Stock', align: 'right', render: (r) => r.stock ?? r.qty },
-  { key: 'reorder', label: 'Reorder At', align: 'right', render: (r) => r.low_stock_threshold ?? r.reorder_qty ?? '—' },
+  {
+    key: 'name',
+    label: 'Product Name',
+    render: (r) => (
+      <div>
+        <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>{r.name}</div>
+        {r.category && <span className="text-muted fs-xs">{r.category}</span>}
+      </div>
+    ),
+  },
+  {
+    key: 'sku',
+    label: 'SKU',
+    render: (r) => (
+      <span className="badge bg-light text-secondary border font-monospace" style={{ fontSize: '0.72rem' }}>
+        {r.sku || '—'}
+      </span>
+    ),
+  },
+  {
+    key: 'stock',
+    label: 'Current Stock',
+    align: 'right',
+    render: (r) => {
+      const qty = Number(r.stock ?? r.qty ?? 0)
+      const isCritical = qty <= 0
+      return (
+        <span
+          className="badge"
+          style={{
+            backgroundColor: isCritical ? '#FFE4E6' : '#FEF3C7',
+            color: isCritical ? '#BE123C' : '#B45309',
+            border: isCritical ? '1px solid #FECDD3' : '1px solid #FDE68A',
+            fontWeight: 800,
+            fontSize: '0.75rem',
+            padding: '0.3rem 0.65rem',
+            borderRadius: '9999px',
+          }}
+        >
+          {qty} {r.unit || 'units'}
+        </span>
+      )
+    },
+  },
+  {
+    key: 'reorder',
+    label: 'Reorder Level',
+    align: 'right',
+    render: (r) => (
+      <span className="text-muted fw-bold font-monospace">
+        {r.low_stock_threshold ?? r.reorder_qty ?? '—'}
+      </span>
+    ),
+  },
 ]
 
 const deliveryColumns = [
-  { key: 'ref', label: 'Ref', render: (r) => r.delivery_ref || r.id },
-  { key: 'customer', label: 'Customer' },
-  { key: 'driver', label: 'Driver', render: (r) => r.driver || '—' },
-  { key: 'zone', label: 'Zone', render: (r) => r.zone || '—' },
-  { key: 'eta', label: 'ETA', align: 'right', render: (r) => r.eta ? `${r.eta} min` : '—' },
-  { key: 'status', label: 'Status', render: (r) => <Badge label={(r.status || '').replace(/_/g, ' ')} color={r.status === 'en_route' ? 'green' : r.status === 'awaiting_pickup' ? 'blue' : 'amber'} /> },
+  {
+    key: 'ref',
+    label: 'Delivery Ref',
+    render: (r) => (
+      <span
+        className="fw-bold font-monospace"
+        style={{
+          backgroundColor: '#F0F9FF',
+          color: '#0369A1',
+          padding: '0.25rem 0.6rem',
+          borderRadius: '0.4rem',
+          border: '1px solid #BAE6FD',
+          fontSize: '0.78rem',
+        }}
+      >
+        {r.delivery_ref || r.id}
+      </span>
+    ),
+  },
+  {
+    key: 'customer',
+    label: 'Recipient / Customer',
+    render: (r) => <div className="fw-semibold text-dark">{r.customer_name || r.customer || '—'}</div>,
+  },
+  {
+    key: 'driver',
+    label: 'Assigned Driver',
+    render: (r) => (
+      <div className="d-flex align-items-center gap-1.5">
+        <i className="ri-steering-line text-muted" />
+        <span className="fw-medium text-dark">{r.driver || 'Unassigned'}</span>
+      </div>
+    ),
+  },
+  {
+    key: 'zone',
+    label: 'Delivery Zone',
+    render: (r) => (
+      <span className="badge bg-light text-secondary border" style={{ fontSize: '0.72rem' }}>
+        {r.zone || 'Default'}
+      </span>
+    ),
+  },
+  {
+    key: 'eta',
+    label: 'Estimated Time',
+    align: 'right',
+    render: (r) => (
+      <span className="fw-bold text-dark font-monospace" style={{ fontSize: '0.84rem' }}>
+        {r.eta ? `${r.eta} mins` : '—'}
+      </span>
+    ),
+  },
+  {
+    key: 'status',
+    label: 'Dispatch Status',
+    render: (r) => <Badge label={(r.status || '').replace(/_/g, ' ')} color={statusColor(r.status)} dot />,
+  },
 ]
 
 const staffColumns = [
-  { key: 'name', label: 'Name' },
-  { key: 'role', label: 'Role', render: (r) => r.role || '—' },
-  { key: 'shift', label: 'Shift', render: (r) => r.shift || '—' },
-  { key: 'clock_in', label: 'Clock In', render: (r) => r.clock_in ? new Date(r.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—' },
-  { key: 'status', label: 'Status', render: (r) => <Badge label={(r.status || '').replace(/_/g, ' ')} color={r.status === 'present' ? 'green' : r.status === 'absent' ? 'red' : 'amber'} /> },
+  {
+    key: 'name',
+    label: 'Staff Member',
+    render: (r) => <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>{r.name}</div>,
+  },
+  {
+    key: 'role',
+    label: 'Designation / Role',
+    render: (r) => (
+      <span className="badge bg-light text-secondary border text-capitalize" style={{ fontSize: '0.72rem' }}>
+        {String(r.role || 'Staff').replace(/_/g, ' ')}
+      </span>
+    ),
+  },
+  {
+    key: 'shift',
+    label: 'Assigned Shift',
+    render: (r) => <span className="text-muted fw-medium">{r.shift || 'Morning Shift'}</span>,
+  },
+  {
+    key: 'clock_in',
+    label: 'Clock In Time',
+    render: (r) => (
+      <span className="font-monospace text-dark fw-semibold">
+        {r.clock_in ? new Date(r.clock_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+      </span>
+    ),
+  },
+  {
+    key: 'status',
+    label: 'Attendance',
+    render: (r) => <Badge label={(r.status || '').replace(/_/g, ' ')} color={statusColor(r.status)} dot />,
+  },
 ]
 
 function useApexChart(ref, optionsFn, deps = []) {
@@ -543,8 +770,12 @@ function OverviewTab() {
 
       {modal && (
         <DetailModal
-          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
-          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+          title={modal.title}
+          subtitle={modal.subtitle}
+          icon={modal.icon}
+          countBadge={`${(modal.rows ?? []).length} items`}
+          onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-semibold">{(modal.rows ?? []).length} record{(modal.rows ?? []).length === 1 ? '' : 's'} available</span>}
         >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
@@ -820,8 +1051,12 @@ function SalesTab() {
 
       {modal && (
         <DetailModal
-          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
-          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+          title={modal.title}
+          subtitle={modal.subtitle}
+          icon={modal.icon}
+          countBadge={`${(modal.rows ?? []).length} records`}
+          onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-semibold">{(modal.rows ?? []).length} record{(modal.rows ?? []).length === 1 ? '' : 's'} available</span>}
         >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
@@ -891,26 +1126,72 @@ function FinanceTab() {
   ]
   const openMonthly = (title, sub) => setModal({ title, subtitle: sub, icon: 'ri-line-chart-line', columns: monthlyColumns, rows: data?.charts?.monthly_6m ?? [] })
   const openAccounts = () => setModal({
-    title: 'Bank Accounts Ledger', subtitle: 'Active corporate and operations accounts',
+    title: 'Bank Accounts Ledger', subtitle: 'Active corporate, retail settlement and operations accounts',
     icon: 'ri-bank-line',
     columns: [
-      { key: 'account_name', label: 'Account', render: (r) => r.account_name || r.account },
-      { key: 'bank_name', label: 'Bank', render: (r) => r.bank_name || r.bank },
-      { key: 'account_type', label: 'Type', render: (r) => r.account_type || r.type },
-      { key: 'balance', label: 'Balance', align: 'right', render: (r) => fmtNaira(r.balance) },
-      { key: 'status', label: 'Status', render: (r) => <Badge label={r.status || 'active'} color="green" /> },
+      {
+        key: 'account_name',
+        label: 'Account Name',
+        render: (r) => <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>{r.account_name || r.account}</div>,
+      },
+      {
+        key: 'bank_name',
+        label: 'Financial Institution',
+        render: (r) => <span className="fw-medium text-dark">{r.bank_name || r.bank}</span>,
+      },
+      {
+        key: 'account_type',
+        label: 'Type',
+        render: (r) => <span className="badge bg-light text-secondary border text-capitalize">{r.account_type || r.type || 'Checking'}</span>,
+      },
+      {
+        key: 'balance',
+        label: 'Available Balance',
+        align: 'right',
+        render: (r) => <span className="fw-bold text-dark font-monospace" style={{ fontSize: '0.9rem' }}>{fmtNaira(r.balance)}</span>,
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        render: (r) => <Badge label={r.status || 'active'} color="green" dot />,
+      },
     ],
     rows: accounts,
   })
   const openDues = () => setModal({
-    title: 'Supplier Invoices Due', subtitle: 'Outstanding produce-purchase payments',
+    title: 'Supplier Invoices Due', subtitle: 'Outstanding produce and supplies procurement payments',
     icon: 'ri-truck-line',
     columns: [
-      { key: 'supplier', label: 'Supplier', render: (r) => r.supplier_name || r.supplier || r.name },
-      { key: 'invoice_no', label: 'Invoice #', render: (r) => r.invoice_number || r.invoice_no || '—' },
-      { key: 'due_date', label: 'Due Date', render: (r) => fmtDate(r.due_date || r.due) },
-      { key: 'amount', label: 'Amount', align: 'right', render: (r) => fmtNaira(r.amount) },
-      { key: 'status', label: 'Status', render: (r) => <Badge label={r.status || 'pending'} color={r.status === 'overdue' ? 'red' : 'amber'} /> },
+      {
+        key: 'supplier',
+        label: 'Supplier / Vendor',
+        render: (r) => <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>{r.supplier_name || r.supplier || r.name}</div>,
+      },
+      {
+        key: 'invoice_no',
+        label: 'Invoice Ref',
+        render: (r) => (
+          <span className="badge bg-light text-dark font-monospace border" style={{ fontSize: '0.74rem' }}>
+            {r.invoice_number || r.invoice_no || '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'due_date',
+        label: 'Due Date',
+        render: (r) => <span className="text-dark fw-medium">{fmtDate(r.due_date || r.due)}</span>,
+      },
+      {
+        key: 'amount',
+        label: 'Payable Amount',
+        align: 'right',
+        render: (r) => <span className="fw-bold text-dark font-monospace" style={{ fontSize: '0.9rem' }}>{fmtNaira(r.amount)}</span>,
+      },
+      {
+        key: 'status',
+        label: 'Payment Status',
+        render: (r) => <Badge label={r.status || 'pending'} color={r.status === 'overdue' ? 'red' : 'amber'} dot />,
+      },
     ],
     rows: dues,
   })
@@ -1064,8 +1345,12 @@ function FinanceTab() {
 
       {modal && (
         <DetailModal
-          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
-          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+          title={modal.title}
+          subtitle={modal.subtitle}
+          icon={modal.icon}
+          countBadge={`${(modal.rows ?? []).length} records`}
+          onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-semibold">{(modal.rows ?? []).length} record{(modal.rows ?? []).length === 1 ? '' : 's'} available</span>}
         >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
@@ -1115,33 +1400,91 @@ function InventoryTab() {
   const openInvList = (title, sub, rows = invList) => setModal({
     title, subtitle: sub, icon: 'ri-archive-stack-line',
     columns: [
-      { key: 'name', label: 'Product' },
-      { key: 'sku', label: 'SKU', render: (r) => <span className="badge bg-light text-dark fs-xs font-monospace">{r.sku}</span> },
-      { key: 'category', label: 'Category', render: (r) => r.category || '—' },
-      { key: 'stock', label: 'Qty', align: 'right', render: (r) => r.stock ?? r.qty },
-      { key: 'value', label: 'Value', align: 'right', render: (r) => fmtNaira(r.value ?? (r.stock ?? 0) * (r.unit_price || r.price || 0)) },
+      {
+        key: 'name',
+        label: 'Product Name',
+        render: (r) => <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>{r.name}</div>,
+      },
+      {
+        key: 'sku',
+        label: 'SKU',
+        render: (r) => <span className="badge bg-light text-secondary border font-monospace" style={{ fontSize: '0.72rem' }}>{r.sku || '—'}</span>,
+      },
+      {
+        key: 'category',
+        label: 'Category',
+        render: (r) => <span className="badge bg-light text-dark border">{r.category || 'Produce'}</span>,
+      },
+      {
+        key: 'stock',
+        label: 'Stock on Hand',
+        align: 'right',
+        render: (r) => {
+          const qty = Number(r.stock ?? r.qty ?? 0)
+          return (
+            <span
+              className="badge"
+              style={{
+                backgroundColor: qty <= 0 ? '#FFE4E6' : qty <= 5 ? '#FEF3C7' : '#DCFCE7',
+                color: qty <= 0 ? '#BE123C' : qty <= 5 ? '#B45309' : '#15803D',
+                border: qty <= 0 ? '1px solid #FECDD3' : qty <= 5 ? '1px solid #FDE68A' : '1px solid #86EFAC',
+                fontWeight: 700,
+                fontSize: '0.75rem',
+              }}
+            >
+              {qty} {r.unit || 'units'}
+            </span>
+          )
+        },
+      },
+      {
+        key: 'value',
+        label: 'Stock Value',
+        align: 'right',
+        render: (r) => <span className="fw-bold text-dark font-monospace" style={{ fontSize: '0.88rem' }}>{fmtNaira(r.value ?? (r.stock ?? 0) * (r.unit_price || r.price || 0))}</span>,
+      },
     ],
     rows,
   })
   const openLowStock = () => setModal({
-    title: 'Below Reorder Level', subtitle: 'Products at or under safety threshold',
+    title: 'Below Reorder Level', subtitle: 'Products at or under safety reorder threshold',
     icon: 'ri-alert-line', columns: lowStockColumns, rows: lowStock,
   })
   const openExpiring = () => setModal({
-    title: 'Expiring Batches (7 Days)', subtitle: 'Produce batches nearing expiration date',
+    title: 'Expiring Batches (7 Days)', subtitle: 'Fresh produce batches nearing expiration date',
     icon: 'ri-timer-flash-line',
     columns: [
-      { key: 'name', label: 'Product' },
-      { key: 'batch_no', label: 'Batch #' },
-      { key: 'quantity', label: 'Qty', align: 'right' },
-      { key: 'expiry_date', label: 'Expiry Date', render: (r) => fmtDate(r.expiry_date) },
+      {
+        key: 'name',
+        label: 'Product Name',
+        render: (r) => <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>{r.name}</div>,
+      },
+      {
+        key: 'batch_no',
+        label: 'Batch Number',
+        render: (r) => <span className="badge bg-light text-dark font-monospace border">{r.batch_no || r.batch || '—'}</span>,
+      },
+      {
+        key: 'quantity',
+        label: 'Batch Qty',
+        align: 'right',
+        render: (r) => <span className="fw-bold text-dark">{r.quantity ?? r.qty ?? '—'} units</span>,
+      },
+      {
+        key: 'expiry_date',
+        label: 'Expiry Date',
+        render: (r) => <span className="badge" style={{ backgroundColor: '#FFE4E6', color: '#BE123C', border: '1px solid #FECDD3', fontWeight: 700 }}>{fmtDate(r.expiry_date)}</span>,
+      },
     ],
     rows: expiringBatches,
   })
   const openByCategory = () => setModal({
-    title: 'Stock Valuation by Category', subtitle: 'Current inventory holding value',
+    title: 'Stock Valuation by Category', subtitle: 'Current inventory holding value per produce category',
     icon: 'ri-list-check-2',
-    columns: [{ key: 'category', label: 'Category' }, { key: 'value', label: 'Value', align: 'right', render: (r) => fmtNaira(r.value) }],
+    columns: [
+      { key: 'category', label: 'Category', render: (r) => <div className="fw-bold text-dark">{r.category}</div> },
+      { key: 'value', label: 'Holding Valuation', align: 'right', render: (r) => <span className="fw-bold text-dark font-monospace">{fmtNaira(r.value)}</span> },
+    ],
     rows: data?.charts?.value_by_category ?? [],
   })
 
@@ -1245,8 +1588,12 @@ function InventoryTab() {
 
       {modal && (
         <DetailModal
-          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
-          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+          title={modal.title}
+          subtitle={modal.subtitle}
+          icon={modal.icon}
+          countBadge={`${(modal.rows ?? []).length} items`}
+          onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-semibold">{(modal.rows ?? []).length} record{(modal.rows ?? []).length === 1 ? '' : 's'} available</span>}
         >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
@@ -1300,38 +1647,126 @@ function OperationsTab() {
 
   const openDeliveries = () => setModal({ title: 'Active Deliveries', subtitle: 'Currently dispatched or en route', icon: 'ri-bike-line', columns: deliveryColumns, rows: deliveries })
   const openDrivers = () => setModal({
-    title: 'Drivers on Duty', subtitle: 'Active fleet drivers available or on delivery',
+    title: 'Fleet Drivers on Duty', subtitle: 'Active dispatch riders and drivers available or en route',
     icon: 'ri-steering-2-line',
     columns: [
-      { key: 'name', label: 'Driver' },
-      { key: 'vehicle_type', label: 'Vehicle', render: (r) => r.vehicle_type || '—' },
-      { key: 'zone', label: 'Primary Zone', render: (r) => r.zone || '—' },
-      { key: 'rating', label: 'Rating', align: 'right', render: (r) => r.rating ? `${r.rating} ★` : '—' },
-      { key: 'status', label: 'Status', render: (r) => <Badge label={(r.status || '').replace(/_/g, ' ')} color={r.status === 'on_delivery' ? 'blue' : 'green'} /> },
+      {
+        key: 'name',
+        label: 'Driver Name',
+        render: (r) => <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>{r.name}</div>,
+      },
+      {
+        key: 'vehicle_type',
+        label: 'Vehicle Fleet',
+        render: (r) => (
+          <span className="badge bg-light text-secondary border text-capitalize">
+            <i className="ri-e-bike-2-line me-1" />
+            {r.vehicle_type || 'Motorcycle'}
+          </span>
+        ),
+      },
+      {
+        key: 'zone',
+        label: 'Primary Zone',
+        render: (r) => <span className="badge bg-light text-dark border">{r.zone || 'Central'}</span>,
+      },
+      {
+        key: 'rating',
+        label: 'Driver Rating',
+        align: 'right',
+        render: (r) => (
+          <span className="badge" style={{ backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', fontWeight: 800 }}>
+            {r.rating ? `${r.rating} ★` : '5.0 ★'}
+          </span>
+        ),
+      },
+      {
+        key: 'status',
+        label: 'Duty Status',
+        render: (r) => <Badge label={(r.status || 'available').replace(/_/g, ' ')} color={r.status === 'on_delivery' ? 'blue' : 'green'} dot />,
+      },
     ],
     rows: driversOnDutyList,
   })
   const openAvgDeliveryTime = () => setModal({
-    title: 'Delivery Times Log', subtitle: "Today's completed deliveries and durations",
+    title: 'Completed Deliveries Speed Log', subtitle: "Today's delivered dispatches and transit duration log",
     icon: 'ri-time-line',
     columns: [
-      { key: 'delivery_ref', label: 'Ref' },
-      { key: 'dispatched_at', label: 'Dispatched', render: (r) => r.dispatched_at ? new Date(r.dispatched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—' },
-      { key: 'delivered_at', label: 'Delivered', render: (r) => r.delivered_at ? new Date(r.delivered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—' },
-      { key: 'minutes', label: 'Minutes', align: 'right', render: (r) => r.minutes ? `${r.minutes} min` : '—' },
+      {
+        key: 'delivery_ref',
+        label: 'Delivery Ref',
+        render: (r) => (
+          <span className="badge bg-light text-primary font-monospace border" style={{ fontSize: '0.74rem' }}>
+            {r.delivery_ref || r.id || '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'dispatched_at',
+        label: 'Dispatched At',
+        render: (r) => (
+          <span className="font-monospace text-dark">
+            {r.dispatched_at ? new Date(r.dispatched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'delivered_at',
+        label: 'Delivered At',
+        render: (r) => (
+          <span className="font-monospace text-dark">
+            {r.delivered_at ? new Date(r.delivered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'minutes',
+        label: 'Transit Time',
+        align: 'right',
+        render: (r) => (
+          <span className="badge" style={{ backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC', fontWeight: 800 }}>
+            {r.minutes ? `${r.minutes} mins` : '—'}
+          </span>
+        ),
+      },
     ],
     rows: deliveryTimesList,
   })
-  const openStaffToday = () => setModal({ title: 'Staff Attendance Log', subtitle: 'Full shift attendance', icon: 'ri-team-line', columns: staffColumns, rows: staffList })
+  const openStaffToday = () => setModal({ title: 'Staff Attendance Log', subtitle: 'Full shift attendance register', icon: 'ri-team-line', columns: staffColumns, rows: staffList })
   const openPurchaseOrders = () => setModal({
-    title: 'Purchase Orders', subtitle: 'Procurement orders for produce and supplies',
+    title: 'Supplier Purchase Orders', subtitle: 'Procurement orders for fresh produce and packaging',
     icon: 'ri-shopping-bag-3-line',
     columns: [
-      { key: 'po_ref', label: 'PO Ref', render: (r) => r.po_ref || r.reference || r.id },
-      { key: 'supplier', label: 'Supplier' },
-      { key: 'amount', label: 'Amount', align: 'right', render: (r) => fmtNaira(r.amount) },
-      { key: 'date', label: 'Date', render: (r) => fmtDate(r.date) },
-      { key: 'status', label: 'Status', render: (r) => <Badge label={r.status} color={r.status === 'paid' ? 'green' : r.status === 'received' ? 'blue' : r.status === 'pending' ? 'amber' : 'red'} /> },
+      {
+        key: 'po_ref',
+        label: 'PO Ref',
+        render: (r) => (
+          <span className="fw-bold font-monospace text-primary" style={{ backgroundColor: '#F0F9FF', padding: '0.2rem 0.55rem', borderRadius: '0.4rem', border: '1px solid #BAE6FD', fontSize: '0.78rem' }}>
+            {r.po_ref || r.reference || r.id}
+          </span>
+        ),
+      },
+      {
+        key: 'supplier',
+        label: 'Supplier / Vendor',
+        render: (r) => <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>{r.supplier || r.supplier_name || '—'}</div>,
+      },
+      {
+        key: 'amount',
+        label: 'Order Total',
+        align: 'right',
+        render: (r) => <span className="fw-bold text-dark font-monospace" style={{ fontSize: '0.88rem' }}>{fmtNaira(r.amount)}</span>,
+      },
+      {
+        key: 'date',
+        label: 'PO Date',
+        render: (r) => <span className="text-dark fw-medium">{fmtDate(r.date)}</span>,
+      },
+      {
+        key: 'status',
+        label: 'PO Status',
+        render: (r) => <Badge label={r.status} color={statusColor(r.status)} dot />,
+      },
     ],
     rows: purchaseOrders,
   })
@@ -1465,8 +1900,12 @@ function OperationsTab() {
 
       {modal && (
         <DetailModal
-          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
-          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+          title={modal.title}
+          subtitle={modal.subtitle}
+          icon={modal.icon}
+          countBadge={`${(modal.rows ?? []).length} records`}
+          onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-semibold">{(modal.rows ?? []).length} record{(modal.rows ?? []).length === 1 ? '' : 's'} available</span>}
         >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
@@ -1478,12 +1917,60 @@ function OperationsTab() {
 // ── Tab 6: Customers Tab (Growth, Wallets & Loyalty) ──────────────────────────
 
 const customerColumns = [
-  { key: 'name', label: 'Name', render: (r) => r.name },
-  { key: 'phone', label: 'Phone', render: (r) => r.phone },
-  { key: 'orders', label: 'Orders', align: 'right', render: (r) => r.total_orders ?? r.orders },
-  { key: 'points', label: 'Points', align: 'right', render: (r) => `${(r.points ?? 0).toLocaleString()} pts` },
-  { key: 'wallet', label: 'Wallet', align: 'right', render: (r) => fmtNaira(r.wallet_balance ?? r.wallet) },
-  { key: 'status', label: 'Status', render: (r) => <Badge label={r.status} color={r.status === 'active' ? 'green' : 'red'} /> },
+  {
+    key: 'name',
+    label: 'Customer Name',
+    render: (r) => (
+      <div>
+        <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>{r.name || 'Registered Customer'}</div>
+        {r.email && <div className="text-muted fs-xs">{r.email}</div>}
+      </div>
+    ),
+  },
+  {
+    key: 'phone',
+    label: 'Phone Number',
+    render: (r) => (
+      <span className="font-monospace text-dark fw-medium" style={{ fontSize: '0.8rem' }}>
+        {r.phone || '—'}
+      </span>
+    ),
+  },
+  {
+    key: 'orders',
+    label: 'Lifetime Orders',
+    align: 'center',
+    render: (r) => (
+      <span className="badge bg-light text-dark border px-2.5 py-1 fw-bold" style={{ fontSize: '0.78rem' }}>
+        {r.total_orders ?? r.orders ?? 0}
+      </span>
+    ),
+  },
+  {
+    key: 'points',
+    label: 'Loyalty Points',
+    align: 'right',
+    render: (r) => (
+      <span className="badge" style={{ backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', fontWeight: 800, fontSize: '0.75rem' }}>
+        {(r.points ?? 0).toLocaleString()} pts
+      </span>
+    ),
+  },
+  {
+    key: 'wallet',
+    label: 'Wallet Balance',
+    align: 'right',
+    render: (r) => (
+      <span className="fw-bold text-dark font-monospace" style={{ fontSize: '0.88rem' }}>
+        {fmtNaira(r.wallet_balance ?? r.wallet)}
+      </span>
+    ),
+  },
+  {
+    key: 'status',
+    label: 'Account Status',
+    render: (r) => <Badge label={r.status || 'active'} color={statusColor(r.status || 'active')} dot />,
+  },
 ]
 
 function CustomersTab() {
@@ -1631,8 +2118,12 @@ function CustomersTab() {
 
       {modal && (
         <DetailModal
-          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
-          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+          title={modal.title}
+          subtitle={modal.subtitle}
+          icon={modal.icon}
+          countBadge={`${(modal.rows ?? []).length} customers`}
+          onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-semibold">{(modal.rows ?? []).length} record{(modal.rows ?? []).length === 1 ? '' : 's'} available</span>}
         >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
@@ -1682,26 +2173,82 @@ function ChefBemsTab() {
   const mealAssocs    = data?.meal_associations ?? []
 
   const convColumns = [
-    { key: 'customer', label: 'Customer' },
-    { key: 'query', label: 'Customer Message', render: (r) => `"${r.query}"` },
-    { key: 'status', label: 'Status', render: (r) => <Badge label={r.status} color={r.status === 'new' ? 'amber' : r.status === 'resolved' || r.status === 'completed' ? 'green' : 'blue'} /> },
-    { key: 'created_at', label: 'Time', render: (r) => r.created_at ? formatTimeAgo(r.created_at) : '—' },
+    {
+      key: 'customer',
+      label: 'Customer',
+      render: (r) => (
+        <div className="fw-semibold text-dark" style={{ fontSize: '0.86rem' }}>
+          {r.customer_name || r.customer || 'Anonymous Shopper'}
+        </div>
+      ),
+    },
+    {
+      key: 'query',
+      label: 'AI Chat Query',
+      render: (r) => (
+        <div className="fst-italic text-dark" style={{ fontSize: '0.82rem', maxWidth: 380 }}>
+          "{r.query}"
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (r) => <Badge label={r.status} color={statusColor(r.status)} dot />,
+    },
+    {
+      key: 'created_at',
+      label: 'Time Ago',
+      render: (r) => (
+        <span className="text-muted fs-xs font-monospace">
+          {r.created_at ? formatTimeAgo(r.created_at) : (r.time || '—')}
+        </span>
+      ),
+    },
   ]
   const openConvs = (title, sub, rows = convs) => setModal({ title, subtitle: sub, icon: 'ri-robot-line', columns: convColumns, rows })
   const openDietaryRules = () => setModal({
-    title: 'Active Dietary Rules', subtitle: 'Configured recipe and health constraints',
+    title: 'Active Dietary & Health Rules', subtitle: 'Configured recipe, allergen and diet constraints',
     icon: 'ri-file-list-3-line',
     columns: [
-      { key: 'name', label: 'Condition / Rule', render: (r) => r.name || r.condition || r.rule },
-      { key: 'scope', label: 'Constraint Scope', render: (r) => r.scope || r.rule_text || 'Active constraint' },
-      { key: 'status', label: 'Status', render: (r) => <Badge label={r.status || 'active'} color="green" /> },
+      {
+        key: 'name',
+        label: 'Condition / Dietary Rule',
+        render: (r) => <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>{r.name || r.condition || r.rule}</div>,
+      },
+      {
+        key: 'scope',
+        label: 'Constraint & Scope',
+        render: (r) => <span className="badge bg-light text-secondary border">{r.scope || r.rule_text || 'Active AI Rule'}</span>,
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        render: (r) => <Badge label={r.status || 'active'} color="green" dot />,
+      },
     ],
     rows: dietaryRules,
   })
   const openMealAssocs = () => setModal({
-    title: 'Meal & Produce Associations', subtitle: 'Product ↔ meal pairing intelligence',
+    title: 'Meal & Produce Pairing Intelligence', subtitle: 'Product ↔ recipe pairing affinity graph',
     icon: 'ri-links-line',
-    columns: [{ key: 'meal', label: 'Produce Pairing' }, { key: 'association_count', label: 'Pairing Strength', align: 'right' }],
+    columns: [
+      {
+        key: 'meal',
+        label: 'Recipe / Produce Pairing',
+        render: (r) => <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>{r.meal || r.product || r.name}</div>,
+      },
+      {
+        key: 'association_count',
+        label: 'Affinity Score / Pairing Count',
+        align: 'right',
+        render: (r) => (
+          <span className="badge" style={{ backgroundColor: '#EEF2FF', color: '#3730A3', border: '1px solid #C7D2FE', fontWeight: 800 }}>
+            {r.association_count ?? r.score ?? 1} linkages
+          </span>
+        ),
+      },
+    ],
     rows: mealAssocs,
   })
 
@@ -1833,8 +2380,12 @@ function ChefBemsTab() {
 
       {modal && (
         <DetailModal
-          title={modal.title} subtitle={modal.subtitle} icon={modal.icon} onClose={() => setModal(null)}
-          footer={<span className="text-muted fs-xs fw-medium">{(modal.rows ?? []).length} result{(modal.rows ?? []).length === 1 ? '' : 's'}</span>}
+          title={modal.title}
+          subtitle={modal.subtitle}
+          icon={modal.icon}
+          countBadge={`${(modal.rows ?? []).length} records`}
+          onClose={() => setModal(null)}
+          footer={<span className="text-muted fs-xs fw-semibold">{(modal.rows ?? []).length} record{(modal.rows ?? []).length === 1 ? '' : 's'} available</span>}
         >
           <DetailTable columns={modal.columns} rows={modal.rows} />
         </DetailModal>
