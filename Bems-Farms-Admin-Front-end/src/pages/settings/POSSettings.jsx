@@ -49,9 +49,34 @@ export default function POSSettings() {
   const [directConnected, setDirectConnected] = useState(isPrinterConnected())
   const [printerInfo, setPrinterInfo] = useState(getConnectedPrinterInfo())
   const [directBusy, setDirectBusy] = useState(false)
+  const [testBarcode, setTestBarcode] = useState('')
+  const [testResult, setTestResult] = useState(null)
+  const [testSearching, setTestSearching] = useState(false)
 
   const fld = (key, value) => setForm((current) => ({ ...current, [key]: value }))
   const isOn = (key) => form[key] !== 'false'
+
+  async function handleTestBarcodeScan(code) {
+    const raw = String(code || '').trim()
+    if (!raw) return
+    setTestSearching(true)
+    setTestResult(null)
+    try {
+      const res = await api.get(`/admin/pos/products?barcode=${encodeURIComponent(raw)}`)
+      const found = res?.data?.products?.[0]
+      if (found) {
+        setTestResult({ status: 'found', product: found, code: raw })
+        toast.success(`Matched: ${found.name}`)
+      } else {
+        setTestResult({ status: 'not_found', code: raw })
+        toast.error(`Barcode "${raw}" is not yet linked to any product`)
+      }
+    } catch (err) {
+      setTestResult({ status: 'error', error: err?.message, code: raw })
+    } finally {
+      setTestSearching(false)
+    }
+  }
 
   useEffect(() => {
     Promise.all([api.get('/admin/settings/general'), api.get('/admin/settings/pos')])
@@ -299,6 +324,107 @@ export default function POSSettings() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Barcode Scanner Test Bench Card */}
+        <div className="card mb-4 border-indigo-subtle shadow-sm" style={{ borderLeft: '4px solid #4f46e5' }}>
+          <div className="card-header d-flex justify-content-between align-items-center bg-white">
+            <div className="d-flex align-items-center gap-2">
+              <span className="p-1 rounded bg-indigo-subtle text-primary fs-5">🏷️</span>
+              <div>
+                <h6 className="mb-0 fw-bold">Handheld Barcode Scanner Live Test Bench</h6>
+                <small className="text-muted">Test any USB, Bluetooth, or 2.4GHz wireless barcode reader with live catalog lookup.</small>
+              </div>
+            </div>
+            <span className="badge bg-primary-subtle text-primary border px-2 py-1 fs-12 fw-bold">
+              HID Auto-Detect
+            </span>
+          </div>
+          <div className="card-body">
+            <p className="text-muted fs-13 mb-3">
+              Click the input box below and pull the trigger on your barcode scanner to test scanning instantly:
+            </p>
+
+            <div className="input-group mb-3">
+              <span className="input-group-text bg-white"><i className="ri-barcode-line fs-5 text-primary"></i></span>
+              <input
+                type="text"
+                className="form-control form-control-lg"
+                placeholder="Click here & scan any product barcode..."
+                value={testBarcode}
+                autoComplete="off"
+                onChange={(e) => setTestBarcode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === 'Tab') {
+                    e.preventDefault()
+                    if (testBarcode.trim()) {
+                      handleTestBarcodeScan(testBarcode.trim())
+                    }
+                  }
+                }}
+              />
+              <button
+                type="button"
+                disabled={testSearching || !testBarcode.trim()}
+                onClick={() => handleTestBarcodeScan(testBarcode.trim())}
+                className="btn btn-primary fw-bold px-4">
+                {testSearching ? 'Looking up…' : 'Test Scan'}
+              </button>
+            </div>
+
+            {testResult && (
+              <div className={`p-3 rounded border mb-3 ${testResult.status === 'found' ? 'bg-success-subtle border-success' : 'bg-warning-subtle border-warning'}`}>
+                {testResult.status === 'found' && testResult.product && (
+                  <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                    <div className="d-flex align-items-center gap-3">
+                      {testResult.product.image_url ? (
+                        <img src={testResult.product.image_url} alt="" className="rounded border bg-white" style={{ width: 50, height: 50, objectFit: 'contain' }} />
+                      ) : (
+                        <div className="rounded bg-white border d-flex align-items-center justify-content-center" style={{ width: 50, height: 50 }}>
+                          <i className="ri-shopping-bag-3-line fs-4 text-success"></i>
+                        </div>
+                      )}
+                      <div>
+                        <span className="badge bg-success mb-1">✓ Product Recognized</span>
+                        <h6 className="mb-0 fw-bold text-dark">{testResult.product.name}</h6>
+                        <small className="text-muted">
+                          SKU: <span className="font-monospace">{testResult.product.sku}</span> • Barcode: <span className="font-monospace fw-bold">{testResult.code}</span> • Stock: {testResult.product.stock}
+                        </small>
+                      </div>
+                    </div>
+                    <div className="text-end">
+                      <div className="fs-5 fw-bold text-success font-display">₦{Number(testResult.product.price || 0).toLocaleString()}</div>
+                      <small className="text-muted">{testResult.product.category || 'Produce'}</small>
+                    </div>
+                  </div>
+                )}
+
+                {testResult.status === 'not_found' && (
+                  <div>
+                    <div className="d-flex align-items-center gap-2 text-warning mb-1">
+                      <i className="ri-error-warning-line fs-5"></i>
+                      <strong className="text-dark">Barcode Transmitted Successfully, but not linked yet</strong>
+                    </div>
+                    <p className="mb-2 fs-13 text-muted">
+                      Scanner sent: <code className="fw-bold bg-white px-1.5 py-0.5 rounded border text-dark font-monospace">{testResult.code}</code>
+                    </p>
+                    <a href="/products/barcode" className="btn btn-sm btn-outline-dark fw-bold">
+                      Open Barcode Studio to Link &amp; Generate Labels →
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="p-3 bg-light rounded border text-muted fs-12">
+              <strong className="text-dark">💡 Barcode Scanner Troubleshooting:</strong>
+              <ul className="mb-0 ps-3 mt-1">
+                <li><strong>No drivers required:</strong> All standard USB and Bluetooth scanners operate as Human Interface Devices (HID). Simply plug into your PC/Mac or pair via Bluetooth.</li>
+                <li><strong>Auto-Enter Suffix:</strong> By default, almost all barcode scanners send an <code>Enter (CR)</code> key after every scan. If your scanner doesn't trigger searches automatically, scan the <em>"Add Enter / Carriage Return"</em> barcode in your scanner's user manual.</li>
+                <li><strong>Direct POS Counter Scanning:</strong> On the POS Register screen, you can scan at any time without clicking on the search box.</li>
+              </ul>
+            </div>
           </div>
         </div>
 

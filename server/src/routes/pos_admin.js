@@ -653,8 +653,14 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
     const params = []; const where = ["p.status='active'"];
 
     if (barcode) {
-      params.push(barcode);
-      where.push(`p.barcode=$${params.length}`);
+      params.push(barcode.trim());
+      where.push(`(
+        p.barcode = $${params.length}
+        OR p.barcode ILIKE $${params.length}
+        OR p.sku = $${params.length}
+        OR p.sku ILIKE $${params.length}
+        OR (p.barcode IS NOT NULL AND REGEXP_REPLACE(p.barcode, '\\D', '', 'g') = REGEXP_REPLACE($${params.length}, '\\D', '', 'g') AND LENGTH($${params.length}) >= 4)
+      )`);
     } else if (q) {
       params.push(`%${q}%`);
       where.push(`(p.name ILIKE $${params.length} OR p.sku ILIKE $${params.length} OR p.barcode ILIKE $${params.length})`);

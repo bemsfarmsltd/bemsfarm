@@ -499,41 +499,83 @@ export default function POS() {
     return { byBarcode: bc, bySku: sk }
   }, [productsList])
 
+  // Barcode Normalization Helper
+  function cleanBarcodeString(code) {
+    if (!code) return ''
+    return String(code)
+      .replace(/[\r\n\t\x00-\x1F\x7F]/g, '')
+      .replace(/^\][A-Za-z0-9]{1,3}/, '')
+      .trim()
+  }
+
   // Barcode Scanner Handler
-  const handleBarcodeScan = useCallback((code) => {
-    if (!code) return
-    const trimmed = String(code).trim()
-    if (!trimmed) return
-    const upper = trimmed.toUpperCase()
+  const handleBarcodeScan = useCallback(async (rawCode) => {
+    if (!rawCode) return
+    const cleaned = cleanBarcodeString(rawCode)
+    if (!cleaned || cleaned.length < 2) return
+
+    const upper = cleaned.toUpperCase()
     const cleanNoPrefix = upper.replace(/^BF-/, '')
     const cleanNoSku = upper.replace(/^SKU-/, '')
-    const cleanNoZeros = upper.replace(/^0+/, '')
+    const cleanDigits = cleaned.replace(/\D/g, '')
 
-    const product =
+    // 1. In-memory lookup across all variations
+    let product =
       byBarcode[upper] ||
-      byBarcode[trimmed] ||
+      byBarcode[cleaned] ||
       byBarcode['BF-' + upper] ||
       byBarcode[cleanNoPrefix] ||
       bySku[upper] ||
       bySku[cleanNoSku] ||
-      (cleanNoZeros ? byBarcode[cleanNoZeros] : null) ||
+      (cleanDigits ? byBarcode[cleanDigits] : null) ||
       productsList.find(p =>
         (p.barcode && p.barcode.toUpperCase() === upper) ||
         (p.sku && p.sku.toUpperCase() === upper) ||
         (p.id && String(p.id) === upper) ||
-        (p.barcode && p.barcode.replace(/\D/g, '') === trimmed.replace(/\D/g, '') && trimmed.length >= 6)
+        (p.barcode && cleanDigits.length >= 4 && p.barcode.replace(/\D/g, '') === cleanDigits) ||
+        (p.sku && cleanDigits.length >= 4 && p.sku.replace(/\D/g, '') === cleanDigits) ||
+        (p.name && p.name.toLowerCase() === cleaned.toLowerCase())
       )
+
+    // 2. Fallback: Live Server API Lookup if not yet in memory
+    if (!product) {
+      try {
+        const res = await api.get(`/admin/pos/products?barcode=${encodeURIComponent(cleaned)}`)
+        const found = res?.data?.products?.[0]
+        if (found) {
+          const rawPrice = Number(found.price || found.unit_price || 0)
+          const sanitizedPrice = rawPrice >= 500000 ? Math.round(rawPrice / 1500) : Math.round(rawPrice)
+          product = {
+            id: found.id,
+            barcode: found.barcode || `BF-${found.sku || found.id}`,
+            sku: found.sku || `SKU-${found.id}`,
+            name: found.name,
+            cat: getProductCat(found),
+            price: sanitizedPrice || 1000,
+            stock: found.stock != null ? Number(found.stock) : 25,
+            unit: found.unit || 'unit',
+            image: found.image_url || found.image || null,
+            icon: found.icon || getProductIcon(found.name, found.category)
+          }
+          setProductsList(prev => [product, ...prev.filter(p => p.id !== product.id)])
+        }
+      } catch (err) {
+        console.warn('POS live barcode lookup error:', err)
+      }
+    }
 
     if (product) {
       setViewMode('register')
       if (activeModal === 'scanner') {
-        scannerAddProduct(trimmed)
+        scannerAddProduct(product.barcode || cleaned)
       } else {
+        playBeep('scan')
         addProductToCart(product)
+        showToast(`${product.name} scanned (+1)`, 'success', product.icon || '🏷️')
       }
     } else {
       playBeep('error')
-      showToast(`Unknown barcode: ${trimmed}`, 'error', '❌')
+      showToast(`Unknown barcode: "${cleaned}"`, 'error', '❌')
     }
   }, [byBarcode, bySku, productsList, activeModal])
 
@@ -638,15 +680,19 @@ export default function POS() {
       const now = Date.now()
 
       if (e.key === 'Enter' || e.key === 'Tab') {
-        const buffered = scanBuffer.current.trim()
+        const buffered = cleanBarcodeString(scanBuffer.current)
         const timestamps = scanKeyTimestamps.current
 
         let isHardwareScan = false
-        if (buffered.length >= 3 && timestamps.length >= 2) {
-          const totalDuration = timestamps[timestamps.length - 1] - timestamps[0]
-          const avgInterval = totalDuration / (timestamps.length - 1)
-          if (avgInterval < 85) {
+        if (buffered.length >= 2) {
+          if (!isInput) {
             isHardwareScan = true
+          } else if (timestamps.length >= 2) {
+            const totalDuration = timestamps[timestamps.length - 1] - timestamps[0]
+            const avgInterval = totalDuration / (timestamps.length - 1)
+            if (avgInterval < 150) {
+              isHardwareScan = true
+            }
           }
         }
 
@@ -677,7 +723,7 @@ export default function POS() {
         const timestamps = scanKeyTimestamps.current
         const lastTime = timestamps.length > 0 ? timestamps[timestamps.length - 1] : 0
 
-        if (now - lastTime > 120) {
+        if (now - lastTime > 300) {
           scanBuffer.current = ''
           scanKeyTimestamps.current = []
         }
@@ -698,9 +744,9 @@ export default function POS() {
 
   // Scanner basket helpers
   function scannerAddProduct(code) {
-    const trimmed = code.trim().toUpperCase()
+    const trimmed = cleanBarcodeString(code).toUpperCase()
     if (!trimmed) return
-    const product = byBarcode[trimmed] || byBarcode['BF-' + trimmed] || bySku[trimmed]
+    const product = byBarcode[trimmed] || byBarcode['BF-' + trimmed] || bySku[trimmed] || productsList.find(p => p.barcode?.toUpperCase() === trimmed || p.sku?.toUpperCase() === trimmed)
     if (!product) {
       playBeep('error')
       showToast(`Item not found: ${trimmed}`, 'error', '❌')
