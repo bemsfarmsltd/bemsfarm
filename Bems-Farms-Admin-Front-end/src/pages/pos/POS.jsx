@@ -820,24 +820,13 @@ export default function POS() {
     if (isPrinterConnected()) {
       try {
         await printReceiptESC(data, {})
-        showToast('Receipt printed silently to hardware printer!', 'success', '🖨️')
         return
       } catch (err) {
         console.warn('Direct hardware print failed, falling back to browser spool:', err)
-        showToast('Direct printer error, opened standard print dialog', 'info', '⚠️')
       }
     }
     printThermalReceipt()
   }, [successData])
-
-  useEffect(() => {
-    if (!autoPrintPending || !autoPrintReceipt || (activeModal !== 'success' && activeModal !== 'receipt') || !successData) return undefined
-    const timer = window.setTimeout(() => {
-      handlePrintReceipt(successData)
-      setAutoPrintPending(false)
-    }, 350)
-    return () => window.clearTimeout(timer)
-  }, [activeModal, autoPrintPending, autoPrintReceipt, successData, handlePrintReceipt])
 
   // Payment Confirmation
   async function confirmPayment(method) {
@@ -914,15 +903,36 @@ export default function POS() {
       return
     }
 
+    // Set active receipt for background printing
     setSuccessData(completedReceipt)
-    setAutoPrintPending(true)
-    setActiveModal('success')
+    
+    // Close checkout modal & reset cart immediately for next customer
+    closeModal()
+    clearCart()
+    setCustomer(null)
+    setOrderNote('')
+    setCashReceived('')
+    setDiscountPct(0)
+    setOrderId(genOrderId())
+
+    showToast(`Sale #${completedReceipt.orderId} Completed (${fmt(completedReceipt.total)}) · Printed`, 'success', '🧾')
+
+    if (autoPrintReceipt) {
+      setTimeout(() => {
+        handlePrintReceipt(completedReceipt)
+      }, 50)
+    }
   }
 
   function newOrder() {
     setSuccessData(null)
     closeModal()
     clearCart()
+    setCustomer(null)
+    setOrderNote('')
+    setCashReceived('')
+    setDiscountPct(0)
+    setOrderId(genOrderId())
   }
 
   // Quick cash calculations
@@ -2430,15 +2440,36 @@ export default function POS() {
         </div>
       )}
 
-      {/* ─── Payment Success & Receipt Modal ─────────────────────────── */}
-      {(activeModal === 'success' || activeModal === 'receipt') && successData && (
+      {/* ─── Background Thermal Print Target (Off-screen, Invisible to Cashier) ─── */}
+      {successData && (
+        <div style={{ position: 'fixed', left: '-9999px', top: '-9999px', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }}>
+          <ThermalReceipt
+            receiptType="pos"
+            receiptNumber={successData.orderId}
+            date={`${successData.date} · ${successData.time}`}
+            customer={successData.customer?.name || (typeof successData.cust === 'string' ? successData.cust : undefined)}
+            customerPhone={successData.customer?.phone}
+            channel="POS Terminal"
+            cashier={user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : (successData.cashier || 'Cashier')}
+            status="PAID"
+            items={successData.cart || successData.items || []}
+            subtotal={successData.subtotal}
+            discount={successData.discountAmt || successData.discount}
+            tax={successData.vat || successData.tax}
+            total={successData.total || successData.amount}
+            paymentMethod={successData.method}
+            amountTendered={successData.method === 'Cash' ? (successData.cashReceived || successData.amountTendered) : undefined}
+            change={successData.change}
+            note={successData.orderNote || successData.note}
+          />
+        </div>
+      )}
+
+      {/* ─── Manual Receipt Reprint Modal (Only when explicitly clicked from History) ─── */}
+      {activeModal === 'receipt' && successData && (
         <div className="pos-success-screen-overlay">
           <div className="pos-success-hero-card pos-success-hero-card--receipt">
-            <div className="pos-success-check-ring">
-              ✓
-            </div>
-
-            <h5 className="pos-success-headline">{activeModal === 'receipt' ? 'Receipt Details' : 'Sale Completed!'}</h5>
+            <h5 className="pos-success-headline">Receipt Details</h5>
             <div className="pos-success-bill-ref">Receipt ID: {successData.orderId}</div>
 
             <div className="thermal-receipt-preview thermal-receipt-preview--pos">
@@ -2468,13 +2499,12 @@ export default function POS() {
                 className="btn btn-outline-secondary flex-fill py-2 fw-bold d-flex align-items-center justify-content-center gap-1"
                 onClick={() => handlePrintReceipt(successData)}>
                 <i className={directPrinterConnected ? "ri-printer-fill text-success" : "ri-printer-line"}></i>
-                <span>{directPrinterConnected ? 'Print Direct (Silent ESC/POS)' : 'Print Receipt (Spooler)'}</span>
+                <span>{directPrinterConnected ? 'Print Direct (Silent ESC/POS)' : 'Print Receipt'}</span>
               </button>
             </div>
 
-            <button className="btn btn-emerald-solid w-100 py-3 fw-bolder fs-15" onClick={activeModal === 'receipt' ? closeModal : newOrder}>
-              <i className={activeModal === 'receipt' ? "ri-close-circle-line me-1" : "ri-add-circle-line me-1"}></i>
-              {activeModal === 'receipt' ? 'Close Receipt' : 'Next Customer [Enter]'}
+            <button className="btn btn-emerald-solid w-100 py-3 fw-bolder fs-15" onClick={closeModal}>
+              <i className="ri-close-circle-line me-1"></i> Close
             </button>
           </div>
         </div>
