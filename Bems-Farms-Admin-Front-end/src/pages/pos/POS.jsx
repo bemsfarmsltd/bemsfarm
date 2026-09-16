@@ -1770,108 +1770,198 @@ export default function POS() {
       {/* ─── Unified Checkout & Payment Modal ────────────────────────────── */}
       {(activeModal === 'checkout' || activeModal === 'cash' || activeModal === 'card' || activeModal === 'transfer' || activeModal === 'qr' || activeModal === 'split') && (
         <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 540 }}>
-            <div className="modal-content pos-modal-card">
-              <div className="modal-header pos-modal-header bg-emerald-solid">
-                <div className="d-flex align-items-center gap-2 text-white">
-                  <i className="ri-secure-payment-line fs-22"></i>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 580 }}>
+            <div className="modal-content pos-checkout-modal-card">
+              {/* Header */}
+              <div className="pos-checkout-modal-header">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="pos-checkout-header-icon-glow">
+                    <i className="ri-secure-payment-fill"></i>
+                  </div>
                   <div>
-                    <h6 className="modal-title mb-0 text-white fw-bold">POS Checkout & Payment</h6>
-                    <span className="text-white opacity-75 fs-11">{orderId} · {customer?.name || 'Walk-in Customer'}</span>
+                    <div className="d-flex align-items-center gap-2">
+                      <h5 className="pos-checkout-header-title mb-0">POS Express Checkout</h5>
+                      <span className="pos-checkout-status-pill"><span className="pos-pulse-dot"></span> Ready</span>
+                    </div>
+                    <div className="pos-checkout-meta-row mt-1">
+                      <span className="pos-checkout-tag"><i className="ri-hashtag"></i> {orderId}</span>
+                      <span className="pos-checkout-tag"><i className="ri-user-3-line"></i> {customer?.name || 'Walk-in Customer'}</span>
+                    </div>
                   </div>
                 </div>
-                <button className="btn-close btn-close-white" onClick={closeModal}></button>
+                <button type="button" className="pos-modal-close-btn" onClick={closeModal} title="Close [Esc]">
+                  <i className="ri-close-line"></i>
+                </button>
               </div>
 
               <div className="modal-body p-4">
-                {/* Total Payable Summary Hero Card */}
-                <div className="pos-cash-hero-box mb-3">
-                  <div>
-                    <span className="pos-cash-hero-lbl">Total Amount Payable</span>
-                    <div className="pos-cash-hero-val">{fmt(total)}</div>
-                  </div>
-                  <div className="text-end">
-                    <span className="badge bg-white text-emerald fw-bold px-2 py-1 fs-12 mb-1 d-block">{itemCount} items</span>
-                    <span className="fs-10 text-white opacity-75">Incl. 7.5% VAT</span>
+                {/* Master Ledger Hero Card */}
+                <div className="pos-ledger-hero-card mb-3">
+                  <div className="pos-ledger-hero-glow"></div>
+                  <div className="d-flex justify-content-between align-items-start position-relative">
+                    <div>
+                      <span className="pos-ledger-hero-subtitle">TOTAL AMOUNT DUE</span>
+                      <div className="pos-ledger-hero-amount">
+                        <span className="pos-currency-symbol">₦</span>
+                        <span className="pos-amount-digits">{Math.round(total || 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <div className="text-end">
+                      <div className="pos-ledger-item-badge">
+                        <i className="ri-shopping-bag-3-fill me-1"></i> {itemCount} {itemCount === 1 ? 'item' : 'items'}
+                      </div>
+                      <div className="pos-ledger-tax-line mt-1">
+                        Subtotal: {fmt(subtotal)} {discountAmt > 0 ? `· -${fmt(discountAmt)}` : ''} · VAT: {fmt(vat)}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Payment Method Selector Pills */}
+                {/* Payment Method Selector Grid */}
                 <div className="mb-3">
-                  <label className="form-label text-muted small fw-bold text-uppercase">Payment Method</label>
-                  <div className="pos-checkout-method-grid">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="pos-section-label">PAYMENT METHOD</span>
+                    <span className="pos-section-sub">Shortcuts [F8]–[F11]</span>
+                  </div>
+                  <div className="pos-method-grid-pro">
                     {[
-                      { id: 'Cash',          label: 'Cash',          icon: 'ri-money-dollar-circle-line', color: '#059669' },
-                      { id: 'Card / POS',    label: 'Card / POS',    icon: 'ri-bank-card-line',           color: '#2563eb' },
-                      { id: 'Bank Transfer', label: 'Transfer',      icon: 'ri-bank-line',                color: '#d97706' },
-                      { id: 'QR / USSD',     label: 'QR / USSD',     icon: 'ri-qr-code-line',             color: '#0891b2' },
-                      { id: 'Split Payment', label: 'Split',         icon: 'ri-layout-column-line',       color: '#7c3aed' },
-                    ].map(m => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => {
-                          setCheckoutPayMethod(m.id)
-                          if (m.id === 'Cash' && !cashReceived) setCashReceived(String(total))
-                        }}
-                        className={`pos-checkout-method-pill ${checkoutPayMethod === m.id ? 'active' : ''}`}
-                        style={{ '--pill-c': m.color }}
-                      >
-                        <i className={m.icon}></i>
-                        <span>{m.label}</span>
-                      </button>
-                    ))}
+                      { id: 'Cash',          short: 'Cash',          icon: 'ri-money-dollar-circle-fill', color: '#10b981', shortcut: 'F8' },
+                      { id: 'Card / POS',    short: 'Card / POS',    icon: 'ri-bank-card-fill',           color: '#3b82f6', shortcut: 'F9' },
+                      { id: 'Bank Transfer', short: 'Transfer',      icon: 'ri-bank-fill',                color: '#f59e0b', shortcut: 'F10' },
+                      { id: 'QR / USSD',     short: 'QR / USSD',     icon: 'ri-qr-code-fill',             color: '#06b6d4', shortcut: '' },
+                      { id: 'Split Payment', short: 'Split Bill',    icon: 'ri-pie-chart-2-fill',         color: '#a855f7', shortcut: 'F11' },
+                    ].map(m => {
+                      const isSelected = checkoutPayMethod === m.id
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            setCheckoutPayMethod(m.id)
+                            if (m.id === 'Cash' && !cashReceived) setCashReceived(String(total))
+                          }}
+                          className={`pos-method-card-pro ${isSelected ? 'active' : ''}`}
+                          style={{ '--m-color': m.color }}
+                        >
+                          <div className="pos-method-icon-wrap" style={{ background: isSelected ? m.color : 'rgba(128,128,128,0.1)', color: isSelected ? '#ffffff' : m.color }}>
+                            <i className={m.icon}></i>
+                          </div>
+                          <div className="pos-method-name">{m.short}</div>
+                          {m.shortcut && <span className="pos-method-shortcut">{m.shortcut}</span>}
+                          {isSelected && <div className="pos-method-check-dot"><i className="ri-check-line"></i></div>}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
 
-                {/* ── Cash Panel ── */}
+                {/* ── Cash Tender Panel ── */}
                 {checkoutPayMethod === 'Cash' && (
-                  <div>
+                  <div className="pos-tender-panel-card">
+                    {/* Tender Amount Input */}
                     <div className="mb-3">
-                      <label className="form-label text-muted small fw-bold">AMOUNT TENDERED (₦)</label>
-                      <div className="input-group input-group-lg">
-                        <span className="input-group-text bg-emerald-solid text-white border-0 fw-bold fs-20">₦</span>
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <label className="pos-input-legend">AMOUNT TENDERED BY CUSTOMER</label>
+                        {cashReceived && (
+                          <button type="button" className="pos-clear-btn" onClick={() => setCashReceived('')}>
+                            <i className="ri-close-circle-fill me-1"></i> Clear
+                          </button>
+                        )}
+                      </div>
+                      <div className="pos-cash-input-wrap">
+                        <span className="pos-cash-input-prefix">₦</span>
                         <input
                           type="number"
-                          className="form-control pos-theme-input fw-bold fs-22"
+                          className="pos-cash-input-field"
                           placeholder="0.00"
                           value={cashReceived}
                           onChange={e => setCashReceived(e.target.value)}
                           autoFocus
                         />
-                        {cashReceived && (
-                          <button className="btn btn-outline-secondary" onClick={() => setCashReceived('')}>
-                            Clear
+                        <div className="pos-cash-input-actions">
+                          <button
+                            type="button"
+                            className="pos-exact-cash-btn"
+                            onClick={() => setCashReceived(String(total))}
+                          >
+                            <i className="ri-sparkling-fill me-1"></i> Exact ({fmt(total)})
                           </button>
-                        )}
+                        </div>
                       </div>
                     </div>
 
+                    {/* 1-Tap Preset Denomination Chips */}
                     <div className="mb-3">
-                      <div className="pos-quick-tender-header">1-Tap Denomination Chips</div>
-                      <div className="pos-quick-tender-grid">
+                      <div className="pos-chips-header mb-2">
+                        <i className="ri-flashlight-fill text-amber me-1"></i>
+                        <span>1-Tap Fast Denominations</span>
+                      </div>
+                      <div className="pos-chips-grid">
                         {quickCashOptions.map(amt => (
                           <button
                             key={amt}
                             type="button"
-                            className="pos-quick-tender-pill"
-                            onClick={() => setCashReceived(String(amt))}>
+                            className={`pos-chip-btn ${Number(cashReceived) === amt ? 'active' : ''}`}
+                            onClick={() => setCashReceived(String(amt))}
+                          >
                             {amt === total ? `Exact (${fmt(amt)})` : fmt(amt)}
                           </button>
                         ))}
                       </div>
                     </div>
 
+                    {/* Fast Banknote Adders */}
+                    <div className="mb-3">
+                      <div className="pos-chips-header mb-2">
+                        <i className="ri-add-circle-fill text-emerald me-1"></i>
+                        <span>Quick Note Increment</span>
+                      </div>
+                      <div className="d-flex gap-2">
+                        {[500, 1000, 2000, 5000, 10000].map(inc => (
+                          <button
+                            key={inc}
+                            type="button"
+                            className="pos-inc-note-btn flex-fill"
+                            onClick={() => setCashReceived(prev => String((Number(prev) || 0) + inc))}
+                          >
+                            +{fmt(inc)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Live Dynamic Change Banner */}
                     {cashReceived && Number(cashReceived) >= total && (
-                      <div className="pos-change-banner success mb-3">
-                        <span className="fw-bold">Change Due to Customer</span>
-                        <span className="fw-bolder fs-20 text-emerald">{fmt(cashChange)}</span>
+                      <div className="pos-change-banner-pro success">
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="pos-change-icon-wrap success">
+                            <i className="ri-checkbox-circle-fill"></i>
+                          </div>
+                          <div>
+                            <span className="pos-change-label">CHANGE DUE TO CUSTOMER</span>
+                            <div className="pos-change-value text-emerald">{fmt(cashChange)}</div>
+                          </div>
+                        </div>
+                        <div className="text-end">
+                          <span className="badge bg-emerald text-white px-2 py-1 fs-12 fw-bold">Payment Covered</span>
+                        </div>
                       </div>
                     )}
+
                     {cashReceived && Number(cashReceived) < total && (
-                      <div className="pos-change-banner danger mb-3">
-                        <span className="fw-bold">Amount Remaining</span>
-                        <span className="fw-bolder fs-20 text-danger">{fmt(total - Number(cashReceived))}</span>
+                      <div className="pos-change-banner-pro danger">
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="pos-change-icon-wrap danger">
+                            <i className="ri-error-warning-fill"></i>
+                          </div>
+                          <div>
+                            <span className="pos-change-label text-danger">REMAINING BALANCE</span>
+                            <div className="pos-change-value text-danger">{fmt(total - Number(cashReceived))}</div>
+                          </div>
+                        </div>
+                        <div className="text-end">
+                          <span className="badge bg-danger text-white px-2 py-1 fs-11">Underpaid</span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1879,24 +1969,29 @@ export default function POS() {
 
                 {/* ── Card Panel ── */}
                 {checkoutPayMethod === 'Card / POS' && (
-                  <div>
-                    <div className="pos-terminal-instruction-box mb-3">
-                      <i className="ri-bank-card-2-line fs-32 text-sapphire"></i>
-                      <div className="fs-12 lh-base pos-entry-item-title">
-                        Charge <strong className="text-emerald">{fmt(total)}</strong> on the POS physical terminal.<br/>
-                        Once the payment slip approves, confirm below to print receipt.
+                  <div className="pos-tender-panel-card p-4 text-center">
+                    <div className="pos-card-terminal-hero mb-3">
+                      <div className="pos-terminal-icon-pulse">
+                        <i className="ri-bank-card-2-fill"></i>
                       </div>
+                      <h5 className="fw-bold mt-2 mb-1 pos-entry-item-title">POS Physical Terminal</h5>
+                      <p className="text-muted fs-13 mb-0">
+                        Charge <strong className="text-emerald fs-16">{fmt(total)}</strong> on the POS device.<br/>
+                        Once the customer approves the slip, confirm below to complete.
+                      </p>
                     </div>
-                    <div className="mb-3">
-                      <label className="form-label text-muted small fw-bold">CARD NETWORK (OPTIONAL)</label>
-                      <div className="d-flex gap-2">
+
+                    <div className="mb-2">
+                      <label className="pos-input-legend mb-2 d-block text-start">CARD NETWORK (OPTIONAL)</label>
+                      <div className="d-flex gap-2 justify-content-center">
                         {['Visa', 'Mastercard', 'Verve', 'Other'].map(t => (
                           <button
                             key={t}
                             type="button"
                             onClick={() => setCardTab(t.toLowerCase())}
-                            className={`pos-card-network-btn ${cardTab === t.toLowerCase() ? 'active' : ''}`}>
-                            {t}
+                            className={`pos-card-network-btn-pro ${cardTab === t.toLowerCase() ? 'active' : ''}`}
+                          >
+                            <i className="ri-shield-check-fill me-1"></i> {t}
                           </button>
                         ))}
                       </div>
@@ -1906,41 +2001,48 @@ export default function POS() {
 
                 {/* ── Bank Transfer Panel ── */}
                 {checkoutPayMethod === 'Bank Transfer' && (
-                  <div>
-                    <div className="pos-bank-account-box mb-3">
-                      <div className="d-flex justify-content-between align-items-center mb-1">
-                        <div className="fw-bold pos-entry-item-title">Bems Farms Ltd · GTBank</div>
+                  <div className="pos-tender-panel-card p-3">
+                    <div className="pos-bank-pro-card mb-3">
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <span className="pos-bank-badge">GUARANTY TRUST BANK (GTBANK)</span>
+                          <div className="pos-bank-acc-num">0123456789</div>
+                          <div className="pos-bank-acc-name">BEMS FARMS ENTERPRISES</div>
+                        </div>
                         <button
                           type="button"
-                          className="btn btn-xs btn-outline-success"
+                          className="pos-bank-copy-btn"
                           onClick={() => {
                             navigator.clipboard.writeText('0123456789')
-                            showToast('Account number copied!', 'success', '📋')
+                            showToast('Account number 0123456789 copied!', 'success', '📋')
                           }}
                         >
-                          Copy
+                          <i className="ri-file-copy-line me-1"></i> Copy
                         </button>
                       </div>
-                      <div className="text-emerald fs-16 font-monospace fw-bold">0123456789</div>
-                      <div className="text-muted fs-11 mt-1">Payment Reference: <strong>{orderId}</strong></div>
+                      <div className="pos-bank-footer mt-2 pt-2 border-top border-white border-opacity-10 d-flex justify-content-between align-items-center">
+                        <span className="fs-11 text-white opacity-75">Ref: <strong className="text-white">{orderId}</strong></span>
+                        <span className="badge bg-amber text-dark fw-bold">Amount: {fmt(total)}</span>
+                      </div>
                     </div>
-                    <div className="row g-2 mb-3">
+
+                    <div className="row g-2">
                       <div className="col-6">
-                        <label className="form-label text-muted small fw-bold">SENDER BANK NAME</label>
+                        <label className="pos-input-legend">CUSTOMER BANK NAME</label>
                         <input
                           type="text"
-                          className="form-control form-control-sm pos-theme-input"
+                          className="form-control pos-theme-input"
                           placeholder="e.g. GTB, Access, Kuda"
                           value={bankName}
                           onChange={e => setBankName(e.target.value)}
                         />
                       </div>
                       <div className="col-6">
-                        <label className="form-label text-muted small fw-bold">TRANSACTION REF / SESSION ID</label>
+                        <label className="pos-input-legend">SESSION ID / TXN REF</label>
                         <input
                           type="text"
-                          className="form-control form-control-sm pos-theme-input"
-                          placeholder="Bank Reference"
+                          className="form-control pos-theme-input"
+                          placeholder="Transaction Reference"
                           value={txnRef}
                           onChange={e => setTxnRef(e.target.value)}
                         />
@@ -1951,23 +2053,33 @@ export default function POS() {
 
                 {/* ── QR / USSD Panel ── */}
                 {checkoutPayMethod === 'QR / USSD' && (
-                  <div className="text-center py-2 mb-3">
+                  <div className="pos-tender-panel-card p-3 text-center">
                     <div className="pos-qr-display-box my-2">
-                      <i className="ri-qr-code-line fs-60 text-cyan"></i>
-                      <div className="text-muted fs-10 fw-bold mt-1">SCAN WITH MOBILE BANKING APP</div>
+                      <i className="ri-qr-code-fill fs-60 text-cyan"></i>
+                      <div className="text-muted fs-11 fw-bold mt-1">SCAN WITH MOBILE BANKING APP</div>
                     </div>
-                    <div className="pos-ussd-dial-code">
+                    <div className="pos-ussd-dial-code my-2">
                       *737*000*{total}#
                     </div>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-info mt-1"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`*737*000*${total}#`)
+                        showToast('USSD code copied!', 'success', '📱')
+                      }}
+                    >
+                      <i className="ri-file-copy-line me-1"></i> Copy USSD Code
+                    </button>
                   </div>
                 )}
 
                 {/* ── Split Panel ── */}
                 {checkoutPayMethod === 'Split Payment' && (
-                  <div className="mb-3">
+                  <div className="pos-tender-panel-card p-3">
                     <div className="d-flex flex-column gap-2 mb-2">
                       {splitRows.map((row, i) => (
-                        <div key={i} className="p-2 rounded border pos-split-item-row">
+                        <div key={i} className="p-2 rounded border pos-split-item-row bg-white bg-opacity-10">
                           <div className="row g-2 align-items-center">
                             <div className="col-5">
                               <select className="form-select form-select-sm pos-theme-input" value={row.method} onChange={e => updateSplit(i, 'method', e.target.value)}>
@@ -1979,7 +2091,7 @@ export default function POS() {
                             <div className="col-5">
                               <input
                                 type="number"
-                                className="form-control form-control-sm pos-theme-input"
+                                className="form-control form-control-sm pos-theme-input fw-bold"
                                 placeholder="Amount (₦)"
                                 value={row.amount}
                                 onChange={e => updateSplit(i, 'amount', e.target.value)}
@@ -1996,7 +2108,7 @@ export default function POS() {
                         </div>
                       ))}
                     </div>
-                    <div className="d-flex justify-content-between align-items-center fs-12">
+                    <div className="d-flex justify-content-between align-items-center fs-12 mt-2">
                       <button type="button" className="btn btn-sm btn-outline-secondary" onClick={addSplitRow}>
                         <i className="ri-add-line me-1"></i> Add Method
                       </button>
@@ -2008,18 +2120,25 @@ export default function POS() {
                 )}
 
                 {/* Action Buttons */}
-                <div className="d-flex gap-2 mt-4 pt-2 border-top">
-                  <button type="button" className="btn btn-outline-secondary w-40 py-3 fw-bold" onClick={closeModal}>
-                    Cancel
+                <div className="pos-checkout-footer mt-4 pt-3">
+                  <button
+                    type="button"
+                    className="pos-cancel-btn"
+                    onClick={closeModal}
+                  >
+                    <i className="ri-close-line me-1"></i> Cancel [Esc]
                   </button>
                   <button
                     type="button"
-                    className="btn btn-emerald-solid w-60 py-3 fw-bolder fs-15 d-flex align-items-center justify-content-center gap-2"
+                    className="pos-confirm-sale-btn"
                     disabled={checkoutPayMethod === 'Cash' && (!cashReceived || Number(cashReceived) < total)}
                     onClick={() => confirmPayment(checkoutPayMethod)}
                   >
-                    <i className="ri-printer-line"></i>
-                    Complete Sale & Print
+                    <div className="d-flex align-items-center gap-2">
+                      <i className="ri-printer-fill fs-20"></i>
+                      <span>COMPLETE SALE & PRINT</span>
+                    </div>
+                    <span className="pos-confirm-btn-tag">[F8]</span>
                   </button>
                 </div>
               </div>
@@ -4172,38 +4291,571 @@ export default function POS() {
           align-items: center;
         }
 
-        .pos-checkout-method-grid {
-          display: grid;
-          grid-template-columns: repeat(5, 1fr);
+        /* ── Modern POS Checkout Modal Styling ── */
+        .pos-checkout-modal-card {
+          background: var(--pos-modal-bg) !important;
+          border: 1.5px solid var(--pos-border) !important;
+          border-radius: 24px !important;
+          overflow: hidden;
+          box-shadow: 0 32px 80px rgba(0, 0, 0, 0.35) !important;
+          color: var(--pos-text-main);
+          animation: posModalIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes posModalIn {
+          from { opacity: 0; transform: scale(0.96) translateY(10px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .pos-checkout-modal-header {
+          padding: 18px 22px;
+          background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .pos-checkout-header-icon-glow {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.18);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 22px;
+          color: #ffffff;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .pos-checkout-header-title {
+          font-size: 17px;
+          font-weight: 800;
+          color: #ffffff;
+          letter-spacing: -0.2px;
+        }
+        .pos-checkout-status-pill {
+          background: rgba(16, 185, 129, 0.25);
+          border: 1px solid rgba(16, 185, 129, 0.5);
+          color: #a7f3d0;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 2px 8px;
+          border-radius: 20px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .pos-pulse-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #34d399;
+          box-shadow: 0 0 8px #34d399;
+          animation: posDotPulse 1.5s infinite;
+        }
+        @keyframes posDotPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.8); }
+        }
+        .pos-checkout-meta-row {
+          display: flex;
+          align-items: center;
           gap: 6px;
         }
-        .pos-checkout-method-pill {
+        .pos-checkout-tag {
+          background: rgba(255, 255, 255, 0.14);
+          color: rgba(255, 255, 255, 0.95);
+          font-size: 11px;
+          padding: 2px 8px;
+          border-radius: 6px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .pos-modal-close-btn {
+          background: rgba(255, 255, 255, 0.15);
+          border: none;
+          color: #ffffff;
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .pos-modal-close-btn:hover {
+          background: rgba(255, 255, 255, 0.3);
+          transform: rotate(90deg);
+        }
+
+        /* ── Ledger Hero Card ── */
+        .pos-ledger-hero-card {
+          position: relative;
+          overflow: hidden;
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+          border: 1.5px solid rgba(16, 185, 129, 0.4);
+          border-radius: 18px;
+          padding: 18px 22px;
+          color: #ffffff;
+          box-shadow: 0 12px 32px rgba(15, 23, 42, 0.25);
+        }
+        .pos-ledger-hero-glow {
+          position: absolute;
+          top: -40px;
+          right: -40px;
+          width: 140px;
+          height: 140px;
+          background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%);
+          pointer-events: none;
+        }
+        .pos-ledger-hero-subtitle {
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 1px;
+          color: #34d399;
+          text-transform: uppercase;
+        }
+        .pos-ledger-hero-amount {
+          display: flex;
+          align-items: baseline;
+          gap: 4px;
+          margin-top: 2px;
+        }
+        .pos-currency-symbol {
+          font-size: 26px;
+          font-weight: 800;
+          color: #34d399;
+        }
+        .pos-amount-digits {
+          font-size: 34px;
+          font-weight: 900;
+          color: #ffffff;
+          letter-spacing: -1px;
+          text-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+        }
+        .pos-ledger-item-badge {
+          background: rgba(16, 185, 129, 0.2);
+          border: 1px solid rgba(16, 185, 129, 0.4);
+          color: #6ee7b7;
+          font-size: 12px;
+          font-weight: 700;
+          padding: 4px 10px;
+          border-radius: 8px;
+          display: inline-flex;
+          align-items: center;
+        }
+        .pos-ledger-tax-line {
+          font-size: 11px;
+          color: #94a3b8;
+          font-weight: 500;
+        }
+
+        /* ── Payment Method Grid ── */
+        .pos-section-label {
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.8px;
+          color: var(--pos-text-muted);
+          text-transform: uppercase;
+        }
+        .pos-section-sub {
+          font-size: 11px;
+          color: var(--pos-text-muted);
+          font-weight: 600;
+        }
+        .pos-method-grid-pro {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 8px;
+        }
+        .pos-method-card-pro {
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-content: center;
           gap: 4px;
-          padding: 8px 4px;
-          border-radius: 10px;
+          padding: 10px 4px 8px;
+          border-radius: 14px;
           border: 1.5px solid var(--pos-border);
           background: var(--pos-card-bg);
           color: var(--pos-text-main);
+          cursor: pointer;
+          position: relative;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          min-height: 80px;
+        }
+        .pos-method-card-pro:hover {
+          transform: translateY(-2px);
+          border-color: var(--m-color);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+        .pos-method-card-pro.active {
+          border-color: var(--m-color);
+          background: rgba(16, 185, 129, 0.08);
+          color: var(--m-color);
+          box-shadow: 0 0 0 2px var(--m-color), 0 8px 20px rgba(0, 0, 0, 0.08);
+          font-weight: 800;
+        }
+        .theme-dark .pos-method-card-pro.active {
+          background: rgba(16, 185, 129, 0.16);
+        }
+        .pos-method-icon-wrap {
+          width: 32px;
+          height: 32px;
+          border-radius: 9px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 17px;
+          transition: all 0.2s;
+        }
+        .pos-method-name {
+          font-size: 11px;
+          font-weight: 700;
+          text-align: center;
+          line-height: 1.2;
+        }
+        .pos-method-shortcut {
+          font-size: 9px;
+          font-weight: 800;
+          background: var(--pos-tray-bg);
+          border: 1px solid var(--pos-border);
+          border-radius: 4px;
+          padding: 1px 4px;
+          color: var(--pos-text-muted);
+        }
+        .pos-method-check-dot {
+          position: absolute;
+          top: 5px;
+          right: 5px;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: var(--m-color);
+          color: #ffffff;
+          font-size: 9px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 900;
+        }
+
+        /* ── Tender Panel ── */
+        .pos-tender-panel-card {
+          background: var(--pos-tray-bg);
+          border: 1.5px solid var(--pos-border);
+          border-radius: 18px;
+          padding: 16px;
+        }
+        .pos-input-legend {
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.5px;
+          color: var(--pos-text-muted);
+          text-transform: uppercase;
+        }
+        .pos-clear-btn {
+          background: transparent;
+          border: none;
+          color: #ef4444;
           font-size: 11px;
           font-weight: 700;
           cursor: pointer;
-          transition: all 0.15s ease;
+          padding: 0;
         }
-        .pos-checkout-method-pill i {
-          font-size: 16px;
-          color: var(--pill-c);
+        .pos-cash-input-wrap {
+          display: flex;
+          align-items: center;
+          background: var(--pos-modal-bg);
+          border: 2px solid var(--pos-border);
+          border-radius: 14px;
+          padding: 4px 8px 4px 14px;
+          transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .pos-checkout-method-pill.active {
-          border-color: var(--pill-c);
-          background: rgba(5, 150, 105, 0.08);
-          color: var(--pill-c);
-          box-shadow: 0 0 0 1px var(--pill-c);
+        .pos-cash-input-wrap:focus-within {
+          border-color: #10b981;
+          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
         }
-        .theme-dark .pos-checkout-method-pill.active {
-          background: rgba(5, 150, 105, 0.2);
+        .pos-cash-input-prefix {
+          font-size: 24px;
+          font-weight: 900;
+          color: #10b981;
+          margin-right: 6px;
+          user-select: none;
+        }
+        .pos-cash-input-field {
+          flex: 1;
+          border: none;
+          background: transparent;
+          font-size: 26px;
+          font-weight: 900;
+          color: var(--pos-text-main);
+          outline: none;
+          min-width: 0;
+        }
+        .pos-exact-cash-btn {
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.25));
+          border: 1px solid rgba(16, 185, 129, 0.4);
+          color: #059669;
+          font-size: 12px;
+          font-weight: 800;
+          padding: 8px 14px;
+          border-radius: 10px;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.2s;
+        }
+        .theme-dark .pos-exact-cash-btn {
+          color: #34d399;
+        }
+        .pos-exact-cash-btn:hover {
+          background: #059669;
+          color: #ffffff;
+        }
+
+        .pos-chips-header {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--pos-text-muted);
+          display: flex;
+          align-items: center;
+        }
+        .pos-chips-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 6px;
+        }
+        .pos-chip-btn {
+          background: var(--pos-modal-bg);
+          border: 1.5px solid var(--pos-border);
+          color: var(--pos-text-main);
+          font-size: 12px;
+          font-weight: 700;
+          padding: 9px 8px;
+          border-radius: 10px;
+          cursor: pointer;
+          text-align: center;
+          transition: all 0.15s;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+        .pos-chip-btn:hover {
+          border-color: #10b981;
+          transform: translateY(-1px);
+          color: #059669;
+        }
+        .pos-chip-btn.active {
+          background: #059669;
+          border-color: #059669;
+          color: #ffffff;
+          font-weight: 800;
+          box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+        }
+
+        .pos-inc-note-btn {
+          background: var(--pos-modal-bg);
+          border: 1.5px solid var(--pos-border);
+          color: var(--pos-text-main);
+          font-size: 11px;
+          font-weight: 700;
+          padding: 8px 4px;
+          border-radius: 9px;
+          cursor: pointer;
+          text-align: center;
+          transition: all 0.15s;
+        }
+        .pos-inc-note-btn:hover {
+          border-color: #3b82f6;
+          background: rgba(59, 130, 246, 0.08);
+          color: #2563eb;
+        }
+
+        .pos-change-banner-pro {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-radius: 14px;
+          padding: 12px 16px;
+          margin-top: 10px;
+          border: 1.5px solid;
+          transition: all 0.2s;
+        }
+        .pos-change-banner-pro.success {
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.14) 0%, rgba(5, 150, 105, 0.08) 100%);
+          border-color: rgba(16, 185, 129, 0.4);
+        }
+        .pos-change-banner-pro.danger {
+          background: linear-gradient(135deg, rgba(239, 68, 68, 0.14) 0%, rgba(220, 38, 38, 0.08) 100%);
+          border-color: rgba(239, 68, 68, 0.4);
+        }
+        .pos-change-icon-wrap {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+        }
+        .pos-change-icon-wrap.success {
+          background: rgba(16, 185, 129, 0.2);
+          color: #059669;
+        }
+        .pos-change-icon-wrap.danger {
+          background: rgba(239, 68, 68, 0.2);
+          color: #ef4444;
+        }
+        .pos-change-label {
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.5px;
+          color: var(--pos-text-muted);
+          text-transform: uppercase;
+        }
+        .pos-change-value {
+          font-size: 20px;
+          font-weight: 900;
+        }
+
+        /* ── Card / Terminal & Bank Card ── */
+        .pos-card-terminal-hero {
+          background: var(--pos-modal-bg);
+          border: 1.5px solid var(--pos-border);
+          border-radius: 16px;
+          padding: 20px 16px;
+        }
+        .pos-terminal-icon-pulse {
+          width: 56px;
+          height: 56px;
+          border-radius: 16px;
+          background: linear-gradient(135deg, #2563eb, #3b82f6);
+          color: #ffffff;
+          font-size: 28px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+        }
+        .pos-card-network-btn-pro {
+          background: var(--pos-modal-bg);
+          border: 1.5px solid var(--pos-border);
+          color: var(--pos-text-main);
+          padding: 8px 16px;
+          border-radius: 10px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .pos-card-network-btn-pro.active {
+          border-color: #2563eb;
+          background: #2563eb;
+          color: #ffffff;
+          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .pos-bank-pro-card {
+          background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+          border: 1.5px solid rgba(245, 158, 11, 0.4);
+          border-radius: 16px;
+          padding: 16px 18px;
+          color: #ffffff;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+        .pos-bank-badge {
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.8px;
+          color: #f59e0b;
+        }
+        .pos-bank-acc-num {
+          font-size: 22px;
+          font-weight: 900;
+          font-family: monospace;
+          color: #ffffff;
+          letter-spacing: 2px;
+          margin: 2px 0;
+        }
+        .pos-bank-acc-name {
+          font-size: 11px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.8);
+        }
+        .pos-bank-copy-btn {
+          background: rgba(245, 158, 11, 0.2);
+          border: 1px solid rgba(245, 158, 11, 0.4);
+          color: #f59e0b;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 6px 12px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .pos-bank-copy-btn:hover {
+          background: #f59e0b;
+          color: #000000;
+        }
+
+        /* ── Action Footer ── */
+        .pos-checkout-footer {
+          display: flex;
+          gap: 10px;
+          border-top: 1.5px solid var(--pos-border);
+        }
+        .pos-cancel-btn {
+          flex: 1;
+          padding: 14px 16px;
+          background: var(--pos-card-bg);
+          border: 1.5px solid var(--pos-border);
+          color: var(--pos-text-muted);
+          border-radius: 14px;
+          font-weight: 700;
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.2s;
+          text-align: center;
+        }
+        .pos-cancel-btn:hover {
+          background: var(--pos-tray-bg);
+          color: var(--pos-text-main);
+          border-color: #94a3b8;
+        }
+        .pos-confirm-sale-btn {
+          flex: 2;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 14px 20px;
+          background: linear-gradient(135deg, #059669 0%, #047857 50%, #064e3b 100%);
+          color: #ffffff;
+          border: none;
+          border-radius: 14px;
+          font-weight: 800;
+          font-size: 15px;
+          cursor: pointer;
+          box-shadow: 0 6px 20px rgba(5, 150, 105, 0.35);
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .pos-confirm-sale-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 28px rgba(5, 150, 105, 0.5);
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        .pos-confirm-sale-btn:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+          box-shadow: none;
+          background: #9ca3af;
+        }
+        .pos-confirm-btn-tag {
+          background: rgba(255, 255, 255, 0.2);
+          font-size: 11px;
+          font-weight: 800;
+          padding: 3px 7px;
+          border-radius: 6px;
         }
 
         /* ── Bottom Utilities ── */
