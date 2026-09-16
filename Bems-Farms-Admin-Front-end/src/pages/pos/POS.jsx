@@ -2421,7 +2421,7 @@ export default function POS() {
       )}
 
       {/* ─── Background Thermal Print Target (Off-screen on Screen, Active on Print) ─── */}
-      {successData && (
+      {successData && activeModal !== 'receipt' && (
         <div className="pos-thermal-print-container">
           <ThermalReceipt
             receiptType="pos"

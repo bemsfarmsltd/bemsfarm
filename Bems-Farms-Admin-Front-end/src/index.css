@@ -965,6 +965,10 @@ a.link-custom-primary {
 @media print {
   body.thermal-print-active { width:100% !important; height:auto !important; margin:0 !important; padding:0 !important; background:#fff !important; }
   body.thermal-print-active * { visibility:hidden !important; }
+  
+  /* Hide any preview wrapper in modal so only 1 copy is active */
+  body.thermal-print-active .thermal-receipt-preview { display:none !important; }
+  
   body.thermal-print-active .thermal-receipt-print-root,
   body.thermal-print-active .thermal-receipt-print-root * { visibility:visible !important; }
   body.thermal-print-active .thermal-receipt-print-root {

@@ -37,10 +37,16 @@ const DEFAULTS = {
   receipt_invoice_title: 'SALES INVOICE', receipt_invoice_footer: 'Thank you for your business',
 }
 
+let isPrintingLock = false
+
 export function printThermalReceipt() {
+  if (isPrintingLock) return
+  isPrintingLock = true
+
   const paperSize = document.querySelector('.thermal-receipt-print-root')?.dataset.paperSize || '80'
   const cleanup = () => {
     document.body.classList.remove('thermal-print-active', 'thermal-print-58')
+    setTimeout(() => { isPrintingLock = false }, 500)
   }
   document.body.classList.add('thermal-print-active')
   if (paperSize === '58') document.body.classList.add('thermal-print-58')
@@ -50,7 +56,7 @@ export function printThermalReceipt() {
   setTimeout(() => {
     window.print()
     setTimeout(cleanup, 2000)
-  }, 80)
+  }, 100)
 }
 
 function ReceiptRow({ label, value, strong = false }) {
