@@ -13,65 +13,7 @@ const STATUS_CFG = {
   delivery_attempted: { label: 'Delivery Attempted', color: '#f97316', bg: '#ffedd5', icon: 'ri-route-line'           },
 }
 
-// ─── Mock Data (Fallback) ───────────────────────────────────────────────────
-
-const DRIVERS_ALL = [
-  { id: 1, name: 'Tunde Adeyemi', phone: '08031234567', bike: 'LAG-234-AB', zone: 'Ikeja / GRA',        active: true  },
-  { id: 2, name: 'Emeka Okafor',  phone: '08045678901', bike: 'LAG-567-CD', zone: 'Victoria Island',    active: true  },
-  { id: 3, name: 'Bola Akinwale', phone: '08056789012', bike: 'LAG-890-EF', zone: 'Surulere / Yaba',    active: true  },
-  { id: 4, name: 'Chidi Eze',     phone: '08067890123', bike: 'LAG-123-GH', zone: 'Lekki Phase 1',      active: false },
-  { id: 5, name: 'Femi Adeleye',  phone: '08078901234', bike: 'LAG-456-IJ', zone: 'Maryland / Gbagada', active: true  },
-]
-
-const ACTIVE_DELIVERIES_INIT = [
-  {
-    id: 'DEL-2026-0042',
-    orderId: 'ORD-2026-0138',
-    status: 'shipped',
-    driver: DRIVERS_ALL[1],
-    customer: { name: 'Kemi Balogun', phone: '08167891234', address: '18 Aba, Abia State' },
-    items: [{ name: 'Fresh Tomatoes', qty: '3 kg' }, { name: 'Red Bell Pepper', qty: '2 kg' }],
-    total: 16100,
-    dispatchTime: '15:45',
-    eta: '~18 min',
-    zone: 'Surulere / Yaba',
-    attempts: 0,
-    notes: '',
-  },
-  {
-    id: 'DEL-2026-0041',
-    orderId: 'ORD-2026-0139',
-    status: 'assigned',
-    driver: DRIVERS_ALL[0],
-    customer: { name: 'Seun Adesanya', phone: '09012341234', address: '5 Umuahia, Abia State' },
-    items: [{ name: 'Ginger', qty: '1 kg' }, { name: 'Garlic', qty: '1 kg' }, { name: 'Sweet Corn', qty: '6 cobs' }],
-    total: 14200,
-    dispatchTime: '17:20',
-    eta: '—',
-    zone: 'Ikeja / GRA',
-    attempts: 0,
-    notes: 'Driver notified. Awaiting pickup confirmation.',
-  },
-]
-
 const fmt = (n) => `₦${Number(n || 0).toLocaleString()}`
-
-const AUTO_ASSIGN_LOG = [
-  {
-    id: 'AA-2026-0018', orderId: 'ORD-2026-0138', time: '2026-06-26 15:10',
-    customer: 'Kemi Balogun', zone: 'Surulere / Yaba',
-    driver: { name: 'Emeka Okafor', bike: 'LAG-567-CD' },
-    rule: 'Zone match (Surulere/Yaba) · Driver available · 0 active orders',
-    confidence: 'High', overriddenBy: null, status: 'active',
-  },
-  {
-    id: 'AA-2026-0017', orderId: 'ORD-2026-0139', time: '2026-06-26 17:20',
-    customer: 'Seun Adesanya', zone: 'Ikeja / GRA',
-    driver: { name: 'Tunde Adeyemi', bike: 'LAG-234-AB' },
-    rule: 'Zone match (Ikeja/GRA) · Driver available · 1 active order',
-    confidence: 'High', overriddenBy: null, status: 'active',
-  },
-]
 
 const CONFIDENCE_CFG = {
   High:   { color: '#22c55e', bg: '#dcfce7' },
@@ -89,9 +31,10 @@ const LOG_STATUS_CFG = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ActiveDeliveries() {
-  const [deliveries, setDeliveries] = useState(ACTIVE_DELIVERIES_INIT)
-  const [autoLogs, setAutoLogs]     = useState(AUTO_ASSIGN_LOG)
-  const [drivers, setDrivers]       = useState(DRIVERS_ALL)
+  const [deliveries, setDeliveries] = useState([])
+  const [autoLogs, setAutoLogs]     = useState([])
+  const [drivers, setDrivers]       = useState([])
+  const [loading, setLoading]       = useState(true)
   const [filterStatus, setFilterStatus] = useState('all')
   const [search, setSearch]             = useState('')
   const [activeModal, setActiveModal]   = useState(null)
@@ -105,44 +48,46 @@ export default function ActiveDeliveries() {
 
   // Load live active deliveries from backend
   const fetchActiveDeliveries = useCallback(async () => {
+    setLoading(true)
     try {
       const res = await api.get('/admin/deliveries/active')
-      if (res.data?.deliveries?.length) {
-        const mapped = res.data.deliveries.map((d) => {
-          let s = d.status
-          if (s === 'driver_assigned') s = 'assigned'
-          if (s === 'out_for_delivery') s = 'shipped'
+      const rawDeliveries = res.data?.deliveries || []
+      const mapped = rawDeliveries.map((d) => {
+        let s = d.status
+        if (s === 'driver_assigned') s = 'assigned'
+        if (s === 'out_for_delivery') s = 'shipped'
 
-          return {
-            id: d.delivery_ref || `DEL-${d.id}`,
-            orderId: String(d.order_id || 'ORD-001'),
-            status: s,
-            driver: {
-              id: d.driver_id,
-              name: d.driver_name || 'Assigned Driver',
-              phone: d.driver_phone || '—',
-              bike: d.driver_plate || d.vehicle_type || 'Vehicle',
-              zone: d.zone || 'Abia State',
-              active: true,
-            },
-            customer: {
-              name: d.customer_name || 'Customer',
-              phone: d.customer_phone || '—',
-              address: d.delivery_address || 'Abia State, Nigeria',
-            },
-            items: d.items || [{ name: 'Farm Produce', qty: '1 order' }],
-            total: parseFloat(d.order_total) || 0,
-            dispatchTime: d.dispatched_at ? new Date(d.dispatched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
-            eta: d.eta_minutes ? `~${d.eta_minutes} min` : '—',
-            zone: d.zone || 'Abia State Central',
-            attempts: d.attempts || 0,
-            notes: d.notes || '',
-          }
-        })
-        setDeliveries(mapped)
-      }
+        return {
+          id: d.delivery_ref || `DEL-${d.id}`,
+          orderId: String(d.order_id || 'ORD-001'),
+          status: s,
+          driver: {
+            id: d.driver_id,
+            name: d.driver_name || 'Assigned Driver',
+            phone: d.driver_phone || '—',
+            bike: d.driver_plate || d.vehicle_type || 'Vehicle',
+            zone: d.zone || 'Umuahia / Abia State',
+            active: true,
+          },
+          customer: {
+            name: d.customer_name || 'Customer',
+            phone: d.customer_phone || '—',
+            address: d.delivery_address || 'Abia State, Nigeria',
+          },
+          items: d.items || [{ name: 'Farm Produce', qty: '1 order' }],
+          total: parseFloat(d.order_total) || 0,
+          dispatchTime: d.dispatched_at ? new Date(d.dispatched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+          eta: d.eta_minutes ? `~${d.eta_minutes} min` : '—',
+          zone: d.zone || 'Umuahia Central',
+          attempts: d.attempts || 0,
+          notes: d.notes || '',
+        }
+      })
+      setDeliveries(mapped)
     } catch (err) {
       console.warn('Could not fetch live active deliveries:', err.message)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
@@ -150,7 +95,7 @@ export default function ActiveDeliveries() {
     async function loadMeta() {
       try {
         const [drvRes, logRes] = await Promise.all([
-          api.get('/admin/orders/form-data/drivers').catch(() => null),
+          api.get('/admin/deliveries/drivers').catch(() => null),
           api.get('/admin/deliveries/auto-log').catch(() => null),
         ])
         if (drvRes?.data?.drivers?.length) {
@@ -158,13 +103,24 @@ export default function ActiveDeliveries() {
             id: d.id,
             name: d.name,
             phone: d.phone,
-            bike: d.vehicle_plate || 'Vehicle',
-            zone: 'Abia State',
-            active: d.status !== 'inactive'
+            bike: d.vehicle_plate || d.vehicle_type || 'Vehicle',
+            zone: d.zone || 'Umuahia / Abia State',
+            active: d.status === 'active'
           })))
         }
-        if (logRes?.data?.logs?.length) {
-          setAutoLogs(logRes.data.logs)
+        if (logRes?.data?.log?.length) {
+          setAutoLogs(logRes.data.log.map((l) => ({
+            id: `AA-${l.id}`,
+            orderId: String(l.order_id || ''),
+            time: l.created_at ? new Date(l.created_at).toLocaleString() : '—',
+            customer: l.customer_name || 'Customer',
+            zone: l.zone || 'Umuahia Central',
+            driver: { name: l.driver_name || 'Driver', bike: l.driver_plate || 'Vehicle' },
+            rule: 'Nearest Driver Proximity Match · Driver Available',
+            confidence: 'High',
+            overriddenBy: l.overridden_by_name || null,
+            status: l.order_status || 'active',
+          })))
         }
       } catch (err) {
         console.warn('Could not load deliveries meta:', err.message)
@@ -353,69 +309,77 @@ export default function ActiveDeliveries() {
                   </tr>
                 </thead>
                 <tbody>
-                  {AUTO_ASSIGN_LOG.map(log => {
-                    const confCfg   = CONFIDENCE_CFG[log.confidence]
-                    const statusCfg = LOG_STATUS_CFG[log.status]
-                    return (
-                      <tr key={log.id}>
-                        <td>
-                          <div className="fw-medium small">{log.id}</div>
-                        </td>
-                        <td>
-                          <div style={{ fontSize: 12 }}>{log.time.split(' ')[0]}</div>
-                          <div className="text-muted" style={{ fontSize: 11 }}>{log.time.split(' ')[1]}</div>
-                        </td>
-                        <td>
-                          <div className="fw-medium small text-primary">{log.orderId}</div>
-                          <div className="text-muted" style={{ fontSize: 11 }}>{log.customer}</div>
-                        </td>
-                        <td>
-                          <div className="d-flex align-items-center gap-1">
-                            <i className="ri-map-pin-line text-muted" style={{ fontSize: 12 }} />
-                            <span style={{ fontSize: 12 }}>{log.zone}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="d-flex align-items-center gap-2">
-                            <div className="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white flex-shrink-0"
-                              style={{ width: 28, height: 28, fontSize: 9, fontWeight: 700 }}>
-                              {log.driver.name.split(' ').map(n => n[0]).join('')}
+                  {autoLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan="9" className="text-center py-4 text-muted">
+                        <i className="ri-file-list-line fs-2 d-block mb-1 opacity-50"></i>
+                        No automated assignments recorded yet. Dispatched orders will be logged here automatically.
+                      </td>
+                    </tr>
+                  ) : (
+                    autoLogs.map(log => {
+                      const confCfg   = CONFIDENCE_CFG[log.confidence] || CONFIDENCE_CFG.High
+                      const statusCfg = LOG_STATUS_CFG[log.status] || LOG_STATUS_CFG.active
+                      return (
+                        <tr key={log.id}>
+                          <td>
+                            <div className="fw-medium small">{log.id}</div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: 12 }}>{log.time}</div>
+                          </td>
+                          <td>
+                            <div className="fw-medium small text-primary">{log.orderId}</div>
+                            <div className="text-muted" style={{ fontSize: 11 }}>{log.customer}</div>
+                          </td>
+                          <td>
+                            <div className="d-flex align-items-center gap-1">
+                              <i className="ri-map-pin-line text-muted" style={{ fontSize: 12 }} />
+                              <span style={{ fontSize: 12 }}>{log.zone}</span>
                             </div>
-                            <div>
-                              <div className="fw-medium" style={{ fontSize: 12 }}>{log.driver.name}</div>
-                              <div className="text-muted" style={{ fontSize: 10 }}>{log.driver.bike}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="text-muted" style={{ fontSize: 11, maxWidth: 200 }}>{log.rule}</div>
-                        </td>
-                        <td>
-                          <span className="badge" style={{ background: confCfg.bg, color: confCfg.color, fontSize: 10 }}>
-                            {log.confidence}
-                          </span>
-                        </td>
-                        <td>
-                          {log.overriddenBy
-                            ? <div>
-                                <span className="badge" style={{ background: '#fef3c7', color: '#d97706', fontSize: 10 }}>
-                                  <i className="ri-edit-line me-1" />Overridden
-                                </span>
-                                <div className="text-muted" style={{ fontSize: 10, marginTop: 2 }}>{log.overriddenBy}</div>
+                          </td>
+                          <td>
+                            <div className="d-flex align-items-center gap-2">
+                              <div className="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white flex-shrink-0"
+                                style={{ width: 28, height: 28, fontSize: 9, fontWeight: 700 }}>
+                                {log.driver.name.split(' ').map(n => n[0]).join('')}
                               </div>
-                            : <span className="badge" style={{ background: '#dcfce7', color: '#16a34a', fontSize: 10 }}>
-                                <i className="ri-checkbox-circle-line me-1" />No override
-                              </span>
-                          }
-                        </td>
-                        <td>
-                          <span className="badge" style={{ background: statusCfg.bg, color: statusCfg.color, fontSize: 10 }}>
-                            {statusCfg.label}
-                          </span>
-                        </td>
-                      </tr>
-                    )
-                  })}
+                              <div>
+                                <div className="fw-medium" style={{ fontSize: 12 }}>{log.driver.name}</div>
+                                <div className="text-muted" style={{ fontSize: 10 }}>{log.driver.bike}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="text-muted" style={{ fontSize: 11, maxWidth: 200 }}>{log.rule}</div>
+                          </td>
+                          <td>
+                            <span className="badge" style={{ background: confCfg.bg, color: confCfg.color, fontSize: 10 }}>
+                              {log.confidence}
+                            </span>
+                          </td>
+                          <td>
+                            {log.overriddenBy
+                              ? <div>
+                                  <span className="badge" style={{ background: '#fef3c7', color: '#d97706', fontSize: 10 }}>
+                                    <i className="ri-edit-line me-1" />Overridden
+                                  </span>
+                                  <div className="text-muted" style={{ fontSize: 10, marginTop: 2 }}>{log.overriddenBy}</div>
+                                </div>
+                              : <span className="badge" style={{ background: '#dcfce7', color: '#16a34a', fontSize: 10 }}>
+                                  <i className="ri-checkbox-circle-line me-1" />No override
+                                </span>
+                            }
+                          </td>
+                          <td>
+                            <span className="badge" style={{ background: statusCfg.bg, color: statusCfg.color, fontSize: 10 }}>
+                              {statusCfg.label}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

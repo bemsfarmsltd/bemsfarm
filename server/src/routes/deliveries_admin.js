@@ -373,7 +373,7 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
   try {
     const { search = "", status = "" } = req.query;
     const params = [];
-    const where = ["c.role = 'user'"];
+    const where = [];
 
     if (status) {
       params.push(status);
