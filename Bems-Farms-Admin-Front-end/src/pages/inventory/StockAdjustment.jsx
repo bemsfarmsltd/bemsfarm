@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
@@ -26,9 +26,19 @@ export default function StockAdjustment() {
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
 
+  // Quick scan on page header
+  const [quickScanQuery, setQuickScanQuery] = useState('')
+
   // Adjustment Modal State
   const [modalOpen, setModalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [productSearch, setProductSearch] = useState('')
+  const [showDropdown, setShowDropdown] = useState(false)
+
+  const searchScanInputRef = useRef(null)
+  const countInputRef = useRef(null)
+  const dropdownRef = useRef(null)
+
   const [form, setForm] = useState({
     product_id: '',
     warehouse_id: '',
@@ -43,7 +53,7 @@ export default function StockAdjustment() {
     async function loadMeta() {
       try {
         const [pRes, wRes] = await Promise.all([
-          api.get('/admin/products', { params: { limit: 150 } }),
+          api.get('/admin/products', { params: { limit: 500 } }),
           api.get('/admin/inventory/warehouses').catch(() => ({ data: { warehouses: [] } })),
         ])
         if (pRes.data?.products) setProducts(pRes.data.products)
@@ -53,6 +63,17 @@ export default function StockAdjustment() {
       }
     }
     loadMeta()
+  }, [])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   // Fetch adjustment movements
@@ -84,35 +105,122 @@ export default function StockAdjustment() {
     fetchMovements()
   }, [fetchMovements])
 
-  function openAdjustmentModal() {
-    const firstProd = products[0]
-    setForm({
-      product_id: firstProd?.id ? String(firstProd.id) : '',
-      warehouse_id: warehouses[0]?.id ? String(warehouses[0].id) : '',
-      current_qty: firstProd?.stock !== undefined ? firstProd.stock : 0,
-      new_quantity: firstProd?.stock !== undefined ? String(firstProd.stock) : '0',
-      reason: REASONS[0],
-      notes: '',
-    })
-    setModalOpen(true)
-  }
+  const selectedProduct = useMemo(() => {
+    if (!form.product_id) return null
+    return products.find((p) => String(p.id) === String(form.product_id)) || null
+  }, [products, form.product_id])
 
-  function handleProductChange(e) {
-    const selectedId = e.target.value
-    const found = products.find((p) => String(p.id) === String(selectedId))
-    const currentStock = found?.stock !== undefined ? found.stock : 0
+  const filteredModalProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase()
+    if (!q) return products.slice(0, 35)
+    return products
+      .filter((p) => {
+        const nameMatch = p.name?.toLowerCase().includes(q)
+        const skuMatch = p.sku?.toLowerCase().includes(q)
+        const barcodeMatch = p.barcode?.toLowerCase().includes(q)
+        return nameMatch || skuMatch || barcodeMatch
+      })
+      .slice(0, 40)
+  }, [products, productSearch])
+
+  function selectProduct(prod) {
+    if (!prod) return
+    const currentStock = prod.stock !== undefined ? prod.stock : 0
     setForm((prev) => ({
       ...prev,
-      product_id: selectedId,
+      product_id: String(prod.id),
       current_qty: currentStock,
       new_quantity: String(currentStock),
     }))
+    setProductSearch('')
+    setShowDropdown(false)
+    setTimeout(() => {
+      countInputRef.current?.focus()
+      countInputRef.current?.select()
+    }, 120)
+  }
+
+  function handleScanOrSearchKey(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const query = productSearch.trim().toLowerCase()
+      if (!query) return
+
+      // 1. Exact barcode match
+      let match = products.find((p) => p.barcode?.toLowerCase() === query)
+      // 2. Exact SKU match
+      if (!match) {
+        match = products.find((p) => p.sku?.toLowerCase() === query)
+      }
+      // 3. Exact ID match
+      if (!match) {
+        match = products.find((p) => String(p.id) === query)
+      }
+      // 4. First filtered item
+      if (!match && filteredModalProducts.length > 0) {
+        match = filteredModalProducts[0]
+      }
+
+      if (match) {
+        selectProduct(match)
+        toast.success(`Scanned & selected: "${match.name}"`)
+      } else {
+        toast.error(`No product found for code/query "${productSearch}"`)
+      }
+    }
+  }
+
+  function handleQuickPageScan(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const query = quickScanQuery.trim().toLowerCase()
+      if (!query) return
+
+      let match = products.find(
+        (p) =>
+          p.barcode?.toLowerCase() === query ||
+          p.sku?.toLowerCase() === query ||
+          p.name?.toLowerCase().includes(query)
+      )
+
+      if (match) {
+        openAdjustmentModal(match)
+        setQuickScanQuery('')
+        toast.success(`Scanned: "${match.name}"`)
+      } else {
+        toast.error(`No product found for "${quickScanQuery}"`)
+      }
+    }
+  }
+
+  function openAdjustmentModal(initialProduct = null) {
+    const prod = initialProduct || (form.product_id ? products.find((p) => String(p.id) === String(form.product_id)) : products[0])
+    setForm({
+      product_id: prod?.id ? String(prod.id) : '',
+      warehouse_id: warehouses[0]?.id ? String(warehouses[0].id) : '',
+      current_qty: prod?.stock !== undefined ? prod.stock : 0,
+      new_quantity: prod?.stock !== undefined ? String(prod.stock) : '0',
+      reason: REASONS[0],
+      notes: '',
+    })
+    setProductSearch('')
+    setShowDropdown(false)
+    setModalOpen(true)
+
+    setTimeout(() => {
+      if (!initialProduct && !prod?.id) {
+        searchScanInputRef.current?.focus()
+      } else {
+        countInputRef.current?.focus()
+        countInputRef.current?.select()
+      }
+    }, 150)
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.product_id) {
-      return toast.error('Please select a product')
+      return toast.error('Please select or scan a product')
     }
     if (form.new_quantity === '' || isNaN(parseInt(form.new_quantity)) || parseInt(form.new_quantity) < 0) {
       return toast.error('Please enter a valid stock count (≥ 0)')
@@ -151,12 +259,36 @@ export default function StockAdjustment() {
             <li className="breadcrumb-item active">Adjustments</li>
           </ul>
         </div>
-        <button
-          type="button"
-          className="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm"
-          onClick={openAdjustmentModal}>
-          <i className="ri-scales-3-line"></i> + Create Stock Adjustment
-        </button>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <div className="input-group input-group-sm" style={{ width: '280px' }}>
+            <span className="input-group-text bg-white text-muted">
+              <i className="ri-barcode-line text-success"></i>
+            </span>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Quick scan barcode to adjust…"
+              value={quickScanQuery}
+              onChange={(e) => setQuickScanQuery(e.target.value)}
+              onKeyDown={handleQuickPageScan}
+            />
+            {quickScanQuery && (
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() => setQuickScanQuery('')}
+              >
+                &times;
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm"
+            onClick={() => openAdjustmentModal()}>
+            <i className="ri-scales-3-line"></i> + Create Stock Adjustment
+          </button>
+        </div>
       </div>
 
       {/* Main Table Card */}
@@ -289,84 +421,246 @@ export default function StockAdjustment() {
           </>
         )}>
         <form id="stock-adjustment-form" onSubmit={handleSubmit}>
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Select Product <span className="text-danger">*</span></label>
-                    <select
-                      className="form-select"
-                      value={form.product_id}
-                      onChange={handleProductChange}
-                      required>
-                      <option value="">— Select Product —</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.sku || 'No SKU'}) — Current Stock: {p.stock}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+          {/* Product Search & Barcode Scan Section */}
+          <div className="mb-3 position-relative" ref={dropdownRef}>
+            <div className="d-flex justify-content-between align-items-center mb-1">
+              <label className="form-label fw-semibold mb-0">
+                Select / Scan Product <span className="text-danger">*</span>
+              </label>
+              <span className="badge bg-success-subtle text-success fs-xs d-flex align-items-center gap-1">
+                <i className="ri-barcode-line"></i> Scanner Ready
+              </span>
+            </div>
 
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Warehouse Location</label>
-                    <select
-                      className="form-select"
-                      value={form.warehouse_id}
-                      onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })}>
-                      <option value="">— Main Warehouse Store —</option>
-                      {warehouses.map((w) => (
-                        <option key={w.id} value={w.id}>{w.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="row g-3 mb-3">
-                    <div className="col-6">
-                      <label className="form-label text-muted fs-12">Recorded Stock</label>
-                      <div className="form-control bg-light fw-bold text-secondary">{form.current_qty}</div>
-                    </div>
-                    <div className="col-6">
-                      <label className="form-label fw-semibold">New Accurate Count <span className="text-danger">*</span></label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        min="0"
-                        value={form.new_quantity}
-                        onChange={(e) => setForm({ ...form, new_quantity: e.target.value })}
-                        required
+            {selectedProduct ? (
+              <div className="card border rounded-3 p-2 bg-light bg-opacity-50">
+                <div className="d-flex align-items-center justify-content-between gap-2">
+                  <div className="d-flex align-items-center gap-2 overflow-hidden">
+                    {selectedProduct.image_url ? (
+                      <img
+                        src={selectedProduct.image_url}
+                        alt={selectedProduct.name}
+                        className="rounded-2 object-fit-cover border flex-shrink-0"
+                        style={{ width: '42px', height: '42px' }}
                       />
+                    ) : (
+                      <div
+                        className="rounded-2 bg-white d-flex align-items-center justify-content-center text-muted border flex-shrink-0"
+                        style={{ width: '42px', height: '42px' }}
+                      >
+                        <i className="ri-box-3-line fs-5"></i>
+                      </div>
+                    )}
+                    <div className="text-truncate">
+                      <div className="fw-bold text-dark fs-sm text-truncate">{selectedProduct.name}</div>
+                      <div className="d-flex align-items-center gap-2 flex-wrap fs-xs text-muted">
+                        <span>SKU: <code className="text-dark">{selectedProduct.sku || '—'}</code></span>
+                        {selectedProduct.barcode && (
+                          <span className="badge bg-success-subtle text-success py-0 px-1 font-monospace">
+                            <i className="ri-barcode-line me-1"></i>{selectedProduct.barcode}
+                          </span>
+                        )}
+                        <span className="badge bg-primary-subtle text-primary py-0 px-1">
+                          Current Stock: {selectedProduct.stock ?? 0}
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary flex-shrink-0"
+                    onClick={() => {
+                      setForm((prev) => ({ ...prev, product_id: '' }))
+                      setProductSearch('')
+                      setShowDropdown(true)
+                      setTimeout(() => searchScanInputRef.current?.focus(), 100)
+                    }}
+                    title="Search or scan a different product"
+                  >
+                    <i className="ri-refresh-line me-1"></i> Change
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="position-relative">
+                <div className="input-group">
+                  <span className="input-group-text bg-white border-end-0 text-muted">
+                    <i className="ri-search-line"></i>
+                  </span>
+                  <input
+                    ref={searchScanInputRef}
+                    type="text"
+                    className="form-control border-start-0 ps-0"
+                    placeholder="Search product name, SKU, or scan barcode [Press Enter]…"
+                    value={productSearch}
+                    onChange={(e) => {
+                      setProductSearch(e.target.value)
+                      setShowDropdown(true)
+                    }}
+                    onFocus={() => setShowDropdown(true)}
+                    onKeyDown={handleScanOrSearchKey}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary"
+                    onClick={() => {
+                      const query = productSearch.trim().toLowerCase()
+                      if (!query) return
+                      const match = products.find(
+                        (p) =>
+                          p.barcode?.toLowerCase() === query ||
+                          p.sku?.toLowerCase() === query ||
+                          p.name?.toLowerCase().includes(query)
+                      )
+                      if (match) {
+                        selectProduct(match)
+                        toast.success(`Selected "${match.name}"`)
+                      } else {
+                        toast.error(`No product found for "${productSearch}"`)
+                      }
+                    }}
+                    title="Find Product"
+                  >
+                    <i className="ri-scan-2-line me-1"></i> Find
+                  </button>
+                </div>
 
-                  {!isNaN(delta) && (
-                    <div className="alert p-2 mb-3 fs-13 d-flex align-items-center justify-content-between"
-                      style={{ background: delta > 0 ? '#e8f5e9' : delta < 0 ? '#ffebee' : '#f5f5f5', color: delta > 0 ? '#2e7d32' : delta < 0 ? '#c62828' : '#616161' }}>
-                      <span>Adjustment Variance:</span>
-                      <strong>{delta > 0 ? `+${delta} (Stock Increase)` : delta < 0 ? `${delta} (Stock Decrease)` : 'No Difference'}</strong>
+                {/* Dropdown list */}
+                {showDropdown && (
+                  <div
+                    className="position-absolute w-100 bg-white border rounded-3 shadow-lg mt-1 overflow-auto"
+                    style={{ maxHeight: '240px', zIndex: 1050 }}
+                  >
+                    <div className="p-2 border-bottom bg-light d-flex justify-content-between align-items-center">
+                      <span className="fs-xs text-muted fw-semibold">
+                        {filteredModalProducts.length} matching product{filteredModalProducts.length === 1 ? '' : 's'}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn-close fs-xs"
+                        style={{ fontSize: '10px' }}
+                        onClick={() => setShowDropdown(false)}
+                      ></button>
                     </div>
-                  )}
-
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Reason <span className="text-danger">*</span></label>
-                    <select
-                      className="form-select"
-                      value={form.reason}
-                      onChange={(e) => setForm({ ...form, reason: e.target.value })}
-                      required>
-                      {REASONS.map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
+                    {filteredModalProducts.length === 0 ? (
+                      <div className="p-3 text-center text-muted fs-xs">
+                        No products found matching "{productSearch}".
+                      </div>
+                    ) : (
+                      filteredModalProducts.map((p) => (
+                        <div
+                          key={p.id}
+                          className="p-2 border-bottom d-flex align-items-center justify-content-between gap-2"
+                          style={{ cursor: 'pointer', transition: 'background 0.15s ease' }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8f9fa')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+                          onClick={() => selectProduct(p)}
+                        >
+                          <div className="d-flex align-items-center gap-2 overflow-hidden">
+                            {p.image_url ? (
+                              <img
+                                src={p.image_url}
+                                alt={p.name}
+                                className="rounded-1 object-fit-cover border flex-shrink-0"
+                                style={{ width: '32px', height: '32px' }}
+                              />
+                            ) : (
+                              <div
+                                className="rounded-1 bg-light d-flex align-items-center justify-content-center text-muted border flex-shrink-0"
+                                style={{ width: '32px', height: '32px' }}
+                              >
+                                <i className="ri-box-3-line"></i>
+                              </div>
+                            )}
+                            <div className="text-truncate">
+                              <div className="fw-semibold text-dark fs-xs text-truncate">{p.name}</div>
+                              <div className="d-flex align-items-center gap-2 fs-xs text-muted">
+                                <span>SKU: {p.sku || '—'}</span>
+                                {p.barcode && (
+                                  <span className="font-monospace text-success">
+                                    <i className="ri-barcode-line me-1"></i>{p.barcode}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-end flex-shrink-0">
+                            <span className="badge bg-light text-dark border fs-xs">
+                              Stock: {p.stock ?? 0}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
+                )}
+              </div>
+            )}
+          </div>
 
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Audit Notes</label>
-                    <textarea
-                      className="form-control"
-                      rows="2"
-                      placeholder="e.g. Discovered broken jar during morning warehouse audit"
-                      value={form.notes}
-                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    ></textarea>
-                  </div>
+          <div className="mb-3">
+            <label className="form-label fw-semibold">Warehouse Location</label>
+            <select
+              className="form-select"
+              value={form.warehouse_id}
+              onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })}>
+              <option value="">— Main Warehouse Store —</option>
+              {warehouses.map((w) => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="row g-3 mb-3">
+            <div className="col-6">
+              <label className="form-label text-muted fs-12">Recorded Stock</label>
+              <div className="form-control bg-light fw-bold text-secondary">{form.current_qty}</div>
+            </div>
+            <div className="col-6">
+              <label className="form-label fw-semibold">New Accurate Count <span className="text-danger">*</span></label>
+              <input
+                ref={countInputRef}
+                type="number"
+                className="form-control fw-bold"
+                min="0"
+                value={form.new_quantity}
+                onChange={(e) => setForm({ ...form, new_quantity: e.target.value })}
+                required
+              />
+            </div>
+          </div>
+
+          {!isNaN(delta) && (
+            <div className="alert p-2 mb-3 fs-13 d-flex align-items-center justify-content-between"
+              style={{ background: delta > 0 ? '#e8f5e9' : delta < 0 ? '#ffebee' : '#f5f5f5', color: delta > 0 ? '#2e7d32' : delta < 0 ? '#c62828' : '#616161' }}>
+              <span>Adjustment Variance:</span>
+              <strong>{delta > 0 ? `+${delta} (Stock Increase)` : delta < 0 ? `${delta} (Stock Decrease)` : 'No Difference'}</strong>
+            </div>
+          )}
+
+          <div className="mb-3">
+            <label className="form-label fw-semibold">Reason <span className="text-danger">*</span></label>
+            <select
+              className="form-select"
+              value={form.reason}
+              onChange={(e) => setForm({ ...form, reason: e.target.value })}
+              required>
+              {REASONS.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label fw-semibold">Audit Notes</label>
+            <textarea
+              className="form-control"
+              rows="2"
+              placeholder="e.g. Discovered broken jar during morning warehouse audit"
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            ></textarea>
+          </div>
         </form>
       </PremiumModal>
     </div>

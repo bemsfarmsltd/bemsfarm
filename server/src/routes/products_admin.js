@@ -65,7 +65,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
       status = "",
       stock = "", // "low" | "out" | ""
     } = req.query;
-    const limit = clampLimit(limitRaw, 20);
+    const limit = clampLimit(limitRaw, 20, 1000);
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const params = [];
@@ -74,7 +74,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "kitchen_staff"), 
     if (search) {
       params.push(`%${search}%`);
       where.push(
-        `(p.name ILIKE $${params.length} OR p.sku ILIKE $${params.length})`,
+        `(p.name ILIKE $${params.length} OR p.sku ILIKE $${params.length} OR p.barcode ILIKE $${params.length})`,
       );
     }
     if (category) {
