@@ -243,29 +243,47 @@ export default function POSSettings() {
 
                 <div className="p-3 bg-light rounded border text-muted fs-12 mb-3">
                   <div className="d-flex align-items-center justify-content-between mb-2">
-                    <strong className="text-dark fs-13">⚡ 100% Silent Auto-Printing via Chrome POS Kiosk Mode (Recommended)</strong>
+                    <strong className="text-dark fs-13">⚡ 100% Silent Auto-Printing (Chrome & Microsoft Edge)</strong>
                     <span className="badge bg-primary">Best for POS Stations</span>
                   </div>
                   <p className="mb-2">
-                    If your thermal printer is already installed on your computer as a standard printer (USB, Bluetooth, or Wi-Fi), Chrome's <strong>Kiosk Printing</strong> mode allows the POS to print <strong>100% silently with 0 clicks and no popup dialogs</strong>.
+                    If your thermal printer is installed on your computer, Edge/Chrome's <strong>Kiosk Printing</strong> mode allows the POS to print <strong>100% silently with 0 clicks and no popup dialogs</strong>.
                   </p>
                   <div className="row g-2">
                     <div className="col-md-6">
                       <div className="p-2 bg-white rounded border">
-                        <strong className="text-dark d-block mb-1">🪟 Windows POS Terminal Setup:</strong>
+                        <strong className="text-dark d-block mb-1">🪟 Windows Setup (Edge & Chrome):</strong>
                         <ol className="mb-0 ps-3">
-                          <li>Right-click your Chrome desktop shortcut & select <strong>Properties</strong>.</li>
-                          <li>In the <strong>Target</strong> box, add at the end:<br /><code className="text-primary bg-light px-1">--kiosk-printing --app=https://www.bemsfarms.com/admin/pos</code></li>
-                          <li>Set your thermal printer as the Windows <strong>Default Printer</strong>. Done!</li>
+                          <li>Right-click your <strong>Microsoft Edge</strong> (or Chrome) desktop icon & select <strong>Properties</strong>.</li>
+                          <li>In the <strong>Target</strong> field, go to the very end <em>(outside the quotation marks)</em>, add a space, and paste:<br />
+                            <code className="text-primary bg-light px-1 d-block mt-1 p-1 rounded" style={{ fontSize: '11px', wordBreak: 'break-all' }}>
+                              --kiosk-printing --app=https://www.bemsfarms.com/admin/pos
+                            </code>
+                          </li>
+                          <li className="mt-1">Full example:<br />
+                            <code className="text-muted bg-light px-1 d-block mt-1 p-1 rounded" style={{ fontSize: '10px', wordBreak: 'break-all' }}>
+                              "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --kiosk-printing --app=https://www.bemsfarms.com/admin/pos
+                            </code>
+                          </li>
+                          <li className="mt-1">Set your thermal printer as Windows <strong>Default Printer</strong>. Done!</li>
                         </ol>
                       </div>
                     </div>
                     <div className="col-md-6">
                       <div className="p-2 bg-white rounded border">
-                        <strong className="text-dark d-block mb-1">🍎 Mac POS Terminal Setup:</strong>
+                        <strong className="text-dark d-block mb-1">🍎 Mac Setup (Edge & Chrome):</strong>
                         <ol className="mb-0 ps-3">
-                          <li>Open Terminal and run:<br /><code className="text-primary bg-light px-1" style={{ fontSize: '11px' }}>open -a "Google Chrome" --args --kiosk-printing --app="https://www.bemsfarms.com/admin/pos"</code></li>
-                          <li>Set your thermal receipt printer as the Mac <strong>Default Printer</strong>. Done!</li>
+                          <li>Open Terminal and run:<br />
+                            <code className="text-primary bg-light px-1 d-block mt-1 p-1 rounded" style={{ fontSize: '11px', wordBreak: 'break-all' }}>
+                              open -a "Microsoft Edge" --args --kiosk-printing --app="https://www.bemsfarms.com/admin/pos"
+                            </code>
+                          </li>
+                          <li className="mt-1">Or for Chrome:<br />
+                            <code className="text-muted bg-light px-1 d-block mt-1 p-1 rounded" style={{ fontSize: '11px', wordBreak: 'break-all' }}>
+                              open -a "Google Chrome" --args --kiosk-printing --app="https://www.bemsfarms.com/admin/pos"
+                            </code>
+                          </li>
+                          <li className="mt-1">Set your thermal printer as Mac <strong>Default Printer</strong>. Done!</li>
                         </ol>
                       </div>
                     </div>
