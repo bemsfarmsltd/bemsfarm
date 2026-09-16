@@ -1980,26 +1980,6 @@ export default function POS() {
                       </div>
                     </div>
 
-                    {/* Fast Banknote Adders */}
-                    <div className="mb-3">
-                      <div className="pos-chips-header mb-2">
-                        <i className="ri-add-circle-fill text-emerald me-1"></i>
-                        <span>Quick Note Increment</span>
-                      </div>
-                      <div className="d-flex gap-2">
-                        {[500, 1000, 2000, 5000, 10000].map(inc => (
-                          <button
-                            key={inc}
-                            type="button"
-                            className="pos-inc-note-btn flex-fill"
-                            onClick={() => setCashReceived(prev => String((Number(prev) || 0) + inc))}
-                          >
-                            +{fmt(inc)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
                     {/* Live Dynamic Change Banner */}
                     {cashReceived && Number(cashReceived) >= total && (
                       <div className="pos-change-banner-pro success">
