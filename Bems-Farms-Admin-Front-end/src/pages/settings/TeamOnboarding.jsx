@@ -451,23 +451,6 @@ export default function TeamOnboarding({ initialTab }) {
           >
             <i className="ri-refresh-line"></i> Refresh All
           </button>
-          <button
-            type="button"
-            className="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1.5 shadow-xs"
-            onClick={() => {
-              setView('roles')
-              openAddRoleModal()
-            }}
-          >
-            <i className="ri-shield-keyhole-line"></i> + Create Custom Role
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm d-inline-flex align-items-center gap-1.5 shadow-sm"
-            onClick={() => setView('onboarding')}
-          >
-            <i className="ri-mail-send-line"></i> + Invite Member
-          </button>
         </div>
       </div>
 
