@@ -7,6 +7,10 @@
   "trailingSlash": false,
   "rewrites": [
     {
+      "source": "/admin/((?!assets/|css/|.*\\.[a-zA-Z0-9]+$).*)",
+      "destination": "/admin/index.html"
+    },
+    {
       "source": "/admin",
       "destination": "/admin/index.html"
     },
@@ -15,11 +19,7 @@
       "destination": "/admin/index.html"
     },
     {
-      "source": "/admin/:match*",
-      "destination": "/admin/index.html"
-    },
-    {
-      "source": "/((?!admin|assets/|.*\\.[a-zA-Z0-9]+$).*)",
+      "source": "/((?!admin|assets/|css/|.*\\.[a-zA-Z0-9]+$).*)",
       "destination": "/index.html"
     }
   ]
