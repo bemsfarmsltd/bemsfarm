@@ -956,22 +956,21 @@ export default function POS() {
 
   // Filtered Products
   const filteredProducts = useMemo(() => {
-    let list = productsList
-    if (activeCategory === 'popular') {
-      list = productsList.slice(0, 12)
-    } else if (activeCategory !== 'all') {
-      list = productsList.filter(p => p.cat === activeCategory)
-    }
     if (search.trim()) {
       const q = search.trim().toLowerCase()
-      list = list.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        p.barcode.toLowerCase().includes(q) ||
-        p.cat.toLowerCase().includes(q)
+      return productsList.filter(p =>
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.sku && p.sku.toLowerCase().includes(q)) ||
+        (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+        (p.cat && p.cat.toLowerCase().includes(q))
       )
     }
-    return list
+    if (activeCategory === 'popular') {
+      return productsList.slice(0, 12)
+    } else if (activeCategory !== 'all') {
+      return productsList.filter(p => p.cat === activeCategory)
+    }
+    return productsList
   }, [activeCategory, search, productsList])
 
   // Filtered Customers

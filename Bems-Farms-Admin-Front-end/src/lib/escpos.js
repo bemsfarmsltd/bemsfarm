@@ -151,44 +151,161 @@ class ESCPOSBuilder {
 }
 
 // ── State for Active Hardware Connection ──────────────────────────────────────
+let activeConnectionType = null // 'usb' | 'serial' | null
 let activeSerialPort = null
 let activeSerialWriter = null
+let activeUsbDevice = null
+let activeUsbEndpoint = null
+let activeUsbInterface = 0
 let isConnecting = false
 
 export function isDirectPrinterSupported() {
-  return typeof navigator !== 'undefined' && ('serial' in navigator || 'usb' in navigator)
+  return typeof navigator !== 'undefined' && ('usb' in navigator || 'serial' in navigator)
 }
 
 export function isPrinterConnected() {
-  return activeSerialPort !== null && activeSerialWriter !== null
+  if (activeConnectionType === 'usb' && activeUsbDevice?.opened) return true
+  if (activeConnectionType === 'serial' && activeSerialWriter !== null) return true
+  return false
 }
 
-export async function connectDirectPrinter() {
+export function getConnectedPrinterInfo() {
+  if (activeConnectionType === 'usb' && activeUsbDevice) {
+    return {
+      type: 'USB',
+      name: activeUsbDevice.productName || 'USB Thermal Printer',
+      manufacturer: activeUsbDevice.manufacturerName || 'ESC/POS'
+    }
+  }
+  if (activeConnectionType === 'serial' && activeSerialPort) {
+    return {
+      type: 'Serial / COM',
+      name: 'Serial Thermal Printer (COM)',
+      manufacturer: 'ESC/POS'
+    }
+  }
+  return null
+}
+
+/**
+ * Connects directly via WebUSB (Epson, Xprinter, Munbyn, POS-58, POS-80, etc.)
+ */
+export async function connectUsbPrinter() {
+  if (typeof navigator === 'undefined' || !('usb' in navigator)) {
+    throw new Error('WebUSB is not supported in this browser. Please use Chrome, Edge, or Opera.')
+  }
+
+  try {
+    const device = await navigator.usb.requestDevice({ filters: [] })
+    await device.open()
+
+    if (device.configuration === null) {
+      await device.selectConfiguration(1)
+    }
+
+    // Locate out-endpoint for printing
+    let foundEndpoint = null
+    let foundInterface = 0
+
+    for (const conf of device.configurations) {
+      for (const intf of conf.interfaces) {
+        for (const alt of intf.alternates) {
+          for (const ep of alt.endpoints) {
+            if (ep.direction === 'out') {
+              foundEndpoint = ep.endpointNumber
+              foundInterface = intf.interfaceNumber
+              break
+            }
+          }
+          if (foundEndpoint !== null) break
+        }
+        if (foundEndpoint !== null) break
+      }
+      if (foundEndpoint !== null) break
+    }
+
+    if (foundEndpoint === null) {
+      // Default to endpoint 1 or 2 if auto-detect misses it
+      foundEndpoint = 1
+    }
+
+    try {
+      await device.claimInterface(foundInterface)
+    } catch (e) {
+      console.warn('Interface already claimed or non-standard:', e)
+    }
+
+    activeUsbDevice = device
+    activeUsbEndpoint = foundEndpoint
+    activeUsbInterface = foundInterface
+    activeConnectionType = 'usb'
+
+    localStorage.setItem('bems_direct_printer_type', 'usb')
+    localStorage.setItem('bems_direct_printer_paired', 'true')
+
+    return {
+      connected: true,
+      type: 'usb',
+      name: device.productName || 'USB Thermal Printer'
+    }
+  } catch (err) {
+    console.error('Failed to pair WebUSB printer:', err)
+    throw err
+  }
+}
+
+/**
+ * Connects directly via WebSerial (Virtual COM, RS232, Serial USB)
+ */
+export async function connectSerialPrinter() {
+  if (typeof navigator === 'undefined' || !('serial' in navigator)) {
+    throw new Error('WebSerial is not supported in this browser. Please use Chrome, Edge, or Opera.')
+  }
+
+  try {
+    const port = await navigator.serial.requestPort()
+    await port.open({ baudRate: 9600, dataBits: 8, stopBits: 1, parity: 'none' })
+
+    activeSerialPort = port
+    activeSerialWriter = port.writable.getWriter()
+    activeConnectionType = 'serial'
+
+    localStorage.setItem('bems_direct_printer_type', 'serial')
+    localStorage.setItem('bems_direct_printer_paired', 'true')
+
+    return {
+      connected: true,
+      type: 'serial',
+      name: 'Serial / COM Thermal Printer'
+    }
+  } catch (err) {
+    console.error('Failed to pair WebSerial printer:', err)
+    throw err
+  }
+}
+
+/**
+ * Unified Connect: tries WebUSB first, then WebSerial if user requests
+ */
+export async function connectDirectPrinter(preferredType = 'usb') {
   if (!isDirectPrinterSupported()) {
-    throw new Error('Web Serial / WebUSB is not supported in this browser. Please use Google Chrome or Microsoft Edge.')
+    throw new Error('Direct hardware printing is not supported in this browser. Use Chrome, Edge, or Opera.')
   }
 
   if (isConnecting) return false
   isConnecting = true
 
   try {
-    // Request serial port from user
-    const port = await navigator.serial.requestPort()
-    await port.open({ baudRate: 9600, dataBits: 8, stopBits: 1, parity: 'none' })
-    
-    activeSerialPort = port
-    activeSerialWriter = port.writable.getWriter()
-    
-    // Save paired preference
-    localStorage.setItem('bems_direct_printer_paired', 'true')
-    
-    return {
-      connected: true,
-      portInfo: port.getInfo?.() || {}
+    if (preferredType === 'serial' && 'serial' in navigator) {
+      return await connectSerialPrinter()
     }
-  } catch (err) {
-    console.error('Failed to pair direct printer:', err)
-    throw err
+    if ('usb' in navigator) {
+      return await connectUsbPrinter()
+    }
+    if ('serial' in navigator) {
+      return await connectSerialPrinter()
+    }
+    throw new Error('Neither WebUSB nor WebSerial is available in this browser.')
   } finally {
     isConnecting = false
   }
@@ -199,32 +316,85 @@ export async function autoReconnectDirectPrinter() {
   if (isPrinterConnected()) return true
   if (localStorage.getItem('bems_direct_printer_paired') !== 'true') return false
 
-  try {
-    const ports = await navigator.serial.getPorts()
-    if (ports && ports.length > 0) {
-      const port = ports[0]
-      await port.open({ baudRate: 9600, dataBits: 8, stopBits: 1, parity: 'none' })
-      activeSerialPort = port
-      activeSerialWriter = port.writable.getWriter()
-      return true
+  const savedType = localStorage.getItem('bems_direct_printer_type') || 'usb'
+
+  // Try USB auto-reconnect
+  if (savedType === 'usb' && 'usb' in navigator) {
+    try {
+      const devices = await navigator.usb.getDevices()
+      if (devices && devices.length > 0) {
+        const device = devices[0]
+        await device.open()
+        if (device.configuration === null) {
+          await device.selectConfiguration(1)
+        }
+        let foundEndpoint = 1
+        let foundInterface = 0
+        for (const conf of device.configurations) {
+          for (const intf of conf.interfaces) {
+            for (const alt of intf.alternates) {
+              for (const ep of alt.endpoints) {
+                if (ep.direction === 'out') {
+                  foundEndpoint = ep.endpointNumber
+                  foundInterface = intf.interfaceNumber
+                  break
+                }
+              }
+            }
+          }
+        }
+        try {
+          await device.claimInterface(foundInterface)
+        } catch {}
+        activeUsbDevice = device
+        activeUsbEndpoint = foundEndpoint
+        activeUsbInterface = foundInterface
+        activeConnectionType = 'usb'
+        return true
+      }
+    } catch (e) {
+      console.warn('Silent USB reconnect failed:', e.message)
     }
-  } catch (err) {
-    console.warn('Silent auto-reconnect failed (may require manual tap):', err.message)
   }
+
+  // Try Serial auto-reconnect
+  if ('serial' in navigator) {
+    try {
+      const ports = await navigator.serial.getPorts()
+      if (ports && ports.length > 0) {
+        const port = ports[0]
+        await port.open({ baudRate: 9600, dataBits: 8, stopBits: 1, parity: 'none' })
+        activeSerialPort = port
+        activeSerialWriter = port.writable.getWriter()
+        activeConnectionType = 'serial'
+        return true
+      }
+    } catch (e) {
+      console.warn('Silent Serial reconnect failed:', e.message)
+    }
+  }
+
   return false
 }
 
 export async function disconnectDirectPrinter() {
   try {
     if (activeSerialWriter) {
-      activeSerialWriter.releaseLock()
+      try { activeSerialWriter.releaseLock() } catch {}
       activeSerialWriter = null
     }
     if (activeSerialPort) {
-      await activeSerialPort.close()
+      try { await activeSerialPort.close() } catch {}
       activeSerialPort = null
     }
+    if (activeUsbDevice) {
+      try { await activeUsbDevice.close() } catch {}
+      activeUsbDevice = null
+      activeUsbEndpoint = null
+    }
+    activeConnectionType = null
     localStorage.removeItem('bems_direct_printer_paired')
+    localStorage.removeItem('bems_direct_printer_type')
     return true
   } catch (err) {
     console.error('Error disconnecting printer:', err)
@@ -233,25 +403,45 @@ export async function disconnectDirectPrinter() {
 }
 
 export async function sendRawBytes(bytes) {
-  if (!activeSerialWriter) {
+  if (!isPrinterConnected()) {
     const reconnected = await autoReconnectDirectPrinter()
-    if (!reconnected || !activeSerialWriter) {
-      throw new Error('No direct thermal printer connected. Please connect via POS Settings.')
+    if (!reconnected || !isPrinterConnected()) {
+      throw new Error('No direct thermal printer connected. Please connect via POS Settings or topbar.')
     }
   }
 
-  try {
-    await activeSerialWriter.write(bytes)
-    return true
-  } catch (err) {
-    console.error('Error writing to direct printer:', err)
-    // If pipe broke, reset writer
+  // Send via WebUSB
+  if (activeConnectionType === 'usb' && activeUsbDevice) {
     try {
-      activeSerialWriter.releaseLock()
-      activeSerialWriter = null
-    } catch {}
-    throw err
+      // Chunk into 64-byte packets for USB bulk endpoints
+      const chunkSize = 64
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.slice(i, i + chunkSize)
+        await activeUsbDevice.transferOut(activeUsbEndpoint, chunk)
+      }
+      return true
+    } catch (err) {
+      console.error('Error writing to WebUSB printer:', err)
+      throw err
+    }
   }
+
+  // Send via WebSerial
+  if (activeConnectionType === 'serial' && activeSerialWriter) {
+    try {
+      await activeSerialWriter.write(bytes)
+      return true
+    } catch (err) {
+      console.error('Error writing to WebSerial printer:', err)
+      try {
+        activeSerialWriter.releaseLock()
+        activeSerialWriter = null
+      } catch {}
+      throw err
+    }
+  }
+
+  throw new Error('Printer connection channel lost.')
 }
 
 /**

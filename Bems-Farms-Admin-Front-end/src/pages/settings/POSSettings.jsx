@@ -7,10 +7,12 @@ import { useAuth } from '../../context/AuthContext'
 import {
   isDirectPrinterSupported,
   isPrinterConnected,
-  connectDirectPrinter,
+  connectUsbPrinter,
+  connectSerialPrinter,
   disconnectDirectPrinter,
   autoReconnectDirectPrinter,
-  testPrintDirect
+  testPrintDirect,
+  getConnectedPrinterInfo
 } from '../../lib/escpos'
 
 const BLANK = {
@@ -45,6 +47,7 @@ export default function POSSettings() {
   const [saving, setSaving] = useState(false)
   const [receiptType, setReceiptType] = useState('pos')
   const [directConnected, setDirectConnected] = useState(isPrinterConnected())
+  const [printerInfo, setPrinterInfo] = useState(getConnectedPrinterInfo())
   const [directBusy, setDirectBusy] = useState(false)
 
   const fld = (key, value) => setForm((current) => ({ ...current, [key]: value }))
@@ -57,20 +60,40 @@ export default function POSSettings() {
       .finally(() => setLoading(false))
 
     autoReconnectDirectPrinter()
-      .then((connected) => setDirectConnected(connected))
+      .then((connected) => {
+        setDirectConnected(connected)
+        setPrinterInfo(getConnectedPrinterInfo())
+      })
       .catch(() => {})
   }, [])
 
-  async function handleConnectPrinter() {
+  async function handleConnectUsb() {
     setDirectBusy(true)
     try {
-      const res = await connectDirectPrinter()
+      const res = await connectUsbPrinter()
       if (res?.connected) {
         setDirectConnected(true)
-        toast.success('Direct thermal printer paired & connected successfully!')
+        setPrinterInfo(getConnectedPrinterInfo())
+        toast.success(`Connected to ${res.name || 'USB Thermal Printer'}!`)
       }
     } catch (err) {
-      toast.error(err?.message || 'Failed to connect direct printer')
+      toast.error(err?.message || 'No USB device selected or permission denied')
+    } finally {
+      setDirectBusy(false)
+    }
+  }
+
+  async function handleConnectSerial() {
+    setDirectBusy(true)
+    try {
+      const res = await connectSerialPrinter()
+      if (res?.connected) {
+        setDirectConnected(true)
+        setPrinterInfo(getConnectedPrinterInfo())
+        toast.success('Connected to Serial/COM Thermal Printer!')
+      }
+    } catch (err) {
+      toast.error(err?.message || 'No COM port selected or permission denied')
     } finally {
       setDirectBusy(false)
     }
@@ -81,6 +104,7 @@ export default function POSSettings() {
     try {
       await disconnectDirectPrinter()
       setDirectConnected(false)
+      setPrinterInfo(null)
       toast.success('Direct printer disconnected')
     } catch (err) {
       toast.error('Error disconnecting printer')
@@ -95,7 +119,7 @@ export default function POSSettings() {
       await testPrintDirect()
       toast.success('Test receipt sent silently to thermal hardware!')
     } catch (err) {
-      toast.error(err?.message || 'Direct test print failed. Ensure printer is connected.')
+      toast.error(err?.message || 'Direct test print failed. Ensure printer is connected and turned on.')
     } finally {
       setDirectBusy(false)
     }
@@ -150,8 +174,8 @@ export default function POSSettings() {
               </div>
             </div>
             {directConnected ? (
-              <span className="badge bg-success-subtle text-success border border-success px-2 py-1 fs-12 fw-bold">
-                ● ONLINE (ESC/POS)
+              <span className="badge bg-success text-white px-2 py-1 fs-12 fw-bold">
+                ● ONLINE ({printerInfo?.type || 'ESC/POS'})
               </span>
             ) : (
               <span className="badge bg-secondary-subtle text-secondary border px-2 py-1 fs-12">
@@ -162,22 +186,41 @@ export default function POSSettings() {
           <div className="card-body">
             {!isDirectPrinterSupported() ? (
               <div className="alert alert-warning mb-0 fs-13">
-                <i className="ri-information-line me-1"></i> WebSerial direct hardware printing is supported in Chrome, Edge, and Opera desktop browsers. For other browsers, the standard high-speed thermal preview spooler will be used.
+                <i className="ri-information-line me-1"></i> WebUSB/WebSerial direct printing is supported in Chrome, Edge, and Opera desktop browsers. For other browsers, the standard high-speed thermal preview spooler will be used.
               </div>
             ) : (
               <div>
+                {directConnected && printerInfo && (
+                  <div className="alert alert-success d-flex align-items-center justify-content-between py-2 mb-3">
+                    <div>
+                      <strong>Connected:</strong> {printerInfo.name} ({printerInfo.type})
+                    </div>
+                    <span className="badge bg-success">Ready for Silent Print</span>
+                  </div>
+                )}
+
                 <p className="text-muted fs-13 mb-3">
-                  Connect any standard 58mm or 80mm ESC/POS thermal printer (Xprinter, POS-80, Munbyn, Epson, Milestone) via USB or Virtual COM port. Receipts will print automatically with 0ms delay and no popup windows.
+                  Connect any 58mm or 80mm thermal receipt printer (Xprinter, POS-58, POS-80, Munbyn, Epson, Milestone, RPP02N) directly via USB or Virtual COM port:
                 </p>
-                <div className="d-flex flex-wrap gap-2">
+
+                <div className="d-flex flex-wrap gap-2 mb-3">
                   {!directConnected ? (
-                    <button
-                      type="button"
-                      disabled={directBusy}
-                      onClick={handleConnectPrinter}
-                      className="btn btn-success fw-bold d-inline-flex align-items-center gap-1">
-                      <i className="ri-usb-line"></i> {directBusy ? 'Connecting…' : 'Pair & Connect USB Thermal Printer'}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        disabled={directBusy}
+                        onClick={handleConnectUsb}
+                        className="btn btn-success fw-bold d-inline-flex align-items-center gap-1 shadow-sm">
+                        <i className="ri-usb-line"></i> {directBusy ? 'Searching…' : 'Search & Pair USB Printer (WebUSB)'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={directBusy}
+                        onClick={handleConnectSerial}
+                        className="btn btn-outline-success fw-bold d-inline-flex align-items-center gap-1">
+                        <i className="ri-cpu-line"></i> Search Serial / COM Port
+                      </button>
+                    </>
                   ) : (
                     <>
                       <button
@@ -196,6 +239,15 @@ export default function POSSettings() {
                       </button>
                     </>
                   )}
+                </div>
+
+                <div className="p-3 bg-light rounded border text-muted fs-12">
+                  <strong>💡 Hardware Tips:</strong>
+                  <ul className="mb-0 ps-3 mt-1">
+                    <li>Make sure the printer is turned on and plugged into a USB port on this computer.</li>
+                    <li>Click <strong>"Search & Pair USB Printer"</strong> and select your printer model from the browser prompt.</li>
+                    <li>If your thermal printer appears as a Virtual COM port or RS-232 adapter, click <strong>"Search Serial / COM Port"</strong> instead.</li>
+                  </ul>
                 </div>
               </div>
             )}
