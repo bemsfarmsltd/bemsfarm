@@ -712,13 +712,52 @@ router.get("/warehouses", requireRole("superadmin", "manager", "admin", "storeke
       SELECT
         w.*,
         COUNT(DISTINCT p.id) AS product_count,
-        COALESCE(SUM(p.stock), 0) AS total_units
+        COALESCE(SUM(p.stock), 0) AS total_units,
+        COALESCE(SUM(p.stock * COALESCE(p.unit_price, p.price, 0)), 0) AS total_value
       FROM warehouses w
       LEFT JOIN products p ON p.warehouse_id = w.id AND p.status != 'archived'
       GROUP BY w.id
-      ORDER BY w.name
+      ORDER BY w.id ASC
     `);
     res.json({ warehouses: rows.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/warehouses/:id/products", requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"), async (req, res, next) => {
+  try {
+    const products = await pool.query(`
+      SELECT
+        p.id, p.name, p.sku, p.barcode, p.image_url,
+        p.stock, p.low_stock_threshold,
+        COALESCE(p.unit_price, p.price, 0) AS unit_price,
+        COALESCE(p.cost_price, 0) AS cost_price,
+        p.status,
+        c.name AS category
+      FROM products p
+      LEFT JOIN categories c ON c.id = p.category_id
+      WHERE p.warehouse_id = $1 AND p.status != 'archived'
+      ORDER BY p.name ASC
+    `, [req.params.id]);
+
+    const recentMovements = await pool.query(`
+      SELECT
+        sm.id, sm.type, sm.quantity, sm.before_qty, sm.after_qty, sm.reason, sm.reference, sm.created_at,
+        p.name AS product_name, p.sku,
+        u.name AS created_by_name
+      FROM stock_movements sm
+      LEFT JOIN products p ON p.id = sm.product_id
+      LEFT JOIN users u ON u.id = sm.created_by
+      WHERE sm.warehouse_id = $1
+      ORDER BY sm.created_at DESC
+      LIMIT 10
+    `, [req.params.id]);
+
+    res.json({
+      products: products.rows,
+      recent_movements: recentMovements.rows,
+    });
   } catch (err) {
     next(err);
   }
