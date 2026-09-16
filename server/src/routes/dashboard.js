@@ -473,10 +473,12 @@ router.get("/finance", async (req, res, next) => {
       productMargin,
       topProductProfit,
     ] = await Promise.all([
-      q1(`SELECT COALESCE(SUM(amount),0) AS total
-          FROM income
-          WHERE DATE_TRUNC('month', date) = DATE_TRUNC('month', NOW())
-            AND status = 'completed'`),
+      // Total monthly gross revenue: orders revenue + any non-order miscellaneous completed income
+      q1(`SELECT (
+            COALESCE((SELECT SUM(total) FROM orders WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW()) AND status NOT IN ('cancelled')), 0)
+            +
+            COALESCE((SELECT SUM(amount) FROM income WHERE DATE_TRUNC('month', date) = DATE_TRUNC('month', NOW()) AND status = 'completed' AND (order_id IS NULL OR order_id = '')), 0)
+          ) AS total`),
 
       q1(`SELECT COALESCE(SUM(amount),0) AS total
           FROM expenses
@@ -501,19 +503,25 @@ router.get("/finance", async (req, res, next) => {
          ORDER BY due_date ASC
          LIMIT 5`),
 
+      // 6-month trajectory: orders revenue + completed misc income vs approved/paid expenses
       q(`SELECT
            TO_CHAR(DATE_TRUNC('month', d), 'Mon') AS month,
-           COALESCE(i.total, 0) AS income,
+           (COALESCE(ord.total, 0) + COALESCE(inc.total, 0)) AS income,
            COALESCE(e.total, 0) AS expenses
          FROM generate_series(
            DATE_TRUNC('month', NOW()) - INTERVAL '5 months',
            DATE_TRUNC('month', NOW()), '1 month'
          ) AS d
          LEFT JOIN (
-           SELECT DATE_TRUNC('month', date) AS m, SUM(amount) AS total
-           FROM income WHERE status = 'completed'
+           SELECT DATE_TRUNC('month', created_at) AS m, SUM(total) AS total
+           FROM orders WHERE status NOT IN ('cancelled')
            GROUP BY m
-         ) i ON i.m = d
+         ) ord ON ord.m = d
+         LEFT JOIN (
+           SELECT DATE_TRUNC('month', date) AS m, SUM(amount) AS total
+           FROM income WHERE status = 'completed' AND (order_id IS NULL OR order_id = '')
+           GROUP BY m
+         ) inc ON inc.m = d
          LEFT JOIN (
            SELECT DATE_TRUNC('month', date) AS m, SUM(amount) AS total
            FROM expenses WHERE status IN ('approved','paid')
@@ -521,8 +529,7 @@ router.get("/finance", async (req, res, next) => {
          ) e ON e.m = d
          ORDER BY d`),
 
-      // Cost of goods sold vs. product revenue this month (based on
-      // products.cost_price / unit_price, not the income/expenses ledger)
+      // Cost of goods sold vs. product revenue this month
       q1(`SELECT
             COALESCE(SUM(oi.subtotal), 0) AS revenue,
             COALESCE(SUM(oi.quantity * COALESCE(p.cost_price, 0)), 0) AS cogs
@@ -610,7 +617,9 @@ router.get("/inventory", async (req, res, next) => {
       totalSkus,
       totalValue,
       outOfStock,
+      lowStockCount,
       lowStockItems,
+      expiringCount,
       expiringBatches,
       inventoryList,
       valueByCategory,
@@ -623,6 +632,11 @@ router.get("/inventory", async (req, res, next) => {
       q1(`SELECT COUNT(*) AS count FROM products
           WHERE stock = 0 AND status = 'active'`),
 
+      // Exact count of low stock items across entire catalog (matching Overview)
+      q1(`SELECT COUNT(*) AS count FROM products
+          WHERE stock <= low_stock_threshold
+            AND status = 'active'`),
+
       q(`SELECT id, name, sku, stock AS qty, low_stock_threshold AS reorder_qty,
                 expiry_date, status
          FROM products
@@ -630,6 +644,11 @@ router.get("/inventory", async (req, res, next) => {
            AND status = 'active'
          ORDER BY stock ASC
          LIMIT 10`),
+
+      // Exact count of expiring batches
+      q1(`SELECT COUNT(*) AS count FROM batch_management
+          WHERE expiry_date <= CURRENT_DATE + INTERVAL '7 days'
+            AND status = 'active'`),
 
       q(`SELECT p.name, b.batch_no, b.quantity, b.expiry_date
          FROM batch_management b
@@ -670,8 +689,8 @@ router.get("/inventory", async (req, res, next) => {
       kpis: {
         total_skus: parseInt(totalSkus.count || 0),
         total_value: parseFloat(totalValue.total || 0),
-        low_stock_count: lowStockItems.length,
-        expiring_count: expiringBatches.length,
+        low_stock_count: parseInt(lowStockCount.count || 0),
+        expiring_count: parseInt(expiringCount.count || 0),
         out_of_stock: parseInt(outOfStock.count || 0),
       },
       low_stock_items: lowStockItems,
@@ -688,13 +707,19 @@ router.get("/inventory", async (req, res, next) => {
 router.get("/operations", async (req, res, next) => {
   try {
     const [
+      activeDeliveriesCount,
       activeDeliveries,
       driversOnDuty,
       avgDeliveryTime,
+      staffOnDutyCount,
       staffToday,
       purchaseOrders,
       deliveryBreakdown,
     ] = await Promise.all([
+      // Real total count of active deliveries (matching Overview)
+      q1(`SELECT COUNT(*) AS count FROM deliveries
+          WHERE status IN ('assigned','awaiting_pickup','en_route')`),
+
       q(`SELECT
            d.id, d.delivery_ref, d.status,
            COALESCE(o.customer_name, c.name, 'Customer') AS customer,
@@ -721,6 +746,10 @@ router.get("/operations", async (req, res, next) => {
           FROM deliveries
           WHERE status = 'delivered'
             AND DATE(delivered_at) = CURRENT_DATE`),
+
+      // Real total count of staff clocked in today (matching Overview)
+      q1(`SELECT COUNT(*) AS count FROM staff_attendance
+          WHERE date = CURRENT_DATE AND status = 'present'`),
 
       q(`SELECT
            s.name, st.role, st.shift,
@@ -773,10 +802,10 @@ router.get("/operations", async (req, res, next) => {
 
     res.json({
       kpis: {
-        active_deliveries: activeDeliveries.length,
+        active_deliveries: parseInt(activeDeliveriesCount.count || 0),
         drivers_on_duty: parseInt(driversOnDuty.count || 0),
         avg_delivery_mins: parseFloat(avgDeliveryTime.avg_mins || 0).toFixed(0),
-        staff_on_duty: staffToday.filter((s) => s.status === "present").length,
+        staff_on_duty: parseInt(staffOnDutyCount.count || 0),
       },
       active_deliveries: activeDeliveries,
       staff_today: staffToday,
@@ -857,12 +886,12 @@ router.get("/customers", async (req, res, next) => {
 // ── CHEF BEMS AI TAB ─────────────────────────────────────────────
 router.get("/ai", async (req, res, next) => {
   try {
-    // admin_dietary_rules is created once in migrations.sql (#28), not per-request.
-
     const [
       convToday,
       pendingConvs,
+      dietaryRulesCount,
       dietaryRules,
+      mealAssociationsCount,
       mealAssociations,
       recentConvs,
       convBreakdown,
@@ -873,9 +902,15 @@ router.get("/ai", async (req, res, next) => {
       q1(`SELECT COUNT(*) AS count FROM admin_ai_conversations
           WHERE bot_type='chef' AND archived=false`),
 
+      // Exact count of dietary rules
+      q1(`SELECT COUNT(*) AS count FROM admin_dietary_rules`),
+
       q(`SELECT condition AS name, rule_text AS scope, 'active' AS status
          FROM admin_dietary_rules
          LIMIT 10`),
+
+      // Exact count of meal associations
+      q1(`SELECT COUNT(*) AS count FROM product_associations`),
 
       q(`SELECT
            product_a || ' + ' || product_b AS meal,
@@ -911,8 +946,8 @@ router.get("/ai", async (req, res, next) => {
       kpis: {
         conversations_today: parseInt(convToday.count || 0),
         pending_replies: parseInt(pendingConvs.count || 0),
-        dietary_rules: dietaryRules.length,
-        meal_associations: mealAssociations.length,
+        dietary_rules: parseInt(dietaryRulesCount.count || 0),
+        meal_associations: parseInt(mealAssociationsCount.count || 0),
       },
       dietary_rules: dietaryRules,
       meal_associations: mealAssociations,
