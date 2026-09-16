@@ -175,6 +175,44 @@ export default function Barcode() {
     }
   }
 
+  // Regenerate Barcode for Single Product
+  const handleRegenerateSingle = async (product) => {
+    const newCode = generateUniversalGoodsCode(product, symbology)
+    try {
+      await api.patch(`/admin/products/${product.id}`, { barcode: newCode })
+      setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, barcode: newCode } : p)))
+      if (printQueue[product.id]) {
+        setPrintQueue((prev) => ({
+          ...prev,
+          [product.id]: { ...prev[product.id], product: { ...prev[product.id].product, barcode: newCode } },
+        }))
+      }
+      toast.success(`Regenerated barcode for "${product.name}": ${newCode}`)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to regenerate barcode')
+    }
+  }
+
+  // Delete / Clear Barcode for Single Product
+  const handleDeleteSingle = async (product) => {
+    if (!window.confirm(`Are you sure you want to remove the barcode for "${product.name}"?`)) {
+      return
+    }
+    try {
+      await api.patch(`/admin/products/${product.id}`, { barcode: '' })
+      setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, barcode: null } : p)))
+      if (printQueue[product.id]) {
+        setPrintQueue((prev) => ({
+          ...prev,
+          [product.id]: { ...prev[product.id], product: { ...prev[product.id].product, barcode: null } },
+        }))
+      }
+      toast.success(`Barcode removed for "${product.name}"`)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete barcode')
+    }
+  }
+
   // Auto-Generate Barcodes for ALL Missing Products
   const handleAutoGenerateAllMissing = async () => {
     if (productsMissingBarcode.length === 0) {
@@ -244,6 +282,35 @@ export default function Barcode() {
       setEditingBarcodeProduct(null)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update barcode')
+    } finally {
+      setSavingBarcode(false)
+    }
+  }
+
+  // Delete manual barcode from modal
+  const handleDeleteManualBarcode = async () => {
+    if (!editingBarcodeProduct) return
+    if (!window.confirm(`Delete barcode for "${editingBarcodeProduct.name}"?`)) return
+
+    setSavingBarcode(true)
+    try {
+      await api.patch(`/admin/products/${editingBarcodeProduct.id}`, { barcode: '' })
+      setProducts((prev) =>
+        prev.map((p) => (p.id === editingBarcodeProduct.id ? { ...p, barcode: null } : p))
+      )
+      if (printQueue[editingBarcodeProduct.id]) {
+        setPrintQueue((prev) => ({
+          ...prev,
+          [editingBarcodeProduct.id]: {
+            ...prev[editingBarcodeProduct.id],
+            product: { ...prev[editingBarcodeProduct.id].product, barcode: null },
+          },
+        }))
+      }
+      toast.success(`Barcode removed for "${editingBarcodeProduct.name}"`)
+      setEditingBarcodeProduct(null)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to remove barcode')
     } finally {
       setSavingBarcode(false)
     }
@@ -891,6 +958,25 @@ export default function Barcode() {
                           </td>
                           <td className="text-end pe-3">
                             <div className="btn-group btn-group-sm">
+                              {hasBarcode ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-success"
+                                  onClick={() => handleRegenerateSingle(p)}
+                                  title="Regenerate New Barcode"
+                                >
+                                  <i className="ri-refresh-line"></i>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-success"
+                                  onClick={() => handleGenerateSingle(p)}
+                                  title="Generate Barcode"
+                                >
+                                  <i className="ri-magic-line"></i>
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 className="btn btn-outline-secondary"
@@ -902,6 +988,16 @@ export default function Barcode() {
                               >
                                 <i className="ri-edit-line"></i>
                               </button>
+                              {hasBarcode && (
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-danger"
+                                  onClick={() => handleDeleteSingle(p)}
+                                  title="Delete Barcode"
+                                >
+                                  <i className="ri-delete-bin-line"></i>
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 className="btn btn-outline-primary"
@@ -1397,22 +1493,36 @@ export default function Barcode() {
                 )}
               </div>
 
-              <div className="modal-footer border-0 pt-0">
-                <button
-                  type="button"
-                  className="btn btn-light"
-                  onClick={() => setEditingBarcodeProduct(null)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary px-4"
-                  onClick={handleSaveManualBarcode}
-                  disabled={savingBarcode}
-                >
-                  {savingBarcode ? 'Saving…' : 'Save & Assign Barcode'}
-                </button>
+              <div className="modal-footer border-0 pt-0 d-flex justify-content-between">
+                <div>
+                  {editingBarcodeProduct.barcode && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-danger"
+                      onClick={handleDeleteManualBarcode}
+                      disabled={savingBarcode}
+                    >
+                      <i className="ri-delete-bin-line me-1"></i> Delete Barcode
+                    </button>
+                  )}
+                </div>
+                <div className="d-flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-light"
+                    onClick={() => setEditingBarcodeProduct(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary px-4"
+                    onClick={handleSaveManualBarcode}
+                    disabled={savingBarcode}
+                  >
+                    {savingBarcode ? 'Saving…' : 'Save & Assign Barcode'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
