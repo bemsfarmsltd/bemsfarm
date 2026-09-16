@@ -25,6 +25,13 @@ function fmtNaira(v) {
   return `₦${n.toLocaleString()}`
 }
 
+function fmtDate(dateStr) {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return String(dateStr)
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 function formatTimeAgo(dateStr) {
   if (!dateStr) return '—'
   const date = new Date(dateStr)
@@ -113,16 +120,16 @@ function TabError({ onRetry }) {
   )
 }
 
-// ── Tab components ────────────────────────────────────────────────────────────
+// ── Tab 1: Overview Tab (Executive Summary) ───────────────────────────────────
 
 function OverviewTab() {
   const { hasRole } = useAuth()
   const revenueRef  = useRef(null)
   const ordersRef   = useRef(null)
-  const [data, setData]     = useState(null)
+  const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError]   = useState(false)
-  const [modal, setModal]   = useState(null)
+  const [error, setError]     = useState(false)
+  const [modal, setModal]     = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(false)
@@ -162,27 +169,26 @@ function OverviewTab() {
     colors:      ['#F59E0B'],
     xaxis:       { categories: weekDays, axisBorder: { show: false }, axisTicks: { show: false }, labels: { style: { fontSize: '11px' } } },
     yaxis:       { labels: { style: { fontSize: '11px' } } },
-    grid:        { borderColor: '#EFECE6', strokeDashArray: 3, padding: { top: 0, bottom: 0 } },
+    grid:       { borderColor: '#EFECE6', strokeDashArray: 3, padding: { top: 0, bottom: 0 } },
   }), [ordersArr.join()])
 
   if (loading) return <TabSkeleton />
   if (error)   return <TabError onRetry={load} />
 
-  const todayRevenue  = Number(kpis.revenue_today || 0)
-  const recentOrders  = data?.recent_orders ?? []
-  const topProducts   = data?.top_products ?? []
-  const lowStock      = data?.low_stock ?? []
-  const activeDeliveries = data?.active_deliveries ?? []
-  const aiConvs       = data?.recent_convs ?? []
+  const recentOrders        = data?.recent_orders ?? []
+  const topProducts         = data?.top_products ?? []
+  const lowStock            = data?.low_stock ?? []
+  const activeDeliveries    = data?.active_deliveries ?? []
+  const aiConvs             = data?.recent_convs ?? []
   const activeCustomersList = data?.active_customers_list ?? []
-  const staffTodayList = data?.staff_today ?? []
+  const staffTodayList      = data?.staff_today ?? []
 
   const openOrders = () => setModal({
-    title: "Recent Orders", subtitle: 'Most recent orders across all channels',
+    title: "Today's Orders", subtitle: 'Most recent orders across all sales channels',
     icon: 'ri-shopping-cart-2-line', columns: orderColumns, rows: recentOrders,
   })
   const openPending = () => setModal({
-    title: 'Pending Orders', subtitle: 'Confirmed / processing — from most recent orders',
+    title: 'Pending Orders', subtitle: 'Confirmed / processing — awaiting fulfillment',
     icon: 'ri-time-line', columns: orderColumns,
     rows: recentOrders.filter(o => ['new_order', 'processing', 'pending'].includes(o.status)),
   })
@@ -206,7 +212,7 @@ function OverviewTab() {
     rows: activeCustomersList,
   })
   const openStaffToday = () => setModal({
-    title: 'Staff on Duty', subtitle: "Today's attendance",
+    title: 'Staff on Duty', subtitle: "Today's attendance log",
     icon: 'ri-team-line', columns: staffColumns, rows: staffTodayList,
   })
   const openWeekRevenue = () => setModal({
@@ -228,12 +234,12 @@ function OverviewTab() {
     { label: 'Dispatched',       count: pipeline.dispatched  ?? 0, icon: 'ri-truck-line',            bg: '#f3e8ff', txt: '#7e22ce', border: '#e9d5ff', link: '/deliveries/active',        roles: ['superadmin','admin','manager','delivery_manager'] },
     { label: 'Delivered',        count: pipeline.delivered   ?? 0, icon: 'ri-checkbox-circle-line',  bg: '#dcfce7', txt: '#15803d', border: '#86efac', link: '/orders',                   roles: null },
     { label: 'Returns',          count: pipeline.returned    ?? 0, icon: 'ri-arrow-go-back-line',    bg: '#ffe4e6', txt: '#be123c', border: '#fecdd3', link: '/orders/refunds',           roles: ['superadmin','admin','manager'] },
-    { label: 'AI Conversations', count: kpis.pending_ai ?? 0,      icon: 'ri-robot-line',            bg: '#ccfbf1', txt: '#0f766e', border: '#99f6e4', link: '/chef-bems/conversations',  roles: ['superadmin','admin','manager','kitchen_staff'] },
+    { label: 'AI Inquiries',     count: kpis.pending_ai      ?? 0, icon: 'ri-robot-line',            bg: '#ccfbf1', txt: '#0f766e', border: '#99f6e4', link: '/chef-bems/conversations',  roles: ['superadmin','admin','manager','kitchen_staff'] },
   ]
 
   return (
     <>
-      {/* KPI row */}
+      {/* 6 Executive Summary KPI Cards */}
       <div className="row g-2 mb-2.5">
         <div className="col-6 col-sm-4 col-xl-2">
           <StatsCard title="Today's Revenue"   value={fmtNaira(kpis.revenue_today)}         sub={`${kpis.orders_today ?? 0} orders today`}        riIcon="ri-money-dollar-circle-line" color="green" onClick={openOrders} />
@@ -245,7 +251,7 @@ function OverviewTab() {
           <StatsCard title="Active Deliveries" value={kpis.active_deliveries ?? 0}           sub={`${kpis.en_route ?? 0} en route now`}             riIcon="ri-bike-line"               color="blue" onClick={openDeliveries} />
         </div>
         <div className="col-6 col-sm-4 col-xl-2">
-          <StatsCard title="Low Stock Alerts"  value={kpis.low_stock_alerts ?? 0}             sub="Action required"                                  riIcon="ri-alert-line"              color="red" onClick={openLowStock} />
+          <StatsCard title="Low Stock Alerts"  value={kpis.low_stock_alerts ?? 0}             sub="Requires restocking"                              riIcon="ri-alert-line"              color="red" onClick={openLowStock} />
         </div>
         <div className="col-6 col-sm-4 col-xl-2">
           <StatsCard title="Active Customers"  value={(kpis.active_customers ?? 0).toLocaleString()} sub={`↑ ${kpis.new_this_week ?? 0} new this week`}  riIcon="ri-user-3-line"             color="purple" onClick={openActiveCustomers} />
@@ -505,7 +511,7 @@ function OverviewTab() {
             <div className="card-header py-2.5 px-3 d-flex align-items-center justify-content-between border-bottom">
               <div className="d-flex align-items-center gap-2">
                 <i className="ri-robot-line text-info" style={{ fontSize: 16 }} />
-                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Chef Bems AI Activity</h6>
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Chef Bems AI Inquiries</h6>
               </div>
               <Link to="/chef-bems/conversations" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>View All →</Link>
             </div>
@@ -523,7 +529,7 @@ function OverviewTab() {
                         </div>
                         <div className="text-muted text-truncate" style={{ fontSize: '0.72rem' }}>"{conv.query}"</div>
                       </div>
-                      <span className="badge flex-shrink-0" style={{ fontSize: '0.65rem', fontWeight: 700, backgroundColor: conv.status === 'resolved' ? '#dcfce7' : '#fef3c7', color: conv.status === 'resolved' ? '#15803d' : '#b45309', border: '1px solid currentColor' }}>
+                      <span className="badge flex-shrink-0" style={{ fontSize: '0.65rem', fontWeight: 700, backgroundColor: conv.status === 'resolved' || conv.status === 'completed' ? '#dcfce7' : '#fef3c7', color: conv.status === 'resolved' || conv.status === 'completed' ? '#15803d' : '#b45309', border: '1px solid currentColor' }}>
                         {conv.status}
                       </span>
                     </div>
@@ -546,6 +552,8 @@ function OverviewTab() {
     </>
   )
 }
+
+// ── Tab 2: Sales Tab (Commercial Performance) ──────────────────────────────────
 
 function SalesTab() {
   const revWeekRef  = useRef(null)
@@ -573,10 +581,11 @@ function SalesTab() {
   const catValues  = data?.charts?.by_category?.map(r => Number(r.revenue)) ?? []
   const payLabels  = data?.charts?.by_payment?.map(r => r.method) ?? []
   const payValues  = data?.charts?.by_payment?.map(r => Number(r.amount)) ?? []
+  const sources    = data?.charts?.by_source ?? []
   const kpis       = data?.kpis ?? {}
 
   useApexChart(revWeekRef, () => ({
-    chart: { type: 'area', height: 220, toolbar: { show: false } },
+    chart: { type: 'area', height: 210, toolbar: { show: false } },
     series: [{ name: 'Revenue', data: revenueW }],
     dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 },
     fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.05 } },
@@ -588,9 +597,9 @@ function SalesTab() {
   }), [revenueW.join()])
 
   useApexChart(revMonthRef, () => ({
-    chart: { type: 'bar', height: 220, toolbar: { show: false } },
+    chart: { type: 'bar', height: 210, toolbar: { show: false } },
     series: [{ name: 'Revenue', data: incomeM }],
-    plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
+    plotOptions: { bar: { borderRadius: 4, columnWidth: '50%' } },
     dataLabels: { enabled: false }, colors: ['#405189'],
     xaxis: { categories: months6, axisBorder: { show: false }, axisTicks: { show: false } },
     yaxis: { labels: { formatter: (v) => `₦${(v/1000000).toFixed(1)}M` } },
@@ -599,36 +608,36 @@ function SalesTab() {
   }), [incomeM.join()])
 
   useApexChart(categoryRef, () => ({
-    chart: { type: 'donut', height: 220 },
+    chart: { type: 'donut', height: 210 },
     series: catValues.length ? catValues : [1],
     labels: catLabels.length ? catLabels : ['No data'],
     colors: ['#0ab39c','#405189','#f7b84b','#f06548','#3577f1','#299cdb'],
     legend: { position: 'bottom', fontSize: '11px' },
     dataLabels: { enabled: false },
     plotOptions: { pie: { donut: { size: '65%' } } },
+    tooltip: { y: { formatter: (v) => fmtNaira(v) } },
   }), [catValues.join()])
 
   useApexChart(paymentRef, () => ({
-    chart: { type: 'donut', height: 220 },
+    chart: { type: 'donut', height: 210 },
     series: payValues.length ? payValues : [1],
-    labels: payLabels.length ? payLabels : ['No data'],
+    labels: payLabels.length ? payLabels.map(l => l.replace(/_/g, ' ').toUpperCase()) : ['No data'],
     colors: ['#405189','#0ab39c','#f7b84b','#f06548'],
     legend: { position: 'bottom', fontSize: '11px' },
     dataLabels: { enabled: false },
     plotOptions: { pie: { donut: { size: '65%' } } },
+    tooltip: { y: { formatter: (v) => fmtNaira(v) } },
   }), [payValues.join()])
 
   if (loading) return <TabSkeleton />
   if (error)   return <TabError onRetry={load} />
 
   const topProducts  = data?.top_products ?? []
-  const recentOrders = data?.recent_orders ?? []
   const returnsTodayList = data?.returns_today_list ?? []
   const skusSoldList = data?.skus_sold_list ?? []
 
-  const openRecentOrders = (title, sub) => setModal({ title, subtitle: sub, icon: 'ri-shopping-cart-2-line', columns: orderColumns, rows: recentOrders })
   const openReturnsToday = () => setModal({
-    title: 'Returns Today', subtitle: 'Refund requests submitted today',
+    title: 'Returns & Refunds Today', subtitle: 'Refund requests submitted today',
     icon: 'ri-arrow-go-back-line',
     columns: [
       { key: 'order_id', label: 'Order' },
@@ -640,17 +649,17 @@ function SalesTab() {
     rows: returnsTodayList,
   })
   const openSkusSold = () => setModal({
-    title: 'Total SKUs Sold Today', subtitle: 'Unique products with at least one sale today',
+    title: 'Unique SKUs Sold Today', subtitle: 'Products with completed sales today',
     icon: 'ri-price-tag-3-line', columns: productSoldColumns, rows: skusSoldList,
   })
   const openDaily7d = () => setModal({
-    title: 'Revenue This Week', subtitle: 'Daily breakdown',
+    title: 'Revenue This Week (7 Days)', subtitle: 'Daily revenue receipts',
     icon: 'ri-line-chart-line',
     columns: [{ key: 'day_label', label: 'Day' }, { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtNaira(r.revenue) }],
     rows: data?.charts?.daily_7d ?? [],
   })
   const openMonthly6m = () => setModal({
-    title: 'Revenue Last 6 Months', subtitle: 'Monthly totals',
+    title: 'Monthly Revenue History (Last 6 Months)', subtitle: 'Monthly sales totals',
     icon: 'ri-bar-chart-grouped-line',
     columns: [
       { key: 'month', label: 'Month' },
@@ -660,13 +669,13 @@ function SalesTab() {
     rows: data?.charts?.monthly_6m ?? [],
   })
   const openByCategory = () => setModal({
-    title: 'Revenue by Category', subtitle: 'This month',
+    title: 'Sales by Category', subtitle: 'This month category distribution',
     icon: 'ri-pie-chart-line',
     columns: [{ key: 'category', label: 'Category' }, { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtNaira(r.revenue) }],
     rows: data?.charts?.by_category ?? [],
   })
   const openByPayment = () => setModal({
-    title: 'By Payment Method', subtitle: 'This month',
+    title: 'Sales by Payment Method', subtitle: 'This month tender breakdown',
     icon: 'ri-bank-card-line',
     columns: [
       { key: 'method', label: 'Method', render: (r) => (r.method || '').replace(/_/g, ' ') },
@@ -678,68 +687,130 @@ function SalesTab() {
 
   return (
     <>
-      <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Today's Revenue"  value={fmtNaira(kpis.today_revenue)}   sub={`${kpis.orders_today ?? 0} orders`}         riIcon="ri-money-dollar-circle-line" color="green" onClick={() => openRecentOrders("Today's Revenue — Orders", 'Most recent orders')} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Monthly Revenue"  value={fmtNaira(kpis.month_revenue)}   sub={new Date().toLocaleString('default',{month:'long',year:'numeric'})} riIcon="ri-line-chart-line" color="green" onClick={openMonthly6m} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Orders Today"     value={kpis.orders_today ?? 0}          sub={`Avg ${fmtNaira(kpis.avg_order_value)}/order`} riIcon="ri-shopping-cart-2-line" color="blue" onClick={() => openRecentOrders('Orders Today', 'Most recent orders')} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Avg Order Value"  value={fmtNaira(kpis.avg_order_value)} sub="Per transaction"                               riIcon="ri-funds-line" color="amber" onClick={() => openRecentOrders('Avg Order Value — Orders', 'Most recent orders')} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Returns Today"    value={kpis.returns_today ?? 0}         sub={fmtNaira(kpis.returns_value) + ' refunded'}   riIcon="ri-arrow-go-back-line" color="red" onClick={openReturnsToday} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total SKUs Sold"  value={kpis.skus_sold ?? 0}             sub="Unique products today"                         riIcon="ri-price-tag-3-line" color="teal" onClick={openSkusSold} /></div>
+      {/* 4 Unique Commercial KPI Cards */}
+      <div className="row g-3 mb-3">
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Monthly Sales Volume" value={fmtNaira(kpis.month_revenue)} sub={`${kpis.orders_month ?? 0} orders this month`} riIcon="ri-line-chart-line" color="green" onClick={openMonthly6m} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Avg Order Value (AOV)" value={fmtNaira(kpis.avg_order_value)} sub="Average transaction spend" riIcon="ri-funds-line" color="amber" onClick={openDaily7d} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Active SKUs Moving" value={kpis.skus_sold ?? 0} sub="Unique products sold today" riIcon="ri-price-tag-3-line" color="teal" onClick={openSkusSold} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Returns & Refunds" value={kpis.returns_today ?? 0} sub={`${fmtNaira(kpis.returns_value)} refunded today`} riIcon="ri-arrow-go-back-line" color="red" onClick={openReturnsToday} />
+        </div>
       </div>
 
-      <div className="row g-4 mb-4">
-        <div className="col-xl-6"><div className="card mb-0 chart-panel-clickable" onClick={openDaily7d} role="button" tabIndex={0}><div className="card-body"><h6 className="fw-semibold mb-0">Revenue This Week</h6><p className="text-muted fs-xs mb-2 mt-1">Daily breakdown</p><div ref={revWeekRef} /></div></div></div>
-        <div className="col-xl-6"><div className="card mb-0 chart-panel-clickable" onClick={openMonthly6m} role="button" tabIndex={0}><div className="card-body"><h6 className="fw-semibold mb-0">Revenue Last 6 Months</h6><p className="text-muted fs-xs mb-2 mt-1">Monthly totals</p><div ref={revMonthRef} /></div></div></div>
-      </div>
-
-      <div className="row g-4 mb-4">
-        <div className="col-xl-3"><div className="card mb-0 h-100 chart-panel-clickable" onClick={openByCategory} role="button" tabIndex={0}><div className="card-body"><h6 className="fw-semibold mb-0">Revenue by Category</h6><p className="text-muted fs-xs mb-2 mt-1">This month</p><div ref={categoryRef} /></div></div></div>
-        <div className="col-xl-3"><div className="card mb-0 h-100 chart-panel-clickable" onClick={openByPayment} role="button" tabIndex={0}><div className="card-body"><h6 className="fw-semibold mb-0">By Payment Method</h6><p className="text-muted fs-xs mb-2 mt-1">This month</p><div ref={paymentRef} /></div></div></div>
+      {/* Revenue Trends */}
+      <div className="row g-3 mb-3">
         <div className="col-xl-6">
-          <div className="card mb-0 h-100">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h6 className="fw-semibold mb-0">Top Selling Products</h6>
+          <div className="card mb-0 h-100 chart-panel-clickable" onClick={openDaily7d} role="button" tabIndex={0} style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-body p-3">
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.9rem' }}>7-Day Revenue Velocity</h6>
+                <span className="badge bg-light text-muted border fs-xs">Daily Gross</span>
+              </div>
+              <p className="text-muted fs-xs mb-2">Daily receipts trend over the past 7 days</p>
+              <div ref={revWeekRef} />
             </div>
-            <div className="card-body p-0">
-              <Table>
-                <Thead><Th>#</Th><Th>Product</Th><Th>Sold</Th><Th>Revenue</Th></Thead>
-                <Tbody>
-                  {topProducts.length === 0 ? (
-                    <Tr><Td colSpan={4} className="text-center text-muted py-4 fs-sm">No sales data.</Td></Tr>
-                  ) : topProducts.map((p, i) => (
-                    <Tr key={p.sku || i}>
-                      <Td><span className="fw-bold text-muted">{i + 1}</span></Td>
-                      <Td><p className="fw-medium fs-sm mb-0">{p.name}</p><span className="text-muted" style={{ fontSize: 10 }}>{p.sku}</span></Td>
-                      <Td className="fw-semibold">{p.units_sold ?? p.sold}</Td>
-                      <Td className="fw-semibold text-success">{fmtNaira(p.total_revenue ?? p.revenue)}</Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
+          </div>
+        </div>
+        <div className="col-xl-6">
+          <div className="card mb-0 h-100 chart-panel-clickable" onClick={openMonthly6m} role="button" tabIndex={0} style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-body p-3">
+              <div className="d-flex align-items-center justify-content-between mb-1">
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.9rem' }}>6-Month Revenue Trajectory</h6>
+                <span className="badge bg-light text-muted border fs-xs">Monthly Inflows</span>
+              </div>
+              <p className="text-muted fs-xs mb-2">Month-on-month sales performance comparison</p>
+              <div ref={revMonthRef} />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="card mb-0">
-        <div className="card-header d-flex align-items-center justify-content-between">
-          <h6 className="fw-semibold mb-0">Recent Orders</h6>
-          <Link to="/orders" className="link link-custom fs-sm">View all →</Link>
+      {/* Category, Payment Tender & Sales Channels */}
+      <div className="row g-3 mb-3">
+        <div className="col-xl-4 col-md-6">
+          <div className="card mb-0 h-100 chart-panel-clickable" onClick={openByCategory} role="button" tabIndex={0} style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-body p-3">
+              <h6 className="fw-bold font-display text-dark mb-1" style={{ fontSize: '0.9rem' }}>Revenue by Category</h6>
+              <p className="text-muted fs-xs mb-2">Share of sales across product lines</p>
+              <div ref={categoryRef} />
+            </div>
+          </div>
+        </div>
+
+        <div className="col-xl-4 col-md-6">
+          <div className="card mb-0 h-100 chart-panel-clickable" onClick={openByPayment} role="button" tabIndex={0} style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-body p-3">
+              <h6 className="fw-bold font-display text-dark mb-1" style={{ fontSize: '0.9rem' }}>Payment Methods</h6>
+              <p className="text-muted fs-xs mb-2">Cash, Transfer, POS &amp; Card tender mix</p>
+              <div ref={paymentRef} />
+            </div>
+          </div>
+        </div>
+
+        <div className="col-xl-4 col-md-12">
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Sales Channels</h6>
+              <span className="badge bg-success-subtle text-success border border-success-subtle fs-xs">This Month</span>
+            </div>
+            <div className="card-body p-3">
+              {sources.length === 0 ? (
+                <div className="text-center py-4 text-muted fs-sm">No sales channel data recorded.</div>
+              ) : (
+                <div className="d-flex flex-column gap-2.5">
+                  {sources.map((s, idx) => (
+                    <div key={idx} className="p-2.5 rounded d-flex align-items-center justify-content-between" style={{ backgroundColor: '#FAF8F5', border: '1px solid #EFECE6' }}>
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="rounded-circle bg-white border d-flex align-items-center justify-content-center" style={{ width: 32, height: 32 }}>
+                          <i className={s.source?.toLowerCase().includes('pos') ? 'ri-store-2-line text-success' : 'ri-global-line text-primary'} style={{ fontSize: 16 }} />
+                        </div>
+                        <div>
+                          <div className="fw-bold text-dark fs-sm">{s.source || 'Direct / Web'}</div>
+                          <div className="text-muted fs-xs">{s.count ?? 0} orders processed</div>
+                        </div>
+                      </div>
+                      <div className="text-end">
+                        <div className="fw-bold text-success font-display fs-sm">{fmtNaira(s.revenue)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Selling Products Commercial Roster */}
+      <div className="card mb-0" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+        <div className="card-header py-2.5 px-3 d-flex align-items-center justify-content-between border-bottom">
+          <div className="d-flex align-items-center gap-2">
+            <i className="ri-fire-line text-danger" style={{ fontSize: 16 }} />
+            <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Top Revenue Generating Products</h6>
+          </div>
+          <Link to="/products/list" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Manage Catalog →</Link>
         </div>
         <div className="card-body p-0">
           <Table>
-            <Thead><Th>Order ID</Th><Th>Customer</Th><Th>Items</Th><Th>Total</Th><Th>Status</Th><Th>Time</Th></Thead>
+            <Thead><Th>Rank</Th><Th>Product &amp; SKU</Th><Th className="text-center">Units Sold</Th><Th className="text-end pe-3">Gross Revenue</Th></Thead>
             <Tbody>
-              {recentOrders.length === 0 ? (
-                <Tr><Td colSpan={6} className="text-center text-muted py-4 fs-sm">No recent orders.</Td></Tr>
-              ) : recentOrders.map((o) => (
-                <Tr key={o.id}>
-                  <Td><Link to={`/orders/${o.id}`} className="fw-medium fs-sm link link-custom">{o.order_ref || o.id}</Link></Td>
-                  <Td>{o.customer_name || o.customer}</Td>
-                  <Td>{o.item_count ?? o.items ?? 1}</Td>
-                  <Td className="fw-semibold">{fmtNaira(o.total_amount ?? o.total)}</Td>
-                  <Td><Badge label={o.status} color={statusColor(o.status)} /></Td>
-                  <Td className="text-muted fs-xs">{o.time_ago || formatTimeAgo(o.created_at) || o.time}</Td>
+              {topProducts.length === 0 ? (
+                <Tr><Td colSpan={4} className="text-center text-muted py-4 fs-sm">No sales data recorded.</Td></Tr>
+              ) : topProducts.map((p, i) => (
+                <Tr key={p.sku || i}>
+                  <Td><span className="badge rounded-pill bg-light text-dark fw-bold border" style={{ fontSize: '0.7rem' }}>#{i + 1}</span></Td>
+                  <Td>
+                    <p className="fw-bold text-dark fs-sm mb-0">{p.name}</p>
+                    <span className="text-muted fs-xs font-monospace">{p.sku}</span>
+                  </Td>
+                  <Td className="text-center fw-semibold fs-sm">{p.units_sold ?? p.sold}</Td>
+                  <Td className="text-end pe-3 fw-bold text-success font-display fs-sm">{fmtNaira(p.total_revenue ?? p.revenue)}</Td>
                 </Tr>
               ))}
             </Tbody>
@@ -758,6 +829,8 @@ function SalesTab() {
     </>
   )
 }
+
+// ── Tab 3: Finance Tab (Accounts, P&L, Dues) ──────────────────────────────────
 
 function FinanceTab() {
   const incomeRef = useRef(null)
@@ -784,7 +857,7 @@ function FinanceTab() {
   const productProfitability = data?.product_profitability ?? []
 
   useApexChart(incomeRef, () => ({
-    chart: { type: 'line', height: 220, toolbar: { show: false } },
+    chart: { type: 'line', height: 210, toolbar: { show: false } },
     series: [{ name: 'Income', data: incomeM }, { name: 'Expenses', data: expensesM }],
     stroke: { curve: 'smooth', width: [2, 2] },
     colors: ['#0ab39c', '#f06548'],
@@ -792,14 +865,14 @@ function FinanceTab() {
     xaxis: { categories: months6, axisBorder: { show: false }, axisTicks: { show: false } },
     yaxis: { labels: { formatter: (v) => `₦${(v/1000).toFixed(0)}k` } },
     grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
-    legend: { position: 'top' },
+    legend: { position: 'top', fontSize: '11px' },
     tooltip: { y: { formatter: (v) => `₦${v.toLocaleString()}` } },
   }), [incomeM.join(), expensesM.join()])
 
   useApexChart(profitRef, () => ({
-    chart: { type: 'bar', height: 220, toolbar: { show: false } },
+    chart: { type: 'bar', height: 210, toolbar: { show: false } },
     series: [{ name: 'Net Profit', data: incomeM.map((inc, i) => inc - (expensesM[i] ?? 0)) }],
-    plotOptions: { bar: { borderRadius: 4, columnWidth: '55%', colors: { ranges: [{ from: -999999, to: 0, color: '#f06548' }] } } },
+    plotOptions: { bar: { borderRadius: 4, columnWidth: '50%', colors: { ranges: [{ from: -999999, to: 0, color: '#f06548' }] } } },
     dataLabels: { enabled: false }, colors: ['#0ab39c'],
     xaxis: { categories: months6, axisBorder: { show: false }, axisTicks: { show: false } },
     yaxis: { labels: { formatter: (v) => `₦${(v/1000).toFixed(0)}k` } },
@@ -818,7 +891,7 @@ function FinanceTab() {
   ]
   const openMonthly = (title, sub) => setModal({ title, subtitle: sub, icon: 'ri-line-chart-line', columns: monthlyColumns, rows: data?.charts?.monthly_6m ?? [] })
   const openAccounts = () => setModal({
-    title: 'Bank Accounts', subtitle: 'Active accounts',
+    title: 'Bank Accounts Ledger', subtitle: 'Active corporate and operations accounts',
     icon: 'ri-bank-line',
     columns: [
       { key: 'account_name', label: 'Account', render: (r) => r.account_name || r.account },
@@ -830,87 +903,91 @@ function FinanceTab() {
     rows: accounts,
   })
   const openDues = () => setModal({
-    title: 'Supplier Payments Due', subtitle: 'Pending produce-purchase invoices',
+    title: 'Supplier Invoices Due', subtitle: 'Outstanding produce-purchase payments',
     icon: 'ri-truck-line',
     columns: [
-      { key: 'supplier', label: 'Supplier', render: (r) => r.supplier_name || r.supplier },
-      { key: 'invoice_no', label: 'Invoice #', render: (r) => r.invoice_number || r.invoice_no },
-      { key: 'due_date', label: 'Due Date', render: (r) => fmtDate(r.due_date) },
+      { key: 'supplier', label: 'Supplier', render: (r) => r.supplier_name || r.supplier || r.name },
+      { key: 'invoice_no', label: 'Invoice #', render: (r) => r.invoice_number || r.invoice_no || '—' },
+      { key: 'due_date', label: 'Due Date', render: (r) => fmtDate(r.due_date || r.due) },
       { key: 'amount', label: 'Amount', align: 'right', render: (r) => fmtNaira(r.amount) },
-      { key: 'status', label: 'Status', render: (r) => <Badge label={r.status || 'pending'} color="amber" /> },
+      { key: 'status', label: 'Status', render: (r) => <Badge label={r.status || 'pending'} color={r.status === 'overdue' ? 'red' : 'amber'} /> },
     ],
     rows: dues,
-  })
-  const openProductProfitability = (title, sub) => setModal({
-    title, subtitle: sub, icon: 'ri-scales-3-line',
-    columns: [
-      { key: 'name', label: 'Product', render: (r) => <><p className="fw-medium fs-sm mb-0">{r.name}</p><span className="text-muted fs-xs">{r.sku}</span></> },
-      { key: 'cost_price', label: 'Cost Price', align: 'right', render: (r) => fmtNaira(r.cost_price) },
-      { key: 'selling_price', label: 'Selling Price', align: 'right', render: (r) => fmtNaira(r.selling_price) },
-      { key: 'units_sold', label: 'Units Sold', align: 'right' },
-      { key: 'margin_pct', label: 'Margin', align: 'right', render: (r) => `${r.margin_pct.toFixed(1)}%` },
-      { key: 'profit', label: 'Profit', align: 'right', render: (r) => fmtNaira(r.profit) },
-    ],
-    rows: productProfitability,
   })
 
   return (
     <>
-      <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Monthly Revenue"    value={fmtNaira(kpis.month_revenue)}    sub={new Date().toLocaleString('default',{month:'long'})} riIcon="ri-money-dollar-circle-line" color="green" onClick={() => openMonthly('Monthly Revenue', 'Income by month, last 6 months')} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Monthly Expenses"   value={fmtNaira(kpis.month_expenses)}   sub="Total outflows"                              riIcon="ri-subtract-line"    color="red" onClick={() => openMonthly('Monthly Expenses', 'Expenses by month, last 6 months')} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Net Profit"         value={fmtNaira(kpis.net_profit)}       sub="This month"                                  riIcon="ri-funds-line"       color="blue" onClick={() => openMonthly('Net Profit', 'Income vs. expenses, last 6 months')} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Outstanding Dues"   value={fmtNaira(kpis.outstanding_dues)} sub={`${kpis.due_count ?? 0} supplier invoices`}  riIcon="ri-bank-card-line"   color="amber" onClick={openDues} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total Bank Balance" value={fmtNaira(kpis.total_balance)}    sub={`Across ${kpis.account_count ?? 0} accounts`} riIcon="ri-bank-line"        color="teal" onClick={openAccounts} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Profit Margin"      value={kpis.profit_margin ? `${Number(kpis.profit_margin).toFixed(1)}%` : '—'} sub="This month" riIcon="ri-percent-line" color="purple" onClick={() => openMonthly('Profit Margin', 'Income vs. expenses, last 6 months')} /></div>
+      {/* 4 Clean Core Financial Health KPI Cards */}
+      <div className="row g-3 mb-3">
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Monthly Inflows" value={fmtNaira(kpis.month_revenue)} sub="Gross recorded receipts" riIcon="ri-money-dollar-circle-line" color="green" onClick={() => openMonthly('Monthly Inflows', 'Income by month, last 6 months')} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Operating Expenses" value={fmtNaira(kpis.month_expenses)} sub="Total approved outflows" riIcon="ri-subtract-line" color="red" onClick={() => openMonthly('Monthly Expenses', 'Expenses by month, last 6 months')} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Net Operating Profit" value={fmtNaira(kpis.net_profit)} sub={`${kpis.profit_margin ? Number(kpis.profit_margin).toFixed(1) + '%' : '0%'} operating margin`} riIcon="ri-funds-line" color="blue" onClick={() => openMonthly('Net Profit', 'Income vs. expenses, last 6 months')} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Accounts Payable / Dues" value={fmtNaira(kpis.outstanding_dues)} sub={`${kpis.due_count ?? 0} supplier invoices pending`} riIcon="ri-bank-card-line" color="amber" onClick={openDues} />
+        </div>
       </div>
 
-      <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Product Revenue"    value={fmtNaira(kpis.cogs_month != null ? Number(kpis.cogs_month) + Number(kpis.gross_profit_month || 0) : 0)} sub="From order line items" riIcon="ri-shopping-cart-2-line" color="blue" onClick={() => openProductProfitability('Product Revenue', 'Last 30 days, by product')} /></div>
-        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Cost of Goods Sold" value={fmtNaira(kpis.cogs_month)}       sub="Cost price × units sold"                     riIcon="ri-price-tag-3-line" color="red" onClick={() => openProductProfitability('Cost of Goods Sold', 'Cost price × units sold — last 30 days')} /></div>
-        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Gross Profit"       value={fmtNaira(kpis.gross_profit_month)} sub="Revenue − COGS · this month"               riIcon="ri-line-chart-line"  color="green" onClick={() => openProductProfitability('Gross Profit', 'Revenue − COGS, by product — last 30 days')} /></div>
-        <div className="col-6 col-sm-4 col-xl-3"><StatsCard title="Gross Margin"       value={kpis.gross_margin_pct ? `${Number(kpis.gross_margin_pct).toFixed(1)}%` : '—'} sub="Product-level margin" riIcon="ri-percent-line" color="amber" onClick={() => openProductProfitability('Gross Margin', 'Margin by product — last 30 days')} /></div>
-      </div>
-
-      <div className="row g-4 mb-4">
+      {/* Income vs Expenses & Net Profit Trend */}
+      <div className="row g-3 mb-3">
         <div className="col-xl-7">
-          <div className="card mb-0 chart-panel-clickable" onClick={() => openMonthly('Income vs Expenses', 'Last 6 months')} role="button" tabIndex={0}>
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <div><h6 className="fw-semibold mb-0">Income vs Expenses</h6><p className="text-muted fs-xs mb-0 mt-1">Last 6 months</p></div>
-              <div className="d-flex gap-3">
-                <span className="fs-xs"><span className="badge bg-success me-1">●</span>Income</span>
-                <span className="fs-xs"><span className="badge bg-danger me-1">●</span>Expenses</span>
+          <div className="card mb-0 h-100 chart-panel-clickable" onClick={() => openMonthly('Income vs Expenses', 'Last 6 months')} role="button" tabIndex={0} style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+              <div>
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.9rem' }}>Income vs Expenses</h6>
+                <p className="text-muted fs-xs mb-0">6-Month financial trajectory</p>
+              </div>
+              <div className="d-flex gap-2">
+                <span className="badge bg-success-subtle text-success border border-success-subtle fs-xs">● Income</span>
+                <span className="badge bg-danger-subtle text-danger border border-danger-subtle fs-xs">● Expenses</span>
               </div>
             </div>
-            <div className="card-body"><div ref={incomeRef} /></div>
+            <div className="card-body p-3">
+              <div ref={incomeRef} />
+            </div>
           </div>
         </div>
         <div className="col-xl-5">
-          <div className="card mb-0 chart-panel-clickable" onClick={() => openMonthly('Net Profit by Month', 'Last 6 months')} role="button" tabIndex={0}>
-            <div className="card-body"><h6 className="fw-semibold mb-0">Net Profit by Month</h6><p className="text-muted fs-xs mb-2 mt-1">Last 6 months</p><div ref={profitRef} /></div>
+          <div className="card mb-0 h-100 chart-panel-clickable" onClick={() => openMonthly('Net Profit by Month', 'Last 6 months')} role="button" tabIndex={0} style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom">
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.9rem' }}>Net Profit by Month</h6>
+              <p className="text-muted fs-xs mb-0">Monthly surplus / deficit</p>
+            </div>
+            <div className="card-body p-3">
+              <div ref={profitRef} />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="row g-4">
+      {/* Bank Accounts & Supplier Dues */}
+      <div className="row g-3 mb-3">
         <div className="col-xl-6">
-          <div className="card mb-0">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h6 className="fw-semibold mb-0"><i className="ri-bank-line text-primary me-2" />Bank Accounts</h6>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-bank-line text-primary" style={{ fontSize: 16 }} />
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Bank Accounts &amp; Liquidity</h6>
+              </div>
+              <span className="fw-bold text-success font-display fs-sm">Total: {fmtNaira(kpis.total_balance)}</span>
             </div>
             <div className="card-body p-0">
               <Table>
-                <Thead><Th>Account</Th><Th>Bank</Th><Th>Type</Th><Th>Balance</Th><Th>Status</Th></Thead>
+                <Thead><Th>Account Name</Th><Th>Bank</Th><Th>Type</Th><Th className="text-end pe-3">Balance</Th></Thead>
                 <Tbody>
                   {accounts.length === 0 ? (
-                    <Tr><Td colSpan={5} className="text-center text-muted py-4 fs-sm">No bank accounts configured.</Td></Tr>
+                    <Tr><Td colSpan={4} className="text-center text-muted py-4 fs-sm">No bank accounts configured.</Td></Tr>
                   ) : accounts.map((a, i) => (
                     <Tr key={i}>
-                      <Td><p className="fw-medium fs-sm mb-0">{a.account_name || a.account}</p></Td>
-                      <Td className="fs-sm">{a.bank_name || a.bank}</Td>
-                      <Td><span className="badge bg-light text-dark fs-xs">{a.account_type || a.type}</span></Td>
-                      <Td className="fw-semibold text-success">{fmtNaira(a.balance)}</Td>
-                      <Td><Badge label={a.status || 'active'} color="green" /></Td>
+                      <Td><p className="fw-bold text-dark fs-sm mb-0">{a.account_name || a.account}</p></Td>
+                      <Td className="fs-sm text-muted">{a.bank_name || a.bank}</Td>
+                      <Td><span className="badge bg-light text-dark fs-xs border">{a.account_type || a.type}</span></Td>
+                      <Td className="text-end pe-3 fw-bold text-success font-display fs-sm">{fmtNaira(a.balance)}</Td>
                     </Tr>
                   ))}
                 </Tbody>
@@ -918,59 +995,66 @@ function FinanceTab() {
             </div>
           </div>
         </div>
+
         <div className="col-xl-6">
-          <div className="card mb-0">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h6 className="fw-semibold mb-0"><i className="ri-truck-line text-warning me-2" />Supplier Payments Due</h6>
-              <Link to="/suppliers/payments" className="link link-custom fs-sm">View all →</Link>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-truck-line text-warning" style={{ fontSize: 16 }} />
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Supplier Payments Due</h6>
+              </div>
+              <Link to="/suppliers/payments" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>All Invoices →</Link>
             </div>
             <div className="card-body p-0">
               <Table>
-                <Thead><Th>Supplier</Th><Th>Amount</Th><Th>Due</Th><Th>Status</Th></Thead>
+                <Thead><Th>Supplier</Th><Th>Amount</Th><Th>Due Date</Th><Th>Status</Th></Thead>
                 <Tbody>
                   {dues.length === 0 ? (
-                    <Tr><Td colSpan={4} className="text-center text-muted py-4 fs-sm">No outstanding dues.</Td></Tr>
+                    <Tr><Td colSpan={4} className="text-center text-muted py-4 fs-sm">No outstanding dues ✓</Td></Tr>
                   ) : dues.map((s, i) => (
                     <Tr key={i}>
-                      <Td><p className="fw-medium fs-sm mb-0">{s.name || s.supplier}</p></Td>
-                      <Td className="fw-semibold fs-sm">{fmtNaira(s.amount)}</Td>
-                      <Td className="fs-sm">{s.due_date || s.due}</Td>
-                      <Td><Badge label={(s.status||'').replace('-',' ')} color={s.status==='overdue'?'red':s.status==='due-soon'||s.status==='due_soon'?'amber':'blue'} /></Td>
+                      <Td><p className="fw-semibold text-dark fs-sm mb-0">{s.name || s.supplier}</p></Td>
+                      <Td className="fw-bold font-display text-danger fs-sm">{fmtNaira(s.amount)}</Td>
+                      <Td className="fs-sm text-muted">{fmtDate(s.due_date || s.due)}</Td>
+                      <Td><Badge label={(s.status||'').replace(/_/g,' ')} color={s.status==='overdue'?'red':'amber'} /></Td>
                     </Tr>
                   ))}
                 </Tbody>
               </Table>
-              {dues.length > 0 && (
-                <div className="px-4 py-3 border-top d-flex justify-content-between">
-                  <span className="fs-sm text-muted">Total outstanding</span>
-                  <span className="fw-bold text-danger">{fmtNaira(kpis.outstanding_dues)}</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="card mb-0 mt-4">
-        <div className="card-header d-flex align-items-center justify-content-between">
-          <div><h6 className="fw-semibold mb-0"><i className="ri-scales-3-line text-success me-2" />Product Profitability</h6><p className="text-muted fs-xs mb-0 mt-1">Cost vs. selling price · last 30 days</p></div>
-          <Link to="/products/list" className="link link-custom fs-sm">Manage products →</Link>
+      {/* Product Profitability Analysis */}
+      <div className="card mb-0" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+        <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center gap-2">
+            <i className="ri-scales-3-line text-success" style={{ fontSize: 16 }} />
+            <div>
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Product Margins &amp; Unit Economics</h6>
+              <p className="text-muted fs-xs mb-0">Cost price vs. selling price analysis (last 30 days)</p>
+            </div>
+          </div>
+          <Link to="/products/list" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Pricing Catalog →</Link>
         </div>
         <div className="card-body p-0">
           <Table>
-            <Thead><Th>Product</Th><Th>SKU</Th><Th>Cost Price</Th><Th>Selling Price</Th><Th>Units Sold</Th><Th>Margin</Th><Th>Profit</Th></Thead>
+            <Thead><Th>Product</Th><Th>Cost Price</Th><Th>Selling Price</Th><Th className="text-center">Units Sold</Th><Th className="text-center">Margin %</Th><Th className="text-end pe-3">Net Profit</Th></Thead>
             <Tbody>
               {productProfitability.length === 0 ? (
-                <Tr><Td colSpan={7} className="text-center text-muted py-4 fs-sm">No product sales in the last 30 days.</Td></Tr>
+                <Tr><Td colSpan={6} className="text-center text-muted py-4 fs-sm">No sales data recorded in the last 30 days.</Td></Tr>
               ) : productProfitability.map((p, i) => (
                 <Tr key={i}>
-                  <Td><p className="fw-medium fs-sm mb-0">{p.name}</p></Td>
-                  <Td><span className="badge bg-light text-dark fs-xs">{p.sku}</span></Td>
-                  <Td className="fs-sm">{fmtNaira(p.cost_price)}</Td>
-                  <Td className="fs-sm">{fmtNaira(p.selling_price)}</Td>
-                  <Td className="fs-sm">{p.units_sold}</Td>
-                  <Td><Badge label={`${p.margin_pct.toFixed(1)}%`} color={p.margin_pct >= 20 ? 'green' : p.margin_pct >= 0 ? 'amber' : 'red'} /></Td>
-                  <Td className={`fw-semibold fs-sm ${p.profit < 0 ? 'text-danger' : 'text-success'}`}>{fmtNaira(p.profit)}</Td>
+                  <Td>
+                    <p className="fw-bold text-dark fs-sm mb-0">{p.name}</p>
+                    <span className="text-muted fs-xs font-monospace">{p.sku}</span>
+                  </Td>
+                  <Td className="fs-sm text-muted">{fmtNaira(p.cost_price)}</Td>
+                  <Td className="fs-sm fw-semibold text-dark">{fmtNaira(p.selling_price)}</Td>
+                  <Td className="text-center fs-sm">{p.units_sold}</Td>
+                  <Td className="text-center"><Badge label={`${p.margin_pct.toFixed(1)}%`} color={p.margin_pct >= 20 ? 'green' : p.margin_pct >= 0 ? 'amber' : 'red'} /></Td>
+                  <Td className={`text-end pe-3 fw-bold font-display fs-sm ${p.profit < 0 ? 'text-danger' : 'text-success'}`}>{fmtNaira(p.profit)}</Td>
                 </Tr>
               ))}
             </Tbody>
@@ -989,6 +1073,8 @@ function FinanceTab() {
     </>
   )
 }
+
+// ── Tab 4: Inventory Tab (Stock Valuation & Reorder Alerts) ───────────────────
 
 function InventoryTab() {
   const stockRef = useRef(null)
@@ -1013,14 +1099,14 @@ function InventoryTab() {
   const expiringBatches = data?.expiring_batches ?? []
 
   useApexChart(stockRef, () => ({
-    chart: { type: 'bar', height: 220, toolbar: { show: false } },
+    chart: { type: 'bar', height: 210, toolbar: { show: false } },
     series: [{ name: 'Stock Value (₦)', data: catValues.length ? catValues : [0] }],
     plotOptions: { bar: { borderRadius: 4, horizontal: true, barHeight: '55%' } },
     dataLabels: { enabled: false }, colors: ['#405189'],
     xaxis: { categories: catNames.length ? catNames : ['No data'], axisBorder: { show: false } },
     yaxis: { labels: { style: { fontSize: '11px' } } },
     grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
-    tooltip: { y: { formatter: (v) => `₦${v.toLocaleString()}` } },
+    tooltip: { y: { formatter: (v) => fmtNaira(v) } },
   }), [catValues.join()])
 
   if (loading) return <TabSkeleton />
@@ -1030,7 +1116,7 @@ function InventoryTab() {
     title, subtitle: sub, icon: 'ri-archive-stack-line',
     columns: [
       { key: 'name', label: 'Product' },
-      { key: 'sku', label: 'SKU', render: (r) => <span className="badge bg-light text-dark fs-xs">{r.sku}</span> },
+      { key: 'sku', label: 'SKU', render: (r) => <span className="badge bg-light text-dark fs-xs font-monospace">{r.sku}</span> },
       { key: 'category', label: 'Category', render: (r) => r.category || '—' },
       { key: 'stock', label: 'Qty', align: 'right', render: (r) => r.stock ?? r.qty },
       { key: 'value', label: 'Value', align: 'right', render: (r) => fmtNaira(r.value ?? (r.stock ?? 0) * (r.unit_price || r.price || 0)) },
@@ -1038,22 +1124,22 @@ function InventoryTab() {
     rows,
   })
   const openLowStock = () => setModal({
-    title: 'Below Reorder Level', subtitle: 'Products at or under their reorder threshold',
+    title: 'Below Reorder Level', subtitle: 'Products at or under safety threshold',
     icon: 'ri-alert-line', columns: lowStockColumns, rows: lowStock,
   })
   const openExpiring = () => setModal({
-    title: 'Expiring Batches', subtitle: 'Within the next 7 days',
+    title: 'Expiring Batches (7 Days)', subtitle: 'Produce batches nearing expiration date',
     icon: 'ri-timer-flash-line',
     columns: [
       { key: 'name', label: 'Product' },
       { key: 'batch_no', label: 'Batch #' },
       { key: 'quantity', label: 'Qty', align: 'right' },
-      { key: 'expiry_date', label: 'Expiry Date', render: (r) => r.expiry_date ? new Date(r.expiry_date).toLocaleDateString() : '—' },
+      { key: 'expiry_date', label: 'Expiry Date', render: (r) => fmtDate(r.expiry_date) },
     ],
     rows: expiringBatches,
   })
   const openByCategory = () => setModal({
-    title: 'Stock Value by Category', subtitle: 'Current value in warehouse',
+    title: 'Stock Valuation by Category', subtitle: 'Current inventory holding value',
     icon: 'ri-list-check-2',
     columns: [{ key: 'category', label: 'Category' }, { key: 'value', label: 'Value', align: 'right', render: (r) => fmtNaira(r.value) }],
     rows: data?.charts?.value_by_category ?? [],
@@ -1061,75 +1147,95 @@ function InventoryTab() {
 
   return (
     <>
-      <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total Active SKUs"    value={kpis.total_skus ?? 0}                          sub="Across all categories"   riIcon="ri-price-tag-3-line"   color="blue" onClick={() => openInvList('Active SKUs', 'All active products, by stock level')} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total Stock Value"    value={fmtNaira(kpis.total_value)}                    sub="All warehouses"          riIcon="ri-store-line"         color="green" onClick={openByCategory} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Below Reorder Level" value={`${kpis.low_stock_count ?? 0} items`}           sub="Immediate action"        riIcon="ri-alert-line"         color="red" onClick={openLowStock} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Expiring (7 days)"   value={`${kpis.expiring_count ?? 0} batches`}          sub="Check expiry dates"      riIcon="ri-timer-flash-line"   color="amber" onClick={openExpiring} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Categories"          value={catNames.length ?? 0}                           sub="With active stock"       riIcon="ri-list-check-2"       color="teal" onClick={openByCategory} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Zero Stock Items"    value={kpis.out_of_stock ?? 0}                         sub="Out of stock"            riIcon="ri-delete-bin-line"    color="red" onClick={() => openInvList('Zero Stock Items', 'Products currently out of stock', invList.filter(i => Number(i.stock ?? i.qty) === 0))} /></div>
+      {/* 4 Clean Actionable Inventory KPI Cards */}
+      <div className="row g-3 mb-3">
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Total Stock Valuation" value={fmtNaira(kpis.total_value)} sub={`Across ${kpis.total_skus ?? 0} active SKUs`} riIcon="ri-store-line" color="green" onClick={openByCategory} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Below Reorder Level" value={`${kpis.low_stock_count ?? 0} items`} sub="Immediate action needed" riIcon="ri-alert-line" color="red" onClick={openLowStock} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Expiring (7 Days)" value={`${kpis.expiring_count ?? 0} batches`} sub="Check batch expiration" riIcon="ri-timer-flash-line" color="amber" onClick={openExpiring} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Zero Stock / Out" value={`${kpis.out_of_stock ?? 0} items`} sub="Zero quantity in stock" riIcon="ri-delete-bin-line" color="red" onClick={() => openInvList('Zero Stock Items', 'Products currently out of stock', invList.filter(i => Number(i.stock ?? i.qty) === 0))} />
+        </div>
       </div>
 
-      <div className="row g-4 mb-4">
+      {/* Stock Value by Category & Low Stock Watchlist */}
+      <div className="row g-3 mb-3">
         <div className="col-xl-6">
-          <div className="card mb-0 chart-panel-clickable" onClick={openByCategory} role="button" tabIndex={0}>
-            <div className="card-body">
-              <h6 className="fw-semibold mb-0">Stock Value by Category</h6>
-              <p className="text-muted fs-xs mb-2 mt-1">Current value in warehouse</p>
+          <div className="card mb-0 h-100 chart-panel-clickable" onClick={openByCategory} role="button" tabIndex={0} style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-body p-3">
+              <h6 className="fw-bold font-display text-dark mb-1" style={{ fontSize: '0.9rem' }}>Stock Value by Category</h6>
+              <p className="text-muted fs-xs mb-2">Total monetary value of produce in warehouse</p>
               <div ref={stockRef} />
             </div>
           </div>
         </div>
+
         <div className="col-xl-6">
-          <div className="card mb-0 h-100">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h6 className="fw-semibold mb-0"><i className="ri-alert-line text-danger me-2" />Low Stock Items</h6>
-              <Link to="/inventory/alerts" className="link link-custom fs-sm">View all →</Link>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-alert-line text-danger" style={{ fontSize: 16 }} />
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Low Stock Action Required</h6>
+              </div>
+              <Link to="/inventory/alerts" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>All Alerts →</Link>
             </div>
-            <div className="card-body p-0">
+            <div className="card-body p-2.5">
               {lowStock.length === 0 ? (
-                <p className="text-muted text-center py-4 fs-sm">All items are well stocked ✓</p>
-              ) : lowStock.slice(0, 5).map((item, i) => (
-                <div key={item.id || i} className={`p-4 d-flex align-items-start gap-3 ${i < Math.min(lowStock.length,5)-1 ? 'border-bottom' : ''}`}>
-                  <div className="avatar size-9 rounded bg-danger-subtle text-danger d-flex align-items-center justify-content-center flex-shrink-0">
-                    <i className="ri-archive-stack-line" />
-                  </div>
-                  <div className="flex-grow-1">
-                    <div className="d-flex justify-content-between">
-                      <p className="fw-medium fs-sm mb-0">{item.name}</p>
-                      <Badge label={item.stock_status || 'Low Stock'} color="red" />
+                <p className="text-muted text-center py-4 fs-sm">All inventory items are above reorder threshold ✓</p>
+              ) : (
+                <div className="d-flex flex-column gap-2">
+                  {lowStock.slice(0, 4).map((item) => (
+                    <div key={item.id || item.sku} className="p-2 rounded d-flex align-items-center justify-content-between" style={{ backgroundColor: '#FFFDF5', border: '1px solid #FEF3C7' }}>
+                      <div>
+                        <div className="fw-bold text-dark fs-sm">{item.name}</div>
+                        <div className="text-muted fs-xs">
+                          SKU: <span className="font-monospace">{item.sku}</span> • Reorder Threshold: {item.reorder_qty ?? item.low_stock_threshold ?? 5}
+                        </div>
+                      </div>
+                      <div className="text-end">
+                        <span className="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold fs-xs">
+                          {item.stock ?? item.qty} left
+                        </span>
+                        <div className="mt-1">
+                          <Link to="/inventory/stock-in" className="btn btn-xs py-0.5 px-2 btn-outline-success fw-bold" style={{ fontSize: '0.65rem', borderRadius: '0.375rem' }}>Restock</Link>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-muted fs-xs mb-0">{item.sku}</p>
-                    <div className="d-flex justify-content-between mt-1">
-                      <span className="fs-xs"><span className="text-danger fw-semibold">{item.stock ?? item.qty}</span><span className="text-muted"> · reorder at {item.low_stock_threshold ?? item.reorder}</span></span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="card mb-0">
-        <div className="card-header d-flex align-items-center justify-content-between">
-          <h6 className="fw-semibold mb-0">Inventory Stock List</h6>
-          <Link to="/inventory/stock" className="link link-custom fs-sm">Full list →</Link>
+      {/* Complete Inventory Stock Directory */}
+      <div className="card mb-0" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+        <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Warehouse Stock Ledger</h6>
+          <Link to="/inventory/stock" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Full Inventory →</Link>
         </div>
         <div className="card-body p-0">
           <Table>
-            <Thead><Th>Product</Th><Th>SKU</Th><Th>Category</Th><Th>Qty in Stock</Th><Th>Value</Th><Th>Status</Th></Thead>
+            <Thead><Th>Product</Th><Th>Category</Th><Th className="text-center">Qty in Stock</Th><Th className="text-end">Valuation</Th><Th className="text-center pe-3">Status</Th></Thead>
             <Tbody>
               {invList.length === 0 ? (
-                <Tr><Td colSpan={6} className="text-center text-muted py-4 fs-sm">No inventory data.</Td></Tr>
+                <Tr><Td colSpan={5} className="text-center text-muted py-4 fs-sm">No inventory items found.</Td></Tr>
               ) : invList.slice(0, 10).map((item, i) => (
                 <Tr key={item.id || i}>
-                  <Td><p className="fw-medium fs-sm mb-0">{item.name}</p></Td>
-                  <Td><span className="badge bg-light text-dark fs-xs">{item.sku}</span></Td>
-                  <Td className="text-muted fs-sm">{item.category}</Td>
-                  <Td className="fw-semibold fs-sm">{item.stock ?? item.qty}</Td>
-                  <Td className="fs-sm">{fmtNaira((item.stock ?? 0) * (item.unit_price || item.price || 0))}</Td>
-                  <Td><Badge label={(item.stock_status || (Number(item.stock) <= Number(item.low_stock_threshold ?? 5) ? 'low stock' : 'in stock'))} color={item.stock_status === 'low' || Number(item.stock) <= Number(item.low_stock_threshold ?? 5) ? 'red' : 'green'} /></Td>
+                  <Td>
+                    <p className="fw-bold text-dark fs-sm mb-0">{item.name}</p>
+                    <span className="text-muted fs-xs font-monospace">{item.sku}</span>
+                  </Td>
+                  <Td className="text-muted fs-sm">{item.category || '—'}</Td>
+                  <Td className="text-center fw-bold fs-sm">{item.stock ?? item.qty}</Td>
+                  <Td className="text-end fw-bold font-display text-success fs-sm">{fmtNaira((item.stock ?? item.qty ?? 0) * (item.unit_price || item.price || 0))}</Td>
+                  <Td className="text-center pe-3"><Badge label={(item.stock_status || (Number(item.stock ?? item.qty) <= 5 ? 'low' : 'in stock')).replace(/_/g, ' ')} color={item.stock_status === 'out_of_stock' || Number(item.stock ?? item.qty) === 0 ? 'red' : item.stock_status === 'low' || Number(item.stock ?? item.qty) <= 5 ? 'amber' : 'green'} /></Td>
                 </Tr>
               ))}
             </Tbody>
@@ -1148,6 +1254,8 @@ function InventoryTab() {
     </>
   )
 }
+
+// ── Tab 5: Operations Tab (Logistics, Drivers & Procurement) ──────────────────
 
 function OperationsTab() {
   const deliveryRef = useRef(null)
@@ -1168,13 +1276,13 @@ function OperationsTab() {
   const kpis      = data?.kpis ?? {}
 
   useApexChart(deliveryRef, () => {
-    const statuses = ['assigned','awaiting_pickup','en_route','pending']
+    const statuses = ['assigned','awaiting_pickup','en_route','delivered']
     const vals     = statuses.map(s => breakdown[s] ?? 0)
     return {
-      chart: { type: 'donut', height: 200 },
+      chart: { type: 'donut', height: 210 },
       series: vals.some(v => v > 0) ? vals : [1],
-      labels: ['Assigned', 'Awaiting Pickup', 'En Route', 'Pending'],
-      colors: ['#f7b84b','#405189','#0ab39c','#f06548'],
+      labels: ['Assigned', 'Awaiting Pickup', 'En Route', 'Delivered'],
+      colors: ['#f7b84b','#405189','#0ab39c','#143c2d'],
       legend: { position: 'bottom', fontSize: '11px' },
       dataLabels: { enabled: false },
       plotOptions: { pie: { donut: { size: '65%' } } },
@@ -1190,83 +1298,87 @@ function OperationsTab() {
   const driversOnDutyList = data?.drivers_on_duty_list ?? []
   const deliveryTimesList = data?.delivery_times_list ?? []
 
-  const openDeliveries = () => setModal({ title: 'Active Deliveries', subtitle: 'Currently dispatched', icon: 'ri-bike-line', columns: deliveryColumns, rows: deliveries })
+  const openDeliveries = () => setModal({ title: 'Active Deliveries', subtitle: 'Currently dispatched or en route', icon: 'ri-bike-line', columns: deliveryColumns, rows: deliveries })
   const openDrivers = () => setModal({
-    title: 'Drivers On Duty', subtitle: 'Active or currently on delivery',
+    title: 'Drivers on Duty', subtitle: 'Active fleet drivers available or on delivery',
     icon: 'ri-steering-2-line',
     columns: [
-      { key: 'name', label: 'Name' },
+      { key: 'name', label: 'Driver' },
       { key: 'vehicle_type', label: 'Vehicle', render: (r) => r.vehicle_type || '—' },
-      { key: 'zone', label: 'Zone', render: (r) => r.zone || '—' },
-      { key: 'rating', label: 'Rating', align: 'right', render: (r) => r.rating ?? '—' },
+      { key: 'zone', label: 'Primary Zone', render: (r) => r.zone || '—' },
+      { key: 'rating', label: 'Rating', align: 'right', render: (r) => r.rating ? `${r.rating} ★` : '—' },
       { key: 'status', label: 'Status', render: (r) => <Badge label={(r.status || '').replace(/_/g, ' ')} color={r.status === 'on_delivery' ? 'blue' : 'green'} /> },
     ],
     rows: driversOnDutyList,
   })
   const openAvgDeliveryTime = () => setModal({
-    title: 'Avg Delivery Time', subtitle: "Today's completed deliveries",
+    title: 'Delivery Times Log', subtitle: "Today's completed deliveries and durations",
     icon: 'ri-time-line',
     columns: [
       { key: 'delivery_ref', label: 'Ref' },
       { key: 'dispatched_at', label: 'Dispatched', render: (r) => r.dispatched_at ? new Date(r.dispatched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—' },
       { key: 'delivered_at', label: 'Delivered', render: (r) => r.delivered_at ? new Date(r.delivered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—' },
-      { key: 'minutes', label: 'Minutes', align: 'right', render: (r) => r.minutes ?? '—' },
+      { key: 'minutes', label: 'Minutes', align: 'right', render: (r) => r.minutes ? `${r.minutes} min` : '—' },
     ],
     rows: deliveryTimesList,
   })
-  const openStaffToday = () => setModal({ title: 'Staff Attendance Today', subtitle: 'Full roster', icon: 'ri-team-line', columns: staffColumns, rows: staffList })
+  const openStaffToday = () => setModal({ title: 'Staff Attendance Log', subtitle: 'Full shift attendance', icon: 'ri-team-line', columns: staffColumns, rows: staffList })
   const openPurchaseOrders = () => setModal({
-    title: 'Purchase Orders', subtitle: 'Most recent',
+    title: 'Purchase Orders', subtitle: 'Procurement orders for produce and supplies',
     icon: 'ri-shopping-bag-3-line',
     columns: [
-      { key: 'po_ref', label: 'Ref', render: (r) => r.po_ref || r.reference || r.id },
+      { key: 'po_ref', label: 'PO Ref', render: (r) => r.po_ref || r.reference || r.id },
       { key: 'supplier', label: 'Supplier' },
       { key: 'amount', label: 'Amount', align: 'right', render: (r) => fmtNaira(r.amount) },
-      { key: 'date', label: 'Date', render: (r) => r.date ? new Date(r.date).toLocaleDateString() : '—' },
+      { key: 'date', label: 'Date', render: (r) => fmtDate(r.date) },
       { key: 'status', label: 'Status', render: (r) => <Badge label={r.status} color={r.status === 'paid' ? 'green' : r.status === 'received' ? 'blue' : r.status === 'pending' ? 'amber' : 'red'} /> },
     ],
     rows: purchaseOrders,
   })
-  const openStaffAbsent = () => setModal({ title: 'Staff Absent Today', subtitle: 'Not clocked in', icon: 'ri-user-unfollow-line', columns: staffColumns, rows: staffList.filter(s => s.status === 'absent') })
-  const openDeliveryBreakdown = () => setModal({
-    title: 'Delivery Status Breakdown', subtitle: 'Today',
-    icon: 'ri-pie-chart-line',
-    columns: [{ key: 'status', label: 'Status', render: (r) => (r.status || '').replace(/_/g, ' ') }, { key: 'count', label: 'Count', align: 'right' }],
-    rows: Object.entries(breakdown).map(([status, count]) => ({ status, count })),
-  })
 
   return (
     <>
-      <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Active Deliveries" value={kpis.active_deliveries ?? 0}           sub="Currently dispatched"      riIcon="ri-bike-line"            color="blue" onClick={openDeliveries} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Drivers On Duty"   value={kpis.drivers_on_duty ?? 0}             sub="Available on road"         riIcon="ri-steering-2-line"      color="teal" onClick={openDrivers} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Avg Delivery Time" value={`${kpis.avg_delivery_mins ?? 0} min`}  sub="vs target 30 min"          riIcon="ri-time-line"            color="amber" onClick={openAvgDeliveryTime} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Staff on Duty"     value={kpis.staff_on_duty ?? 0}               sub="Clocked in today"          riIcon="ri-team-line"            color="green" onClick={openStaffToday} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Purchase Orders"   value={purchaseOrders.length}                 sub="Recent POs"                riIcon="ri-shopping-bag-3-line"  color="red" onClick={openPurchaseOrders} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Staff Absent"      value={staffList.filter(s=>s.status==='absent').length} sub="Today" riIcon="ri-user-unfollow-line" color="purple" onClick={openStaffAbsent} /></div>
+      {/* 4 Core Operations & Fulfillment KPI Cards */}
+      <div className="row g-3 mb-3">
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Active Deliveries" value={kpis.active_deliveries ?? 0} sub="Currently dispatched / en route" riIcon="ri-bike-line" color="blue" onClick={openDeliveries} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Drivers on Duty" value={kpis.drivers_on_duty ?? 0} sub="Active fleet on the road" riIcon="ri-steering-2-line" color="teal" onClick={openDrivers} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Avg Delivery Time" value={`${kpis.avg_delivery_mins ?? 0} mins`} sub="SLA target: 30 minutes" riIcon="ri-time-line" color="amber" onClick={openAvgDeliveryTime} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Open Purchase Orders" value={purchaseOrders.length} sub="Produce procurement orders" riIcon="ri-shopping-bag-3-line" color="red" onClick={openPurchaseOrders} />
+        </div>
       </div>
 
-      <div className="row g-4 mb-4">
+      {/* Active Deliveries Hub & Delivery Breakdown */}
+      <div className="row g-3 mb-3">
         <div className="col-xl-8">
-          <div className="card mb-0">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h6 className="fw-semibold mb-0"><i className="ri-bike-line text-info me-2" />Active Deliveries</h6>
-              <Link to="/deliveries/active" className="link link-custom fs-sm">View all →</Link>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-bike-line text-info" style={{ fontSize: 16 }} />
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Active Deliveries Dispatch Board</h6>
+              </div>
+              <Link to="/deliveries/active" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Dispatch Hub →</Link>
             </div>
             <div className="card-body p-0">
               <Table>
-                <Thead><Th>Ref</Th><Th>Customer</Th><Th>Driver</Th><Th>Zone</Th><Th>ETA</Th><Th>Status</Th></Thead>
+                <Thead><Th>Ref</Th><Th>Customer</Th><Th>Driver</Th><Th>Zone</Th><Th>ETA</Th><Th className="text-center pe-3">Status</Th></Thead>
                 <Tbody>
                   {deliveries.length === 0 ? (
-                    <Tr><Td colSpan={6} className="text-center text-muted py-4 fs-sm">No active deliveries.</Td></Tr>
+                    <Tr><Td colSpan={6} className="text-center text-muted py-4 fs-sm">No active deliveries at the moment.</Td></Tr>
                   ) : deliveries.map((d) => (
                     <Tr key={d.id}>
-                      <Td><span className="fw-medium fs-sm">{d.delivery_ref || d.id}</span></Td>
-                      <Td>{d.customer}</Td>
-                      <Td className="fs-sm">{d.driver || '—'}</Td>
+                      <Td><span className="fw-bold text-dark fs-sm">{d.delivery_ref || d.id}</span></Td>
+                      <Td className="fw-semibold text-dark fs-sm">{d.customer}</Td>
+                      <Td className="fs-sm text-muted">{d.driver || '—'}</Td>
                       <Td className="text-muted fs-sm">{d.zone || '—'}</Td>
-                      <Td className="fw-medium fs-sm">{d.eta ? `${d.eta} min` : '—'}</Td>
-                      <Td><Badge label={(d.status||'').replace(/_/g,' ')} color={d.status==='en_route'?'green':d.status==='awaiting_pickup'?'blue':d.status==='assigned'?'amber':'red'} /></Td>
+                      <Td className="fw-bold text-dark fs-sm">{d.eta ? `${d.eta} min` : '—'}</Td>
+                      <Td className="text-center pe-3"><Badge label={(d.status||'').replace(/_/g,' ')} color={d.status==='en_route'?'green':d.status==='awaiting_pickup'?'blue':d.status==='assigned'?'amber':'red'} /></Td>
                     </Tr>
                   ))}
                 </Tbody>
@@ -1274,36 +1386,44 @@ function OperationsTab() {
             </div>
           </div>
         </div>
+
         <div className="col-xl-4">
-          <div className="card mb-0 h-100 chart-panel-clickable" onClick={openDeliveryBreakdown} role="button" tabIndex={0}>
-            <div className="card-body">
-              <h6 className="fw-semibold mb-0">Delivery Status Breakdown</h6>
-              <p className="text-muted fs-xs mb-2 mt-1">Today</p>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom">
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Delivery Status Breakdown</h6>
+              <p className="text-muted fs-xs mb-0">Today's fulfillment distribution</p>
+            </div>
+            <div className="card-body p-3">
               <div ref={deliveryRef} />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="row g-4">
+      {/* Staff Attendance & Purchase Orders */}
+      <div className="row g-3 mb-3">
         <div className="col-xl-6">
-          <div className="card mb-0">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h6 className="fw-semibold mb-0"><i className="ri-team-line text-primary me-2" />Staff Attendance Today</h6>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-team-line text-primary" style={{ fontSize: 16 }} />
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Staff Attendance Today</h6>
+              </div>
+              <span className="badge bg-success-subtle text-success border border-success-subtle fs-xs">{staffList.filter(s=>s.status==='present').length} Present</span>
             </div>
             <div className="card-body p-0">
               <Table>
-                <Thead><Th>Name</Th><Th>Role</Th><Th>Shift</Th><Th>Clock In</Th><Th>Status</Th></Thead>
+                <Thead><Th>Staff Member</Th><Th>Role</Th><Th>Shift</Th><Th>Clock In</Th><Th className="text-center pe-3">Status</Th></Thead>
                 <Tbody>
                   {staffList.length === 0 ? (
                     <Tr><Td colSpan={5} className="text-center text-muted py-4 fs-sm">No attendance records today.</Td></Tr>
                   ) : staffList.map((s, i) => (
                     <Tr key={i}>
-                      <Td><p className="fw-medium fs-sm mb-0">{s.name}</p></Td>
+                      <Td><p className="fw-bold text-dark fs-sm mb-0">{s.name}</p></Td>
                       <Td className="text-muted fs-sm">{s.role}</Td>
-                      <Td><span className="badge bg-light text-dark fs-xs">{s.shift || '—'}</span></Td>
-                      <Td className="fs-sm">{s.clock_in ? new Date(s.clock_in).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '—'}</Td>
-                      <Td><Badge label={(s.status||'').replace(/_/g,' ')} color={s.status==='present'?'green':s.status==='absent'?'red':'amber'} /></Td>
+                      <Td><span className="badge bg-light text-dark fs-xs border">{s.shift || '—'}</span></Td>
+                      <Td className="fs-sm text-dark">{s.clock_in ? new Date(s.clock_in).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '—'}</Td>
+                      <Td className="text-center pe-3"><Badge label={(s.status||'').replace(/_/g,' ')} color={s.status==='present'?'green':s.status==='absent'?'red':'amber'} /></Td>
                     </Tr>
                   ))}
                 </Tbody>
@@ -1311,25 +1431,29 @@ function OperationsTab() {
             </div>
           </div>
         </div>
+
         <div className="col-xl-6">
-          <div className="card mb-0">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h6 className="fw-semibold mb-0"><i className="ri-shopping-bag-3-line text-warning me-2" />Purchase Orders</h6>
-              <Link to="/purchase" className="link link-custom fs-sm">View all →</Link>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-shopping-bag-3-line text-warning" style={{ fontSize: 16 }} />
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Procurement &amp; Purchase Orders</h6>
+              </div>
+              <Link to="/purchase" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>All POs →</Link>
             </div>
             <div className="card-body p-0">
               <Table>
-                <Thead><Th>Ref</Th><Th>Supplier</Th><Th>Amount</Th><Th>Date</Th><Th>Status</Th></Thead>
+                <Thead><Th>Ref</Th><Th>Supplier</Th><Th>Amount</Th><Th>Date</Th><Th className="text-center pe-3">Status</Th></Thead>
                 <Tbody>
                   {purchaseOrders.length === 0 ? (
-                    <Tr><Td colSpan={5} className="text-center text-muted py-4 fs-sm">No purchase orders.</Td></Tr>
+                    <Tr><Td colSpan={5} className="text-center text-muted py-4 fs-sm">No purchase orders found.</Td></Tr>
                   ) : purchaseOrders.map((p, i) => (
                     <Tr key={i}>
-                      <Td><span className="fw-medium fs-sm">{p.po_ref || p.reference || p.id}</span></Td>
-                      <Td className="fs-sm">{p.supplier}</Td>
-                      <Td className="fw-semibold fs-sm">{fmtNaira(p.amount)}</Td>
-                      <Td className="text-muted fs-sm">{p.date ? new Date(p.date).toLocaleDateString() : '—'}</Td>
-                      <Td><Badge label={p.status} color={p.status==='paid'?'green':p.status==='received'?'blue':p.status==='pending'?'amber':'red'} /></Td>
+                      <Td><span className="fw-bold text-dark fs-sm">{p.po_ref || p.reference || p.id}</span></Td>
+                      <Td className="fs-sm text-dark">{p.supplier}</Td>
+                      <Td className="fw-bold font-display text-dark fs-sm">{fmtNaira(p.amount)}</Td>
+                      <Td className="text-muted fs-sm">{fmtDate(p.date)}</Td>
+                      <Td className="text-center pe-3"><Badge label={p.status} color={p.status==='paid'?'green':p.status==='received'?'blue':p.status==='pending'?'amber':'red'} /></Td>
                     </Tr>
                   ))}
                 </Tbody>
@@ -1350,6 +1474,8 @@ function OperationsTab() {
     </>
   )
 }
+
+// ── Tab 6: Customers Tab (Growth, Wallets & Loyalty) ──────────────────────────
 
 const customerColumns = [
   { key: 'name', label: 'Name', render: (r) => r.name },
@@ -1381,7 +1507,7 @@ function CustomersTab() {
   const customers    = data?.customer_list ?? []
 
   useApexChart(growthRef, () => ({
-    chart: { type: 'area', height: 200, toolbar: { show: false } },
+    chart: { type: 'area', height: 210, toolbar: { show: false } },
     series: [{ name: 'New Customers', data: growthCounts.length ? growthCounts : [0] }],
     dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 },
     fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.05 } },
@@ -1396,7 +1522,7 @@ function CustomersTab() {
 
   const openCustomers = (title, sub) => setModal({ title, subtitle: sub, icon: 'ri-group-line', columns: customerColumns, rows: customers })
   const openGrowth = () => setModal({
-    title: 'New Customer Growth', subtitle: 'Last 6 months',
+    title: 'Customer Growth (Last 6 Months)', subtitle: 'Monthly new customer registrations',
     icon: 'ri-line-chart-line',
     columns: [{ key: 'month', label: 'Month' }, { key: 'new_customers', label: 'New Customers', align: 'right' }],
     rows: data?.charts?.growth_last_6 ?? [],
@@ -1404,74 +1530,98 @@ function CustomersTab() {
 
   return (
     <>
-      <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Total Customers"  value={(kpis.total_customers ?? 0).toLocaleString()} sub="All time"               riIcon="ri-group-line"          color="blue" onClick={() => openCustomers('Total Customers', 'Top 10 by order volume')} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="New This Month"   value={kpis.new_this_month ?? 0}                    sub="Current month"          riIcon="ri-user-add-line"        color="green" onClick={openGrowth} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Loyalty Points"   value={(kpis.total_points ?? 0).toLocaleString()}   sub="Active balance"         riIcon="ri-vip-crown-line"       color="amber" onClick={() => openCustomers('Loyalty Points', 'By customer, top 10')} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Lifetime Points"  value={(kpis.lifetime_points ?? 0).toLocaleString()} sub="All time issued"        riIcon="ri-medal-line"           color="teal" onClick={() => openCustomers('Lifetime Points', 'By customer, top 10')} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Wallet Balance"   value={fmtNaira(kpis.wallet_balance)}               sub="Combined customer wallets" riIcon="ri-wallet-3-line"     color="purple" onClick={() => openCustomers('Wallet Balance', 'By customer, top 10')} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Wallet Funded"    value={fmtNaira(kpis.wallet_funded)}                sub="Total top-ups"          riIcon="ri-bank-card-line"       color="green" onClick={() => openCustomers('Wallet Funded', 'By customer, top 10')} /></div>
+      {/* 4 Core Customer & Loyalty Metrics */}
+      <div className="row g-3 mb-3">
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Total Customers" value={(kpis.total_customers ?? 0).toLocaleString()} sub="Active customer profiles" riIcon="ri-group-line" color="blue" onClick={() => openCustomers('Total Customers', 'Top registered customers')} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="New Signups This Month" value={kpis.new_this_month ?? 0} sub="New accounts registered" riIcon="ri-user-add-line" color="green" onClick={openGrowth} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Customer Wallet Float" value={fmtNaira(kpis.wallet_balance)} sub={`${fmtNaira(kpis.wallet_funded)} lifetime funded`} riIcon="ri-wallet-3-line" color="purple" onClick={() => openCustomers('Wallet Balances', 'Customer wallets')} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Loyalty Points Pool" value={`${(kpis.total_points ?? 0).toLocaleString()} pts`} sub={`${(kpis.lifetime_points ?? 0).toLocaleString()} pts issued all-time`} riIcon="ri-vip-crown-line" color="amber" onClick={() => openCustomers('Loyalty Points Pool', 'Customer loyalty points balance')} />
+        </div>
       </div>
 
-      <div className="row g-4 mb-4">
-        <div className="col-xl-5">
-          <div className="card mb-0 chart-panel-clickable" onClick={openGrowth} role="button" tabIndex={0}>
-            <div className="card-body">
-              <h6 className="fw-semibold mb-0">New Customer Growth</h6>
-              <p className="text-muted fs-xs mb-2 mt-1">Last 6 months</p>
+      {/* Customer Growth & Wallet Health */}
+      <div className="row g-3 mb-3">
+        <div className="col-xl-6">
+          <div className="card mb-0 h-100 chart-panel-clickable" onClick={openGrowth} role="button" tabIndex={0} style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom">
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.9rem' }}>New Customer Acquisition Trend</h6>
+              <p className="text-muted fs-xs mb-0">Signups over the last 6 months</p>
+            </div>
+            <div className="card-body p-3">
               <div ref={growthRef} />
             </div>
           </div>
         </div>
-        <div className="col-xl-7">
-          <div className="card mb-0 h-100">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h6 className="fw-semibold mb-0">Loyalty &amp; Wallet Summary</h6>
-              <Link to="/customers/loyalty" className="link link-custom fs-sm">Manage →</Link>
+
+        <div className="col-xl-6">
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Wallet &amp; Loyalty Health</h6>
+              <Link to="/customers/loyalty" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Loyalty Settings →</Link>
             </div>
-            <div className="card-body">
-              <div className="row g-3 text-center">
-                {[
-                  { label: 'Points Issued',   value: (kpis.lifetime_points ?? 0).toLocaleString(), icon: 'ri-medal-line',       color: 'bg-warning-subtle text-warning' },
-                  { label: 'Points Balance',  value: (kpis.total_points ?? 0).toLocaleString(),    icon: 'ri-coin-line',         color: 'bg-info-subtle text-info' },
-                  { label: 'Wallet Funded',   value: fmtNaira(kpis.wallet_funded),                 icon: 'ri-wallet-3-line',     color: 'bg-primary-subtle text-primary' },
-                  { label: 'Wallet Spent',    value: fmtNaira(kpis.wallet_spent),                  icon: 'ri-shopping-bag-line', color: 'bg-danger-subtle text-danger' },
-                  { label: 'Wallet Balance',  value: fmtNaira(kpis.wallet_balance),                icon: 'ri-bank-card-line',    color: 'bg-success-subtle text-success' },
-                  { label: 'New This Month',  value: kpis.new_this_month ?? 0,                     icon: 'ri-user-add-line',     color: 'bg-secondary-subtle text-secondary' },
-                ].map(({ label, value, icon, color }) => (
-                  <div className="col-4" key={label}>
-                    <div className={`rounded p-3 d-flex flex-column align-items-center gap-1 ${color.split(' ')[0]}`}>
-                      <i className={`${icon} fs-4 ${color.split(' ')[1]}`} />
-                      <h6 className="fw-bold mb-0 mt-1">{value}</h6>
-                      <p className="mb-0" style={{ fontSize: 10, opacity: 0.75 }}>{label}</p>
-                    </div>
+            <div className="card-body p-3">
+              <div className="row g-2.5">
+                <div className="col-6">
+                  <div className="p-3 rounded border text-center" style={{ backgroundColor: '#FAF8F5' }}>
+                    <i className="ri-wallet-3-line fs-4 text-primary mb-1 d-inline-block" />
+                    <div className="text-muted fs-xs">Total Wallet Funded</div>
+                    <div className="fw-bold font-display text-dark fs-sm mt-0.5">{fmtNaira(kpis.wallet_funded)}</div>
                   </div>
-                ))}
+                </div>
+                <div className="col-6">
+                  <div className="p-3 rounded border text-center" style={{ backgroundColor: '#FAF8F5' }}>
+                    <i className="ri-shopping-bag-line fs-4 text-danger mb-1 d-inline-block" />
+                    <div className="text-muted fs-xs">Total Wallet Spent</div>
+                    <div className="fw-bold font-display text-dark fs-sm mt-0.5">{fmtNaira(kpis.wallet_spent)}</div>
+                  </div>
+                </div>
+                <div className="col-6">
+                  <div className="p-3 rounded border text-center" style={{ backgroundColor: '#FAF8F5' }}>
+                    <i className="ri-medal-line fs-4 text-warning mb-1 d-inline-block" />
+                    <div className="text-muted fs-xs">Lifetime Points Issued</div>
+                    <div className="fw-bold font-display text-dark fs-sm mt-0.5">{(kpis.lifetime_points ?? 0).toLocaleString()} pts</div>
+                  </div>
+                </div>
+                <div className="col-6">
+                  <div className="p-3 rounded border text-center" style={{ backgroundColor: '#FAF8F5' }}>
+                    <i className="ri-coin-line fs-4 text-success mb-1 d-inline-block" />
+                    <div className="text-muted fs-xs">Active Points Balance</div>
+                    <div className="fw-bold font-display text-dark fs-sm mt-0.5">{(kpis.total_points ?? 0).toLocaleString()} pts</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="card mb-0">
-        <div className="card-header d-flex align-items-center justify-content-between">
-          <h6 className="fw-semibold mb-0">Top Customers</h6>
-          <Link to="/customers" className="link link-custom fs-sm">View all →</Link>
+      {/* Top Customers Directory */}
+      <div className="card mb-0" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+        <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Top Customers by Order Volume</h6>
+          <Link to="/customers" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>All Customers →</Link>
         </div>
         <div className="card-body p-0">
           <Table>
-            <Thead><Th>Name</Th><Th>Phone</Th><Th>Total Orders</Th><Th>Points</Th><Th>Wallet</Th><Th>Status</Th></Thead>
+            <Thead><Th>Customer Name</Th><Th>Phone</Th><Th className="text-center">Total Orders</Th><Th className="text-center">Loyalty Points</Th><Th className="text-end">Wallet Float</Th><Th className="text-center pe-3">Status</Th></Thead>
             <Tbody>
               {customers.length === 0 ? (
-                <Tr><Td colSpan={6} className="text-center text-muted py-4 fs-sm">No customers yet.</Td></Tr>
+                <Tr><Td colSpan={6} className="text-center text-muted py-4 fs-sm">No customer records found.</Td></Tr>
               ) : customers.map((c, i) => (
                 <Tr key={i}>
-                  <Td><p className="fw-medium fs-sm mb-0">{c.name}</p></Td>
-                  <Td className="text-muted fs-sm">{c.phone}</Td>
-                  <Td className="fw-semibold">{c.total_orders ?? c.orders}</Td>
-                  <Td><span className="badge bg-warning-subtle text-warning">{(c.points ?? 0).toLocaleString()} pts</span></Td>
-                  <Td className="fw-medium">{fmtNaira(c.wallet_balance ?? c.wallet)}</Td>
-                  <Td><Badge label={c.status} color={c.status==='active'?'green':'red'} /></Td>
+                  <Td><p className="fw-bold text-dark fs-sm mb-0">{c.name}</p></Td>
+                  <Td className="text-muted fs-sm">{c.phone || '—'}</Td>
+                  <Td className="text-center fw-bold fs-sm">{c.total_orders ?? c.orders ?? 0}</Td>
+                  <Td className="text-center"><span className="badge bg-warning-subtle text-warning border border-warning-subtle fs-xs">{(c.points ?? 0).toLocaleString()} pts</span></Td>
+                  <Td className="text-end fw-bold font-display text-success fs-sm">{fmtNaira(c.wallet_balance ?? c.wallet)}</Td>
+                  <Td className="text-center pe-3"><Badge label={c.status || 'active'} color={c.status==='active'?'green':'red'} /></Td>
                 </Tr>
               ))}
             </Tbody>
@@ -1490,6 +1640,8 @@ function CustomersTab() {
     </>
   )
 }
+
+// ── Tab 7: Chef Bems AI Tab (Conversations, Recipes & Rules) ──────────────────
 
 function ChefBemsTab() {
   const aiRef = useRef(null)
@@ -1510,11 +1662,11 @@ function ChefBemsTab() {
   const kpis      = data?.kpis ?? {}
 
   useApexChart(aiRef, () => {
-    const vals = [breakdown.new ?? 0, breakdown.pending ?? 0, breakdown.resolved ?? 0]
+    const vals = [breakdown.new ?? 0, breakdown.pending ?? 0, (breakdown.resolved ?? breakdown.completed ?? 0)]
     return {
-      chart: { type: 'donut', height: 200 },
+      chart: { type: 'donut', height: 210 },
       series: vals.some(v => v > 0) ? vals : [1],
-      labels: ['New', 'Pending', 'Resolved'],
+      labels: ['New / Unread', 'Pending Reply', 'Resolved'],
       colors: ['#f7b84b','#405189','#0ab39c'],
       legend: { position: 'bottom', fontSize: '11px' },
       dataLabels: { enabled: false },
@@ -1531,132 +1683,149 @@ function ChefBemsTab() {
 
   const convColumns = [
     { key: 'customer', label: 'Customer' },
-    { key: 'query', label: 'Message', render: (r) => `"${r.query}"` },
-    { key: 'status', label: 'Status', render: (r) => <Badge label={r.status} color={r.status === 'new' ? 'amber' : r.status === 'resolved' ? 'green' : 'blue'} /> },
-    { key: 'created_at', label: 'Time', render: (r) => r.created_at ? new Date(r.created_at).toLocaleString() : '—' },
+    { key: 'query', label: 'Customer Message', render: (r) => `"${r.query}"` },
+    { key: 'status', label: 'Status', render: (r) => <Badge label={r.status} color={r.status === 'new' ? 'amber' : r.status === 'resolved' || r.status === 'completed' ? 'green' : 'blue'} /> },
+    { key: 'created_at', label: 'Time', render: (r) => r.created_at ? formatTimeAgo(r.created_at) : '—' },
   ]
   const openConvs = (title, sub, rows = convs) => setModal({ title, subtitle: sub, icon: 'ri-robot-line', columns: convColumns, rows })
   const openDietaryRules = () => setModal({
-    title: 'Active Dietary Rules', subtitle: 'Configured constraints',
+    title: 'Active Dietary Rules', subtitle: 'Configured recipe and health constraints',
     icon: 'ri-file-list-3-line',
     columns: [
-      { key: 'name', label: 'Rule', render: (r) => r.name || r.condition || r.rule },
-      { key: 'scope', label: 'Scope', render: (r) => r.scope || r.rule_text || 'Active constraint' },
+      { key: 'name', label: 'Condition / Rule', render: (r) => r.name || r.condition || r.rule },
+      { key: 'scope', label: 'Constraint Scope', render: (r) => r.scope || r.rule_text || 'Active constraint' },
       { key: 'status', label: 'Status', render: (r) => <Badge label={r.status || 'active'} color="green" /> },
     ],
     rows: dietaryRules,
   })
   const openMealAssocs = () => setModal({
-    title: 'Meal Associations', subtitle: 'Product ↔ meal links',
+    title: 'Meal & Produce Associations', subtitle: 'Product ↔ meal pairing intelligence',
     icon: 'ri-links-line',
-    columns: [{ key: 'meal', label: 'Meal' }, { key: 'association_count', label: 'Associations', align: 'right' }],
+    columns: [{ key: 'meal', label: 'Produce Pairing' }, { key: 'association_count', label: 'Pairing Strength', align: 'right' }],
     rows: mealAssocs,
-  })
-  const openBreakdown = () => setModal({
-    title: 'Conversation Status', subtitle: 'Today',
-    icon: 'ri-pie-chart-line',
-    columns: [{ key: 'status', label: 'Status' }, { key: 'count', label: 'Count', align: 'right' }],
-    rows: [
-      { status: 'New', count: breakdown.new ?? 0 },
-      { status: 'Pending', count: breakdown.pending ?? 0 },
-      { status: 'Resolved', count: breakdown.resolved ?? 0 },
-    ],
   })
 
   return (
     <>
-      <div className="row g-3 mb-4">
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Conversations Today" value={kpis.conversations_today ?? 0} sub="Today total"          riIcon="ri-robot-line"           color="blue" onClick={() => openConvs('Conversations Today', 'Most recent conversations')} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Pending Replies"     value={kpis.pending_replies ?? 0}     sub="Needs attention"      riIcon="ri-message-3-line"       color="amber" onClick={() => openConvs('Pending Replies', 'Awaiting a response', convs.filter(c => c.status === 'pending'))} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Resolved Today"      value={breakdown.resolved ?? 0}       sub="Successfully answered" riIcon="ri-checkbox-circle-line" color="green" onClick={() => openConvs('Resolved Today', 'Successfully answered', convs.filter(c => c.status === 'resolved'))} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Dietary Rules"       value={kpis.dietary_rules ?? 0}       sub="Active constraints"   riIcon="ri-file-list-3-line"     color="teal" onClick={openDietaryRules} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="Meal Associations"   value={kpis.meal_associations ?? 0}   sub="Product ↔ meal links" riIcon="ri-links-line"           color="purple" onClick={openMealAssocs} /></div>
-        <div className="col-6 col-sm-4 col-xl-2"><StatsCard title="New Today"           value={breakdown.new ?? 0}            sub="Unread conversations" riIcon="ri-notification-3-line"  color="red" onClick={() => openConvs('New Today', 'Unread conversations', convs.filter(c => c.status === 'new'))} /></div>
+      {/* 4 Clean AI KPI Cards */}
+      <div className="row g-3 mb-3">
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Today's AI Inquiries" value={kpis.conversations_today ?? 0} sub="Customer recipe & produce chats" riIcon="ri-robot-line" color="blue" onClick={() => openConvs('Conversations Today', 'Most recent conversations')} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Pending Inquiries" value={kpis.pending_replies ?? 0} sub="Awaiting resolution" riIcon="ri-message-3-line" color="amber" onClick={() => openConvs('Pending Replies', 'Awaiting response', convs.filter(c => c.status === 'pending'))} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Resolved Inquiries" value={breakdown.resolved ?? breakdown.completed ?? 0} sub="Successfully handled" riIcon="ri-checkbox-circle-line" color="green" onClick={() => openConvs('Resolved Inquiries', 'Successfully answered', convs.filter(c => c.status === 'resolved' || c.status === 'completed'))} />
+        </div>
+        <div className="col-12 col-sm-6 col-xl-3">
+          <StatsCard title="Configured Rules &amp; Pairs" value={(kpis.dietary_rules ?? 0) + (kpis.meal_associations ?? 0)} sub={`${kpis.dietary_rules ?? 0} dietary • ${kpis.meal_associations ?? 0} meal links`} riIcon="ri-links-line" color="teal" onClick={openDietaryRules} />
+        </div>
       </div>
 
-      <div className="row g-4 mb-4">
+      {/* AI Conversation Status & Recent Inquiries */}
+      <div className="row g-3 mb-3">
         <div className="col-xl-4">
-          <div className="card mb-0 h-100 chart-panel-clickable" onClick={openBreakdown} role="button" tabIndex={0}>
-            <div className="card-body">
-              <h6 className="fw-semibold mb-0">Conversation Status</h6>
-              <p className="text-muted fs-xs mb-2 mt-1">Today</p>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom">
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>AI Conversation Status</h6>
+              <p className="text-muted fs-xs mb-0">Today's query resolution mix</p>
+            </div>
+            <div className="card-body p-3">
               <div ref={aiRef} />
-              <div className="row text-center mt-3 g-0">
-                <div className="col-4 border-end"><h6 className="fw-bold text-warning mb-0">{breakdown.new ?? 0}</h6><p className="text-muted mb-0" style={{ fontSize: 10 }}>New</p></div>
-                <div className="col-4 border-end"><h6 className="fw-bold text-primary mb-0">{breakdown.pending ?? 0}</h6><p className="text-muted mb-0" style={{ fontSize: 10 }}>Pending</p></div>
-                <div className="col-4"><h6 className="fw-bold text-success mb-0">{breakdown.resolved ?? 0}</h6><p className="text-muted mb-0" style={{ fontSize: 10 }}>Resolved</p></div>
-              </div>
             </div>
           </div>
         </div>
+
         <div className="col-xl-8">
-          <div className="card mb-0 h-100">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h6 className="fw-semibold mb-0"><i className="ri-robot-line text-primary me-2" />Recent AI Conversations</h6>
-              <Link to="/chef-bems/conversations" className="link link-custom fs-sm">View all →</Link>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-robot-line text-primary" style={{ fontSize: 16 }} />
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Recent Customer AI Conversations</h6>
+              </div>
+              <Link to="/chef-bems/conversations" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>All Inquiries →</Link>
             </div>
             <div className="card-body p-0">
               {convs.length === 0 ? (
-                <p className="text-muted text-center py-4 fs-sm">No conversations today.</p>
-              ) : convs.map((c, i) => (
-                <div key={i} className={`px-4 py-3 d-flex align-items-start gap-3 ${i < convs.length-1 ? 'border-bottom' : ''}`}>
-                  <div className="avatar size-8 rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ fontSize: 11 }}>
-                    {(c.customer||'?').split(' ').map(n => n[0]).join('').slice(0,2)}
-                  </div>
-                  <div className="flex-grow-1">
-                    <div className="d-flex justify-content-between align-items-start">
-                      <p className="fw-medium fs-sm mb-1">{c.customer}</p>
-                      <Badge label={c.status} color={c.status==='new'?'amber':c.status==='resolved'?'green':'blue'} />
+                <p className="text-muted text-center py-4 fs-sm">No customer inquiries recorded today.</p>
+              ) : (
+                <div className="d-flex flex-column">
+                  {convs.slice(0, 5).map((c, i) => (
+                    <div key={i} className={`p-3 d-flex align-items-start gap-3 ${i < Math.min(convs.length, 5) - 1 ? 'border-bottom' : ''}`}>
+                      <div className="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ width: 34, height: 34, fontSize: '0.75rem' }}>
+                        {(c.customer || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-grow-1 min-w-0">
+                        <div className="d-flex justify-content-between align-items-center mb-1">
+                          <span className="fw-bold text-dark fs-sm">{c.customer}</span>
+                          <Badge label={c.status} color={c.status === 'new' ? 'amber' : c.status === 'resolved' || c.status === 'completed' ? 'green' : 'blue'} />
+                        </div>
+                        <p className="text-muted fs-sm mb-1 text-truncate">"{c.query}"</p>
+                        <span className="text-muted fs-xs">{c.created_at ? formatTimeAgo(c.created_at) : ''}</span>
+                      </div>
                     </div>
-                    <p className="text-muted mb-0" style={{ fontSize: 12 }}>"{c.query}"</p>
-                    <span className="text-muted" style={{ fontSize: 10 }}>{c.created_at ? new Date(c.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : ''}</span>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="row g-4">
+      {/* Dietary Rules & Meal Associations */}
+      <div className="row g-3 mb-3">
         <div className="col-xl-6">
-          <div className="card mb-0">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h6 className="fw-semibold mb-0"><i className="ri-file-list-3-line text-info me-2" />Active Dietary Rules</h6>
-              <Link to="/chef-bems/dietary-rules" className="link link-custom fs-sm">Manage →</Link>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-file-list-3-line text-info" style={{ fontSize: 16 }} />
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Active Dietary Rules</h6>
+              </div>
+              <Link to="/chef-bems/dietary-rules" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Manage Rules →</Link>
             </div>
             <div className="card-body p-0">
-              {dietaryRules.length === 0 ? (
-                <p className="text-muted text-center py-4 fs-sm">No dietary rules configured.</p>
-              ) : dietaryRules.map((r, i) => (
-                <div key={i} className={`px-4 py-3 d-flex align-items-center justify-content-between ${i < dietaryRules.length-1 ? 'border-bottom' : ''}`}>
-                  <div>
-                    <p className="fw-medium fs-sm mb-0">{r.name || r.condition || r.rule}</p>
-                    <span className="text-muted" style={{ fontSize: 11 }}>{r.scope || r.rule_text || 'Active constraint'}</span>
-                  </div>
-                  <Badge label={r.status || 'active'} color="green" />
-                </div>
-              ))}
+              <Table>
+                <Thead><Th>Rule / Condition</Th><Th>Constraint Scope</Th><Th className="text-center pe-3">Status</Th></Thead>
+                <Tbody>
+                  {dietaryRules.length === 0 ? (
+                    <Tr><Td colSpan={3} className="text-center text-muted py-4 fs-sm">No dietary rules configured.</Td></Tr>
+                  ) : dietaryRules.map((r, i) => (
+                    <Tr key={i}>
+                      <Td><p className="fw-bold text-dark fs-sm mb-0">{r.name || r.condition || r.rule}</p></Td>
+                      <Td className="text-muted fs-sm">{r.scope || r.rule_text || 'Active constraint'}</Td>
+                      <Td className="text-center pe-3"><Badge label={r.status || 'active'} color="green" /></Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
             </div>
           </div>
         </div>
+
         <div className="col-xl-6">
-          <div className="card mb-0">
-            <div className="card-header d-flex align-items-center justify-content-between">
-              <h6 className="fw-semibold mb-0"><i className="ri-links-line text-success me-2" />Meal Associations</h6>
-              <Link to="/chef-bems/meal-associations" className="link link-custom fs-sm">Manage →</Link>
+          <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+            <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center gap-2">
+                <i className="ri-links-line text-success" style={{ fontSize: 16 }} />
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Meal &amp; Produce Pairings</h6>
+              </div>
+              <Link to="/chef-bems/meal-associations" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Manage Pairings →</Link>
             </div>
             <div className="card-body p-0">
-              {mealAssocs.length === 0 ? (
-                <p className="text-muted text-center py-4 fs-sm">No meal associations yet.</p>
-              ) : mealAssocs.map((m, i) => (
-                <div key={i} className={`px-4 py-3 ${i < mealAssocs.length-1 ? 'border-bottom' : ''}`}>
-                  <div className="d-flex justify-content-between align-items-start mb-1">
-                    <p className="fw-medium fs-sm mb-0">{m.meal}</p>
-                    <span className="text-muted fs-xs">{m.association_count} associations</span>
-                  </div>
-                </div>
-              ))}
+              <Table>
+                <Thead><Th>Produce Pairing</Th><Th className="text-center pe-3">Association Strength</Th></Thead>
+                <Tbody>
+                  {mealAssocs.length === 0 ? (
+                    <Tr><Td colSpan={2} className="text-center text-muted py-4 fs-sm">No meal pairings configured.</Td></Tr>
+                  ) : mealAssocs.map((m, i) => (
+                    <Tr key={i}>
+                      <Td><p className="fw-bold text-dark fs-sm mb-0">{m.meal}</p></Td>
+                      <Td className="text-center pe-3"><span className="badge bg-success-subtle text-success border border-success-subtle fs-xs">{m.association_count} strength</span></Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
             </div>
           </div>
         </div>
@@ -1718,7 +1887,7 @@ export default function Dashboard() {
         </button>
       </PageHeader>
 
-      {/* Tab Bar */}
+      {/* Tab Navigation */}
       <div className="d-flex align-items-center gap-1 mb-3 flex-wrap" style={{ borderBottom: '2px solid #EFECE6', paddingBottom: '0.25rem' }}>
         {TABS.map(({ key, label, icon }) => (
           <button
@@ -1734,7 +1903,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Active Tab */}
+      {/* Active Tab View */}
       {activeTab === 'overview'   && <OverviewTab />}
       {activeTab === 'sales'      && <SalesTab />}
       {activeTab === 'finance'    && <FinanceTab />}
