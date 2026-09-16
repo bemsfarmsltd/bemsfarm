@@ -156,15 +156,7 @@ export default function POS() {
   const [historyList, setHistoryList] = useState([])
   const [loadingPOS, setLoadingPOS] = useState(true)
 
-  // Dynamic Lookup Maps
-  const { byBarcode, bySku } = useMemo(() => {
-    const bc = {}, sk = {}
-    productsList.forEach(p => {
-      if (p.barcode) bc[p.barcode.toUpperCase()] = p
-      if (p.sku) sk[p.sku.toUpperCase()] = p
-    })
-    return { byBarcode: bc, bySku: sk }
-  }, [productsList])
+
 
   // UI State
   const [activeCategory, setActiveCategory] = useState('all')
@@ -205,6 +197,8 @@ export default function POS() {
   const [cashReceived, setCashReceived]     = useState('')
   // Card modal
   const [cardTab, setCardTab]               = useState('visa')
+  // Checkout & Payment modal
+  const [checkoutPayMethod, setCheckoutPayMethod] = useState('Cash')
   // Transfer modal
   const [bankName, setBankName]             = useState('')
   const [txnRef, setTxnRef]                 = useState('')
@@ -457,29 +451,79 @@ export default function POS() {
     showToast('Register cart cleared', 'info', '🧹')
   }
 
-  // Barcode Scanner Listener
+  // Dynamic Lookup Maps
+  const { byBarcode, bySku } = useMemo(() => {
+    const bc = {}, sk = {}
+    productsList.forEach(p => {
+      if (p.barcode) {
+        const clean = String(p.barcode).trim().toUpperCase()
+        bc[clean] = p
+        bc[clean.replace(/^BF-/, '')] = p
+        bc['BF-' + clean.replace(/^BF-/, '')] = p
+        const noZeros = clean.replace(/^0+/, '')
+        if (noZeros) bc[noZeros] = p
+      }
+      if (p.sku) {
+        const cleanSku = String(p.sku).trim().toUpperCase()
+        sk[cleanSku] = p
+        sk[cleanSku.replace(/^SKU-/, '')] = p
+      }
+      if (p.id) {
+        bc[String(p.id)] = p
+        bc[`BF-${p.id}`] = p
+      }
+    })
+    return { byBarcode: bc, bySku: sk }
+  }, [productsList])
+
+  // Barcode Scanner Handler
   const handleBarcodeScan = useCallback((code) => {
-    const trimmed = code.trim().toUpperCase()
-    if (!trimmed) return false
-    const product = byBarcode[trimmed] || byBarcode['BF-' + trimmed] || bySku[trimmed]
+    if (!code) return
+    const trimmed = String(code).trim()
+    if (!trimmed) return
+    const upper = trimmed.toUpperCase()
+    const cleanNoPrefix = upper.replace(/^BF-/, '')
+    const cleanNoSku = upper.replace(/^SKU-/, '')
+    const cleanNoZeros = upper.replace(/^0+/, '')
+
+    const product =
+      byBarcode[upper] ||
+      byBarcode[trimmed] ||
+      byBarcode['BF-' + upper] ||
+      byBarcode[cleanNoPrefix] ||
+      bySku[upper] ||
+      bySku[cleanNoSku] ||
+      (cleanNoZeros ? byBarcode[cleanNoZeros] : null) ||
+      productsList.find(p =>
+        (p.barcode && p.barcode.toUpperCase() === upper) ||
+        (p.sku && p.sku.toUpperCase() === upper) ||
+        (p.id && String(p.id) === upper) ||
+        (p.barcode && p.barcode.replace(/\D/g, '') === trimmed.replace(/\D/g, '') && trimmed.length >= 6)
+      )
+
     if (product) {
       setViewMode('register')
-      addProductToCart(product)
+      if (activeModal === 'scanner') {
+        scannerAddProduct(trimmed)
+      } else {
+        addProductToCart(product)
+      }
     } else {
       playBeep('error')
       showToast(`Unknown barcode: ${trimmed}`, 'error', '❌')
     }
-  }, [byBarcode, bySku])
+  }, [byBarcode, bySku, productsList, activeModal])
 
   const scanBuffer = useRef('')
-  const lastKeyTime = useRef(0)
+  const scanKeyTimestamps = useRef([])
   const onScanRef = useRef(handleBarcodeScan)
-  onScanRef.current = activeModal === 'scanner' ? scannerAddProduct : handleBarcodeScan
+  onScanRef.current = handleBarcodeScan
 
   useEffect(() => {
     function onKeyDown(e) {
-      const tag = e.target.tagName
-      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable
+      const tag = e.target?.tagName
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable
+      const isSearchInput = e.target === scanInputRef.current
 
       if (e.key === 'F1') {
         e.preventDefault()
@@ -512,22 +556,35 @@ export default function POS() {
       }
       if (e.key === 'F8') {
         e.preventDefault()
-        if (cart.length > 0) setActiveModal('cash')
+        if (cart.length > 0) {
+          setCashReceived(String(total))
+          setCheckoutPayMethod('Cash')
+          setActiveModal('checkout')
+        }
         return
       }
       if (e.key === 'F9') {
         e.preventDefault()
-        if (cart.length > 0) setActiveModal('card')
+        if (cart.length > 0) {
+          setCheckoutPayMethod('Card / POS')
+          setActiveModal('checkout')
+        }
         return
       }
       if (e.key === 'F10') {
         e.preventDefault()
-        if (cart.length > 0) setActiveModal('transfer')
+        if (cart.length > 0) {
+          setCheckoutPayMethod('Bank Transfer')
+          setActiveModal('checkout')
+        }
         return
       }
       if (e.key === 'F11') {
         e.preventDefault()
-        if (cart.length > 0) setActiveModal('split')
+        if (cart.length > 0) {
+          setCheckoutPayMethod('Split Payment')
+          setActiveModal('checkout')
+        }
         return
       }
       if (e.key === 'F12') {
@@ -549,31 +606,67 @@ export default function POS() {
         return
       }
 
-      if (e.defaultPrevented || isInput || (activeModal && activeModal !== 'scanner') || e.ctrlKey || e.altKey || e.metaKey) {
+      if (e.ctrlKey || e.altKey || e.metaKey) {
         scanBuffer.current = ''
+        scanKeyTimestamps.current = []
         return
       }
 
       const now = Date.now()
+
       if (e.key === 'Enter' || e.key === 'Tab') {
-        const code = scanBuffer.current
+        const buffered = scanBuffer.current.trim()
+        const timestamps = scanKeyTimestamps.current
+
+        let isHardwareScan = false
+        if (buffered.length >= 3 && timestamps.length >= 2) {
+          const totalDuration = timestamps[timestamps.length - 1] - timestamps[0]
+          const avgInterval = totalDuration / (timestamps.length - 1)
+          if (avgInterval < 85) {
+            isHardwareScan = true
+          }
+        }
+
         scanBuffer.current = ''
-        if (code && now - lastKeyTime.current <= 300) {
-          e.preventDefault()
-          onScanRef.current(code)
+        scanKeyTimestamps.current = []
+
+        if (isHardwareScan || isSearchInput) {
+          const codeToScan = isSearchInput && search.trim() ? search.trim() : buffered
+          if (codeToScan) {
+            e.preventDefault()
+            e.stopPropagation()
+            if (isSearchInput) setSearch('')
+            if (isInput && !isSearchInput && e.target) {
+              try {
+                if (typeof e.target.value === 'string' && buffered) {
+                  e.target.value = e.target.value.replace(new RegExp(`${buffered.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), '')
+                }
+              } catch (_err) {}
+            }
+            onScanRef.current(codeToScan)
+            return
+          }
         }
         return
       }
-      if (e.key.length === 1) {
-        if (now - lastKeyTime.current > 300) scanBuffer.current = ''
+
+      if (e.key && e.key.length === 1) {
+        const timestamps = scanKeyTimestamps.current
+        const lastTime = timestamps.length > 0 ? timestamps[timestamps.length - 1] : 0
+
+        if (now - lastTime > 120) {
+          scanBuffer.current = ''
+          scanKeyTimestamps.current = []
+        }
+
         scanBuffer.current += e.key
-        lastKeyTime.current = now
+        scanKeyTimestamps.current.push(now)
       }
     }
 
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [viewMode, activeModal, search, cart.length])
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [viewMode, activeModal, search, cart.length, total])
 
   useEffect(() => {
     document.body.classList.add('sidebar-hidden')
@@ -1393,39 +1486,32 @@ export default function POS() {
             </div>
           </div>
 
-          {/* 1-Tap Tender Keypad Buttons */}
-          <div className="pos-tender-pad">
-            <div className="pos-tender-header">
-              <span className="pos-tender-title">1-TAP TENDER METHODS</span>
-              <span className="pos-tender-hotkeys">F8: Cash · F9: Card</span>
-            </div>
-
-            <div className="pos-tender-grid">
-              {[
-                { id: 'cash',     label: 'Cash [F8]',       icon: 'ri-money-dollar-circle-line', color: '#059669', bg: '#ecfdf5', border: '#a7f3d0' },
-                { id: 'card',     label: 'Card / POS [F9]', icon: 'ri-bank-card-line',           color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
-                { id: 'transfer', label: 'Bank Transfer',   icon: 'ri-bank-line',                color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
-                { id: 'qr',       label: 'QR / USSD',       icon: 'ri-qr-code-line',             color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' },
-                { id: 'split',    label: 'Split Tender',    icon: 'ri-layout-column-line',       color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
-              ].map(m => (
-                <button
-                  key={m.id}
-                  disabled={cart.length === 0}
-                  onClick={() => {
-                    if (cart.length > 0) {
-                      if (m.id === 'cash') setCashReceived(String(total))
-                      setActiveModal(m.id)
-                    }
-                  }}
-                  className="pos-tender-btn"
-                  style={{ '--btn-c': m.color, '--btn-b': m.border, '--btn-bg': m.bg }}>
-                  <div className="pos-tender-ico">
-                    <i className={m.icon}></i>
-                  </div>
-                  <div className="pos-tender-label">{m.label}</div>
-                </button>
-              ))}
-            </div>
+          {/* Unified 1-Click Pay / Complete Sale Button */}
+          <div className="pos-single-pay-container mt-3 mb-2">
+            <button
+              disabled={cart.length === 0}
+              onClick={() => {
+                if (cart.length > 0) {
+                  setCashReceived(String(total))
+                  setActiveModal('checkout')
+                }
+              }}
+              className="pos-single-pay-btn"
+            >
+              <div className="d-flex align-items-center gap-3">
+                <div className="pos-single-pay-icon">
+                  <i className="ri-secure-payment-line"></i>
+                </div>
+                <div className="text-start">
+                  <div className="pos-single-pay-title">PAY / COMPLETE SALE [F8]</div>
+                  <div className="pos-single-pay-sub">{itemCount} {itemCount === 1 ? 'item' : 'items'} · Tap to choose tender & print</div>
+                </div>
+              </div>
+              <div className="pos-single-pay-amount">
+                {fmt(total)}
+                <i className="ri-arrow-right-line ms-2"></i>
+              </div>
+            </button>
           </div>
 
           {/* Bottom Register Utilities */}
@@ -1681,290 +1767,259 @@ export default function POS() {
         </div>
       )}
 
-      {/* ─── Cash Payment Modal (with 1-Tap Quick Tenders) ───────────────── */}
-      {activeModal === 'cash' && (
+      {/* ─── Unified Checkout & Payment Modal ────────────────────────────── */}
+      {(activeModal === 'checkout' || activeModal === 'cash' || activeModal === 'card' || activeModal === 'transfer' || activeModal === 'qr' || activeModal === 'split') && (
         <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 480 }}>
+          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 540 }}>
             <div className="modal-content pos-modal-card">
               <div className="modal-header pos-modal-header bg-emerald-solid">
                 <div className="d-flex align-items-center gap-2 text-white">
-                  <i className="ri-money-dollar-circle-line fs-22"></i>
-                  <h6 className="modal-title mb-0 text-white fw-bold">Cash Tender & Change</h6>
+                  <i className="ri-secure-payment-line fs-22"></i>
+                  <div>
+                    <h6 className="modal-title mb-0 text-white fw-bold">POS Checkout & Payment</h6>
+                    <span className="text-white opacity-75 fs-11">{orderId} · {customer?.name || 'Walk-in Customer'}</span>
+                  </div>
                 </div>
                 <button className="btn-close btn-close-white" onClick={closeModal}></button>
               </div>
 
               <div className="modal-body p-4">
+                {/* Total Payable Summary Hero Card */}
                 <div className="pos-cash-hero-box mb-3">
                   <div>
-                    <span className="pos-cash-hero-lbl">Total Payable</span>
+                    <span className="pos-cash-hero-lbl">Total Amount Payable</span>
                     <div className="pos-cash-hero-val">{fmt(total)}</div>
                   </div>
-                  <span className="pos-cash-hero-tag">CASH</span>
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label text-muted small fw-bold">AMOUNT TENDERED (₦)</label>
-                  <div className="input-group input-group-lg">
-                    <span className="input-group-text bg-emerald-solid text-white border-0 fw-bold fs-20">₦</span>
-                    <input
-                      type="number"
-                      className="form-control pos-theme-input fw-bold fs-22"
-                      placeholder="0.00"
-                      value={cashReceived}
-                      onChange={e => setCashReceived(e.target.value)}
-                      autoFocus
-                    />
-                    {cashReceived && (
-                      <button className="btn btn-outline-secondary" onClick={() => setCashReceived('')}>
-                        Clear
-                      </button>
-                    )}
+                  <div className="text-end">
+                    <span className="badge bg-white text-emerald fw-bold px-2 py-1 fs-12 mb-1 d-block">{itemCount} items</span>
+                    <span className="fs-10 text-white opacity-75">Incl. 7.5% VAT</span>
                   </div>
                 </div>
 
+                {/* Payment Method Selector Pills */}
                 <div className="mb-3">
-                  <div className="pos-quick-tender-header">1-Tap Denomination Chips</div>
-                  <div className="pos-quick-tender-grid">
-                    {quickCashOptions.map(amt => (
+                  <label className="form-label text-muted small fw-bold text-uppercase">Payment Method</label>
+                  <div className="pos-checkout-method-grid">
+                    {[
+                      { id: 'Cash',          label: 'Cash',          icon: 'ri-money-dollar-circle-line', color: '#059669' },
+                      { id: 'Card / POS',    label: 'Card / POS',    icon: 'ri-bank-card-line',           color: '#2563eb' },
+                      { id: 'Bank Transfer', label: 'Transfer',      icon: 'ri-bank-line',                color: '#d97706' },
+                      { id: 'QR / USSD',     label: 'QR / USSD',     icon: 'ri-qr-code-line',             color: '#0891b2' },
+                      { id: 'Split Payment', label: 'Split',         icon: 'ri-layout-column-line',       color: '#7c3aed' },
+                    ].map(m => (
                       <button
-                        key={amt}
+                        key={m.id}
                         type="button"
-                        className="pos-quick-tender-pill"
-                        onClick={() => setCashReceived(String(amt))}>
-                        {amt === total ? `Exact (${fmt(amt)})` : fmt(amt)}
+                        onClick={() => {
+                          setCheckoutPayMethod(m.id)
+                          if (m.id === 'Cash' && !cashReceived) setCashReceived(String(total))
+                        }}
+                        className={`pos-checkout-method-pill ${checkoutPayMethod === m.id ? 'active' : ''}`}
+                        style={{ '--pill-c': m.color }}
+                      >
+                        <i className={m.icon}></i>
+                        <span>{m.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {cashReceived && Number(cashReceived) >= total && (
-                  <div className="pos-change-banner success mb-4">
-                    <span className="fw-bold">Change Due to Customer</span>
-                    <span className="fw-bolder fs-20 text-emerald">{fmt(cashChange)}</span>
-                  </div>
-                )}
-                {cashReceived && Number(cashReceived) < total && (
-                  <div className="pos-change-banner danger mb-4">
-                    <span className="fw-bold">Amount Remaining</span>
-                    <span className="fw-bolder fs-20 text-danger">{fmt(total - Number(cashReceived))}</span>
+                {/* ── Cash Panel ── */}
+                {checkoutPayMethod === 'Cash' && (
+                  <div>
+                    <div className="mb-3">
+                      <label className="form-label text-muted small fw-bold">AMOUNT TENDERED (₦)</label>
+                      <div className="input-group input-group-lg">
+                        <span className="input-group-text bg-emerald-solid text-white border-0 fw-bold fs-20">₦</span>
+                        <input
+                          type="number"
+                          className="form-control pos-theme-input fw-bold fs-22"
+                          placeholder="0.00"
+                          value={cashReceived}
+                          onChange={e => setCashReceived(e.target.value)}
+                          autoFocus
+                        />
+                        {cashReceived && (
+                          <button className="btn btn-outline-secondary" onClick={() => setCashReceived('')}>
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mb-3">
+                      <div className="pos-quick-tender-header">1-Tap Denomination Chips</div>
+                      <div className="pos-quick-tender-grid">
+                        {quickCashOptions.map(amt => (
+                          <button
+                            key={amt}
+                            type="button"
+                            className="pos-quick-tender-pill"
+                            onClick={() => setCashReceived(String(amt))}>
+                            {amt === total ? `Exact (${fmt(amt)})` : fmt(amt)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {cashReceived && Number(cashReceived) >= total && (
+                      <div className="pos-change-banner success mb-3">
+                        <span className="fw-bold">Change Due to Customer</span>
+                        <span className="fw-bolder fs-20 text-emerald">{fmt(cashChange)}</span>
+                      </div>
+                    )}
+                    {cashReceived && Number(cashReceived) < total && (
+                      <div className="pos-change-banner danger mb-3">
+                        <span className="fw-bold">Amount Remaining</span>
+                        <span className="fw-bolder fs-20 text-danger">{fmt(total - Number(cashReceived))}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                <div className="d-flex gap-2">
-                  <button type="button" className="btn btn-outline-secondary w-50 py-3 fw-bold" onClick={closeModal}>
+                {/* ── Card Panel ── */}
+                {checkoutPayMethod === 'Card / POS' && (
+                  <div>
+                    <div className="pos-terminal-instruction-box mb-3">
+                      <i className="ri-bank-card-2-line fs-32 text-sapphire"></i>
+                      <div className="fs-12 lh-base pos-entry-item-title">
+                        Charge <strong className="text-emerald">{fmt(total)}</strong> on the POS physical terminal.<br/>
+                        Once the payment slip approves, confirm below to print receipt.
+                      </div>
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label text-muted small fw-bold">CARD NETWORK (OPTIONAL)</label>
+                      <div className="d-flex gap-2">
+                        {['Visa', 'Mastercard', 'Verve', 'Other'].map(t => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setCardTab(t.toLowerCase())}
+                            className={`pos-card-network-btn ${cardTab === t.toLowerCase() ? 'active' : ''}`}>
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Bank Transfer Panel ── */}
+                {checkoutPayMethod === 'Bank Transfer' && (
+                  <div>
+                    <div className="pos-bank-account-box mb-3">
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <div className="fw-bold pos-entry-item-title">Bems Farms Ltd · GTBank</div>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-success"
+                          onClick={() => {
+                            navigator.clipboard.writeText('0123456789')
+                            showToast('Account number copied!', 'success', '📋')
+                          }}
+                        >
+                          Copy
+                        </button>
+                      </div>
+                      <div className="text-emerald fs-16 font-monospace fw-bold">0123456789</div>
+                      <div className="text-muted fs-11 mt-1">Payment Reference: <strong>{orderId}</strong></div>
+                    </div>
+                    <div className="row g-2 mb-3">
+                      <div className="col-6">
+                        <label className="form-label text-muted small fw-bold">SENDER BANK NAME</label>
+                        <input
+                          type="text"
+                          className="form-control form-control-sm pos-theme-input"
+                          placeholder="e.g. GTB, Access, Kuda"
+                          value={bankName}
+                          onChange={e => setBankName(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-6">
+                        <label className="form-label text-muted small fw-bold">TRANSACTION REF / SESSION ID</label>
+                        <input
+                          type="text"
+                          className="form-control form-control-sm pos-theme-input"
+                          placeholder="Bank Reference"
+                          value={txnRef}
+                          onChange={e => setTxnRef(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── QR / USSD Panel ── */}
+                {checkoutPayMethod === 'QR / USSD' && (
+                  <div className="text-center py-2 mb-3">
+                    <div className="pos-qr-display-box my-2">
+                      <i className="ri-qr-code-line fs-60 text-cyan"></i>
+                      <div className="text-muted fs-10 fw-bold mt-1">SCAN WITH MOBILE BANKING APP</div>
+                    </div>
+                    <div className="pos-ussd-dial-code">
+                      *737*000*{total}#
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Split Panel ── */}
+                {checkoutPayMethod === 'Split Payment' && (
+                  <div className="mb-3">
+                    <div className="d-flex flex-column gap-2 mb-2">
+                      {splitRows.map((row, i) => (
+                        <div key={i} className="p-2 rounded border pos-split-item-row">
+                          <div className="row g-2 align-items-center">
+                            <div className="col-5">
+                              <select className="form-select form-select-sm pos-theme-input" value={row.method} onChange={e => updateSplit(i, 'method', e.target.value)}>
+                                {['Cash', 'Card / POS', 'Bank Transfer', 'QR / USSD', 'Wallet'].map(m => (
+                                  <option key={m}>{m}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="col-5">
+                              <input
+                                type="number"
+                                className="form-control form-control-sm pos-theme-input"
+                                placeholder="Amount (₦)"
+                                value={row.amount}
+                                onChange={e => updateSplit(i, 'amount', e.target.value)}
+                              />
+                            </div>
+                            <div className="col-2 text-end">
+                              {splitRows.length > 2 && (
+                                <button type="button" className="btn btn-sm btn-outline-danger py-1 px-2" onClick={() => setSplitRows(r => r.filter((_, ri) => ri !== i))}>
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="d-flex justify-content-between align-items-center fs-12">
+                      <button type="button" className="btn btn-sm btn-outline-secondary" onClick={addSplitRow}>
+                        <i className="ri-add-line me-1"></i> Add Method
+                      </button>
+                      <span className="pos-entry-item-title">
+                        Allocated: <strong className="text-emerald">{fmt(splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0))}</strong> / {fmt(total)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="d-flex gap-2 mt-4 pt-2 border-top">
+                  <button type="button" className="btn btn-outline-secondary w-40 py-3 fw-bold" onClick={closeModal}>
                     Cancel
                   </button>
                   <button
                     type="button"
-                    className="btn btn-emerald-solid w-50 py-3 fw-bolder fs-15"
-                    disabled={!cashReceived || Number(cashReceived) < total}
-                    onClick={() => confirmPayment('Cash')}>
-                    Complete Sale
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Card / POS Terminal Modal ───────────────────────────────────── */}
-      {activeModal === 'card' && (
-        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 460 }}>
-            <div className="modal-content pos-modal-card">
-              <div className="modal-header pos-modal-header bg-sapphire-solid">
-                <h6 className="modal-title text-white fw-bold d-flex align-items-center gap-2">
-                  <i className="ri-bank-card-line"></i> External POS Terminal
-                </h6>
-                <button className="btn-close btn-close-white" onClick={closeModal}></button>
-              </div>
-              <div className="modal-body p-4">
-                <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
-                  <span className="text-muted">Charge on Physical Terminal</span>
-                  <span className="fw-bolder fs-22 text-sapphire">{fmt(total)}</span>
-                </div>
-
-                <div className="pos-terminal-instruction-box mb-4">
-                  <i className="ri-bank-card-2-line fs-32 text-sapphire"></i>
-                  <div className="fs-12 lh-base pos-entry-item-title">
-                    Process <strong className="text-emerald">{fmt(total)}</strong> on the POS terminal machine.<br/>
-                    Once payment approves, click <strong>Confirm Payment</strong> below.
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <label className="form-label text-muted small fw-bold">CARD NETWORK (OPTIONAL)</label>
-                  <div className="d-flex gap-2">
-                    {['Visa', 'Mastercard', 'Verve', 'Other'].map(t => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setCardTab(t.toLowerCase())}
-                        className={`pos-card-network-btn ${cardTab === t.toLowerCase() ? 'active' : ''}`}>
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="d-flex gap-2">
-                  <button type="button" className="btn btn-outline-secondary w-50 py-3 fw-bold" onClick={closeModal}>Cancel</button>
-                  <button type="button" className="btn btn-sapphire-solid w-50 py-3 fw-bold" onClick={() => confirmPayment('Card / POS')}>
-                    <i className="ri-check-double-line me-1"></i> Confirm Payment
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Bank Transfer Modal ────────────────────────────────────────── */}
-      {activeModal === 'transfer' && (
-        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 460 }}>
-            <div className="modal-content pos-modal-card">
-              <div className="modal-header pos-modal-header bg-amber-solid">
-                <h6 className="modal-title text-dark fw-bold">Direct Bank Transfer</h6>
-                <button className="btn-close" onClick={closeModal}></button>
-              </div>
-              <div className="modal-body p-4">
-                <div className="d-flex justify-content-between mb-3">
-                  <span className="text-muted">Total Transfer Amount</span>
-                  <span className="fw-bolder fs-20 text-amber">{fmt(total)}</span>
-                </div>
-
-                <div className="pos-bank-account-box mb-3">
-                  <div className="fw-bold mb-1 pos-entry-item-title">Transfer to: Bems Farms Ltd</div>
-                  <div className="text-emerald fs-14">GTBank · <strong>0123456789</strong></div>
-                  <div className="text-muted fs-11 mt-1">Ref ID: <strong>{orderId}</strong></div>
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label text-muted small fw-bold">CUSTOMER BANK NAME</label>
-                  <input
-                    type="text"
-                    className="form-control pos-theme-input"
-                    placeholder="e.g. GTBank, Access, Zenith, Kuda"
-                    value={bankName}
-                    onChange={e => setBankName(e.target.value)}
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="form-label text-muted small fw-bold">SESSION ID / TRANSACTION REF</label>
-                  <input
-                    type="text"
-                    className="form-control pos-theme-input"
-                    placeholder="Enter bank reference number"
-                    value={txnRef}
-                    onChange={e => setTxnRef(e.target.value)}
-                  />
-                </div>
-
-                <div className="d-flex gap-2">
-                  <button type="button" className="btn btn-outline-secondary w-50 py-3 fw-bold" onClick={closeModal}>Cancel</button>
-                  <button type="button" className="btn btn-amber-solid w-50 py-3 fw-bold text-dark" onClick={() => confirmPayment('Bank Transfer')}>
-                    Confirm Transfer
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── QR / USSD Modal ────────────────────────────────────────────── */}
-      {activeModal === 'qr' && (
-        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 360 }}>
-            <div className="modal-content pos-modal-card">
-              <div className="modal-body text-center p-4">
-                <div className="text-muted small fw-bold text-uppercase">QR & USSD Payment</div>
-                <div className="fs-26 fw-bolder text-cyan my-2">{fmt(total)}</div>
-
-                <div className="pos-qr-display-box my-3">
-                  <i className="ri-qr-code-line fs-72 text-cyan"></i>
-                  <div className="text-muted fs-10 fw-bold mt-1">SCAN WITH ANY MOBILE BANK APP</div>
-                </div>
-
-                <div className="pos-ussd-dial-code mb-4">
-                  *737*000*{total}#
-                </div>
-
-                <div className="d-flex gap-2">
-                  <button type="button" className="btn btn-outline-secondary w-50 py-2 fw-bold" onClick={closeModal}>Cancel</button>
-                  <button type="button" className="btn btn-cyan-solid w-50 py-2 fw-bold text-dark" onClick={() => confirmPayment('QR / USSD')}>
-                    Confirm
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Split Tender Modal ─────────────────────────────────────────── */}
-      {activeModal === 'split' && (
-        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 520 }}>
-            <div className="modal-content pos-modal-card">
-              <div className="modal-header pos-modal-header bg-purple-solid">
-                <h6 className="modal-title text-white fw-bold">Split Payment Tender</h6>
-                <button className="btn-close btn-close-white" onClick={closeModal}></button>
-              </div>
-              <div className="modal-body p-4">
-                <div className="d-flex justify-content-between mb-3 pb-2 border-bottom">
-                  <span className="text-muted">Total Bill</span>
-                  <span className="fw-bolder fs-20 text-purple">{fmt(total)}</span>
-                </div>
-
-                <div className="d-flex flex-column gap-2 mb-3">
-                  {splitRows.map((row, i) => (
-                    <div key={i} className="p-2 rounded border pos-split-item-row">
-                      <div className="row g-2 align-items-center">
-                        <div className="col-5">
-                          <select className="form-select form-select-sm pos-theme-input" value={row.method} onChange={e => updateSplit(i, 'method', e.target.value)}>
-                            {['Cash', 'Card / POS', 'Bank Transfer', 'QR / USSD', 'Wallet'].map(m => (
-                              <option key={m}>{m}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-5">
-                          <input
-                            type="number"
-                            className="form-control form-control-sm pos-theme-input"
-                            placeholder="Amount (₦)"
-                            value={row.amount}
-                            onChange={e => updateSplit(i, 'amount', e.target.value)}
-                          />
-                        </div>
-                        <div className="col-2 text-end">
-                          {splitRows.length > 2 && (
-                            <button type="button" className="btn btn-sm btn-outline-danger py-1 px-2" onClick={() => setSplitRows(r => r.filter((_, ri) => ri !== i))}>
-                              ✕
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="d-flex justify-content-between align-items-center mb-4 fs-12">
-                  <button type="button" className="btn btn-sm btn-outline-secondary" onClick={addSplitRow}>
-                    <i className="ri-add-line me-1"></i> Add Method
-                  </button>
-                  <span className="pos-entry-item-title">
-                    Allocated: <strong className="text-emerald">{fmt(splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0))}</strong> / {fmt(total)}
-                  </span>
-                </div>
-
-                <div className="d-flex gap-2">
-                  <button type="button" className="btn btn-outline-secondary w-50 py-3 fw-bold" onClick={closeModal}>Cancel</button>
-                  <button type="button" className="btn btn-purple-solid w-50 py-3 fw-bold text-white" onClick={() => confirmPayment('Split Payment')}>
-                    Submit Split Sale
+                    className="btn btn-emerald-solid w-60 py-3 fw-bolder fs-15 d-flex align-items-center justify-content-center gap-2"
+                    disabled={checkoutPayMethod === 'Cash' && (!cashReceived || Number(cashReceived) < total)}
+                    onClick={() => confirmPayment(checkoutPayMethod)}
+                  >
+                    <i className="ri-printer-line"></i>
+                    Complete Sale & Print
                   </button>
                 </div>
               </div>
@@ -4057,49 +4112,98 @@ export default function POS() {
           grid-template-columns: repeat(3, 1fr);
           gap: 8px;
         }
-        .pos-tender-btn {
+        /* ── Single Pay Action & Checkout Modal ── */
+        .pos-single-pay-container {
+          padding: 0 4px;
+        }
+        .pos-single-pay-btn {
+          width: 100%;
           display: flex;
-          flex-direction: column;
           align-items: center;
-          gap: 6px;
-          padding: 10px 4px;
-          border-radius: 10px;
-          border: 1.5px solid var(--btn-b);
-          background: var(--btn-bg);
+          justify-content: space-between;
+          padding: 14px 18px;
+          background: linear-gradient(135deg, #059669 0%, #047857 100%);
+          color: #ffffff;
+          border: none;
+          border-radius: 14px;
           cursor: pointer;
-          transition: all 0.15s ease;
+          box-shadow: 0 4px 16px rgba(5, 150, 105, 0.35);
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .theme-dark .pos-tender-btn {
-          background: rgba(255, 255, 255, 0.04);
-          border-color: var(--btn-b);
-        }
-        .pos-tender-btn:not(:disabled):hover {
+        .pos-single-pay-btn:not(:disabled):hover {
           transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          box-shadow: 0 8px 24px rgba(5, 150, 105, 0.45);
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         }
-        .pos-tender-btn:disabled {
-          opacity: 0.35;
+        .pos-single-pay-btn:not(:disabled):active {
+          transform: translateY(1px);
+        }
+        .pos-single-pay-btn:disabled {
+          opacity: 0.4;
           cursor: not-allowed;
+          box-shadow: none;
+          background: #9ca3af;
         }
-        .pos-tender-ico {
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
-          background: #ffffff;
+        .pos-single-pay-icon {
+          width: 38px;
+          height: 38px;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.2);
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 18px;
-          color: var(--btn-c);
-          box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+          font-size: 20px;
         }
-        .theme-dark .pos-tender-ico {
-          background: rgba(0, 0, 0, 0.4);
+        .pos-single-pay-title {
+          font-size: 13px;
+          font-weight: 900;
+          letter-spacing: 0.5px;
+          line-height: 1.2;
         }
-        .pos-tender-label {
+        .pos-single-pay-sub {
           font-size: 11px;
-          font-weight: 800;
+          font-weight: 500;
+          opacity: 0.88;
+        }
+        .pos-single-pay-amount {
+          font-size: 18px;
+          font-weight: 900;
+          display: flex;
+          align-items: center;
+        }
+
+        .pos-checkout-method-grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 6px;
+        }
+        .pos-checkout-method-pill {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          padding: 8px 4px;
+          border-radius: 10px;
+          border: 1.5px solid var(--pos-border);
+          background: var(--pos-card-bg);
           color: var(--pos-text-main);
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .pos-checkout-method-pill i {
+          font-size: 16px;
+          color: var(--pill-c);
+        }
+        .pos-checkout-method-pill.active {
+          border-color: var(--pill-c);
+          background: rgba(5, 150, 105, 0.08);
+          color: var(--pill-c);
+          box-shadow: 0 0 0 1px var(--pill-c);
+        }
+        .theme-dark .pos-checkout-method-pill.active {
+          background: rgba(5, 150, 105, 0.2);
         }
 
         /* ── Bottom Utilities ── */
