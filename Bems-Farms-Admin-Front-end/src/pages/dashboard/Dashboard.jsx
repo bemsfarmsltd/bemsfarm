@@ -1065,11 +1065,12 @@ function SalesTab() {
   )
 }
 
-// ── Tab 3: Finance Tab (Accounts, P&L, Dues) ──────────────────────────────────
+// ── Tab 3: Revenue & Settlements Tab (Real Inflows, Channels, Tender & Settlements) ───────
 
 function FinanceTab() {
-  const incomeRef = useRef(null)
-  const profitRef = useRef(null)
+  const revenueTrendRef = useRef(null)
+  const paymentDonutRef = useRef(null)
+  const channelDonutRef = useRef(null)
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(false)
@@ -1083,192 +1084,349 @@ function FinanceTab() {
   }, [])
   useEffect(() => { load() }, [load])
 
-  const months6  = data?.charts?.monthly_6m?.map(r => r.month) ?? []
-  const incomeM  = data?.charts?.monthly_6m?.map(r => Number(r.income)) ?? []
-  const expensesM = data?.charts?.monthly_6m?.map(r => Number(r.expenses)) ?? []
-  const kpis     = data?.kpis ?? {}
-  const accounts = data?.accounts ?? []
-  const dues     = data?.supplier_dues ?? []
-  const productProfitability = data?.product_profitability ?? []
+  const months6      = data?.charts?.monthly_6m?.map(r => r.month) ?? []
+  const revenue6m    = data?.charts?.monthly_6m?.map(r => Number(r.revenue)) ?? []
+  const orders6m     = data?.charts?.monthly_6m?.map(r => Number(r.orders)) ?? []
+  const kpis         = data?.kpis ?? {}
+  const settlements  = data?.recent_settlements ?? []
+  const paySummary   = data?.payment_summary ?? []
+  const byChannel    = data?.charts?.by_channel ?? []
 
-  useApexChart(incomeRef, () => ({
-    chart: { type: 'line', height: 210, toolbar: { show: false } },
-    series: [{ name: 'Income', data: incomeM }, { name: 'Expenses', data: expensesM }],
-    stroke: { curve: 'smooth', width: [2, 2] },
-    colors: ['#0ab39c', '#f06548'],
+  // 1. 6-Month Gross Revenue & Inflow Growth
+  useApexChart(revenueTrendRef, () => ({
+    chart: { type: 'area', height: 230, toolbar: { show: false }, zoom: { enabled: false } },
+    series: [
+      { name: 'Gross Revenue (₦)', data: revenue6m.length ? revenue6m : [0] },
+    ],
+    stroke: { curve: 'smooth', width: 2.5 },
+    colors: ['#10B981'],
+    fill: {
+      type: 'gradient',
+      gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0.05, stops: [0, 95, 100] },
+    },
     dataLabels: { enabled: false },
-    xaxis: { categories: months6, axisBorder: { show: false }, axisTicks: { show: false } },
-    yaxis: { labels: { formatter: (v) => `₦${(v/1000).toFixed(0)}k` } },
-    grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
-    legend: { position: 'top', fontSize: '11px' },
-    tooltip: { y: { formatter: (v) => `₦${v.toLocaleString()}` } },
-  }), [incomeM.join(), expensesM.join()])
+    xaxis: { categories: months6.length ? months6 : ['No data'], axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { labels: { formatter: (v) => fmtNaira(v) } },
+    grid: { borderColor: '#EFECE6', strokeDashArray: 3 },
+    tooltip: { y: { formatter: (v) => `₦${Number(v).toLocaleString()}` } },
+  }), [revenue6m.join()])
 
-  useApexChart(profitRef, () => ({
-    chart: { type: 'bar', height: 210, toolbar: { show: false } },
-    series: [{ name: 'Net Profit', data: incomeM.map((inc, i) => inc - (expensesM[i] ?? 0)) }],
-    plotOptions: { bar: { borderRadius: 4, columnWidth: '50%', colors: { ranges: [{ from: -999999, to: 0, color: '#f06548' }] } } },
-    dataLabels: { enabled: false }, colors: ['#0ab39c'],
-    xaxis: { categories: months6, axisBorder: { show: false }, axisTicks: { show: false } },
-    yaxis: { labels: { formatter: (v) => `₦${(v/1000).toFixed(0)}k` } },
-    grid: { borderColor: '#f1f5f9', strokeDashArray: 4 },
-    tooltip: { y: { formatter: (v) => `₦${v.toLocaleString()}` } },
-  }), [incomeM.join(), expensesM.join()])
+  // 2. Payment Methods / Tender Share Donut
+  const payLabels = paySummary.map(p => String(p.method || 'Cash').replace(/_/g, ' ').toUpperCase())
+  const payValues = paySummary.map(p => Number(p.amount || 0))
+  useApexChart(paymentDonutRef, () => ({
+    chart: { type: 'donut', height: 230 },
+    series: payValues.some(v => v > 0) ? payValues : [1],
+    labels: payLabels.length ? payLabels : ['Cash'],
+    colors: ['#10B981', '#0EA5E9', '#F59E0B', '#6366F1', '#8B5CF6', '#EC4899'],
+    legend: { position: 'bottom', fontSize: '11px' },
+    dataLabels: { enabled: false },
+    plotOptions: { pie: { donut: { size: '65%' } } },
+    tooltip: { y: { formatter: (v) => fmtNaira(v) } },
+  }), [payValues.join()])
+
+  // 3. Sales Channel Split (POS vs Online vs Web)
+  const channelLabels = byChannel.map(c => c.channel)
+  const channelValues = byChannel.map(c => Number(c.amount || 0))
+  useApexChart(channelDonutRef, () => ({
+    chart: { type: 'donut', height: 230 },
+    series: channelValues.some(v => v > 0) ? channelValues : [1],
+    labels: channelLabels.length ? channelLabels : ['In-Store'],
+    colors: ['#047857', '#0284C7', '#D97706', '#4F46E5'],
+    legend: { position: 'bottom', fontSize: '11px' },
+    dataLabels: { enabled: false },
+    plotOptions: { pie: { donut: { size: '65%' } } },
+    tooltip: { y: { formatter: (v) => fmtNaira(v) } },
+  }), [channelValues.join()])
 
   if (loading) return <TabSkeleton />
   if (error)   return <TabError onRetry={load} />
 
-  const monthlyColumns = [
-    { key: 'month', label: 'Month' },
-    { key: 'income', label: 'Income', align: 'right', render: (r) => fmtNaira(r.income) },
-    { key: 'expenses', label: 'Expenses', align: 'right', render: (r) => fmtNaira(r.expenses) },
-    { key: 'net', label: 'Net Profit', align: 'right', render: (r) => fmtNaira(Number(r.income || 0) - Number(r.expenses || 0)) },
+  const settlementColumns = [
+    {
+      key: 'ref',
+      label: 'Order / Ref',
+      render: (r) => (
+        <span
+          className="fw-bold font-monospace"
+          style={{
+            backgroundColor: '#F0F9FF',
+            color: '#0369A1',
+            padding: '0.25rem 0.6rem',
+            borderRadius: '0.4rem',
+            border: '1px solid #BAE6FD',
+            fontSize: '0.78rem',
+          }}
+        >
+          {r.ref || r.order_ref || r.id}
+        </span>
+      ),
+    },
+    {
+      key: 'customer',
+      label: 'Customer / Payer',
+      render: (r) => <div className="fw-semibold text-dark">{r.customer || r.customer_name || 'Walk-in Customer'}</div>,
+    },
+    {
+      key: 'channel',
+      label: 'Channel',
+      render: (r) => (
+        <span
+          className="badge"
+          style={{
+            backgroundColor: r.channel === 'POS In-Store' ? '#DCFCE7' : '#E0F2FE',
+            color: r.channel === 'POS In-Store' ? '#15803D' : '#0369A1',
+            border: r.channel === 'POS In-Store' ? '1px solid #86EFAC' : '1px solid #BAE6FD',
+            fontWeight: 700,
+          }}
+        >
+          {r.channel || 'Direct'}
+        </span>
+      ),
+    },
+    {
+      key: 'payment_method',
+      label: 'Payment Tender',
+      render: (r) => (
+        <span className="badge bg-light text-dark border text-uppercase" style={{ fontSize: '0.72rem' }}>
+          {String(r.payment_method || 'cash').replace(/_/g, ' ')}
+        </span>
+      ),
+    },
+    {
+      key: 'amount',
+      label: 'Settlement Amount',
+      align: 'right',
+      render: (r) => (
+        <span className="fw-bold text-success font-monospace" style={{ fontSize: '0.9rem' }}>
+          {fmtNaira(r.amount ?? r.total)}
+        </span>
+      ),
+    },
+    {
+      key: 'created_at',
+      label: 'Date & Time',
+      render: (r) => (
+        <span className="text-muted fs-xs font-monospace">
+          {r.created_at ? formatTimeAgo(r.created_at) : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (r) => <Badge label={r.status || 'completed'} color={statusColor(r.status || 'completed')} dot />,
+    },
   ]
-  const openMonthly = (title, sub) => setModal({ title, subtitle: sub, icon: 'ri-line-chart-line', columns: monthlyColumns, rows: data?.charts?.monthly_6m ?? [] })
-  const openAccounts = () => setModal({
-    title: 'Bank Accounts Ledger', subtitle: 'Active corporate, retail settlement and operations accounts',
-    icon: 'ri-bank-line',
+
+  const openMonthlyTrend = () => setModal({
+    title: '6-Month Revenue & Inflows Trend',
+    subtitle: 'Monthly gross receipts & order volumes',
+    icon: 'ri-line-chart-line',
     columns: [
-      {
-        key: 'account_name',
-        label: 'Account Name',
-        render: (r) => <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>{r.account_name || r.account}</div>,
-      },
-      {
-        key: 'bank_name',
-        label: 'Financial Institution',
-        render: (r) => <span className="fw-medium text-dark">{r.bank_name || r.bank}</span>,
-      },
-      {
-        key: 'account_type',
-        label: 'Type',
-        render: (r) => <span className="badge bg-light text-secondary border text-capitalize">{r.account_type || r.type || 'Checking'}</span>,
-      },
-      {
-        key: 'balance',
-        label: 'Available Balance',
-        align: 'right',
-        render: (r) => <span className="fw-bold text-dark font-monospace" style={{ fontSize: '0.9rem' }}>{fmtNaira(r.balance)}</span>,
-      },
-      {
-        key: 'status',
-        label: 'Status',
-        render: (r) => <Badge label={r.status || 'active'} color="green" dot />,
-      },
+      { key: 'month', label: 'Month' },
+      { key: 'revenue', label: 'Gross Revenue', align: 'right', render: (r) => fmtNaira(r.revenue) },
+      { key: 'orders', label: 'Order Volume', align: 'right', render: (r) => `${(r.orders || 0).toLocaleString()} orders` },
     ],
-    rows: accounts,
+    rows: data?.charts?.monthly_6m ?? [],
   })
-  const openDues = () => setModal({
-    title: 'Supplier Invoices Due', subtitle: 'Outstanding produce and supplies procurement payments',
-    icon: 'ri-truck-line',
+
+  const openTenderBreakdown = () => setModal({
+    title: 'Payment Method Settlement Breakdown',
+    subtitle: 'Receipts grouped by tender type this month',
+    icon: 'ri-bank-card-line',
     columns: [
-      {
-        key: 'supplier',
-        label: 'Supplier / Vendor',
-        render: (r) => <div className="fw-bold text-dark" style={{ fontSize: '0.86rem' }}>{r.supplier_name || r.supplier || r.name}</div>,
-      },
-      {
-        key: 'invoice_no',
-        label: 'Invoice Ref',
-        render: (r) => (
-          <span className="badge bg-light text-dark font-monospace border" style={{ fontSize: '0.74rem' }}>
-            {r.invoice_number || r.invoice_no || '—'}
-          </span>
-        ),
-      },
-      {
-        key: 'due_date',
-        label: 'Due Date',
-        render: (r) => <span className="text-dark fw-medium">{fmtDate(r.due_date || r.due)}</span>,
-      },
-      {
-        key: 'amount',
-        label: 'Payable Amount',
-        align: 'right',
-        render: (r) => <span className="fw-bold text-dark font-monospace" style={{ fontSize: '0.9rem' }}>{fmtNaira(r.amount)}</span>,
-      },
-      {
-        key: 'status',
-        label: 'Payment Status',
-        render: (r) => <Badge label={r.status || 'pending'} color={r.status === 'overdue' ? 'red' : 'amber'} dot />,
-      },
+      { key: 'method', label: 'Tender Method', render: (r) => String(r.method || 'cash').replace(/_/g, ' ').toUpperCase() },
+      { key: 'count', label: 'Transactions', align: 'right', render: (r) => Number(r.count || 0).toLocaleString() },
+      { key: 'amount', label: 'Total Inflows', align: 'right', render: (r) => fmtNaira(r.amount) },
+      { key: 'share_pct', label: 'Revenue Share', align: 'right', render: (r) => <span className="badge bg-light text-dark border fw-bold">{r.share_pct}%</span> },
     ],
-    rows: dues,
+    rows: paySummary,
+  })
+
+  const openChannelBreakdown = () => setModal({
+    title: 'Sales Channels Breakdown',
+    subtitle: 'POS In-store vs Online storefront receipts',
+    icon: 'ri-store-3-line',
+    columns: [
+      { key: 'channel', label: 'Channel Name', render: (r) => <div className="fw-bold text-dark">{r.channel}</div> },
+      { key: 'count', label: 'Total Orders', align: 'right', render: (r) => Number(r.count || 0).toLocaleString() },
+      { key: 'amount', label: 'Total Receipts', align: 'right', render: (r) => fmtNaira(r.amount) },
+    ],
+    rows: byChannel,
+  })
+
+  const openSettlements = () => setModal({
+    title: 'Recent Financial Inflows & Settlements',
+    subtitle: 'Completed order receipts and payments stream',
+    icon: 'ri-file-list-3-line',
+    columns: settlementColumns,
+    rows: settlements,
   })
 
   return (
     <>
-      {/* 4 Clean Core Financial Health KPI Cards */}
-      <div className="row g-3 mb-3">
-        <div className="col-12 col-sm-6 col-xl-3">
-          <StatsCard title="Monthly Inflows" value={fmtNaira(kpis.month_revenue)} sub="Gross recorded receipts" riIcon="ri-money-dollar-circle-line" color="green" onClick={() => openMonthly('Monthly Inflows', 'Income by month, last 6 months')} />
+      {/* 6 Real Financial Health & Settlement KPI Cards */}
+      <div className="row g-2 mb-2.5">
+        <div className="col-6 col-sm-4 col-xl-2">
+          <StatsCard
+            title="Monthly Gross Revenue"
+            value={fmtNaira(kpis.month_revenue)}
+            sub={`${kpis.total_orders_month ?? 0} orders recorded`}
+            riIcon="ri-money-dollar-circle-line"
+            color="green"
+            onClick={openMonthlyTrend}
+          />
         </div>
-        <div className="col-12 col-sm-6 col-xl-3">
-          <StatsCard title="Operating Expenses" value={fmtNaira(kpis.month_expenses)} sub="Total approved outflows" riIcon="ri-subtract-line" color="red" onClick={() => openMonthly('Monthly Expenses', 'Expenses by month, last 6 months')} />
+        <div className="col-6 col-sm-4 col-xl-2">
+          <StatsCard
+            title="POS Counter Sales"
+            value={fmtNaira(kpis.pos_revenue)}
+            sub={`${kpis.pos_orders ?? 0} in-store POS orders`}
+            riIcon="ri-calculator-line"
+            color="blue"
+            onClick={openChannelBreakdown}
+          />
         </div>
-        <div className="col-12 col-sm-6 col-xl-3">
-          <StatsCard title="Net Operating Profit" value={fmtNaira(kpis.net_profit)} sub={`${kpis.profit_margin ? Number(kpis.profit_margin).toFixed(1) + '%' : '0%'} operating margin`} riIcon="ri-funds-line" color="blue" onClick={() => openMonthly('Net Profit', 'Income vs. expenses, last 6 months')} />
+        <div className="col-6 col-sm-4 col-xl-2">
+          <StatsCard
+            title="Online & Storefront"
+            value={fmtNaira(kpis.web_revenue)}
+            sub={`${kpis.web_orders ?? 0} web checkouts`}
+            riIcon="ri-shopping-cart-2-line"
+            color="purple"
+            onClick={openChannelBreakdown}
+          />
         </div>
-        <div className="col-12 col-sm-6 col-xl-3">
-          <StatsCard title="Accounts Payable / Dues" value={fmtNaira(kpis.outstanding_dues)} sub={`${kpis.due_count ?? 0} supplier invoices pending`} riIcon="ri-bank-card-line" color="amber" onClick={openDues} />
+        <div className="col-6 col-sm-4 col-xl-2">
+          <StatsCard
+            title="Customer Wallet Float"
+            value={fmtNaira(kpis.wallet_float)}
+            sub={`${fmtNaira(kpis.wallet_funded)} lifetime funded`}
+            riIcon="ri-wallet-3-line"
+            color="teal"
+            onClick={openSettlements}
+          />
+        </div>
+        <div className="col-6 col-sm-4 col-xl-2">
+          <StatsCard
+            title="Driver Payout Accruals"
+            value={fmtNaira(kpis.driver_commissions)}
+            sub={`${kpis.driver_trips ?? 0} delivery trips fulfilled`}
+            riIcon="ri-bike-line"
+            color="amber"
+            onClick={openSettlements}
+          />
+        </div>
+        <div className="col-6 col-sm-4 col-xl-2">
+          <StatsCard
+            title="Refund Deductions"
+            value={fmtNaira(kpis.refunds_month)}
+            sub={`${kpis.refunds_count ?? 0} refunds this month`}
+            riIcon="ri-arrow-go-back-line"
+            color="red"
+            onClick={openSettlements}
+          />
         </div>
       </div>
 
-      {/* Income vs Expenses & Net Profit Trend */}
+      {/* Revenue Trajectory & Channel/Tender Distribution */}
       <div className="row g-3 mb-3">
-        <div className="col-xl-7">
-          <div className="card mb-0 h-100 chart-panel-clickable" onClick={() => openMonthly('Income vs Expenses', 'Last 6 months')} role="button" tabIndex={0} style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+        <div className="col-xl-6">
+          <div
+            className="card mb-0 h-100 chart-panel-clickable"
+            onClick={openMonthlyTrend}
+            role="button"
+            tabIndex={0}
+            style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}
+          >
             <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
               <div>
-                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.9rem' }}>Income vs Expenses</h6>
-                <p className="text-muted fs-xs mb-0">6-Month financial trajectory</p>
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.9rem' }}>Gross Revenue Inflow Growth</h6>
+                <p className="text-muted fs-xs mb-0">6-Month historical receipt trajectory</p>
               </div>
-              <div className="d-flex gap-2">
-                <span className="badge bg-success-subtle text-success border border-success-subtle fs-xs">● Income</span>
-                <span className="badge bg-danger-subtle text-danger border border-danger-subtle fs-xs">● Expenses</span>
-              </div>
+              <span className="badge bg-success-subtle text-success border border-success-subtle fs-xs">
+                ● Gross Inflows
+              </span>
             </div>
             <div className="card-body p-3">
-              <div ref={incomeRef} />
+              <div ref={revenueTrendRef} />
             </div>
           </div>
         </div>
-        <div className="col-xl-5">
-          <div className="card mb-0 h-100 chart-panel-clickable" onClick={() => openMonthly('Net Profit by Month', 'Last 6 months')} role="button" tabIndex={0} style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
+
+        <div className="col-xl-3">
+          <div
+            className="card mb-0 h-100 chart-panel-clickable"
+            onClick={openTenderBreakdown}
+            role="button"
+            tabIndex={0}
+            style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}
+          >
             <div className="card-header py-2.5 px-3 border-bottom">
-              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.9rem' }}>Net Profit by Month</h6>
-              <p className="text-muted fs-xs mb-0">Monthly surplus / deficit</p>
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.9rem' }}>Payment Methods Share</h6>
+              <p className="text-muted fs-xs mb-0">Tender breakdown this month</p>
             </div>
             <div className="card-body p-3">
-              <div ref={profitRef} />
+              <div ref={paymentDonutRef} />
+            </div>
+          </div>
+        </div>
+
+        <div className="col-xl-3">
+          <div
+            className="card mb-0 h-100 chart-panel-clickable"
+            onClick={openChannelBreakdown}
+            role="button"
+            tabIndex={0}
+            style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}
+          >
+            <div className="card-header py-2.5 px-3 border-bottom">
+              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.9rem' }}>Sales Channels Split</h6>
+              <p className="text-muted fs-xs mb-0">POS vs Storefront revenue</p>
+            </div>
+            <div className="card-body p-3">
+              <div ref={channelDonutRef} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Bank Accounts & Supplier Dues */}
+      {/* Tender Summary & Live Settlements Stream */}
       <div className="row g-3 mb-3">
-        <div className="col-xl-6">
+        {/* Payment Methods Table */}
+        <div className="col-xl-5">
           <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
             <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
               <div className="d-flex align-items-center gap-2">
-                <i className="ri-bank-line text-primary" style={{ fontSize: 16 }} />
-                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Bank Accounts &amp; Liquidity</h6>
+                <i className="ri-bank-card-line text-success" style={{ fontSize: 16 }} />
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Payment Methods Summary</h6>
               </div>
-              <span className="fw-bold text-success font-display fs-sm">Total: {fmtNaira(kpis.total_balance)}</span>
+              <span className="badge bg-light text-secondary border fs-xs">{paySummary.length} methods</span>
             </div>
             <div className="card-body p-0">
               <Table>
-                <Thead><Th>Account Name</Th><Th>Bank</Th><Th>Type</Th><Th className="text-end pe-3">Balance</Th></Thead>
+                <Thead>
+                  <Th>Tender Method</Th>
+                  <Th className="text-center">Transactions</Th>
+                  <Th className="text-end">Total Amount</Th>
+                  <Th className="text-end pe-3">Share %</Th>
+                </Thead>
                 <Tbody>
-                  {accounts.length === 0 ? (
-                    <Tr><Td colSpan={4} className="text-center text-muted py-4 fs-sm">No bank accounts configured.</Td></Tr>
-                  ) : accounts.map((a, i) => (
+                  {paySummary.length === 0 ? (
+                    <Tr><Td colSpan={4} className="text-center text-muted py-4 fs-sm">No payment records this month.</Td></Tr>
+                  ) : paySummary.map((p, i) => (
                     <Tr key={i}>
-                      <Td><p className="fw-bold text-dark fs-sm mb-0">{a.account_name || a.account}</p></Td>
-                      <Td className="fs-sm text-muted">{a.bank_name || a.bank}</Td>
-                      <Td><span className="badge bg-light text-dark fs-xs border">{a.account_type || a.type}</span></Td>
-                      <Td className="text-end pe-3 fw-bold text-success font-display fs-sm">{fmtNaira(a.balance)}</Td>
+                      <Td>
+                        <div className="fw-bold text-dark fs-sm">
+                          {String(p.method || 'cash').replace(/_/g, ' ').toUpperCase()}
+                        </div>
+                      </Td>
+                      <Td className="text-center fw-semibold text-dark fs-sm">{p.count}</Td>
+                      <Td className="text-end fw-bold text-success font-monospace fs-sm">{fmtNaira(p.amount)}</Td>
+                      <Td className="text-end pe-3">
+                        <span className="badge bg-light text-dark border">{p.share_pct}%</span>
+                      </Td>
                     </Tr>
                   ))}
                 </Tbody>
@@ -1277,69 +1435,62 @@ function FinanceTab() {
           </div>
         </div>
 
-        <div className="col-xl-6">
+        {/* Live Settlements Stream */}
+        <div className="col-xl-7">
           <div className="card mb-0 h-100" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
             <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
               <div className="d-flex align-items-center gap-2">
-                <i className="ri-truck-line text-warning" style={{ fontSize: 16 }} />
-                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Supplier Payments Due</h6>
+                <i className="ri-money-dollar-box-line text-primary" style={{ fontSize: 16 }} />
+                <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Live Settlements Ledger</h6>
               </div>
-              <Link to="/suppliers/payments" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>All Invoices →</Link>
+              <button
+                type="button"
+                onClick={openSettlements}
+                className="btn btn-link p-0 text-decoration-none fw-bold text-success"
+                style={{ fontSize: '0.74rem' }}
+              >
+                View All Settlements →
+              </button>
             </div>
             <div className="card-body p-0">
               <Table>
-                <Thead><Th>Supplier</Th><Th>Amount</Th><Th>Due Date</Th><Th>Status</Th></Thead>
+                <Thead>
+                  <Th>Order Ref</Th>
+                  <Th>Customer</Th>
+                  <Th>Channel</Th>
+                  <Th>Tender</Th>
+                  <Th className="text-end pe-3">Amount</Th>
+                </Thead>
                 <Tbody>
-                  {dues.length === 0 ? (
-                    <Tr><Td colSpan={4} className="text-center text-muted py-4 fs-sm">No outstanding dues ✓</Td></Tr>
-                  ) : dues.map((s, i) => (
-                    <Tr key={i}>
-                      <Td><p className="fw-semibold text-dark fs-sm mb-0">{s.name || s.supplier}</p></Td>
-                      <Td className="fw-bold font-display text-danger fs-sm">{fmtNaira(s.amount)}</Td>
-                      <Td className="fs-sm text-muted">{fmtDate(s.due_date || s.due)}</Td>
-                      <Td><Badge label={(s.status||'').replace(/_/g,' ')} color={s.status==='overdue'?'red':'amber'} /></Td>
+                  {settlements.length === 0 ? (
+                    <Tr><Td colSpan={5} className="text-center text-muted py-4 fs-sm">No settlement records found.</Td></Tr>
+                  ) : settlements.slice(0, 7).map((s, i) => (
+                    <Tr key={s.id || i}>
+                      <Td>
+                        <span className="fw-bold font-monospace text-primary fs-xs">
+                          {s.ref || s.id}
+                        </span>
+                      </Td>
+                      <Td className="fs-sm fw-medium text-dark">{s.customer}</Td>
+                      <Td>
+                        <span className="badge bg-light text-secondary border" style={{ fontSize: '0.68rem' }}>
+                          {s.channel}
+                        </span>
+                      </Td>
+                      <Td>
+                        <span className="badge bg-light text-dark border text-uppercase" style={{ fontSize: '0.68rem' }}>
+                          {s.payment_method}
+                        </span>
+                      </Td>
+                      <Td className="text-end pe-3 fw-bold text-success font-monospace fs-sm">
+                        {fmtNaira(s.amount)}
+                      </Td>
                     </Tr>
                   ))}
                 </Tbody>
               </Table>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Product Profitability Analysis */}
-      <div className="card mb-0" style={{ borderRadius: '0.75rem', border: '1px solid #EFECE6' }}>
-        <div className="card-header py-2.5 px-3 border-bottom d-flex align-items-center justify-content-between">
-          <div className="d-flex align-items-center gap-2">
-            <i className="ri-scales-3-line text-success" style={{ fontSize: 16 }} />
-            <div>
-              <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Product Margins &amp; Unit Economics</h6>
-              <p className="text-muted fs-xs mb-0">Cost price vs. selling price analysis (last 30 days)</p>
-            </div>
-          </div>
-          <Link to="/products/list" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Pricing Catalog →</Link>
-        </div>
-        <div className="card-body p-0">
-          <Table>
-            <Thead><Th>Product</Th><Th>Cost Price</Th><Th>Selling Price</Th><Th className="text-center">Units Sold</Th><Th className="text-center">Margin %</Th><Th className="text-end pe-3">Net Profit</Th></Thead>
-            <Tbody>
-              {productProfitability.length === 0 ? (
-                <Tr><Td colSpan={6} className="text-center text-muted py-4 fs-sm">No sales data recorded in the last 30 days.</Td></Tr>
-              ) : productProfitability.map((p, i) => (
-                <Tr key={i}>
-                  <Td>
-                    <p className="fw-bold text-dark fs-sm mb-0">{p.name}</p>
-                    <span className="text-muted fs-xs font-monospace">{p.sku}</span>
-                  </Td>
-                  <Td className="fs-sm text-muted">{fmtNaira(p.cost_price)}</Td>
-                  <Td className="fs-sm fw-semibold text-dark">{fmtNaira(p.selling_price)}</Td>
-                  <Td className="text-center fs-sm">{p.units_sold}</Td>
-                  <Td className="text-center"><Badge label={`${p.margin_pct.toFixed(1)}%`} color={p.margin_pct >= 20 ? 'green' : p.margin_pct >= 0 ? 'amber' : 'red'} /></Td>
-                  <Td className={`text-end pe-3 fw-bold font-display fs-sm ${p.profit < 0 ? 'text-danger' : 'text-success'}`}>{fmtNaira(p.profit)}</Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
         </div>
       </div>
 
@@ -2397,13 +2548,13 @@ function ChefBemsTab() {
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
 const ALL_TABS = [
-  { key: 'overview',   label: 'Overview',    icon: 'ri-dashboard-2-line',     roles: null },
-  { key: 'sales',      label: 'Sales',       icon: 'ri-line-chart-line',      roles: ['superadmin','admin','manager','accountant'] },
-  { key: 'finance',    label: 'Finance',     icon: 'ri-bank-card-line',       roles: ['superadmin','admin','manager','accountant'] },
-  { key: 'inventory',  label: 'Inventory',   icon: 'ri-archive-stack-line',   roles: ['superadmin','admin','manager','kitchen_staff'] },
-  { key: 'operations', label: 'Operations',  icon: 'ri-settings-3-line',      roles: ['superadmin','admin','manager','delivery_manager'] },
-  { key: 'customers',  label: 'Customers',   icon: 'ri-group-line',           roles: ['superadmin','admin','manager'] },
-  { key: 'ai',         label: 'Chef Bems AI',icon: 'ri-robot-line',           roles: ['superadmin','admin','manager','kitchen_staff'] },
+  { key: 'overview',   label: 'Overview',            icon: 'ri-dashboard-2-line',     roles: null },
+  { key: 'sales',      label: 'Sales & Orders',      icon: 'ri-line-chart-line',      roles: ['superadmin','admin','manager','accountant'] },
+  { key: 'finance',    label: 'Finance & Revenue',   icon: 'ri-bank-card-line',       roles: ['superadmin','admin','manager','accountant'] },
+  { key: 'inventory',  label: 'Inventory',           icon: 'ri-archive-stack-line',   roles: ['superadmin','admin','manager','kitchen_staff'] },
+  { key: 'operations', label: 'Operations',          icon: 'ri-settings-3-line',      roles: ['superadmin','admin','manager','delivery_manager'] },
+  { key: 'customers',  label: 'Customers',           icon: 'ri-group-line',           roles: ['superadmin','admin','manager'] },
+  { key: 'ai',         label: 'Chef Bems AI',        icon: 'ri-robot-line',           roles: ['superadmin','admin','manager','kitchen_staff'] },
 ]
 
 const DEFAULT_TAB = {

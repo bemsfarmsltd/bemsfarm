@@ -460,60 +460,93 @@ router.get("/sales", async (req, res, next) => {
   }
 });
 
-// ── FINANCE TAB ──────────────────────────────────────────────────
+// ── FINANCE / REVENUE & SETTLEMENTS TAB ─────────────────────────
 router.get("/finance", async (req, res, next) => {
   try {
     const [
-      monthIncome,
-      monthExpenses,
-      bankAccounts,
-      supplierDuesTotal,
-      supplierDues,
-      last6Months,
-      productMargin,
-      topProductProfit,
+      monthGrossStats,
+      todayGrossStats,
+      posStatsMonth,
+      webStatsMonth,
+      walletStats,
+      commissionsStatsMonth,
+      refundsStatsMonth,
+      monthly6m,
+      byPayment,
+      byChannel,
+      daily7d,
+      recentSettlements,
     ] = await Promise.all([
-      // Total monthly gross revenue: orders revenue + any non-order miscellaneous completed income
-      q1(`SELECT (
-            COALESCE((SELECT SUM(total) FROM orders WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW()) AND status NOT IN ('cancelled')), 0)
-            +
-            COALESCE((SELECT SUM(amount) FROM income WHERE DATE_TRUNC('month', date) = DATE_TRUNC('month', NOW()) AND status = 'completed' AND (order_id IS NULL OR order_id = '')), 0)
-          ) AS total`),
+      // 1. Total monthly gross revenue: orders revenue + non-order completed income
+      q1(`SELECT
+            (
+              COALESCE((SELECT SUM(total) FROM orders WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW()) AND status NOT IN ('cancelled')), 0)
+              +
+              COALESCE((SELECT SUM(amount) FROM income WHERE DATE_TRUNC('month', date) = DATE_TRUNC('month', NOW()) AND status = 'completed' AND (order_id IS NULL OR order_id = '')), 0)
+            ) AS gross_revenue,
+            COALESCE((SELECT COUNT(*) FROM orders WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW()) AND status NOT IN ('cancelled')), 0) AS total_orders,
+            COALESCE((SELECT AVG(total) FROM orders WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW()) AND status NOT IN ('cancelled')), 0) AS avg_order_value`),
 
-      q1(`SELECT COALESCE(SUM(amount),0) AS total
-          FROM expenses
-          WHERE DATE_TRUNC('month', date) = DATE_TRUNC('month', NOW())
-            AND status IN ('approved','paid')`),
+      // 2. Today's gross revenue
+      q1(`SELECT
+            (
+              COALESCE((SELECT SUM(total) FROM orders WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled')), 0)
+              +
+              COALESCE((SELECT SUM(amount) FROM income WHERE DATE(date) = CURRENT_DATE AND status = 'completed' AND (order_id IS NULL OR order_id = '')), 0)
+            ) AS today_revenue,
+            COALESCE((SELECT COUNT(*) FROM orders WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled')), 0) AS today_orders`),
 
-      q(`SELECT bank_name, account_name, account_type,
-                balance, currency, status
-         FROM bank_accounts
-         WHERE status = 'active'
-         ORDER BY balance DESC`),
+      // 3. POS In-Store Revenue this month
+      q1(`SELECT
+            COALESCE(SUM(total), 0) AS revenue,
+            COUNT(*) AS orders
+          FROM orders
+          WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+            AND status NOT IN ('cancelled')
+            AND (source = 'pos' OR payment_method = 'pos_terminal')`),
 
-      q1(`SELECT COALESCE(SUM(amount),0) AS total, COUNT(*) AS count
-          FROM expenses
-          WHERE status = 'pending'
-            AND category = 'produce_purchase'`),
+      // 4. Online & Storefront Revenue this month
+      q1(`SELECT
+            COALESCE(SUM(total), 0) AS revenue,
+            COUNT(*) AS orders
+          FROM orders
+          WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+            AND status NOT IN ('cancelled')
+            AND (source != 'pos' OR source IS NULL)
+            AND (payment_method != 'pos_terminal' OR payment_method IS NULL)`),
 
-      q(`SELECT supplier_name AS name, amount, due_date, status
-         FROM expenses
-         WHERE status = 'pending'
-           AND category = 'produce_purchase'
-         ORDER BY due_date ASC
-         LIMIT 5`),
+      // 5. Customer Wallet Floating Balances
+      q1(`SELECT
+            COALESCE(SUM(balance), 0) AS total_balance,
+            COALESCE(SUM(total_topped_up), 0) AS total_funded,
+            COALESCE(SUM(total_spent), 0) AS total_spent
+          FROM customer_wallets`),
 
-      // 6-month trajectory: orders revenue + completed misc income vs approved/paid expenses
+      // 6. Driver Delivery Commission Accruals this month
+      q1(`SELECT
+            COALESCE(SUM(commission_amount), 0) AS total_commissions,
+            COUNT(*) AS total_trips
+          FROM driver_commissions
+          WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())`),
+
+      // 7. Refunds & Returns Deductions this month
+      q1(`SELECT
+            COALESCE(SUM(refund_amount), 0) AS total_refunds,
+            COUNT(*) AS count
+          FROM returns
+          WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())`),
+
+      // 8. 6-Month Gross Revenue & Order Volume
       q(`SELECT
            TO_CHAR(DATE_TRUNC('month', d), 'Mon') AS month,
-           (COALESCE(ord.total, 0) + COALESCE(inc.total, 0)) AS income,
-           COALESCE(e.total, 0) AS expenses
+           (COALESCE(ord.total, 0) + COALESCE(inc.total, 0)) AS revenue,
+           COALESCE(ord.orders_count, 0) AS orders
          FROM generate_series(
            DATE_TRUNC('month', NOW()) - INTERVAL '5 months',
            DATE_TRUNC('month', NOW()), '1 month'
          ) AS d
          LEFT JOIN (
-           SELECT DATE_TRUNC('month', created_at) AS m, SUM(total) AS total
+           SELECT DATE_TRUNC('month', created_at) AS m, SUM(total) AS total, COUNT(*) AS orders_count
            FROM orders WHERE status NOT IN ('cancelled')
            GROUP BY m
          ) ord ON ord.m = d
@@ -522,88 +555,126 @@ router.get("/finance", async (req, res, next) => {
            FROM income WHERE status = 'completed' AND (order_id IS NULL OR order_id = '')
            GROUP BY m
          ) inc ON inc.m = d
-         LEFT JOIN (
-           SELECT DATE_TRUNC('month', date) AS m, SUM(amount) AS total
-           FROM expenses WHERE status IN ('approved','paid')
-           GROUP BY m
-         ) e ON e.m = d
          ORDER BY d`),
 
-      // Cost of goods sold vs. product revenue this month
-      q1(`SELECT
-            COALESCE(SUM(oi.subtotal), 0) AS revenue,
-            COALESCE(SUM(oi.quantity * COALESCE(p.cost_price, 0)), 0) AS cogs
-          FROM order_items oi
-          JOIN orders o ON oi.order_id = o.id
-          LEFT JOIN products p ON oi.product_id = p.id
-          WHERE DATE_TRUNC('month', o.created_at) = DATE_TRUNC('month', NOW())
-            AND o.status NOT IN ('cancelled')`),
-
-      // Per-product cost price / selling price / profit, last 30 days
+      // 9. Payment Methods Breakdown this month
       q(`SELECT
-           p.name,
-           p.sku,
-           COALESCE(p.cost_price, 0) AS cost_price,
-           COALESCE(p.unit_price, p.price, 0) AS selling_price,
-           SUM(oi.quantity) AS units_sold,
-           SUM(oi.subtotal) AS revenue,
-           SUM(oi.quantity * COALESCE(p.cost_price, 0)) AS cost_total,
-           SUM(oi.subtotal) - SUM(oi.quantity * COALESCE(p.cost_price, 0)) AS profit,
-           CASE WHEN SUM(oi.subtotal) > 0
-             THEN ((SUM(oi.subtotal) - SUM(oi.quantity * COALESCE(p.cost_price, 0))) / SUM(oi.subtotal)) * 100
-             ELSE 0
-           END AS margin_pct
-         FROM order_items oi
-         JOIN orders o ON oi.order_id = o.id
-         JOIN products p ON oi.product_id = p.id
-         WHERE o.created_at >= NOW() - INTERVAL '30 days'
+           COALESCE(NULLIF(TRIM(payment_method), ''), 'cash') AS method,
+           COUNT(*) AS count,
+           SUM(total) AS amount
+         FROM orders
+         WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+           AND status NOT IN ('cancelled')
+         GROUP BY method
+         ORDER BY amount DESC`),
+
+      // 10. Sales Channel Split this month (POS vs Web vs Manual)
+      q(`SELECT
+           CASE
+             WHEN source = 'pos' OR payment_method = 'pos_terminal' THEN 'POS In-Store'
+             WHEN source = 'storefront' THEN 'Online Storefront'
+             WHEN source = 'web' THEN 'Web Portal'
+             ELSE 'Direct / Admin'
+           END AS channel,
+           COUNT(*) AS count,
+           SUM(total) AS amount
+         FROM orders
+         WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())
+           AND status NOT IN ('cancelled')
+         GROUP BY channel
+         ORDER BY amount DESC`),
+
+      // 11. Daily Gross Inflows (Last 7 Days)
+      q(`SELECT
+           TO_CHAR(d.day, 'Dy (DD Mon)') AS label,
+           COALESCE(SUM(o.total), 0) AS revenue,
+           COALESCE(COUNT(o.id), 0) AS orders
+         FROM generate_series(
+           CURRENT_DATE - INTERVAL '6 days',
+           CURRENT_DATE, '1 day'
+         ) AS d(day)
+         LEFT JOIN orders o
+           ON DATE(o.created_at) = d.day
            AND o.status NOT IN ('cancelled')
-         GROUP BY p.id, p.name, p.sku, p.cost_price, p.unit_price, p.price
-         ORDER BY profit DESC
-         LIMIT 10`),
+         GROUP BY d.day
+         ORDER BY d.day`),
+
+      // 12. Recent Financial Transactions & Order Settlements (Last 25)
+      q(`SELECT
+           o.id,
+           COALESCE(o.order_ref, CAST(o.id AS VARCHAR)) AS ref,
+           COALESCE(o.customer_name, c.name, 'Walk-in Customer') AS customer,
+           CASE
+             WHEN o.source = 'pos' OR o.payment_method = 'pos_terminal' THEN 'POS In-Store'
+             WHEN o.source = 'storefront' THEN 'Storefront'
+             ELSE 'Web App'
+           END AS channel,
+           COALESCE(NULLIF(TRIM(o.payment_method), ''), 'cash') AS payment_method,
+           o.total AS amount,
+           o.status,
+           o.created_at
+         FROM orders o
+         LEFT JOIN users c ON o.customer_id = c.id
+         WHERE o.status NOT IN ('cancelled')
+         ORDER BY o.created_at DESC
+         LIMIT 25`),
     ]);
 
-    const income = parseFloat(monthIncome.total || 0);
-    const expenses = parseFloat(monthExpenses.total || 0);
-    const totalBankBalance = bankAccounts.reduce(
-      (sum, a) => sum + parseFloat(a.balance || 0),
-      0,
-    );
+    const grossMonth = parseFloat(monthGrossStats.gross_revenue || 0);
+    const posRev = parseFloat(posStatsMonth.revenue || 0);
+    const webRev = parseFloat(webStatsMonth.revenue || 0);
+    const walletFloat = parseFloat(walletStats.total_balance || 0);
+    const refundsMonth = parseFloat(refundsStatsMonth.total_refunds || 0);
+    const commsMonth = parseFloat(commissionsStatsMonth.total_commissions || 0);
 
-    const productRevenue = parseFloat(productMargin.revenue || 0);
-    const cogs = parseFloat(productMargin.cogs || 0);
-    const grossProfit = productRevenue - cogs;
-    const grossMarginPct =
-      productRevenue > 0 ? ((grossProfit / productRevenue) * 100).toFixed(1) : 0;
+    // Calculate tender percentage shares
+    const totalTenderAmount = byPayment.reduce((acc, p) => acc + parseFloat(p.amount || 0), 0) || 1;
+    const paymentSummary = byPayment.map((p) => ({
+      method: p.method,
+      count: parseInt(p.count || 0),
+      amount: parseFloat(p.amount || 0),
+      share_pct: (((parseFloat(p.amount || 0) / totalTenderAmount) * 100) || 0).toFixed(1),
+    }));
 
     res.json({
       kpis: {
-        month_revenue: income,
-        month_expenses: expenses,
-        net_profit: income - expenses,
-        profit_margin:
-          income > 0 ? (((income - expenses) / income) * 100).toFixed(1) : 0,
-        total_balance: totalBankBalance,
-        account_count: bankAccounts.length,
-        outstanding_dues: parseFloat(supplierDuesTotal.total || 0),
-        due_count: parseInt(supplierDuesTotal.count || 0),
-        cogs_month: cogs,
-        gross_profit_month: grossProfit,
-        gross_margin_pct: grossMarginPct,
+        month_revenue: grossMonth,
+        today_revenue: parseFloat(todayGrossStats.today_revenue || 0),
+        total_orders_month: parseInt(monthGrossStats.total_orders || 0),
+        today_orders: parseInt(todayGrossStats.today_orders || 0),
+        avg_order_value: parseFloat(monthGrossStats.avg_order_value || 0),
+        pos_revenue: posRev,
+        pos_orders: parseInt(posStatsMonth.orders || 0),
+        web_revenue: webRev,
+        web_orders: parseInt(webStatsMonth.orders || 0),
+        wallet_float: walletFloat,
+        wallet_funded: parseFloat(walletStats.total_funded || 0),
+        wallet_spent: parseFloat(walletStats.total_spent || 0),
+        driver_commissions: commsMonth,
+        driver_trips: parseInt(commissionsStatsMonth.total_trips || 0),
+        refunds_month: refundsMonth,
+        refunds_count: parseInt(refundsStatsMonth.count || 0),
       },
-      accounts: bankAccounts,
-      supplier_dues: supplierDues,
-      charts: { monthly_6m: last6Months },
-      product_profitability: topProductProfit.map((p) => ({
-        name: p.name,
-        sku: p.sku,
-        cost_price: parseFloat(p.cost_price || 0),
-        selling_price: parseFloat(p.selling_price || 0),
-        units_sold: parseInt(p.units_sold || 0),
-        revenue: parseFloat(p.revenue || 0),
-        profit: parseFloat(p.profit || 0),
-        margin_pct: parseFloat(p.margin_pct || 0),
-      })),
+      charts: {
+        monthly_6m: monthly6m.map((r) => ({
+          month: r.month,
+          revenue: parseFloat(r.revenue || 0),
+          orders: parseInt(r.orders || 0),
+        })),
+        by_payment: paymentSummary,
+        by_channel: byChannel.map((r) => ({
+          channel: r.channel,
+          count: parseInt(r.count || 0),
+          amount: parseFloat(r.amount || 0),
+        })),
+        daily_7d: daily7d.map((r) => ({
+          label: r.label,
+          revenue: parseFloat(r.revenue || 0),
+          orders: parseInt(r.orders || 0),
+        })),
+      },
+      recent_settlements: recentSettlements,
+      payment_summary: paymentSummary,
     });
   } catch (err) {
     next(err);
