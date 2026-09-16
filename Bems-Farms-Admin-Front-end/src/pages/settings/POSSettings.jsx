@@ -4,6 +4,14 @@ import api from '../../lib/api'
 import SettingsTabs from './SettingsTabs'
 import ThermalReceipt from '../../components/ui/ThermalReceipt'
 import { useAuth } from '../../context/AuthContext'
+import {
+  isDirectPrinterSupported,
+  isPrinterConnected,
+  connectDirectPrinter,
+  disconnectDirectPrinter,
+  autoReconnectDirectPrinter,
+  testPrintDirect
+} from '../../lib/escpos'
 
 const BLANK = {
   store_name: 'Bems Farms Ltd', store_phone: '+234 800 236 7326', store_email: 'info@bemsfarms.com',
@@ -36,6 +44,9 @@ export default function POSSettings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [receiptType, setReceiptType] = useState('pos')
+  const [directConnected, setDirectConnected] = useState(isPrinterConnected())
+  const [directBusy, setDirectBusy] = useState(false)
+
   const fld = (key, value) => setForm((current) => ({ ...current, [key]: value }))
   const isOn = (key) => form[key] !== 'false'
 
@@ -44,7 +55,51 @@ export default function POSSettings() {
       .then(([general, pos]) => setForm((current) => ({ ...current, ...general.data.settings, ...pos.data.settings })))
       .catch(() => toast.error('Failed to load receipt settings'))
       .finally(() => setLoading(false))
+
+    autoReconnectDirectPrinter()
+      .then((connected) => setDirectConnected(connected))
+      .catch(() => {})
   }, [])
+
+  async function handleConnectPrinter() {
+    setDirectBusy(true)
+    try {
+      const res = await connectDirectPrinter()
+      if (res?.connected) {
+        setDirectConnected(true)
+        toast.success('Direct thermal printer paired & connected successfully!')
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Failed to connect direct printer')
+    } finally {
+      setDirectBusy(false)
+    }
+  }
+
+  async function handleDisconnectPrinter() {
+    setDirectBusy(true)
+    try {
+      await disconnectDirectPrinter()
+      setDirectConnected(false)
+      toast.success('Direct printer disconnected')
+    } catch (err) {
+      toast.error('Error disconnecting printer')
+    } finally {
+      setDirectBusy(false)
+    }
+  }
+
+  async function handleTestDirectPrint() {
+    setDirectBusy(true)
+    try {
+      await testPrintDirect()
+      toast.success('Test receipt sent silently to thermal hardware!')
+    } catch (err) {
+      toast.error(err?.message || 'Direct test print failed. Ensure printer is connected.')
+    } finally {
+      setDirectBusy(false)
+    }
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -78,11 +133,75 @@ export default function POSSettings() {
   return <div className="container-fluid">
     <SettingsTabs />
     <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
-      <div><h5 className="mb-1 fw-bold">Receipt designer</h5><p className="text-muted mb-0">Control the branding and information printed on every POS and order receipt.</p></div>
+      <div><h5 className="mb-1 fw-bold">Receipt Designer & Hardware Printing</h5><p className="text-muted mb-0">Control the branding, layout, and direct USB/Serial thermal hardware printing.</p></div>
       <button className="btn btn-primary" disabled={saving} onClick={handleSave}>{saving ? 'Saving…' : 'Save receipt design'}</button>
     </div>
     <div className="row g-4 align-items-start">
       <div className="col-xl-7">
+        
+        {/* Direct Hardware Thermal Printer Card */}
+        <div className="card mb-4 border-emerald-subtle shadow-sm" style={{ borderLeft: '4px solid #059669' }}>
+          <div className="card-header d-flex justify-content-between align-items-center bg-white">
+            <div className="d-flex align-items-center gap-2">
+              <span className="p-1 rounded bg-success-subtle text-success fs-5">🖨️</span>
+              <div>
+                <h6 className="mb-0 fw-bold">Direct Hardware Thermal Printer (Silent USB / Serial)</h6>
+                <small className="text-muted">Bypasses browser print spooler entirely for 100% silent, instantaneous printing.</small>
+              </div>
+            </div>
+            {directConnected ? (
+              <span className="badge bg-success-subtle text-success border border-success px-2 py-1 fs-12 fw-bold">
+                ● ONLINE (ESC/POS)
+              </span>
+            ) : (
+              <span className="badge bg-secondary-subtle text-secondary border px-2 py-1 fs-12">
+                ○ Not Connected
+              </span>
+            )}
+          </div>
+          <div className="card-body">
+            {!isDirectPrinterSupported() ? (
+              <div className="alert alert-warning mb-0 fs-13">
+                <i className="ri-information-line me-1"></i> WebSerial direct hardware printing is supported in Chrome, Edge, and Opera desktop browsers. For other browsers, the standard high-speed thermal preview spooler will be used.
+              </div>
+            ) : (
+              <div>
+                <p className="text-muted fs-13 mb-3">
+                  Connect any standard 58mm or 80mm ESC/POS thermal printer (Xprinter, POS-80, Munbyn, Epson, Milestone) via USB or Virtual COM port. Receipts will print automatically with 0ms delay and no popup windows.
+                </p>
+                <div className="d-flex flex-wrap gap-2">
+                  {!directConnected ? (
+                    <button
+                      type="button"
+                      disabled={directBusy}
+                      onClick={handleConnectPrinter}
+                      className="btn btn-success fw-bold d-inline-flex align-items-center gap-1">
+                      <i className="ri-usb-line"></i> {directBusy ? 'Connecting…' : 'Pair & Connect USB Thermal Printer'}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        disabled={directBusy}
+                        onClick={handleTestDirectPrint}
+                        className="btn btn-outline-success fw-bold d-inline-flex align-items-center gap-1">
+                        <i className="ri-printer-line"></i> {directBusy ? 'Sending…' : 'Run Test Print (Silent ESC/POS)'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={directBusy}
+                        onClick={handleDisconnectPrinter}
+                        className="btn btn-outline-danger fw-bold d-inline-flex align-items-center gap-1">
+                        <i className="ri-shut-down-line"></i> Disconnect Printer
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="card mb-4"><div className="card-header"><h6 className="mb-0 fw-bold">Receipt types</h6></div><div className="card-body">
           <div className="d-flex flex-wrap gap-2 mb-4">{RECEIPT_TYPES.map(([key,label]) => <button type="button" key={key} onClick={() => setReceiptType(key)} className={`btn btn-sm ${receiptType === key ? 'btn-primary' : 'btn-outline-secondary'}`}>{label}</button>)}</div>
           <div className="row g-3"><div className="col-md-6"><label className="form-label fw-semibold" htmlFor={`receipt-${receiptType}-title`}>{RECEIPT_TYPES.find(([key]) => key === receiptType)?.[1]} title</label><input id={`receipt-${receiptType}-title`} className="form-control" value={form[`receipt_${receiptType}_title`] || ''} onChange={(event) => fld(`receipt_${receiptType}_title`, event.target.value)} /></div><div className="col-md-6"><label className="form-label fw-semibold" htmlFor={`receipt-${receiptType}-footer`}>Footer message</label><input id={`receipt-${receiptType}-footer`} className="form-control" value={form[`receipt_${receiptType}_footer`] || ''} onChange={(event) => fld(`receipt_${receiptType}_footer`, event.target.value)} /></div></div>
