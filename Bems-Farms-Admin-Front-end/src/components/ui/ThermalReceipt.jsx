@@ -39,12 +39,18 @@ const DEFAULTS = {
 
 export function printThermalReceipt() {
   const paperSize = document.querySelector('.thermal-receipt-print-root')?.dataset.paperSize || '80'
-  const cleanup = () => document.body.classList.remove('thermal-print-active', 'thermal-print-58')
+  const cleanup = () => {
+    document.body.classList.remove('thermal-print-active', 'thermal-print-58')
+  }
   document.body.classList.add('thermal-print-active')
   if (paperSize === '58') document.body.classList.add('thermal-print-58')
+
   window.addEventListener('afterprint', cleanup, { once: true })
-  window.print()
-  window.setTimeout(cleanup, 1500)
+
+  setTimeout(() => {
+    window.print()
+    setTimeout(cleanup, 2000)
+  }, 80)
 }
 
 function ReceiptRow({ label, value, strong = false }) {
@@ -94,7 +100,18 @@ export default function ThermalReceipt({
 
   return <article data-paper-size={settings.pos_receipt_paper_size} className={`thermal-receipt thermal-receipt--${settings.pos_receipt_paper_size} thermal-receipt-print-root`} aria-label={`Receipt ${receiptNumber || ''}`}>
     <header className="thermal-receipt__brand">
-      {enabled('pos_receipt_show_logo') && <img className="thermal-receipt__logo" src={settings.store_logo_url || '/bemsfarms_logo.png'} alt={settings.store_name} />}
+      {enabled('pos_receipt_show_logo') && (
+        <img
+          className="thermal-receipt__logo"
+          src={settings.store_logo_url || '/bemsfarms_logo.png'}
+          alt={settings.store_name}
+          onError={(e) => {
+            if (!e.currentTarget.src.includes('bemsfarms_logo_compact.png')) {
+              e.currentTarget.src = '/bemsfarms_logo_compact.png'
+            }
+          }}
+        />
+      )}
       {(!enabled('pos_receipt_show_logo') || !settings.store_logo_url) && <h1>{settings.store_name}</h1>}
       <p>{settings.pos_receipt_tagline}</p>
       <address>{settings.store_address} · {enabled('pos_receipt_show_phone') && settings.store_phone}

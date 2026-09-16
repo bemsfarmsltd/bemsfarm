@@ -920,7 +920,7 @@ export default function POS() {
     if (autoPrintReceipt) {
       setTimeout(() => {
         handlePrintReceipt(completedReceipt)
-      }, 50)
+      }, 120)
     }
   }
 
@@ -2420,9 +2420,9 @@ export default function POS() {
         </div>
       )}
 
-      {/* ─── Background Thermal Print Target (Off-screen, Invisible to Cashier) ─── */}
+      {/* ─── Background Thermal Print Target (Off-screen on Screen, Active on Print) ─── */}
       {successData && (
-        <div style={{ position: 'fixed', left: '-9999px', top: '-9999px', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }}>
+        <div className="pos-thermal-print-container">
           <ThermalReceipt
             receiptType="pos"
             receiptNumber={successData.orderId}
