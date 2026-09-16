@@ -241,12 +241,42 @@ export default function POSSettings() {
                   )}
                 </div>
 
+                <div className="p-3 bg-light rounded border text-muted fs-12 mb-3">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <strong className="text-dark fs-13">⚡ 100% Silent Auto-Printing via Chrome POS Kiosk Mode (Recommended)</strong>
+                    <span className="badge bg-primary">Best for POS Stations</span>
+                  </div>
+                  <p className="mb-2">
+                    If your thermal printer is already installed on your computer as a standard printer (USB, Bluetooth, or Wi-Fi), Chrome's <strong>Kiosk Printing</strong> mode allows the POS to print <strong>100% silently with 0 clicks and no popup dialogs</strong>.
+                  </p>
+                  <div className="row g-2">
+                    <div className="col-md-6">
+                      <div className="p-2 bg-white rounded border">
+                        <strong className="text-dark d-block mb-1">🪟 Windows POS Terminal Setup:</strong>
+                        <ol className="mb-0 ps-3">
+                          <li>Right-click your Chrome desktop shortcut & select <strong>Properties</strong>.</li>
+                          <li>In the <strong>Target</strong> box, add at the end:<br /><code className="text-primary bg-light px-1">--kiosk-printing --app=https://www.bemsfarms.com/admin/pos</code></li>
+                          <li>Set your thermal printer as the Windows <strong>Default Printer</strong>. Done!</li>
+                        </ol>
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <div className="p-2 bg-white rounded border">
+                        <strong className="text-dark d-block mb-1">🍎 Mac POS Terminal Setup:</strong>
+                        <ol className="mb-0 ps-3">
+                          <li>Open Terminal and run:<br /><code className="text-primary bg-light px-1" style={{ fontSize: '11px' }}>open -a "Google Chrome" --args --kiosk-printing --app="https://www.bemsfarms.com/admin/pos"</code></li>
+                          <li>Set your thermal receipt printer as the Mac <strong>Default Printer</strong>. Done!</li>
+                        </ol>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="p-3 bg-light rounded border text-muted fs-12">
-                  <strong>💡 Hardware Tips:</strong>
+                  <strong className="text-dark">💡 WebUSB / WebSerial Direct Hardware Access:</strong>
                   <ul className="mb-0 ps-3 mt-1">
-                    <li>Make sure the printer is turned on and plugged into a USB port on this computer.</li>
-                    <li>Click <strong>"Search & Pair USB Printer"</strong> and select your printer model from the browser prompt.</li>
-                    <li>If your thermal printer appears as a Virtual COM port or RS-232 adapter, click <strong>"Search Serial / COM Port"</strong> instead.</li>
+                    <li>If you prefer browser direct USB control instead of the OS printer driver, click <strong>"Search & Pair USB Printer"</strong> above.</li>
+                    <li><em>Note:</em> If your OS (Windows/Mac) has already claimed the USB printer with a system driver, Chrome may report <em>"No compatible devices found"</em>. In that case, use the <strong>Kiosk Mode</strong> above which works directly with your installed printer driver.</li>
                   </ul>
                 </div>
               </div>
