@@ -185,6 +185,7 @@ function App() {
 
               {/* ── Deliveries ── */}
               <Route element={<ProtectedRoute allowedRoles={DELIVERY_ROLES} />}>
+                <Route path="/deliveries"         element={<Navigate to="/deliveries/active" replace />} />
                 <Route path="/deliveries/active"  element={<ActiveDeliveries />} />
                 <Route path="/deliveries/map"     element={<DeliveryMap />} />
                 <Route path="/deliveries/zones"   element={<DeliveryZones />} />

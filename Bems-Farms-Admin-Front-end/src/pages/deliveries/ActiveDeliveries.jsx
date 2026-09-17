@@ -274,7 +274,7 @@ export default function ActiveDeliveries() {
             onClick={() => setActiveTab('auto_log')}>
             <i className="ri-cpu-line me-1" />Auto Assignment Log
             <span className="badge rounded-pill ms-2" style={{ background: activeTab === 'auto_log' ? 'rgba(255,255,255,0.3)' : '#e5e7eb', color: activeTab === 'auto_log' ? '#fff' : '#374151' }}>
-              {AUTO_ASSIGN_LOG.length}
+              {autoLogs.length}
             </span>
           </button>
         </div>
@@ -735,7 +735,7 @@ export default function ActiveDeliveries() {
                 </div>
                 <div className="mb-2 small text-muted">Current driver: <strong>{selected.driver.name}</strong></div>
                 <label className="form-label fw-medium small">Select Replacement Driver</label>
-                {DRIVERS_ALL.filter(d => d.active && d.id !== selected.driver.id).map(driver => (
+                {drivers.filter(d => d.active && d.id !== selected.driver.id).map(driver => (
                   <div key={driver.id}
                     className="d-flex align-items-center gap-3 p-3 border rounded mb-2"
                     style={{ cursor: 'pointer',

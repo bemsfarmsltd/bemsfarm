@@ -5,7 +5,11 @@ import toast from 'react-hot-toast'
 
 const fmt = n => `₦${Number(n || 0).toLocaleString()}`
 const ini = name => (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-const fmtDate = d => d ? new Date(d).toISOString().slice(0,10) : '—'
+const fmtDate = d => {
+  if (!d) return '—'
+  const date = new Date(d)
+  return isNaN(date.getTime()) ? '—' : date.toISOString().slice(0, 10)
+}
 const fmtTime = d => d ? new Date(d).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : ''
 
 const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec4899','#f97316','#14b8a6','#6366f1','#84cc16']

@@ -67,6 +67,11 @@ const pipelineIdx = (s) => (['delivery_attempted'].includes(s) ? PIPELINE.indexO
 
 const fmt = (n) => `₦${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 const calcSub = (items = []) => items.reduce((s, i) => s + (Number(i.total) || (Number(i.price || 0) * Number(i.qty || 1))), 0)
+const safeFormatDate = (d, fallback = '—') => {
+  if (!d) return fallback
+  const date = new Date(d)
+  return isNaN(date.getTime()) ? fallback : date.toISOString().replace('T', ' ').slice(0, 16)
+}
 
 export default function OrdersList() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -168,7 +173,7 @@ export default function OrdersList() {
 
           return {
             id: String(o.id),
-            date: o.created_at ? new Date(o.created_at).toISOString().replace('T', ' ').slice(0, 16) : '—',
+            date: safeFormatDate(o.created_at, '—'),
             channel: channelKey,
             status: parsedStatus,
             rawStatus: o.status,
@@ -191,7 +196,7 @@ export default function OrdersList() {
             driver: o.driver_name ? { id: o.driver_id, name: o.driver_name, phone: o.driver_phone, bike: o.driver_plate || 'Vehicle', active: true } : null,
             attempts: o.attempts || 0,
             timeline: [
-              { status: parsedStatus, time: o.created_at ? new Date(o.created_at).toISOString().replace('T', ' ').slice(0, 16) : '', note: `Order placed via ${getChannelCfg(channelKey).label}`, by: 'System' }
+              { status: parsedStatus, time: safeFormatDate(o.created_at, ''), note: `Order placed via ${getChannelCfg(channelKey).label}`, by: 'System' }
             ]
           }
         })
@@ -279,7 +284,7 @@ export default function OrdersList() {
               timeline: (d.timeline && d.timeline.length)
                 ? d.timeline.map((t) => ({
                     status: t.to_status || t.status || 'updated',
-                    time: t.created_at ? new Date(t.created_at).toISOString().replace('T', ' ').slice(0, 16) : '',
+                    time: safeFormatDate(t.created_at, ''),
                     note: t.notes || `Status changed to ${t.to_status || t.status}`,
                     by: t.changed_by_name || 'Admin',
                   }))

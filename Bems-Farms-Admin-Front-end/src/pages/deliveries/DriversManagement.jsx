@@ -10,10 +10,15 @@ const STATUS_CFG = {
   suspended:   { label: 'Suspended',   color: '#ef4444', bg: '#fee2e2', icon: 'ri-forbid-line'           },
 }
 
-const VEHICLE_TYPES = ['Motorcycle', 'Bicycle', 'Car', 'Van']
+const VEHICLE_TYPES = [
+  { value: 'motorcycle', label: 'Motorcycle' },
+  { value: 'bicycle',    label: 'Bicycle' },
+  { value: 'car',        label: 'Car' },
+  { value: 'van',        label: 'Van' },
+]
 
 const BLANK_FORM = {
-  name: '', phone: '', email: '', vehicle_type: 'Motorcycle', vehicle_plate: '', zone_id: '', notes: '',
+  name: '', phone: '', email: '', vehicle_type: 'motorcycle', vehicle_plate: '', zone_id: '', notes: '',
 }
 
 const fmt = (n) => `₦${Number(n || 0).toLocaleString()}`
@@ -67,7 +72,7 @@ export default function DriversManagement() {
     setSuspendNote('')
     if (type === 'add') { setForm(BLANK_FORM); setIsEditing(false) }
     if (type === 'edit' && driver) {
-      setForm({ name: driver.name, phone: driver.phone, email: driver.email || '', vehicle_type: driver.vehicle_type || 'Motorcycle', vehicle_plate: driver.vehicle_plate || '', zone_id: driver.zone_id || '', notes: driver.notes || '' })
+      setForm({ name: driver.name, phone: driver.phone, email: driver.email || '', vehicle_type: (driver.vehicle_type || 'motorcycle').toLowerCase(), vehicle_plate: driver.vehicle_plate || '', zone_id: driver.zone_id || '', notes: driver.notes || '' })
       setIsEditing(true)
     }
   }
@@ -404,7 +409,7 @@ export default function DriversManagement() {
                   <div className="col-6">
                     <label className="form-label fw-medium small">Vehicle Type</label>
                     <select className="form-select" value={form.vehicle_type} onChange={e => setField('vehicle_type', e.target.value)}>
-                      {VEHICLE_TYPES.map(v => <option key={v}>{v}</option>)}
+                      {VEHICLE_TYPES.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
                     </select>
                   </div>
                   <div className="col-6">

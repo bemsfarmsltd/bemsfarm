@@ -6,7 +6,11 @@ import toast from 'react-hot-toast'
 const fmt    = n => `₦${Number(n || 0).toLocaleString()}`
 const ini    = name => (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 const fmtPts = n => Number(n || 0).toLocaleString() + ' pts'
-const fmtDate = d => d ? new Date(d).toISOString().slice(0, 10) : '—'
+const fmtDate = d => {
+  if (!d) return '—'
+  const date = new Date(d)
+  return isNaN(date.getTime()) ? '—' : date.toISOString().slice(0, 10)
+}
 const fmtLogin = d => {
   if (!d) return 'Never'
   const date = new Date(d)

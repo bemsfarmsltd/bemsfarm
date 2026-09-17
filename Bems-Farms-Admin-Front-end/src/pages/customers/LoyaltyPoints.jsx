@@ -5,7 +5,11 @@ import toast from 'react-hot-toast'
 
 const ini    = name => (name || '?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
 const fmtPts = n => Number(n || 0).toLocaleString()+' pts'
-const fmtDate = d => d ? new Date(d).toISOString().slice(0,10) : '—'
+const fmtDate = d => {
+  if (!d) return '—'
+  const date = new Date(d)
+  return isNaN(date.getTime()) ? '—' : date.toISOString().slice(0, 10)
+}
 
 const TIER_CFG = {
   Platinum:{ bg:'#f5f3ff', color:'#7c3aed', border:'#ddd6fe', icon:'ri-vip-crown-2-fill',  min:10000, next:null,    label:'Platinum' },

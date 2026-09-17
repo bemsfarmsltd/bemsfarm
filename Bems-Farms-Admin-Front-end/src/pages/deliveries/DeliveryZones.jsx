@@ -35,13 +35,26 @@ export default function DeliveryZones() {
     setLoading(true)
     try {
       const res = await api.get('/admin/deliveries/zones')
-      setZones((res.data.zones || []).map(z => ({
-        id: z.id, name: z.zone_name, eta: z.estimated_eta || ETA_OPTIONS[1],
-        fee: Number(z.delivery_fee || 0), minOrder: Number(z.min_order_amount || 0),
-        active: !!z.is_active, driverIds: z.driver_ids || [],
-        areas: Array.isArray(z.coverage_areas) ? z.coverage_areas : (z.coverage_areas ? JSON.parse(z.coverage_areas) : []),
-        notes: z.notes || '', deliveries: Number(z.deliveries || 0), revenue: Number(z.revenue || 0),
-      })))
+      setZones((res.data.zones || []).map(z => {
+        let areas = []
+        if (Array.isArray(z.coverage_areas)) {
+          areas = z.coverage_areas
+        } else if (typeof z.coverage_areas === 'string') {
+          try {
+            const parsed = JSON.parse(z.coverage_areas)
+            areas = Array.isArray(parsed) ? parsed : [z.coverage_areas]
+          } catch {
+            areas = z.coverage_areas.split(',').map(a => a.trim()).filter(Boolean)
+          }
+        }
+        return {
+          id: z.id, name: z.zone_name, eta: z.estimated_eta || ETA_OPTIONS[1],
+          fee: Number(z.delivery_fee || 0), minOrder: Number(z.min_order_amount || 0),
+          active: !!z.is_active, driverIds: z.driver_ids || [],
+          areas,
+          notes: z.notes || '', deliveries: Number(z.deliveries || 0), revenue: Number(z.revenue || 0),
+        }
+      }))
       setDrivers(res.data.drivers || [])
     } catch {
       toast.error('Failed to load delivery zones')

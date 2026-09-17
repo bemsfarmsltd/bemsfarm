@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
@@ -352,7 +352,7 @@ export default function DeliveryMap() {
               const hasCustomerPos = del.customer_lat != null && del.customer_lng != null
               const customerPos = hasCustomerPos ? [del.customer_lat, del.customer_lng] : null
               return (
-                <div key={del.id}>
+                <Fragment key={del.id}>
                   {customerPos && (
                     <Polyline
                       positions={[driverPos, customerPos]}
@@ -416,7 +416,7 @@ export default function DeliveryMap() {
                       </Popup>
                     </Marker>
                   )}
-                </div>
+                </Fragment>
               )
             })}
           </MapContainer>
