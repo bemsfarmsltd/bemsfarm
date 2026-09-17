@@ -895,6 +895,37 @@ router.patch("/batches/:id", requireRole("superadmin", "manager", "admin", "kitc
   }
 });
 
+router.post("/batches/auto-populate", requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"), async (req, res, next) => {
+  try {
+    const productsRes = await pool.query(`
+      SELECT p.id, p.name, p.sku, p.stock, p.stock_quantity, p.cost_price, p.expiry_date, p.created_at
+      FROM products p
+      WHERE (p.stock > 0 OR p.stock_quantity > 0 OR p.expiry_date IS NOT NULL)
+        AND NOT EXISTS (SELECT 1 FROM batch_management b WHERE b.product_id = p.id)
+    `);
+
+    let createdCount = 0;
+    for (const p of productsRes.rows) {
+      const stockQty = parseInt(p.stock || p.stock_quantity || 0);
+      const batchNo = `LOT-${new Date(p.created_at || Date.now()).toISOString().slice(0, 10).replace(/-/g, "")}-${p.id}`;
+      const defaultExp = p.expiry_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+      await pool.query(
+        `INSERT INTO batch_management
+           (product_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, 'active', NOW(), NOW())
+         ON CONFLICT DO NOTHING`,
+        [p.id, batchNo, stockQty, p.cost_price ? parseFloat(p.cost_price) : null, defaultExp]
+      );
+      createdCount++;
+    }
+
+    res.json({ message: `Successfully initialized ${createdCount} batches for current in-stock products.`, count: createdCount });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.delete("/batches/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     await pool.query("UPDATE batch_management SET status='recalled' WHERE id=$1", [req.params.id]);

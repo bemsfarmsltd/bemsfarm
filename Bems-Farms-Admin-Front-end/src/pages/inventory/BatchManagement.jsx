@@ -69,6 +69,20 @@ export default function BatchManagement() {
     }
   }, [])
 
+  const [autoPopulating, setAutoPopulating] = useState(false)
+  async function handleAutoPopulate() {
+    setAutoPopulating(true)
+    try {
+      const res = await api.post('/admin/inventory/batches/auto-populate')
+      toast.success(res.data.message || 'Batches initialized successfully!')
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to initialize batches')
+    } finally {
+      setAutoPopulating(false)
+    }
+  }
+
   useEffect(() => { load() }, [load])
 
   const enriched = useMemo(() => records.map(r => ({ ...r, computedStatus: getBatchStatus(r.status, r.expiry_date, r.quantity) })), [records])
@@ -195,6 +209,15 @@ export default function BatchManagement() {
             <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
           </div>
           <div className="d-flex gap-2 ms-auto flex-wrap">
+            <button
+              className="btn btn-outline-success d-flex align-items-center gap-1"
+              onClick={handleAutoPopulate}
+              disabled={autoPopulating}
+              title="Creates batch records automatically for existing products with positive stock"
+            >
+              <i className={`ri-${autoPopulating ? 'loader-4-line spin' : 'flashlight-line'}`}></i>
+              {autoPopulating ? 'Generating...' : '⚡ Generate Initial Batches from Stock'}
+            </button>
             <select className="form-select" style={{ width:'auto' }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
               <option value="all">All Batches</option>
               <option value="active">Active</option>
@@ -229,9 +252,33 @@ export default function BatchManagement() {
                   <tr><td colSpan={9} className="text-center py-5 text-muted">Loading batches…</td></tr>
                 )}
                 {!loading && filtered.length === 0 && (
-                  <tr><td colSpan={9} className="text-center py-5 text-muted">
-                    <i className="ri-archive-stack-line fs-2 d-block mb-2"></i>No batches found
-                  </td></tr>
+                  <tr>
+                    <td colSpan={9} className="text-center py-5">
+                      <div className="py-4">
+                        <div className="avatar-lg mx-auto mb-3 bg-light rounded-circle d-flex align-items-center justify-content-center" style={{ width: 64, height: 64 }}>
+                          <i className="ri-archive-stack-line fs-1 text-muted"></i>
+                        </div>
+                        <h6 className="fw-bold mb-1">No Batches Registered Yet</h6>
+                        <p className="text-muted mx-auto mb-4" style={{ maxWidth: 460, fontSize: 13 }}>
+                          Batches track specific production lots, expiry dates, and intake quantities. 
+                          You can generate initial batch records for all your existing in-stock products in one click or add custom batches manually.
+                        </p>
+                        <div className="d-flex justify-content-center gap-2">
+                          <button 
+                            className="btn btn-success d-flex align-items-center gap-2" 
+                            onClick={handleAutoPopulate}
+                            disabled={autoPopulating}
+                          >
+                            <i className={`ri-${autoPopulating ? 'loader-4-line spin' : 'flashlight-line'} fs-16`}></i>
+                            {autoPopulating ? 'Generating Batches...' : '⚡ Generate Initial Batches from Current Stock'}
+                          </button>
+                          <button className="btn btn-outline-primary d-flex align-items-center gap-1" onClick={openAdd}>
+                            <i className="ri-add-line"></i> Manual Batch
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
                 )}
                 {!loading && filtered.map(r => {
                   const sc   = STATUS_CFG[r.computedStatus]
