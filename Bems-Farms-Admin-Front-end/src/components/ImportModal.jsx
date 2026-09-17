@@ -129,11 +129,11 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
   return (
     <>
       <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
-        <div className="modal-dialog modal-dialog-centered modal-xl">
-          <div className="modal-content">
+        <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl" style={{ maxHeight:'92vh' }}>
+          <div className="modal-content shadow-lg border-0" style={{ maxHeight:'92vh', display:'flex', flexDirection:'column' }}>
 
             {/* Header */}
-            <div className="modal-header" style={{ background:'#f8f9fa' }}>
+            <div className="modal-header flex-shrink-0" style={{ background:'#f8f9fa' }}>
               <div>
                 <div className="d-flex align-items-center gap-2 mb-1">
                   <i className="ri-upload-cloud-2-line fs-18 text-primary"></i>
@@ -147,7 +147,7 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
             </div>
 
             {/* Step indicator */}
-            <div className="px-4 pt-3 pb-0">
+            <div className="px-4 pt-3 pb-0 flex-shrink-0 bg-white border-bottom">
               <div className="d-flex align-items-center gap-0">
                 {[
                   { key:'source',  label:'1. Source',      icon:'ri-upload-2-line'        },
@@ -184,7 +184,7 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
               </div>
             </div>
 
-            <div className="modal-body" style={{ minHeight:340 }}>
+            <div className="modal-body" style={{ overflowY:'auto', flex:'1 1 auto', minHeight:340 }}>
 
               {/* ── STEP 1: SOURCE ─────────────────────────────────────────── */}
               {step === 'source' && (
@@ -444,7 +444,7 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
 
             {/* Footer nav */}
             {step !== 'done' && (
-              <div className="modal-footer">
+              <div className="modal-footer flex-shrink-0 bg-white border-top py-2 px-3">
                 {step !== 'source' && (
                   <button className="btn btn-light me-auto" onClick={() => setStep(step === 'review' ? 'mapping' : 'source')} disabled={submitting}>
                     <i className="ri-arrow-left-line me-1"></i>Back
