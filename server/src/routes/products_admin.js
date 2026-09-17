@@ -14,6 +14,34 @@ const { trackActivity } = require("../utils/aiContext");
 router.use(protect);
 
 // ── HELPERS ──────────────────────────────────────────────────────
+function calculateEan13Checksum(code12) {
+  const digits = String(code12).padStart(12, "0").split("").map(Number);
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    sum += i % 2 === 0 ? digits[i] : digits[i] * 3;
+  }
+  const mod = sum % 10;
+  return mod === 0 ? 0 : 10 - mod;
+}
+
+async function generateUniqueBarcode(clientOrPool, categoryId) {
+  const catPad = String(categoryId || 1).padStart(3, "0").slice(-3);
+  for (let i = 0; i < 20; i++) {
+    const rand = String(Math.floor(100000 + Math.random() * 900000));
+    const code12 = `615${catPad}${rand}`;
+    const check = calculateEan13Checksum(code12);
+    const candidate = `${code12}${check}`;
+    const dup = await clientOrPool.query(
+      "SELECT id FROM products WHERE barcode = $1",
+      [candidate]
+    );
+    if (dup.rows.length === 0) {
+      return candidate;
+    }
+  }
+  return `615000${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 9)}`;
+}
+
 async function generateUniqueSKU(clientOrPool, name, categoryId) {
   const cleanName = (name || "PROD").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
   const prefix = cleanName.substring(0, 4) || "ITEM";
@@ -551,15 +579,19 @@ router.post(
         return res.status(400).json({ message: "Tax rate must be a number that isn't negative" });
       }
 
-      if (barcode && barcode.trim()) {
+      // Auto-generate Barcode if not provided or validate provided Barcode
+      let finalBarcode = barcode?.trim();
+      if (!finalBarcode) {
+        finalBarcode = await generateUniqueBarcode(client, category_id);
+      } else {
         const barcodeCheck = await client.query(
           "SELECT id, name FROM products WHERE barcode = $1 AND status != 'archived'",
-          [barcode.trim()]
+          [finalBarcode]
         );
         if (barcodeCheck.rows.length) {
           await client.query("ROLLBACK");
           return res.status(400).json({
-            message: `Barcode "${barcode.trim()}" is already assigned to product "${barcodeCheck.rows[0].name}"`
+            message: `Barcode "${finalBarcode}" is already assigned to product "${barcodeCheck.rows[0].name}"`
           });
         }
       }
@@ -638,7 +670,7 @@ router.post(
           return_policy || "no_return",
           status,
           store_id || null,
-          barcode || null,
+          finalBarcode,
           hsn_code || null,
           video_url || null,
           image_url || null,
@@ -861,8 +893,9 @@ router.post(
             continue;
           }
 
-          // New product: Auto-generate collision-proof unique SKU
+          // New product: Auto-generate collision-proof unique SKU and Barcode
           const newSku = row.sku?.trim() || (await generateUniqueSKU(pool, row.name.trim(), categoryId));
+          const newBarcode = row.barcode?.trim() || (await generateUniqueBarcode(pool, categoryId));
 
           await pool.query(
             `INSERT INTO products
@@ -875,7 +908,7 @@ router.post(
             [
               row.name.trim(),
               newSku,
-              row.barcode?.trim() || null,
+              newBarcode,
               categoryId,
               row.sub_category_id ? parseInt(row.sub_category_id) : null,
               unitPrice,

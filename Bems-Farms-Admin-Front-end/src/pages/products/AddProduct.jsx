@@ -47,7 +47,7 @@ const BRANDS = [
   { id: 7, name: 'No Brand / Generic' },
 ]
 
-// ── Full product import schema (SKU is auto-generated system-wide) ──────────────
+// ── Full product import schema (SKU and Barcode are auto-generated) ──────────────
 const PRODUCT_IMPORT_FIELDS = [
   { key: 'name', label: 'Product Name', required: true, section: 'Product Info', example: 'Ofada Rice (5kg Bag)' },
   { key: 'category', label: 'Category', required: true, section: 'Product Info', example: 'Rice & Grains' },
@@ -58,7 +58,6 @@ const PRODUCT_IMPORT_FIELDS = [
   { key: 'brand', label: 'Brand', required: false, section: 'Product Info', example: 'Bems Farms (Own Brand)' },
   { key: 'model_variant', label: 'Model / Variant', required: false, section: 'Product Info', example: '5kg Bag' },
   { key: 'description', label: 'Description', required: false, section: 'Product Info', example: 'Stone-free premium aromatic brown ofada rice.' },
-  { key: 'barcode', label: 'Barcode', required: false, section: 'Advanced Settings', example: '950110001001' },
   { key: 'low_stock_alert', label: 'Low Stock Alert', required: false, section: 'Pricing & Stock', example: '5' },
   { key: 'available_for_sale', label: 'Available for Sale', required: false, section: 'Pricing & Stock', hint: 'yes | no', example: 'yes' },
   { key: 'track_inventory', label: 'Track Inventory', required: false, section: 'Advanced Settings', hint: 'yes | no', example: 'yes' },
