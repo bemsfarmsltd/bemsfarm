@@ -680,6 +680,16 @@ router.post(
 
       const product = result.rows[0];
 
+      // Auto-create batch entry in batch_management if expiry_date is provided
+      if (expiry_date) {
+        const batchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${product.id}`;
+        await client.query(
+          `INSERT INTO batch_management (product_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
+           VALUES ($1, $2, $3, $4, $5, 'active', NOW(), NOW())`,
+          [product.id, batchNo, parseInt(stock_quantity) || 0, cost_price ? parseFloat(cost_price) : null, expiry_date]
+        ).catch(() => {});
+      }
+
       // Save additional images
       const extraImages = [image_2_url, image_3_url, image_4_url].filter(
         Boolean,
@@ -952,6 +962,14 @@ router.post(
                 existingProduct.id,
               ]
             );
+            if (existingProduct.id && expiryDate) {
+              const batchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${existingProduct.id}-${Date.now().toString().slice(-4)}`;
+              await pool.query(
+                `INSERT INTO batch_management (product_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
+                 VALUES ($1, $2, $3, $4, $5, 'active', NOW(), NOW())`,
+                [existingProduct.id, batchNo, incomingStock, costPrice, expiryDate]
+              ).catch(() => {});
+            }
             updated++;
             continue;
           }
@@ -960,7 +978,7 @@ router.post(
           const newSku = row.sku?.trim() || (await generateUniqueSKU(pool, row.name.trim(), categoryId));
           const newBarcode = row.barcode?.trim() || (await generateUniqueBarcode(pool, categoryId));
 
-          await pool.query(
+          const insRes = await pool.query(
             `INSERT INTO products
                (name, sku, barcode, category_id, sub_category_id, brand_id, unit_of_measure_id,
                 unit_price, price, cost_price, stock, stock_quantity, unit, low_stock_threshold,
@@ -968,7 +986,8 @@ router.post(
                 tags, image_url, video_url, hsn_code, return_policy, expiry_date, created_by,
                 created_at, updated_at)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,$9,$10,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-                     $20,$21,$22,$23,$24,$25,NOW(),NOW())`,
+                     $20,$21,$22,$23,$24,$25,NOW(),NOW())
+             RETURNING id`,
             [
               row.name.trim(),
               newSku,
@@ -997,6 +1016,15 @@ router.post(
               req.user.id,
             ],
           );
+          const newProdId = insRes.rows[0]?.id;
+          if (newProdId && expiryDate) {
+            const batchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${newProdId}`;
+            await pool.query(
+              `INSERT INTO batch_management (product_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
+               VALUES ($1, $2, $3, $4, $5, 'active', NOW(), NOW())`,
+              [newProdId, batchNo, incomingStock, costPrice, expiryDate]
+            ).catch(() => {});
+          }
           imported++;
         } else if (type === "categories") {
           if (!row.name?.trim()) throw new Error("name is required");
