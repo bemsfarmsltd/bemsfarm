@@ -21,7 +21,6 @@ const SETTINGS_SECTIONS = [
     icon: 'ri-store-2-line',
     items: [
       { name: 'General Store Info & Contact', path: '/settings/general' },
-      { name: 'Store Locations & Branches', path: '/stores' },
       { name: 'Receipt & Invoice Templates', path: '/settings/invoices' },
       { name: 'Business Hours & Operations', path: '/settings/general' }
     ]

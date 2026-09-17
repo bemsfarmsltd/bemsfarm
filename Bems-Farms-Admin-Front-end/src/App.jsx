@@ -244,11 +244,9 @@ function App() {
                 <Route path="/chef-bems/meal-associations" element={<MealAssociations />} />
               </Route>
 
-              {/* ── Multi-store ── */}
-              <Route element={<ProtectedRoute allowedRoles={MULTISTORE_ROLES} />}>
-                <Route path="/stores"     element={<StoreList />} />
-                <Route path="/stores/add" element={<AddStore />} />
-              </Route>
+              {/* ── Multi-store disabled ── */}
+              <Route path="/stores"     element={<Navigate to="/dashboard" replace />} />
+              <Route path="/stores/*"   element={<Navigate to="/dashboard" replace />} />
 
               {/* ── Reports ── */}
               <Route element={<ProtectedRoute allowedRoles={REPORT_ROLES} />}>

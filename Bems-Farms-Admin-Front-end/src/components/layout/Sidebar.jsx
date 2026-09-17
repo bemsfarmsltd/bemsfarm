@@ -20,7 +20,6 @@ export default function Sidebar() {
     finance: '/accounts/transactions',
     reports: '/reports/sales',
     chef: '/chef-bems/conversations',
-    stores: '/stores',
     settings: '/settings/general',
     godeye: '/god-eye',
   }
@@ -54,7 +53,6 @@ export default function Sidebar() {
     if (path.startsWith('/accounts')) return 'finance'
     if (path.startsWith('/reports')) return 'reports'
     if (path.startsWith('/chef-bems')) return 'chef'
-    if (path.startsWith('/stores')) return 'stores'
     if (path.startsWith('/settings')) return 'settings'
     if (path.startsWith('/god-eye')) return 'godeye'
     if (path.startsWith('/pos')) return 'pos'
@@ -528,20 +526,6 @@ export default function Sidebar() {
               </button>
             )}
 
-            {/* Multi-Store */}
-            {showStores && (
-              <button
-                type="button"
-                className={`rail-btn ${activeTab === 'stores' ? 'active' : ''}`}
-                onClick={() => handleCategoryClick('stores')}
-                title="Multi-Store Locations"
-              >
-                <i className="ri-store-3-line rail-icon"></i>
-                <span className="rail-label">Multi-Store</span>
-                <span className="sub-badge" style={{ background: '#F1F5F9', color: '#64748B', marginLeft: 'auto' }}>Coming Soon</span>
-              </button>
-            )}
-
             {/* Onboarding */}
             {showStaff && (
               <button
@@ -916,18 +900,6 @@ export default function Sidebar() {
                 )}
                 <NavLink to="/chef-bems/meal-associations" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Meal &amp; Recipe Associations</span>
-                </NavLink>
-              </>
-            )}
-
-            {/* 11. STORES */}
-            {activeTab === 'stores' && (
-              <>
-                <NavLink to="/stores" end className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>All Store Locations</span>
-                </NavLink>
-                <NavLink to="/stores/add" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Add New Store</span>
                 </NavLink>
               </>
             )}
