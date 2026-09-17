@@ -86,11 +86,76 @@ function csvEscape(val) {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
+const SAMPLE_IMPORT_ROWS = [
+  {
+    name: 'Fresh Brown Farm Eggs (Crate of 30)',
+    category: 'Poultry & Livestock',
+    quantity: '50',
+    unit_price: '3800',
+    cost_price: '3000',
+    unit: 'crate',
+    brand: 'Bems Farms',
+    model_variant: 'Crate of 30',
+    description: 'Farm fresh organic brown eggs, high quality and carefully sorted.',
+    low_stock_alert: '10',
+    available_for_sale: 'yes',
+    track_inventory: 'yes',
+    tax: '7.5',
+    tags: 'Organic, Best Seller',
+    main_image_url: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f',
+    expiry_date: '',
+    status: 'active',
+    return_policy: 'no_return',
+  },
+  {
+    name: 'Premium Stone-Free Ofada Rice (5kg)',
+    category: 'Rice & Grains',
+    quantity: '30',
+    unit_price: '12500',
+    cost_price: '9800',
+    unit: 'kg',
+    brand: 'Bems Farms',
+    model_variant: '5kg Bag',
+    description: 'Clean stone-free fragrant brown ofada rice directly from farm harvest.',
+    low_stock_alert: '5',
+    available_for_sale: 'yes',
+    track_inventory: 'yes',
+    tax: '7.5',
+    tags: 'Grains, Fast Selling',
+    main_image_url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c',
+    expiry_date: '',
+    status: 'active',
+    return_policy: 'no_return',
+  },
+  {
+    name: 'Fresh White Yam Tubers (Medium)',
+    category: 'Roots & Tubers',
+    quantity: '100',
+    unit_price: '2500',
+    cost_price: '1800',
+    unit: 'pcs',
+    brand: 'Bems Farms',
+    model_variant: 'Medium Tuber',
+    description: 'Freshly harvested firm sweet white yams.',
+    low_stock_alert: '15',
+    available_for_sale: 'yes',
+    track_inventory: 'yes',
+    tax: '7.5',
+    tags: 'Fresh Harvest',
+    main_image_url: 'https://images.unsplash.com/photo-1596797038530-2c107229654b',
+    expiry_date: '',
+    status: 'active',
+    return_policy: 'no_return',
+  },
+]
+
 function buildProductTemplateCSV(withSampleData) {
   const headers = PRODUCT_IMPORT_FIELDS.map((f) => f.key)
   const lines = [headers.join(',')]
   if (withSampleData) {
-    lines.push(PRODUCT_IMPORT_FIELDS.map((f) => csvEscape(f.example || '')).join(','))
+    SAMPLE_IMPORT_ROWS.forEach((row) => {
+      lines.push(PRODUCT_IMPORT_FIELDS.map((f) => csvEscape(row[f.key] ?? f.example ?? '')).join(','))
+    })
   }
   return lines.join('\n')
 }
