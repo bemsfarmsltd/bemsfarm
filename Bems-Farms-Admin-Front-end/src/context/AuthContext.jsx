@@ -102,7 +102,7 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const res = await api.post('/auth/login', { email, password })
+      const res = await api.post('/auth/login', { email, password, portal: 'admin' })
       const { token, user: userData } = res.data
       localStorage.setItem('admin_token', token)
       localStorage.setItem('admin_user', JSON.stringify(userData))

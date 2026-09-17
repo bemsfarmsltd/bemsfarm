@@ -52,8 +52,11 @@ export default function LoginPage() {
   const from = customerHome(location.state?.from);
   useEffect(() => {
     if (!user) return;
-    if (isStaff(user.role) || user.role === 'user') navigate(from, { replace: true });
-    else setError('Your account has no supported role. Please contact support.');
+    if (user.role === 'user' || user.role === 'customer') {
+      navigate(from, { replace: true });
+    } else {
+      setError('Administrative accounts cannot sign in on the customer storefront. Please log in at /admin/login.');
+    }
   }, [user, from, navigate]);
 
   const handleSubmit = async (e) => {
@@ -76,7 +79,7 @@ export default function LoginPage() {
           </span>
         );
       } else {
-        setError(err.response?.data?.message || "Invalid email or password");
+        setError(err.response?.data?.message || err.message || "Invalid email or password");
       }
     } finally {
       setLoading(false);

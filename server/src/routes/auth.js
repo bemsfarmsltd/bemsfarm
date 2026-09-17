@@ -144,6 +144,22 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
         .json({ message: "Account inactive. Contact support." });
     }
 
+    // Enforce portal separation
+    const STAFF_ROLES = ["superadmin", "admin", "manager", "accountant", "delivery_manager", "cashier", "storekeeper", "kitchen_staff", "rider"];
+    const portal = String(req.body.portal || "").toLowerCase().trim();
+
+    if ((portal === "storefront" || portal === "customer" || portal === "client") && STAFF_ROLES.includes(user.role)) {
+      return res.status(403).json({
+        message: "Administrative accounts are restricted to the Admin Portal and cannot log in on the customer storefront. Please log in at /admin/login.",
+      });
+    }
+
+    if (portal === "admin" && !STAFF_ROLES.includes(user.role)) {
+      return res.status(403).json({
+        message: "Access Denied: Customer accounts cannot access the Administrative Portal.",
+      });
+    }
+
     // Check lockout
     if (user.is_locked) {
       return res
@@ -992,6 +1008,15 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
         return res
           .status(403)
           .json({ message: "Account inactive. Contact support." });
+      }
+
+      const STAFF_ROLES = ["superadmin", "admin", "manager", "accountant", "delivery_manager", "cashier", "storekeeper", "kitchen_staff", "rider"];
+      const portal = String(req.body.portal || "").toLowerCase().trim();
+
+      if ((portal === "storefront" || portal === "customer" || portal === "client") && STAFF_ROLES.includes(user.role)) {
+        return res.status(403).json({
+          message: "Administrative accounts are restricted to the Admin Portal and cannot sign in on the customer storefront. Please log in at /admin/login.",
+        });
       }
     } else {
       const newUser = await pool.query(

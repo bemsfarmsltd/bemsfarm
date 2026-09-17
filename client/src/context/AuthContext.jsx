@@ -102,9 +102,16 @@ export function AuthProvider({ children }) {
         .get("/auth/me", { headers: { Authorization: `Bearer ${savedToken}` } })
         .then((res) => {
           const freshUser = res.data.user || parsed;
-          setToken(savedToken);
-          setUser(freshUser);
-          localStorage.setItem("user", JSON.stringify(freshUser));
+          if (STAFF_ROLES.includes(freshUser?.role)) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            setUser(null);
+            setToken(null);
+          } else {
+            setToken(savedToken);
+            setUser(freshUser);
+            localStorage.setItem("user", JSON.stringify(freshUser));
+          }
         })
         .catch((err) => {
           if (err?.response?.status === 401) {
@@ -171,10 +178,14 @@ export function AuthProvider({ children }) {
   // ── CUSTOMER EMAIL/PASSWORD LOGIN ────────────────────────────
   const login = useCallback(
     async (email, password) => {
-      const { data } = await api.post('/auth/login', { email, password });
+      const { data } = await api.post('/auth/login', { email, password, portal: 'storefront' });
       const { user: userData, token: authToken } = data;
       if (!userData?.id || !authToken) throw new Error('Invalid login response');
       
+      if (STAFF_ROLES.includes(userData.role)) {
+        throw new Error('Administrative accounts cannot sign in on the customer storefront. Please log in at /admin/login.');
+      }
+
       _storeSession(userData, authToken);
       return userData;
     },
@@ -266,12 +277,18 @@ export function AuthProvider({ children }) {
     async (googleCredential) => {
       const res = await api.post("/auth/google", {
         credential: googleCredential,
+        portal: "storefront",
       });
       const authToken = res.data.token || res.data.accessToken;
       const userData = res.data.user;
       if (!authToken || !userData) {
         throw new Error("Invalid response from Google auth");
       }
+
+      if (STAFF_ROLES.includes(userData.role)) {
+        throw new Error("Administrative accounts cannot sign in on the customer storefront. Please log in at /admin/login.");
+      }
+
       _storeSession(userData, authToken);
       return userData;
     },
