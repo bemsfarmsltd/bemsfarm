@@ -753,13 +753,28 @@ router.post(
     let updated = 0;
     const errors = [];
 
-    // Cache categories to avoid repetitive queries
+    // Cache categories, brands, and units to avoid repetitive queries & deduplicate
     const categoriesMap = new Map();
     const existingCats = await pool.query("SELECT id, name, code FROM categories");
     existingCats.rows.forEach((c) => {
       categoriesMap.set(String(c.id), c.id);
       categoriesMap.set(c.name.toLowerCase().trim(), c.id);
       if (c.code) categoriesMap.set(c.code.toLowerCase().trim(), c.id);
+    });
+
+    const brandsMap = new Map();
+    const existingBrands = await pool.query("SELECT id, name FROM brands");
+    existingBrands.rows.forEach((b) => {
+      brandsMap.set(String(b.id), b.id);
+      brandsMap.set(b.name.toLowerCase().trim(), b.id);
+    });
+
+    const unitsMap = new Map();
+    const existingUnits = await pool.query("SELECT id, name, short FROM units");
+    existingUnits.rows.forEach((u) => {
+      unitsMap.set(String(u.id), u);
+      unitsMap.set(u.name.toLowerCase().trim(), u);
+      if (u.short) unitsMap.set(u.short.toLowerCase().trim(), u);
     });
 
     for (let i = 0; i < rows.length; i++) {
@@ -792,14 +807,16 @@ router.post(
             return fallback;
           };
           const availableForSale = parseYesNo(row.available_for_sale, true);
-          const trackInventory = parseYesNo(row.track_inventory, true);
+          // System decision: track inventory is always true
+          const trackInventory = true;
+
           const tagsArr = row.tags
             ? String(row.tags).split(",").map((t) => t.trim()).filter(Boolean)
             : null;
           const imageUrl = row.main_image_url?.trim() || row.image_url?.trim() || null;
           const expiryDate = row.expiry_date?.trim() || null;
 
-          // Resolve category (by ID or by name)
+          // 1. Resolve / Auto-create Category
           let categoryId = null;
           const catInput = String(row.category_id || row.category || "").trim();
           if (catInput) {
@@ -816,10 +833,50 @@ router.post(
               categoriesMap.set(String(categoryId), categoryId);
             }
           }
-
           if (!categoryId) {
             const fallback = existingCats.rows[0]?.id || 1;
             categoryId = fallback;
+          }
+
+          // 2. Resolve / Auto-create Brand
+          let brandId = null;
+          const brandInput = String(row.brand || "").trim();
+          if (brandInput) {
+            const brandKey = brandInput.toLowerCase();
+            if (brandsMap.has(brandKey)) {
+              brandId = brandsMap.get(brandKey);
+            } else {
+              const newBrand = await pool.query(
+                "INSERT INTO brands (name, status, created_at) VALUES ($1, 'active', NOW()) RETURNING id",
+                [brandInput]
+              );
+              brandId = newBrand.rows[0].id;
+              brandsMap.set(brandKey, brandId);
+              brandsMap.set(String(brandId), brandId);
+            }
+          }
+
+          // 3. Resolve / Auto-create Unit of Measure
+          let unitOfMeasureId = null;
+          let unitStr = "kg";
+          const unitInput = String(row.unit || row.unit_of_measure || "").trim();
+          if (unitInput) {
+            const unitKey = unitInput.toLowerCase();
+            if (unitsMap.has(unitKey)) {
+              const uObj = unitsMap.get(unitKey);
+              unitOfMeasureId = uObj.id;
+              unitStr = uObj.short || uObj.name || unitInput;
+            } else {
+              const newUnit = await pool.query(
+                "INSERT INTO units (name, short, type, step, status) VALUES ($1, $2, 'custom', 1.0, 'active') RETURNING id, name, short",
+                [unitInput, unitInput.substring(0, 10)]
+              );
+              const uObj = newUnit.rows[0];
+              unitOfMeasureId = uObj.id;
+              unitStr = uObj.short || uObj.name;
+              unitsMap.set(unitKey, uObj);
+              unitsMap.set(String(uObj.id), uObj);
+            }
           }
 
           // Duplicate avoidance & Smart Restock:
@@ -865,14 +922,17 @@ router.post(
                    hsn_code = COALESCE($16, hsn_code),
                    return_policy = COALESCE($17, return_policy),
                    expiry_date = COALESCE($18, expiry_date),
+                   category_id = COALESCE($19, category_id),
+                   brand_id = COALESCE($20, brand_id),
+                   unit_of_measure_id = COALESCE($21, unit_of_measure_id),
                    updated_at = NOW()
-               WHERE id = $19`,
+               WHERE id = $22`,
               [
                 incomingStock,
                 unitPrice,
                 costPrice,
                 row.barcode?.trim() || null,
-                row.unit?.trim() || null,
+                unitStr || row.unit?.trim() || null,
                 lowStockAlert,
                 taxRate,
                 row.description?.trim() || null,
@@ -886,6 +946,9 @@ router.post(
                 row.hsn_code?.trim() || null,
                 row.return_policy?.trim() || null,
                 expiryDate,
+                categoryId,
+                brandId,
+                unitOfMeasureId,
                 existingProduct.id,
               ]
             );
@@ -899,22 +962,25 @@ router.post(
 
           await pool.query(
             `INSERT INTO products
-               (name, sku, barcode, category_id, sub_category_id, unit_price, price, cost_price,
-                stock, stock_quantity, unit, low_stock_threshold, tax_rate, description, status,
-                available_for_sale, track_inventory, model_variant, tags, image_url, video_url,
-                hsn_code, return_policy, expiry_date, created_by, created_at, updated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$6,$7,$8,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-                     $20,$21,$22,$23,NOW(),NOW())`,
+               (name, sku, barcode, category_id, sub_category_id, brand_id, unit_of_measure_id,
+                unit_price, price, cost_price, stock, stock_quantity, unit, low_stock_threshold,
+                tax_rate, description, status, available_for_sale, track_inventory, model_variant,
+                tags, image_url, video_url, hsn_code, return_policy, expiry_date, created_by,
+                created_at, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,$9,$10,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
+                     $20,$21,$22,$23,$24,$25,NOW(),NOW())`,
             [
               row.name.trim(),
               newSku,
               newBarcode,
               categoryId,
               row.sub_category_id ? parseInt(row.sub_category_id) : null,
+              brandId,
+              unitOfMeasureId,
               unitPrice,
               costPrice,
               incomingStock,
-              row.unit?.trim() || null,
+              unitStr || row.unit?.trim() || "kg",
               lowStockAlert,
               taxRate,
               row.description?.trim() || null,

@@ -47,7 +47,7 @@ const BRANDS = [
   { id: 7, name: 'No Brand / Generic' },
 ]
 
-// ── Full product import schema (SKU and Barcode are auto-generated) ──────────────
+// ── Full product import schema (SKU, Barcode, & Track Inventory are auto-handled) ──────────────
 const PRODUCT_IMPORT_FIELDS = [
   { key: 'name', label: 'Product Name', required: true, section: 'Product Info', example: 'Ofada Rice (5kg Bag)' },
   { key: 'category', label: 'Category', required: true, section: 'Product Info', example: 'Rice & Grains' },
@@ -60,7 +60,6 @@ const PRODUCT_IMPORT_FIELDS = [
   { key: 'description', label: 'Description', required: false, section: 'Product Info', example: 'Stone-free premium aromatic brown ofada rice.' },
   { key: 'low_stock_alert', label: 'Low Stock Alert', required: false, section: 'Pricing & Stock', example: '5' },
   { key: 'available_for_sale', label: 'Available for Sale', required: false, section: 'Pricing & Stock', hint: 'yes | no', example: 'yes' },
-  { key: 'track_inventory', label: 'Track Inventory', required: false, section: 'Advanced Settings', hint: 'yes | no', example: 'yes' },
   { key: 'tax', label: 'Tax (%)', required: false, section: 'Advanced Settings', example: '7.5' },
   { key: 'tags', label: 'Tags', required: false, section: 'Product Info', example: 'Organic, Best Seller' },
   { key: 'main_image_url', label: 'Main Image URL', required: false, section: 'Images & Media', example: 'https://images.unsplash.com/photo-rice.jpg' },
@@ -99,7 +98,6 @@ const SAMPLE_IMPORT_ROWS = [
     description: 'Farm fresh organic brown eggs, high quality and carefully sorted.',
     low_stock_alert: '10',
     available_for_sale: 'yes',
-    track_inventory: 'yes',
     tax: '7.5',
     tags: 'Organic, Best Seller',
     main_image_url: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f',
@@ -119,7 +117,6 @@ const SAMPLE_IMPORT_ROWS = [
     description: 'Clean stone-free fragrant brown ofada rice directly from farm harvest.',
     low_stock_alert: '5',
     available_for_sale: 'yes',
-    track_inventory: 'yes',
     tax: '7.5',
     tags: 'Grains, Fast Selling',
     main_image_url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c',
@@ -139,7 +136,6 @@ const SAMPLE_IMPORT_ROWS = [
     description: 'Freshly harvested firm sweet white yams.',
     low_stock_alert: '15',
     available_for_sale: 'yes',
-    track_inventory: 'yes',
     tax: '7.5',
     tags: 'Fresh Harvest',
     main_image_url: 'https://images.unsplash.com/photo-1596797038530-2c107229654b',
