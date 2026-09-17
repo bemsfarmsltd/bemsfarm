@@ -1009,7 +1009,7 @@ export default function PurchaseScheduleCalendar() {
                         handleOpenReceive(s)
                       }}
                     >
-                      <i className="ri-check-line"></i> Receive &amp; Stock In
+                      <i className="ri-check-line"></i> Receive &amp; Restock
                     </button>
                   )}
                   <button
@@ -1026,7 +1026,7 @@ export default function PurchaseScheduleCalendar() {
         </div>
       )}
 
-      {/* ── MODAL: Receive & Stock In Confirmation ─────────────────── */}
+      {/* ── MODAL: Receive & Restock Confirmation ─────────────────── */}
       {receiveModalSchedule && (
         <div
           className="modal fade show d-block"
@@ -1041,7 +1041,7 @@ export default function PurchaseScheduleCalendar() {
                     <i className="ri-archive-stack-line fs-5"></i>
                   </div>
                   <div>
-                    <h5 className="modal-title fw-bold text-dark font-display mb-0">Receive &amp; Stock In</h5>
+                    <h5 className="modal-title fw-bold text-dark font-display mb-0">Receive &amp; Restock</h5>
                     <small className="text-muted">Increment inventory automatically</small>
                   </div>
                 </div>

@@ -9,7 +9,7 @@ const AVAILABLE_PERMISSIONS = [
   { id: 'dashboard', label: 'Dashboard & Analytics', desc: 'View high level store metrics & sales KPI cards' },
   { id: 'pos', label: 'POS & Cashier Hub', desc: 'Create cash/card/transfer orders on the POS terminal' },
   { id: 'orders', label: 'Orders Management', desc: 'Process, fulfill, cancel, or dispute orders' },
-  { id: 'inventory', label: 'Inventory & Stock In', desc: 'Manage stock levels, batch intakes, and stock variance adjustments' },
+  { id: 'inventory', label: 'Inventory & Restock', desc: 'Manage stock levels, batch intakes, and stock variance adjustments' },
   { id: 'products', label: 'Products & Pricing', desc: 'Create, edit, pricing, and category configuration' },
   { id: 'deliveries', label: 'Dispatch & Deliveries', desc: 'Assign riders, track live shipments, and record handover status' },
   { id: 'kitchen', label: 'Chef Bems Kitchen', desc: 'View and manage ready-to-eat and custom processed orders' },

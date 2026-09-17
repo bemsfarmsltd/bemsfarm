@@ -715,9 +715,9 @@ export default function Sidebar() {
                   <span>Restock Calendar</span>
                   <span className="sub-badge" style={{ background: '#DCFCE7', color: '#166534' }}>Plan</span>
                 </NavLink>
-                {is('superadmin', 'admin', 'manager') && (
+                {is('superadmin', 'admin', 'manager', 'kitchen_staff') && (
                   <NavLink to="/inventory/stock-in" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Stock In (Receiving)</span>
+                    <span>Restock Products</span>
                   </NavLink>
                 )}
                 {is('superadmin', 'admin', 'manager') && (

@@ -70,7 +70,7 @@ export default function StockAlerts() {
         </div>
         <div className="d-flex gap-2">
           <Link to="/inventory/stock-in" className="btn btn-sm btn-primary d-flex align-items-center gap-1">
-            <i className="ri-inbox-archive-line"></i> Receive Stock In
+            <i className="ri-inbox-archive-line"></i> Restock Products
           </Link>
           <button
             type="button"
@@ -244,7 +244,7 @@ export default function StockAlerts() {
                         <Link
                           to={`/inventory/stock-in`}
                           className="btn btn-sm btn-primary py-1 px-2 me-1">
-                          <i className="ri-inbox-archive-line me-1"></i> Stock In
+                          <i className="ri-inbox-archive-line me-1"></i> Restock
                         </Link>
                         <Link
                           to={`/products/add?edit=${item.id}`}

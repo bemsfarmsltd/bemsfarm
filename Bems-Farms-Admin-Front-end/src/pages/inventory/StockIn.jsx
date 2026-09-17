@@ -152,17 +152,17 @@ export default function StockIn() {
       {/* Header */}
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row d-flex align-items-md-center justify-content-between">
         <div>
-          <h6 className="flex-grow-1 mb-0 fw-bold">Stock In & Receiving Intake</h6>
+          <h6 className="flex-grow-1 mb-0 fw-bold">Restock Products (Inventory Inflow)</h6>
           <ul className="breadcrumb flex-shrink-0 mb-0">
-            <li className="breadcrumb-item"><Link to="/inventory/stock">Inventory</Link></li>
-            <li className="breadcrumb-item active">Stock In</li>
+            <li className="breadcrumb-item"><Link to="/products">Products &amp; Stock</Link></li>
+            <li className="breadcrumb-item active">Restock</li>
           </ul>
         </div>
         <button
           type="button"
           className="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm"
           onClick={openIntakeModal}>
-          <i className="ri-add-circle-line"></i> + Receive New Stock Intake
+          <i className="ri-add-circle-line"></i> + Record New Restock
         </button>
       </div>
 
@@ -182,7 +182,7 @@ export default function StockIn() {
                 <i className="ri-search-line position-absolute top-50 start-0 translate-middle-y ms-2 text-muted" style={{ fontSize: 14 }}></i>
               </div>
             </div>
-            <span className="text-muted fs-13">Total receipts recorded: <strong>{total}</strong></span>
+            <span className="text-muted fs-13">Total restock records: <strong>{total}</strong></span>
           </div>
 
           <div className="table-responsive">
@@ -194,10 +194,10 @@ export default function StockIn() {
                   <th>Product Name</th>
                   <th>SKU</th>
                   <th>Warehouse</th>
-                  <th className="text-end">Qty Added</th>
+                  <th className="text-end">Qty Restocked</th>
                   <th className="text-end">Before $\rightarrow$ After</th>
                   <th className="text-end">Unit Cost</th>
-                  <th>Intake Reason / Source</th>
+                  <th>Restock Source / Reason</th>
                   <th>Received By</th>
                 </tr>
               </thead>
@@ -206,20 +206,20 @@ export default function StockIn() {
                   <tr>
                     <td colSpan="10" className="text-center py-5">
                       <div className="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
-                      <span className="text-muted">Loading stock intake records...</span>
+                      <span className="text-muted">Loading restock records...</span>
                     </td>
                   </tr>
                 ) : movements.length === 0 ? (
                   <tr>
                     <td colSpan="10" className="text-center py-5 text-muted">
                       <i className="ri-inbox-line fs-32 text-secondary mb-2 d-block"></i>
-                      No stock-in receipts found. Click <strong>"+ Receive New Stock Intake"</strong> to record one.
+                      No restock records found. Click <strong>"+ Record New Restock"</strong> to record one.
                     </td>
                   </tr>
                 ) : (
                   movements.map((m) => (
                     <tr key={m.id}>
-                      <td><code className="text-primary fw-bold">{m.reference || `SI-REC-${m.id}`}</code></td>
+                      <td><code className="text-primary fw-bold">{m.reference || `RST-${m.id}`}</code></td>
                       <td className="text-muted fs-13">
                         {m.created_at ? new Date(m.created_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
                       </td>
@@ -232,7 +232,7 @@ export default function StockIn() {
                       </td>
                       <td className="text-end">{formatNaira(m.unit_cost)}</td>
                       <td>
-                        <span className="badge bg-success-subtle text-success">{m.reason || 'Farm Intake'}</span>
+                        <span className="badge bg-success-subtle text-success">{m.reason || 'Farm Harvest'}</span>
                         {m.notes && <div className="text-muted fs-11 mt-1">{m.notes}</div>}
                       </td>
                       <td><small className="text-muted">{m.created_by_name || 'Staff'}</small></td>
@@ -276,7 +276,7 @@ export default function StockIn() {
               <div className="modal-header">
                 <h5 className="modal-title fw-bold">
                   <i className="ri-inbox-archive-line me-2 text-primary"></i>
-                  Receive Stock Intake (Harvest / Supplier)
+                  Record Product Restock (Harvest / Supplier)
                 </h5>
                 <button type="button" className="btn-close" onClick={() => setModalOpen(false)}></button>
               </div>

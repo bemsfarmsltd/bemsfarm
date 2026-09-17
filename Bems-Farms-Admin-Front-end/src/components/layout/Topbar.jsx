@@ -140,7 +140,7 @@ export default function Topbar({ onToggleSidebar }) {
                   <div className="avatar size-7 rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center flex-shrink-0">
                     <i className="ri-archive-stack-line"></i>
                   </div>
-                  <span className="fw-semibold fs-xs">Stock In</span>
+                  <span className="fw-semibold fs-xs">Restock</span>
                 </Link>
               </div>
               <div className="col-6">

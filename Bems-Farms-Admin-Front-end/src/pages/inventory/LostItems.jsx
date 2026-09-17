@@ -24,7 +24,7 @@ const STATUS_CFG = {
 }
 
 const MOVE_CFG = {
-  stock_in:     { icon: 'ri-arrow-down-circle-line', color: '#0ab39c', label: 'Stock In' },
+  stock_in:     { icon: 'ri-arrow-down-circle-line', color: '#0ab39c', label: 'Restock (Inflow)' },
   stock_out:    { icon: 'ri-arrow-up-circle-line',   color: '#f06548', label: 'Stock Out' },
   transfer_in:  { icon: 'ri-exchange-line',          color: '#299cdb', label: 'Transfer In' },
   transfer_out: { icon: 'ri-exchange-line',          color: '#299cdb', label: 'Transfer Out' },

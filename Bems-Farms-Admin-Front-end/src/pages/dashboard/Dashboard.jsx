@@ -554,7 +554,7 @@ function OverviewTab({ range = 'today', from = '', to = '' }) {
                 {[
                   { label: 'New Order',     icon: 'ri-add-circle-line',        to: '/orders',              primary: true,  roles: null },
                   { label: 'POS Terminal',  icon: 'ri-store-2-line',           to: '/pos',                 primary: false, roles: ['superadmin','admin','manager','cashier'] },
-                  { label: 'Stock In',      icon: 'ri-archive-stack-line',     to: '/inventory/stock-in',  primary: false, roles: ['superadmin','admin','manager','kitchen_staff'] },
+                  { label: 'Restock',       icon: 'ri-archive-stack-line',     to: '/inventory/stock-in',  primary: false, roles: ['superadmin','admin','manager','kitchen_staff'] },
                   { label: 'Restock Cal',   icon: 'ri-calendar-event-line',    to: '/inventory/schedule',  primary: false, roles: ['superadmin','admin','manager','kitchen_staff'] },
                   { label: 'Add Product',   icon: 'ri-price-tag-3-line',       to: '/products/add',        primary: false, roles: ['superadmin','admin','manager'] },
                   { label: 'Invite Member', icon: 'ri-mail-send-line',         to: '/onboarding?tab=onboarding', primary: false, roles: ['superadmin','admin','manager'] },
@@ -701,7 +701,7 @@ function OverviewTab({ range = 'today', from = '', to = '' }) {
                 <i className="ri-alert-line text-danger" style={{ fontSize: 16 }} />
                 <h6 className="fw-bold font-display text-dark mb-0" style={{ fontSize: '0.85rem' }}>Low Stock Watchlist</h6>
               </div>
-              <Link to="/inventory/stock-in" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Stock In →</Link>
+              <Link to="/inventory/stock-in" className="text-decoration-none fw-bold text-success" style={{ fontSize: '0.72rem' }}>Restock →</Link>
             </div>
             <div className="card-body p-2.5">
               {lowStock.length === 0 ? (
