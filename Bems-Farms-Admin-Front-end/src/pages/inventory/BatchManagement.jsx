@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
+import ProductSelect from '../../components/ui/ProductSelect'
 
 function daysToExpiry(expDate) {
   if (!expDate) return null
@@ -282,10 +283,13 @@ export default function BatchManagement() {
                         <>
                           <div className="col-md-6">
                             <label className="form-label fw-medium">Product <span className="text-danger">*</span></label>
-                            <select className="form-select" required value={form.product_id} onChange={e => setForm(f=>({...f,product_id:e.target.value}))}>
-                              <option value="">— Select Product —</option>
-                              {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku || 'No SKU'})</option>)}
-                            </select>
+                            <ProductSelect
+                              products={products}
+                              value={form.product_id}
+                              onChange={(selectedId) => setForm(f => ({ ...f, product_id: selectedId }))}
+                              placeholder="Type name, scan barcode, or select..."
+                              required
+                            />
                           </div>
                           <div className="col-md-6">
                             <label className="form-label fw-medium">Warehouse</label>

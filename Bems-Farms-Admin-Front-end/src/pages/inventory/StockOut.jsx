@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
+import ProductSelect from '../../components/ui/ProductSelect'
 
 const REASONS = ['Sales Order', 'Internal Use', 'Wastage', 'Return to Supplier', 'Spoilage', 'Other']
 
@@ -244,13 +245,13 @@ export default function StockOut() {
                   <div className="row g-3">
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">Select Product <span className="text-danger">*</span></label>
-                      <select className="form-select" value={form.product_id}
-                        onChange={(e) => setForm({ ...form, product_id: e.target.value })} required>
-                        <option value="">— Select Product —</option>
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name} ({p.sku || 'No SKU'}) — Current Stock: {p.stock}</option>
-                        ))}
-                      </select>
+                      <ProductSelect
+                        products={products}
+                        value={form.product_id}
+                        onChange={(selectedId) => setForm({ ...form, product_id: selectedId })}
+                        placeholder="Type name, scan barcode, or select..."
+                        required
+                      />
                     </div>
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">Warehouse</label>
