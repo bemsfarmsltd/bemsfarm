@@ -8,17 +8,95 @@ const { protect, requireRole } = require("../middleware/authMiddleware");
 const { clampLimit } = require("../utils/pagination");
 
 router.use(protect);
-const AI_ROLES = requireRole("superadmin","manager","kitchen_staff");
+const AI_ROLES = requireRole("superadmin", "admin", "manager", "kitchen_staff");
+const AI_MANAGE_ROLES = requireRole("superadmin", "admin", "manager");
+
+let chefTablesReady = false;
+async function ensureChefTables() {
+  if (chefTablesReady) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_ai_conversations (
+        id              SERIAL PRIMARY KEY,
+        user_id         INT REFERENCES users(id) ON DELETE CASCADE,
+        session_id      VARCHAR(100),
+        bot_type        VARCHAR(30) DEFAULT 'general',
+        title           VARCHAR(255),
+        summary         TEXT,
+        topics          JSONB    DEFAULT '[]',
+        message_count   INT      DEFAULT 0,
+        last_message_at TIMESTAMP,
+        archived        BOOLEAN  DEFAULT false,
+        created_at      TIMESTAMP DEFAULT NOW()
+      );
+
+      ALTER TABLE admin_ai_conversations ADD COLUMN IF NOT EXISTS ip_address VARCHAR(60);
+      ALTER TABLE admin_ai_conversations ADD COLUMN IF NOT EXISTS guest_identifier VARCHAR(150);
+
+      CREATE TABLE IF NOT EXISTS ai_conversation_messages (
+        id              SERIAL PRIMARY KEY,
+        conversation_id INT REFERENCES admin_ai_conversations(id) ON DELETE CASCADE,
+        role            VARCHAR(10) NOT NULL,
+        content         TEXT NOT NULL,
+        source          VARCHAR(30),
+        created_at      TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS ai_audit_logs (
+        id              BIGSERIAL PRIMARY KEY,
+        user_id         INT REFERENCES users(id) ON DELETE SET NULL,
+        user_name       VARCHAR(255) DEFAULT 'Anonymous Guest',
+        user_email      VARCHAR(255),
+        user_role       VARCHAR(50)  DEFAULT 'guest',
+        ip_address      VARCHAR(60),
+        user_agent      TEXT,
+        bot_type        VARCHAR(50)  DEFAULT 'chef',
+        session_id      VARCHAR(120),
+        prompt          TEXT,
+        response        TEXT,
+        tokens_used     INT          DEFAULT 0,
+        source          VARCHAR(50)  DEFAULT 'gemini',
+        status          VARCHAR(30)  DEFAULT 'success',
+        error_message   TEXT,
+        created_at      TIMESTAMPTZ  DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS admin_dietary_rules (
+        id          SERIAL PRIMARY KEY,
+        condition   VARCHAR(100) NOT NULL UNIQUE,
+        rule_text   TEXT NOT NULL,
+        tags        VARCHAR(255),
+        priority    INT DEFAULT 5,
+        is_active   BOOLEAN DEFAULT true,
+        created_at  TIMESTAMP DEFAULT NOW(),
+        updated_at  TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS admin_meal_associations (
+        id            SERIAL PRIMARY KEY,
+        primary_item  VARCHAR(100) NOT NULL,
+        paired_item   VARCHAR(100) NOT NULL,
+        affinity      VARCHAR(50) DEFAULT 'complementary',
+        notes         TEXT,
+        created_at    TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    chefTablesReady = true;
+  } catch (err) {
+    console.warn('[chef_bems_admin] ensureChefTables warning:', err.message);
+  }
+}
 
 // ─── CONVERSATIONS ────────────────────────────────────────────────────────────
 router.get("/conversations", AI_ROLES, async (req, res, next) => {
   try {
+    await ensureChefTables();
     const { search = "", status, page = 1, limit: limitRaw = 20 } = req.query;
     const limit = clampLimit(limitRaw, 20);
     const params = []; const where = [];
     if (search) {
       params.push(`%${search}%`);
-      where.push(`(ac.session_id ILIKE $${params.length} OR ac.title ILIKE $${params.length} OR u.name ILIKE $${params.length} OR ac.guest_identifier ILIKE $${params.length} OR ac.ip_address ILIKE $${params.length})`);
+      where.push(`(ac.session_id ILIKE $${params.length} OR ac.title ILIKE $${params.length} OR u.name ILIKE $${params.length})`);
     }
     where.push("ac.bot_type = 'chef'");
     if (status === "completed") where.push("ac.archived = true");
@@ -29,8 +107,8 @@ router.get("/conversations", AI_ROLES, async (req, res, next) => {
     const [rows, cnt] = await Promise.all([
       pool.query(
         `SELECT ac.*, ac.user_id AS customer_id,
-                COALESCE(u.name, ac.guest_identifier, 'Anonymous Guest') AS customer_name,
-                COALESCE(u.phone, ac.ip_address, '—') AS customer_phone,
+                COALESCE(u.name, 'Customer #' || ac.user_id, 'Anonymous Guest') AS customer_name,
+                COALESCE(u.phone, '—') AS customer_phone,
                 u.email AS customer_email,
                 CASE WHEN ac.archived THEN 'completed' ELSE 'active' END AS status,
                 COALESCE(
@@ -48,16 +126,21 @@ router.get("/conversations", AI_ROLES, async (req, res, next) => {
          ORDER BY ac.last_message_at DESC NULLS LAST, ac.created_at DESC
          LIMIT $${params.length+1} OFFSET $${params.length+2}`,
         [...params, parseInt(limit), offset]
-      ),
-      pool.query(`SELECT COUNT(*) FROM admin_ai_conversations ac LEFT JOIN users u ON u.id = ac.user_id ${clause}`, params),
+      ).catch(() => ({ rows: [] })),
+      pool.query(`SELECT COUNT(*) FROM admin_ai_conversations ac LEFT JOIN users u ON u.id = ac.user_id ${clause}`, params).catch(() => ({ rows: [{ count: '0' }] })),
     ]);
-    res.json({ conversations: rows.rows, total: parseInt(cnt.rows[0].count), page: parseInt(page), pages: Math.ceil(parseInt(cnt.rows[0].count)/parseInt(limit)) });
-  } catch (err) { next(err); }
+    const total = parseInt(cnt.rows[0]?.count || 0);
+    res.json({ conversations: rows.rows || [], total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
+  } catch (err) {
+    console.error("GET /admin/chef-bems/conversations error:", err.message);
+    res.json({ conversations: [], total: 0, page: 1, pages: 1 });
+  }
 });
 
 // ─── AI AUDIT & TOKEN USAGE LOGS ──────────────────────────────────────────
 router.get("/audit-logs", AI_ROLES, async (req, res, next) => {
   try {
+    await ensureChefTables();
     const { search = "", role = "all", status = "all", bot_type = "all", page = 1, limit: limitRaw = 30 } = req.query;
     const limit = clampLimit(limitRaw, 30);
     const params = [];
@@ -95,8 +178,8 @@ router.get("/audit-logs", AI_ROLES, async (req, res, next) => {
          ORDER BY l.created_at DESC
          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, parseInt(limit), offset]
-      ),
-      pool.query(`SELECT COUNT(*) FROM ai_audit_logs l ${clause}`, params),
+      ).catch(() => ({ rows: [] })),
+      pool.query(`SELECT COUNT(*) FROM ai_audit_logs l ${clause}`, params).catch(() => ({ rows: [{ count: '0' }] })),
       pool.query(`
         SELECT 
           COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '24 hours') AS requests_24h,
@@ -110,7 +193,7 @@ router.get("/audit-logs", AI_ROLES, async (req, res, next) => {
 
     const total = parseInt(cnt.rows[0]?.count || 0);
     res.json({
-      logs: rows.rows,
+      logs: rows.rows || [],
       total,
       page: parseInt(page),
       pages: Math.ceil(total / parseInt(limit)) || 1,
@@ -123,11 +206,18 @@ router.get("/audit-logs", AI_ROLES, async (req, res, next) => {
       },
     });
   } catch (err) {
-    next(err);
+    console.error("GET /admin/chef-bems/audit-logs error:", err.message);
+    res.json({
+      logs: [],
+      total: 0,
+      page: 1,
+      pages: 1,
+      stats: { requests_24h: 0, tokens_24h: 0, unique_ips_24h: 0, guest_requests_24h: 0, registered_requests_24h: 0 },
+    });
   }
 });
 
-router.patch("/conversations/:id/status", requireRole("superadmin","manager"), async (req, res, next) => {
+router.patch("/conversations/:id/status", AI_MANAGE_ROLES, async (req, res, next) => {
   try {
     const { status } = req.body;
     const valid = ["active","completed"];
@@ -138,7 +228,7 @@ router.patch("/conversations/:id/status", requireRole("superadmin","manager"), a
   } catch (err) { next(err); }
 });
 
-router.delete("/conversations/:id", requireRole("superadmin"), async (req, res, next) => {
+router.delete("/conversations/:id", AI_MANAGE_ROLES, async (req, res, next) => {
   try {
     await pool.query("DELETE FROM admin_ai_conversations WHERE id=$1 AND bot_type='chef'", [req.params.id]);
     res.json({ message: "Conversation deleted" });
