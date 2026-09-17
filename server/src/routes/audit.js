@@ -55,9 +55,31 @@ router.post('/events', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ── Native GitHub Webhook Handler (No complex custom HMAC needed) ────────────
+const crypto = require('crypto');
+
+function verifyGitHubWebhookSignature(rawBody, signatureHeader, secret) {
+  if (!secret) return true; // Fail-open if secret is not set in environment
+  if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false;
+  try {
+    const hmac = crypto.createHmac('sha256', secret);
+    const digest = 'sha256=' + hmac.update(rawBody || '').digest('hex');
+    return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signatureHeader));
+  } catch {
+    return false;
+  }
+}
+
+// ── Native GitHub Webhook Handler ───────────────────────────────────────────
 router.post(['/github-webhook', '/github'], async (req, res, next) => {
   try {
+    const sig = req.headers['x-hub-signature-256'];
+    if (process.env.GITHUB_WEBHOOK_SECRET) {
+      const isValid = verifyGitHubWebhookSignature(req.rawBody, sig, process.env.GITHUB_WEBHOOK_SECRET);
+      if (!isValid) {
+        return res.status(401).json({ message: 'Invalid GitHub webhook signature' });
+      }
+    }
+
     const eventType = req.headers['x-github-event'] || 'push';
     if (eventType === 'ping') {
       return res.json({ ok: true, message: 'GitHub Webhook successfully received by Bems Farms God Eye!' });

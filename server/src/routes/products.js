@@ -111,6 +111,8 @@ router.get("/:id/reviews/mine", protect, async (req, res, next) => {
   }
 });
 
+const { sanitizeText } = require("../utils/sanitize");
+
 // ── POST /:id/reviews ── one review per user per product; resubmitting edits it
 router.post("/:id/reviews", protect, validate(submitReview), async (req, res, next) => {
   try {
@@ -122,13 +124,15 @@ router.post("/:id/reviews", protect, validate(submitReview), async (req, res, ne
       return res.status(404).json({ message: "Product not found" });
     }
 
+    const cleanComment = sanitizeText(comment, 1500);
+
     const result = await pool.query(
       `INSERT INTO product_reviews (product_id, user_id, rating, body, status, created_at)
        VALUES ($1,$2,$3,$4,'approved',NOW())
        ON CONFLICT (product_id, user_id) DO UPDATE
          SET rating = EXCLUDED.rating, body = EXCLUDED.body
        RETURNING id, rating, body AS comment, created_at`,
-      [id, req.user.id, rating, comment || null],
+      [id, req.user.id, rating, cleanComment || null],
     );
 
     res.status(201).json({
