@@ -18,7 +18,7 @@ router.get("/conversations", AI_ROLES, async (req, res, next) => {
     const params = []; const where = [];
     if (search) {
       params.push(`%${search}%`);
-      where.push(`(ac.session_id ILIKE $${params.length} OR ac.title ILIKE $${params.length} OR u.name ILIKE $${params.length} OR u.phone ILIKE $${params.length})`);
+      where.push(`(ac.session_id ILIKE $${params.length} OR ac.title ILIKE $${params.length} OR u.name ILIKE $${params.length} OR ac.guest_identifier ILIKE $${params.length} OR ac.ip_address ILIKE $${params.length})`);
     }
     where.push("ac.bot_type = 'chef'");
     if (status === "completed") where.push("ac.archived = true");
@@ -29,7 +29,9 @@ router.get("/conversations", AI_ROLES, async (req, res, next) => {
     const [rows, cnt] = await Promise.all([
       pool.query(
         `SELECT ac.*, ac.user_id AS customer_id,
-                u.name AS customer_name, u.phone AS customer_phone,
+                COALESCE(u.name, ac.guest_identifier, 'Anonymous Guest') AS customer_name,
+                COALESCE(u.phone, ac.ip_address, '—') AS customer_phone,
+                u.email AS customer_email,
                 CASE WHEN ac.archived THEN 'completed' ELSE 'active' END AS status,
                 COALESCE(
                   JSON_AGG(JSON_BUILD_OBJECT(
@@ -42,7 +44,7 @@ router.get("/conversations", AI_ROLES, async (req, res, next) => {
          LEFT JOIN users u ON u.id = ac.user_id
          LEFT JOIN ai_conversation_messages m ON m.conversation_id = ac.id
          ${clause}
-         GROUP BY ac.id, u.name, u.phone
+         GROUP BY ac.id, u.name, u.phone, u.email
          ORDER BY ac.last_message_at DESC NULLS LAST, ac.created_at DESC
          LIMIT $${params.length+1} OFFSET $${params.length+2}`,
         [...params, parseInt(limit), offset]
@@ -51,6 +53,78 @@ router.get("/conversations", AI_ROLES, async (req, res, next) => {
     ]);
     res.json({ conversations: rows.rows, total: parseInt(cnt.rows[0].count), page: parseInt(page), pages: Math.ceil(parseInt(cnt.rows[0].count)/parseInt(limit)) });
   } catch (err) { next(err); }
+});
+
+// ─── AI AUDIT & TOKEN USAGE LOGS ──────────────────────────────────────────
+router.get("/audit-logs", AI_ROLES, async (req, res, next) => {
+  try {
+    const { search = "", role = "all", status = "all", bot_type = "all", page = 1, limit: limitRaw = 30 } = req.query;
+    const limit = clampLimit(limitRaw, 30);
+    const params = [];
+    const where = [];
+
+    if (search) {
+      params.push(`%${search}%`);
+      where.push(`(l.prompt ILIKE $${params.length} OR l.response ILIKE $${params.length} OR l.ip_address ILIKE $${params.length} OR l.user_name ILIKE $${params.length} OR l.user_email ILIKE $${params.length})`);
+    }
+
+    if (role && role !== "all") {
+      params.push(role);
+      where.push(`l.user_role = $${params.length}`);
+    }
+
+    if (status && status !== "all") {
+      params.push(status);
+      where.push(`l.status = $${params.length}`);
+    }
+
+    if (bot_type && bot_type !== "all") {
+      params.push(bot_type);
+      where.push(`l.bot_type = $${params.length}`);
+    }
+
+    const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const [rows, cnt, stats] = await Promise.all([
+      pool.query(
+        `SELECT l.*, u.phone AS user_phone
+         FROM ai_audit_logs l
+         LEFT JOIN users u ON u.id = l.user_id
+         ${clause}
+         ORDER BY l.created_at DESC
+         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, parseInt(limit), offset]
+      ),
+      pool.query(`SELECT COUNT(*) FROM ai_audit_logs l ${clause}`, params),
+      pool.query(`
+        SELECT 
+          COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '24 hours') AS requests_24h,
+          COALESCE(SUM(tokens_used) FILTER (WHERE created_at >= NOW() - INTERVAL '24 hours'), 0) AS tokens_24h,
+          COUNT(DISTINCT ip_address) FILTER (WHERE created_at >= NOW() - INTERVAL '24 hours') AS unique_ips_24h,
+          COUNT(*) FILTER (WHERE user_role = 'guest' AND created_at >= NOW() - INTERVAL '24 hours') AS guest_requests_24h,
+          COUNT(*) FILTER (WHERE user_role != 'guest' AND created_at >= NOW() - INTERVAL '24 hours') AS registered_requests_24h
+        FROM ai_audit_logs
+      `).catch(() => ({ rows: [{ requests_24h: 0, tokens_24h: 0, unique_ips_24h: 0, guest_requests_24h: 0, registered_requests_24h: 0 }] })),
+    ]);
+
+    const total = parseInt(cnt.rows[0]?.count || 0);
+    res.json({
+      logs: rows.rows,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / parseInt(limit)) || 1,
+      stats: stats.rows[0] || {
+        requests_24h: 0,
+        tokens_24h: 0,
+        unique_ips_24h: 0,
+        guest_requests_24h: 0,
+        registered_requests_24h: 0,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.patch("/conversations/:id/status", requireRole("superadmin","manager"), async (req, res, next) => {

@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require("../db/pool");
 const jwt  = require("jsonwebtoken");
 const { NAIRA_PER_UNIT } = require("../utils/currency");
+const { recordAiAudit } = require("../services/aiAuditService");
 const {
   buildContextString,
   getOrCreateConversation,
@@ -149,6 +150,14 @@ Which of these catalog products, if any, does the reply recommend or suggest the
 }
 
 router.post("/chef-chat", async (req, res, next) => {
+  const clientIp =
+    req.headers["cf-connecting-ip"] ||
+    req.headers["x-real-ip"] ||
+    (req.headers["x-forwarded-for"] ? req.headers["x-forwarded-for"].split(",")[0].trim() : null) ||
+    req.ip ||
+    req.connection?.remoteAddress ||
+    "127.0.0.1";
+
   try {
     const {
       message,
@@ -169,16 +178,20 @@ router.post("/chef-chat", async (req, res, next) => {
     // Resolve authenticated user (optional)
     const user = await resolveUser(req);
     let contextBlock = null;
-    let conversationId = null;
 
     const customerId = user?.id || bodyUserId || bodyCustomerId || null;
     const customerEmail = user?.email || bodyEmail || bodyCustomerEmail || null;
+    const sessionId = session_id || (customerId ? `user-${customerId}` : (customerEmail ? `guest-${customerEmail}` : `session-${clientIp.replace(/[^a-zA-Z0-9]/g, '')}`));
+    const guestIdentifier = user ? null : (customerEmail ? `Guest (${customerEmail})` : `Guest (${clientIp})`);
+
+    // Always get or create conversation (persisted for both guests & logged in users)
+    const conversationId = await getOrCreateConversation(user?.id || null, sessionId, "chef", {
+      ip_address: clientIp,
+      guest_identifier: guestIdentifier,
+    });
 
     if (user) {
-      [contextBlock, conversationId] = await Promise.all([
-        buildContextString(user.id),
-        session_id ? getOrCreateConversation(user.id, session_id, "chef") : Promise.resolve(null),
-      ]);
+      contextBlock = await buildContextString(user.id);
       trackActivity(user.id, "ai_chat", { entityType: "chat", metadata: { bot: "chef" } });
     }
 
@@ -186,7 +199,6 @@ router.post("/chef-chat", async (req, res, next) => {
     const N8N_WEBHOOK = process.env.N8N_WEBHOOK || "https://bems333.app.n8n.cloud/webhook/chef-bems";
     try {
       console.log("➡️ Forwarding Chef Bems request to n8n webhook...");
-      const sessionId = session_id || (customerId ? `user-${customerId}` : (customerEmail ? `guest-${customerEmail}` : `session-${Date.now()}`));
 
       const n8nRes = await fetch(N8N_WEBHOOK, {
         method: "POST",
@@ -223,6 +235,18 @@ router.post("/chef-chat", async (req, res, next) => {
           maybeSummarizeConversation(conversationId, callGeminiRaw);
           maybeTitleConversation(conversationId, message, callGeminiRaw);
         }
+
+        // Record audit
+        recordAiAudit({
+          req,
+          user,
+          botType: "chef",
+          sessionId,
+          prompt: message,
+          response: reply,
+          source: "n8n",
+          status: "success",
+        });
 
         return res.json({
           reply,
@@ -276,6 +300,18 @@ router.post("/chef-chat", async (req, res, next) => {
         );
         const relatedProducts = await matchProductsInReply(reply, productsResult.rows);
 
+        // Record audit
+        recordAiAudit({
+          req,
+          user,
+          botType: "chef",
+          sessionId,
+          prompt: message,
+          response: reply,
+          source: "gemini",
+          status: "success",
+        });
+
         return res.json({ reply, relatedProducts, source: "gemini" });
       } catch (geminiErr) {
         console.warn("⚠️ Chef Bems Gemini failed:", geminiErr.message);
@@ -294,11 +330,33 @@ router.post("/chef-chat", async (req, res, next) => {
           ]);
           maybeTitleConversation(conversationId, message, callGeminiRaw);
         }
+
+        // Record audit with fallback status
+        recordAiAudit({
+          req,
+          user,
+          botType: "chef",
+          sessionId,
+          prompt: message,
+          response: fallback,
+          source: "fallback",
+          status: "error",
+          errorMessage: geminiErr.message,
+        });
+
         return res.json({ reply: fallback, source: "fallback" });
       }
     }
   } catch (err) {
     console.error("❌ Chef chat error:", err.message);
+    recordAiAudit({
+      req,
+      botType: "chef",
+      prompt: req.body?.message || "",
+      source: "error",
+      status: "error",
+      errorMessage: err.message,
+    });
     next(err);
   }
 });

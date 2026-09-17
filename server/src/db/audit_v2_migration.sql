@@ -121,13 +121,39 @@ BEGIN
 END;
 $$;
 
+-- Create Dedicated AI Audit Logs Table
+CREATE TABLE IF NOT EXISTS ai_audit_logs (
+  id              BIGSERIAL PRIMARY KEY,
+  user_id         INT REFERENCES users(id) ON DELETE SET NULL,
+  user_name       VARCHAR(255) DEFAULT 'Anonymous Guest',
+  user_email      VARCHAR(255),
+  user_role       VARCHAR(50)  DEFAULT 'guest',
+  ip_address      VARCHAR(60),
+  user_agent      TEXT,
+  bot_type        VARCHAR(50)  DEFAULT 'chef',
+  session_id      VARCHAR(120),
+  prompt          TEXT,
+  response        TEXT,
+  tokens_used     INT          DEFAULT 0,
+  source          VARCHAR(50)  DEFAULT 'gemini',
+  status          VARCHAR(30)  DEFAULT 'success',
+  error_message   TEXT,
+  created_at      TIMESTAMPTZ  DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_audit_created ON ai_audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_audit_ip ON ai_audit_logs(ip_address, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_audit_user ON ai_audit_logs(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_audit_bot ON ai_audit_logs(bot_type, created_at DESC);
+
 -- Re-apply triggers to all business tables (idempotent)
 DO $$ DECLARE t record; BEGIN
   FOR t IN SELECT tablename FROM pg_tables WHERE schemaname='public'
-    AND tablename NOT IN ('system_audit_events','ai_user_activity','product_demand_telemetry') LOOP
+    AND tablename NOT IN ('system_audit_events','ai_user_activity','product_demand_telemetry','ai_audit_logs') LOOP
     EXECUTE format('DROP TRIGGER IF EXISTS business_audit_truncate ON public.%I', t.tablename);
     EXECUTE format('CREATE TRIGGER business_audit_truncate AFTER TRUNCATE ON public.%I FOR EACH STATEMENT EXECUTE FUNCTION capture_business_change()',t.tablename);
     EXECUTE format('DROP TRIGGER IF EXISTS business_audit_change ON public.%I', t.tablename);
     EXECUTE format('CREATE TRIGGER business_audit_change AFTER INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION capture_business_change()',t.tablename);
   END LOOP;
 END $$;
+

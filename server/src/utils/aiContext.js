@@ -299,23 +299,43 @@ async function buildContextString(userId) {
 // ════════════════════════════════════════════════════════════════════════════
 // CONVERSATION MANAGEMENT
 // ════════════════════════════════════════════════════════════════════════════
-async function getOrCreateConversation(userId, sessionId, botType = "general") {
+async function getOrCreateConversation(userId, sessionId, botType = "general", meta = {}) {
   try {
-    // Re-use existing open conversation from same session
-    const existing = await pool.query(
-      `SELECT id FROM admin_ai_conversations
-       WHERE user_id=$1 AND session_id=$2 AND bot_type=$3 AND archived=false
-       ORDER BY created_at DESC LIMIT 1`,
-      [userId, sessionId, botType]
-    );
-    if (existing.rows.length) return existing.rows[0].id;
+    const sId = sessionId || `anon-${Date.now()}`;
+    const ip = meta.ip_address || null;
+    const guestId = meta.guest_identifier || (userId ? null : `Guest (${ip || 'Web'})`);
 
-    const result = await pool.query(
-      `INSERT INTO admin_ai_conversations (user_id, session_id, bot_type, message_count, created_at)
-       VALUES ($1,$2,$3,0,NOW()) RETURNING id`,
-      [userId, sessionId, botType]
-    );
-    return result.rows[0].id;
+    if (userId) {
+      const existing = await pool.query(
+        `SELECT id FROM admin_ai_conversations
+         WHERE user_id=$1 AND session_id=$2 AND bot_type=$3 AND archived=false
+         ORDER BY created_at DESC LIMIT 1`,
+        [userId, sId, botType]
+      );
+      if (existing.rows.length) return existing.rows[0].id;
+
+      const result = await pool.query(
+        `INSERT INTO admin_ai_conversations (user_id, session_id, bot_type, ip_address, guest_identifier, message_count, created_at)
+         VALUES ($1,$2,$3,$4,$5,0,NOW()) RETURNING id`,
+        [userId, sId, botType, ip, guestId]
+      );
+      return result.rows[0].id;
+    } else {
+      const existing = await pool.query(
+        `SELECT id FROM admin_ai_conversations
+         WHERE user_id IS NULL AND session_id=$1 AND bot_type=$2 AND archived=false
+         ORDER BY created_at DESC LIMIT 1`,
+        [sId, botType]
+      );
+      if (existing.rows.length) return existing.rows[0].id;
+
+      const result = await pool.query(
+        `INSERT INTO admin_ai_conversations (user_id, session_id, bot_type, ip_address, guest_identifier, message_count, created_at)
+         VALUES (NULL,$1,$2,$3,$4,0,NOW()) RETURNING id`,
+        [sId, botType, ip, guestId]
+      );
+      return result.rows[0].id;
+    }
   } catch (err) {
     console.warn("[aiContext] getOrCreateConversation failed:", err.message);
     return null;
