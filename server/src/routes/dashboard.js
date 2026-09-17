@@ -201,7 +201,7 @@ router.get("/overview", async (req, res, next) => {
 
       // New customer signups this week
       q1(`SELECT COUNT(*) AS count FROM users
-          WHERE joined_at >= NOW() - INTERVAL '7 days'`),
+          WHERE role = 'user' AND joined_at >= NOW() - INTERVAL '7 days'`),
 
       // Staff on duty today
       q1(`SELECT COUNT(*) AS count FROM staff_attendance
@@ -1040,10 +1040,10 @@ router.get("/customers", async (req, res, next) => {
       customerList,
       growthLast6,
     ] = await Promise.all([
-      q1(`SELECT COUNT(*) AS count FROM users WHERE status = 'active'`),
+      q1(`SELECT COUNT(*) AS count FROM users WHERE role = 'user' AND status = 'active'`),
 
       q1(`SELECT COUNT(*) AS count FROM users
-          WHERE ${filter.usersWhere}`),
+          WHERE role = 'user' AND ${filter.usersWhere}`),
 
       q1(`SELECT
             COALESCE(SUM(points_balance), 0) AS total_balance,
@@ -1063,14 +1063,15 @@ router.get("/customers", async (req, res, next) => {
          FROM users c
          LEFT JOIN customer_loyalty cl ON c.id = cl.customer_id
          LEFT JOIN customer_wallets cw ON c.id = cw.customer_id
-         ORDER BY c.total_orders DESC
+         WHERE c.role = 'user' AND COALESCE(c.status, '') != 'deleted'
+         ORDER BY c.total_orders DESC, c.id DESC
          LIMIT 10`),
 
       q(`SELECT
            TO_CHAR(DATE_TRUNC('month', joined_at), 'Mon') AS month,
            COUNT(*) AS new_customers
          FROM users
-         WHERE joined_at >= NOW() - INTERVAL '6 months'
+         WHERE role = 'user' AND joined_at >= NOW() - INTERVAL '6 months'
          GROUP BY DATE_TRUNC('month', joined_at)
          ORDER BY DATE_TRUNC('month', joined_at)`),
     ]);
