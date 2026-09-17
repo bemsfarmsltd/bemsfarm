@@ -162,7 +162,8 @@ function App() {
                 <Route path="/products/import"         element={<Navigate to="/products/add?mode=import" replace />} />
                 <Route path="/products/bulk-import"    element={<Navigate to="/products/add?mode=import" replace />} />
 
-                <Route path="/inventory/stock"      element={<StockList />} />
+                {/* Unified Products & Stock Master */}
+                <Route path="/inventory/stock"      element={<Navigate to="/products" replace />} />
                 <Route path="/inventory/schedule"   element={<PurchaseScheduleCalendar />} />
                 <Route path="/inventory/stock-in"   element={<StockIn />} />
                 <Route path="/inventory/stock-out"  element={<StockOut />} />

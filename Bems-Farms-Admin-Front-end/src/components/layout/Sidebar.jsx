@@ -12,7 +12,7 @@ export default function Sidebar() {
   const CATEGORY_FIRST_ROUTES = {
     dashboards: '/dashboard?tab=overview',
     products: '/products',
-    inventory: '/inventory/stock',
+    inventory: '/products',
     orders: '/orders',
     deliveries: '/deliveries/active',
     customers: '/customers',
@@ -708,8 +708,8 @@ export default function Sidebar() {
             {/* 3. INVENTORY */}
             {activeTab === 'inventory' && (
               <>
-                <NavLink to="/inventory/stock" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                  <span>Stock List</span>
+                <NavLink to="/products" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
+                  <span>Products &amp; Stock Master</span>
                 </NavLink>
                 <NavLink to="/inventory/schedule" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>Restock Calendar</span>
