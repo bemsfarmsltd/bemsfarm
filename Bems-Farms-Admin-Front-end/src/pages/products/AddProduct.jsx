@@ -47,35 +47,27 @@ const BRANDS = [
   { id: 7, name: 'No Brand / Generic' },
 ]
 
-// ── Full product import schema ──────────────────────────────────────────────
+// ── Full product import schema (SKU is auto-generated system-wide) ──────────────
 const PRODUCT_IMPORT_FIELDS = [
   { key: 'name', label: 'Product Name', required: true, section: 'Product Info', example: 'Ofada Rice (5kg Bag)' },
-  { key: 'description', label: 'Description', required: false, section: 'Product Info', example: 'Stone-free premium aromatic brown ofada rice.' },
   { key: 'category', label: 'Category', required: true, section: 'Product Info', example: 'Rice & Grains' },
-  { key: 'brand', label: 'Brand', required: false, section: 'Product Info', example: 'Bems Farms (Own Brand)' },
-  { key: 'unit', label: 'Unit of Measure', required: true, section: 'Product Info', example: 'kg' },
-  { key: 'model_variant', label: 'Model / Variant', required: false, section: 'Product Info', example: '5kg Bag' },
-  { key: 'tags', label: 'Tags', required: false, section: 'Product Info', example: 'Organic, Best Seller' },
+  { key: 'quantity', label: 'Quantity / Count', required: true, section: 'Pricing & Stock', example: '30' },
   { key: 'unit_price', label: 'Unit Price (₦)', required: true, section: 'Pricing & Stock', example: '12500' },
-  { key: 'cost_price', label: 'Cost Price (₦)', required: true, section: 'Pricing & Stock', example: '9800' },
-  { key: 'available_for_sale', label: 'Available for Sale', required: false, section: 'Pricing & Stock', hint: 'yes | no', example: 'yes' },
-  { key: 'stock_qty', label: 'Stock Quantity', required: false, section: 'Pricing & Stock', example: '150' },
-  { key: 'low_stock_alert', label: 'Low Stock Alert', required: false, section: 'Pricing & Stock', example: '15' },
-  { key: 'sku', label: 'SKU', required: true, section: 'Advanced Settings', example: 'RICE-OFA-05KG' },
+  { key: 'cost_price', label: 'Cost Price (₦)', required: false, section: 'Pricing & Stock', example: '9800' },
+  { key: 'unit', label: 'Unit of Measure', required: false, section: 'Product Info', hint: 'kg, pcs, bag, crate, etc.', example: 'kg' },
+  { key: 'brand', label: 'Brand', required: false, section: 'Product Info', example: 'Bems Farms (Own Brand)' },
+  { key: 'model_variant', label: 'Model / Variant', required: false, section: 'Product Info', example: '5kg Bag' },
+  { key: 'description', label: 'Description', required: false, section: 'Product Info', example: 'Stone-free premium aromatic brown ofada rice.' },
   { key: 'barcode', label: 'Barcode', required: false, section: 'Advanced Settings', example: '950110001001' },
-  { key: 'tax', label: 'Tax (%)', required: false, section: 'Advanced Settings', example: '7.5' },
+  { key: 'low_stock_alert', label: 'Low Stock Alert', required: false, section: 'Pricing & Stock', example: '5' },
+  { key: 'available_for_sale', label: 'Available for Sale', required: false, section: 'Pricing & Stock', hint: 'yes | no', example: 'yes' },
   { key: 'track_inventory', label: 'Track Inventory', required: false, section: 'Advanced Settings', hint: 'yes | no', example: 'yes' },
+  { key: 'tax', label: 'Tax (%)', required: false, section: 'Advanced Settings', example: '7.5' },
+  { key: 'tags', label: 'Tags', required: false, section: 'Product Info', example: 'Organic, Best Seller' },
+  { key: 'main_image_url', label: 'Main Image URL', required: false, section: 'Images & Media', example: 'https://images.unsplash.com/photo-rice.jpg' },
   { key: 'expiry_date', label: 'Expiry Date', required: false, section: 'Advanced Settings', hint: 'YYYY-MM-DD', example: '' },
   { key: 'status', label: 'Product Status', required: false, section: 'Advanced Settings', hint: 'active | inactive | draft', example: 'active' },
-  { key: 'hsn_code', label: 'HSN Code', required: false, section: 'Advanced Settings', example: '' },
   { key: 'return_policy', label: 'Return Policy', required: false, section: 'Advanced Settings', hint: 'no_return | 7days | 14days | 30days', example: 'no_return' },
-  { key: 'main_image_url', label: 'Main Image URL', required: true, section: 'Images & Media', example: 'https://images.unsplash.com/photo-rice.jpg' },
-  { key: 'image_2_url', label: 'Image 2 URL', required: false, section: 'Images & Media', example: '' },
-  { key: 'image_3_url', label: 'Image 3 URL', required: false, section: 'Images & Media', example: '' },
-  { key: 'image_4_url', label: 'Image 4 URL', required: false, section: 'Images & Media', example: '' },
-  { key: 'image_title', label: 'Image Title', required: false, section: 'Images & Media', example: '' },
-  { key: 'image_tags', label: 'Image Tags', required: false, section: 'Images & Media', example: '' },
-  { key: 'video_url', label: 'Product Video URL', required: false, section: 'Images & Media', example: '' },
 ]
 
 function downloadCSV(filename, content) {

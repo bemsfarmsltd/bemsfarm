@@ -14,13 +14,29 @@ const { trackActivity } = require("../utils/aiContext");
 router.use(protect);
 
 // ── HELPERS ──────────────────────────────────────────────────────
+async function generateUniqueSKU(clientOrPool, name, categoryId) {
+  const cleanName = (name || "PROD").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  const prefix = cleanName.substring(0, 4) || "ITEM";
+  const cat = String(categoryId || "00").padStart(2, "0");
+
+  for (let i = 0; i < 15; i++) {
+    const rand = Math.floor(Math.random() * 9000 + 1000);
+    const candidate = `${prefix}-${cat}-${rand}`;
+    const check = await clientOrPool.query("SELECT id FROM products WHERE sku=$1", [candidate]);
+    if (check.rows.length === 0) {
+      return candidate;
+    }
+  }
+  return `${prefix}-${cat}-${Date.now().toString().slice(-6)}`;
+}
+
 function generateSKU(name, categoryId) {
-  const prefix = name
+  const prefix = (name || "PROD")
     .replace(/[^a-zA-Z0-9]/g, "")
     .substring(0, 4)
     .toUpperCase();
   const suffix = String(categoryId || "00").padStart(2, "0");
-  const rand = Math.floor(Math.random() * 900 + 100);
+  const rand = Math.floor(Math.random() * 9000 + 1000);
   return `${prefix}-${suffix}-${rand}`;
 }
 
@@ -558,17 +574,19 @@ router.post(
         categoryName = catRow.rows[0]?.name || "";
       }
 
-      // Auto-generate SKU if not provided
-      const sku = req.body.sku?.trim() || generateSKU(name, category_id);
-
-      // Check SKU uniqueness
-      const skuCheck = await client.query(
-        "SELECT id FROM products WHERE sku=$1",
-        [sku],
-      );
-      if (skuCheck.rows.length) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({ message: `SKU "${sku}" already exists` });
+      // Auto-generate SKU if not provided or validate provided SKU
+      let sku = req.body.sku?.trim();
+      if (!sku) {
+        sku = await generateUniqueSKU(client, name, category_id);
+      } else {
+        const skuCheck = await client.query(
+          "SELECT id FROM products WHERE sku=$1",
+          [sku],
+        );
+        if (skuCheck.rows.length) {
+          await client.query("ROLLBACK");
+          return res.status(400).json({ message: `SKU "${sku}" already exists` });
+        }
       }
 
       // Calculate margin
@@ -718,7 +736,6 @@ router.post(
       try {
         if (type === "products") {
           if (!row.name?.trim()) throw new Error("Product name is required");
-          if (!row.sku?.trim()) throw new Error("SKU is required");
 
           // Clean currency & numeric values (handle ₦, $, commas)
           const rawPrice = String(row.unit_price ?? row.price ?? "").replace(/[^0-9.]/g, "");
@@ -727,17 +744,11 @@ router.post(
           }
           const unitPrice = parseFloat(rawPrice);
 
-          const rawStock = String(row.stock_qty ?? row.stock ?? "").replace(/[^0-9]/g, "");
-          if (!rawStock || isNaN(parseInt(rawStock))) {
-            throw new Error("stock_qty is required and must be a number");
-          }
-          const stockQty = parseInt(rawStock);
+          const rawStock = String(row.quantity ?? row.stock_qty ?? row.stock ?? row.qty ?? row.count ?? 0).replace(/[^0-9]/g, "");
+          const incomingStock = rawStock ? parseInt(rawStock, 10) : 0;
 
           const costPrice = row.cost_price ? parseFloat(String(row.cost_price).replace(/[^0-9.]/g, "")) : null;
-          const lowStockAlert = row.low_stock_alert ? parseInt(String(row.low_stock_alert).replace(/[^0-9]/g, "")) : 10;
-          // Some CSV templates (the richer "Add Product" bulk import schema)
-          // use `tax`, the standalone Bulk Import page uses `tax_percent` —
-          // accept either so one endpoint serves both flows.
+          const lowStockAlert = row.low_stock_alert ? parseInt(String(row.low_stock_alert).replace(/[^0-9]/g, ""), 10) : 5;
           const taxInput = row.tax_percent ?? row.tax;
           const taxRate = taxInput ? parseFloat(String(taxInput).replace(/[^0-9.]/g, "")) : 7.5;
 
@@ -779,58 +790,79 @@ router.post(
             categoryId = fallback;
           }
 
-          // Check duplicate SKU
-          const dup = await pool.query("SELECT id FROM products WHERE sku=$1", [row.sku.trim()]);
-          if (dup.rows.length) {
-            if (update_existing) {
-              await pool.query(
-                `UPDATE products
-                 SET name = $1, barcode = COALESCE($2, barcode), category_id = $3,
-                     unit_price = $4, price = $4, cost_price = COALESCE($5, cost_price),
-                     stock = $6, stock_quantity = $6, unit = COALESCE($7, unit),
-                     low_stock_threshold = COALESCE($8, low_stock_threshold),
-                     tax_rate = COALESCE($9, tax_rate), description = COALESCE($10, description),
-                     status = COALESCE($11, status),
-                     available_for_sale = $13, track_inventory = $14,
-                     model_variant = COALESCE($15, model_variant),
-                     tags = COALESCE($16, tags),
-                     image_url = COALESCE($17, image_url),
-                     video_url = COALESCE($18, video_url),
-                     hsn_code = COALESCE($19, hsn_code),
-                     return_policy = COALESCE($20, return_policy),
-                     expiry_date = COALESCE($21, expiry_date),
-                     updated_at = NOW()
-                 WHERE sku = $12`,
-                [
-                  row.name.trim(),
-                  row.barcode?.trim() || null,
-                  categoryId,
-                  unitPrice,
-                  costPrice,
-                  stockQty,
-                  row.unit?.trim() || null,
-                  lowStockAlert,
-                  taxRate,
-                  row.description?.trim() || null,
-                  row.status?.trim() || "active",
-                  row.sku.trim(),
-                  availableForSale,
-                  trackInventory,
-                  row.model_variant?.trim() || null,
-                  tagsArr ? JSON.stringify(tagsArr) : null,
-                  imageUrl,
-                  row.video_url?.trim() || null,
-                  row.hsn_code?.trim() || null,
-                  row.return_policy?.trim() || null,
-                  expiryDate,
-                ]
-              );
-              updated++;
-              continue;
-            } else {
-              throw new Error(`SKU "${row.sku.trim()}" already exists in the system`);
-            }
+          // Duplicate avoidance & Smart Restock:
+          // Check if product already exists by Barcode, SKU (if given), or Product Name
+          let existingProduct = null;
+          if (row.barcode?.trim()) {
+            const byBarcode = await pool.query("SELECT * FROM products WHERE barcode = $1 LIMIT 1", [row.barcode.trim()]);
+            if (byBarcode.rows.length) existingProduct = byBarcode.rows[0];
           }
+          if (!existingProduct && row.sku?.trim()) {
+            const bySku = await pool.query("SELECT * FROM products WHERE sku = $1 LIMIT 1", [row.sku.trim()]);
+            if (bySku.rows.length) existingProduct = bySku.rows[0];
+          }
+          if (!existingProduct) {
+            const byName = await pool.query(
+              "SELECT * FROM products WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1",
+              [row.name.trim()]
+            );
+            if (byName.rows.length) existingProduct = byName.rows[0];
+          }
+
+          if (existingProduct) {
+            // Smart restock: increment stock count and update details
+            await pool.query(
+              `UPDATE products
+               SET stock = stock + $1,
+                   stock_quantity = stock_quantity + $1,
+                   unit_price = COALESCE($2, unit_price),
+                   price = COALESCE($2, price),
+                   cost_price = COALESCE($3, cost_price),
+                   barcode = COALESCE($4, barcode),
+                   unit = COALESCE($5, unit),
+                   low_stock_threshold = COALESCE($6, low_stock_threshold),
+                   tax_rate = COALESCE($7, tax_rate),
+                   description = COALESCE($8, description),
+                   status = COALESCE($9, status),
+                   available_for_sale = $10,
+                   track_inventory = $11,
+                   model_variant = COALESCE($12, model_variant),
+                   tags = COALESCE($13, tags),
+                   image_url = COALESCE($14, image_url),
+                   video_url = COALESCE($15, video_url),
+                   hsn_code = COALESCE($16, hsn_code),
+                   return_policy = COALESCE($17, return_policy),
+                   expiry_date = COALESCE($18, expiry_date),
+                   updated_at = NOW()
+               WHERE id = $19`,
+              [
+                incomingStock,
+                unitPrice,
+                costPrice,
+                row.barcode?.trim() || null,
+                row.unit?.trim() || null,
+                lowStockAlert,
+                taxRate,
+                row.description?.trim() || null,
+                row.status?.trim() || "active",
+                availableForSale,
+                trackInventory,
+                row.model_variant?.trim() || null,
+                tagsArr ? JSON.stringify(tagsArr) : null,
+                imageUrl,
+                row.video_url?.trim() || null,
+                row.hsn_code?.trim() || null,
+                row.return_policy?.trim() || null,
+                expiryDate,
+                existingProduct.id,
+              ]
+            );
+            updated++;
+            continue;
+          }
+
+          // New product: Auto-generate collision-proof unique SKU
+          const newSku = row.sku?.trim() || (await generateUniqueSKU(pool, row.name.trim(), categoryId));
 
           await pool.query(
             `INSERT INTO products
@@ -842,13 +874,13 @@ router.post(
                      $20,$21,$22,$23,NOW(),NOW())`,
             [
               row.name.trim(),
-              row.sku.trim(),
+              newSku,
               row.barcode?.trim() || null,
               categoryId,
               row.sub_category_id ? parseInt(row.sub_category_id) : null,
               unitPrice,
               costPrice,
-              stockQty,
+              incomingStock,
               row.unit?.trim() || null,
               lowStockAlert,
               taxRate,

@@ -57,13 +57,22 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
     if (!csv.trim()) return
     const { headers: h } = parseCSV(csv)
     setHeaders(h)
-    // Auto-map headers that match field keys / labels (case-insensitive)
+    // Auto-map headers that match field keys / labels / synonyms (case-insensitive)
     const auto = {}
     fields.forEach(f => {
-      const hit = h.find(hdr =>
-        hdr.toLowerCase() === f.key.toLowerCase() ||
-        hdr.toLowerCase() === f.label.toLowerCase()
-      )
+      const hit = h.find(hdr => {
+        const clean = hdr.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const fKey = f.key.toLowerCase().replace(/[^a-z0-9]/g, '')
+        const fLabel = f.label.toLowerCase().replace(/[^a-z0-9]/g, '')
+        if (clean === fKey || clean === fLabel) return true
+
+        if (f.key === 'quantity' && ['quantity', 'qty', 'stock', 'stockqty', 'stockquantity', 'count', 'itemcount', 'items'].includes(clean)) return true
+        if (f.key === 'unit_price' && ['unitprice', 'price', 'sellingprice', 'rate', 'unitcost'].includes(clean)) return true
+        if (f.key === 'cost_price' && ['costprice', 'cost', 'purchaseprice', 'buyprice'].includes(clean)) return true
+        if (f.key === 'unit' && ['unit', 'unitofmeasure', 'uom', 'measure'].includes(clean)) return true
+        if (f.key === 'main_image_url' && ['mainimageurl', 'imageurl', 'image', 'picture', 'photo'].includes(clean)) return true
+        return false
+      })
       auto[f.key] = hit || UNMAP
     })
     setMapping(auto)
