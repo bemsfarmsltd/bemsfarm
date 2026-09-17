@@ -398,7 +398,7 @@ export default function AddProduct() {
       rows,
       update_existing: true,
       auto_create_categories: true,
-    })
+    }, { timeout: 180000 })
     const data = res.data
     setImportedCount((data.imported || 0) + (data.updated || 0))
     setImportDone(true)
