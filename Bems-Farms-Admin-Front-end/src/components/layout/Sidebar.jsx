@@ -914,11 +914,6 @@ export default function Sidebar() {
                   </NavLink>
                 )}
                 {is('superadmin', 'admin') && (
-                  <NavLink to="/settings/payment" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
-                    <span>Payment Gateways</span>
-                  </NavLink>
-                )}
-                {is('superadmin', 'admin') && (
                   <NavLink to="/settings/coupons" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                     <span>Discounts &amp; Coupons</span>
                   </NavLink>

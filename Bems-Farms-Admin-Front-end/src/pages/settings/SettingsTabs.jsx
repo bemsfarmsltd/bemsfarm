@@ -3,7 +3,6 @@ import { NavLink, useLocation } from 'react-router-dom'
 const TABS = [
   { to: '/settings/general', label: 'General', icon: 'ri-store-2-line' },
   { to: '/settings/pos', label: 'POS & Receipts', icon: 'ri-computer-line' },
-  { to: '/settings/payment', label: 'Payment Gateways', icon: 'ri-bank-card-line' },
   { to: '/settings/tax', label: 'Tax & VAT', icon: 'ri-percent-line' },
   { to: '/settings/coupons', label: 'Coupons & Promos', icon: 'ri-coupon-3-line' },
   { to: '/settings/currencies', label: 'Currencies', icon: 'ri-money-dollar-circle-line' },
