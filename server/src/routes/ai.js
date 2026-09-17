@@ -175,25 +175,41 @@ router.post("/chef-chat", async (req, res, next) => {
       return res.status(400).json({ message: "message string required" });
     }
 
-    // Resolve authenticated user (optional)
+    // Resolve authenticated user — mandatory requirement: user MUST be registered
     const user = await resolveUser(req);
-    let contextBlock = null;
+    if (!user) {
+      // Record unauthorized guest attempt in AI audit logs
+      recordAiAudit({
+        req,
+        user: null,
+        botType: "chef",
+        sessionId: session_id || `guest-${clientIp.replace(/[^a-zA-Z0-9]/g, '')}`,
+        prompt: message,
+        response: "Blocked: Registration required to chat with Chef Bems AI.",
+        source: "auth_guard",
+        status: "unauthorized",
+        errorMessage: "Unregistered visitor attempted AI chat without an account.",
+      });
 
-    const customerId = user?.id || bodyUserId || bodyCustomerId || null;
-    const customerEmail = user?.email || bodyEmail || bodyCustomerEmail || null;
-    const sessionId = session_id || (customerId ? `user-${customerId}` : (customerEmail ? `guest-${customerEmail}` : `session-${clientIp.replace(/[^a-zA-Z0-9]/g, '')}`));
-    const guestIdentifier = user ? null : (customerEmail ? `Guest (${customerEmail})` : `Guest (${clientIp})`);
+      return res.status(401).json({
+        message: "Please sign in or create an account to chat with Chef Bems AI.",
+        requireAuth: true,
+        reply: "🔒 Chef Bems AI is exclusively available to registered members. Please sign in or create an account to start cooking and chatting with me!",
+      });
+    }
 
-    // Always get or create conversation (persisted for both guests & logged in users)
-    const conversationId = await getOrCreateConversation(user?.id || null, sessionId, "chef", {
+    let contextBlock = await buildContextString(user.id);
+    const customerId = user.id;
+    const customerEmail = user.email;
+    const sessionId = session_id || `user-${customerId}`;
+
+    // Always get or create conversation for the registered user
+    const conversationId = await getOrCreateConversation(user.id, sessionId, "chef", {
       ip_address: clientIp,
-      guest_identifier: guestIdentifier,
+      guest_identifier: user.name || user.email,
     });
 
-    if (user) {
-      contextBlock = await buildContextString(user.id);
-      trackActivity(user.id, "ai_chat", { entityType: "chat", metadata: { bot: "chef" } });
-    }
+    trackActivity(user.id, "ai_chat", { entityType: "chat", metadata: { bot: "chef" } });
 
     // 1. Try calling the n8n webhook first (prevents client-side CORS issues)
     const N8N_WEBHOOK = process.env.N8N_WEBHOOK || "https://bems333.app.n8n.cloud/webhook/chef-bems";
@@ -537,6 +553,14 @@ Keep ingredient names simple (e.g. "tomatoes", "pepper", "onion", "ugu", "beans"
 
 router.post("/visual-scan", async (req, res, next) => {
   try {
+    const user = await resolveUser(req);
+    if (!user) {
+      return res.status(401).json({
+        message: "Please sign in or create an account to use the AI visual ingredient scanner.",
+        requireAuth: true,
+      });
+    }
+
     const { image } = req.body;
     if (!image) {
       return res.status(400).json({ message: "Image data is required" });

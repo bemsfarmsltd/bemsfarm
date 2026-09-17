@@ -79,6 +79,18 @@ export default function AIChatbot() {
     const userMsg = { role: "user", content };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
+
+    if (!user) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "🔒 Chef Bems AI is exclusively available to registered members. Please sign in or create an account to chat with me!",
+        },
+      ]);
+      return;
+    }
+
     setLoading(true);
 
     try {

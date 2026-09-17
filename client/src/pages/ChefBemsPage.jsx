@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Link } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
@@ -200,37 +201,37 @@ export default function ChefBemsPage() {
     }
   };
 
-  const handleImageUpload = async (e) => {
+  const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
-    if (!file || loading) return;
+    if (!file) return;
+
+    if (!user) {
+      addMessage({
+        id: `${Date.now()}-auth`,
+        role: "assistant",
+        content: "🔒 **Registration Required**: Chef Bems AI and the ingredient scanner are exclusively available to registered members.\n\nPlease [Sign In](/login) or [Create a Free Account](/register) to start cooking and chatting with me!",
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
 
     const reader = new FileReader();
-    reader.onload = async () => {
-      const base64Data = reader.result;
-      setUploadedPreview(null);
-      
-      const userMsg = {
-        id: `${Date.now()}-u`,
+    reader.onload = async (evt) => {
+      const base64Data = evt.target.result;
+      setUploadedPreview(base64Data);
+
+      addMessage({
+        id: `${Date.now()}-u-img`,
         role: "user",
-        content: "Here is a photo of my pantry ingredients. What can I cook with these?",
-        image: base64Data,
+        content: "[Photo of kitchen ingredients uploaded for AI scanning]",
         timestamp: new Date().toISOString(),
-      };
-      
-      addMessage(userMsg);
+      });
+
       setLoading(true);
-      
       try {
-        const payload = {
-          image: base64Data,
-          cartItems: cartItems
-            .map((i) => i.product?.name || i.name)
-            .filter(Boolean),
-        };
-        
-        const res = await api.post("/ai/visual-scan", payload);
+        const res = await api.post("/ai/visual-scan", { image: base64Data });
         const data = res.data;
-        
+
         addMessage({
           id: `${Date.now()}-a`,
           role: "assistant",
@@ -242,7 +243,7 @@ export default function ChefBemsPage() {
         addMessage({
           id: `${Date.now()}-e`,
           role: "assistant",
-          content: "The visual scanner encountered an issue. Please describe your ingredients in text and I will help you right away.",
+          content: err.response?.data?.message || "The visual scanner encountered an issue. Please describe your ingredients in text and I will help you right away.",
           timestamp: new Date().toISOString(),
           isError: true,
         });
@@ -279,6 +280,17 @@ export default function ChefBemsPage() {
       timestamp: new Date().toISOString(),
     };
     addMessage(userMsg);
+
+    if (!user) {
+      addMessage({
+        id: `${Date.now()}-auth`,
+        role: "assistant",
+        content: "🔒 **Registration Required**: Chef Bems AI is exclusively available to registered members.\n\nPlease [Sign In](/login) or [Create a Free Account](/register) to start cooking, saving recipes, and chatting with me!",
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -801,6 +813,24 @@ export default function ChefBemsPage() {
           <div className="p-3 sm:p-4 bg-white/95 backdrop-blur-md border-t border-[#EAE3D2] shrink-0 sticky bottom-0 z-20">
             <div className="mx-auto max-w-3xl">
               
+              {/* Unregistered Member Alert Banner */}
+              {!user && (
+                <div className="mb-3 p-3 rounded-2xl bg-amber-50 border border-amber-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 shadow-xs">
+                  <div className="flex items-center gap-2.5 text-xs text-amber-950 font-medium text-center sm:text-left">
+                    <span className="text-base">🔒</span>
+                    <span>Chef Bems AI is reserved for registered members. Sign in or create an account to start cooking!</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Link to="/login" className="px-3 py-1.5 rounded-xl bg-white border border-amber-300 text-xs font-extrabold text-amber-950 hover:bg-amber-100 transition shadow-2xs">
+                      Sign In
+                    </Link>
+                    <Link to="/register" className="px-3.5 py-1.5 rounded-xl bg-amber-400 text-xs font-black text-[#0A2E1C] hover:bg-amber-300 transition shadow-xs">
+                      Register Free
+                    </Link>
+                  </div>
+                </div>
+              )}
+
               {/* Hidden file input for camera / pantry scanner */}
               <input
                 type="file"
