@@ -360,32 +360,47 @@ export default function ImportModal({ entityName, fields, onImport, onClose }) {
                   )}
 
                   {/* Row table */}
-                  <div className="table-responsive" style={{ maxHeight:280 }}>
-                    <table className="table table-sm align-middle mb-0" style={{ fontSize:13 }}>
-                      <thead className="table-light sticky-top">
+                  <div className="table-responsive border rounded" style={{ maxHeight: '420px', overflowX: 'auto', overflowY: 'auto' }}>
+                    <table className="table table-sm align-middle mb-0" style={{ fontSize: 13, minWidth: '1500px' }}>
+                      <thead className="table-light sticky-top shadow-sm" style={{ zIndex: 5 }}>
                         <tr>
-                          <th style={{ width:50 }}>#</th>
-                          {fields.map(f => <th key={f.key}>{f.label}</th>)}
-                          <th style={{ width:100 }}>Status</th>
-                          <th>Issues</th>
+                          <th style={{ width: 50, whiteSpace: 'nowrap' }}>#</th>
+                          {fields.map(f => (
+                            <th key={f.key} style={{ minWidth: f.key === 'description' ? 240 : f.key === 'main_image_url' || f.key === 'image_url' ? 200 : 120, whiteSpace: 'nowrap' }}>
+                              {f.label}
+                            </th>
+                          ))}
+                          <th style={{ width: 100, whiteSpace: 'nowrap' }}>Status</th>
+                          <th style={{ minWidth: 150, whiteSpace: 'nowrap' }}>Issues</th>
                         </tr>
                       </thead>
                       <tbody>
                         {[...results.valid, ...results.invalid].sort((a,b) => a.rowNum - b.rowNum).map(r => (
-                          <tr key={r.rowNum} style={{ borderLeft: r.errors?.length > 0 ? '3px solid #f06548' : '3px solid #0ab39c' }}>
-                            <td className="text-muted">{r.rowNum}</td>
-                            {fields.map(f => (
-                              <td key={f.key} className={!r.data[f.key] && f.required ? 'text-danger fw-medium' : ''}>
-                                {r.data[f.key] || <span className="text-muted">—</span>}
-                              </td>
-                            ))}
-                            <td>
+                          <tr key={r.rowNum} style={{ borderLeft: r.errors?.length > 0 ? '4px solid #f06548' : '4px solid #0ab39c' }}>
+                            <td className="text-muted fw-semibold" style={{ whiteSpace: 'nowrap' }}>{r.rowNum}</td>
+                            {fields.map(f => {
+                              const val = r.data[f.key];
+                              const isImg = (f.key === 'main_image_url' || f.key === 'image_url') && val;
+                              return (
+                                <td key={f.key} className={!val && f.required ? 'text-danger fw-medium' : ''} style={{ whiteSpace: 'nowrap', maxWidth: f.key === 'description' ? 300 : 'none', overflow: 'hidden', textOverflow: 'ellipsis' }} title={String(val || '')}>
+                                  {isImg ? (
+                                    <div className="d-flex align-items-center gap-2">
+                                      <img src={val} alt="preview" style={{ width: 26, height: 26, objectFit: 'cover', borderRadius: 4, border: '1px solid #e2e8f0' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                                      <span className="text-truncate" style={{ maxWidth: 160, fontSize: 11 }}>{val}</span>
+                                    </div>
+                                  ) : (
+                                    val || <span className="text-muted">—</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                            <td style={{ whiteSpace: 'nowrap' }}>
                               {r.errors?.length > 0
                                 ? <span className="badge bg-danger-subtle text-danger"><i className="ri-close-circle-line me-1"></i>Invalid</span>
                                 : <span className="badge bg-success-subtle text-success"><i className="ri-checkbox-circle-line me-1"></i>Valid</span>
                               }
                             </td>
-                            <td className="text-danger" style={{ fontSize:11 }}>
+                            <td className="text-danger" style={{ fontSize: 11, whiteSpace: 'normal', minWidth: 150 }}>
                               {r.errors?.join(' · ') || ''}
                             </td>
                           </tr>
