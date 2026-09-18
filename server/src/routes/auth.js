@@ -9,6 +9,7 @@ const { sendPasswordResetEmail, sendWelcomeEmail } = require("../services/emailS
 const validate = require("../middleware/validate");
 const authSchemas = require("../schemas/authSchemas");
 const { recordAuditRich } = require('../services/auditService');
+const { detectChannel } = require('../utils/channel');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -214,11 +215,15 @@ router.post("/login", validate(authSchemas.login), async (req, res, next) => {
 
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user.id);
+    const channel = detectChannel(req);
 
     await pool.query(
-      "UPDATE users SET refresh_token=$1, last_login=NOW() WHERE id=$2",
-      [refreshToken, user.id],
-    );
+      "UPDATE users SET refresh_token=$1, last_login=NOW(), last_channel=$3 WHERE id=$2",
+      [refreshToken, user.id, channel],
+    ).catch(() => {
+      // Fallback if last_channel column doesn't exist yet
+      return pool.query("UPDATE users SET refresh_token=$1, last_login=NOW() WHERE id=$2", [refreshToken, user.id]);
+    });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
@@ -875,11 +880,14 @@ router.post("/verify-email", validate(authSchemas.verifyEmail), async (req, res,
     
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user.id);
+    const channel = detectChannel(req);
 
     await pool.query(
-      "UPDATE users SET email_verified = true, verification_token = NULL, refresh_token = $1, last_login = NOW() WHERE id = $2",
-      [refreshToken, user.id]
-    );
+      "UPDATE users SET email_verified = true, verification_token = NULL, refresh_token = $1, last_login = NOW(), last_channel = $3 WHERE id = $2",
+      [refreshToken, user.id, channel]
+    ).catch(() => {
+      return pool.query("UPDATE users SET email_verified = true, verification_token = NULL, refresh_token = $1, last_login = NOW() WHERE id = $2", [refreshToken, user.id]);
+    });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
@@ -1030,12 +1038,15 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
 
     const token = generateAccessToken(user);
     const nameParts = (user.name || "").trim().split(" ");
+    const channel = detectChannel(req);
 
     // The password-login route above stamps last_login on every successful
     // sign-in; this Google route never did, so any account that only ever
     // signs in via Google always showed "Never Logged In" on the admin
     // Customer Detail page regardless of how recently they'd actually used it.
-    await pool.query("UPDATE users SET last_login=NOW() WHERE id=$1", [user.id]);
+    await pool.query("UPDATE users SET last_login=NOW(), last_channel=$2 WHERE id=$1", [user.id, channel]).catch(() => {
+      return pool.query("UPDATE users SET last_login=NOW() WHERE id=$1", [user.id]);
+    });
 
     const clientIP = req.ip || req.connection?.remoteAddress || "unknown";
     upsertContext(user.id, {

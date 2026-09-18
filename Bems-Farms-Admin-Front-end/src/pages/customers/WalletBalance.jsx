@@ -196,18 +196,21 @@ export default function WalletBalance() {
               <table className="table table-hover align-middle mb-0" style={{fontSize:13}}>
                 <thead style={{background:'#f8fafc'}}>
                   <tr>
-                    {['CUSTOMER','TIER','WALLET BALANCE','TOTAL TOPPED UP',''].map(h=>(
+                    {['CUSTOMER','CHANNEL','TIER','WALLET BALANCE','TOTAL TOPPED UP',''].map(h=>(
                       <th key={h} className="px-3 py-2 fw-medium text-muted" style={{fontSize:11}}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loading && (
-                    <tr><td colSpan={5} className="text-center py-5 text-muted">Loading…</td></tr>
+                    <tr><td colSpan={6} className="text-center py-5 text-muted">Loading…</td></tr>
                   )}
                   {!loading && filteredCust.map((c,i) => {
                     const tc = TIER_CFG[c.tier] || TIER_CFG.Bronze
                     const balance = Number(c.wallet_balance || 0)
+                    const ch = (c.last_channel || 'web').toLowerCase()
+                    const isApp = ch === 'app' || ch === 'mobile'
+                    const isPos = ch === 'pos'
                     return (
                       <tr key={c.id}>
                         <td className="px-3 py-2">
@@ -221,6 +224,20 @@ export default function WalletBalance() {
                               <div className="text-muted" style={{fontSize:11}}>{c.phone}</div>
                             </div>
                           </div>
+                        </td>
+                        <td className="px-3 py-2 text-nowrap">
+                          <span className="badge d-inline-flex align-items-center gap-1 shadow-xs"
+                            style={{
+                              fontSize: 10,
+                              background: isApp ? '#ecfdf5' : isPos ? '#fffbeb' : '#eff6ff',
+                              color: isApp ? '#059669' : isPos ? '#d97706' : '#2563eb',
+                              border: `1px solid ${isApp ? '#a7f3d0' : isPos ? '#fde68a' : '#bfdbfe'}`,
+                              padding: '3px 7px',
+                              borderRadius: 4
+                            }}>
+                            <i className={isApp ? 'ri-smartphone-line' : isPos ? 'ri-store-2-line' : 'ri-global-line'} />
+                            <span>{isApp ? 'Mobile App' : isPos ? 'POS' : 'Web'}</span>
+                          </span>
                         </td>
                         <td className="px-3 py-2">
                           <span className="badge" style={{fontSize:10,background:tc.bg,color:tc.color,border:`1px solid ${tc.border}`}}>
@@ -483,7 +500,13 @@ export default function WalletBalance() {
                       <i className={tc.icon} style={{color:tc.color,fontSize:14}}/>
                     </div>
                     <div className="flex-fill">
-                      <div style={{fontSize:13}}>{tc.label} — {h.payment_method}</div>
+                      <div className="d-flex align-items-center gap-1.5">
+                        <span style={{fontSize:13, fontWeight: 600}}>{tc.label} — {h.payment_method}</span>
+                        <span className="badge bg-light text-dark border" style={{ fontSize: 10, textTransform: 'capitalize' }}>
+                          <i className={h.channel === 'app' ? 'ri-smartphone-line me-0.5' : h.channel === 'pos' ? 'ri-store-2-line me-0.5' : h.channel === 'admin' ? 'ri-shield-user-line me-0.5' : 'ri-global-line me-0.5'} />
+                          {h.channel || 'Web'}
+                        </span>
+                      </div>
                       <div className="text-muted" style={{fontSize:11}}>{h.reference} · {fmtDate(h.created_at)}</div>
                       {h.description && <div className="text-muted" style={{fontSize:10,fontStyle:'italic'}}>{h.description}</div>}
                     </div>

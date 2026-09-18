@@ -962,12 +962,13 @@ router.post(
                 existingProduct.id,
               ]
             );
-            if (existingProduct.id && expiryDate) {
+            if (existingProduct.id && (incomingStock > 0 || expiryDate)) {
               const batchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${existingProduct.id}-${Date.now().toString().slice(-4)}`;
+              const effectiveExp = expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
               await pool.query(
                 `INSERT INTO batch_management (product_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
                  VALUES ($1, $2, $3, $4, $5, 'active', NOW(), NOW())`,
-                [existingProduct.id, batchNo, incomingStock, costPrice, expiryDate]
+                [existingProduct.id, batchNo, incomingStock, costPrice, effectiveExp]
               ).catch(() => {});
             }
             updated++;
@@ -1017,12 +1018,13 @@ router.post(
             ],
           );
           const newProdId = insRes.rows[0]?.id;
-          if (newProdId && expiryDate) {
-            const batchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${newProdId}`;
+          if (newProdId && (incomingStock > 0 || expiryDate)) {
+            const batchNo = `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${newProdId}-${Date.now().toString().slice(-4)}`;
+            const effectiveExp = expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
             await pool.query(
               `INSERT INTO batch_management (product_id, batch_no, quantity, cost_price, expiry_date, status, received_at, created_at)
                VALUES ($1, $2, $3, $4, $5, 'active', NOW(), NOW())`,
-              [newProdId, batchNo, incomingStock, costPrice, expiryDate]
+              [newProdId, batchNo, incomingStock, costPrice, effectiveExp]
             ).catch(() => {});
           }
           imported++;

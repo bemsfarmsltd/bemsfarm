@@ -11,6 +11,40 @@ const fmtDate = d => {
   return isNaN(date.getTime()) ? '—' : date.toISOString().slice(0, 10)
 }
 
+function ChannelBadge({ channel }) {
+  const c = String(channel || 'web').toLowerCase()
+  if (c.includes('app') || c.includes('mobile')) {
+    return (
+      <span className="badge d-inline-flex align-items-center gap-1"
+        style={{fontSize:10,background:'#ecfdf5',color:'#059669',border:'1px solid #a7f3d0',fontWeight:500,padding:'2px 6px'}}>
+        <i className="ri-smartphone-line" style={{fontSize:11}}/> Mobile App
+      </span>
+    )
+  }
+  if (c.includes('pos')) {
+    return (
+      <span className="badge d-inline-flex align-items-center gap-1"
+        style={{fontSize:10,background:'#fffbeb',color:'#d97706',border:'1px solid #fde68a',fontWeight:500,padding:'2px 6px'}}>
+        <i className="ri-store-2-line" style={{fontSize:11}}/> POS
+      </span>
+    )
+  }
+  if (c.includes('admin') || c.includes('system')) {
+    return (
+      <span className="badge d-inline-flex align-items-center gap-1"
+        style={{fontSize:10,background:'#f8fafc',color:'#475569',border:'1px solid #cbd5e1',fontWeight:500,padding:'2px 6px'}}>
+        <i className="ri-shield-user-line" style={{fontSize:11}}/> Admin
+      </span>
+    )
+  }
+  return (
+    <span className="badge d-inline-flex align-items-center gap-1"
+      style={{fontSize:10,background:'#eff6ff',color:'#2563eb',border:'1px solid #bfdbfe',fontWeight:500,padding:'2px 6px'}}>
+      <i className="ri-global-line" style={{fontSize:11}}/> Web
+    </span>
+  )
+}
+
 const TIER_CFG = {
   Platinum:{ bg:'#f5f3ff', color:'#7c3aed', border:'#ddd6fe', icon:'ri-vip-crown-2-fill',  min:10000, next:null,    label:'Platinum' },
   Gold:    { bg:'#fffbeb', color:'#d97706', border:'#fde68a', icon:'ri-medal-2-fill',        min:5000,  next:'Platinum',label:'Gold'  },
@@ -145,14 +179,14 @@ export default function LoyaltyPoints() {
               <table className="table table-hover align-middle mb-0" style={{fontSize:13}}>
                 <thead style={{background:'#f8fafc'}}>
                   <tr>
-                    {['CUSTOMER','TIER','POINTS BALANCE','LIFETIME PTS','LAST EARNED',''].map(h=>(
+                    {['CUSTOMER','CHANNEL','TIER','POINTS BALANCE','LIFETIME PTS','LAST EARNED',''].map(h=>(
                       <th key={h} className="px-3 py-2 fw-medium text-muted" style={{fontSize:11}}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loading && (
-                    <tr><td colSpan={6} className="text-center py-5 text-muted">Loading…</td></tr>
+                    <tr><td colSpan={7} className="text-center py-5 text-muted">Loading…</td></tr>
                   )}
                   {!loading && filtered.map((c,i) => {
                     const tc = TIER_CFG[c.tier] || TIER_CFG.Bronze
@@ -171,6 +205,9 @@ export default function LoyaltyPoints() {
                               <div className="text-muted" style={{fontSize:11}}>{c.customer_code}</div>
                             </div>
                           </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <ChannelBadge channel={c.last_channel || 'web'} />
                         </td>
                         <td className="px-3 py-2">
                           <span className="badge d-flex align-items-center gap-1"
@@ -225,7 +262,10 @@ export default function LoyaltyPoints() {
                       style={{fontSize:13,color:h.type==='earned'?'#22c55e':h.type==='redeemed'||h.type==='deducted'?'#ef4444':'#8b5cf6'}}/>
                   </div>
                   <div className="flex-fill">
-                    <div style={{fontSize:12,fontWeight:500}}>{h.customer_name}</div>
+                    <div className="d-flex align-items-center gap-2">
+                      <span style={{fontSize:12,fontWeight:500}}>{h.customer_name}</span>
+                      <ChannelBadge channel={h.channel || 'web'} />
+                    </div>
                     <div className="text-muted" style={{fontSize:10,marginTop:2,lineHeight:1.4}}>{h.description}</div>
                     <div className="text-muted" style={{fontSize:10}}>{fmtDate(h.created_at)}</div>
                   </div>

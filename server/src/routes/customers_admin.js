@@ -13,7 +13,28 @@ const { clampLimit } = require("../utils/pagination");
 const { initCrmTables } = require("../db/migrate_crm_chat_broadcast");
 const { recordAuditRich } = require('../services/auditService');
 
+let schemaEnsured = false;
+async function ensureCustomerChannelColumns() {
+  if (schemaEnsured) return;
+  try {
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_channel VARCHAR(30) DEFAULT 'web';
+      ALTER TABLE ai_user_activity ADD COLUMN IF NOT EXISTS channel VARCHAR(30) DEFAULT 'web';
+      ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS channel VARCHAR(30) DEFAULT 'web';
+      ALTER TABLE loyalty_transactions ADD COLUMN IF NOT EXISTS channel VARCHAR(30) DEFAULT 'web';
+    `);
+    schemaEnsured = true;
+  } catch (err) {
+    console.warn("ensureCustomerChannelColumns warning:", err.message);
+  }
+}
+ensureCustomerChannelColumns();
+
 router.use(protect);
+router.use(async (req, res, next) => {
+  await ensureCustomerChannelColumns();
+  next();
+});
 
 // ── GET /api/admin/customers ──────────────────────────────────────
 router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cashier"), async (req, res, next) => {
@@ -82,6 +103,7 @@ router.get("/", requireRole("superadmin", "manager", "admin", "accountant", "cas
         c.name, c.phone, c.email,
         c.address AS zone, c.status, c.total_orders, c.total_spent,
         c.joined_at, c.last_order_at, c.last_login,
+        COALESCE(c.last_channel, 'web') AS last_channel,
         COALESCE(cl.points_balance, 0) AS points,
         COALESCE(cl.lifetime_points, 0) AS lifetime_points,
         cl.last_earned_at,
@@ -441,8 +463,11 @@ router.get("/site-activity", requireRole("superadmin", "manager", "admin"), asyn
 
     const [result, countRow, typeCounts] = await Promise.all([
       pool.query(
-        `SELECT a.id, a.type, a.entity_type, a.entity_id, a.metadata - 'ip_address' - 'user_agent' AS metadata, a.created_at,
-                u.id AS user_id, u.name AS user_name, u.email AS user_email
+        `SELECT a.id, a.type, a.entity_type, a.entity_id, a.metadata - 'ip_address' - 'user_agent' AS metadata,
+                COALESCE(a.channel, a.metadata->>'channel', u.last_channel, 'web') AS channel,
+                a.created_at,
+                u.id AS user_id, u.name AS user_name, u.email AS user_email,
+                COALESCE(u.last_channel, 'web') AS user_last_channel
          FROM ai_user_activity a
          LEFT JOIN users u ON u.id = a.user_id
          ${clause}
@@ -702,10 +727,11 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "
 
     const customer = result.rows[0];
 
-    // Orders with items summary, payment method, delivery status
+    // Orders with items summary, payment method, delivery status, and channel
     const orders = await pool.query(
       `
-      SELECT id, total, status, delivery_status, payment_method, created_at,
+      SELECT id, total, status, delivery_status, payment_method,
+             COALESCE(source, 'web') AS channel, created_at,
         (SELECT STRING_AGG(COALESCE(oi.product_name, p.name) || ' ×' || oi.quantity, ', ')
          FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id
          WHERE oi.order_id = o.id) AS items_summary,
@@ -721,7 +747,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "
     // Loyalty transactions
     const loyalty = await pool.query(
       `
-      SELECT type, description, points, created_at
+      SELECT type, description, points, COALESCE(channel, 'web') AS channel, created_at
       FROM loyalty_transactions
       WHERE customer_id = $1
       ORDER BY created_at DESC
@@ -738,15 +764,30 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "accountant", "
 
     // Activity log from ai_user_activity
     const activity = await pool.query(
-      `SELECT id, type, entity_type, entity_id, metadata, ip_address, created_at FROM ai_user_activity WHERE user_id = $1 ORDER BY created_at DESC LIMIT 35`,
+      `SELECT id, type, entity_type, entity_id, metadata,
+              COALESCE(channel, metadata->>'channel', 'web') AS channel,
+              ip_address, created_at
+       FROM ai_user_activity WHERE user_id = $1 ORDER BY created_at DESC LIMIT 35`,
       [customer.id],
     ).catch(() => ({ rows: [] }));
 
-    // Wallet activity ledger
+    // Wallet activity ledger (supports both wallet_transactions and legacy customer_wallet_transactions)
     const wallet = await pool.query(
-      `SELECT id, type, amount, balance_after, note, created_at FROM customer_wallet_transactions WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 20`,
+      `SELECT id, type, amount, balance_after,
+              COALESCE(description, '') AS note,
+              COALESCE(channel, 'web') AS channel,
+              created_at
+       FROM wallet_transactions WHERE customer_id = $1
+       ORDER BY created_at DESC LIMIT 25`,
       [customer.id],
-    ).catch(() => ({ rows: [] }));
+    ).catch(async () => {
+      return pool.query(
+        `SELECT id, type, amount, balance_after, note, 'web' AS channel, created_at
+         FROM customer_wallet_transactions WHERE customer_id = $1
+         ORDER BY created_at DESC LIMIT 25`,
+        [customer.id],
+      ).catch(() => ({ rows: [] }));
+    });
 
     // AI context and preferences
     const aiContext = await pool.query(
@@ -1241,8 +1282,9 @@ router.get("/loyalty/activity", requireRole("superadmin", "manager", "admin", "a
     }
     params.push(clampLimit(limitRaw, 30));
     const result = await pool.query(
-      `SELECT lt.id, lt.type, lt.points, lt.description, lt.created_at,
-              c.id AS customer_id, c.customer_code, c.name AS customer_name
+      `SELECT lt.id, lt.type, lt.points, lt.description, COALESCE(lt.channel, 'web') AS channel, lt.created_at,
+              c.id AS customer_id, c.customer_code, c.name AS customer_name,
+              COALESCE(c.last_channel, 'web') AS customer_channel
        FROM loyalty_transactions lt
        JOIN users c ON c.id = lt.customer_id
        ${where.length ? "WHERE " + where.join(" AND ") : ""}
@@ -1269,8 +1311,9 @@ router.get("/wallet/activity", requireRole("superadmin", "manager", "admin", "ac
     params.push(clampLimit(limitRaw, 30));
     const result = await pool.query(
       `SELECT wt.id, wt.type, wt.amount, wt.balance_after, wt.reference,
-              wt.payment_method, wt.description, wt.created_at,
-              c.id AS customer_id, c.customer_code, c.name AS customer_name
+              wt.payment_method, wt.description, COALESCE(wt.channel, 'web') AS channel, wt.created_at,
+              c.id AS customer_id, c.customer_code, c.name AS customer_name,
+              COALESCE(c.last_channel, 'web') AS customer_channel
        FROM wallet_transactions wt
        JOIN users c ON c.id = wt.customer_id
        ${where.length ? "WHERE " + where.join(" AND ") : ""}

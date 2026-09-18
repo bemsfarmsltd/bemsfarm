@@ -15,6 +15,7 @@
  */
 const { randomUUID, createHmac, timingSafeEqual } = require('crypto');
 const pool = require('../db/pool');
+const { detectChannel } = require('../utils/channel');
 
 // ────────────────────────────────────────────────────────────
 // Internal state
@@ -357,6 +358,7 @@ function auditRequests(req, res, next) {
     const freshLocation = extractLocation(req, ip) || location;
 
     // Action format: "METHOD /path" e.g. "PATCH /api/admin/staff/102"
+    const channel = detectChannel(req);
     const actionLabel = `${req.method} ${fullPath}`;
 
     recordAudit({
@@ -377,6 +379,7 @@ function auditRequests(req, res, next) {
       session_id:  sessionId,
       location:    freshLocation?.display || null,
       details: {
+        channel,
         status:      res.statusCode,
         status_code: res.statusCode,
         duration_ms: Date.now() - started,
@@ -408,6 +411,7 @@ function recordSecurityEvent(req, action, details = {}) {
   const location  = extractLocation(req, ip);
   prefetchIpGeo(ip);
   const userAgent = (req.headers['user-agent'] || '').slice(0, 300);
+  const channel   = detectChannel(req);
   return recordAudit({
     source:     'api',
     action,
@@ -424,6 +428,7 @@ function recordSecurityEvent(req, action, details = {}) {
     location:   location?.display || null,
     details: {
       ...details,
+      channel,
       location,
     },
   }).catch(() => { lastFailure = new Date().toISOString(); });

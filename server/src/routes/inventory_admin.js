@@ -926,6 +926,94 @@ router.post("/batches/auto-populate", requireRole("superadmin", "manager", "admi
   }
 });
 
+router.post("/batches/bulk-import", requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"), async (req, res, next) => {
+  try {
+    const { rows = [] } = req.body;
+    if (!Array.isArray(rows) || !rows.length) {
+      return res.status(400).json({ message: "No batch rows provided for import" });
+    }
+
+    // Cache products and warehouses
+    const prodRes = await pool.query("SELECT id, name, sku, barcode, stock FROM products WHERE status != 'archived'");
+    const prodMap = new Map();
+    prodRes.rows.forEach(p => {
+      prodMap.set(String(p.id), p);
+      if (p.sku) prodMap.set(p.sku.toLowerCase().trim(), p);
+      if (p.barcode) prodMap.set(p.barcode.toLowerCase().trim(), p);
+      if (p.name) prodMap.set(p.name.toLowerCase().trim(), p);
+    });
+
+    const whRes = await pool.query("SELECT id, name, code FROM warehouses WHERE status = 'active'");
+    const whMap = new Map();
+    whRes.rows.forEach(w => {
+      whMap.set(String(w.id), w.id);
+      if (w.name) whMap.set(w.name.toLowerCase().trim(), w.id);
+      if (w.code) whMap.set(w.code.toLowerCase().trim(), w.id);
+    });
+
+    let imported = 0;
+    const errors = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2;
+      try {
+        const prodIdentifier = String(row.product_id || row.sku || row.barcode || row.product_name || row.product || "").trim().toLowerCase();
+        if (!prodIdentifier) throw new Error("Product identifier (name, SKU, or ID) is required");
+
+        const product = prodMap.get(prodIdentifier);
+        if (!product) throw new Error(`Product "${prodIdentifier}" not found in catalog`);
+
+        let warehouseId = null;
+        const whInput = String(row.warehouse_id || row.warehouse_name || row.warehouse || "").trim().toLowerCase();
+        if (whInput && whMap.has(whInput)) {
+          warehouseId = whMap.get(whInput);
+        } else if (whRes.rows.length > 0) {
+          warehouseId = whRes.rows[0].id;
+        }
+
+        const rawQty = String(row.quantity ?? row.qty ?? row.count ?? 0).replace(/[^0-9]/g, "");
+        const quantity = rawQty ? parseInt(rawQty, 10) : 0;
+
+        const rawCost = row.cost_price ? String(row.cost_price).replace(/[^0-9.]/g, "") : null;
+        const costPrice = rawCost && !isNaN(parseFloat(rawCost)) ? parseFloat(rawCost) : null;
+
+        const expiryDate = row.expiry_date?.trim() || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const mfgDate = row.manufactured_date?.trim() || row.mfg_date?.trim() || new Date().toISOString().slice(0, 10);
+        const batchNo = row.batch_no?.trim() || `LOT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${product.id}-${Date.now().toString().slice(-4)}`;
+        const notes = row.notes?.trim() || "Bulk batch import";
+
+        await pool.query(
+          `INSERT INTO batch_management
+             (product_id, warehouse_id, batch_no, quantity, cost_price, expiry_date, manufactured_date, notes, status, received_at, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', NOW(), NOW())`,
+          [product.id, warehouseId, batchNo, quantity, costPrice, expiryDate, mfgDate, notes]
+        );
+
+        // Also ensure product stock reflects newly imported batch if positive
+        if (quantity > 0) {
+          await pool.query(
+            `UPDATE products SET stock = stock + $1, stock_quantity = stock_quantity + $1, updated_at = NOW() WHERE id = $2`,
+            [quantity, product.id]
+          );
+        }
+
+        imported++;
+      } catch (err) {
+        errors.push({ row: rowNum, error: err.message });
+      }
+    }
+
+    res.json({
+      message: `Bulk import completed: ${imported} batches created.`,
+      imported,
+      errors,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.delete("/batches/:id", requireRole("superadmin", "manager"), async (req, res, next) => {
   try {
     await pool.query("UPDATE batch_management SET status='recalled' WHERE id=$1", [req.params.id]);

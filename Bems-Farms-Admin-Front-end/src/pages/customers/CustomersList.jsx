@@ -35,6 +35,12 @@ const STATUS_CFG = {
   active:  { bg:'#f0fdf4', color:'#16a34a', border:'#bbf7d0', label:'Active'   },
   inactive:{ bg:'#fef2f2', color:'#dc2626', border:'#fecaca', label:'Inactive' },
 }
+const CHANNEL_CFG = {
+  app:    { label: 'Mobile App', icon: 'ri-smartphone-line', bg: '#ecfdf5', color: '#059669', border: '#a7f3d0' },
+  web:    { label: 'Web Store',  icon: 'ri-global-line',     bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
+  pos:    { label: 'POS Store',  icon: 'ri-store-2-line',    bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+  admin:  { label: 'Admin Desk', icon: 'ri-shield-user-line',bg: '#f8fafc', color: '#475569', border: '#e2e8f0' },
+}
 const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec4899','#f97316','#14b8a6','#6366f1','#84cc16']
 
 export default function CustomersList() {
@@ -225,18 +231,18 @@ export default function CustomersList() {
           <table className="table table-hover align-middle mb-0" style={{fontSize:13}}>
             <thead style={{background:'#f8fafc'}}>
               <tr>
-                {['CUSTOMER','CONTACT','ZONE','TIER','ORDERS','TOTAL SPENT','LAST LOGIN','STATUS','ACTIONS'].map(h=>(
+                {['CUSTOMER','CONTACT','CHANNEL','ZONE','TIER','ORDERS','TOTAL SPENT','LAST LOGIN','STATUS','ACTIONS'].map(h=>(
                   <th key={h} className="px-3 py-2 fw-medium text-muted text-nowrap" style={{fontSize:11}}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={9} className="text-center py-5 text-muted">Loading customers…</td></tr>
+                <tr><td colSpan={10} className="text-center py-5 text-muted">Loading customers…</td></tr>
               )}
               {!loading && customers.length===0 && (
                 <tr>
-                  <td colSpan={9} className="text-center py-5 text-muted">
+                  <td colSpan={10} className="text-center py-5 text-muted">
                     <i className="ri-user-search-line d-block mb-2" style={{fontSize:28}}/>
                     No customers match your search.
                   </td>
@@ -250,6 +256,8 @@ export default function CustomersList() {
                 const displayCode = (c.customer_code && c.customer_code !== 'null' && c.customer_code !== 'undefined')
                   ? c.customer_code
                   : ('CUS-' + String(c.id || '').padStart(4, '0'))
+                const ch = (c.last_channel || 'web').toLowerCase()
+                const chCfg = CHANNEL_CFG[ch] || CHANNEL_CFG.web
                 return (
                   <tr key={c.id}>
                     <td className="px-3 py-2">
@@ -272,6 +280,13 @@ export default function CustomersList() {
                     <td className="px-3 py-2">
                       <div style={{fontSize:12}}>{c.phone}</div>
                       <div className="text-muted" style={{fontSize:11}}>{c.email}</div>
+                    </td>
+                    <td className="px-3 py-2 text-nowrap">
+                      <span className="badge d-inline-flex align-items-center gap-1 shadow-xs"
+                        style={{fontSize:11, background:chCfg.bg, color:chCfg.color, border:`1px solid ${chCfg.border}`, padding: '4px 8px', borderRadius: 6}}>
+                        <i className={chCfg.icon} style={{fontSize:12}}/>
+                        <span>{chCfg.label}</span>
+                      </span>
                     </td>
                     <td className="px-3 py-2">
                       <div className="d-flex align-items-center gap-1" style={{fontSize:12}}>

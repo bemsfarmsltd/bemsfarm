@@ -3,6 +3,18 @@ import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import ProductSelect from '../../components/ui/ProductSelect'
+import ImportModal from '../../components/ImportModal'
+
+const BATCH_IMPORT_FIELDS = [
+  { key: 'product_name', label: 'Product Name / SKU', required: true, synonyms: ['product', 'item', 'product_name', 'name', 'sku', 'product_sku', 'barcode'] },
+  { key: 'batch_no', label: 'Batch / Lot No', required: false, synonyms: ['batch', 'batch_no', 'lot', 'lot_no', 'batch_number'] },
+  { key: 'quantity', label: 'Batch Quantity', required: true, synonyms: ['qty', 'quantity', 'count', 'stock', 'units', 'intake_qty'] },
+  { key: 'expiry_date', label: 'Expiry Date', required: false, synonyms: ['expiry', 'expiry_date', 'exp_date', 'expiration', 'exp'] },
+  { key: 'manufactured_date', label: 'Manufacture Date', required: false, synonyms: ['mfg_date', 'manufacture_date', 'mfg', 'production_date'] },
+  { key: 'cost_price', label: 'Cost Price (₦)', required: false, synonyms: ['cost', 'cost_price', 'unit_cost', 'purchase_price'] },
+  { key: 'warehouse', label: 'Warehouse', required: false, synonyms: ['warehouse', 'warehouse_name', 'location', 'storage'] },
+  { key: 'notes', label: 'Notes', required: false, synonyms: ['notes', 'remarks', 'comment', 'description'] },
+]
 
 function daysToExpiry(expDate) {
   if (!expDate) return null
@@ -150,6 +162,20 @@ export default function BatchManagement() {
     }
   }
 
+  async function handleBatchImport(rows) {
+    try {
+      const res = await api.post('/admin/inventory/batches/bulk-import', { rows })
+      toast.success(res.data.message || `Successfully imported ${res.data.imported || rows.length} batches!`)
+      if (res.data.errors?.length > 0) {
+        toast.error(`${res.data.errors.length} rows had errors and were skipped.`)
+      }
+      closeModal()
+      load()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to bulk import batches')
+    }
+  }
+
   async function confirmDelete() {
     try {
       await api.delete(`/admin/inventory/batches/${editItem.id}`)
@@ -218,6 +244,13 @@ export default function BatchManagement() {
               <i className={`ri-${autoPopulating ? 'loader-4-line spin' : 'flashlight-line'}`}></i>
               {autoPopulating ? 'Generating...' : '⚡ Generate Initial Batches from Stock'}
             </button>
+            <button
+              className="btn btn-outline-primary d-flex align-items-center gap-1"
+              onClick={() => setActiveModal('import')}
+              title="Bulk import batch lot records from CSV or Excel"
+            >
+              <i className="ri-upload-2-line"></i> Bulk Upload
+            </button>
             <select className="form-select" style={{ width:'auto' }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
               <option value="all">All Batches</option>
               <option value="active">Active</option>
@@ -259,11 +292,11 @@ export default function BatchManagement() {
                           <i className="ri-archive-stack-line fs-1 text-muted"></i>
                         </div>
                         <h6 className="fw-bold mb-1">No Batches Registered Yet</h6>
-                        <p className="text-muted mx-auto mb-4" style={{ maxWidth: 460, fontSize: 13 }}>
+                        <p className="text-muted mx-auto mb-4" style={{ maxWidth: 480, fontSize: 13 }}>
                           Batches track specific production lots, expiry dates, and intake quantities. 
-                          You can generate initial batch records for all your existing in-stock products in one click or add custom batches manually.
+                          You can generate initial batch records for all your uploaded in-stock products in one click, bulk upload a CSV file, or add custom batches manually.
                         </p>
-                        <div className="d-flex justify-content-center gap-2">
+                        <div className="d-flex justify-content-center gap-2 flex-wrap">
                           <button 
                             className="btn btn-success d-flex align-items-center gap-2" 
                             onClick={handleAutoPopulate}
@@ -271,6 +304,12 @@ export default function BatchManagement() {
                           >
                             <i className={`ri-${autoPopulating ? 'loader-4-line spin' : 'flashlight-line'} fs-16`}></i>
                             {autoPopulating ? 'Generating Batches...' : '⚡ Generate Initial Batches from Current Stock'}
+                          </button>
+                          <button 
+                            className="btn btn-outline-success d-flex align-items-center gap-1"
+                            onClick={() => setActiveModal('import')}
+                          >
+                            <i className="ri-upload-2-line"></i> Bulk Upload Batches (CSV)
                           </button>
                           <button className="btn btn-outline-primary d-flex align-items-center gap-1" onClick={openAdd}>
                             <i className="ri-add-line"></i> Manual Batch
@@ -408,6 +447,16 @@ export default function BatchManagement() {
           </div>
           <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
         </>
+      )}
+
+      {/* Batch Import Wizard */}
+      {activeModal === 'import' && (
+        <ImportModal
+          entityName="Batches"
+          fields={BATCH_IMPORT_FIELDS}
+          onImport={handleBatchImport}
+          onClose={closeModal}
+        />
       )}
     </div>
   )

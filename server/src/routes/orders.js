@@ -11,6 +11,7 @@ const validate = require("../middleware/validate");
 const orderSchemas = require("../schemas/orderSchemas");
 const { restoreOrderStock } = require("../utils/orderStock");
 const { submitReturn, getUserReturns } = require("../controllers/returnsController");
+const { detectChannel } = require("../utils/channel");
 
 // ─────────────────────────────────────────────
 // CONFIG
@@ -302,7 +303,7 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
         address || "",
         latitude || null,
         longitude || null,
-        source || "Web App",
+        source || (detectChannel(req) === 'app' ? 'Mobile App' : 'Web Storefront'),
       ],
     );
 

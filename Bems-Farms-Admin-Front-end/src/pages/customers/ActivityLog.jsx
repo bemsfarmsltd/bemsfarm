@@ -159,10 +159,29 @@ export default function ActivityLog() {
                         )}
                         {a.user_email && <span className="text-muted fs-13">{a.user_email}</span>}
                       </div>
-                      <div className="d-flex align-items-center gap-1 mt-1">
+                      <div className="d-flex align-items-center gap-1.5 mt-1 flex-wrap">
                         <span className="badge d-flex align-items-center gap-1" style={{ background: cfg.bg, color: cfg.color, fontSize: 11 }}>
                           <i className={cfg.icon}></i> {cfg.label}
                         </span>
+                        {(() => {
+                          const ch = (a.channel || a.user_last_channel || 'web').toLowerCase()
+                          const isApp = ch === 'app' || ch === 'mobile'
+                          const isPos = ch === 'pos'
+                          return (
+                            <span className="badge d-inline-flex align-items-center gap-1 shadow-xs"
+                              style={{
+                                fontSize: 10,
+                                background: isApp ? '#ecfdf5' : isPos ? '#fffbeb' : '#eff6ff',
+                                color: isApp ? '#059669' : isPos ? '#d97706' : '#2563eb',
+                                border: `1px solid ${isApp ? '#a7f3d0' : isPos ? '#fde68a' : '#bfdbfe'}`,
+                                padding: '2px 6px',
+                                borderRadius: 4
+                              }}>
+                              <i className={isApp ? 'ri-smartphone-line' : isPos ? 'ri-store-2-line' : 'ri-global-line'} />
+                              <span>{isApp ? 'Mobile App' : isPos ? 'POS Store' : 'Web Store'}</span>
+                            </span>
+                          )
+                        })()}
                         {a.type === 'order_created' && a.entity_id && (
                           <Link to={`/orders/${a.entity_id}`} className="fs-13 text-muted text-decoration-none">
                             Order #{a.entity_id}

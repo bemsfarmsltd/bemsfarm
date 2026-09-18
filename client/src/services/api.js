@@ -38,6 +38,15 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // Attach client channel (app vs web)
+    const isApp = typeof window !== 'undefined' && (
+      window.matchMedia?.('(display-mode: standalone)')?.matches ||
+      window.navigator?.standalone ||
+      document.referrer?.includes('android-app://') ||
+      Boolean(window.Capacitor || window.cordova)
+    );
+    config.headers['X-Channel'] = isApp ? 'app' : 'web';
+
     return config;
   },
   (error) => Promise.reject(error),

@@ -205,7 +205,12 @@ export default function POS() {
 
   // Modals
   const [activeModal, setActiveModal]       = useState(null)
-  const closeModal = () => setActiveModal(null)
+  const [checkoutStep, setCheckoutStep]     = useState('tender') // 'tender' | 'confirm' | 'success'
+  const [isSubmittingSale, setIsSubmittingSale] = useState(false)
+  const closeModal = () => {
+    setActiveModal(null)
+    setCheckoutStep('tender')
+  }
 
   // Scanner basket modal
   const [scanCart, setScanCart]             = useState([])
@@ -674,8 +679,32 @@ export default function POS() {
         setActiveModal('return')
         return
       }
+      if (e.key === 'Enter') {
+        if (activeModal === 'checkout') {
+          e.preventDefault()
+          if (checkoutStep === 'tender') {
+            if (checkoutPayMethod !== 'Cash' || (cashReceived && Number(cashReceived) >= total)) {
+              setCheckoutStep('confirm')
+            }
+          } else if (checkoutStep === 'confirm') {
+            confirmPayment(checkoutPayMethod)
+          } else if (checkoutStep === 'success') {
+            newOrder()
+          }
+          return
+        }
+      }
       if (e.key === 'Escape') {
-        if (activeModal) {
+        if (activeModal === 'checkout') {
+          e.preventDefault()
+          if (checkoutStep === 'confirm') {
+            setCheckoutStep('tender')
+          } else if (checkoutStep === 'success') {
+            newOrder()
+          } else {
+            closeModal()
+          }
+        } else if (activeModal) {
           e.preventDefault()
           closeModal()
         } else if (search) {
@@ -889,6 +918,7 @@ export default function POS() {
   // Payment Confirmation
   async function confirmPayment(method) {
     if (cart.length === 0) return
+    setIsSubmittingSale(true)
     playBeep('success')
 
     const change = method === 'Cash' && cashReceived ? Math.max(0, Number(cashReceived) - total) : 0
@@ -958,22 +988,19 @@ export default function POS() {
     } catch (e) {
       console.warn('POS transaction sync notice', e)
       showToast('Sale could not be saved. Receipt was not printed.', 'error', '⚠️')
+      setIsSubmittingSale(false)
       return
     }
 
     // Set active receipt for background printing
     setSuccessData(completedReceipt)
-    
-    // Close checkout modal & reset cart immediately for next customer
-    closeModal()
-    clearCart()
-    setCustomer(null)
-    setOrderNote('')
-    setCashReceived('')
-    setDiscountPct(0)
-    setOrderId(genOrderId())
+    setCheckoutStep('success')
+    setIsSubmittingSale(false)
 
-    showToast(`Sale #${completedReceipt.orderId} Completed (${fmt(completedReceipt.total)}) · Printed`, 'success', '🧾')
+    // Clear cart in background
+    clearCart()
+
+    showToast(`Sale #${completedReceipt.orderId} Completed (${fmt(completedReceipt.total)}) · Confirmed`, 'success', '🧾')
 
     if (autoPrintReceipt) {
       setTimeout(() => {
@@ -984,6 +1011,7 @@ export default function POS() {
 
   function newOrder() {
     setSuccessData(null)
+    setCheckoutStep('tender')
     closeModal()
     clearCart()
     setCustomer(null)
@@ -1903,352 +1931,619 @@ export default function POS() {
               {/* Header */}
               <div className="pos-checkout-modal-header">
                 <div className="d-flex align-items-center gap-3">
-                  <div className="pos-checkout-header-icon-glow">
-                    <i className="ri-secure-payment-fill"></i>
+                  <div
+                    className="pos-checkout-header-icon-glow"
+                    style={{
+                      background:
+                        checkoutStep === 'confirm'
+                          ? 'rgba(16, 185, 129, 0.2)'
+                          : checkoutStep === 'success'
+                          ? 'rgba(34, 197, 94, 0.25)'
+                          : undefined,
+                      color:
+                        checkoutStep === 'confirm'
+                          ? '#10b981'
+                          : checkoutStep === 'success'
+                          ? '#22c55e'
+                          : undefined,
+                    }}
+                  >
+                    <i
+                      className={
+                        checkoutStep === 'confirm'
+                          ? 'ri-shield-check-fill'
+                          : checkoutStep === 'success'
+                          ? 'ri-checkbox-circle-fill'
+                          : 'ri-secure-payment-fill'
+                      }
+                    />
                   </div>
                   <div>
                     <div className="d-flex align-items-center gap-2">
-                      <h5 className="pos-checkout-header-title mb-0">POS Express Checkout</h5>
-                      <span className="pos-checkout-status-pill"><span className="pos-pulse-dot"></span> Ready</span>
+                      <h5 className="pos-checkout-header-title mb-0">
+                        {checkoutStep === 'confirm'
+                          ? 'Confirm Payment'
+                          : checkoutStep === 'success'
+                          ? 'Payment Completed'
+                          : 'POS Express Checkout'}
+                      </h5>
+                      <span className="pos-checkout-status-pill">
+                        <span className="pos-pulse-dot" />
+                        {checkoutStep === 'confirm'
+                          ? 'Review Step'
+                          : checkoutStep === 'success'
+                          ? 'Paid & Recorded'
+                          : 'Ready'}
+                      </span>
                     </div>
                     <div className="pos-checkout-meta-row mt-1">
-                      <span className="pos-checkout-tag"><i className="ri-hashtag"></i> {orderId}</span>
-                      <span className="pos-checkout-tag"><i className="ri-user-3-line"></i> {customer?.name || 'Walk-in Customer'}</span>
+                      <span className="pos-checkout-tag">
+                        <i className="ri-hashtag" /> {successData?.orderId || orderId}
+                      </span>
+                      <span className="pos-checkout-tag">
+                        <i className="ri-user-3-line" /> {customer?.name || 'Walk-in Customer'}
+                      </span>
                     </div>
                   </div>
                 </div>
-                <button type="button" className="pos-modal-close-btn" onClick={closeModal} title="Close [Esc]">
-                  <i className="ri-close-line"></i>
+                <button
+                  type="button"
+                  className="pos-modal-close-btn"
+                  onClick={checkoutStep === 'success' ? newOrder : closeModal}
+                  title="Close [Esc]"
+                >
+                  <i className="ri-close-line" />
                 </button>
               </div>
 
               <div className="modal-body p-4">
-                {/* Master Ledger Hero Card */}
-                <div className="pos-ledger-hero-card mb-3">
-                  <div className="pos-ledger-hero-glow"></div>
-                  <div className="d-flex justify-content-between align-items-start position-relative">
-                    <div>
-                      <span className="pos-ledger-hero-subtitle">TOTAL AMOUNT DUE</span>
-                      <div className="pos-ledger-hero-amount">
-                        <span className="pos-currency-symbol">₦</span>
-                        <span className="pos-amount-digits">{Math.round(total || 0).toLocaleString()}</span>
-                      </div>
-                    </div>
-                    <div className="text-end">
-                      <div className="pos-ledger-item-badge">
-                        <i className="ri-shopping-bag-3-fill me-1"></i> {itemCount} {itemCount === 1 ? 'item' : 'items'}
-                      </div>
-                      <div className="pos-ledger-tax-line mt-1">
-                        Subtotal: {fmt(subtotal)} {discountAmt > 0 ? `· -${fmt(discountAmt)}` : ''} · VAT: {fmt(vat)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Payment Method Selector Grid */}
-                <div className="mb-3">
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="pos-section-label">PAYMENT METHOD</span>
-                    <span className="pos-section-sub">Shortcuts [F8]–[F11]</span>
-                  </div>
-                  <div className="pos-method-grid-pro">
-                    {[
-                      { id: 'Cash',          short: 'Cash',          icon: 'ri-money-dollar-circle-fill', color: '#10b981', shortcut: 'F8' },
-                      { id: 'Card / POS',    short: 'Card / POS',    icon: 'ri-bank-card-fill',           color: '#3b82f6', shortcut: 'F9' },
-                      { id: 'Bank Transfer', short: 'Transfer',      icon: 'ri-bank-fill',                color: '#f59e0b', shortcut: 'F10' },
-                      { id: 'QR / USSD',     short: 'QR / USSD',     icon: 'ri-qr-code-fill',             color: '#06b6d4', shortcut: '' },
-                      { id: 'Split Payment', short: 'Split Bill',    icon: 'ri-pie-chart-2-fill',         color: '#a855f7', shortcut: 'F11' },
-                    ].map(m => {
-                      const isSelected = checkoutPayMethod === m.id
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => {
-                            setCheckoutPayMethod(m.id)
-                            if (m.id === 'Cash' && !cashReceived) setCashReceived(String(total))
-                          }}
-                          className={`pos-method-card-pro ${isSelected ? 'active' : ''}`}
-                          style={{ '--m-color': m.color }}
-                        >
-                          <div className="pos-method-icon-wrap" style={{ background: isSelected ? m.color : 'rgba(128,128,128,0.1)', color: isSelected ? '#ffffff' : m.color }}>
-                            <i className={m.icon}></i>
+                {/* ── STEP 1: TENDER ENTRY ── */}
+                {checkoutStep === 'tender' && (
+                  <>
+                    {/* Master Ledger Hero Card */}
+                    <div className="pos-ledger-hero-card mb-3">
+                      <div className="pos-ledger-hero-glow" />
+                      <div className="d-flex justify-content-between align-items-start position-relative">
+                        <div>
+                          <span className="pos-ledger-hero-subtitle">TOTAL AMOUNT DUE</span>
+                          <div className="pos-ledger-hero-amount">
+                            <span className="pos-currency-symbol">₦</span>
+                            <span className="pos-amount-digits">{Math.round(total || 0).toLocaleString()}</span>
                           </div>
-                          <div className="pos-method-name">{m.short}</div>
-                          {m.shortcut && <span className="pos-method-shortcut">{m.shortcut}</span>}
-                          {isSelected && <div className="pos-method-check-dot"><i className="ri-check-line"></i></div>}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
+                        </div>
+                        <div className="text-end">
+                          <div className="pos-ledger-item-badge">
+                            <i className="ri-shopping-bag-3-fill me-1" /> {itemCount} {itemCount === 1 ? 'item' : 'items'}
+                          </div>
+                          <div className="pos-ledger-tax-line mt-1">
+                            Subtotal: {fmt(subtotal)} {discountAmt > 0 ? `· -${fmt(discountAmt)}` : ''} · VAT: {fmt(vat)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-                {/* ── Cash Tender Panel ── */}
-                {checkoutPayMethod === 'Cash' && (
-                  <div className="pos-tender-panel-card">
-                    {/* Tender Amount Input */}
+                    {/* Payment Method Selector Grid */}
                     <div className="mb-3">
-                      <div className="d-flex justify-content-between align-items-center mb-1">
-                        <label className="pos-input-legend">AMOUNT TENDERED BY CUSTOMER</label>
-                        {cashReceived && (
-                          <button type="button" className="pos-clear-btn" onClick={() => setCashReceived('')}>
-                            <i className="ri-close-circle-fill me-1"></i> Clear
-                          </button>
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <span className="pos-section-label">PAYMENT METHOD</span>
+                        <span className="pos-section-sub">Shortcuts [F8]–[F11]</span>
+                      </div>
+                      <div className="pos-method-grid-pro">
+                        {[
+                          { id: 'Cash', short: 'Cash', icon: 'ri-money-dollar-circle-fill', color: '#10b981', shortcut: 'F8' },
+                          { id: 'Card / POS', short: 'Card / POS', icon: 'ri-bank-card-fill', color: '#3b82f6', shortcut: 'F9' },
+                          { id: 'Bank Transfer', short: 'Transfer', icon: 'ri-bank-fill', color: '#f59e0b', shortcut: 'F10' },
+                          { id: 'QR / USSD', short: 'QR / USSD', icon: 'ri-qr-code-fill', color: '#06b6d4', shortcut: '' },
+                          { id: 'Split Payment', short: 'Split Bill', icon: 'ri-pie-chart-2-fill', color: '#a855f7', shortcut: 'F11' },
+                        ].map((m) => {
+                          const isSelected = checkoutPayMethod === m.id
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => {
+                                setCheckoutPayMethod(m.id)
+                                if (m.id === 'Cash' && !cashReceived) setCashReceived(String(total))
+                              }}
+                              className={`pos-method-card-pro ${isSelected ? 'active' : ''}`}
+                              style={{ '--m-color': m.color }}
+                            >
+                              <div
+                                className="pos-method-icon-wrap"
+                                style={{
+                                  background: isSelected ? m.color : 'rgba(128,128,128,0.1)',
+                                  color: isSelected ? '#ffffff' : m.color,
+                                }}
+                              >
+                                <i className={m.icon} />
+                              </div>
+                              <div className="pos-method-name">{m.short}</div>
+                              {m.shortcut && <span className="pos-method-shortcut">{m.shortcut}</span>}
+                              {isSelected && (
+                                <div className="pos-method-check-dot">
+                                  <i className="ri-check-line" />
+                                </div>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* ── Cash Tender Panel ── */}
+                    {checkoutPayMethod === 'Cash' && (
+                      <div className="pos-tender-panel-card">
+                        <div className="mb-3">
+                          <div className="d-flex justify-content-between align-items-center mb-1">
+                            <label className="pos-input-legend">AMOUNT TENDERED BY CUSTOMER</label>
+                            {cashReceived && (
+                              <button type="button" className="pos-clear-btn" onClick={() => setCashReceived('')}>
+                                <i className="ri-close-circle-fill me-1" /> Clear
+                              </button>
+                            )}
+                          </div>
+                          <div className="pos-cash-input-wrap">
+                            <span className="pos-cash-input-prefix">₦</span>
+                            <input
+                              type="number"
+                              className="pos-cash-input-field"
+                              placeholder="0.00"
+                              value={cashReceived}
+                              onChange={(e) => setCashReceived(e.target.value)}
+                              autoFocus
+                            />
+                            <div className="pos-cash-input-actions">
+                              <button
+                                type="button"
+                                className="pos-exact-cash-btn"
+                                onClick={() => setCashReceived(String(total))}
+                              >
+                                <i className="ri-sparkling-fill me-1" /> Exact ({fmt(total)})
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Fast Denomination Chips */}
+                        <div className="mb-3">
+                          <div className="pos-chips-header mb-2">
+                            <i className="ri-flashlight-fill text-amber me-1" />
+                            <span>1-Tap Fast Denominations</span>
+                          </div>
+                          <div className="pos-chips-grid">
+                            {quickCashOptions.map((amt) => (
+                              <button
+                                key={amt}
+                                type="button"
+                                className={`pos-chip-btn ${Number(cashReceived) === amt ? 'active' : ''}`}
+                                onClick={() => setCashReceived(String(amt))}
+                              >
+                                {amt === total ? `Exact (${fmt(amt)})` : fmt(amt)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Live Change Banner */}
+                        {cashReceived && Number(cashReceived) >= total && (
+                          <div className="pos-change-banner-pro success">
+                            <div className="d-flex align-items-center gap-3">
+                              <div className="pos-change-icon-wrap success">
+                                <i className="ri-checkbox-circle-fill" />
+                              </div>
+                              <div>
+                                <span className="pos-change-label">CHANGE DUE TO CUSTOMER</span>
+                                <div className="pos-change-value text-emerald">{fmt(cashChange)}</div>
+                              </div>
+                            </div>
+                            <div className="text-end">
+                              <span className="badge bg-emerald text-white px-2 py-1 fs-12 fw-bold">Payment Covered</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {cashReceived && Number(cashReceived) < total && (
+                          <div className="pos-change-banner-pro danger">
+                            <div className="d-flex align-items-center gap-3">
+                              <div className="pos-change-icon-wrap danger">
+                                <i className="ri-error-warning-fill" />
+                              </div>
+                              <div>
+                                <span className="pos-change-label text-danger">REMAINING BALANCE</span>
+                                <div className="pos-change-value text-danger">{fmt(total - Number(cashReceived))}</div>
+                              </div>
+                            </div>
+                            <div className="text-end">
+                              <span className="badge bg-danger text-white px-2 py-1 fs-11">Underpaid</span>
+                            </div>
+                          </div>
                         )}
                       </div>
-                      <div className="pos-cash-input-wrap">
-                        <span className="pos-cash-input-prefix">₦</span>
-                        <input
-                          type="number"
-                          className="pos-cash-input-field"
-                          placeholder="0.00"
-                          value={cashReceived}
-                          onChange={e => setCashReceived(e.target.value)}
-                          autoFocus
-                        />
-                        <div className="pos-cash-input-actions">
-                          <button
-                            type="button"
-                            className="pos-exact-cash-btn"
-                            onClick={() => setCashReceived(String(total))}
-                          >
-                            <i className="ri-sparkling-fill me-1"></i> Exact ({fmt(total)})
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    )}
 
-                    {/* 1-Tap Preset Denomination Chips */}
-                    <div className="mb-3">
-                      <div className="pos-chips-header mb-2">
-                        <i className="ri-flashlight-fill text-amber me-1"></i>
-                        <span>1-Tap Fast Denominations</span>
-                      </div>
-                      <div className="pos-chips-grid">
-                        {quickCashOptions.map(amt => (
-                          <button
-                            key={amt}
-                            type="button"
-                            className={`pos-chip-btn ${Number(cashReceived) === amt ? 'active' : ''}`}
-                            onClick={() => setCashReceived(String(amt))}
-                          >
-                            {amt === total ? `Exact (${fmt(amt)})` : fmt(amt)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Live Dynamic Change Banner */}
-                    {cashReceived && Number(cashReceived) >= total && (
-                      <div className="pos-change-banner-pro success">
-                        <div className="d-flex align-items-center gap-3">
-                          <div className="pos-change-icon-wrap success">
-                            <i className="ri-checkbox-circle-fill"></i>
+                    {/* ── Card Panel ── */}
+                    {checkoutPayMethod === 'Card / POS' && (
+                      <div className="pos-tender-panel-card p-4 text-center">
+                        <div className="pos-card-terminal-hero mb-3">
+                          <div className="pos-terminal-icon-pulse">
+                            <i className="ri-bank-card-2-fill" />
                           </div>
-                          <div>
-                            <span className="pos-change-label">CHANGE DUE TO CUSTOMER</span>
-                            <div className="pos-change-value text-emerald">{fmt(cashChange)}</div>
-                          </div>
+                          <h5 className="fw-bold mt-2 mb-1 pos-entry-item-title">POS Physical Terminal</h5>
+                          <p className="text-muted fs-13 mb-0">
+                            Charge <strong className="text-emerald fs-16">{fmt(total)}</strong> on the POS device.
+                            <br />
+                            Once the customer approves the slip, proceed to confirmation.
+                          </p>
                         </div>
-                        <div className="text-end">
-                          <span className="badge bg-emerald text-white px-2 py-1 fs-12 fw-bold">Payment Covered</span>
+                        <div className="mb-2">
+                          <label className="pos-input-legend mb-2 d-block text-start">CARD NETWORK (OPTIONAL)</label>
+                          <div className="d-flex gap-2 justify-content-center">
+                            {['Visa', 'Mastercard', 'Verve', 'Other'].map((t) => (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => setCardTab(t.toLowerCase())}
+                                className={`pos-card-network-btn-pro ${cardTab === t.toLowerCase() ? 'active' : ''}`}
+                              >
+                                <i className="ri-shield-check-fill me-1" /> {t}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     )}
 
-                    {cashReceived && Number(cashReceived) < total && (
-                      <div className="pos-change-banner-pro danger">
-                        <div className="d-flex align-items-center gap-3">
-                          <div className="pos-change-icon-wrap danger">
-                            <i className="ri-error-warning-fill"></i>
+                    {/* ── Bank Transfer Panel ── */}
+                    {checkoutPayMethod === 'Bank Transfer' && (
+                      <div className="pos-tender-panel-card p-3">
+                        <div className="pos-bank-pro-card mb-3">
+                          <div className="d-flex justify-content-between align-items-start">
+                            <div>
+                              <span className="pos-bank-badge">GUARANTY TRUST BANK (GTBANK)</span>
+                              <div className="pos-bank-acc-num">0123456789</div>
+                              <div className="pos-bank-acc-name">BEMS FARMS ENTERPRISES</div>
+                            </div>
+                            <button
+                              type="button"
+                              className="pos-bank-copy-btn"
+                              onClick={() => {
+                                navigator.clipboard.writeText('0123456789')
+                                showToast('Account number 0123456789 copied!', 'success', '📋')
+                              }}
+                            >
+                              <i className="ri-file-copy-line me-1" /> Copy
+                            </button>
                           </div>
-                          <div>
-                            <span className="pos-change-label text-danger">REMAINING BALANCE</span>
-                            <div className="pos-change-value text-danger">{fmt(total - Number(cashReceived))}</div>
+                          <div className="pos-bank-footer mt-2 pt-2 border-top border-white border-opacity-10 d-flex justify-content-between align-items-center">
+                            <span className="fs-11 text-white opacity-75">
+                              Ref: <strong className="text-white">{orderId}</strong>
+                            </span>
+                            <span className="badge bg-amber text-dark fw-bold">Amount: {fmt(total)}</span>
                           </div>
                         </div>
-                        <div className="text-end">
-                          <span className="badge bg-danger text-white px-2 py-1 fs-11">Underpaid</span>
+                        <div className="row g-2">
+                          <div className="col-6">
+                            <label className="pos-input-legend">CUSTOMER BANK NAME</label>
+                            <input
+                              type="text"
+                              className="form-control pos-theme-input"
+                              placeholder="e.g. GTB, Access, Kuda"
+                              value={bankName}
+                              onChange={(e) => setBankName(e.target.value)}
+                            />
+                          </div>
+                          <div className="col-6">
+                            <label className="pos-input-legend">SESSION ID / TXN REF</label>
+                            <input
+                              type="text"
+                              className="form-control pos-theme-input"
+                              placeholder="Transaction Reference"
+                              value={txnRef}
+                              onChange={(e) => setTxnRef(e.target.value)}
+                            />
+                          </div>
                         </div>
                       </div>
                     )}
-                  </div>
-                )}
 
-                {/* ── Card Panel ── */}
-                {checkoutPayMethod === 'Card / POS' && (
-                  <div className="pos-tender-panel-card p-4 text-center">
-                    <div className="pos-card-terminal-hero mb-3">
-                      <div className="pos-terminal-icon-pulse">
-                        <i className="ri-bank-card-2-fill"></i>
-                      </div>
-                      <h5 className="fw-bold mt-2 mb-1 pos-entry-item-title">POS Physical Terminal</h5>
-                      <p className="text-muted fs-13 mb-0">
-                        Charge <strong className="text-emerald fs-16">{fmt(total)}</strong> on the POS device.<br/>
-                        Once the customer approves the slip, confirm below to complete.
-                      </p>
-                    </div>
-
-                    <div className="mb-2">
-                      <label className="pos-input-legend mb-2 d-block text-start">CARD NETWORK (OPTIONAL)</label>
-                      <div className="d-flex gap-2 justify-content-center">
-                        {['Visa', 'Mastercard', 'Verve', 'Other'].map(t => (
-                          <button
-                            key={t}
-                            type="button"
-                            onClick={() => setCardTab(t.toLowerCase())}
-                            className={`pos-card-network-btn-pro ${cardTab === t.toLowerCase() ? 'active' : ''}`}
-                          >
-                            <i className="ri-shield-check-fill me-1"></i> {t}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Bank Transfer Panel ── */}
-                {checkoutPayMethod === 'Bank Transfer' && (
-                  <div className="pos-tender-panel-card p-3">
-                    <div className="pos-bank-pro-card mb-3">
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div>
-                          <span className="pos-bank-badge">GUARANTY TRUST BANK (GTBANK)</span>
-                          <div className="pos-bank-acc-num">0123456789</div>
-                          <div className="pos-bank-acc-name">BEMS FARMS ENTERPRISES</div>
+                    {/* ── QR / USSD Panel ── */}
+                    {checkoutPayMethod === 'QR / USSD' && (
+                      <div className="pos-tender-panel-card p-3 text-center">
+                        <div className="pos-qr-display-box my-2">
+                          <i className="ri-qr-code-fill fs-60 text-cyan" />
+                          <div className="text-muted fs-11 fw-bold mt-1">SCAN WITH MOBILE BANKING APP</div>
                         </div>
+                        <div className="pos-ussd-dial-code my-2">*737*000*{total}#</div>
                         <button
                           type="button"
-                          className="pos-bank-copy-btn"
+                          className="btn btn-sm btn-outline-info mt-1"
                           onClick={() => {
-                            navigator.clipboard.writeText('0123456789')
-                            showToast('Account number 0123456789 copied!', 'success', '📋')
+                            navigator.clipboard.writeText(`*737*000*${total}#`)
+                            showToast('USSD code copied!', 'success', '📱')
                           }}
                         >
-                          <i className="ri-file-copy-line me-1"></i> Copy
+                          <i className="ri-file-copy-line me-1" /> Copy USSD Code
                         </button>
                       </div>
-                      <div className="pos-bank-footer mt-2 pt-2 border-top border-white border-opacity-10 d-flex justify-content-between align-items-center">
-                        <span className="fs-11 text-white opacity-75">Ref: <strong className="text-white">{orderId}</strong></span>
-                        <span className="badge bg-amber text-dark fw-bold">Amount: {fmt(total)}</span>
-                      </div>
-                    </div>
+                    )}
 
-                    <div className="row g-2">
-                      <div className="col-6">
-                        <label className="pos-input-legend">CUSTOMER BANK NAME</label>
-                        <input
-                          type="text"
-                          className="form-control pos-theme-input"
-                          placeholder="e.g. GTB, Access, Kuda"
-                          value={bankName}
-                          onChange={e => setBankName(e.target.value)}
-                        />
+                    {/* ── Split Panel ── */}
+                    {checkoutPayMethod === 'Split Payment' && (
+                      <div className="pos-tender-panel-card p-3">
+                        <div className="d-flex flex-column gap-2 mb-2">
+                          {splitRows.map((row, i) => (
+                            <div key={i} className="p-2 rounded border pos-split-item-row bg-white bg-opacity-10">
+                              <div className="row g-2 align-items-center">
+                                <div className="col-5">
+                                  <select
+                                    className="form-select form-select-sm pos-theme-input"
+                                    value={row.method}
+                                    onChange={(e) => updateSplit(i, 'method', e.target.value)}
+                                  >
+                                    {['Cash', 'Card / POS', 'Bank Transfer', 'QR / USSD', 'Wallet'].map((m) => (
+                                      <option key={m}>{m}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="col-5">
+                                  <input
+                                    type="number"
+                                    className="form-control form-control-sm pos-theme-input fw-bold"
+                                    placeholder="Amount (₦)"
+                                    value={row.amount}
+                                    onChange={(e) => updateSplit(i, 'amount', e.target.value)}
+                                  />
+                                </div>
+                                <div className="col-2 text-end">
+                                  {splitRows.length > 2 && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline-danger py-1 px-2"
+                                      onClick={() => setSplitRows((r) => r.filter((_, ri) => ri !== i))}
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="d-flex justify-content-between align-items-center fs-12 mt-2">
+                          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={addSplitRow}>
+                            <i className="ri-add-line me-1" /> Add Method
+                          </button>
+                          <span className="pos-entry-item-title">
+                            Allocated:{' '}
+                            <strong className="text-emerald">
+                              {fmt(splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0))}
+                            </strong>{' '}
+                            / {fmt(total)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="col-6">
-                        <label className="pos-input-legend">SESSION ID / TXN REF</label>
-                        <input
-                          type="text"
-                          className="form-control pos-theme-input"
-                          placeholder="Transaction Reference"
-                          value={txnRef}
-                          onChange={e => setTxnRef(e.target.value)}
-                        />
-                      </div>
+                    )}
+
+                    {/* Step 1 Action Buttons */}
+                    <div className="pos-checkout-footer mt-4 pt-3">
+                      <button type="button" className="pos-cancel-btn" onClick={closeModal}>
+                        <i className="ri-close-line me-1" /> Cancel [Esc]
+                      </button>
+                      <button
+                        type="button"
+                        className="pos-confirm-sale-btn"
+                        disabled={checkoutPayMethod === 'Cash' && (!cashReceived || Number(cashReceived) < total)}
+                        onClick={() => setCheckoutStep('confirm')}
+                      >
+                        <div className="d-flex align-items-center gap-2">
+                          <i className="ri-shield-check-line fs-20" />
+                          <span>REVIEW & CONFIRM</span>
+                        </div>
+                        <span className="pos-confirm-btn-tag">[F8]</span>
+                      </button>
                     </div>
-                  </div>
+                  </>
                 )}
 
-                {/* ── QR / USSD Panel ── */}
-                {checkoutPayMethod === 'QR / USSD' && (
-                  <div className="pos-tender-panel-card p-3 text-center">
-                    <div className="pos-qr-display-box my-2">
-                      <i className="ri-qr-code-fill fs-60 text-cyan"></i>
-                      <div className="text-muted fs-11 fw-bold mt-1">SCAN WITH MOBILE BANKING APP</div>
-                    </div>
-                    <div className="pos-ussd-dial-code my-2">
-                      *737*000*{total}#
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-info mt-1"
-                      onClick={() => {
-                        navigator.clipboard.writeText(`*737*000*${total}#`)
-                        showToast('USSD code copied!', 'success', '📱')
-                      }}
-                    >
-                      <i className="ri-file-copy-line me-1"></i> Copy USSD Code
-                    </button>
-                  </div>
-                )}
+                {/* ── STEP 2: CONFIRM PAYMENT SCREEN ── */}
+                {checkoutStep === 'confirm' && (
+                  <div className="pos-confirm-payment-screen">
+                    {/* Hero Payment Confirmation Ledger */}
+                    <div className="p-3 rounded-3 mb-3" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                      <div className="d-flex align-items-center justify-content-between mb-2">
+                        <span className="text-muted small fw-bold text-uppercase" style={{ letterSpacing: '0.5px' }}>
+                          PAYMENT CONFIRMATION
+                        </span>
+                        <span className="badge bg-emerald text-white px-2 py-1 fs-11 fw-bold">
+                          <i className="ri-shield-check-line me-1" /> Awaiting Authorization
+                        </span>
+                      </div>
 
-                {/* ── Split Panel ── */}
-                {checkoutPayMethod === 'Split Payment' && (
-                  <div className="pos-tender-panel-card p-3">
-                    <div className="d-flex flex-column gap-2 mb-2">
-                      {splitRows.map((row, i) => (
-                        <div key={i} className="p-2 rounded border pos-split-item-row bg-white bg-opacity-10">
-                          <div className="row g-2 align-items-center">
-                            <div className="col-5">
-                              <select className="form-select form-select-sm pos-theme-input" value={row.method} onChange={e => updateSplit(i, 'method', e.target.value)}>
-                                {['Cash', 'Card / POS', 'Bank Transfer', 'QR / USSD', 'Wallet'].map(m => (
-                                  <option key={m}>{m}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="col-5">
-                              <input
-                                type="number"
-                                className="form-control form-control-sm pos-theme-input fw-bold"
-                                placeholder="Amount (₦)"
-                                value={row.amount}
-                                onChange={e => updateSplit(i, 'amount', e.target.value)}
-                              />
-                            </div>
-                            <div className="col-2 text-end">
-                              {splitRows.length > 2 && (
-                                <button type="button" className="btn btn-sm btn-outline-danger py-1 px-2" onClick={() => setSplitRows(r => r.filter((_, ri) => ri !== i))}>
-                                  ✕
-                                </button>
-                              )}
-                            </div>
+                      <div className="row g-2 align-items-center mb-2">
+                        <div className="col-6">
+                          <div className="text-muted small">Total Bill:</div>
+                          <div className="fs-22 fw-bold text-dark">{fmt(total)}</div>
+                        </div>
+                        <div className="col-6 text-end">
+                          <div className="text-muted small">Payment Method:</div>
+                          <span
+                            className="badge d-inline-flex align-items-center gap-1 fs-12 px-2 py-1"
+                            style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac' }}
+                          >
+                            <i className="ri-secure-payment-line" /> {checkoutPayMethod}
+                          </span>
+                        </div>
+                      </div>
+
+                      {checkoutPayMethod === 'Cash' && (
+                        <div className="p-2 rounded-2 mt-2" style={{ background: '#ffffff', border: '1px dashed #86efac' }}>
+                          <div className="d-flex justify-content-between align-items-center mb-1">
+                            <span className="text-muted small">Amount Tendered by Customer:</span>
+                            <span className="fw-bold text-dark">{fmt(Number(cashReceived) || total)}</span>
+                          </div>
+                          <div className="d-flex justify-content-between align-items-center">
+                            <span className="text-muted small fw-bold">Change Due to Customer:</span>
+                            <span className="fs-18 fw-bolder text-emerald">{fmt(cashChange)}</span>
                           </div>
                         </div>
-                      ))}
+                      )}
+
+                      {checkoutPayMethod === 'Bank Transfer' && (
+                        <div className="p-2 rounded-2 mt-2 small bg-white border">
+                          <div className="d-flex justify-content-between mb-1">
+                            <span className="text-muted">Customer Bank:</span>
+                            <span className="fw-medium text-dark">{bankName || 'Guaranty Trust Bank (GTB)'}</span>
+                          </div>
+                          <div className="d-flex justify-content-between">
+                            <span className="text-muted">Session ID / Ref:</span>
+                            <span className="fw-medium text-primary">{txnRef || orderId}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {checkoutPayMethod === 'Card / POS' && (
+                        <div className="p-2 rounded-2 mt-2 small bg-white border d-flex justify-content-between">
+                          <span className="text-muted">Card Terminal Type:</span>
+                          <span className="fw-medium text-dark text-capitalize">{cardTab} Physical Device</span>
+                        </div>
+                      )}
+
+                      {checkoutPayMethod === 'Split Payment' && (
+                        <div className="p-2 rounded-2 mt-2 small bg-white border">
+                          <div className="text-muted mb-1 fw-medium">Split Breakdown:</div>
+                          {splitRows.map((sr, sidx) => (
+                            <div key={sidx} className="d-flex justify-content-between">
+                              <span>{sr.method}:</span>
+                              <strong>{fmt(sr.amount || 0)}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="d-flex justify-content-between align-items-center fs-12 mt-2">
-                      <button type="button" className="btn btn-sm btn-outline-secondary" onClick={addSplitRow}>
-                        <i className="ri-add-line me-1"></i> Add Method
+
+                    {/* Order Items Preview */}
+                    <div className="mb-3">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <span className="pos-section-label">
+                          ITEMS IN THIS SALE ({cart.reduce((s, i) => s + i.qty, 0)})
+                        </span>
+                        <span className="text-muted small">
+                          Receipt Ref: <strong className="text-dark">{orderId}</strong>
+                        </span>
+                      </div>
+                      <div
+                        className="border rounded-3 p-2 bg-light"
+                        style={{ maxHeight: 150, overflowY: 'auto' }}
+                      >
+                        {cart.map((item, idx) => (
+                          <div
+                            key={item.id || idx}
+                            className="d-flex justify-content-between align-items-center py-1 border-bottom border-light-subtle"
+                          >
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="badge bg-secondary-subtle text-secondary">{item.qty}x</span>
+                              <span className="fw-medium text-dark text-truncate" style={{ maxWidth: 260 }}>
+                                {item.name}
+                              </span>
+                            </div>
+                            <span className="fw-semibold text-dark">{fmt(item.price * item.qty)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Customer & Cashier Info Row */}
+                    <div className="d-flex justify-content-between align-items-center p-2 rounded-2 mb-3 bg-light border text-muted small">
+                      <div>
+                        <i className="ri-user-3-line me-1" /> Customer:{' '}
+                        <strong className="text-dark">{customer?.name || 'Walk-in Customer'}</strong>
+                      </div>
+                      <div>
+                        <i className="ri-shield-user-line me-1" /> Cashier:{' '}
+                        <strong className="text-dark">
+                          {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.name : 'Cashier'}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Step 2 Action Buttons */}
+                    <div className="pos-checkout-footer mt-3 pt-3">
+                      <button
+                        type="button"
+                        className="pos-cancel-btn"
+                        onClick={() => setCheckoutStep('tender')}
+                        disabled={isSubmittingSale}
+                      >
+                        <i className="ri-arrow-left-line me-1" /> Back to Edit
                       </button>
-                      <span className="pos-entry-item-title">
-                        Allocated: <strong className="text-emerald">{fmt(splitRows.reduce((s, r) => s + (Number(r.amount) || 0), 0))}</strong> / {fmt(total)}
-                      </span>
+                      <button
+                        type="button"
+                        className="pos-confirm-sale-btn"
+                        disabled={isSubmittingSale}
+                        onClick={() => confirmPayment(checkoutPayMethod)}
+                      >
+                        <div className="d-flex align-items-center gap-2">
+                          {isSubmittingSale ? (
+                            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
+                          ) : (
+                            <i className="ri-check-double-fill fs-20" />
+                          )}
+                          <span>{isSubmittingSale ? 'RECORDING SALE...' : 'CONFIRM & COMPLETE SALE'}</span>
+                        </div>
+                        <span className="pos-confirm-btn-tag">[Enter]</span>
+                      </button>
                     </div>
                   </div>
                 )}
 
-                {/* Action Buttons */}
-                <div className="pos-checkout-footer mt-4 pt-3">
-                  <button
-                    type="button"
-                    className="pos-cancel-btn"
-                    onClick={closeModal}
-                  >
-                    <i className="ri-close-line me-1"></i> Cancel [Esc]
-                  </button>
-                  <button
-                    type="button"
-                    className="pos-confirm-sale-btn"
-                    disabled={checkoutPayMethod === 'Cash' && (!cashReceived || Number(cashReceived) < total)}
-                    onClick={() => confirmPayment(checkoutPayMethod)}
-                  >
-                    <div className="d-flex align-items-center gap-2">
-                      <i className="ri-printer-fill fs-20"></i>
-                      <span>COMPLETE SALE & PRINT</span>
+                {/* ── STEP 3: PAYMENT COMPLETED SCREEN ── */}
+                {checkoutStep === 'success' && successData && (
+                  <div className="text-center py-2">
+                    <div
+                      className="avatar-lg mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center"
+                      style={{ width: 68, height: 68, background: '#dcfce7', color: '#16a34a' }}
+                    >
+                      <i className="ri-checkbox-circle-fill" style={{ fontSize: 40 }} />
                     </div>
-                    <span className="pos-confirm-btn-tag">[F8]</span>
-                  </button>
-                </div>
+                    <h4 className="fw-bold mb-1 text-dark">Payment Confirmed!</h4>
+                    <p className="text-muted small mb-3">Order #{successData.orderId} recorded successfully</p>
+
+                    <div className="p-3 rounded-3 bg-light border mb-3 text-start">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <span className="text-muted">Total Amount Paid:</span>
+                        <span className="fs-18 fw-bold text-dark">{fmt(successData.total)}</span>
+                      </div>
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <span className="text-muted">Payment Method:</span>
+                        <span className="badge bg-success-subtle text-success">{successData.method}</span>
+                      </div>
+                      {successData.change > 0 && (
+                        <div className="d-flex justify-content-between align-items-center pt-2 border-top">
+                          <span className="fw-bold text-dark">Change Returned:</span>
+                          <span className="fs-18 fw-bold text-emerald">{fmt(successData.change)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="d-flex gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary flex-fill py-2 d-flex align-items-center justify-content-center gap-1"
+                        onClick={() => handlePrintReceipt(successData)}
+                      >
+                        <i className="ri-printer-line" /> Print Receipt
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-success flex-fill py-2 fw-bold d-flex align-items-center justify-content-center gap-1"
+                        onClick={newOrder}
+                        style={{ background: '#059669', borderColor: '#059669' }}
+                      >
+                        <i className="ri-add-circle-line" /> Next Sale [Enter]
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

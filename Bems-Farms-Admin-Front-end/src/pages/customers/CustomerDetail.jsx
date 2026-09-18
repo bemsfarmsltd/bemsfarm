@@ -315,6 +315,24 @@ export default function CustomerDetail() {
                 )}
               </div>
 
+              {/* Active Channel Box */}
+              <div className="p-2.5 rounded-3 mb-3 text-start d-flex align-items-center justify-content-between" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <span className="text-muted fw-semibold text-uppercase" style={{ fontSize: 11 }}>
+                  <i className="ri-radar-line me-1 text-primary" /> Active Channel
+                </span>
+                {(() => {
+                  const ch = (customer.last_channel || 'web').toLowerCase()
+                  const isApp = ch === 'app' || ch === 'mobile'
+                  const isPos = ch === 'pos'
+                  return (
+                    <span className={`badge d-inline-flex align-items-center gap-1 ${isApp ? 'bg-success-subtle text-success border border-success-subtle' : isPos ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle'}`} style={{ fontSize: 11, padding: '4px 8px' }}>
+                      <i className={isApp ? 'ri-smartphone-line' : isPos ? 'ri-store-2-line' : 'ri-global-line'} />
+                      {isApp ? 'Mobile App' : isPos ? 'Point of Sale' : 'Web Store'}
+                    </span>
+                  )
+                })()}
+              </div>
+
               {/* Tier and Points Progress */}
               <div className="p-3 rounded-3 mb-3 text-start" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                 <div className="d-flex justify-content-between align-items-center mb-2">
@@ -458,6 +476,7 @@ export default function CustomerDetail() {
                           <tr>
                             <th className="px-3 py-2 fw-medium text-muted">ORDER ID</th>
                             <th className="px-3 py-2 fw-medium text-muted">DATE</th>
+                            <th className="px-3 py-2 fw-medium text-muted">CHANNEL</th>
                             <th className="px-3 py-2 fw-medium text-muted">ITEMS PURCHASED</th>
                             <th className="px-3 py-2 fw-medium text-muted">PAYMENT</th>
                             <th className="px-3 py-2 fw-medium text-muted">STATUS</th>
@@ -468,6 +487,9 @@ export default function CustomerDetail() {
                         <tbody>
                           {orders.map(o => {
                             const sc = ORDER_STATUS_CFG[o.status] || ORDER_STATUS_CFG.delivered
+                            const ch = (o.channel || 'web').toLowerCase()
+                            const isApp = ch.includes('app') || ch.includes('mobile')
+                            const isPos = ch.includes('pos') || ch.includes('store')
                             return (
                               <tr key={o.id}>
                                 <td className="px-3 py-3">
@@ -478,7 +500,21 @@ export default function CustomerDetail() {
                                 <td className="px-3 py-3 text-nowrap text-muted" style={{ fontSize: 12 }}>
                                   {fmtDateTime(o.created_at)}
                                 </td>
-                                <td className="px-3 py-3" style={{ maxWidth: 300 }}>
+                                <td className="px-3 py-3 text-nowrap">
+                                  <span className="badge d-inline-flex align-items-center gap-1 shadow-xs"
+                                    style={{
+                                      fontSize: 11,
+                                      background: isApp ? '#ecfdf5' : isPos ? '#fffbeb' : '#eff6ff',
+                                      color: isApp ? '#059669' : isPos ? '#d97706' : '#2563eb',
+                                      border: `1px solid ${isApp ? '#a7f3d0' : isPos ? '#fde68a' : '#bfdbfe'}`,
+                                      padding: '3px 7px',
+                                      borderRadius: 6
+                                    }}>
+                                    <i className={isApp ? 'ri-smartphone-line' : isPos ? 'ri-store-2-line' : 'ri-global-line'} style={{ fontSize: 11 }} />
+                                    <span>{isApp ? 'App' : isPos ? 'POS' : 'Web'}</span>
+                                  </span>
+                                </td>
+                                <td className="px-3 py-3" style={{ maxWidth: 280 }}>
                                   <div className="text-truncate fw-medium" title={o.items_summary}>
                                     {o.items_summary || `${o.items_count || 1} item(s)`}
                                   </div>
@@ -646,6 +682,17 @@ export default function CustomerDetail() {
                                   <span className={`badge ${isLogin ? 'bg-primary-subtle text-primary' : isOrder ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}`} style={{ fontSize: 11 }}>
                                     {act.type}
                                   </span>
+                                  {act.channel && (
+                                    <span className="badge d-inline-flex align-items-center gap-1" style={{
+                                      fontSize: 10,
+                                      background: act.channel === 'app' ? '#ecfdf5' : act.channel === 'pos' ? '#fffbeb' : '#eff6ff',
+                                      color: act.channel === 'app' ? '#059669' : act.channel === 'pos' ? '#d97706' : '#2563eb',
+                                      border: `1px solid ${act.channel === 'app' ? '#a7f3d0' : act.channel === 'pos' ? '#fde68a' : '#bfdbfe'}`
+                                    }}>
+                                      <i className={act.channel === 'app' ? 'ri-smartphone-line' : act.channel === 'pos' ? 'ri-store-2-line' : 'ri-global-line'} />
+                                      {act.channel === 'app' ? 'Mobile App' : act.channel === 'pos' ? 'POS' : 'Web'}
+                                    </span>
+                                  )}
                                   {act.entity_type && (
                                     <span className="badge bg-light text-muted border" style={{ fontSize: 10 }}>
                                       {act.entity_type} {act.entity_id ? `#${act.entity_id}` : ''}
@@ -713,6 +760,7 @@ export default function CustomerDetail() {
                           <thead className="table-light">
                             <tr>
                               <th className="px-3 py-2">DATE</th>
+                              <th className="px-3 py-2">CHANNEL</th>
                               <th className="px-3 py-2">TYPE</th>
                               <th className="px-3 py-2">NOTE</th>
                               <th className="px-3 py-2 text-end">AMOUNT</th>
@@ -720,21 +768,41 @@ export default function CustomerDetail() {
                             </tr>
                           </thead>
                           <tbody>
-                            {walletHistory.map(w => (
-                              <tr key={w.id}>
-                                <td className="px-3 py-2 text-muted">{fmtDateTime(w.created_at)}</td>
-                                <td className="px-3 py-2 text-capitalize">
-                                  <span className={`badge ${w.type === 'credit' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}`}>
-                                    {w.type}
-                                  </span>
-                                </td>
-                                <td className="px-3 py-2">{w.note || '—'}</td>
-                                <td className={`px-3 py-2 text-end fw-bold ${w.type === 'credit' ? 'text-success' : 'text-danger'}`}>
-                                  {w.type === 'credit' ? '+' : '-'}{fmt(w.amount)}
-                                </td>
-                                <td className="px-3 py-2 text-end fw-medium">{fmt(w.balance_after)}</td>
-                              </tr>
-                            ))}
+                            {walletHistory.map(w => {
+                              const ch = (w.channel || 'web').toLowerCase()
+                              const isApp = ch === 'app' || ch === 'mobile'
+                              const isPos = ch === 'pos'
+                              const isAdmin = ch === 'admin'
+                              return (
+                                <tr key={w.id}>
+                                  <td className="px-3 py-2 text-muted">{fmtDateTime(w.created_at)}</td>
+                                  <td className="px-3 py-2 text-nowrap">
+                                    <span className="badge d-inline-flex align-items-center gap-1 shadow-xs"
+                                      style={{
+                                        fontSize: 10,
+                                        background: isApp ? '#ecfdf5' : isPos ? '#fffbeb' : isAdmin ? '#f8fafc' : '#eff6ff',
+                                        color: isApp ? '#059669' : isPos ? '#d97706' : isAdmin ? '#475569' : '#2563eb',
+                                        border: `1px solid ${isApp ? '#a7f3d0' : isPos ? '#fde68a' : isAdmin ? '#e2e8f0' : '#bfdbfe'}`,
+                                        padding: '3px 6px',
+                                        borderRadius: 4
+                                      }}>
+                                      <i className={isApp ? 'ri-smartphone-line' : isPos ? 'ri-store-2-line' : isAdmin ? 'ri-shield-user-line' : 'ri-global-line'} />
+                                      {isApp ? 'App' : isPos ? 'POS' : isAdmin ? 'Admin' : 'Web'}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2 text-capitalize">
+                                    <span className={`badge ${w.type === 'credit' || w.type === 'top_up' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}`}>
+                                      {w.type}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2">{w.note || '—'}</td>
+                                  <td className={`px-3 py-2 text-end fw-bold ${w.type === 'credit' || w.type === 'top_up' ? 'text-success' : 'text-danger'}`}>
+                                    {w.type === 'credit' || w.type === 'top_up' ? '+' : '-'}{fmt(w.amount)}
+                                  </td>
+                                  <td className="px-3 py-2 text-end fw-medium">{fmt(w.balance_after)}</td>
+                                </tr>
+                              )
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -754,20 +822,40 @@ export default function CustomerDetail() {
                           <thead className="table-light">
                             <tr>
                               <th className="px-3 py-2">DATE</th>
+                              <th className="px-3 py-2">CHANNEL</th>
                               <th className="px-3 py-2">EVENT / DESCRIPTION</th>
                               <th className="px-3 py-2 text-end">POINTS</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {loyaltyHistory.map((p, idx) => (
-                              <tr key={p.id || idx}>
-                                <td className="px-3 py-2 text-muted">{fmtDateTime(p.created_at)}</td>
-                                <td className="px-3 py-2">{p.description || p.type}</td>
-                                <td className={`px-3 py-2 text-end fw-bold ${Number(p.points) > 0 ? 'text-success' : 'text-danger'}`}>
-                                  {Number(p.points) > 0 ? '+' : ''}{Number(p.points).toLocaleString()} pts
-                                </td>
-                              </tr>
-                            ))}
+                            {loyaltyHistory.map((p, idx) => {
+                              const ch = (p.channel || 'web').toLowerCase()
+                              const isApp = ch === 'app' || ch === 'mobile'
+                              const isPos = ch === 'pos'
+                              return (
+                                <tr key={p.id || idx}>
+                                  <td className="px-3 py-2 text-muted">{fmtDateTime(p.created_at)}</td>
+                                  <td className="px-3 py-2 text-nowrap">
+                                    <span className="badge d-inline-flex align-items-center gap-1 shadow-xs"
+                                      style={{
+                                        fontSize: 10,
+                                        background: isApp ? '#ecfdf5' : isPos ? '#fffbeb' : '#eff6ff',
+                                        color: isApp ? '#059669' : isPos ? '#d97706' : '#2563eb',
+                                        border: `1px solid ${isApp ? '#a7f3d0' : isPos ? '#fde68a' : '#bfdbfe'}`,
+                                        padding: '3px 6px',
+                                        borderRadius: 4
+                                      }}>
+                                      <i className={isApp ? 'ri-smartphone-line' : isPos ? 'ri-store-2-line' : 'ri-global-line'} />
+                                      {isApp ? 'App' : isPos ? 'POS' : 'Web'}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2">{p.description || p.type}</td>
+                                  <td className={`px-3 py-2 text-end fw-bold ${Number(p.points) > 0 ? 'text-success' : 'text-danger'}`}>
+                                    {Number(p.points) > 0 ? '+' : ''}{Number(p.points).toLocaleString()} pts
+                                  </td>
+                                </tr>
+                              )
+                            })}
                           </tbody>
                         </table>
                       </div>
