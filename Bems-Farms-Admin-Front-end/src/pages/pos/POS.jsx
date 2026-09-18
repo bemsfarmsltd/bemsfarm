@@ -2826,34 +2826,39 @@ export default function POS() {
       {/* ─── Billing History Modal ──────────────────────────────────────── */}
       {activeModal === 'history' && (() => {
         const query = receiptSearch.trim().toLowerCase()
-        const filtered = historyList.filter(h =>
-          !query ||
-          h.inv?.toLowerCase().includes(query) ||
-          h.cust?.toLowerCase().includes(query) ||
-          h.method?.toLowerCase().includes(query)
-        )
+        const filtered = historyList.filter(h => {
+          if (!query) return true
+          const itemNames = (h.items || h.cart || []).map(i => i.name || i.product_name || '').join(' ').toLowerCase()
+          return (
+            h.inv?.toLowerCase().includes(query) ||
+            h.cust?.toLowerCase().includes(query) ||
+            h.method?.toLowerCase().includes(query) ||
+            itemNames.includes(query) ||
+            String(h.amount).includes(query)
+          )
+        })
 
         return (
           <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 800 }}>
+            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 880 }}>
               <div className="modal-content pos-modal-card">
                 <div className="modal-header pos-modal-header bg-sapphire-solid d-flex justify-content-between align-items-center">
                   <div>
                     <h6 className="modal-title text-white fw-bold mb-0">Recent POS Receipts &amp; Sales</h6>
-                    <small className="text-white-50 fs-xs">Search or reprint any recent customer receipt</small>
+                    <small className="text-white-50 fs-xs">Search by Receipt #, Customer, Product Name, or Amount</small>
                   </div>
                   <button className="btn-close btn-close-white" onClick={closeModal}></button>
                 </div>
-                <div className="modal-body p-3" style={{ maxHeight: '68vh', overflowY: 'auto' }}>
+                <div className="modal-body p-3" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                   {/* Search filter */}
                   <div className="input-group input-group-sm mb-3 shadow-sm">
                     <span className="input-group-text bg-white text-muted">
-                      <i className="ri-search-line"></i>
+                      <i className="ri-search-line text-primary"></i>
                     </span>
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="Search by Receipt # (e.g. BF-2026-...), Customer name, or Payment method..."
+                      placeholder="Search by Receipt # (e.g. BF-2026-...), Product bought (e.g. Indomie), Customer, or ₦ Amount..."
                       value={receiptSearch}
                       onChange={(e) => setReceiptSearch(e.target.value)}
                       autoFocus
@@ -2868,63 +2873,81 @@ export default function POS() {
                   <div className="table-responsive">
                     <table className="table align-middle mb-0 fs-12 pos-invoice-table-grid">
                       <thead>
-                        <tr className="text-muted border-bottom">
-                          <th>INVOICE / RECEIPT #</th>
+                        <tr className="text-muted border-bottom bg-light">
+                          <th>RECEIPT #</th>
                           <th>CUSTOMER</th>
+                          <th>PURCHASED ITEMS</th>
                           <th>METHOD</th>
                           <th>TIME</th>
                           <th className="text-end">AMOUNT</th>
-                          <th className="text-end" style={{ width: 110 }}>ACTION</th>
+                          <th className="text-end" style={{ width: 100 }}>ACTION</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filtered.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="text-center py-4 text-muted">
+                            <td colSpan={7} className="text-center py-4 text-muted">
                               <i className="ri-receipt-line fs-2 d-block mb-1 opacity-50"></i>
                               No receipts found matching "{receiptSearch}"
                             </td>
                           </tr>
                         ) : (
-                          filtered.map(h => (
-                            <tr key={h.inv} className="hover-bg">
-                              <td className="fw-bold text-sapphire">{h.inv}</td>
-                              <td className="pos-entry-item-title">{h.cust}</td>
-                              <td>
-                                <span className="badge bg-light text-dark border">
-                                  {h.method}
-                                </span>
-                              </td>
-                              <td className="text-muted">{h.time}</td>
-                              <td className="text-end fw-bold text-emerald">{fmt(h.amount)}</td>
-                              <td className="text-end">
-                                <button
-                                  type="button"
-                                  className="btn btn-xs btn-primary d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1"
-                                  onClick={() => {
-                                    const receiptObj = {
-                                      ...h,
-                                      orderId: h.inv || h.orderId,
-                                      customer: typeof h.cust === 'object' ? h.cust : { name: h.cust },
-                                      cart: h.items || h.cart || [],
-                                      subtotal: h.subtotal || h.amount,
-                                      discountAmt: h.discount || 0,
-                                      vat: h.tax || 0,
-                                      total: h.amount || h.total,
-                                      method: h.method || 'Cash',
-                                      date: h.date || new Date().toLocaleDateString('en-NG'),
-                                      time: h.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                    }
-                                    setSuccessData(receiptObj)
-                                    setActiveModal('receipt')
-                                  }}
-                                  title="Reprint this receipt"
-                                >
-                                  <i className="ri-printer-line"></i> Reprint
-                                </button>
-                              </td>
-                            </tr>
-                          ))
+                          filtered.map(h => {
+                            const itemsList = h.items || h.cart || []
+                            const itemsSummary = itemsList.length > 0
+                              ? itemsList.map(i => `${i.name || i.product_name || 'Item'} (${i.qty || i.quantity || 1}x)`).join(', ')
+                              : 'General Retail Sale'
+
+                            return (
+                              <tr key={h.inv} className="hover-bg">
+                                <td>
+                                  <span className="fw-bold text-sapphire d-block font-monospace">{h.inv}</span>
+                                  <span className="text-muted" style={{ fontSize: 10 }}>{h.date || 'Today'}</span>
+                                </td>
+                                <td>
+                                  <span className="fw-semibold text-dark d-block">{h.cust}</span>
+                                </td>
+                                <td style={{ maxWidth: 220 }}>
+                                  <span className="text-truncate d-block text-secondary" title={itemsSummary} style={{ fontSize: 11 }}>
+                                    {itemsSummary}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="badge bg-light text-dark border">
+                                    {h.method}
+                                  </span>
+                                </td>
+                                <td className="text-muted text-nowrap">{h.time}</td>
+                                <td className="text-end fw-bold text-emerald text-nowrap">{fmt(h.amount)}</td>
+                                <td className="text-end">
+                                  <button
+                                    type="button"
+                                    className="btn btn-xs btn-primary d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1"
+                                    onClick={() => {
+                                      const receiptObj = {
+                                        ...h,
+                                        orderId: h.inv || h.orderId,
+                                        customer: typeof h.cust === 'object' ? h.cust : { name: h.cust },
+                                        cart: h.items || h.cart || [],
+                                        subtotal: h.subtotal || h.amount,
+                                        discountAmt: h.discount || 0,
+                                        vat: h.tax || 0,
+                                        total: h.amount || h.total,
+                                        method: h.method || 'Cash',
+                                        date: h.date || new Date().toLocaleDateString('en-NG'),
+                                        time: h.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                      }
+                                      setSuccessData(receiptObj)
+                                      setActiveModal('receipt')
+                                    }}
+                                    title="Reprint this receipt"
+                                  >
+                                    <i className="ri-printer-line"></i> Reprint
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          })
                         )}
                       </tbody>
                     </table>
