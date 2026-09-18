@@ -239,6 +239,7 @@ export default function POS() {
   const [payLaterDate, setPayLaterDate]     = useState('')
   // Success data
   const [successData, setSuccessData]       = useState(null)
+  const [receiptSearch, setReceiptSearch]   = useState('')
   const [autoPrintReceipt, setAutoPrintReceipt] = useState(true)
   const [autoPrintPending, setAutoPrintPending] = useState(false)
   const [directPrinterConnected, setDirectPrinterConnected] = useState(isPrinterConnected())
@@ -2823,51 +2824,121 @@ export default function POS() {
       )}
 
       {/* ─── Billing History Modal ──────────────────────────────────────── */}
-      {activeModal === 'history' && (
-        <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 740 }}>
-            <div className="modal-content pos-modal-card">
-              <div className="modal-header pos-modal-header bg-sapphire-solid">
-                <h6 className="modal-title text-white fw-bold">Recent POS Receipts & Sales</h6>
-                <button className="btn-close btn-close-white" onClick={closeModal}></button>
-              </div>
-              <div className="modal-body p-4" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
-                <div className="table-responsive">
-                  <table className="table align-middle mb-0 fs-12 pos-invoice-table-grid">
-                    <thead>
-                      <tr className="text-muted border-bottom">
-                        <th>INVOICE</th>
-                        <th>CUSTOMER</th>
-                        <th>METHOD</th>
-                        <th>TIME</th>
-                        <th className="text-end">AMOUNT</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {historyList.map(h => (
-                        <tr key={h.inv}>
-                          <td className="fw-bold text-sapphire">{h.inv}</td>
-                          <td className="pos-entry-item-title">{h.cust}</td>
-                          <td>
-                            <span className="badge bg-light text-dark border">
-                              {h.method}
-                            </span>
-                          </td>
-                          <td className="text-muted">{h.time}</td>
-                          <td className="text-end fw-bold text-emerald">{fmt(h.amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+      {activeModal === 'history' && (() => {
+        const query = receiptSearch.trim().toLowerCase()
+        const filtered = historyList.filter(h =>
+          !query ||
+          h.inv?.toLowerCase().includes(query) ||
+          h.cust?.toLowerCase().includes(query) ||
+          h.method?.toLowerCase().includes(query)
+        )
+
+        return (
+          <div className="modal show d-block pos-modal-overlay-wrap" tabIndex="-1">
+            <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 800 }}>
+              <div className="modal-content pos-modal-card">
+                <div className="modal-header pos-modal-header bg-sapphire-solid d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 className="modal-title text-white fw-bold mb-0">Recent POS Receipts &amp; Sales</h6>
+                    <small className="text-white-50 fs-xs">Search or reprint any recent customer receipt</small>
+                  </div>
+                  <button className="btn-close btn-close-white" onClick={closeModal}></button>
                 </div>
-              </div>
-              <div className="modal-footer p-3">
-                <button className="btn btn-outline-secondary w-100 py-2 fw-bold" onClick={closeModal}>Close History</button>
+                <div className="modal-body p-3" style={{ maxHeight: '68vh', overflowY: 'auto' }}>
+                  {/* Search filter */}
+                  <div className="input-group input-group-sm mb-3 shadow-sm">
+                    <span className="input-group-text bg-white text-muted">
+                      <i className="ri-search-line"></i>
+                    </span>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Search by Receipt # (e.g. BF-2026-...), Customer name, or Payment method..."
+                      value={receiptSearch}
+                      onChange={(e) => setReceiptSearch(e.target.value)}
+                      autoFocus
+                    />
+                    {receiptSearch && (
+                      <button className="btn btn-outline-secondary" onClick={() => setReceiptSearch('')}>
+                        &times;
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="table-responsive">
+                    <table className="table align-middle mb-0 fs-12 pos-invoice-table-grid">
+                      <thead>
+                        <tr className="text-muted border-bottom">
+                          <th>INVOICE / RECEIPT #</th>
+                          <th>CUSTOMER</th>
+                          <th>METHOD</th>
+                          <th>TIME</th>
+                          <th className="text-end">AMOUNT</th>
+                          <th className="text-end" style={{ width: 110 }}>ACTION</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="text-center py-4 text-muted">
+                              <i className="ri-receipt-line fs-2 d-block mb-1 opacity-50"></i>
+                              No receipts found matching "{receiptSearch}"
+                            </td>
+                          </tr>
+                        ) : (
+                          filtered.map(h => (
+                            <tr key={h.inv} className="hover-bg">
+                              <td className="fw-bold text-sapphire">{h.inv}</td>
+                              <td className="pos-entry-item-title">{h.cust}</td>
+                              <td>
+                                <span className="badge bg-light text-dark border">
+                                  {h.method}
+                                </span>
+                              </td>
+                              <td className="text-muted">{h.time}</td>
+                              <td className="text-end fw-bold text-emerald">{fmt(h.amount)}</td>
+                              <td className="text-end">
+                                <button
+                                  type="button"
+                                  className="btn btn-xs btn-primary d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1"
+                                  onClick={() => {
+                                    const receiptObj = {
+                                      ...h,
+                                      orderId: h.inv || h.orderId,
+                                      customer: typeof h.cust === 'object' ? h.cust : { name: h.cust },
+                                      cart: h.items || h.cart || [],
+                                      subtotal: h.subtotal || h.amount,
+                                      discountAmt: h.discount || 0,
+                                      vat: h.tax || 0,
+                                      total: h.amount || h.total,
+                                      method: h.method || 'Cash',
+                                      date: h.date || new Date().toLocaleDateString('en-NG'),
+                                      time: h.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                    }
+                                    setSuccessData(receiptObj)
+                                    setActiveModal('receipt')
+                                  }}
+                                  title="Reprint this receipt"
+                                >
+                                  <i className="ri-printer-line"></i> Reprint
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="modal-footer p-2 bg-light d-flex justify-content-between">
+                  <span className="text-muted fs-xs">{filtered.length} receipt(s) available</span>
+                  <button className="btn btn-sm btn-outline-secondary px-4 fw-semibold" onClick={closeModal}>Close</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ─── Background Thermal Print Target (Off-screen on Screen, Active on Print) ─── */}
       {successData && activeModal !== 'receipt' && (
