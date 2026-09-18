@@ -264,6 +264,106 @@ router.post(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
+// CARTON BREAKDOWN / DE-BULKING  ──  POST /api/admin/inventory/debulk
+// Unbundles whole cartons/crates into individual shelf pieces
+// ════════════════════════════════════════════════════════════════════════════
+router.post(
+  "/debulk",
+  requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      const {
+        source_product_id,
+        target_product_id,
+        cartons_to_break,
+        pieces_per_carton,
+        warehouse_id,
+        notes,
+      } = req.body;
+
+      const cartonsCount = parseInt(cartons_to_break);
+      const multiplier = parseFloat(pieces_per_carton);
+
+      if (!source_product_id || !target_product_id || isNaN(cartonsCount) || cartonsCount <= 0 || isNaN(multiplier) || multiplier <= 0) {
+        return res.status(400).json({ message: "Invalid breakdown parameters. Please specify source, target, cartons count, and pieces per carton." });
+      }
+
+      await client.query("BEGIN");
+
+      // 1. Lock and check source (Carton) product stock
+      const srcRes = await client.query(
+        "SELECT id, name, stock, stock_quantity, cost_price, unit_price FROM products WHERE id=$1 FOR UPDATE",
+        [source_product_id]
+      );
+      if (!srcRes.rows.length) throw new Error("Source carton product not found");
+      const src = srcRes.rows[0];
+      const srcBefore = parseInt(src.stock ?? src.stock_quantity ?? 0);
+      if (srcBefore < cartonsCount) {
+        throw new Error(`Insufficient carton stock. Only ${srcBefore} carton(s) available in inventory.`);
+      }
+
+      // 2. Lock target (Pieces) product stock
+      const tgtRes = await client.query(
+        "SELECT id, name, stock, stock_quantity, cost_price, unit_price FROM products WHERE id=$1 FOR UPDATE",
+        [target_product_id]
+      );
+      if (!tgtRes.rows.length) throw new Error("Target pieces product not found");
+      const tgt = tgtRes.rows[0];
+      const tgtBefore = parseInt(tgt.stock ?? tgt.stock_quantity ?? 0);
+
+      const piecesGained = Math.round(cartonsCount * multiplier);
+      const srcAfter = srcBefore - cartonsCount;
+      const tgtAfter = tgtBefore + piecesGained;
+
+      // 3. Update source stock (-Cartons)
+      await client.query(
+        "UPDATE products SET stock=$1, stock_quantity=$1, updated_at=NOW() WHERE id=$2",
+        [srcAfter, source_product_id]
+      );
+
+      // 4. Update target stock (+Pieces)
+      await client.query(
+        "UPDATE products SET stock=$1, stock_quantity=$1, updated_at=NOW() WHERE id=$2",
+        [tgtAfter, target_product_id]
+      );
+
+      // 5. Record stock movements
+      const ref = `DEBULK-${Date.now().toString().slice(-6)}`;
+      const noteStr = notes 
+        ? `${notes} (Unbundled ${cartonsCount}x "${src.name}" into ${piecesGained}x "${tgt.name}")` 
+        : `Unbundled ${cartonsCount}x "${src.name}" into ${piecesGained}x "${tgt.name}"`;
+
+      await client.query(
+        `INSERT INTO stock_movements (product_id, warehouse_id, type, quantity, before_qty, after_qty, reference, notes, unit_cost, created_by, created_at)
+         VALUES ($1,$2,'debulk_out',$3,$4,$5,$6,$7,$8,$9,NOW())`,
+        [source_product_id, warehouse_id || null, cartonsCount, srcBefore, srcAfter, ref, noteStr, src.cost_price || src.unit_price || 0, req.user.id]
+      );
+
+      await client.query(
+        `INSERT INTO stock_movements (product_id, warehouse_id, type, quantity, before_qty, after_qty, reference, notes, unit_cost, created_by, created_at)
+         VALUES ($1,$2,'debulk_in',$3,$4,$5,$6,$7,$8,$9,NOW())`,
+        [target_product_id, warehouse_id || null, piecesGained, tgtBefore, tgtAfter, ref, noteStr, (src.cost_price ? src.cost_price / multiplier : tgt.cost_price || tgt.unit_price || 0), req.user.id]
+      );
+
+      await client.query("COMMIT");
+
+      res.json({
+        success: true,
+        message: `Successfully unbundled ${cartonsCount} carton(s) into ${piecesGained} piece(s).`,
+        source: { id: source_product_id, name: src.name, before: srcBefore, after: srcAfter, deducted: cartonsCount },
+        target: { id: target_product_id, name: tgt.name, before: tgtBefore, after: tgtAfter, added: piecesGained },
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      res.status(400).json({ message: err.message || "Failed to execute carton breakdown" });
+    } finally {
+      client.release();
+    }
+  }
+);
+
+// ════════════════════════════════════════════════════════════════════════════
 // STOCK ALERTS  ──  GET /api/admin/inventory/alerts
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/alerts", requireRole("superadmin", "manager", "admin", "storekeeper", "kitchen_staff"), async (req, res, next) => {

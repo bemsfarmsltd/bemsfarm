@@ -1,17 +1,20 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import BarcodeSvg from '../../components/ui/BarcodeSvg'
 import { generateUniversalGoodsCode } from '../../lib/barcodeGenerator'
 
 export default function Barcode() {
+  const [searchParams] = useSearchParams()
+  const targetProductId = searchParams.get('productId') || searchParams.get('id')
+
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [categories, setCategories] = useState([])
   
   // Filters & State
-  const [activeTab, setActiveTab] = useState('all') // 'all' | 'with_barcode' | 'missing_barcode' | 'queue'
+  const [activeTab, setActiveTab] = useState(targetProductId ? 'queue' : 'all') // 'all' | 'with_barcode' | 'missing_barcode' | 'queue'
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [symbology, setSymbology] = useState('CODE128') // 'CODE128' | 'EAN13'
@@ -45,7 +48,7 @@ export default function Barcode() {
     setLoading(true)
     try {
       const [prodRes, formRes] = await Promise.all([
-        api.get('/admin/products', { params: { limit: 200 } }),
+        api.get('/admin/products', { params: { limit: 300 } }),
         api.get('/admin/products/form-data').catch(() => ({ data: {} })),
       ])
       
@@ -53,6 +56,17 @@ export default function Barcode() {
       setProducts(prods)
       if (formRes.data?.categories) {
         setCategories(formRes.data.categories)
+      }
+
+      // If productId URL param is provided, auto-queue it with its stock quantity
+      if (targetProductId && prods.length > 0) {
+        const found = prods.find((p) => String(p.id) === String(targetProductId))
+        if (found) {
+          const stockCount = Math.max(1, parseInt(found.stock ?? found.stock_quantity ?? found.quantity ?? 1) || 1)
+          setPrintQueue({ [found.id]: { product: found, copies: stockCount } })
+          setActiveTab('queue')
+          toast.success(`Queued ${found.name} with ${stockCount} copies (matching current stock)`)
+        }
       }
 
     } catch (err) {
@@ -65,7 +79,7 @@ export default function Barcode() {
 
   useEffect(() => {
     fetchProducts()
-  }, [])
+  }, [targetProductId])
 
   // Stats calculation
   const totalProducts = products.length
@@ -103,14 +117,15 @@ export default function Barcode() {
     })
   }, [products, activeTab, categoryFilter, searchTerm, printQueue])
 
-  // Queue manipulation
+  // Queue manipulation - Automatically defaults copies to the product's actual stock quantity
   const toggleQueueItem = (product) => {
     setPrintQueue((prev) => {
       const next = { ...prev }
       if (next[product.id]) {
         delete next[product.id]
       } else {
-        next[product.id] = { product, copies: 1 }
+        const stockQty = Math.max(1, parseInt(product.stock ?? product.stock_quantity ?? product.quantity ?? 1) || 1)
+        next[product.id] = { product, copies: stockQty }
       }
       return next
     })
@@ -139,12 +154,27 @@ export default function Barcode() {
       const next = { ...prev }
       items.forEach((p) => {
         if (!next[p.id]) {
-          next[p.id] = { product: p, copies: 1 }
+          const stockQty = Math.max(1, parseInt(p.stock ?? p.stock_quantity ?? p.quantity ?? 1) || 1)
+          next[p.id] = { product: p, copies: stockQty }
         }
       })
       return next
     })
-    toast.success(`Added ${items.length} items to print queue`)
+    toast.success(`Added ${items.length} items to print queue (copies auto-filled from stock count)`)
+  }
+
+  const syncAllToStock = () => {
+    setPrintQueue((prev) => {
+      const next = {}
+      let updatedCount = 0
+      Object.entries(prev).forEach(([id, item]) => {
+        const stockQty = Math.max(1, parseInt(item.product.stock ?? item.product.stock_quantity ?? item.product.quantity ?? 1) || 1)
+        next[id] = { ...item, copies: stockQty }
+        updatedCount++
+      })
+      return next
+    })
+    toast.success('Synced all print copies to match inventory stock quantities')
   }
 
   const clearQueue = () => {
@@ -712,24 +742,34 @@ export default function Barcode() {
                 </div>
 
                 {/* Batch add to queue */}
-                <div className="d-flex gap-2">
+                <div className="d-flex gap-2 align-items-center flex-wrap">
                   <button
                     type="button"
                     className="btn btn-sm btn-outline-secondary"
                     onClick={() => addAllToQueue(filteredProducts)}
-                    title="Add all currently filtered items to print queue"
+                    title="Add all currently filtered items to print queue with copies matching stock count"
                   >
                     <i className="ri-add-circle-line me-1"></i> Queue Filtered
                   </button>
                   {Object.keys(printQueue).length > 0 && (
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={clearQueue}
-                      title="Clear print queue"
-                    >
-                      Clear Queue
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-success"
+                        onClick={syncAllToStock}
+                        title="Set copies of all queued items to match their live stock quantity"
+                      >
+                        <i className="ri-refresh-line me-1"></i> Match Stock Qty
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={clearQueue}
+                        title="Clear print queue"
+                      >
+                        Clear Queue
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -830,9 +870,9 @@ export default function Barcode() {
                       />
                     </th>
                     <th>Product</th>
-                    <th>Price</th>
+                    <th>Price &amp; Stock</th>
                     <th>Universal Barcode</th>
-                    <th>Copies</th>
+                    <th>Copies to Print</th>
                     <th className="text-end pe-3">Actions</th>
                   </tr>
                 </thead>
@@ -854,7 +894,8 @@ export default function Barcode() {
                   ) : (
                     filteredProducts.map((p) => {
                       const isQueued = Boolean(printQueue[p.id])
-                      const copies = printQueue[p.id]?.copies || 1
+                      const stockCount = Math.max(1, parseInt(p.stock ?? p.stock_quantity ?? p.quantity ?? 1) || 1)
+                      const copies = printQueue[p.id]?.copies || stockCount
                       const hasBarcode = Boolean(p.barcode && p.barcode.trim())
 
                       return (
@@ -893,7 +934,20 @@ export default function Barcode() {
                               </div>
                             </div>
                           </td>
-                          <td className="fw-bold text-dark fs-sm">{formatNaira(p.price || p.unit_price)}</td>
+                          <td>
+                            <div className="fw-bold text-dark fs-sm">{formatNaira(p.price || p.unit_price)}</div>
+                            <div className="d-flex align-items-center gap-1 mt-1">
+                              <span
+                                className={`badge ${
+                                  Number(p.stock ?? p.stock_quantity ?? 0) > 0
+                                    ? 'bg-success-subtle text-success border border-success-subtle'
+                                    : 'bg-danger-subtle text-danger border border-danger-subtle'
+                                } fs-xs py-0`}
+                              >
+                                Stock: {p.stock ?? p.stock_quantity ?? 0} {p.unit || 'units'}
+                              </span>
+                            </div>
+                          </td>
                           <td>
                             {hasBarcode ? (
                               <div className="d-flex align-items-center gap-2">
@@ -928,32 +982,44 @@ export default function Barcode() {
                             )}
                           </td>
                           <td>
-                            <div className="input-group input-group-sm" style={{ width: '100px' }}>
-                              <button
-                                type="button"
-                                className="btn btn-outline-secondary px-2"
-                                onClick={() => updateQueueCopies(p.id, -1)}
-                                disabled={!isQueued}
-                              >
-                                -
-                              </button>
-                              <input
-                                type="number"
-                                className="form-control text-center px-1 font-monospace"
-                                min="1"
-                                max="999"
-                                value={copies}
-                                disabled={!isQueued}
-                                onChange={(e) => setQueueCopiesDirect(p.id, e.target.value)}
-                              />
-                              <button
-                                type="button"
-                                className="btn btn-outline-secondary px-2"
-                                onClick={() => updateQueueCopies(p.id, 1)}
-                                disabled={!isQueued}
-                              >
-                                +
-                              </button>
+                            <div className="d-flex align-items-center gap-1">
+                              <div className="input-group input-group-sm" style={{ width: '92px' }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-secondary px-2"
+                                  onClick={() => updateQueueCopies(p.id, -1)}
+                                  disabled={!isQueued}
+                                >
+                                  -
+                                </button>
+                                <input
+                                  type="number"
+                                  className="form-control text-center px-1 font-monospace fw-bold"
+                                  min="1"
+                                  max="9999"
+                                  value={copies}
+                                  disabled={!isQueued}
+                                  onChange={(e) => setQueueCopiesDirect(p.id, e.target.value)}
+                                />
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-secondary px-2"
+                                  onClick={() => updateQueueCopies(p.id, 1)}
+                                  disabled={!isQueued}
+                                >
+                                  +
+                                </button>
+                              </div>
+                              {isQueued && (
+                                <button
+                                  type="button"
+                                  className="btn btn-xs btn-outline-success py-1 px-1 rounded"
+                                  title={`Match stock count (${p.stock ?? p.stock_quantity ?? 0})`}
+                                  onClick={() => setQueueCopiesDirect(p.id, p.stock ?? p.stock_quantity ?? 1)}
+                                >
+                                  <i className="ri-magic-line"></i>
+                                </button>
+                              )}
                             </div>
                           </td>
                           <td className="text-end pe-3">

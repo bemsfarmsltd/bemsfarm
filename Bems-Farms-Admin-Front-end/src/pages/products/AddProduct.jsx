@@ -207,6 +207,9 @@ export default function AddProduct() {
     is_featured: false,
   })
 
+  // Packaging & Unit Conversions State (Carton vs Pieces)
+  const [packagingUnits, setPackagingUnits] = useState([])
+
   // Load Form Metadata (Categories, Units, Subcategories)
   useEffect(() => {
     async function loadFormData() {
@@ -276,6 +279,9 @@ export default function AddProduct() {
             video_url: p.video_url || '',
             is_featured: !!p.is_featured,
           })
+          if (p.packaging_units && Array.isArray(p.packaging_units)) {
+            setPackagingUnits(p.packaging_units)
+          }
         }
       } catch (err) {
         toast.error('Failed to load product details for editing')
@@ -316,6 +322,87 @@ export default function AddProduct() {
     }, 'CODE128')
     setFormData((prev) => ({ ...prev, barcode: code }))
     toast.success(`Generated Universal Barcode: ${code}`)
+  }
+
+  // Packaging Tier Helpers
+  function handleAddPackagingUnit(preset = null) {
+    const unitPrice = parseFloat(formData.unit_price) || 0
+    const costPrice = parseFloat(formData.cost_price) || 0
+    const skuPrefix = formData.sku || 'PROD'
+
+    let newUnit = {
+      id: `temp-${Date.now()}`,
+      unit_name: 'Carton of 40',
+      multiplier: 40,
+      price: unitPrice > 0 ? (unitPrice * 40).toFixed(2) : '',
+      cost_price: costPrice > 0 ? (costPrice * 40).toFixed(2) : '',
+      barcode: '',
+      sku: `${skuPrefix}-CTN40`,
+      is_default: false,
+    }
+
+    if (preset === 'carton') {
+      newUnit = {
+        id: `temp-${Date.now()}`,
+        unit_name: 'Carton of 40',
+        multiplier: 40,
+        price: unitPrice > 0 ? (unitPrice * 40).toFixed(2) : '',
+        cost_price: costPrice > 0 ? (costPrice * 40).toFixed(2) : '',
+        barcode: '',
+        sku: `${skuPrefix}-CTN40`,
+        is_default: false,
+      }
+    } else if (preset === 'pack') {
+      newUnit = {
+        id: `temp-${Date.now()}`,
+        unit_name: 'Pack of 10',
+        multiplier: 10,
+        price: unitPrice > 0 ? (unitPrice * 10).toFixed(2) : '',
+        cost_price: costPrice > 0 ? (costPrice * 10).toFixed(2) : '',
+        barcode: '',
+        sku: `${skuPrefix}-PK10`,
+        is_default: false,
+      }
+    } else if (preset === 'crate') {
+      newUnit = {
+        id: `temp-${Date.now()}`,
+        unit_name: 'Crate of 30',
+        multiplier: 30,
+        price: unitPrice > 0 ? (unitPrice * 30).toFixed(2) : '',
+        cost_price: costPrice > 0 ? (costPrice * 30).toFixed(2) : '',
+        barcode: '',
+        sku: `${skuPrefix}-CRT30`,
+        is_default: false,
+      }
+    }
+
+    setPackagingUnits((prev) => [...prev, newUnit])
+  }
+
+  function handleUpdatePackagingUnit(index, field, value) {
+    setPackagingUnits((prev) => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [field]: value }
+      return updated
+    })
+  }
+
+  function handleRemovePackagingUnit(index) {
+    setPackagingUnits((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  function handleGenerateUnitBarcode(index) {
+    const unit = packagingUnits[index]
+    const code = generateUniversalGoodsCode(
+      {
+        name: `${formData.name || 'Product'} ${unit.unit_name}`,
+        category: 'PKG',
+        id: index + 1,
+      },
+      'CODE128'
+    )
+    handleUpdatePackagingUnit(index, 'barcode', code)
+    toast.success(`Generated barcode for ${unit.unit_name}: ${code}`)
   }
 
   // Margin Calculation
@@ -372,6 +459,7 @@ export default function AddProduct() {
         image_3_url: formData.image_3_url?.trim() || null,
         image_4_url: formData.image_4_url?.trim() || null,
         is_featured: formData.is_featured,
+        packaging_units: packagingUnits.filter(u => u.unit_name?.trim() && Number(u.multiplier) > 0),
       }
 
       if (editId) {
@@ -873,6 +961,184 @@ export default function AddProduct() {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* ── Packaging & Multi-Unit Conversions (Carton vs Pieces) ──── */}
+              <div className="card mb-3 shadow-sm border-0">
+                <div className="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                  <div>
+                    <h6 className="card-title mb-0 fw-bold d-flex align-items-center gap-2">
+                      <i className="ri-inbox-archive-line text-success fs-5"></i>
+                      Packaging &amp; Multi-Unit Conversions (Carton vs Pieces)
+                    </h6>
+                    <small className="text-muted">
+                      Sell simultaneously by Carton, Crate, Pack, or Piece. Each tier has its own barcode and automatically deducts base pieces from stock.
+                    </small>
+                  </div>
+                  <div className="d-flex gap-1 flex-wrap">
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-outline-success rounded-pill px-2 py-1"
+                      onClick={() => handleAddPackagingUnit('carton')}
+                    >
+                      + Carton (40 pcs)
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-outline-success rounded-pill px-2 py-1"
+                      onClick={() => handleAddPackagingUnit('pack')}
+                    >
+                      + Pack (10 pcs)
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-outline-success rounded-pill px-2 py-1"
+                      onClick={() => handleAddPackagingUnit('crate')}
+                    >
+                      + Crate (30 pcs)
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-primary rounded-pill px-2 py-1"
+                      onClick={() => handleAddPackagingUnit()}
+                    >
+                      + Custom Tier
+                    </button>
+                  </div>
+                </div>
+
+                <div className="card-body">
+                  {packagingUnits.length === 0 ? (
+                    <div className="text-center py-4 bg-light rounded-3 border border-dashed">
+                      <i className="ri-archive-line fs-2 text-muted opacity-50 d-block mb-2"></i>
+                      <h6 className="fw-bold text-dark mb-1">No Bulk Packaging Tiers Added</h6>
+                      <p className="text-muted fs-xs mb-3" style={{ maxWidth: 460, margin: '0 auto' }}>
+                        This product is currently only sold by its base unit (<strong>{formData.unit || 'Piece / Kg'}</strong> @ ₦{formData.unit_price || '0'}).
+                        Add a Carton or Pack tier above if you want to sell in cartons with dedicated barcodes!
+                      </p>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-success"
+                        onClick={() => handleAddPackagingUnit('carton')}
+                      >
+                        <i className="ri-add-line me-1"></i> Add Carton Tier (e.g. 40 pcs)
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="table-responsive">
+                      <table className="table table-sm align-middle mb-0">
+                        <thead className="table-light text-muted fs-xs text-uppercase">
+                          <tr>
+                            <th style={{ minWidth: 140 }}>Packaging Name</th>
+                            <th style={{ width: 100 }}>Pieces / Multiplier</th>
+                            <th style={{ width: 130 }}>Selling Price (₦)</th>
+                            <th style={{ width: 130 }}>Cost Price (₦)</th>
+                            <th style={{ minWidth: 160 }}>Carton Barcode</th>
+                            <th style={{ width: 130 }}>Carton SKU</th>
+                            <th style={{ width: 40 }} className="text-end"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {packagingUnits.map((unit, idx) => (
+                            <tr key={unit.id || idx}>
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm fw-semibold"
+                                  placeholder="e.g. Carton of 40"
+                                  value={unit.unit_name}
+                                  onChange={(e) => handleUpdatePackagingUnit(idx, 'unit_name', e.target.value)}
+                                />
+                              </td>
+                              <td>
+                                <div className="input-group input-group-sm">
+                                  <input
+                                    type="number"
+                                    className="form-control form-control-sm text-center font-monospace fw-bold"
+                                    min="1"
+                                    placeholder="40"
+                                    value={unit.multiplier}
+                                    onChange={(e) => handleUpdatePackagingUnit(idx, 'multiplier', e.target.value)}
+                                  />
+                                </div>
+                              </td>
+                              <td>
+                                <div className="input-group input-group-sm">
+                                  <span className="input-group-text py-0">₦</span>
+                                  <input
+                                    type="number"
+                                    className="form-control form-control-sm"
+                                    placeholder="18000"
+                                    min="0"
+                                    step="0.01"
+                                    value={unit.price}
+                                    onChange={(e) => handleUpdatePackagingUnit(idx, 'price', e.target.value)}
+                                  />
+                                </div>
+                              </td>
+                              <td>
+                                <div className="input-group input-group-sm">
+                                  <span className="input-group-text py-0">₦</span>
+                                  <input
+                                    type="number"
+                                    className="form-control form-control-sm"
+                                    placeholder="15000"
+                                    min="0"
+                                    step="0.01"
+                                    value={unit.cost_price || ''}
+                                    onChange={(e) => handleUpdatePackagingUnit(idx, 'cost_price', e.target.value)}
+                                  />
+                                </div>
+                              </td>
+                              <td>
+                                <div className="input-group input-group-sm">
+                                  <input
+                                    type="text"
+                                    className="form-control form-control-sm font-monospace"
+                                    placeholder="Carton Barcode"
+                                    value={unit.barcode || ''}
+                                    onChange={(e) => handleUpdatePackagingUnit(idx, 'barcode', e.target.value)}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline-success py-0 px-2"
+                                    onClick={() => handleGenerateUnitBarcode(idx)}
+                                    title="Auto-Generate Barcode"
+                                  >
+                                    <i className="ri-magic-line"></i>
+                                  </button>
+                                </div>
+                              </td>
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm font-monospace"
+                                  placeholder="SKU-CTN"
+                                  value={unit.sku || ''}
+                                  onChange={(e) => handleUpdatePackagingUnit(idx, 'sku', e.target.value)}
+                                />
+                              </td>
+                              <td className="text-end">
+                                <button
+                                  type="button"
+                                  className="btn btn-xs btn-outline-danger"
+                                  onClick={() => handleRemovePackagingUnit(idx)}
+                                  title="Delete packaging tier"
+                                >
+                                  <i className="ri-delete-bin-line"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div className="alert alert-info bg-info-subtle border-0 py-2 px-3 mt-3 mb-0 fs-xs text-dark rounded-3">
+                        <i className="ri-information-line me-1 text-primary"></i>
+                        <strong>POS Auto-Deduction:</strong> Scanning any carton/tier barcode at checkout automatically bills at that packaging's price and deducts the multiplier (e.g. 40 pieces) from your master stock.
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

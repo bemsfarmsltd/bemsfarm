@@ -339,8 +339,10 @@ export default function POS() {
               name: p.name,
               cat: getProductCat(p),
               price: sanitizedPrice || 1000,
+              base_price: sanitizedPrice || 1000,
               stock: p.stock != null ? Number(p.stock) : (p.stock_quantity != null ? Number(p.stock_quantity) : 25),
               unit: p.unit || 'unit',
+              packaging_units: Array.isArray(p.packaging_units) ? p.packaging_units : [],
               image: p.image_url || p.image || null,
               icon: p.icon || getProductIcon(p.name, p.category || p.cat)
             }
@@ -445,32 +447,74 @@ export default function POS() {
   }
 
   // Cart & Product Methods
-  function addProductToCart(product) {
+  function addProductToCart(product, specificUnit = null) {
     playBeep('scan')
+    const unit = specificUnit || product.selectedPackagingUnit || null
+    const price = unit ? Number(unit.price || (product.price * (unit.multiplier || 1))) : (product.base_price || product.price)
+    const unitName = unit ? unit.unit_name : (product.unit || 'unit')
+    const packagingUnitId = unit ? unit.id : null
+    const multiplier = unit ? Number(unit.multiplier || 1) : 1
+    const cartKey = packagingUnitId ? `${product.id}-pkg-${packagingUnitId}` : `${product.id}`
+
     setCart(prev => {
-      const ex = prev.find(i => i.id === product.id)
+      const ex = prev.find(i => (i.cartKey || (i.packaging_unit_id ? `${i.id}-pkg-${i.packaging_unit_id}` : `${i.id}`)) === cartKey)
       if (ex) {
-        showToast(`${product.name} (Qty ${ex.qty + 1})`, 'success', product.icon || '🌾')
-        return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i)
+        showToast(`${product.name} [${unitName}] (Qty ${ex.qty + 1})`, 'success', product.icon || '🌾')
+        return prev.map(i => (i.cartKey || (i.packaging_unit_id ? `${i.id}-pkg-${i.packaging_unit_id}` : `${i.id}`)) === cartKey ? { ...i, qty: i.qty + 1 } : i)
       }
-      showToast(`${product.name} added`, 'success', product.icon || '🌾')
-      return [...prev, { ...product, qty: 1, note: '' }]
+      showToast(`${product.name} [${unitName}] added`, 'success', product.icon || '🌾')
+      return [...prev, {
+        ...product,
+        cartKey,
+        price,
+        unit: unitName,
+        packaging_unit_id: packagingUnitId,
+        packaging_name: unitName,
+        multiplier,
+        qty: 1,
+        note: ''
+      }]
     })
-    setHighlightId(product.id)
+    setHighlightId(cartKey)
     setTimeout(() => setHighlightId(null), 500)
   }
 
-  function updateQty(id, qty) {
+  function updateQty(keyOrId, qty) {
     if (qty <= 0) {
-      setCart(prev => prev.filter(i => i.id !== id))
+      setCart(prev => prev.filter(i => (i.cartKey || i.id) !== keyOrId && i.id !== keyOrId))
       showToast('Item removed from cart', 'info', '🗑️')
       return
     }
-    setCart(prev => prev.map(i => i.id === id ? { ...i, qty } : i))
+    setCart(prev => prev.map(i => ((i.cartKey || i.id) === keyOrId || i.id === keyOrId) ? { ...i, qty } : i))
   }
 
-  function updateNote(id, note) {
-    setCart(prev => prev.map(i => i.id === id ? { ...i, note } : i))
+  function updateNote(keyOrId, note) {
+    setCart(prev => prev.map(i => ((i.cartKey || i.id) === keyOrId || i.id === keyOrId) ? { ...i, note } : i))
+  }
+
+  function switchCartPackaging(item, packagingUnitId) {
+    const origProduct = productsList.find(p => p.id === item.id) || item
+    const unit = packagingUnitId ? (origProduct.packaging_units || []).find(u => String(u.id) === String(packagingUnitId)) : null
+    const price = unit ? Number(unit.price || ((origProduct.base_price || origProduct.price) * (unit.multiplier || 1))) : (origProduct.base_price || origProduct.price)
+    const unitName = unit ? unit.unit_name : (origProduct.unit || 'unit')
+    const newCartKey = unit ? `${origProduct.id}-pkg-${unit.id}` : `${origProduct.id}`
+    const multiplier = unit ? Number(unit.multiplier || 1) : 1
+
+    setCart(prev => prev.map(i => {
+      if ((i.cartKey || i.id) === (item.cartKey || item.id)) {
+        return {
+          ...i,
+          cartKey: newCartKey,
+          price,
+          unit: unitName,
+          packaging_unit_id: unit ? unit.id : null,
+          packaging_name: unitName,
+          multiplier
+        }
+      }
+      return i
+    }))
+    showToast(`Switched to ${unitName} (₦${price?.toLocaleString()})`, 'info', '📦')
   }
 
   function clearCart() {
@@ -502,6 +546,24 @@ export default function POS() {
       if (p.id) {
         bc[String(p.id)] = p
         bc[`BF-${p.id}`] = p
+      }
+      // Packaging Units Barcodes & SKUs
+      if (p.packaging_units && Array.isArray(p.packaging_units)) {
+        p.packaging_units.forEach(u => {
+          if (u.barcode) {
+            const cleanU = String(u.barcode).trim().toUpperCase()
+            const pkgObj = { ...p, selectedPackagingUnit: u }
+            bc[cleanU] = pkgObj
+            bc[cleanU.replace(/^BF-/, '')] = pkgObj
+            bc['BF-' + cleanU.replace(/^BF-/, '')] = pkgObj
+          }
+          if (u.sku) {
+            const cleanUSku = String(u.sku).trim().toUpperCase()
+            const pkgObj = { ...p, selectedPackagingUnit: u }
+            sk[cleanUSku] = pkgObj
+            sk[cleanUSku.replace(/^SKU-/, '')] = pkgObj
+          }
+        })
       }
     })
     return { byBarcode: bc, bySku: sk }
@@ -553,6 +615,7 @@ export default function POS() {
         if (found) {
           const rawPrice = Number(found.price || found.unit_price || 0)
           const sanitizedPrice = rawPrice >= 500000 ? Math.round(rawPrice / 1500) : Math.round(rawPrice)
+          const matchedUnit = found.matched_packaging_unit || null
           product = {
             id: found.id,
             barcode: found.barcode || `BF-${found.sku || found.id}`,
@@ -560,8 +623,11 @@ export default function POS() {
             name: found.name,
             cat: getProductCat(found),
             price: sanitizedPrice || 1000,
+            base_price: sanitizedPrice || 1000,
             stock: found.stock != null ? Number(found.stock) : 25,
             unit: found.unit || 'unit',
+            packaging_units: Array.isArray(found.packaging_units) ? found.packaging_units : [],
+            selectedPackagingUnit: matchedUnit,
             image: found.image_url || found.image || null,
             icon: found.icon || getProductIcon(found.name, found.category)
           }
@@ -957,6 +1023,9 @@ export default function POS() {
         notes: orderNote,
         items: cart.map(i => ({
           product_id: i.id,
+          packaging_unit_id: i.packaging_unit_id || null,
+          packaging_name: i.packaging_name || i.unit || null,
+          multiplier: i.multiplier || 1,
           quantity: i.qty,
           unit_price: i.price,
           total_price: i.price * i.qty,
@@ -1535,10 +1604,11 @@ export default function POS() {
               </div>
             ) : (
               cart.map(item => {
-                const isHighlit = highlightId === item.id
+                const itemKey = item.cartKey || (item.packaging_unit_id ? `${item.id}-pkg-${item.packaging_unit_id}` : item.id)
+                const isHighlit = highlightId === itemKey || highlightId === item.id
 
                 return (
-                  <div key={item.id} className={`pos-cart-entry ${isHighlit ? 'item-flashed' : ''}`}>
+                  <div key={itemKey} className={`pos-cart-entry ${isHighlit ? 'item-flashed' : ''}`}>
                     <div className="pos-entry-top">
                       <div className="pos-entry-icon-wrap">
                         {item.image ? (
@@ -1548,27 +1618,53 @@ export default function POS() {
                         )}
                       </div>
                       <div className="pos-entry-details">
-                        <div className="pos-entry-title">{item.name}</div>
+                        <div className="pos-entry-title d-flex align-items-center gap-1 flex-wrap">
+                          <span>{item.name}</span>
+                          {item.packaging_name && item.multiplier > 1 && (
+                            <span className="badge bg-success-subtle text-success border border-success-subtle px-1 py-0" style={{ fontSize: 10 }}>
+                              {item.packaging_name} ({item.multiplier}x)
+                            </span>
+                          )}
+                        </div>
                         <div className="pos-entry-unit-rate">{fmt(item.price)} / {item.unit}</div>
+
+                        {/* Packaging Tier Switcher (Carton / Pack / Pieces) */}
+                        {item.packaging_units && item.packaging_units.length > 0 && (
+                          <div className="mt-1">
+                            <select
+                              className="form-select form-select-sm py-0 ps-1 pe-3"
+                              style={{ fontSize: 10, height: 22, maxWidth: 190, background: '#f0fdf4', borderColor: '#86efac', color: '#166534', fontWeight: 600 }}
+                              value={item.packaging_unit_id || ''}
+                              onChange={(e) => switchCartPackaging(item, e.target.value || null)}
+                            >
+                              <option value="">Base: {item.base_unit || 'Piece'} ({fmt(item.base_price || item.price)})</option>
+                              {item.packaging_units.map(u => (
+                                <option key={u.id} value={u.id}>
+                                  {u.unit_name} ({u.multiplier}x) · {fmt(u.price || ((item.base_price || item.price) * u.multiplier))}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
 
                       {/* Stepper */}
                       <div className="pos-entry-stepper">
-                        <button onClick={() => updateQty(item.id, item.qty - 1)} className="pos-entry-step-btn">−</button>
+                        <button onClick={() => updateQty(itemKey, item.qty - 1)} className="pos-entry-step-btn">−</button>
                         <input
                           type="number"
                           min="1"
                           value={item.qty}
-                          onChange={e => updateQty(item.id, parseInt(e.target.value) || 1)}
+                          onChange={e => updateQty(itemKey, parseInt(e.target.value) || 1)}
                           className="pos-entry-step-input"
                         />
-                        <button onClick={() => updateQty(item.id, item.qty + 1)} className="pos-entry-step-btn">+</button>
+                        <button onClick={() => updateQty(itemKey, item.qty + 1)} className="pos-entry-step-btn">+</button>
                       </div>
 
                       {/* Line Total & Remove */}
                       <div className="pos-entry-total-box">
                         <div className="pos-entry-line-total">{fmt(item.price * item.qty)}</div>
-                        <button onClick={() => updateQty(item.id, 0)} className="pos-entry-remove-btn" title="Remove item">
+                        <button onClick={() => updateQty(itemKey, 0)} className="pos-entry-remove-btn" title="Remove item">
                           <i className="ri-delete-bin-line"></i>
                         </button>
                       </div>
@@ -1579,7 +1675,7 @@ export default function POS() {
                       type="text"
                       placeholder="+ Add item packing note..."
                       value={item.note || ''}
-                      onChange={e => updateNote(item.id, e.target.value)}
+                      onChange={e => updateNote(itemKey, e.target.value)}
                       className="pos-entry-note-input"
                     />
                   </div>

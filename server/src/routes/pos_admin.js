@@ -301,6 +301,17 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), vali
     );
     const productsById = new Map(prodRows.rows.map((p) => [p.id, p]));
 
+    // Fetch packaging units if specified
+    const pkgUnitIds = items.map((i) => parseInt(i.packaging_unit_id)).filter(Boolean);
+    let pkgUnitsMap = new Map();
+    if (pkgUnitIds.length > 0) {
+      const pkgRows = await client.query(
+        "SELECT id, product_id, unit_name, multiplier, price FROM product_packaging_units WHERE id = ANY($1::int[])",
+        [pkgUnitIds]
+      );
+      pkgUnitsMap = new Map(pkgRows.rows.map((u) => [u.id, u]));
+    }
+
     let subtotal = 0;
     const lineItems = [];
     for (const item of items) {
@@ -311,16 +322,33 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), vali
         await client.query("ROLLBACK");
         return res.status(400).json({ message: `Product ${item.product_id} is not available` });
       }
+
+      const pkg = item.packaging_unit_id ? pkgUnitsMap.get(parseInt(item.packaging_unit_id)) : null;
+      const multiplier = pkg ? parseFloat(pkg.multiplier) : (parseFloat(item.multiplier) || 1);
+      const unit_price = pkg ? parseFloat(pkg.price) : (item.unit_price ? parseFloat(item.unit_price) : parseFloat(p.unit_price || p.price || 0));
+      const packaging_unit_name = pkg ? pkg.unit_name : (item.packaging_unit_name || null);
+
       const availableStock = p.stock != null ? p.stock : (p.stock_quantity != null ? p.stock_quantity : 999);
-      if (p.stock != null && quantity > availableStock && availableStock > 0) {
+      const effectiveNeeded = quantity * multiplier;
+      if (p.stock != null && effectiveNeeded > availableStock && availableStock >= 0) {
         await client.query("ROLLBACK");
-        return res.status(400).json({ message: `Only ${availableStock} of "${p.name}" left in stock` });
+        return res.status(400).json({
+          message: `Only ${availableStock} base unit(s) of "${p.name}" in stock. Order requires ${effectiveNeeded} units.`,
+        });
       }
-      // price and unit_price are already in standard Naira
-      const unit_price = parseFloat(p.unit_price || p.price || 0);
+
       const line_total = unit_price * quantity;
       subtotal += line_total;
-      lineItems.push({ product_id: p.id, name: p.name, quantity, unit_price, line_total });
+      lineItems.push({
+        product_id: p.id,
+        name: p.name,
+        quantity,
+        unit_price,
+        line_total,
+        multiplier,
+        packaging_unit_name,
+        packaging_unit_id: pkg?.id || null,
+      });
     }
 
     // Discount is never trusted as-is from the client:
@@ -407,10 +435,16 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), vali
 
     // Insert order items and deduct stock
     for (const item of lineItems) {
+      const multiplier = parseFloat(item.multiplier || item.packaging_multiplier || 1) || 1;
+      const effectiveDeduction = parseFloat(item.quantity) * multiplier;
+      const displayName = item.packaging_unit_name && item.packaging_unit_name !== 'Piece' && item.packaging_unit_name !== 'Unit'
+        ? `${item.name} (${item.packaging_unit_name})`
+        : item.name;
+
       await client.query(
         `INSERT INTO order_items (order_id, product_id, product_name, quantity, price, unit_price, subtotal)
          VALUES ($1,$2,$3,$4,$5,$5,$6)`,
-        [orderId, item.product_id, item.name, item.quantity, item.unit_price, item.line_total]
+        [orderId, item.product_id, displayName, item.quantity, item.unit_price, item.line_total]
       );
       await client.query(
         `UPDATE products
@@ -418,7 +452,7 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), vali
              stock_quantity = GREATEST(0, COALESCE(stock_quantity,0) - $1),
              updated_at = NOW()
          WHERE id=$2`,
-        [item.quantity, item.product_id]
+        [effectiveDeduction, item.product_id]
       );
     }
 
@@ -659,11 +693,25 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
         OR p.barcode ILIKE $${params.length}
         OR p.sku = $${params.length}
         OR p.sku ILIKE $${params.length}
+        OR EXISTS (
+          SELECT 1 FROM product_packaging_units ppu 
+          WHERE ppu.product_id = p.id 
+            AND (ppu.barcode = $${params.length} OR ppu.barcode ILIKE $${params.length} OR ppu.sku = $${params.length} OR ppu.sku ILIKE $${params.length})
+        )
         OR (p.barcode IS NOT NULL AND REGEXP_REPLACE(p.barcode, '\\D', '', 'g') = REGEXP_REPLACE($${params.length}, '\\D', '', 'g') AND LENGTH($${params.length}) >= 4)
       )`);
     } else if (q) {
       params.push(`%${q}%`);
-      where.push(`(p.name ILIKE $${params.length} OR p.sku ILIKE $${params.length} OR p.barcode ILIKE $${params.length})`);
+      where.push(`(
+        p.name ILIKE $${params.length} 
+        OR p.sku ILIKE $${params.length} 
+        OR p.barcode ILIKE $${params.length}
+        OR EXISTS (
+          SELECT 1 FROM product_packaging_units ppu 
+          WHERE ppu.product_id = p.id 
+            AND (ppu.unit_name ILIKE $${params.length} OR ppu.barcode ILIKE $${params.length} OR ppu.sku ILIKE $${params.length})
+        )
+      )`);
     }
     if (category_id) { params.push(category_id); where.push(`p.category_id=$${params.length}`); }
 
@@ -683,10 +731,54 @@ router.get("/products", requireRole("superadmin", "manager", "admin", "cashier")
        LIMIT $${params.length}`,
       params
     );
-    const products = result.rows.map((p) => ({
-      ...p,
-      price: parseFloat(p.price || 0),
-    }));
+
+    const productIds = result.rows.map((p) => p.id);
+    let packagingMap = {};
+
+    if (productIds.length > 0) {
+      try {
+        const puRes = await pool.query(
+          `SELECT id, product_id, unit_name, multiplier, price, cost_price, barcode, sku, is_default
+           FROM product_packaging_units
+           WHERE product_id = ANY($1::int[]) AND is_active = true
+           ORDER BY multiplier ASC`,
+          [productIds]
+        );
+        puRes.rows.forEach((pu) => {
+          if (!packagingMap[pu.product_id]) packagingMap[pu.product_id] = [];
+          packagingMap[pu.product_id].push({
+            ...pu,
+            multiplier: parseFloat(pu.multiplier || 1),
+            price: parseFloat(pu.price || 0),
+            cost_price: pu.cost_price ? parseFloat(pu.cost_price) : null,
+          });
+        });
+      } catch (_) {}
+    }
+
+    const trimmedBc = barcode ? barcode.trim().toLowerCase() : null;
+
+    const products = result.rows.map((p) => {
+      const pkgUnits = packagingMap[p.id] || [];
+      let matchedUnit = null;
+
+      if (trimmedBc && pkgUnits.length > 0) {
+        matchedUnit = pkgUnits.find(
+          (u) =>
+            (u.barcode && u.barcode.toLowerCase() === trimmedBc) ||
+            (u.sku && u.sku.toLowerCase() === trimmedBc)
+        );
+      }
+
+      return {
+        ...p,
+        price: parseFloat(p.price || 0),
+        stock: parseFloat(p.stock || 0),
+        packaging_units: pkgUnits,
+        matched_packaging_unit: matchedUnit || null,
+      };
+    });
+
     res.json({ products });
   } catch (err) {
     next(err);

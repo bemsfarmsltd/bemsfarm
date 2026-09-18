@@ -13,6 +13,41 @@ const { trackActivity } = require("../utils/aiContext");
 
 router.use(protect);
 
+// ── SCHEMA MIGRATION ─────────────────────────────────────────────
+let packagingSchemaEnsured = false;
+async function ensurePackagingTables() {
+  if (packagingSchemaEnsured) return;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS product_packaging_units (
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        unit_name VARCHAR(100) NOT NULL,
+        multiplier NUMERIC(10,2) NOT NULL DEFAULT 1,
+        price NUMERIC(12,2) NOT NULL DEFAULT 0,
+        cost_price NUMERIC(12,2),
+        barcode VARCHAR(100),
+        sku VARCHAR(100),
+        is_default BOOLEAN DEFAULT false,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_pkg_units_prod ON product_packaging_units(product_id);
+      CREATE INDEX IF NOT EXISTS idx_pkg_units_barcode ON product_packaging_units(barcode);
+    `);
+    packagingSchemaEnsured = true;
+  } catch (err) {
+    console.warn("ensurePackagingTables warning:", err.message);
+  }
+}
+ensurePackagingTables();
+
+router.use(async (req, res, next) => {
+  await ensurePackagingTables();
+  next();
+});
+
 // ── HELPERS ──────────────────────────────────────────────────────
 function calculateEan13Checksum(code12) {
   const digits = String(code12).padStart(12, "0").split("").map(Number);
@@ -342,6 +377,168 @@ router.delete(
   },
 );
 
+// ── PACKAGING & MULTI-UNIT TIERS ─────────────────────────────────
+// GET /api/admin/products/:id/packaging-units
+router.get(
+  "/:id/packaging-units",
+  requireRole("superadmin", "manager", "admin", "kitchen_staff", "cashier"),
+  async (req, res, next) => {
+    try {
+      const result = await pool.query(
+        `SELECT id, product_id, unit_name, multiplier, price, cost_price, barcode, sku, is_default, is_active, created_at
+         FROM product_packaging_units
+         WHERE product_id = $1
+         ORDER BY multiplier ASC`,
+        [req.params.id]
+      );
+      res.json({
+        packaging_units: result.rows.map(u => ({
+          ...u,
+          multiplier: parseFloat(u.multiplier || 1),
+          price: parseFloat(u.price || 0),
+          cost_price: u.cost_price ? parseFloat(u.cost_price) : null
+        }))
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /api/admin/products/:id/packaging-units
+router.post(
+  "/:id/packaging-units",
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      const { unit_name, multiplier, price, cost_price, barcode, sku, is_default } = req.body;
+      if (!unit_name?.trim()) return res.status(400).json({ message: "Packaging unit name is required (e.g. Carton, Pack, Crate)" });
+      const mult = parseFloat(multiplier);
+      if (isNaN(mult) || mult <= 0) return res.status(400).json({ message: "Multiplier must be greater than 0 (e.g. 40 pieces per carton)" });
+      const unitPrice = parseFloat(price);
+      if (isNaN(unitPrice) || unitPrice < 0) return res.status(400).json({ message: "Price must be a valid number" });
+
+      if (barcode?.trim()) {
+        const dupBc = await pool.query("SELECT id FROM product_packaging_units WHERE barcode=$1", [barcode.trim()]);
+        if (dupBc.rows.length) {
+          return res.status(400).json({ message: `Barcode "${barcode.trim()}" is already assigned to another packaging unit` });
+        }
+      }
+
+      if (sku?.trim()) {
+        const dupSku = await pool.query("SELECT id FROM product_packaging_units WHERE sku=$1", [sku.trim()]);
+        if (dupSku.rows.length) {
+          return res.status(400).json({ message: `SKU "${sku.trim()}" is already assigned to another packaging unit` });
+        }
+      }
+
+      const result = await pool.query(
+        `INSERT INTO product_packaging_units (product_id, unit_name, multiplier, price, cost_price, barcode, sku, is_default, is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW(), NOW())
+         RETURNING *`,
+        [
+          req.params.id,
+          unit_name.trim(),
+          mult,
+          unitPrice,
+          cost_price ? parseFloat(cost_price) : null,
+          barcode?.trim() || null,
+          sku?.trim() || null,
+          Boolean(is_default)
+        ]
+      );
+
+      res.status(201).json({
+        packaging_unit: {
+          ...result.rows[0],
+          multiplier: parseFloat(result.rows[0].multiplier),
+          price: parseFloat(result.rows[0].price),
+          cost_price: result.rows[0].cost_price ? parseFloat(result.rows[0].cost_price) : null
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// PUT /api/admin/products/packaging-units/:unitId
+router.put(
+  "/packaging-units/:unitId",
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      const { unit_name, multiplier, price, cost_price, barcode, sku, is_default, is_active } = req.body;
+      if (!unit_name?.trim()) return res.status(400).json({ message: "Packaging unit name is required" });
+      const mult = parseFloat(multiplier);
+      if (isNaN(mult) || mult <= 0) return res.status(400).json({ message: "Multiplier must be greater than 0" });
+      const unitPrice = parseFloat(price);
+      if (isNaN(unitPrice) || unitPrice < 0) return res.status(400).json({ message: "Price must be a valid number" });
+
+      if (barcode?.trim()) {
+        const dupBc = await pool.query("SELECT id FROM product_packaging_units WHERE barcode=$1 AND id != $2", [barcode.trim(), req.params.unitId]);
+        if (dupBc.rows.length) {
+          return res.status(400).json({ message: `Barcode "${barcode.trim()}" is already in use` });
+        }
+      }
+
+      const result = await pool.query(
+        `UPDATE product_packaging_units
+         SET unit_name = $1,
+             multiplier = $2,
+             price = $3,
+             cost_price = $4,
+             barcode = $5,
+             sku = $6,
+             is_default = COALESCE($7, is_default),
+             is_active = COALESCE($8, is_active),
+             updated_at = NOW()
+         WHERE id = $9
+         RETURNING *`,
+        [
+          unit_name.trim(),
+          mult,
+          unitPrice,
+          cost_price ? parseFloat(cost_price) : null,
+          barcode?.trim() || null,
+          sku?.trim() || null,
+          is_default !== undefined ? Boolean(is_default) : null,
+          is_active !== undefined ? Boolean(is_active) : null,
+          req.params.unitId
+        ]
+      );
+
+      if (!result.rows.length) return res.status(404).json({ message: "Packaging unit not found" });
+
+      res.json({
+        packaging_unit: {
+          ...result.rows[0],
+          multiplier: parseFloat(result.rows[0].multiplier),
+          price: parseFloat(result.rows[0].price),
+          cost_price: result.rows[0].cost_price ? parseFloat(result.rows[0].cost_price) : null
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// DELETE /api/admin/products/packaging-units/:unitId
+router.delete(
+  "/packaging-units/:unitId",
+  requireRole("superadmin", "manager", "admin", "kitchen_staff"),
+  async (req, res, next) => {
+    try {
+      const result = await pool.query("DELETE FROM product_packaging_units WHERE id=$1 RETURNING id", [req.params.unitId]);
+      if (!result.rows.length) return res.status(404).json({ message: "Packaging unit not found" });
+      res.json({ success: true });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // ── REVIEWS (moderation) ──────────────────────────────────────────
 // GET /api/admin/products/reviews ── list all reviews, optionally filtered
 // by status ('approved' | 'pending' | 'rejected') and/or a search term
@@ -491,9 +688,28 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "kitchen_staff"
       recentMovements = smRes.rows;
     } catch (_) {}
 
+    // Packaging & Multi-Unit Tiers (Cartons, Packs, Crates)
+    let packagingUnits = [];
+    try {
+      const puRes = await pool.query(
+        `SELECT id, product_id, unit_name, multiplier, price, cost_price, barcode, sku, is_default, is_active, created_at
+         FROM product_packaging_units
+         WHERE product_id = $1
+         ORDER BY multiplier ASC`,
+        [req.params.id]
+      );
+      packagingUnits = puRes.rows.map(u => ({
+        ...u,
+        multiplier: parseFloat(u.multiplier || 1),
+        price: parseFloat(u.price || 0),
+        cost_price: u.cost_price ? parseFloat(u.cost_price) : null
+      }));
+    } catch (_) {}
+
     res.json({
       ...result.rows[0],
       images: images.rows,
+      packaging_units: packagingUnits,
       sales_stats: salesStats.rows[0] || { total_units_sold: 0, total_revenue: 0, total_orders: 0 },
       recent_orders: recentOrders.rows || [],
       recent_movements: recentMovements,
@@ -709,6 +925,26 @@ router.post(
               i === 0,
               i + 1,
             ],
+          );
+        }
+      }
+
+      // Save Packaging Units (Cartons, Packs, Crates, etc.)
+      const { packaging_units } = req.body;
+      if (Array.isArray(packaging_units) && packaging_units.length > 0) {
+        for (const unit of packaging_units) {
+          if (!unit.unit_name?.trim()) continue;
+          const uMult = parseFloat(unit.multiplier) || 1;
+          const uPrice = parseFloat(unit.price) || 0;
+          const uCost = unit.cost_price ? parseFloat(unit.cost_price) : null;
+          const uBc = unit.barcode?.trim() || null;
+          const uSku = unit.sku?.trim() || null;
+          const uIsDef = Boolean(unit.is_default);
+
+          await client.query(
+            `INSERT INTO product_packaging_units (product_id, unit_name, multiplier, price, cost_price, barcode, sku, is_default, is_active, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW(), NOW())`,
+            [product.id, unit.unit_name.trim(), uMult, uPrice, uCost, uBc, uSku, uIsDef]
           );
         }
       }
@@ -1235,6 +1471,27 @@ router.patch(
         unit_price: newUnitPrice,
         stock: newStock,
       });
+
+      // Update Packaging Units if provided
+      const { packaging_units } = req.body;
+      if (Array.isArray(packaging_units)) {
+        await client.query("DELETE FROM product_packaging_units WHERE product_id = $1", [req.params.id]);
+        for (const unit of packaging_units) {
+          if (!unit.unit_name?.trim()) continue;
+          const uMult = parseFloat(unit.multiplier) || 1;
+          const uPrice = parseFloat(unit.price) || 0;
+          const uCost = unit.cost_price ? parseFloat(unit.cost_price) : null;
+          const uBc = unit.barcode?.trim() || null;
+          const uSku = unit.sku?.trim() || null;
+          const uIsDef = Boolean(unit.is_default);
+
+          await client.query(
+            `INSERT INTO product_packaging_units (product_id, unit_name, multiplier, price, cost_price, barcode, sku, is_default, is_active, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, NOW(), NOW())`,
+            [req.params.id, unit.unit_name.trim(), uMult, uPrice, uCost, uBc, uSku, uIsDef]
+          );
+        }
+      }
 
       await client.query("COMMIT");
 

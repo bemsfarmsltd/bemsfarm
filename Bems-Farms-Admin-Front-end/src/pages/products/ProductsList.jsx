@@ -24,8 +24,15 @@ export default function ProductsList() {
 
   // Quick Barcode Modal State
   const [previewBarcodeProduct, setPreviewBarcodeProduct] = useState(null)
+  const [printCopies, setPrintCopies] = useState(1)
   const [generatingBarcodeId, setGeneratingBarcodeId] = useState(null)
   const [selectedProductId, setSelectedProductId] = useState(null)
+
+  const openBarcodeModal = (product) => {
+    setPreviewBarcodeProduct(product)
+    const stockQty = Math.max(1, parseInt(product.stock ?? product.stock_quantity ?? 1) || 1)
+    setPrintCopies(stockQty)
+  }
 
   // Fetch categories for filter dropdown
   useEffect(() => {
@@ -114,36 +121,64 @@ export default function ProductsList() {
 
   const handlePrintLabel = () => {
     if (!previewBarcodeProduct?.barcode) return
-    const printWindow = window.open('', '_blank', 'width=500,height=400')
-    if (!printWindow) return
+    const copies = Math.max(1, parseInt(printCopies) || 1)
+    const printWindow = window.open('', '_blank', 'width=550,height=500')
+    if (!printWindow) {
+      toast.error('Pop-up blocked. Please allow pop-ups to print barcode labels.')
+      return
+    }
     const barcodeSvg = document.getElementById('preview-barcode-svg-element')?.outerHTML || ''
     const priceStr = formatNaira(previewBarcodeProduct.price || previewBarcodeProduct.unit_price)
+
+    const singleLabelHtml = `
+      <div class="label-page">
+        <div class="header">
+          <span>BEMS FARMS</span>
+          <span>Fresh Produce</span>
+        </div>
+        <div class="name">${previewBarcodeProduct.name}</div>
+        <div class="price-row">
+          <span class="price">${priceStr}</span>
+          <span class="unit">${previewBarcodeProduct.unit || 'per unit'}</span>
+        </div>
+        <div class="barcode">${barcodeSvg}</div>
+        <div class="sku">SKU: ${previewBarcodeProduct.sku || 'N/A'}</div>
+      </div>
+    `
+
+    const pagesHtml = Array.from({ length: copies }, () => singleLabelHtml).join('\n')
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Print Barcode</title>
+          <title>Print Barcode Labels (${copies} copies) - ${previewBarcodeProduct.name}</title>
           <style>
             @page { size: 50mm 25mm; margin: 0; }
+            * { box-sizing: border-box; }
             body { 
-              font-family: system-ui, sans-serif; 
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; 
               margin: 0; 
-              padding: 1.5mm; 
+              padding: 0;
+              background: #fff;
+              color: #000;
+            }
+            .label-page {
               width: 50mm; 
               height: 25mm; 
-              box-sizing: border-box; 
+              padding: 1.5mm; 
               display: flex; 
               flex-direction: column; 
               justify-content: space-between;
               overflow: hidden; 
-              background: #fff;
-              color: #000;
+              page-break-after: always;
+              page-break-inside: avoid;
             }
             .header { display: flex; justify-content: space-between; font-size: 7px; font-weight: bold; }
             .header span:first-child { background: #000; color: #fff; padding: 1px 4px; border-radius: 2px; }
-            .name { font-size: 9px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+            .name { font-size: 8.5px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
             .price-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 1px; }
-            .price { font-size: 11px; font-weight: bold; }
+            .price { font-size: 10.5px; font-weight: bold; }
             .unit { font-size: 7px; color: #333; }
             .barcode { text-align: center; margin-top: auto; }
             .barcode svg { height: 8mm !important; width: auto !important; max-width: 100% !important; }
@@ -151,17 +186,7 @@ export default function ProductsList() {
           </style>
         </head>
         <body>
-          <div class="header">
-            <span>BEMS FARMS</span>
-            <span>Fresh Produce</span>
-          </div>
-          <div class="name">${previewBarcodeProduct.name}</div>
-          <div class="price-row">
-            <span class="price">${priceStr}</span>
-            <span class="unit">${previewBarcodeProduct.unit || 'per unit'}</span>
-          </div>
-          <div class="barcode">${barcodeSvg}</div>
-          <div class="sku">SKU: ${previewBarcodeProduct.sku || 'N/A'}</div>
+          ${pagesHtml}
           <script>
             window.onload = function() { window.print(); window.close(); }
           </script>
@@ -360,8 +385,8 @@ export default function ProductsList() {
                           <button
                             type="button"
                             className="btn btn-sm btn-light border d-inline-flex align-items-center gap-1 py-1 px-2 text-start"
-                            onClick={() => setPreviewBarcodeProduct(p)}
-                            title="Click to view & print barcode"
+                            onClick={() => openBarcodeModal(p)}
+                            title="Click to view & print barcode stickers"
                           >
                             <i className="ri-barcode-line text-success fs-6"></i>
                             <span className="font-monospace fs-xs fw-semibold text-dark">{p.barcode}</span>
@@ -503,9 +528,34 @@ export default function ProductsList() {
                 ></button>
               </div>
 
-              <div className="modal-body text-center py-4">
+              <div className="modal-body text-center py-3">
+                {/* Available Stock Banner */}
+                <div className="alert alert-success bg-success-subtle border-0 py-2 px-3 mb-3 d-flex justify-content-between align-items-center rounded-3">
+                  <div className="d-flex align-items-center gap-2">
+                    <i className="ri-stack-line text-success fs-5"></i>
+                    <div className="text-start">
+                      <div className="fs-xs text-muted text-uppercase fw-semibold">Current Inventory Stock</div>
+                      <div className="fw-bold text-dark fs-sm">
+                        {previewBarcodeProduct.stock ?? previewBarcodeProduct.stock_quantity ?? 0} {previewBarcodeProduct.unit || 'units'} in stock
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-success rounded-pill px-2 py-1 shadow-sm"
+                    onClick={() => {
+                      const qty = Math.max(1, parseInt(previewBarcodeProduct.stock ?? previewBarcodeProduct.stock_quantity ?? 1) || 1)
+                      setPrintCopies(qty)
+                      toast.success(`Set to stock quantity (${qty})`)
+                    }}
+                  >
+                    <i className="ri-magic-line me-1"></i> Match Stock ({previewBarcodeProduct.stock ?? previewBarcodeProduct.stock_quantity ?? 0})
+                  </button>
+                </div>
+
+                {/* Sticker Card Preview */}
                 <div
-                  className="p-3 bg-white rounded-3 mx-auto shadow-sm border"
+                  className="p-3 bg-white rounded-3 mx-auto shadow-sm border mb-3 text-start"
                   style={{ maxWidth: '280px', border: '1.5px solid #1f2937' }}
                 >
                   <div className="d-flex justify-content-between align-items-center mb-1 border-bottom pb-1">
@@ -535,7 +585,7 @@ export default function ProductsList() {
                     <span className="text-muted fs-xs">{previewBarcodeProduct.unit || 'per unit'}</span>
                   </div>
 
-                  <div className="my-2" id="preview-barcode-svg-element">
+                  <div className="my-2 text-center" id="preview-barcode-svg-element">
                     <BarcodeSvg
                       value={previewBarcodeProduct.barcode}
                       format="CODE128"
@@ -545,26 +595,112 @@ export default function ProductsList() {
                     />
                   </div>
 
-                  <div className="text-muted font-monospace fs-xs">
+                  <div className="text-muted font-monospace fs-xs text-center">
                     SKU: {previewBarcodeProduct.sku || '—'}
+                  </div>
+                </div>
+
+                {/* Copies Counter Controls */}
+                <div className="bg-light p-3 rounded-3 border text-start">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <label className="form-label mb-0 fw-bold fs-xs text-uppercase text-muted">
+                      Number of Stickers / Copies to Print:
+                    </label>
+                    <span className="badge bg-primary-subtle text-primary fw-bold">
+                      {printCopies} {printCopies === 1 ? 'sticker' : 'stickers'}
+                    </span>
+                  </div>
+
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary px-3"
+                      onClick={() => setPrintCopies((c) => Math.max(1, Number(c || 1) - 1))}
+                    >
+                      <i className="ri-subtract-line"></i>
+                    </button>
+                    <input
+                      type="number"
+                      className="form-control text-center font-monospace fw-bold fs-5"
+                      min="1"
+                      max="1000"
+                      value={printCopies}
+                      onChange={(e) => setPrintCopies(Math.max(1, parseInt(e.target.value) || 1))}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary px-3"
+                      onClick={() => setPrintCopies((c) => Number(c || 1) + 1)}
+                    >
+                      <i className="ri-add-line"></i>
+                    </button>
+                  </div>
+
+                  {/* Quick Preset Buttons */}
+                  <div className="d-flex gap-1 flex-wrap align-items-center">
+                    <span className="fs-xs text-muted me-1">Quick Select:</span>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-outline-secondary py-0 px-2 rounded-pill"
+                      onClick={() => setPrintCopies(1)}
+                    >
+                      1
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-outline-secondary py-0 px-2 rounded-pill"
+                      onClick={() => setPrintCopies(5)}
+                    >
+                      5
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-outline-secondary py-0 px-2 rounded-pill"
+                      onClick={() => setPrintCopies(10)}
+                    >
+                      10
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-outline-secondary py-0 px-2 rounded-pill"
+                      onClick={() => setPrintCopies(25)}
+                    >
+                      25
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-outline-secondary py-0 px-2 rounded-pill"
+                      onClick={() => setPrintCopies(50)}
+                    >
+                      50
+                    </button>
+                    {previewBarcodeProduct.stock > 0 && (
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-outline-success py-0 px-2 rounded-pill fw-bold"
+                        onClick={() => setPrintCopies(parseInt(previewBarcodeProduct.stock) || 1)}
+                      >
+                        All In Stock ({previewBarcodeProduct.stock})
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
 
               <div className="modal-footer border-0 pt-0">
                 <Link
-                  to="/products/barcode"
+                  to={`/products/barcode?productId=${previewBarcodeProduct.id}`}
                   className="btn btn-outline-secondary"
                   onClick={() => setPreviewBarcodeProduct(null)}
                 >
-                  Open in Barcode Studio
+                  <i className="ri-layout-grid-line me-1"></i> Barcode Studio
                 </Link>
                 <button
                   type="button"
-                  className="btn btn-primary"
+                  className="btn btn-primary px-4 shadow-sm"
                   onClick={handlePrintLabel}
                 >
-                  <i className="ri-printer-line me-1"></i> Print Label
+                  <i className="ri-printer-line me-1"></i> Print {printCopies} Sticker{printCopies > 1 ? 's' : ''}
                 </button>
               </div>
             </div>

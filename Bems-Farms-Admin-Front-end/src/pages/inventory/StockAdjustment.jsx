@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../lib/api'
 import PremiumModal from '../../components/ui/PremiumModal'
+import CartonBreakdownModal from '../../components/inventory/CartonBreakdownModal'
 
 const REASONS = [
   'Physical Count Correction',
@@ -31,6 +32,7 @@ export default function StockAdjustment() {
 
   // Adjustment Modal State
   const [modalOpen, setModalOpen] = useState(false)
+  const [breakdownModalOpen, setBreakdownModalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [productSearch, setProductSearch] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
@@ -282,6 +284,12 @@ export default function StockAdjustment() {
               </button>
             )}
           </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1 shadow-sm text-dark fw-medium"
+            onClick={() => setBreakdownModalOpen(true)}>
+            <i className="ri-inbox-unarchive-line text-warning"></i> Carton Breakdown / De-bulk
+          </button>
           <button
             type="button"
             className="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm"
@@ -663,6 +671,13 @@ export default function StockAdjustment() {
           </div>
         </form>
       </PremiumModal>
+
+      {/* Carton Breakdown / De-bulking Studio Modal */}
+      <CartonBreakdownModal
+        isOpen={breakdownModalOpen}
+        onClose={() => setBreakdownModalOpen(false)}
+        onSuccess={fetchMovements}
+      />
     </div>
   )
 }
