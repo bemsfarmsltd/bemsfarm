@@ -1168,7 +1168,7 @@ export default function DeliveryMap() {
                         <i className="ri-phone-line me-1" />Call Driver ({selected.driver_name?.split(' ')[0]})
                       </a>
                     )}
-                    <Link to={`/orders/details/${selected.order_id}`} className="btn btn-sm btn-light border w-50 text-dark" style={{ fontSize: 12 }}>
+                    <Link to={`/orders/${selected.order_id}`} className="btn btn-sm btn-light border w-50 text-dark" style={{ fontSize: 12 }}>
                       <i className="ri-file-list-3-line me-1" />Order Details
                     </Link>
                   </div>
