@@ -626,4 +626,161 @@ router.patch("/:id/cancel", protect, validate(orderSchemas.cancelOrder), async (
   }
 });
 
+// ─────────────────────────────────────────────
+// CONFIRM DELIVERY (CUSTOMER APP/WEB)
+// Customer inspects goods and clicks "Confirm Delivery"
+// ─────────────────────────────────────────────
+router.patch("/:id/confirm", protect, async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+
+    await client.query("BEGIN");
+
+    // Fetch order
+    const orderRes = await client.query(
+      `SELECT * FROM orders WHERE (id = $1 OR order_ref = $1) AND user_id = $2 FOR UPDATE`,
+      [id, req.user.id]
+    );
+
+    if (orderRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const order = orderRes.rows[0];
+
+    // Update orders table
+    await client.query(
+      `
+      UPDATE orders 
+      SET 
+        status = 'delivered',
+        tracking_status = 'delivered',
+        delivered_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $1
+      `,
+      [order.id]
+    );
+
+    // Update deliveries table
+    await client.query(
+      `
+      UPDATE deliveries 
+      SET 
+        status = 'delivered',
+        delivered_at = NOW(),
+        updated_at = NOW()
+      WHERE order_id = $1
+      `,
+      [order.id]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({
+      message: "Delivery confirmed successfully. Thank you for shopping with Bems Farms!",
+      order_id: order.id,
+      status: "delivered",
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Confirm delivery error:", err.message);
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
+// ─────────────────────────────────────────────
+// REPORT ISSUE (CUSTOMER APP/WEB)
+// Customer reports a problem at delivery (damaged, missing, wrong item)
+// ─────────────────────────────────────────────
+router.post("/:id/report", protect, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { reason, description, photo_url, photos = [] } = req.body;
+
+    if (!reason?.trim() && !description?.trim()) {
+      return res.status(400).json({ message: "A reason or description for the issue is required" });
+    }
+
+    // Verify order exists
+    const orderRes = await pool.query(
+      `SELECT o.*, d.driver_id, d.id AS delivery_id 
+       FROM orders o 
+       LEFT JOIN deliveries d ON d.order_id = o.id 
+       WHERE (o.id = $1 OR o.order_ref = $1) AND o.user_id = $2`,
+      [id, req.user.id]
+    );
+
+    if (orderRes.rows.length === 0) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const order = orderRes.rows[0];
+    const issuePhoto = photo_url || (photos.length ? photos[0] : null);
+
+    // Insert issue into issues table or customer_issues
+    const issueResult = await pool.query(
+      `
+      INSERT INTO issues (
+        user_id, order_id, title, category, description, status, priority, created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, 'open', 'high', NOW())
+      RETURNING *
+      `,
+      [
+        req.user.id,
+        order.id,
+        `Issue reported on Order #${order.id}: ${reason || "Delivery Issue"}`,
+        "delivery_issue",
+        description || reason,
+      ]
+    );
+
+    // Update order tracking status
+    await pool.query(
+      `UPDATE orders SET tracking_status = 'issue_reported', notes = COALESCE(notes || ' | ', '') || $1, updated_at = NOW() WHERE id = $2`,
+      [`Issue reported: ${reason || description}`, order.id]
+    );
+
+    res.status(201).json({
+      message: "Issue reported successfully. Our dispatch manager and customer support will review this immediately.",
+      issue: issueResult.rows[0],
+      order_id: order.id,
+    });
+  } catch (err) {
+    console.error("Report issue error:", err.message);
+    next(err);
+  }
+});
+
+// ─────────────────────────────────────────────
+// PROXIMITY AUTO-ASSIGN DRIVER
+// ─────────────────────────────────────────────
+const { autoAssignClosestDriver } = require("../services/dispatchEngine");
+router.post(
+  "/:id/auto-assign-driver",
+  protect,
+  requireRole("superadmin", "admin", "manager", "delivery_manager"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const result = await autoAssignClosestDriver(id);
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      res.json({
+        message: `Order #${id} automatically assigned to closest driver: ${result.driver.name} (${result.driver.distanceKm} km away)`,
+        assignment: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 module.exports = router;
+

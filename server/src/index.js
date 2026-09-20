@@ -61,21 +61,36 @@ app.use(cookieParser());
 app.use(require('./services/auditService').auditRequests);
 app.use('/api/audit', require('./routes/audit'));
 
-// Auto-run God Eye audit v2 schema migration on startup (idempotent — safe to run every time)
+// Auto-run God Eye audit v2 & Driver tables schema migration on startup (idempotent)
 (async () => {
   try {
     const fs   = require('fs');
     const path = require('path');
     const pool = require('./db/pool');
-    const sql  = fs.readFileSync(path.join(__dirname, 'db/audit_v2_migration.sql'), 'utf8');
-    await pool.query(sql);
-    console.log('✅ God Eye Audit v2 schema ready.');
+    
+    // Audit v2 migration
+    try {
+      const sqlAudit = fs.readFileSync(path.join(__dirname, 'db/audit_v2_migration.sql'), 'utf8');
+      await pool.query(sqlAudit);
+      console.log('✅ God Eye Audit v2 schema ready.');
+    } catch (e) {
+      console.warn('[god-eye] Audit v2 migration notice:', e.message?.slice(0,120));
+    }
+
+    // Driver tables migration
+    try {
+      const sqlDriver = fs.readFileSync(path.join(__dirname, 'db/driver_tables_migration.sql'), 'utf8');
+      await pool.query(sqlDriver);
+      console.log('✅ Driver App schema ready.');
+    } catch (e) {
+      console.warn('[driver-app] Driver migration notice:', e.message?.slice(0,120));
+    }
 
     // Auto-record deployment audit event for Developer Audit
     const { recordDeploymentEvent } = require('./services/auditService');
     await recordDeploymentEvent();
   } catch (e) {
-    console.warn('[god-eye] Audit v2 migration skipped (will retry next boot):', e.message?.slice(0,120));
+    console.warn('Startup migration notice:', e.message?.slice(0,120));
   }
 })();
 
@@ -179,8 +194,10 @@ const wishlistRoutes = require("./routes/wishlist");
 const telemetryRoutes = require("./routes/telemetry");
 const customerChatRoutes = require("./routes/customer_chat");
 const broadcastsRoutes = require("./routes/broadcasts");
+const driverRoutes = require("./routes/driver");
 
 app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/driver", driverRoutes);
 app.use("/api/orders", paymentLimiter, ordersRoutes);
 app.use("/api/issues", issuesRoutes);
 app.use("/api/products", productsRoutes);

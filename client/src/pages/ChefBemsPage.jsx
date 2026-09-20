@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import PageWrapper from "../components/layout/PageWrapper";
 import { useCart } from "../context/CartContext";
@@ -13,6 +13,11 @@ import { NAIRA_PER_UNIT } from "../utils/currency";
 
 const QUICK_PROMPTS = [
   {
+    tag: "Cart Sync",
+    title: "Review My Active Cart",
+    text: "Can you review my current shopping cart, check if I have everything for a complete meal, and suggest portion adjustments?",
+  },
+  {
     tag: "Pantry Match",
     title: "Pantry Ingredients Meal",
     text: "What delicious meal can I cook with garri, fresh tomatoes, and palm oil?",
@@ -20,7 +25,7 @@ const QUICK_PROMPTS = [
   {
     tag: "Masterclass",
     title: "Party Jollof Rice",
-    text: "How do I make authentic Nigerian Party Jollof Rice with that signature smoky flavor?",
+    text: "How do I make authentic Nigerian Party Jollof Rice with that signature smoky flavor for 10 people?",
   },
   {
     tag: "Meal Planner",
@@ -35,10 +40,11 @@ const QUICK_PROMPTS = [
 ];
 
 const SUGGESTED_FOLLOW_UPS = [
+  "Add all ingredients to my cart",
+  "Adjust this recipe for 10 people instead",
+  "Can you fit this recipe into a ₦15,000 budget?",
+  "Review my active cart ingredients",
   "Give me step-by-step cooking instructions",
-  "What are the exact portion measurements?",
-  "Which side dishes pair best with this?",
-  "How long can I store or freeze this meal?",
 ];
 
 function formatMessage(text) {
@@ -66,8 +72,132 @@ function formatMessage(text) {
   return formatted;
 }
 
+// ── INTERACTIVE RECIPE BUNDLE CARD (AI ADD-TO-CART) ────────────
+function RecipeBundleCard({ bundle, onAddItems, onInstantCheckout, onPromptChat }) {
+  const [selectedItems, setSelectedItems] = useState(() => {
+    const initial = {};
+    (bundle.items || []).forEach((item) => {
+      initial[item.id] = true;
+    });
+    return initial;
+  });
+
+  const toggleItem = (id) => {
+    setSelectedItems((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const activeItems = useMemo(() => {
+    return (bundle.items || []).filter((item) => selectedItems[item.id]);
+  }, [bundle.items, selectedItems]);
+
+  const bundleTotal = useMemo(() => {
+    return activeItems.reduce((sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 1), 0);
+  }, [activeItems]);
+
+  return (
+    <div className="mt-4 overflow-hidden rounded-2xl border-2 border-amber-300 bg-gradient-to-b from-amber-50/70 to-white p-4 shadow-md">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/80 pb-3">
+        <div>
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-400 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#0A2E1C]">
+            👨‍🍳 1-Click Recipe Bundle
+          </span>
+          <h4 className="mt-1 font-display text-sm font-black text-[#0A2E1C]">
+            {bundle.recipe_name || "Farm-Fresh Recipe Ingredients"}
+          </h4>
+        </div>
+        {bundle.servings && (
+          <span className="rounded-lg bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-900">
+            Serves {bundle.servings} People
+          </span>
+        )}
+      </div>
+
+      {/* Ingredients Selection Checklist */}
+      <div className="my-3 space-y-2">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          Select Ingredients ({activeItems.length}/{bundle.items?.length || 0} selected):
+        </p>
+        <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+          {(bundle.items || []).map((item) => {
+            const isChecked = !!selectedItems[item.id];
+            return (
+              <label
+                key={item.id}
+                className={`flex items-center justify-between gap-3 rounded-xl border p-2 text-xs transition cursor-pointer ${
+                  isChecked
+                    ? "border-emerald-600 bg-emerald-50/50 text-slate-900"
+                    : "border-slate-200 bg-white/70 text-slate-400 line-through"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleItem(item.id)}
+                    className="h-4 w-4 rounded text-emerald-700 focus:ring-emerald-600 cursor-pointer"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-bold text-slate-800 block truncate">{item.name}</span>
+                    <span className="text-[10px] text-slate-500">{item.unit || "1 unit"} &bull; Qty: {item.quantity || 1}</span>
+                  </div>
+                </div>
+                <span className="font-black text-emerald-800 shrink-0">
+                  ₦{Number(item.price).toLocaleString()}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Bundle Total and Action Buttons */}
+      <div className="pt-3 border-t border-amber-200/80">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-bold text-slate-600">Bundle Subtotal:</span>
+          <span className="text-base font-black text-emerald-900">₦{bundleTotal.toLocaleString()}</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {/* Option 1: 1-Click Add Bundle to Cart */}
+          <button
+            type="button"
+            disabled={activeItems.length === 0}
+            onClick={() => onAddItems(activeItems)}
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-[#0A2E1C] hover:bg-[#13422B] text-white py-2 px-3 text-xs font-black shadow-xs transition active:scale-98 disabled:opacity-50 cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+            </svg>
+            <span>🛒 Add All ({activeItems.length}) to Cart</span>
+          </button>
+
+          {/* Option 3: Instant Express Checkout */}
+          <button
+            type="button"
+            disabled={activeItems.length === 0}
+            onClick={() => onInstantCheckout(activeItems)}
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0A2E1C] py-2 px-3 text-xs font-black shadow-xs transition active:scale-98 disabled:opacity-50 cursor-pointer"
+          >
+            <span>⚡ Instant Checkout</span>
+          </button>
+        </div>
+
+        {/* Adjust portions in chat */}
+        <button
+          type="button"
+          onClick={() => onPromptChat(`Chef Bems, could you please adjust the ingredients or portion size for this ${bundle.recipe_name || "recipe"}?`)}
+          className="mt-2.5 w-full text-center text-[11px] font-bold text-amber-800 hover:text-emerald-900 transition underline cursor-pointer"
+        >
+          🔄 Want to change portion size, budget, or swap ingredients? Ask Chef Bems
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ChefBemsPage() {
-  const { cartItems, addToCart } = useCart();
+  const navigate = useNavigate();
+  const { cartItems, cartCount, cartSubtotal, addToCart, addMultipleToCart, replaceCart, openCartDrawer } = useCart();
   const { user } = useAuth();
   const { 
     messages, 
@@ -89,6 +219,7 @@ export default function ChefBemsPage() {
   const [editingConvId, setEditingConvId] = useState(null);
   const [editTitleInput, setEditTitleInput] = useState("");
   const [uploadedPreview, setUploadedPreview] = useState(null);
+  const [actionToast, setActionToast] = useState(null);
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -135,6 +266,13 @@ export default function ChefBemsPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  const showToast = (msg) => {
+    setActionToast(msg);
+    setTimeout(() => {
+      setActionToast(null);
+    }, 4000);
+  };
 
   const handleSelectConversation = async (conv) => {
     try {
@@ -238,6 +376,7 @@ export default function ChefBemsPage() {
           content: data.reply || "I analyzed your ingredients! Here is a recommended recipe from Bems Farms.",
           timestamp: new Date().toISOString(),
           relatedProducts: data.relatedProducts || [],
+          recipeBundle: data.recipeBundle || null,
         });
       } catch (err) {
         addMessage({
@@ -265,6 +404,47 @@ export default function ChefBemsPage() {
       email: user?.email || null,
     });
     return res.data;
+  };
+
+  // Option 1 & 3: Add Items helper
+  const handleBundleAddItems = (items) => {
+    const formatted = items.map((i) => ({
+      ...i,
+      price: (Number(i.price) || 2000) / NAIRA_PER_UNIT,
+      quantity: i.quantity || 1,
+    }));
+    addMultipleToCart(formatted);
+    showToast(`🛒 Added ${items.length} recipe ingredients to your cart!`);
+    openCartDrawer();
+  };
+
+  const handleBundleInstantCheckout = (items) => {
+    const formatted = items.map((i) => ({
+      ...i,
+      price: (Number(i.price) || 2000) / NAIRA_PER_UNIT,
+      quantity: i.quantity || 1,
+    }));
+    addMultipleToCart(formatted);
+    navigate("/checkout");
+  };
+
+  // Bidirectional Cart Sync: send cart to chat
+  const handleSyncCartToChat = () => {
+    if (cartItems.length === 0) {
+      sendMessage("Chef Bems, my cart is currently empty. What staple groceries and recipe items should I start with?");
+      return;
+    }
+    const cartSummary = cartItems
+      .map((item) => {
+        const name = item.product?.name || item.name;
+        const qty = item.quantity || 1;
+        const price = (item.product?.price || item.price || 0) * NAIRA_PER_UNIT;
+        return `• ${qty}x ${name} (₦${(price * qty).toLocaleString()})`;
+      })
+      .join("\n");
+
+    const prompt = `Chef Bems, please review my active shopping cart:\n${cartSummary}\n\nTotal: ₦${cartSubtotal.toLocaleString()}.\n\nCan you review these items, suggest what delicious Nigerian meal I can cook with them, tell me if I am missing any essential spices or vegetables, or help me adjust the quantities?`;
+    sendMessage(prompt);
   };
 
   const sendMessage = async (text) => {
@@ -317,7 +497,22 @@ export default function ChefBemsPage() {
         content: data.reply || "I did not catch that. Could you please rephrase?",
         timestamp: new Date().toISOString(),
         relatedProducts: data.relatedProducts || [],
+        recipeBundle: data.recipeBundle || null,
       });
+
+      // Handle Option 2: AI Direct Intent Auto-Add
+      if (data.action === "AUTO_ADD_TO_CART") {
+        const itemsToAdd = data.recipeBundle?.items || data.relatedProducts || [];
+        if (itemsToAdd.length > 0) {
+          const formatted = itemsToAdd.map((i) => ({
+            ...i,
+            price: (Number(i.price) || 2000) / NAIRA_PER_UNIT,
+            quantity: i.quantity || 1,
+          }));
+          addMultipleToCart(formatted);
+          showToast(`✨ Chef Bems added ${itemsToAdd.length} ingredient(s) directly to your active cart!`);
+        }
+      }
 
       // Automatically capture new conversation on list
       if (user && !activeConversationId) {
@@ -370,9 +565,9 @@ export default function ChefBemsPage() {
 
   const handleAddProduct = (e, product) => {
     e.stopPropagation();
-    // relatedProducts.price comes from the server already multiplied by NAIRA_PER_UNIT
     addToCart({ ...product, price: product.price / NAIRA_PER_UNIT });
     setAddedIds((prev) => ({ ...prev, [product.id]: true }));
+    showToast(`🛒 Added ${product.name} to cart`);
     setTimeout(() => {
       setAddedIds((prev) => {
         const n = { ...prev };
@@ -591,6 +786,54 @@ export default function ChefBemsPage() {
             )}
           </header>
 
+          {/* Top Cart Sync Bar (Bidirectional Cart Modification) */}
+          {cartCount > 0 && (
+            <div className="bg-gradient-to-r from-[#0A2E1C] via-[#103D26] to-[#0A2E1C] text-white px-4 py-2.5 shadow-sm border-b border-emerald-800 flex items-center justify-between gap-3 text-xs shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                <span className="font-black text-amber-300">Active Cart:</span>
+                <span className="truncate">{cartCount} item{cartCount > 1 ? "s" : ""} (₦{cartSubtotal.toLocaleString()})</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleSyncCartToChat}
+                  className="px-3 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-[#0A2E1C] font-black transition text-xs shadow-xs active:scale-95 cursor-pointer flex items-center gap-1"
+                >
+                  <span>🔄 Review in Chat</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={openCartDrawer}
+                  className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-emerald-100 font-bold transition text-xs"
+                >
+                  View Cart
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Floating Action Toast */}
+          <AnimatePresence>
+            {actionToast && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="fixed top-20 right-4 sm:right-8 z-50 rounded-2xl bg-[#0A2E1C] text-white px-4 py-3 shadow-2xl border border-amber-400/60 flex items-center gap-3 text-xs font-bold"
+              >
+                <span>{actionToast}</span>
+                <button
+                  type="button"
+                  onClick={openCartDrawer}
+                  className="rounded-lg bg-amber-400 px-2 py-1 text-[11px] font-black text-[#0A2E1C] hover:bg-amber-300 transition"
+                >
+                  Open Cart
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Messages Scroll Area */}
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:p-8 space-y-6">
             
@@ -631,7 +874,13 @@ export default function ChefBemsPage() {
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => sendMessage(prompt.text)}
+                      onClick={() => {
+                        if (prompt.tag === "Cart Sync") {
+                          handleSyncCartToChat();
+                        } else {
+                          sendMessage(prompt.text);
+                        }
+                      }}
                       className="group flex flex-col justify-between rounded-2xl border border-[#DFD6C2] bg-white p-4 shadow-xs hover:border-emerald-700 hover:shadow-md transition text-left cursor-pointer"
                     >
                       <div>
@@ -711,8 +960,18 @@ export default function ChefBemsPage() {
                               </div>
                             )}
 
-                            {/* Interactive Bems Farms Produce Cards */}
-                            {isAI && msg.relatedProducts?.length > 0 && (
+                            {/* Option 1 & 3: Interactive Recipe Bundle Card */}
+                            {isAI && msg.recipeBundle && (
+                              <RecipeBundleCard
+                                bundle={msg.recipeBundle}
+                                onAddItems={handleBundleAddItems}
+                                onInstantCheckout={handleBundleInstantCheckout}
+                                onPromptChat={(p) => sendMessage(p)}
+                              />
+                            )}
+
+                            {/* Fallback Single Produce Items */}
+                            {isAI && !msg.recipeBundle && msg.relatedProducts?.length > 0 && (
                               <div className="mt-4 pt-3 border-t border-slate-100">
                                 <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 block mb-2">
                                   Order Fresh Ingredients from Bems Farms:

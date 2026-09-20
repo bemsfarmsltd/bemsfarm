@@ -69,8 +69,32 @@ export default function OrderDetail() {
     }
   }
 
-  const handlePrintReceipt = () => {
+  const handleAutoAssignDriver = async () => {
+    if (!order) return
+    setUpdating(true)
+    try {
+      const res = await api.post(`/orders/${id}/auto-assign-driver`)
+      toast.success(res.data?.message || 'Closest driver assigned successfully!')
+      fetchOrder()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to auto-assign driver')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handlePrintReceipt = async () => {
     printThermalReceipt()
+    // If order was in new_order, pending or paid, transition to packed_ready (Packaging)
+    if (['paid', 'new_order', 'pending', 'confirmed'].includes(order.status)) {
+      try {
+        await api.patch(`/admin/orders/${id}/status`, { status: 'packed_ready', notes: 'Invoice printed - handed to packaging' })
+        toast.success('Invoice printed! Order transitioned to Packaging.')
+        fetchOrder()
+      } catch (e) {
+        console.warn('Could not auto-advance status on print:', e)
+      }
+    }
   }
 
   if (loading) {
@@ -262,11 +286,18 @@ export default function OrderDetail() {
 
           {/* Delivery */}
           <div className="card mb-4 shadow-sm border-0">
-            <div className="card-header bg-light"><h6 className="fw-bold mb-0">Delivery / Fleet</h6></div>
+            <div className="card-header bg-light d-flex justify-content-between align-items-center">
+              <h6 className="fw-bold mb-0">Delivery / Fleet</h6>
+              {order.delivery_status && (
+                <span className="badge bg-primary-subtle text-primary text-uppercase fs-xs">
+                  {order.delivery_status}
+                </span>
+              )}
+            </div>
             <div className="card-body d-flex flex-column gap-2 small">
               <div className="d-flex justify-content-between">
                 <span className="text-muted">Driver</span>
-                <span className="fw-medium">{order.driver_name || 'Unassigned'}</span>
+                <span className="fw-bold">{order.driver_name || <span className="text-danger">Unassigned</span>}</span>
               </div>
               {order.driver_phone && (
                 <div className="d-flex justify-content-between">
@@ -277,15 +308,78 @@ export default function OrderDetail() {
               {order.driver_plate && (
                 <div className="d-flex justify-content-between">
                   <span className="text-muted">Vehicle</span>
-                  <span>{order.driver_plate}</span>
+                  <span>{order.driver_plate} ({order.vehicle_type || 'Motorbike'})</span>
                 </div>
               )}
-              <div className="d-flex justify-content-between">
-                <span className="text-muted">Delivery Status</span>
-                <span className="fw-bold text-capitalize">{order.delivery_status || order.status || 'Pending'}</span>
-              </div>
+              {order.picked_up_at && (
+                <div className="d-flex justify-content-between">
+                  <span className="text-muted">Picked Up</span>
+                  <span className="text-success">{new Date(order.picked_up_at).toLocaleTimeString()}</span>
+                </div>
+              )}
+              {order.arrived_at && (
+                <div className="d-flex justify-content-between">
+                  <span className="text-muted">Arrived at Customer</span>
+                  <span className="text-primary fw-bold">{new Date(order.arrived_at).toLocaleTimeString()}</span>
+                </div>
+              )}
+              {order.delivered_at && (
+                <div className="d-flex justify-content-between">
+                  <span className="text-muted">Delivered Time</span>
+                  <span className="text-success fw-bold">{new Date(order.delivered_at).toLocaleTimeString()}</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="btn btn-sm btn-primary w-100 mt-2 d-flex align-items-center justify-content-center gap-1.5"
+                onClick={handleAutoAssignDriver}
+                disabled={updating}
+              >
+                <i className="ri-gps-line" />
+                <span>⚡ Auto-Assign Closest Driver</span>
+              </button>
             </div>
           </div>
+
+          {/* Proof of Delivery Photo Gallery */}
+          {((order.item_proofs && order.item_proofs.length > 0) || (order.proof_photos && order.proof_photos.length > 0)) && (
+            <div className="card mb-4 shadow-sm border-0 border-start border-4 border-success">
+              <div className="card-header bg-light d-flex justify-content-between align-items-center">
+                <h6 className="fw-bold mb-0 text-success">
+                  <i className="ri-camera-lens-line me-1.5" />Item Delivery Proofs
+                </h6>
+                <span className="badge bg-success-subtle text-success">Verified</span>
+              </div>
+              <div className="card-body">
+                <p className="text-muted fs-xs mb-3">
+                  The delivery driver snapped photos of each item at customer handover:
+                </p>
+                <div className="row g-2">
+                  {(order.item_proofs || order.proof_photos || []).map((proof, pIdx) => {
+                    const photoSrc = typeof proof === 'string' ? proof : proof.photo_url || proof.url
+                    const itemName = typeof proof === 'object' ? proof.product_name || `Item #${proof.item_id || pIdx + 1}` : `Delivery Proof #${pIdx + 1}`
+                    return (
+                      <div key={pIdx} className="col-6">
+                        <div className="border rounded-2 overflow-hidden bg-white shadow-2xs">
+                          <img
+                            src={photoSrc}
+                            alt={itemName}
+                            className="w-100 object-fit-cover"
+                            style={{ height: '90px' }}
+                          />
+                          <div className="p-1.5 text-center">
+                            <span className="d-block text-truncate fw-bold fs-xs text-dark">{itemName}</span>
+                            <span className="text-success fs-xs fw-semibold">✓ Snapped</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Payment */}
           <div className="card mb-4 shadow-sm border-0">

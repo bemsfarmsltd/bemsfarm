@@ -1086,4 +1086,79 @@ router.post("/google", validate(authSchemas.google), async (req, res, next) => {
   }
 });
 
+// ─────────────────────────────────────────────
+// SOCIAL LOGIN (GOOGLE & APPLE - CUSTOMER APP)
+// POST /api/auth/social
+// ─────────────────────────────────────────────
+router.post("/social", async (req, res, next) => {
+  try {
+    const { provider = "google", email, name, token: socialToken, id: socialId, picture, avatar_url } = req.body;
+
+    if (!email && !socialToken) {
+      return res.status(400).json({ message: "Email or authentication token is required" });
+    }
+
+    const targetEmail = (email || "").toLowerCase().trim();
+    if (!targetEmail) {
+      return res.status(400).json({ message: "Valid email required from social provider" });
+    }
+
+    let userResult = await pool.query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [targetEmail]);
+    let user;
+
+    if (userResult.rows.length > 0) {
+      user = userResult.rows[0];
+      const userStatus = String(user.status || "active").toLowerCase().trim();
+      if (userStatus === "suspended" || userStatus === "deactivated" || userStatus === "deleted") {
+        return res.status(403).json({ message: "Account is not active. Please contact support." });
+      }
+    } else {
+      const defaultName = name || targetEmail.split("@")[0];
+      const providerCol = provider === "apple" ? "apple_id" : "google_id";
+      const newUser = await pool.query(
+        `INSERT INTO users (name, email, password, role, avatar_url, created_at)
+         VALUES ($1, $2, $3, 'user', $4, NOW())
+         RETURNING id, name, email, role`,
+        [defaultName, targetEmail, `${provider.toUpperCase()}_AUTH`, picture || avatar_url || null]
+      );
+      user = newUser.rows[0];
+    }
+
+    const token = generateAccessToken(user);
+    const nameParts = (user.name || "").trim().split(" ");
+    const channel = detectChannel(req);
+
+    await pool.query("UPDATE users SET last_login=NOW(), last_channel=$2 WHERE id=$1", [user.id, channel]).catch(() => {
+      return pool.query("UPDATE users SET last_login=NOW() WHERE id=$1", [user.id]);
+    });
+
+    const clientIP = req.ip || req.connection?.remoteAddress || "unknown";
+    upsertContext(user.id, {
+      full_name: user.name,
+      email: user.email,
+      role: user.role,
+      last_login: new Date().toISOString(),
+    });
+    trackActivity(user.id, "social_login", { ip: clientIP, metadata: { provider } });
+
+    res.json({
+      message: `${provider} authentication successful`,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        first_name: nameParts[0] || "",
+        last_name: nameParts.slice(1).join(" ") || "",
+        email: user.email,
+        role: user.role,
+        avatar_url: user.avatar_url || null,
+      },
+    });
+  } catch (err) {
+    console.error("Social auth error:", err.message);
+    next(err);
+  }
+});
+
 module.exports = router;
+

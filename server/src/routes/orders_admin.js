@@ -745,7 +745,8 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
         dr.name AS driver_name, dr.phone AS driver_phone,
         dr.vehicle_plate AS driver_plate, dr.vehicle_type,
         d.id AS delivery_id, d.status AS delivery_status,
-        d.attempts, d.eta_minutes, d.dispatched_at, d.delivered_at
+        d.attempts, d.eta_minutes, d.dispatched_at, d.picked_up_at, d.arrived_at, d.delivered_at,
+        d.proof_photos, d.item_proofs, d.notes AS delivery_notes
       FROM orders o
       LEFT JOIN users c ON o.customer_id = c.id
       LEFT JOIN drivers dr ON o.driver_id = dr.id

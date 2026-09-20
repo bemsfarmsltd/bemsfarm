@@ -101,6 +101,19 @@ export function CartProvider({ children }) {
     });
   };
 
+  const replaceCart = (items) => {
+    if (!Array.isArray(items)) return;
+    const newCart = {};
+    items.forEach((item) => {
+      const prod = item.product || item;
+      const qty = item.quantity || 1;
+      if (prod && prod.id) {
+        newCart[prod.id] = { product: prod, quantity: qty };
+      }
+    });
+    setCart(newCart);
+  };
+
   const clearCart = () => { setCart({}); setAppliedCoupon(null); };
 
   const cartItems = Object.values(cart);
@@ -119,6 +132,7 @@ export function CartProvider({ children }) {
         cartSubtotal,
         addToCart,
         addMultipleToCart,
+        replaceCart,
         removeFromCart,
         updateQuantity,
         clearCart,

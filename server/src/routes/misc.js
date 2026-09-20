@@ -396,4 +396,58 @@ router.post(
   }
 );
 
+// ─────────────────────────────────────────────
+// INITIALIZE PAYMENT (CUSTOMER APP / WEB)
+// POST /api/payments/initialize
+// ─────────────────────────────────────────────
+router.post("/payments/initialize", async (req, res, next) => {
+  try {
+    const { amount, email, customer_name, customer_phone, order_id, gateway = "paystack" } = req.body;
+
+    const numAmount = parseFloat(amount);
+    if (!numAmount || isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ message: "A valid positive amount is required" });
+    }
+    if (!email?.trim()) {
+      return res.status(400).json({ message: "Customer email is required for payment initialization" });
+    }
+
+    const paymentRef = `BF-PAY-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+
+    // Record pending transaction in payments table
+    await pool.query(
+      `
+      INSERT INTO payments (
+        payment_ref, order_id, customer_email, customer_name, customer_phone, 
+        amount, gateway, status, created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', NOW())
+      `,
+      [
+        paymentRef,
+        order_id || null,
+        email.trim().toLowerCase(),
+        customer_name || null,
+        customer_phone || null,
+        numAmount,
+        gateway,
+      ]
+    );
+
+    res.status(201).json({
+      success: true,
+      payment_ref: paymentRef,
+      amount: numAmount,
+      currency: "NGN",
+      checkout_url: `https://checkout.bemsfarms.com/pay/${paymentRef}`,
+      gateway,
+      message: "Payment initialized successfully",
+    });
+  } catch (err) {
+    console.error("Payment initialize error:", err.message);
+    next(err);
+  }
+});
+
 module.exports = router;
+

@@ -264,9 +264,29 @@ router.post("/chef-chat", async (req, res, next) => {
           status: "success",
         });
 
+        const recipeBundle = n8nData.recipeBundle || (relatedProducts.length > 0 ? {
+          recipe_name: n8nData.recipeName || "Chef Bems Recommended Recipe Bundle",
+          servings: n8nData.servings || 4,
+          items: relatedProducts.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            unit: p.unit || "1 unit",
+            quantity: p.quantity || 1,
+            checked: true
+          }))
+        } : null);
+
+        let action = n8nData.action || null;
+        if (!action && /add\s+(all|to\s+cart|ingredients|these)/i.test(message) && relatedProducts.length > 0) {
+          action = "AUTO_ADD_TO_CART";
+        }
+
         return res.json({
           reply,
           relatedProducts,
+          recipeBundle,
+          action,
           source: "n8n"
         });
       } else {
@@ -316,6 +336,24 @@ router.post("/chef-chat", async (req, res, next) => {
         );
         const relatedProducts = await matchProductsInReply(reply, productsResult.rows);
 
+        const recipeBundle = relatedProducts.length > 0 ? {
+          recipe_name: "Chef Bems Recommended Recipe Bundle",
+          servings: 4,
+          items: relatedProducts.map(p => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            unit: p.unit || "1 unit",
+            quantity: 1,
+            checked: true
+          }))
+        } : null;
+
+        let action = null;
+        if (/add\s+(all|to\s+cart|ingredients|these)/i.test(message) && relatedProducts.length > 0) {
+          action = "AUTO_ADD_TO_CART";
+        }
+
         // Record audit
         recordAiAudit({
           req,
@@ -328,7 +366,7 @@ router.post("/chef-chat", async (req, res, next) => {
           status: "success",
         });
 
-        return res.json({ reply, relatedProducts, source: "gemini" });
+        return res.json({ reply, relatedProducts, recipeBundle, action, source: "gemini" });
       } catch (geminiErr) {
         console.warn("⚠️ Chef Bems Gemini failed:", geminiErr.message);
 

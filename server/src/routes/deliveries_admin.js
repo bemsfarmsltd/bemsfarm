@@ -3,6 +3,7 @@
 
 const express = require("express");
 const router = express.Router();
+const bcrypt = require("bcryptjs");
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
@@ -435,29 +436,30 @@ router.post(
   requireRole("superadmin", "manager", "admin"),
   validate(deliveryAdminSchemas.createDriver),
   async (req, res, next) => {
+    const client = await pool.connect();
     try {
       const {
         name,
         phone,
         email,
+        password,
         vehicle_type,
         vehicle_plate,
         zone_id,
         notes,
+        commission_per_delivery,
         status = "active",
       } = req.body;
       if (!name || !phone)
         return res.status(400).json({ message: "Name and phone required" });
 
-      // The drivers table's zone column is primary_zone_id — this INSERT
-      // referenced a zone_id column that doesn't exist and made every
-      // driver-create request fail with a raw 500. Request/response bodies
-      // still use zone_id (that's what the admin UI's driver form sends).
-      const result = await pool.query(
+      await client.query("BEGIN");
+
+      const result = await client.query(
         `
       INSERT INTO drivers
-        (name, phone, email, vehicle_type, vehicle_plate, primary_zone_id, notes, status, joined_date, created_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW())
+        (name, phone, email, vehicle_type, vehicle_plate, primary_zone_id, notes, commission_per_delivery, status, joined_date, created_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8, 500),$9,NOW(),NOW())
       RETURNING *, primary_zone_id AS zone_id
     `,
         [
@@ -468,13 +470,48 @@ router.post(
           vehicle_plate || null,
           zone_id || null,
           notes || null,
+          commission_per_delivery || null,
           status,
         ],
       );
 
-      res.status(201).json({ driver: result.rows[0], message: "Driver added" });
+      const driver = result.rows[0];
+
+      // Set initial driver login password in driver_auth
+      const initialPassword = password || phone.replace(/\s+/g, "");
+      const hashedPassword = await bcrypt.hash(initialPassword, 10);
+
+      await client.query(
+        `
+        INSERT INTO driver_auth (driver_id, password_hash, created_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (driver_id)
+        DO UPDATE SET password_hash = $2
+        `,
+        [driver.id, hashedPassword]
+      );
+
+      // Ensure driver_availability record exists
+      await client.query(
+        `
+        INSERT INTO driver_availability (driver_id, is_available, last_toggled_at)
+        VALUES ($1, true, NOW())
+        ON CONFLICT (driver_id) DO NOTHING
+        `,
+        [driver.id]
+      );
+
+      await client.query("COMMIT");
+
+      res.status(201).json({
+        driver,
+        message: "Driver created successfully with login credentials",
+      });
     } catch (err) {
+      await client.query("ROLLBACK");
       next(err);
+    } finally {
+      client.release();
     }
   },
 );
@@ -824,4 +861,116 @@ router.post("/drivers/:id/location", requireRole("superadmin", "manager", "admin
   }
 });
 
+// ── PUT /api/admin/deliveries/drivers/:id/credentials ──────────────
+router.put(
+  "/drivers/:id/credentials",
+  requireRole("superadmin", "manager", "admin"),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { password } = req.body;
+
+      if (!password || password.length < 4) {
+        return res.status(400).json({ message: "Password must be at least 4 characters" });
+      }
+
+      const driverCheck = await pool.query("SELECT id, name FROM drivers WHERE id = $1", [id]);
+      if (driverCheck.rows.length === 0) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      await pool.query(
+        `
+        INSERT INTO driver_auth (driver_id, password_hash, created_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (driver_id)
+        DO UPDATE SET password_hash = $2, failed_attempts = 0, locked_until = NULL
+        `,
+        [id, hashedPassword]
+      );
+
+      res.json({ message: `Credentials updated successfully for driver ${driverCheck.rows[0].name}` });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// ── GET /api/admin/deliveries/payouts ──────────────────────────────
+router.get("/payouts", requireRole("superadmin", "manager", "admin", "delivery_manager"), async (req, res, next) => {
+  try {
+    const { status = "" } = req.query;
+    const params = [];
+    let whereClause = "";
+
+    if (status) {
+      params.push(status);
+      whereClause = `WHERE dp.status = $${params.length}`;
+    }
+
+    const result = await pool.query(
+      `
+      SELECT 
+        dp.*,
+        dr.name AS driver_name,
+        dr.phone AS driver_phone,
+        dr.email AS driver_email,
+        u.name AS processed_by_name
+      FROM driver_payouts dp
+      JOIN drivers dr ON dp.driver_id = dr.id
+      LEFT JOIN users u ON dp.processed_by = u.id
+      ${whereClause}
+      ORDER BY dp.requested_at DESC
+      LIMIT 100
+      `,
+      params
+    );
+
+    res.json({ payouts: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PATCH /api/admin/deliveries/payouts/:id ────────────────────────
+router.patch("/payouts/:id", requireRole("superadmin", "manager", "admin"), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, rejection_reason, notes } = req.body;
+
+    if (!["approved", "paid", "rejected"].includes(status)) {
+      return res.status(400).json({ message: "Status must be approved, paid, or rejected" });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE driver_payouts
+      SET 
+        status = $1,
+        processed_at = NOW(),
+        processed_by = $2,
+        rejection_reason = COALESCE($3, rejection_reason),
+        notes = COALESCE($4, notes)
+      WHERE id = $5
+      RETURNING *
+      `,
+      [status, req.user.id, rejection_reason || null, notes || null, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Payout request not found" });
+    }
+
+    res.json({
+      message: `Payout request marked as ${status}`,
+      payout: result.rows[0],
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
+
