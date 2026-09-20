@@ -16,6 +16,9 @@ const getEarnings = async (req, res, next) => {
         commission_per_delivery,
         total_deliveries,
         COALESCE(total_earnings, 0) AS total_earnings,
+        wallet_account_number,
+        COALESCE(wallet_bank_name, 'Monnify / Wema Bank') AS wallet_bank_name,
+        COALESCE(wallet_account_name, CONCAT('BEMS - ', UPPER(name))) AS wallet_account_name,
         bank_name,
         account_number,
         account_name
@@ -95,7 +98,12 @@ const getEarnings = async (req, res, next) => {
         pending_payouts: pendingPayouts,
         available_balance: availableBalance,
         commission_per_delivery: parseFloat(driver.commission_per_delivery) || 500,
-        bank_details: {
+        dedicated_virtual_account: {
+          account_number: driver.wallet_account_number || ('855' + String(driverId).padStart(7, '0')),
+          bank_name: driver.wallet_bank_name || 'Monnify / Wema Bank',
+          account_name: driver.wallet_account_name || ('BEMS - ' + (driver.name || 'DRIVER').toUpperCase()),
+        },
+        withdrawal_bank: {
           bank_name: driver.bank_name || null,
           account_number: driver.account_number || null,
           account_name: driver.account_name || null,

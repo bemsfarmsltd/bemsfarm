@@ -805,8 +805,27 @@ export default function DriversManagement() {
                             <StarRating rating={driver.rating} />
                           </td>
 
-                          {/* Earnings */}
-                          <td className="fw-bold font-monospace text-emerald fs-13">{fmt(driver.earnings || driver.total_earnings)}</td>
+                          {/* Earnings & Wallet Account */}
+                          <td>
+                            <div className="fw-bold font-monospace text-emerald fs-13">{fmt(driver.earnings || driver.total_earnings)}</div>
+                            <div className="d-flex align-items-center gap-1 mt-0.5" style={{ fontSize: 11 }}>
+                              <span className="badge bg-primary-subtle text-primary font-monospace px-1.5 py-0.5">
+                                Acct: {driver.wallet_account_number || ('855' + String(driver.id).padStart(7, '0'))}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-link p-0 text-muted"
+                                title="Copy Driver Dedicated Virtual Account"
+                                onClick={() => {
+                                  const num = driver.wallet_account_number || ('855' + String(driver.id).padStart(7, '0'))
+                                  navigator.clipboard.writeText(num)
+                                  toast.success(`Copied Wallet Acct: ${num}`)
+                                }}
+                              >
+                                <i className="ri-file-copy-line" style={{ fontSize: 11 }} />
+                              </button>
+                            </div>
+                          </td>
 
                           {/* Status */}
                           <td>
@@ -1594,28 +1613,59 @@ export default function DriversManagement() {
 
                   {/* Driver Wallet & Payout Account Summary */}
                   <div className="border rounded-3 p-3.5 mb-4 bg-light-subtle">
-                    <div className="d-flex align-items-center justify-content-between mb-2">
+                    <div className="d-flex align-items-center justify-content-between mb-2.5 pb-2 border-bottom">
                       <span className="fw-bold fs-13 text-dark d-flex align-items-center gap-1.5">
                         <i className="ri-wallet-3-line text-emerald fs-16" />
-                        Driver Wallet &amp; Payout Account
+                        Dedicated Driver Inflow Account &amp; Settlement Wallet
                       </span>
-                      <span className="badge bg-emerald-subtle text-emerald fs-11">Active Wallet</span>
+                      <span className="badge bg-emerald-subtle text-emerald fs-11">Virtual Account Active</span>
                     </div>
-                    <div className="row g-2 fs-12 mb-2">
+                    
+                    {/* Inflow Virtual Account */}
+                    <div className="bg-white p-2.5 rounded-2 border mb-2.5">
+                      <div className="text-muted fs-11 text-uppercase fw-bold mb-1">
+                        📥 Dedicated Virtual Account (Inflow / Direct Credit)
+                      </div>
+                      <div className="d-flex align-items-center justify-content-between">
+                        <div>
+                          <div className="fw-bold text-dark fs-14 font-monospace">
+                            {selected.wallet_account_number || ('855' + String(selected.id).padStart(7, '0'))}
+                          </div>
+                          <div className="text-muted fs-11">
+                            {selected.wallet_bank_name || 'Monnify / Wema Bank'} · {selected.wallet_account_name || (`BEMS - ${selected.name?.toUpperCase()}`)}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 px-2.5 py-1 fs-11"
+                          onClick={() => {
+                            const num = selected.wallet_account_number || ('855' + String(selected.id).padStart(7, '0'))
+                            navigator.clipboard.writeText(num)
+                            toast.success(`Copied Dedicated Account: ${num}`)
+                          }}
+                        >
+                          <i className="ri-file-copy-line" />
+                          <span>Copy</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Withdrawal Outflow Bank */}
+                    <div className="row g-2 fs-12">
                       <div className="col-6">
                         <span className="text-muted d-block fs-11">Commission Rate</span>
                         <strong className="text-dark font-monospace">{fmt(selected.commission_per_delivery || 500)} / drop</strong>
                       </div>
                       <div className="col-6">
-                        <span className="text-muted d-block fs-11">Payout Bank</span>
+                        <span className="text-muted d-block fs-11">Withdrawal Bank</span>
                         <strong className="text-dark">{selected.bank_name || 'Not Configured'}</strong>
                       </div>
                       <div className="col-6">
-                        <span className="text-muted d-block fs-11">Account Number</span>
+                        <span className="text-muted d-block fs-11">Withdrawal Account No</span>
                         <strong className="text-primary font-monospace">{selected.account_number || '—'}</strong>
                       </div>
                       <div className="col-6">
-                        <span className="text-muted d-block fs-11">Account Name</span>
+                        <span className="text-muted d-block fs-11">Withdrawal Account Name</span>
                         <span className="text-dark">{selected.account_name || selected.name}</span>
                       </div>
                     </div>

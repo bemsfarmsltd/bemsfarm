@@ -513,6 +513,17 @@ router.post(
 
       const driver = insertRes.rows[0];
 
+      // Auto-assign dedicated virtual wallet account number
+      const walletAccount = '855' + String(driver.id).padStart(7, '0');
+      const walletAccountName = `BEMS - ${driver.name.toUpperCase()}`;
+      await client.query(
+        `UPDATE drivers SET wallet_account_number = $1, wallet_bank_name = 'Monnify / Wema Bank', wallet_account_name = $2 WHERE id = $3`,
+        [walletAccount, walletAccountName, driver.id]
+      );
+      driver.wallet_account_number = walletAccount;
+      driver.wallet_bank_name = 'Monnify / Wema Bank';
+      driver.wallet_account_name = walletAccountName;
+
       // Save initial PIN in driver_auth
       await client.query(
         `
@@ -742,6 +753,17 @@ router.post(
       );
 
       const driver = result.rows[0];
+
+      // Auto-assign dedicated virtual wallet account number
+      const walletAccount = '855' + String(driver.id).padStart(7, '0');
+      const walletAccountName = `BEMS - ${driver.name.toUpperCase()}`;
+      await client.query(
+        `UPDATE drivers SET wallet_account_number = $1, wallet_bank_name = 'Monnify / Wema Bank', wallet_account_name = $2 WHERE id = $3`,
+        [walletAccount, walletAccountName, driver.id]
+      );
+      driver.wallet_account_number = walletAccount;
+      driver.wallet_bank_name = 'Monnify / Wema Bank';
+      driver.wallet_account_name = walletAccountName;
 
       // Set initial driver login password in driver_auth
       const initialPassword = password || phone.replace(/\s+/g, "");
