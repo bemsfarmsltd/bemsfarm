@@ -904,7 +904,6 @@ export default function Sidebar() {
             {/* 12. SETTINGS */}
             {activeTab === 'settings' && (
               <>
-                {['superadmin'].includes(user?.role) && <NavLink to="/settings/audit" className="dual-sub-link">System Audit (Legacy)</NavLink>}
                 <NavLink to="/settings/general" className={({ isActive }) => `dual-sub-link ${isActive ? 'active' : ''}`}>
                   <span>General Store Info</span>
                 </NavLink>
