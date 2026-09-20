@@ -12,7 +12,7 @@ export default function Sidebar() {
   const CATEGORY_FIRST_ROUTES = {
     dashboards: '/dashboard?tab=overview',
     products: '/products',
-    inventory: '/products',
+    inventory: '/inventory/schedule',
     orders: '/orders',
     deliveries: '/deliveries/active',
     customers: '/customers',
