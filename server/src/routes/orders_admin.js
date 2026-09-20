@@ -740,6 +740,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
       return res.status(404).json({ message: "Order not found" });
     }
 
+    const isNumeric = /^\d+$/.test(rawId);
     const order = await pool.query(
       `
       SELECT
@@ -756,7 +757,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
       LEFT JOIN users c ON o.customer_id = c.id OR o.user_id = c.id
       LEFT JOIN drivers dr ON o.driver_id = dr.id
       LEFT JOIN deliveries d ON d.order_id = o.id
-      WHERE o.id = $1 OR o.order_ref = $1 OR UPPER(o.id) = UPPER($1) OR UPPER(COALESCE(o.order_ref, '')) = UPPER($1)
+      WHERE CAST(o.id AS TEXT) = $1 OR UPPER(COALESCE(o.order_ref, '')) = UPPER($1)
       LIMIT 1
     `,
       [rawId],
@@ -782,7 +783,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
           COALESCE(oi.subtotal, oi.quantity * COALESCE(oi.unit_price, oi.price, 0)) AS subtotal
         FROM order_items oi
         LEFT JOIN products p ON oi.product_id = p.id
-        WHERE oi.order_id = $1 OR oi.order_id = $2
+        WHERE oi.order_id = $1 OR CAST(oi.order_id AS TEXT) = $2
         ORDER BY oi.id ASC
       `,
         [realOrderId, rawId],
@@ -797,7 +798,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
       const timelineRes = await pool.query(
         `
         SELECT * FROM order_status_history
-        WHERE order_id = $1 OR order_id = $2
+        WHERE order_id = $1 OR CAST(order_id AS TEXT) = $2
         ORDER BY created_at ASC
       `,
         [realOrderId, rawId],
@@ -812,7 +813,7 @@ router.get("/:id", requireRole("superadmin", "manager", "admin", "delivery_manag
       const trackingRes = await pool.query(
         `
         SELECT * FROM order_tracking_events
-        WHERE order_id = $1 OR order_id = $2
+        WHERE order_id = $1 OR CAST(order_id AS TEXT) = $2
         ORDER BY created_at ASC
       `,
         [realOrderId, rawId],
