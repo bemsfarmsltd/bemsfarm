@@ -6,6 +6,7 @@ const pool = require("../db/pool");
 const { protect } = require("../middleware/authMiddleware");
 const { upsertContext, trackActivity } = require("../utils/aiContext");
 const { sendPasswordResetEmail, sendWelcomeEmail } = require("../services/emailService");
+const { notifyAdmin } = require("../services/notificationService");
 const validate = require("../middleware/validate");
 const authSchemas = require("../schemas/authSchemas");
 const { recordAuditRich } = require('../services/auditService');
@@ -105,6 +106,22 @@ router.post("/register", validate(authSchemas.register), async (req, res, next) 
     sendWelcomeEmail(user, otp).catch((err) =>
       console.error(`Welcome email failed for ${email}:`, err.message),
     );
+
+    notifyAdmin({
+      type: 'customer_register',
+      title: '🎉 New Customer Registered',
+      message: `${user.name} (${user.email}) registered a new customer account${address ? ` at ${address}` : ''}.`,
+      link: `/customers/${user.id}`,
+      severity: 'info',
+      data: {
+        customer_id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || 'Not provided',
+        address: address || 'Not provided',
+      },
+      actor: { id: user.id, name: user.name, role: user.role },
+    }).catch(() => {});
 
     res.status(201).json({ message: "Registration successful. Please verify your email.", requiresVerification: true });
   } catch (err) {

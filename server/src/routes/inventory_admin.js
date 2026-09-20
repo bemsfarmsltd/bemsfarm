@@ -1433,9 +1433,23 @@ router.get(
       let notified = false;
       let emailResult = null;
 
-      if (items.length > 0 && notifLowStock && emailEnabled) {
-        const { sendLowStockAlertEmail } = require("../services/emailService");
-        emailResult = await sendLowStockAlertEmail(storeEmail, items);
+      if (items.length > 0) {
+        const { notifyAdmin } = require("../services/notificationService");
+        const topItem = items[0];
+        notifyAdmin({
+          type: 'low_stock',
+          title: `⚠️ Low Stock Warning: ${topItem.name}${items.length > 1 ? ` (+${items.length - 1} more)` : ''}`,
+          message: `${topItem.name} is down to ${topItem.stock} ${topItem.unit || 'units'} (threshold: ${topItem.low_stock_threshold}). ${items.length} product(s) require restock.`,
+          link: '/inventory/alerts',
+          severity: 'warning',
+          data: {
+            low_stock_count: items.length,
+            sample_product: topItem.name,
+            current_stock: topItem.stock,
+            threshold: topItem.low_stock_threshold,
+          },
+          actor: req.user ? { id: req.user.id, name: req.user.name, role: req.user.role } : null,
+        }).catch(() => {});
         notified = true;
       }
 

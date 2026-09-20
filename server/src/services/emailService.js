@@ -583,6 +583,66 @@ async function sendDriverPasswordResetEmail(driver, resetToken) {
   });
 }
 
+async function sendAdminAlertEmail({ to, type, title, message, link, data = {} }) {
+  const adminEmail = to || process.env.ADMIN_NOTIF_EMAIL || "info@bemsfarms.com";
+  const domain = process.env.ADMIN_URL || "https://bemsfarms.com/admin";
+  const fullLink = link ? (link.startsWith("http") ? link : `${domain}${link.startsWith("/") ? "" : "/"}${link}`) : domain;
+
+  const typeLabels = {
+    customer_register: "👤 New Customer Registered",
+    order_placed:      "🛍️ New Online Order",
+    pos_sale:          "💳 Point-of-Sale Sale",
+    order_delivery:    "🛵 Delivery & Dispatch Update",
+    support_message:   "💬 Live Support Message",
+    ai_chat:           "🤖 Chef Bems AI Conversation",
+    low_stock:         "⚠️ Low Stock Alert",
+    batch_expiry:      "⏰ Batch Expiry Warning",
+    refund_request:    "↩️ Refund / Return Request",
+    system_error:      "🔴 System Error / Exception",
+    security_event:    "🔑 Security & Password Change",
+    staff_action:      "👥 Staff Management Action",
+  };
+
+  const badgeTitle = typeLabels[type] || title || "BemsFarms Notification";
+
+  return sendMail({
+    to: adminEmail,
+    subject: `[BemsFarms Alert] ${title || badgeTitle}`,
+    html: `<div style="${emailStyles}">
+      ${header(title || badgeTitle)}
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-left: 4px solid #1B4332; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <p style="font-size: 15px; color: #1E293B; margin: 0; line-height: 1.6; font-weight: 500;">
+          ${message}
+        </p>
+      </div>
+
+      ${Object.keys(data).length > 0 ? `
+      <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 13px;">
+        <strong style="color: #475569; display: block; margin-bottom: 8px; text-transform: uppercase; font-size: 11px;">Event Details:</strong>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #334155;">
+          ${Object.entries(data).map(([k, v]) => `
+            <tr>
+              <td style="padding: 4px 0; font-weight: 600; color: #64748B; text-transform: capitalize;">${k.replace(/_/g, " ")}:</td>
+              <td style="padding: 4px 0; text-align: right; font-weight: 700; color: #0F172A;">${typeof v === "object" ? JSON.stringify(v) : String(v)}</td>
+            </tr>
+          `).join("")}
+        </table>
+      </div>` : ""}
+
+      <div style="text-align: center; margin: 28px 0;">
+        <a href="${fullLink}" style="background: #1B4332; color: #ffffff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 14px; display: inline-block;">
+          Open in Admin Dashboard →
+        </a>
+      </div>
+
+      <p style="color: #94A3B8; font-size: 12px; text-align: center;">
+        You received this email because notification preferences are enabled in BemsFarms System Settings.
+      </p>
+      ${footer}
+    </div>`,
+  });
+}
+
 module.exports = {
   sendMail,
   sendWelcomeEmail,
@@ -597,4 +657,5 @@ module.exports = {
   sendDriverApprovedEmail,
   sendDriverRejectionEmail,
   sendDriverPasswordResetEmail,
+  sendAdminAlertEmail,
 };

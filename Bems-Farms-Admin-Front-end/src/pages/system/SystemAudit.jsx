@@ -136,6 +136,17 @@ export function getHumanNarrative(e) {
   const statusCode = details.status_code || (e.outcome?.startsWith('failure [') ? parseInt(e.outcome.match(/\d+/)?.[0]) : null)
   const isSuccess = e.outcome === 'success' || e.outcome === 'committed' || (statusCode && statusCode >= 200 && statusCode < 400)
 
+  // 0. Notifications Dispatched
+  if (action.startsWith('NOTIF_')) {
+    const notifType = action.replace('NOTIF_', '').toLowerCase()
+    return {
+      title: details.title || `🔔 System Alert Triggered (${notifType})`,
+      story: details.message || `System notification dispatched across channels (In-App Push: ${details.push_delivered ? 'Active' : 'Off'}, Email: ${details.email_delivered ? 'Delivered' : 'Off'}).`,
+      icon: '🔔',
+      type: 'system'
+    }
+  }
+
   // 1. Git / CI/CD / Deployment
   if (e.category === 'developer' || e.source === 'deployment' || action === 'deploy' || action === 'push') {
     if (action === 'deploy' || e.source === 'deployment') {

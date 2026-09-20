@@ -7,6 +7,29 @@ import toast from 'react-hot-toast'
 
 const EMPTY_RESULTS = { products: [], orders: [], customers: [], staff: [] }
 
+const NOTIF_ICONS = {
+  customer_register: { icon: 'ri-user-add-line', cls: 'bg-primary-subtle text-primary' },
+  order_placed:      { icon: 'ri-shopping-bag-3-line', cls: 'bg-success-subtle text-success' },
+  pos_sale:          { icon: 'ri-bank-card-line', cls: 'bg-success-subtle text-success' },
+  order_delivery:    { icon: 'ri-road-map-line', cls: 'bg-info-subtle text-info' },
+  support_message:   { icon: 'ri-chat-smile-2-line', cls: 'bg-warning-subtle text-warning' },
+  ai_chat:           { icon: 'ri-robot-2-line', cls: 'bg-primary-subtle text-primary' },
+  low_stock:         { icon: 'ri-alert-line', cls: 'bg-danger-subtle text-danger' },
+  batch_expiry:      { icon: 'ri-time-line', cls: 'bg-warning-subtle text-warning' },
+  refund_request:    { icon: 'ri-refund-2-line', cls: 'bg-danger-subtle text-danger' },
+  system_error:      { icon: 'ri-error-warning-line', cls: 'bg-danger-subtle text-danger' },
+  security_event:    { icon: 'ri-shield-keyhole-line', cls: 'bg-dark-subtle text-dark' },
+}
+
+function timeAgo(date) {
+  if (!date) return ''
+  const diff = Date.now() - new Date(date).getTime()
+  if (diff < 60000) return 'Just now'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
+  return `${Math.floor(diff / 86400000)}d ago`
+}
+
 export default function Topbar({ onToggleSidebar }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -15,9 +38,44 @@ export default function Topbar({ onToggleSidebar }) {
   const [results, setResults] = useState(EMPTY_RESULTS)
   const [searching, setSearching] = useState(false)
   const [open, setOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const searchInputRef = useRef(null)
   const searchBoxRef = useRef(null)
   const debounceRef = useRef(null)
+
+  // Fetch live notifications
+  const fetchNotifs = useCallback(async () => {
+    try {
+      const res = await api.get('/admin/notifications', { params: { limit: 15 } })
+      setNotifications(res.data.notifications || [])
+      setUnreadCount(res.data.unread_count || 0)
+    } catch (_) {}
+  }, [])
+
+  useEffect(() => {
+    fetchNotifs()
+    const interval = setInterval(fetchNotifs, 15000)
+    return () => clearInterval(interval)
+  }, [fetchNotifs])
+
+  const handleMarkRead = async (notif) => {
+    if (!notif.is_read) {
+      await api.patch(`/admin/notifications/${notif.id}/read`).catch(() => {})
+      fetchNotifs()
+    }
+    if (notif.link) {
+      navigate(notif.link)
+    }
+  }
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.post('/admin/notifications/mark-all-read')
+      toast.success('All notifications marked as read')
+      fetchNotifs()
+    } catch (_) {}
+  }
 
   // Re-initialize Lucide icons after render
   useEffect(() => {
@@ -312,50 +370,80 @@ export default function Topbar({ onToggleSidebar }) {
             title="System Notifications"
           >
             <i className="ri-notification-3-line fs-16"></i>
-            <span className="position-absolute top-1 end-1 p-1 bg-danger border border-white rounded-circle"></span>
+            {unreadCount > 0 && (
+              <span className="position-absolute top-1 end-1 p-1 bg-danger border border-white rounded-circle">
+                <span className="visually-hidden">New alerts</span>
+              </span>
+            )}
           </button>
-          <div className="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0" style={{ width: 320, borderRadius: '1rem' }}>
+          <div className="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0" style={{ width: 340, borderRadius: '1rem' }}>
             <div className="d-flex align-items-center justify-content-between p-3 border-bottom">
-              <h6 className="mb-0 fw-bold font-display">Notifications</h6>
-              <span className="badge" style={{ backgroundColor: '#FEF3C7', color: '#B45309' }}>3 New</span>
+              <div className="d-flex align-items-center gap-2">
+                <h6 className="mb-0 fw-bold font-display">Notifications</h6>
+                {unreadCount > 0 && (
+                  <span className="badge" style={{ backgroundColor: '#FEF3C7', color: '#B45309' }}>
+                    {unreadCount} New
+                  </span>
+                )}
+              </div>
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="btn btn-link p-0 text-decoration-none fs-xs fw-semibold text-primary"
+                >
+                  Mark all read
+                </button>
+              )}
             </div>
-            <div className="vstack divide-y" style={{ maxHeight: 280, overflowY: 'auto' }}>
-              <div className="p-3 border-bottom">
-                <div className="d-flex align-items-start gap-3">
-                  <div className="avatar size-8 rounded-circle bg-danger-subtle text-danger d-flex align-items-center justify-content-center flex-shrink-0">
-                    <i className="ri-alert-line"></i>
-                  </div>
-                  <div>
-                    <p className="mb-0 fw-semibold fs-sm">Tomatoes below reorder level</p>
-                    <p className="text-muted fs-xs mb-0">3 kg left — threshold: 10 kg</p>
-                  </div>
+
+            <div className="vstack divide-y" style={{ maxHeight: 320, overflowY: 'auto' }}>
+              {notifications.length === 0 ? (
+                <div className="p-4 text-center text-muted fs-xs">
+                  <i className="ri-notification-off-line fs-20 d-block mb-1 opacity-50"></i>
+                  No notifications right now.
                 </div>
-              </div>
-              <div className="p-3 border-bottom">
-                <div className="d-flex align-items-start gap-3">
-                  <div className="avatar size-8 rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center flex-shrink-0">
-                    <i className="ri-time-line"></i>
-                  </div>
-                  <div>
-                    <p className="mb-0 fw-semibold fs-sm">Batch expiring soon</p>
-                    <p className="text-muted fs-xs mb-0">BT-2026-0041 expires in 2 days</p>
-                  </div>
-                </div>
-              </div>
-              <div className="p-3">
-                <div className="d-flex align-items-start gap-3">
-                  <div className="avatar size-8 rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center flex-shrink-0">
-                    <i className="ri-shopping-bag-line"></i>
-                  </div>
-                  <div>
-                    <p className="mb-0 fw-semibold fs-sm">New order received</p>
-                    <p className="text-muted fs-xs mb-0">Amara Obi — ₦18,500</p>
-                  </div>
-                </div>
-              </div>
+              ) : (
+                notifications.map((n) => {
+                  const meta = NOTIF_ICONS[n.type] || { icon: 'ri-notification-3-line', cls: 'bg-primary-subtle text-primary' }
+                  return (
+                    <div
+                      key={n.id}
+                      className={`p-3 border-bottom cursor-pointer hover-bg transition-all ${!n.is_read ? 'bg-light bg-opacity-50' : ''}`}
+                      onClick={() => handleMarkRead(n)}
+                    >
+                      <div className="d-flex align-items-start gap-2.5">
+                        <div className={`avatar size-8 rounded-circle ${meta.cls} d-flex align-items-center justify-content-center flex-shrink-0 mt-0.5`}>
+                          <i className={`${meta.icon} fs-14`}></i>
+                        </div>
+                        <div className="flex-grow-1 min-w-0">
+                          <div className="d-flex align-items-center justify-content-between gap-1 mb-0.5">
+                            <span className="fw-bold fs-xs text-dark text-truncate">{n.title}</span>
+                            {!n.is_read && (
+                              <span className="badge bg-primary p-1 rounded-circle" style={{ width: 6, height: 6 }}></span>
+                            )}
+                          </div>
+                          <p className="text-muted fs-xs mb-1 line-clamp-2 leading-tight" style={{ fontSize: '11.5px' }}>
+                            {n.message}
+                          </p>
+                          <span className="text-muted text-opacity-75" style={{ fontSize: '10.5px' }}>
+                            {timeAgo(n.created_at)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
             </div>
-            <div className="p-2 border-top text-center">
-              <Link to="/inventory/alerts" className="text-decoration-none fw-bold text-success fs-xs">View all alerts</Link>
+
+            <div className="p-2 border-top d-flex align-items-center justify-content-between px-3">
+              <Link to="/settings/notifications" className="text-decoration-none fw-semibold text-muted fs-xxs">
+                <i className="ri-settings-3-line me-1"></i>Preferences
+              </Link>
+              <Link to="/god-eye" className="text-decoration-none fw-bold text-success fs-xs">
+                God Eye Logs →
+              </Link>
             </div>
           </div>
         </div>

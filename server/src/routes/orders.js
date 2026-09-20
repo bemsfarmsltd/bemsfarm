@@ -12,6 +12,7 @@ const orderSchemas = require("../schemas/orderSchemas");
 const { restoreOrderStock } = require("../utils/orderStock");
 const { submitReturn, getUserReturns } = require("../controllers/returnsController");
 const { detectChannel } = require("../utils/channel");
+const { notifyAdmin } = require("../services/notificationService");
 
 // ─────────────────────────────────────────────
 // CONFIG
@@ -381,6 +382,23 @@ router.post("/", protect, validate(orderSchemas.createOrder), async (req, res, n
       metadata: { total, item_count: orderItemRows.length },
       ip: req.ip || req.connection?.remoteAddress
     });
+
+    notifyAdmin({
+      type: 'order_placed',
+      title: `🛍️ New Order Placed (#${orderId})`,
+      message: `Customer ${req.user.name || req.user.email} placed a new order (#${orderId}) totaling ₦${Number(total).toLocaleString()} (${orderItemRows.length} item${orderItemRows.length > 1 ? 's' : ''}).`,
+      link: `/orders/${orderId}`,
+      severity: 'info',
+      data: {
+        order_id: orderId,
+        customer_name: req.user.name,
+        total_amount: `₦${Number(total).toLocaleString()}`,
+        items_count: orderItemRows.length,
+        payment_method: method,
+        address: address || 'Storefront Pickup',
+      },
+      actor: { id: req.user.id, name: req.user.name, role: req.user.role },
+    }).catch(() => {});
 
     return res.status(201).json({
       message: "Order created",

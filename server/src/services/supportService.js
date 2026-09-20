@@ -21,7 +21,27 @@ async function sendMessage(customerId,message,actor){
       ON CONFLICT(customer_id) DO UPDATE SET last_message=EXCLUDED.last_message,last_message_at=NOW(),updated_at=NOW(),status='open' RETURNING id`,[customerId,message.trim().slice(0,100)]);
     const r=await db.query(`INSERT INTO customer_messages(conversation_id,customer_id,sender_type,admin_id,message)
       VALUES($1,$2,$3,$4,$5) RETURNING *`,[conv.rows[0].id,customerId,actor?'admin':'customer',actor?.id || null,message.trim()]);
-    if(!actor) await db.query(`INSERT INTO notifications(type,title,body,is_read) VALUES('system','New customer support message',$1,false)`,[`Customer #${customerId} sent a message. Open Customer Messages to reply.`]);
+    if(!actor) {
+      await db.query(`INSERT INTO notifications(type,title,body,is_read) VALUES('system','New customer support message',$1,false)`,[`Customer #${customerId} sent a message. Open Customer Messages to reply.`]);
+      try {
+        const { notifyAdmin } = require('./notificationService');
+        const userRes = await pool.query("SELECT name, email FROM users WHERE id=$1", [customerId]);
+        const senderName = userRes.rows[0]?.name || userRes.rows[0]?.email || `Customer #${customerId}`;
+        notifyAdmin({
+          type: 'support_message',
+          title: `💬 New Support Message from ${senderName}`,
+          message: `${senderName}: "${message.trim().slice(0, 150)}${message.trim().length > 150 ? '…' : ''}"`,
+          link: `/god-eye`,
+          severity: 'info',
+          data: {
+            customer_id: customerId,
+            customer_name: senderName,
+            message: message.trim(),
+          },
+          actor: { id: customerId, name: senderName, role: 'customer' },
+        }).catch(() => {});
+      } catch (_) {}
+    }
     await db.query('COMMIT');return {message:{...r.rows[0],admin_name:actor?.name}};
   }catch(err){await db.query('ROLLBACK');throw err;}finally{db.release();}
 }

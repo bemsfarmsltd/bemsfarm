@@ -39,6 +39,7 @@ const { getTaxSettings, computeTax } = require("../utils/taxSettings");
 const { clampLimit } = require("../utils/pagination");
 const validate = require("../middleware/validate");
 const posSchemas = require("../schemas/posSchemas");
+const { notifyAdmin } = require("../services/notificationService");
 
 router.use(protect);
 
@@ -461,6 +462,24 @@ router.post("/sale", requireRole("superadmin","manager","admin","cashier"), vali
     }
 
     await client.query("COMMIT");
+
+    notifyAdmin({
+      type: 'pos_sale',
+      title: `💳 POS Counter Sale (${reference})`,
+      message: `Cashier ${req.user.name || 'Staff'} completed a counter sale (${reference}) totaling ₦${Number(total).toLocaleString()} for ${customer_name}.`,
+      link: '/pos',
+      severity: 'info',
+      data: {
+        reference,
+        customer_name,
+        total: `₦${Number(total).toLocaleString()}`,
+        payment_method,
+        cashier: req.user.name || req.user.email,
+        items_count: lineItems.length,
+      },
+      actor: { id: req.user.id, name: req.user.name, role: req.user.role },
+    }).catch(() => {});
+
     res.status(201).json({
       order:         order.rows[0],
       items:         lineItems,
