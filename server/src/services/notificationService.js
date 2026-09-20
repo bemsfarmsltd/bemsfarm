@@ -32,6 +32,65 @@ async function ensureNotificationTable() {
       CREATE INDEX IF NOT EXISTS idx_sys_notif_created ON system_notifications(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_sys_notif_read ON system_notifications(is_read);
     `);
+
+    // If completely empty, backfill with recent real store activity
+    const countCheck = await pool.query('SELECT COUNT(*) FROM system_notifications');
+    if (parseInt(countCheck.rows[0].count) === 0) {
+      // 1. Recent Orders
+      await pool.query(`
+        INSERT INTO system_notifications (type, title, message, severity, link, data, actor_name, is_read, created_at)
+        SELECT
+          'order_placed',
+          '🛍️ Order #' || o.id || ' Placed',
+          'Order #' || o.id || ' placed by ' || COALESCE(u.name, 'Customer') || ' totaling ₦' || TO_CHAR(o.total, 'FM999,999,999') || '.',
+          'info',
+          '/orders',
+          jsonb_build_object('order_id', o.id, 'total', o.total, 'status', o.status),
+          COALESCE(u.name, 'Customer'),
+          false,
+          o.created_at
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        ORDER BY o.created_at DESC LIMIT 5
+      `).catch(() => {});
+
+      // 2. Low Stock Warnings
+      await pool.query(`
+        INSERT INTO system_notifications (type, title, message, severity, link, data, actor_name, is_read, created_at)
+        SELECT
+          'low_stock',
+          '⚠️ Low Stock: ' || p.name,
+          p.name || ' is low on stock (' || p.stock || ' left, threshold: ' || COALESCE(p.low_stock_threshold, 10) || ').',
+          'warning',
+          '/inventory/alerts',
+          jsonb_build_object('product_id', p.id, 'stock', p.stock, 'threshold', p.low_stock_threshold),
+          'System Engine',
+          false,
+          NOW()
+        FROM products p
+        WHERE p.stock > 0 AND p.stock <= COALESCE(p.low_stock_threshold, 10) AND p.status = 'active'
+        ORDER BY p.stock ASC LIMIT 3
+      `).catch(() => {});
+
+      // 3. Recent Customers
+      await pool.query(`
+        INSERT INTO system_notifications (type, title, message, severity, link, data, actor_name, is_read, created_at)
+        SELECT
+          'customer_register',
+          '🎉 Customer Registered: ' || u.name,
+          u.name || ' (' || u.email || ') joined Bems Farms as a registered customer.',
+          'info',
+          '/customers/' || u.id,
+          jsonb_build_object('user_id', u.id, 'email', u.email),
+          u.name,
+          false,
+          u.created_at
+        FROM users u
+        WHERE u.role = 'customer' OR u.role = 'user'
+        ORDER BY u.created_at DESC LIMIT 3
+      `).catch(() => {});
+    }
+
     tableReady = true;
   } catch (err) {
     console.error('Error ensuring system_notifications table:', err.message);
