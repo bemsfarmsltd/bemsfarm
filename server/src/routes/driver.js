@@ -9,6 +9,7 @@ const driverAuthController = require("../controllers/driverAuthController");
 const driverDeliveryController = require("../controllers/driverDeliveryController");
 const driverLocationController = require("../controllers/driverLocationController");
 const driverEarningsController = require("../controllers/driverEarningsController");
+const driverOnboardingController = require("../controllers/driverOnboardingController");
 
 // ── Root Driver API Info / Health ──────────────────────────────────
 router.get("/", (req, res) => {
@@ -18,6 +19,8 @@ router.get("/", (req, res) => {
     version: "1.0.0",
     description: "Backend endpoints for Bems Farms Driver Mobile Application & Dispatch",
     endpoints: {
+      onboarding_verify: "GET /api/driver/onboarding/verify?token=...",
+      onboarding_submit: "POST /api/driver/onboarding/submit",
       auth_login: "POST /api/driver/auth/login",
       auth_me: "GET /api/driver/auth/me",
       update_profile: "PATCH /api/driver/auth/profile",
@@ -33,6 +36,10 @@ router.get("/", (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// ── 0. Driver Onboarding & Compliance (Public with Token) ─────────
+router.get("/onboarding/verify", driverOnboardingController.verifyToken);
+router.post("/onboarding/submit", driverOnboardingController.submitOnboarding);
 
 // ── 1. Driver Authentication & Availability ─────────────────────────
 router.post("/auth/login", driverAuthController.login);

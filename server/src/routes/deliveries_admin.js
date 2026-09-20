@@ -1,14 +1,17 @@
-// server/src/routes/deliveries_admin.js
-// Mounted at /api/admin/deliveries
-
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 const pool = require("../db/pool");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
 const deliveryAdminSchemas = require("../schemas/deliveryAdminSchemas");
 const { restoreOrderStock } = require("../utils/orderStock");
+const {
+  sendDriverInvitationEmail,
+  sendDriverApprovedEmail,
+  sendDriverRejectionEmail,
+} = require("../services/emailService");
 
 router.use(protect);
 
@@ -420,7 +423,9 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
         COUNT(*) FILTER (WHERE status = 'active')            AS active,
         COUNT(*) FILTER (WHERE status = 'on_delivery')       AS on_delivery,
         COUNT(*) FILTER (WHERE status = 'off_duty')          AS off_duty,
-        COUNT(*) FILTER (WHERE status = 'suspended')         AS suspended
+        COUNT(*) FILTER (WHERE status = 'suspended')         AS suspended,
+        COUNT(*) FILTER (WHERE onboarding_status = 'invited') AS invited,
+        COUNT(*) FILTER (WHERE onboarding_status = 'documents_submitted') AS pending_compliance
       FROM drivers
     `);
 
@@ -429,6 +434,257 @@ router.get("/drivers", requireRole("superadmin", "manager", "admin", "delivery_m
     next(err);
   }
 });
+
+// ── POST /api/admin/deliveries/drivers/invite ────────────────────
+router.post(
+  "/drivers/invite",
+  requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      const {
+        name,
+        email,
+        phone,
+        vehicle_type = "motorcycle",
+        vehicle_plate,
+        zone_id,
+        commission_per_delivery = 500,
+        notes,
+      } = req.body;
+
+      if (!name || !email || !phone) {
+        return res.status(400).json({ message: "Full Name, Email Address, and Phone Number are required to send an onboarding invitation." });
+      }
+
+      await client.query("BEGIN");
+
+      // Check if driver with same email or phone already exists
+      const existing = await client.query(
+        "SELECT id, email, phone, onboarding_status FROM drivers WHERE LOWER(email) = LOWER($1) OR phone = $2",
+        [email.trim(), phone.trim()]
+      );
+
+      if (existing.rows.length > 0) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({
+          message: `A driver with this ${existing.rows[0].email.toLowerCase() === email.trim().toLowerCase() ? "email" : "phone number"} already exists (Status: ${existing.rows[0].onboarding_status || "Registered"}).`,
+        });
+      }
+
+      const inviteToken = crypto.randomBytes(32).toString("hex");
+      const inviteExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      const tempPin = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit PIN
+      const hashedPin = await bcrypt.hash(tempPin, 10);
+
+      const insertRes = await client.query(
+        `
+        INSERT INTO drivers (
+          name, email, phone, vehicle_type, vehicle_plate, primary_zone_id,
+          commission_per_delivery, status, onboarding_status, invite_token,
+          invite_expires_at, notes, created_at, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, 'inactive', 'invited', $8, $9, $10, NOW(), NOW())
+        RETURNING *
+        `,
+        [
+          name.trim(),
+          email.trim().toLowerCase(),
+          phone.trim(),
+          vehicle_type,
+          vehicle_plate || null,
+          zone_id || null,
+          commission_per_delivery,
+          inviteToken,
+          inviteExpires,
+          notes || null,
+        ]
+      );
+
+      const driver = insertRes.rows[0];
+
+      // Save initial PIN in driver_auth
+      await client.query(
+        `
+        INSERT INTO driver_auth (driver_id, password_hash, created_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (driver_id)
+        DO UPDATE SET password_hash = $2
+        `,
+        [driver.id, hashedPin]
+      );
+
+      await client.query("COMMIT");
+
+      const origin = req.get("origin") || req.get("referer") || "https://www.bemsfarms.com";
+      const baseUrl = origin.replace(/\/admin.*$/, "").replace(/\/$/, "");
+      const inviteUrl = `${baseUrl}/driver/onboarding?token=${inviteToken}`;
+
+      // Send email asynchronously
+      sendDriverInvitationEmail({
+        email: driver.email,
+        name: driver.name,
+        inviteUrl,
+        temporaryPin: tempPin,
+        vehicleType: driver.vehicle_type,
+        invitedByName: req.user?.name || "Operations Team",
+      }).catch((e) => console.error("Driver invite email failed:", e.message));
+
+      res.status(201).json({
+        message: "Driver onboarding invitation sent successfully.",
+        driver,
+        inviteUrl,
+        tempPin,
+      });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
+
+// ── PATCH /api/admin/deliveries/drivers/:id/compliance ────────────
+router.patch(
+  "/drivers/:id/compliance",
+  requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  async (req, res, next) => {
+    const client = await pool.connect();
+    try {
+      const { action, notes } = req.body; // action: 'approve' | 'reject' | 'request_changes'
+      const driverId = req.params.id;
+
+      await client.query("BEGIN");
+
+      const driverRes = await client.query("SELECT * FROM drivers WHERE id = $1", [driverId]);
+      if (!driverRes.rows.length) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const driver = driverRes.rows[0];
+
+      if (action === "approve") {
+        const updateRes = await client.query(
+          `
+          UPDATE drivers
+          SET onboarding_status = 'approved',
+              status = 'active',
+              compliance_notes = $1,
+              compliance_reviewed_at = NOW(),
+              compliance_reviewed_by = $2,
+              updated_at = NOW()
+          WHERE id = $3
+          RETURNING *
+          `,
+          [notes || "Compliance verified and approved by admin", req.user.id, driverId]
+        );
+
+        await client.query("COMMIT");
+
+        // Send approval congratulations email to driver
+        const origin = req.get("origin") || req.get("referer") || "https://www.bemsfarms.com";
+        const baseUrl = origin.replace(/\/admin.*$/, "").replace(/\/$/, "");
+
+        sendDriverApprovedEmail({
+          email: driver.email,
+          name: driver.name,
+          phone: driver.phone,
+          loginUrl: `${baseUrl}/driver`,
+        }).catch((e) => console.error("Driver approval email failed:", e.message));
+
+        return res.json({
+          message: "Driver compliance approved and account activated successfully.",
+          driver: updateRes.rows[0],
+        });
+      } else {
+        const updateRes = await client.query(
+          `
+          UPDATE drivers
+          SET onboarding_status = 'rejected',
+              status = 'inactive',
+              compliance_notes = $1,
+              compliance_reviewed_at = NOW(),
+              compliance_reviewed_by = $2,
+              updated_at = NOW()
+          WHERE id = $3
+          RETURNING *
+          `,
+          [notes || "Compliance documents require revision", req.user.id, driverId]
+        );
+
+        await client.query("COMMIT");
+
+        const origin = req.get("origin") || req.get("referer") || "https://www.bemsfarms.com";
+        const baseUrl = origin.replace(/\/admin.*$/, "").replace(/\/$/, "");
+        const reuploadUrl = driver.invite_token
+          ? `${baseUrl}/driver/onboarding?token=${driver.invite_token}`
+          : `${baseUrl}/driver/onboarding`;
+
+        sendDriverRejectionEmail({
+          email: driver.email,
+          name: driver.name,
+          reasonNotes: notes,
+          reuploadUrl,
+        }).catch((e) => console.error("Driver rejection email failed:", e.message));
+
+        return res.json({
+          message: "Driver compliance status updated to rejected. Correction email sent to driver.",
+          driver: updateRes.rows[0],
+        });
+      }
+    } catch (err) {
+      await client.query("ROLLBACK");
+      next(err);
+    } finally {
+      client.release();
+    }
+  }
+);
+
+// ── POST /api/admin/deliveries/drivers/:id/resend-invite ───────────
+router.post(
+  "/drivers/:id/resend-invite",
+  requireRole("superadmin", "manager", "admin", "delivery_manager"),
+  async (req, res, next) => {
+    try {
+      const driverRes = await pool.query("SELECT * FROM drivers WHERE id = $1", [req.params.id]);
+      if (!driverRes.rows.length) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const driver = driverRes.rows[0];
+      if (!driver.email) {
+        return res.status(400).json({ message: "This driver has no email address recorded." });
+      }
+
+      const inviteToken = crypto.randomBytes(32).toString("hex");
+      const inviteExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      await pool.query(
+        "UPDATE drivers SET invite_token = $1, invite_expires_at = $2, onboarding_status = 'invited', updated_at = NOW() WHERE id = $3",
+        [inviteToken, inviteExpires, driver.id]
+      );
+
+      const origin = req.get("origin") || req.get("referer") || "https://www.bemsfarms.com";
+      const baseUrl = origin.replace(/\/admin.*$/, "").replace(/\/$/, "");
+      const inviteUrl = `${baseUrl}/driver/onboarding?token=${inviteToken}`;
+
+      sendDriverInvitationEmail({
+        email: driver.email,
+        name: driver.name,
+        inviteUrl,
+        vehicleType: driver.vehicle_type,
+        invitedByName: req.user?.name || "Operations Team",
+      }).catch((e) => console.error("Driver invite resend failed:", e.message));
+
+      res.json({ message: "Onboarding invitation email resent successfully.", inviteUrl });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 // ── POST /api/admin/deliveries/drivers ───────────────────────────
 router.post(

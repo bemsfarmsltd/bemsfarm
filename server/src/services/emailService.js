@@ -317,39 +317,36 @@ async function sendStaffInvitationEmail({ email, role, department, inviteUrl, in
     superadmin:       "Super Administrator",
     admin:            "System Administrator",
     manager:          "Operations / Store Manager",
-    cashier:          "POS Cashier",
-    kitchen_staff:    "Kitchen & Prep Staff",
-    delivery_manager: "Logistics & Delivery Manager",
-    accountant:       "Finance & Accounts Officer",
-    storekeeper:      "Inventory & Storekeeper",
+    inventory_manager:"Inventory Manager",
+    sales_agent:      "Sales Agent",
+    order_fulfillment:"Fulfillment Specialist",
+    finance:          "Financial Auditor / Officer",
+    customer_support: "Customer Support Officer",
   };
-  const roleTitle = roleLabels[role] || role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const roleLabel = roleLabels[role] || role || "Staff Member";
   const inviterText = invitedByName ? ` by <strong>${invitedByName}</strong>` : "";
+  const deptText = department ? ` in the <strong>${department}</strong> department` : "";
 
   return sendMail({
     to: email,
-    subject: `🌿 You've been invited to join BemsFarms as ${roleTitle}`,
+    subject: "🔐 You've been invited to join the BemsFarms Team",
     html: `<div style="${emailStyles}">
-      ${header("Welcome to the BemsFarms Team! 🌿")}
+      ${header("Welcome to the BemsFarms Team! 🎉")}
       <p style="color: #374151; font-size: 15px; line-height: 1.7;">
         Hello,
       </p>
       <p style="color: #4B5563; line-height: 1.7;">
-        You have been invited${inviterText} to join the <strong>BemsFarms Authorized Management Portal</strong> as:
+        You have been invited${inviterText} to join the <strong>BemsFarms Internal Portal</strong> as a <strong>${roleLabel}</strong>${deptText}.
       </p>
-      <div style="background: #F8FAF9; border: 1px solid #E5E7EB; border-left: 4px solid #1B4332; border-radius: 8px; padding: 18px 20px; margin: 20px 0;">
-        <div style="font-size: 12px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 1px;">Assigned Role</div>
-        <div style="font-size: 18px; font-weight: 800; color: #1B4332; margin-top: 4px;">${roleTitle}</div>
-        ${department ? `<div style="font-size: 13px; color: #4B5563; margin-top: 2px;">Department: <strong>${department}</strong></div>` : ""}
+      <div style="background: #F8FAF9; border: 1px solid #E5E7EB; border-left: 4px solid #1B4332; border-radius: 8px; padding: 18px 20px; margin: 24px 0;">
+        <div style="font-size: 12px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 1px;">Your Assigned Role</div>
+        <div style="font-size: 18px; font-weight: 800; color: #1B4332; margin-top: 4px;">${roleLabel}</div>
       </div>
-      <p style="color: #4B5563; line-height: 1.7;">
-        To activate your account, complete your staff profile, and create your secure password, click the button below:
-      </p>
       <div style="text-align: center; margin: 32px 0;">
         <a href="${inviteUrl}" style="background: linear-gradient(135deg, #1B4332, #2D6A4F); color: #ffffff; padding: 16px 36px;
           border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 16px;
           display: inline-block; box-shadow: 0 4px 12px rgba(27, 67, 50, 0.25);">
-          Complete Setup &amp; Set Password →
+          Complete Your Staff Account →
         </a>
       </div>
       <p style="color: #6B7280; font-size: 13px; line-height: 1.6;">
@@ -358,9 +355,142 @@ async function sendStaffInvitationEmail({ email, role, department, inviteUrl, in
       </p>
       <div style="background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 8px; padding: 12px 16px; margin: 24px 0;">
         <p style="color: #92400E; font-size: 12px; margin: 0;">
-          ⏳ <strong>Security Notice:</strong> This onboarding link is personal and will expire in <strong>7 days</strong>. If you did not expect this invitation, you may disregard this email.
+          ⏳ <strong>Security Notice:</strong> This invitation link will expire in <strong>48 hours</strong>.
         </p>
       </div>
+      ${footer}
+    </div>`,
+  });
+}
+
+async function sendDriverInvitationEmail({ email, name, inviteUrl, temporaryPin, vehicleType, invitedByName }) {
+  const inviterText = invitedByName ? ` by <strong>${invitedByName}</strong>` : "";
+  const vehicleLabel = vehicleType ? vehicleType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "Dispatch Vehicle";
+
+  return sendMail({
+    to: email,
+    subject: "🛵 You've been invited to join BemsFarms as a Dispatch Driver!",
+    html: `<div style="${emailStyles}">
+      ${header("Welcome to the BemsFarms Delivery Fleet! 🛵")}
+      <p style="color: #374151; font-size: 15px; line-height: 1.7;">
+        Hello <strong>${name || "Driver Partner"}</strong>,
+      </p>
+      <p style="color: #4B5563; line-height: 1.7;">
+        You have been invited${inviterText} to join the <strong>BemsFarms Dispatch &amp; Logistics Fleet</strong> as an official delivery driver (${vehicleLabel}).
+      </p>
+      
+      <div style="background: #F8FAF9; border: 1px solid #E5E7EB; border-left: 4px solid #1B4332; border-radius: 8px; padding: 18px 20px; margin: 20px 0;">
+        <div style="font-size: 12px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 1px;">Onboarding Step Required</div>
+        <div style="font-size: 16px; font-weight: 800; color: #1B4332; margin-top: 4px;">Complete Profile &amp; Upload Compliance Documents</div>
+        <p style="font-size: 13px; color: #4B5563; margin: 8px 0 0 0; line-height: 1.5;">
+          Please complete your profile details (NIN, Address, Next of Kin, Guarantor) and upload your <strong>Driver's License, Vehicle Papers, and NIN Slip</strong> so our compliance team can verify and activate your account.
+        </p>
+      </div>
+
+      ${temporaryPin ? `
+      <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 14px 18px; margin: 16px 0;">
+        <div style="font-size: 12px; font-weight: 700; color: #1E40AF; text-transform: uppercase;">Your Temporary Driver App PIN</div>
+        <div style="font-size: 22px; font-weight: 900; color: #1E3A8A; letter-spacing: 4px; margin-top: 4px;">${temporaryPin}</div>
+        <small style="color: #3B82F6; font-size: 11px;">You will use this PIN along with your phone number to sign in to the driver app once your documents are approved.</small>
+      </div>` : ""}
+
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${inviteUrl}" style="background: linear-gradient(135deg, #1B4332, #2D6A4F); color: #ffffff; padding: 16px 36px;
+          border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 16px;
+          display: inline-block; box-shadow: 0 4px 12px rgba(27, 67, 50, 0.25);">
+          Start Driver Onboarding &amp; Upload Docs →
+        </a>
+      </div>
+
+      <p style="color: #6B7280; font-size: 13px; line-height: 1.6;">
+        If the button above does not work, copy and paste this link into your browser:<br/>
+        <a href="${inviteUrl}" style="color: #1B4332; word-break: break-all;">${inviteUrl}</a>
+      </p>
+
+      <div style="background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 8px; padding: 12px 16px; margin: 24px 0;">
+        <p style="color: #92400E; font-size: 12px; margin: 0;">
+          ⏳ <strong>Compliance Notice:</strong> This onboarding link will expire in <strong>7 days</strong>. All documents are reviewed securely by BemsFarms Operations.
+        </p>
+      </div>
+      ${footer}
+    </div>`,
+  });
+}
+
+async function sendDriverApprovedEmail({ email, name, phone, loginUrl, driverPin }) {
+  return sendMail({
+    to: email,
+    subject: "🎉 Congratulations! Your BemsFarms Driver Account is Approved & Active",
+    html: `<div style="${emailStyles}">
+      ${header("Compliance Approved — Welcome to the Fleet! 🎉")}
+      <p style="color: #374151; font-size: 15px; line-height: 1.7;">
+        Hello <strong>${name}</strong>,
+      </p>
+      <p style="color: #4B5563; line-height: 1.7;">
+        Great news! Your compliance documents, identity verification, and vehicle registration have been <strong>officially approved</strong> by BemsFarms Logistics Management.
+      </p>
+
+      <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-left: 4px solid #059669; border-radius: 8px; padding: 18px 20px; margin: 20px 0;">
+        <div style="font-size: 12px; font-weight: 700; color: #065F46; text-transform: uppercase; letter-spacing: 1px;">Account Status</div>
+        <div style="font-size: 18px; font-weight: 800; color: #065F46; margin-top: 4px;">✅ Active &amp; Ready for Delivery Dispatches</div>
+        <p style="font-size: 13px; color: #047857; margin: 6px 0 0 0;">
+          Your account is fully activated. You are now eligible to receive real-time order delivery dispatches with automated navigation across your assigned zone.
+        </p>
+      </div>
+
+      <div style="background: #F8FAF9; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px 20px; margin: 20px 0;">
+        <div style="font-size: 12px; font-weight: 700; color: #4B5563; text-transform: uppercase; margin-bottom: 8px;">Your Driver Login Credentials:</div>
+        <div style="font-size: 14px; color: #111827; margin-bottom: 4px;"><strong>Phone / Login ID:</strong> <span style="font-family: monospace; font-size: 15px;">${phone}</span></div>
+        ${driverPin ? `<div style="font-size: 14px; color: #111827;"><strong>Driver App PIN:</strong> <span style="font-family: monospace; font-size: 16px; font-weight: 800; color: #1B4332;">${driverPin}</span></div>` : ""}
+      </div>
+
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${loginUrl || "https://www.bemsfarms.com/driver"}" style="background: linear-gradient(135deg, #059669, #10B981); color: #ffffff; padding: 16px 36px;
+          border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 16px;
+          display: inline-block; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">
+          Launch Driver App &amp; Go Online →
+        </a>
+      </div>
+
+      <p style="color: #6B7280; font-size: 13px; line-height: 1.6;">
+        For any assistance, contact BemsFarms Dispatch Control via phone or your dispatch manager.
+      </p>
+      ${footer}
+    </div>`,
+  });
+}
+
+async function sendDriverRejectionEmail({ email, name, reasonNotes, reuploadUrl }) {
+  return sendMail({
+    to: email,
+    subject: "⚠️ Action Required: BemsFarms Driver Compliance Review Update",
+    html: `<div style="${emailStyles}">
+      ${header("Compliance Document Correction Required ⚠️")}
+      <p style="color: #374151; font-size: 15px; line-height: 1.7;">
+        Hello <strong>${name}</strong>,
+      </p>
+      <p style="color: #4B5563; line-height: 1.7;">
+        Our logistics compliance team reviewed your submitted driver onboarding documents and noticed a few items requiring correction or re-upload before your account can be activated.
+      </p>
+
+      <div style="background: #FEF2F2; border: 1px solid #FECACA; border-left: 4px solid #DC2626; border-radius: 8px; padding: 18px 20px; margin: 20px 0;">
+        <div style="font-size: 12px; font-weight: 700; color: #991B1B; text-transform: uppercase;">Compliance Team Notes &amp; Required Fixes:</div>
+        <p style="font-size: 14px; color: #7F1D1D; margin: 8px 0 0 0; line-height: 1.6; font-weight: 600;">
+          "${reasonNotes || "Please provide clearer copies of your driver's license and vehicle registration document."}"
+        </p>
+      </div>
+
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${reuploadUrl}" style="background: linear-gradient(135deg, #DC2626, #EF4444); color: #ffffff; padding: 16px 36px;
+          border-radius: 12px; text-decoration: none; font-weight: 800; font-size: 16px;
+          display: inline-block; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);">
+          Re-Upload Documents Now →
+        </a>
+      </div>
+
+      <p style="color: #6B7280; font-size: 13px; line-height: 1.6;">
+        If you have questions, please reply directly to this email or visit BemsFarms operational hub.
+      </p>
       ${footer}
     </div>`,
   });
@@ -376,5 +506,9 @@ module.exports = {
   sendReferralUpgradeEmail,
   sendLowStockAlertEmail,
   sendStaffInvitationEmail,
+  sendDriverInvitationEmail,
+  sendDriverApprovedEmail,
+  sendDriverRejectionEmail,
 };
+
 

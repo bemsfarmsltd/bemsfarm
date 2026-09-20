@@ -28,6 +28,7 @@ const FraudDetectionPage = lazy(() => import("./pages/FraudDetectionPage"));
 const DemandForecastingPage = lazy(() => import("./pages/DemandForecastingPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 const CommercePolicyPage = lazy(() => import("./pages/CommercePolicyPage"));
+const DriverOnboardingPage = lazy(() => import("./pages/driver/DriverOnboardingPage"));
 
 const P = ({ children }) => <ProtectedRoute>{children}</ProtectedRoute>;
 // Internal/staff-only tooling — same auth system as the storefront, but a
@@ -92,6 +93,7 @@ function App() {
         <Route path="/privacy" element={<CommercePolicyPage />} />
         <Route path="/shipping" element={<CommercePolicyPage />} />
         <Route path="/returns-policy" element={<CommercePolicyPage />} />
+        <Route path="/driver/onboarding" element={<DriverOnboardingPage />} />
 
         <Route
           path="/returns"
